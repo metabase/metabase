@@ -257,9 +257,7 @@
             :run-id         run-id
             :table-name->id (:source-tables source)
             :shared-storage @shared-storage-ref})
-          ;; TODO temporary to keep more code stable while refactoring
-          ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
-          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+          {:keys [output-stream output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
@@ -279,8 +277,7 @@
                                :events                 events
                                :transform-run-message  (message-log->transform-run-message message-log)})))
             (try
-              (with-open [writer (io/writer temp-file)]
-                (.write writer ^String output))
+              (java.nio.file.Files/copy output-stream temp-file java.nio.file.StandardCopyOption/REPLACE_EXISTING)
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
