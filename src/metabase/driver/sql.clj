@@ -202,18 +202,19 @@
       [(assoc col-spec ::bad-reference true)]))
 
 (defmethod resolve-field :single-column
-  [driver metadata-provider col-spec]
-  [(or (->> (:source-columns col-spec)
-            (some (fn [source-col-set]
-                    ;; in cases like `select (select blah from ...) from ...`, if blah refers to a
-                    ;; column in both the inner query and the outer query, the column from the inner
-                    ;; query will be preferred.  However, if blah doesn't refer to something in the
-                    ;; inner query, it can also refer to something in the outer query.
-                    ;; sql.references/field-references organizes source-cols into a list of lists
-                    ;; to account for this.
-                    (->> (mapcat (partial resolve-field driver metadata-provider) source-col-set)
-                         (some #(when (= (:name %) (:column col-spec))
-                                  %))))))
+  [driver metadata-provider {:keys [alias] :as col-spec}]
+  [(or (cond-> (:source-columns col-spec)
+         true (->> (some (fn [source-col-set]
+                           ;; in cases like `select (select blah from ...) from ...`, if blah refers to a
+                           ;; column in both the inner query and the outer query, the column from the inner
+                           ;; query will be preferred.  However, if blah doesn't refer to something in the
+                           ;; inner query, it can also refer to something in the outer query.
+                           ;; sql.references/field-references organizes source-cols into a list of lists
+                           ;; to account for this.
+                           (->> (mapcat (partial resolve-field driver metadata-provider) source-col-set)
+                                (some #(when (= (:name %) (:column col-spec))
+                                         %))))))
+         alias (assoc :name alias))
        (assoc col-spec ::bad-reference true))])
 
 (defn- get-name [m]
