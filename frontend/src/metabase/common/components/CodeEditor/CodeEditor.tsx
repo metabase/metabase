@@ -1,3 +1,4 @@
+import type { Extension } from "@uiw/react-codemirror";
 import cx from "classnames";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
@@ -10,7 +11,7 @@ type Props = {
   className?: string;
   highlightRanges?: { start: number; end: number }[];
   id?: string;
-  language?: CodeLanguage;
+  language?: CodeLanguage | Extension;
   lineNumbers?: boolean;
   readOnly?: boolean;
   value: string;
