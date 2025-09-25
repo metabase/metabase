@@ -85,7 +85,7 @@ const PaletteContainer = () => {
             pos="absolute"
             bottom={10}
           >
-            <Icon c="text-light" name="search" />
+            <Icon c="text-dark" name="search" />
           </Stack>
         </Box>
 
