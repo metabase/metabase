@@ -43,7 +43,7 @@
                                                                   :shared-storage @shared-storage-ref})
           {:keys [output-stream output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
       (merge (:body response)
-             {:output (slurp output-stream)
+             {:output (some-> output-stream slurp)
               :output-manifest output-manifest
               :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))

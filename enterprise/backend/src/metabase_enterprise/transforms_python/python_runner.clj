@@ -208,10 +208,10 @@
   (let [{:keys [output output-manifest events]} objects
         output-content          (s3/read-to-stream s3-client bucket-name (:path output) nil)
         output-manifest-content (s3/read-to-string s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (s3/read-to-stream s3-client bucket-name (:path events))]
+        events-content          (s3/read-to-stream s3-client bucket-name (:path events) nil)]
     {:output-stream   output-content
      :output-manifest (json/decode+kw output-manifest-content)
-     :events          (map json/decode+kw (line-seq (io/reader events-content)))}))
+     :events          (some->> events-content io/reader line-seq (map json/decode+kw))}))
 
 (defn cancel-python-code-http-call!
   "Calls the /cancel endpoint of the python runner. Returns immediately."

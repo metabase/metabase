@@ -72,7 +72,7 @@
           {:keys [output-stream output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
       ;; not sure about munging this all together but its what tests expect for now
       (merge (:body response)
-             {:output          (slurp output-stream)
+             {:output          (some-> output-stream slurp)
               :output-manifest output-manifest
               :stdout          (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr          (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
