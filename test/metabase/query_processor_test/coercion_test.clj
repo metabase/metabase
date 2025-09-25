@@ -10,7 +10,8 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.types.core :as types]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.string :as string]))
 
 (set! *warn-on-reflection* true)
 
@@ -131,17 +132,17 @@
                       (as-> $query (lib/expression $query "test" (lib.tu.notebook/find-col-with-spec
                                                                   $query
                                                                   (lib/visible-columns $query)
-                                                                  {:name "Orders"}
+                                                                  {:display-name #".*Orders"}
                                                                   {:display-name "Quantity"})))
                       (as-> $query (lib/with-fields $query [(lib.tu.notebook/find-col-with-spec
                                                              $query
                                                              (lib/visible-columns $query)
-                                                             {:display-name "Products"}
+                                                             {:display-name #".*Products"}
                                                              {:display-name "ID"})
                                                             (lib.tu.notebook/find-col-with-spec
                                                              $query
                                                              (lib/visible-columns $query)
-                                                             {:name "Orders"}
+                                                             {:display-name #".*Orders"}
                                                              {:display-name "ID"})
                                                             (lib.tu.notebook/find-col-with-spec
                                                              $query
@@ -151,17 +152,20 @@
                       (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
                                                          $query
                                                          (lib/orderable-columns $query)
-                                                         {:display-name "Products"}
+                                                         {:display-name #".*Products"}
                                                          {:display-name "ID"})))
                       (as-> $query (lib/order-by $query (lib.tu.notebook/find-col-with-spec
                                                          $query
                                                          (lib/orderable-columns $query)
-                                                         {:name "Orders"}
+                                                         {:display-name #".*Orders"}
                                                          {:display-name "ID"})))
                       (lib/limit 3))]
         (mt/with-native-query-testing-context query
           (is (= [[1 448 "1970-01-01T00:00:00.002Z"]
                   [1 493 "1970-01-01T00:00:00.001Z"]
                   [1 607 "1970-01-01T00:00:00.007Z"]]
-                 (mt/formatted-rows [int int #(u.date/format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (u.date/parse %))]
+                 (mt/formatted-rows [int int (fn [s]
+                                               (if (string? s)
+                                                 (u.date/format "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (u.date/parse s))
+                                                 s))]
                                     (qp/process-query query)))))))))
