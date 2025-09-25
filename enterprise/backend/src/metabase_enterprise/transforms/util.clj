@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms.util
   (:require
    [clojure.core.async :as a]
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -64,8 +63,11 @@
         (throw e)))))
 
 (defn run-cancelable-transform!
-  "Execute a transform with cancellation support and proper error handling."
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
+  "Execute a transform with cancellation support and proper error handling.
+
+  Options:
+  - `:ex-message` change how caught exceptions are presented to the user in run logs, by default the same as"
+  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform! & {:keys [ex-message] :or {ex-message ex-message}}]
   ;; local run is responsible for status, using canceling lifecycle
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
@@ -78,9 +80,7 @@
       (transform-run/succeed-started-run! run-id)
       ret)
     (catch Throwable t
-      (let [{:keys [transform-run-message]} (ex-data t)
-            message (str/join "\n" (remove str/blank? [transform-run-message (.getMessage t)]))]
-        (transform-run/fail-started-run! run-id {:message message}))
+      (transform-run/fail-started-run! run-id {:message (ex-message t)})
       (throw t))
     (finally
       (canceling/chan-end-run! run-id))))

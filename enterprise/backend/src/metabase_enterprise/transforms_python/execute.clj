@@ -43,7 +43,7 @@
   []
   (atom {:pre-python  []                                    ; log! outputs previous to the python execution, i.e table read progress
          :python      nil                                   ; events json structured logs from the /logs endpoint
-         :post-python []}))                                    ; log! outputs after the python execution, i.e. output reads, writes to target
+         :post-python []}))                                 ; log! outputs after the python execution, i.e. output reads, writes to target
 
 (defn- log!
   "Appends a string to the message log, the string is user facing and should be suitable for presentation as part of the `transform_run.message` field."
@@ -270,16 +270,14 @@
                         {:status-code           400
                          :api-status-code       status
                          :body                  body
-                         :events                events
-                         :transform-run-message (message-log->transform-run-message message-log)}))
+                         :events                events}))
         (try
           (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
                                :raw-body               body
-                               :events                 events
-                               :transform-run-message  (message-log->transform-run-message message-log)})))
+                               :events                 events})))
             (try
               (with-open [writer (io/writer temp-file)]
                 (.write writer ^String output))
@@ -292,9 +290,10 @@
           response
           (catch Exception e
             (log/error e "Failed to to create resulting table")
-            (throw (ex-info "Failed to create the resulting table"
-                            {:transform-run-message (message-log->transform-run-message message-log)}
-                            e))))))))
+            (throw (ex-info "Failed to create the resulting table" {} e))))))))
+
+(defn- exceptional-run-message [message-log ex]
+  (str/join "\n" (remove str/blank? [(message-log->transform-run-message message-log) (ex-message ex)])))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
@@ -320,7 +319,8 @@
                                 (run-python-transform! transform db run-id cancel-chan message-log)
                                 (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
-            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
+            custom-ex-message #(exceptional-run-message message-log %)
+            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message custom-ex-message)]
         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id
