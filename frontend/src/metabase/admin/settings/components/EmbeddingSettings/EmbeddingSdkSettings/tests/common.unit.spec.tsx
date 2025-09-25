@@ -171,6 +171,20 @@ describe("EmbeddingSdkSettings (OSS)", () => {
     // Call-to-action should not be shown
     expect(card).not.toHaveTextContent("New embed");
   });
+
+  it("should not show embed button on oss even if simple embedding is enabled", async () => {
+    await setup({
+      isEmbeddingSimpleEnabled: true,
+      tokenFeatures: { embedding_simple: false },
+    });
+
+    const card = screen
+      .getAllByTestId("sdk-setting-card")
+      .find((card) => card.textContent?.includes("Embedded Analytics JS"));
+
+    expect(card).not.toHaveTextContent("New embed");
+    expect(card).toHaveTextContent("Documentation");
+  });
 });
 
 function assertLegaleseModal() {
