@@ -89,7 +89,12 @@ const ObjectDetailPreviewBase = ({
 
       {columns.length - headerColumns.length > 0 && (
         <Box pt="xl">
-          <DetailsGroup columns={columns} row={row} table={field.table} />
+          <DetailsGroup
+            columns={columns}
+            row={row}
+            table={field.table}
+            responsive
+          />
         </Box>
       )}
     </Stack>
