@@ -2,11 +2,12 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/common/components/Link";
-import { alpha, color, darken } from "metabase/lib/colors";
+import { alpha, darken } from "metabase/lib/colors";
 import {
   breakpointMaxLarge,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
@@ -78,8 +79,8 @@ export const AdminExitLink = styled(Link)`
 
   &:hover {
     color: var(--mb-color-text-white);
-    background-color: ${() => darken(color("filter"))};
-    border-color: ${() => darken(color("filter"))};
+    background-color: ${() => darken("filter")};
+    border-color: ${() => darken("filter")};
   }
 `;
 

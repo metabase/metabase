@@ -142,4 +142,13 @@ export const globalShortcuts = {
     shortcut: ["c e"],
     shortcutGroup: "global" as const,
   },
+
+  "toggle-dark-mode": {
+    get name() {
+      return t`Toggle dark mode`;
+    },
+
+    shortcut: ["$mod+Alt+KeyL"],
+    shortcutGroup: "global" as const,
+  },
 };

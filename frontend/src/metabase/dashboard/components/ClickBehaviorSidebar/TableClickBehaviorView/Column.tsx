@@ -3,7 +3,6 @@ import { jt, msgid, ngettext, t } from "ttag";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import type {
@@ -87,7 +86,7 @@ export const Column = ({ column, clickBehavior, onClick }: ColumnProps) => (
   <SidebarItem onClick={onClick}>
     <SidebarItem.Icon
       name={getIconForField(column) as unknown as IconName}
-      color={color("brand")}
+      c="brand"
       size={18}
     />
     <div>
