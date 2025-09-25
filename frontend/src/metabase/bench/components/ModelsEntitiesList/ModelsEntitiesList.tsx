@@ -39,10 +39,11 @@ export function ModelsEntitiesList({
         <NavLink
           key={model.id}
           label={model.name}
-          description={model.collection?.name || "No collection"}
           leftSection={<Icon name="model" size={16} />}
           active={selectedModelId === model.id}
           onClick={() => onModelClick?.(model)}
+          px="lg"
+          py="md"
         />
       ))}
     </>

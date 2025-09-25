@@ -45,10 +45,11 @@ export function MetricsEntitiesList({
             component={Link}
             to={`/bench/metrics/${metric.id}`}
             label={metric.name}
-            description={metric.collection?.name || "No collection"}
             leftSection={<Icon name="metric" size={16} />}
             active={selectedMetricId === metric.id}
             onClick={() => onMetricClick?.(metric)}
+            px="lg"
+            py="md"
           />
         ))
       )}

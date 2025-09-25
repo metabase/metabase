@@ -33,10 +33,11 @@ export function TransformEntitiesList({
         <NavLink
           key={transform.id}
           label={transform.name}
-          description={transform.target.name}
           leftSection={<Icon name="model" size={16} />}
           active={selectedTransformId === transform.id}
           onClick={() => onTransformClick?.(transform)}
+          px="lg"
+          py="md"
         />
       ))}
     </>
