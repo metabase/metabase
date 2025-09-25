@@ -9,83 +9,114 @@ If data needs assembled from different databases or sources, relabled, organized
 ## Accessing the separate mode
 For right now, we access the workbench mode via the ProfileLink component and a link to /bench. This is a set of sub routes
 
-Sub routes without the rest of the app layout are achieved this way. All routes should be added to /bench/routes.tsx In general routes
-should follow the pattern of.
+Sub routes without the rest of the app layout are achieved this way. All routes should be added to /bench/routes.tsx 
 
-```
-+++ b/frontend/src/metabase/bench/BenchLayout.tsx
-@@ -0,0 +1,26 @@
-+import { MantineProvider, AppShell, Box } from "@mantine/core";
-+import type { ReactNode } from "react";
-+
-+interface BenchLayoutProps {
-+  children: ReactNode;
-+}
-+
-+const benchTheme = {
-+  primaryColor: "blue",
-+  defaultRadius: "md",
-+  fontFamily: "system-ui, sans-serif",
-+};
-+
-+export function BenchLayout({ children }: BenchLayoutProps) {
-+  return (
-+    <MantineProvider theme={benchTheme}>
-+      <AppShell padding="md">
-+        <AppShell.Main>
-+          <Box p="xl">
-+            {children}
-+          </Box>
-+        </AppShell.Main>
-+      </AppShell>
-+    </MantineProvider>
-+  );
-+}
+## Route Structure and Nested Composition
 
-```
-diff --git a/frontend/src/metabase/bench/routes.tsx b/frontend/src/metabase/bench/routes.tsx
-new file mode 100644
-index 00000000000..2bfb1e05a62
---- /dev/null
-+++ b/frontend/src/metabase/bench/routes.tsx
-@@ -0,0 +1,14 @@
-+import { IndexRedirect } from "react-router";
-+import { Route } from "metabase/hoc/Title";
-+import { BenchLayout } from "./BenchLayout";
-+import { ExamplePage1, ExamplePage2 } from "./pages";
-+
-+export function getBenchRoutes() {
-+  return (
-+    <Route path="/bench" component={BenchLayout}>
-+      <IndexRedirect to="/bench/page1" />
-+      <Route path="page1" title="Bench - Example Page 1" component={ExamplePage1} />
-+      <Route path="page2" title="Bench - Example Page 2" component={ExamplePage2} />
-+    </Route>
-+  );
-+}
+### Basic Route Setup
+Routes should use React Router's nested composition pattern. The main routes file should be structured like:
 
-```
-diff --git a/frontend/src/metabase/routes.jsx b/frontend/src/metabase/routes.jsx
-index 06dd9ae9131..2079b3a35e0 100644
---- a/frontend/src/metabase/routes.jsx
-+++ b/frontend/src/metabase/routes.jsx
-@@ -30,6 +30,7 @@ import { DashboardMoveModalConnected } from "metabase/dashboard/components/Dashb
- import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
- import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
- import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-+import { getBenchRoutes } from "metabase/bench/routes";
- import { TableDetailPage } from "metabase/detail-view/pages/TableDetailPage";
- import { ModalRoute } from "metabase/hoc/ModalRoute";
- import { Route } from "metabase/hoc/Title";
-@@ -395,6 +396,9 @@ export const getRoutes = (store) => {
-         to="/admin/permissions/collections"
-       />
+```tsx
+// frontend/src/metabase/bench/routes.tsx
+import { Route } from "metabase/hoc/Title";
+import { BenchLayout } from "./BenchLayout";
+import { MetricsApp } from "./MetricsApp";
+import { MetricsDetails } from "./components/MetricsDetails/MetricsDetails";
+import { NewMetricPage } from "./components/NewMetricPage/NewMetricPage";
 
-+      {/* BENCH */}
-+      {getBenchRoutes()}
-+
-       {/* MISC */}
+export function getBenchRoutes() {
+  return (
+    <Route path="/bench" component={BenchLayout}>
+      <IndexRoute component={BenchApp} />
+      
+      {/* METRICS - Tool layout with nested routes */}
+      <Route path="metrics" component={MetricsApp}>
+        <Route path="new" component={NewMetricPage} />
+        <Route path=":metricId" component={MetricsDetails} />
+      </Route>
+
+      {/* Other tool layouts follow same pattern */}
+    </Route>
+  );
+}
 ```
+
+### Tool Layout Pattern for Individual Items
+
+When creating tool layouts that show both a list and individual item details:
+
+1. **Parent Component (e.g., MetricsApp)**: 
+   - Renders the tool layout with left panel (entities list) and main panel
+   - Accepts `children` prop and renders it in the main panel
+   - Does NOT handle URL params directly - lets React Router handle composition
+
+2. **Detail Component (e.g., MetricsDetails)**:
+   - Receives route `params` with the item ID
+   - Loads item data using appropriate hooks based on the ID from params
+   - Never receives data as props - always fetches from API
+
+**Example Parent Component:**
+```tsx
+interface MetricsAppProps {
+  children?: React.ReactNode;
+}
+
+export function MetricsApp({ children }: MetricsAppProps) {
+  return (
+    <PanelGroup direction="horizontal">
+      {/* Left Panel - Entity List */}
+      <Panel>
+        <MetricsEntitiesList />
+      </Panel>
+      
+      {/* Main Panel - Shows child route content */}
+      <Panel>
+        {children}
+      </Panel>
+    </PanelGroup>
+  );
+}
+```
+
+**Example Detail Component:**
+```tsx
+interface MetricsDetailsProps {
+  params: {
+    metricId: string;
+  };
+}
+
+export function MetricsDetails({ params }: MetricsDetailsProps) {
+  const metricId = parseInt(params.metricId, 10);
+  
+  // Always load from API using route params
+  const { data: metricData, isLoading } = useGetCardQuery({ id: metricId });
+  
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+  
+  return (
+    <div>
+      <h1>{metricData?.name}</h1>
+      {/* ... metric details */}
+    </div>
+  );
+}
+```
+
+### Key Principles
+
+1. **Never use `children ||` fallback patterns** - let React Router handle composition
+2. **Individual items are ALWAYS loaded from route params** - never passed as props
+3. **Parent components render `{children}` directly** - no conditional logic
+4. **Detail components receive and parse `params.itemId`** - use appropriate data loading hooks
+
+This pattern ensures that:
+- URLs work correctly for direct navigation
+- The entity list remains visible when viewing individual items
+- Routes compose properly using React Router's built-in mechanisms
+- No manual route parameter handling is needed in parent components
 
 ## Structure
 From left to right, taking up the full height of the view are panels.
