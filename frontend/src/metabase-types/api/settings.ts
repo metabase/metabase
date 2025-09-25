@@ -678,7 +678,8 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
-  "python-execution-server-url"?: string | null;
+  "python-runner-url"?: string | null;
+  "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;
   "python-storage-s-3-region"?: string | null;
   "python-storage-s-3-bucket"?: string | null;
