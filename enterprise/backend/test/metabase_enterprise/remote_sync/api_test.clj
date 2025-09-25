@@ -13,6 +13,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(use-fixtures :once (fixtures/initialize :db))
+
 (defn mock-git-source
   "Create a mock git source for testing"
   [& {:keys [branches error-on-branches?]

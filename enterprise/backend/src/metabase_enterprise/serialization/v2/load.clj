@@ -161,15 +161,28 @@
                           (path-error-data ::load-failure expanding path)
                           e)))))))
 
-(defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance.
+(defn new-context
+  "Given an ingestion create a new context for serialization.
 
-  If `root-dependency-path` is passed, we will only load entities that are dependent upon (or dependencies of) the entity
-  described by that serdes path."
-  [ingestion & {:keys [backfill? continue-on-error root-dependency-path reindex?]
+  Arguments:
+    ingestion: Ingestable instance
+
+  Returns:
+    an empty context object that can be passed to load-one!
+  "
+  [ingestion]
+  {:expanding #{}
+   :seen      #{}
+   :circular  #{}
+   :ingestion ingestion
+   :from-ids  (->> ingestion serdes.ingest/ingest-list (m/index-by :id))
+   :errors    []})
+
+(defn load-metabase!
+  "Loads in a database export from an ingestion source, which is any Ingestable instance. "
+  [ingestion & {:keys [backfill? continue-on-error reindex?]
                 :or   {backfill?            true
                        continue-on-error    false
-                       root-dependency-path nil
                        reindex?             true}}]
   (u/prog1
     (t2/with-transaction [_tx]
@@ -178,25 +191,11 @@
       (when backfill?
         (serdes.backfill/backfill-ids!))
       (let [contents (serdes.ingest/ingest-list ingestion)
-            ctx      {:expanding #{}
-                      :seen      #{}
-                      :circular  #{}
-                      :ingestion ingestion
-                      :from-ids  (m/index-by :id contents)
-                      :errors    []}]
+            ctx (new-context ingestion)]
         (log/infof "Starting deserialization, total %s documents" (count contents))
         (reduce (fn [ctx item]
                   (try
-                    (if (or (nil? root-dependency-path)
-                            (contains? (u/traverse [item] #(try
-                                                             (zipmap (serdes/dependencies
-                                                                      (serdes.ingest/ingest-one ingestion %))
-                                                                     (repeat %))
-                                                             (catch Exception _
-                                                               nil)))
-                                       root-dependency-path))
-                      (load-one! ctx item)
-                      ctx)
+                    (load-one! ctx item)
                     (catch Exception e
                       (when-not continue-on-error
                         (throw e))

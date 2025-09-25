@@ -18,6 +18,8 @@
  [metabase-enterprise.serialization.v2.ingest
   strip-labels
   Ingestable
+  ingest-list
+  ingest-one
   read-timestamps
   parse-key]
  [metabase-enterprise.serialization.v2.load

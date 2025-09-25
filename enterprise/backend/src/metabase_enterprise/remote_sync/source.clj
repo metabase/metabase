@@ -2,68 +2,56 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.git :as git]
+   [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
-   [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml])
+   [metabase.util.yaml :as yaml]
+   [methodical.core :as methodical])
   (:import
    (java.io File)
    (metabase_enterprise.remote_sync.source.git GitSource)))
 
 (set! *warn-on-reflection* true)
 
-(defn- ingest-content
-  [file-content]
-  (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
+;; Wrapping source accepts a list of path regexes to apply to paths in the source returning
+;; nil when they do no match
+(defrecord WrappingSource [original-source path-filters]
+  source.p/LibrarySource
+  (branches [_]
+    (source.p/branches original-source))
 
-(defn- ingest-all
-  [source]
-  (into {} (for [path (source.p/list-files source)
-                 :when (and (not (str/starts-with? path "."))
-                            (str/ends-with? path ".yaml"))
-                    ;; TODO legal-top-level check? / maybe not necessary for library?
-                 :let [content (try
-                                 (source.p/read-file source path)
-                                 (catch Exception e
-                                   (log/error e "Error reading file" path)))
-                       loaded (try
-                                (when content
-                                  (serdes/path (ingest-content content)))
-                                (catch Exception e
-                                  (log/error e "Error reading file" path)))]
-                 :when loaded]
-             [(serialization/strip-labels loaded) [loaded content]])))
+  (list-files [_]
+    (filter (fn [file-path]
+              #p (some (fn [path-filter] #p (re-matches #p path-filter #p file-path)) path-filters))
+            (source.p/list-files original-source)))
 
-;; Wraps a source object providing the ingestable interface for serdes
-(defrecord IngestableSource [source cache]
-  serialization/Ingestable
-  (ingest-list [_]
-    (keys (or @cache (reset! cache (ingest-all source)))))
+  (read-file [_ path]
+    (when (some (fn [path-filter] (re-matches path-filter path)) path-filters)
+      (source.p/read-file original-source path)))
 
-  (ingest-one [_ serdes-path]
-    (when-not @cache
-      (reset! cache (ingest-all source)))
-    (if-let [target (get @cache (serialization/strip-labels serdes-path))]
-      (try
-        (ingest-content (second target))
-        (catch Exception e
-          (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))
-      (throw (ex-info "Cannot find file" {:abs-path serdes-path})))))
+  (write-files! [_ message files]
+    (source.p/write-files! original-source message
+                           (filter (fn [file-path]
+                                     (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))
+                                   files))))
 
-(defmethod source.p/->ingestable :default
-  [source]
-  (->IngestableSource source (atom nil)))
+(methodical/defmethod source.p/->ingestable :default
+  [source {:keys [path-filters root-dependencies task-id]}]
+  (cond->> (ingestable/->IngestableSource (cond-> source
+                                            (seq path-filters) (->WrappingSource path-filters))
+                                          (atom nil))
+    (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)
+    task-id (ingestable/wrap-progress-ingestable task-id 0.7)))
 
-(defmethod source.p/->ingestable GitSource
-  [{:keys [git url token] :as source}]
+(methodical/defmethod source.p/->ingestable GitSource
+  [{:keys [url] :as source} opts]
   (git/fetch! source)
   (if-let [commit-ref (git/->commit-id source)]
-    (->IngestableSource (git/->GitSource git url commit-ref token) (atom nil))
+    (next-method (assoc source :commit-ish commit-ref) opts)
     (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url url
                                                                                          :branch (:commit-ish source)}))))
-
 (defn- remote-sync-path
   [opts entity]
   (let [base-path (serdes/storage-path entity opts)

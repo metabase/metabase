@@ -1862,6 +1862,7 @@
            metabase-enterprise.remote-sync.core
            metabase-enterprise.remote-sync.init}
    :uses #{api
+           app-db
            collections
            events
            models

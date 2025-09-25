@@ -1,4 +1,6 @@
-(ns metabase-enterprise.remote-sync.source.protocol)
+(ns metabase-enterprise.remote-sync.source.protocol
+  (:require
+   [methodical.core :as methodical]))
 
 (defprotocol LibrarySource
   (branches [source]
@@ -16,13 +18,18 @@
   (write-files! [source message files]
     "Writes `content` to `path` in `branch` with commit `message` for all files in `files`"))
 
-(defmulti ->ingestable
+(methodical/defmulti ->ingestable
   "Creates an ingestable source for remote sync operations.
 
   Args:
     source: The source configuration for remote sync.
+    options: map of options for the ingestable
+      root-dependencies: sequence of serdes dependencies in the format [{:model MODEL_NAME :id ENTITY_ID}]
+        filters the items returned by the ingestable to only ones with ones of these dependencies
+      path-filters: sequence of regexes that filter allowed paths to read
+      task-id: RemoteSyncTask identifier used to updated progress
 
   Returns:
     An IngestableSource instance with the provided source and empty atom state."
-  {:arglists '([source])}
-  type)
+  {:arglists '([source opts])}
+  (fn [source _opts] (type source)))

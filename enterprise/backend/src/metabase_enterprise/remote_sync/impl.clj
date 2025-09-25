@@ -95,14 +95,12 @@
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (u/prog1 (serdes/with-cache
-                                     (if (seq collections)
-                                       (reduce (fn [accum collection]
-                                                 (merge-with conj accum
-                                                             (serialization/load-metabase! (source.p/->ingestable source)
-                                                                                           :root-dependency-path [{:id collection :model "Collection"}])))
-                                               {} collections)
-                                       (serialization/load-metabase! (source.p/->ingestable source))))
-                            (remote-sync.task/update-progress! task-id 0.7))
+                                     (->> (cond-> {:task-id task-id}
+                                            (seq collections) (assoc :root-dependencies (map #(vector {:id % :model "Collection"}) collections)
+                                                                     :path-filters (map #(re-pattern (str "collections/" % ".*")) collections))
+                                            (empty? collections) (assoc :path-filters [#"collections/.*"]))
+                                          (source.p/->ingestable source)
+                                          serialization/load-metabase!)))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)

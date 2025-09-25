@@ -220,24 +220,23 @@
                                        (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
                                        "cards/test-card-1.yaml"
                                        (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card 1" "test-collection-1xxxx")}}
-            mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")]
-        ;; Import only collection 1 - this exercises the cleanup logic for collection 2
-        (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
-              result (impl/import! mock-main (:id import-task) "test-branch")]
-          (is (= :success (:status result)))
+            mock-main (test-helpers/create-mock-source :initial-files test-files :branch "test-branch")
+            import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
+            result (impl/import! mock-main (:id import-task) "test-branch")]
+        (is (= :success (:status result)))
 
         ;; Verify the entities still exist (real cleanup would require more complex setup)
-          (is (t2/exists? :model/Card :id card1-id))
-          (is (not (t2/exists? :model/Collection :id coll2-id)))
-          (is (not (t2/exists? :model/Card :id card2-id))))))))
+        (is (t2/exists? :model/Card :id card1-id))
+        (is (not (t2/exists? :model/Collection :id coll2-id)))
+        (is (not (t2/exists? :model/Card :id card2-id)))))))
 
 (deftest error-handling-propagation-through-private-functions-test
   (testing "error handling propagation through private functions"
-    (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)]
-      (let [import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
-            result (impl/import! mock-source (:id import-task) "test-branch" ["test-collection"])]
-        (is (= :error (:status result)))
-        (is (re-find #"Network error" (:message result)))))))
+    (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)
+          import-task (t2/insert-returning-instance! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (:id (first (t2/select :model/User)))})
+          result (impl/import! mock-source (:id import-task) "test-branch" ["test-collection"])]
+      (is (= :error (:status result)))
+      (is (re-find #"Network error" (:message result))))))
 
 (deftest import!-calls-update-progress-with-expected-values-test
   (testing "import! calls update-progress! with expected progress values"
