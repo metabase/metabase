@@ -28,7 +28,7 @@ interface BenchAppProps {
 
 export function BenchApp({ params }: BenchAppProps) {
   const theme = useMantineTheme();
-  const isDark = theme.colorScheme === "dark";
+  const isDark = theme.colorScheme === "pants";
   const dispatch = useDispatch();
   const queryPreviewRef = useRef<{ runQuery: () => void }>(null);
   const transformId = params?.transformId

@@ -6,30 +6,31 @@ import { skipToken } from "metabase/api";
 import type { Card, Dataset } from "metabase-types/api";
 
 interface MetricsDetailsProps {
-  metric?: Card;
+  params: {
+    metricId: string;
+  };
 }
 
-export function MetricsDetails({ metric }: MetricsDetailsProps) {
+export function MetricsDetails({ params }: MetricsDetailsProps) {
   const theme = useMantineTheme();
   const isDark = theme.colorScheme === "dark";
 
+  const metricId = parseInt(params.metricId, 10);
+
   // Load the metric definition
-  const { data: metricData, isLoading: isLoadingMetric } = useGetCardQuery(
-    metric?.id ? { id: metric.id } : skipToken
-  );
+  const { data: metricData, isLoading: isLoadingMetric } = useGetCardQuery({
+    id: metricId,
+  });
 
   // Run the metric query to get results
-  const { data: queryResults, isLoading: isLoadingResults } = useGetCardQueryQuery(
-    metric?.id
-      ? {
-          cardId: metric.id,
-          parameters: [],
-          ignore_cache: false,
-        }
-      : skipToken
-  );
+  const { data: queryResults, isLoading: isLoadingResults } =
+    useGetCardQueryQuery({
+      cardId: metricId,
+      parameters: [],
+      ignore_cache: false,
+    });
 
-  if (!metric) {
+  if (isLoadingMetric) {
     return (
       <Box
         h="100%"
@@ -41,23 +42,8 @@ export function MetricsDetails({ metric }: MetricsDetailsProps) {
         }}
       >
         <Text size="lg" c="dimmed">
-          Select a metric to view its definition and results
+          Loading metric...
         </Text>
-      </Box>
-    );
-  }
-
-  if (isLoadingMetric) {
-    return (
-      <Box
-        h="100%"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text>Loading metric...</Text>
       </Box>
     );
   }
@@ -79,11 +65,13 @@ export function MetricsDetails({ metric }: MetricsDetailsProps) {
             p="md"
             style={{
               borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark ? theme.colors.dark[6] : theme.colors.gray[0],
+              backgroundColor: isDark
+                ? theme.colors.dark[6]
+                : theme.colors.gray[0],
             }}
           >
             <Text size="lg" fw="bold">
-              {metric.name}
+              {metricData?.name}
             </Text>
             <Text size="sm" c="dimmed">
               Metric Definition
@@ -92,7 +80,11 @@ export function MetricsDetails({ metric }: MetricsDetailsProps) {
 
           <Box style={{ flex: 1, height: "400px" }}>
             <CodeMirror
-              value={metricData?.dataset_query ? JSON.stringify(metricData.dataset_query, null, 2) : "No query definition available"}
+              value={
+                metricData?.dataset_query
+                  ? JSON.stringify(metricData.dataset_query, null, 2)
+                  : "No query definition available"
+              }
               options={{
                 readOnly: true,
                 mode: "application/json",
@@ -116,7 +108,9 @@ export function MetricsDetails({ metric }: MetricsDetailsProps) {
             p="md"
             style={{
               borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-              backgroundColor: isDark ? theme.colors.dark[6] : theme.colors.gray[0],
+              backgroundColor: isDark
+                ? theme.colors.dark[6]
+                : theme.colors.gray[0],
             }}
           >
             <Text size="lg" fw="bold">
@@ -138,7 +132,8 @@ export function MetricsDetails({ metric }: MetricsDetailsProps) {
                 <Text size="sm" c="dimmed" mb="sm">
                   {queryResults.data?.rows?.length || 0} rows returned
                 </Text>
-                {queryResults.data?.rows && queryResults.data.rows.length > 0 ? (
+                {queryResults.data?.rows &&
+                queryResults.data.rows.length > 0 ? (
                   <Table>
                     <Table.Thead>
                       <Table.Tr>
@@ -148,19 +143,23 @@ export function MetricsDetails({ metric }: MetricsDetailsProps) {
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {queryResults.data.rows.slice(0, 100).map((row, rowIndex) => (
-                        <Table.Tr key={rowIndex}>
-                          {row.map((cell, cellIndex) => (
-                            <Table.Td key={cellIndex}>
-                              {cell === null ? (
-                                <Text c="dimmed" fs="italic">null</Text>
-                              ) : (
-                                String(cell)
-                              )}
-                            </Table.Td>
-                          ))}
-                        </Table.Tr>
-                      ))}
+                      {queryResults.data.rows
+                        .slice(0, 100)
+                        .map((row, rowIndex) => (
+                          <Table.Tr key={rowIndex}>
+                            {row.map((cell, cellIndex) => (
+                              <Table.Td key={cellIndex}>
+                                {cell === null ? (
+                                  <Text c="dimmed" fs="italic">
+                                    null
+                                  </Text>
+                                ) : (
+                                  String(cell)
+                                )}
+                              </Table.Td>
+                            ))}
+                          </Table.Tr>
+                        ))}
                     </Table.Tbody>
                   </Table>
                 ) : (

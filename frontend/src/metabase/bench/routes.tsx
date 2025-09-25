@@ -1,12 +1,12 @@
 import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-
 import { BenchApp } from "./BenchApp";
 import { BenchLayout } from "./BenchLayout";
 import { MetricsApp } from "./MetricsApp";
 import { ModelsApp } from "./ModelsApp";
+import { NewMetricPage } from "./components/NewMetricPage/NewMetricPage";
 import RevisionHistoryApp from "./metadata/containers/RevisionHistoryApp";
+import { MetricsDetails } from "./components/MetricsDetails/MetricsDetails";
 import SegmentApp from "./metadata/containers/SegmentApp";
 import SegmentListApp from "./metadata/containers/SegmentListApp";
 import { DataModel } from "./metadata/pages/DataModel/DataModel";
@@ -49,7 +49,10 @@ export function getBenchRoutes() {
       <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
 
       {/* METRICS V2 */}
-      <Route path="metrics" component={MetricsApp} />
+      <Route path="metrics" component={MetricsApp}>
+        <Route path="new" component={NewMetricPage} />
+        <Route path=":metricId" component={MetricsDetails} />
+      </Route>
 
       {/* MODELS V2 */}
       <Route path="models" component={ModelsApp} />

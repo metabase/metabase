@@ -8,12 +8,10 @@ import type { Card } from "metabase-types/api";
 import styles from "./BenchApp.module.css";
 
 interface MetricsAppProps {
-  params?: {
-    metricId?: string;
-  };
+  children?: React.ReactNode;
 }
 
-export function MetricsApp({ params }: MetricsAppProps) {
+export function MetricsApp({ children }: MetricsAppProps) {
   const theme = useMantineTheme();
   const isDark = theme.colorScheme === "dark";
   const [selectedMetric, setSelectedMetric] = useState<Card | undefined>();
@@ -57,10 +55,12 @@ export function MetricsApp({ params }: MetricsAppProps) {
             h="100%"
             p="md"
             style={{
-              backgroundColor: isDark ? theme.colors.dark[7] : theme.colors.gray[0],
+              backgroundColor: isDark
+                ? theme.colors.dark[7]
+                : theme.colors.gray[0],
             }}
           >
-            <MetricsDetails metric={selectedMetric} />
+            {children}
           </Box>
         </Panel>
       </PanelGroup>
