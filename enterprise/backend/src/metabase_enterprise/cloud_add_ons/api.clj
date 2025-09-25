@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -16,6 +17,24 @@
   (deferred-tru "Could not purchase this add-on."))
 (def ^:private error-unexpected
   (deferred-tru "Unexpected error"))
+
+(defn- version-supports-semantic-search?
+  "Check if current Metabase version is >= 56.5"
+  []
+  (let [major (config/current-major-version)
+        minor (config/current-minor-version)]
+    (and major minor
+         (or (> major 56)
+             (and (= major 56) (>= minor 5))))))
+
+(defn- build-addons-for-product
+  "Build list of add-ons based on product type and version compatibility."
+  [product-type]
+  (let [base-addon {:product-type product-type}]
+    (if (and (= product-type "metabase-ai")
+             (version-supports-semantic-search?))
+      [base-addon {:product-type "semantic-search"}]
+      [base-addon])))
 
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
@@ -41,9 +60,10 @@
 
     :else
     (try
-      (let [add-on {:product-type product-type}]
+      (let [add-on {:product-type product-type}
+            add-ons (build-addons-for-product product-type)]
         (events/publish-event! :event/cloud-add-on-purchase {:details {:add-on add-on}, :user-id api/*current-user-id*})
-        (hm.client/call :change-add-ons :upsert-add-ons [add-on]))
+        (hm.client/call :change-add-ons :upsert-add-ons add-ons))
       (premium-features/clear-cache)
       {:status 200 :body {}}
       (catch Exception e

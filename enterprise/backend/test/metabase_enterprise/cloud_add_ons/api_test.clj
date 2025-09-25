@@ -1,8 +1,10 @@
 (ns metabase-enterprise.cloud-add-ons.api-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.cloud-add-ons.api :as cloud-add-ons.api]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]))
 
@@ -69,3 +71,56 @@
                     (let [{:keys [details user_id]} (mt/latest-audit-log-entry "cloud-add-on-purchase")]
                       (is (= (:id user) user_id))
                       (is (= {:add-on {:product-type "metabase-ai"}} details)))))))))))))
+
+(deftest version-supports-semantic-search?-test
+  (testing "version-supports-semantic-search?"
+    (testing "returns true for version 56.5"
+      (with-redefs [config/current-major-version (constantly 56)
+                    config/current-minor-version (constantly 5)]
+        (is (#'cloud-add-ons.api/version-supports-semantic-search?))))
+
+    (testing "returns true for version 56.6"
+      (with-redefs [config/current-major-version (constantly 56)
+                    config/current-minor-version (constantly 6)]
+        (is (#'cloud-add-ons.api/version-supports-semantic-search?))))
+
+    (testing "returns true for version 57.0"
+      (with-redefs [config/current-major-version (constantly 57)
+                    config/current-minor-version (constantly 0)]
+        (is (#'cloud-add-ons.api/version-supports-semantic-search?))))
+
+    (testing "returns false for version 56.4"
+      (with-redefs [config/current-major-version (constantly 56)
+                    config/current-minor-version (constantly 4)]
+        (is (not (#'cloud-add-ons.api/version-supports-semantic-search?)))))
+
+    (testing "returns false for version 55.9"
+      (with-redefs [config/current-major-version (constantly 55)
+                    config/current-minor-version (constantly 9)]
+        (is (not (#'cloud-add-ons.api/version-supports-semantic-search?)))))
+
+    (testing "returns false when major version is nil"
+      (with-redefs [config/current-major-version (constantly nil)
+                    config/current-minor-version (constantly 5)]
+        (is (not (#'cloud-add-ons.api/version-supports-semantic-search?)))))
+
+    (testing "returns false when minor version is nil"
+      (with-redefs [config/current-major-version (constantly 56)
+                    config/current-minor-version (constantly nil)]
+        (is (not (#'cloud-add-ons.api/version-supports-semantic-search?)))))))
+
+(deftest build-addons-for-product-test
+  (testing "build-addons-for-product"
+    (testing "returns only base addon for non-metabase-ai product"
+      (is (= [{:product-type "other-product"}]
+             (#'cloud-add-ons.api/build-addons-for-product "other-product"))))
+
+    (testing "returns only base addon for metabase-ai when version doesn't support semantic search"
+      (with-redefs [cloud-add-ons.api/version-supports-semantic-search? (constantly false)]
+        (is (= [{:product-type "metabase-ai"}]
+               (#'cloud-add-ons.api/build-addons-for-product "metabase-ai")))))
+
+    (testing "returns base addon and semantic-search addon for metabase-ai when version supports semantic search"
+      (with-redefs [cloud-add-ons.api/version-supports-semantic-search? (constantly true)]
+        (is (= [{:product-type "metabase-ai"} {:product-type "semantic-search"}]
+               (#'cloud-add-ons.api/build-addons-for-product "metabase-ai")))))))
