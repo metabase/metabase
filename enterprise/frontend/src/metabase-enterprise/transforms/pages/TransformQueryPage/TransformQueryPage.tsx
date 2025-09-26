@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
@@ -19,11 +20,7 @@ import {
   getMetabotSuggestedTransform,
   setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type {
-  QueryTransformSource,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
+import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -74,7 +71,10 @@ export function TransformQueryPageBody({
   const suggestedTransform = useSelector(
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedSource = suggestedTransform?.source;
+
+  // TODO: should getMetabotSuggestedTransform selector do this?
+  const isPropsedSame = _.isEqual(suggestedTransform?.source, initialSource);
+  const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
 
   useRegisterMetabotContextProvider(async () => {
     const viewedTransform = suggestedTransform ?? { ...transform, source };
@@ -128,25 +128,22 @@ export function TransformQueryPageBody({
 
   if (transform.source.type === "python") {
     return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-        initialSource={transform.source}
-        isNew={false}
-        isSaving={isLoading}
-        onSave={handleSourceSave}
-        onCancel={handleCancel}
-      />
+      <AdminSettingsLayout fullWidth key={transform.id}>
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          initialSource={transform.source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
+          isNew={false}
+          isSaving={isLoading}
+          onSave={handleSourceSave}
+          onCancel={handleCancel}
+          onRejectProposed={onRejectProposed}
+          onAcceptProposed={onAcceptProposed}
+        />
+      </AdminSettingsLayout>
     );
   }
-
-  const proposedQuerySource: QueryTransformSource | undefined =
-    proposedSource?.type === "query" &&
-    proposedSource?.query.type === "native" &&
-    initialSource.type === "query" &&
-    initialSource.query.type === "native" &&
-    proposedSource.query.native.query === initialSource.query.native.query
-      ? undefined
-      : // TODO: fix type cast
-        (proposedSource as QueryTransformSource | undefined);
 
   return (
     <AdminSettingsLayout fullWidth key={transform.id}>
@@ -158,7 +155,9 @@ export function TransformQueryPageBody({
         onSave={handleSourceSave}
         onChange={setSource}
         onCancel={handleCancel}
-        proposedSource={proposedQuerySource}
+        proposedSource={
+          proposedSource?.type === "query" ? proposedSource : undefined
+        }
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />
