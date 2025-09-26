@@ -1,6 +1,7 @@
 import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
+import cx from "classnames";
 import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
@@ -40,6 +41,8 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
+import S from "./MetabotAgentSuggestionMessage.module.css";
+
 const PreviewContent = ({
   oldSource,
   newSource,
@@ -49,7 +52,11 @@ const PreviewContent = ({
 }) => {
   return (
     <CodeMirror
-      className={EditorS.editor}
+      className={cx(
+        EditorS.editor,
+        S.suggestionEditor,
+        !oldSource && S.suggestionEditorOnlyNew,
+      )}
       extensions={
         oldSource
           ? [
@@ -57,8 +64,8 @@ const PreviewContent = ({
                 original: oldSource,
                 mergeControls: false,
                 collapseUnchanged: {
-                  margin: 3,
-                  minSize: 4,
+                  margin: 1,
+                  minSize: 1,
                 },
               }),
             ]
@@ -130,11 +137,13 @@ export const AgentSuggestionMessage = ({
   message: MetabotAgentEditSuggestionChatMessage;
 }) => {
   const { suggestedTransform } = message.payload;
+  const isNew = !suggestedTransform.id;
 
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
   const url = useLocation();
+  // TODO: this doesn't work for new routes
   const isViewing = url.pathname?.startsWith(
     `/admin/transforms/${suggestedTransform.id}/query`,
   );
@@ -237,6 +246,7 @@ export const AgentSuggestionMessage = ({
       userMessage: "✅ You accepted the change",
     });
   };
+
   const handleReject = () => {
     dispatch(setSuggestedTransform(undefined));
     metabot.submitInput({
@@ -271,13 +281,9 @@ export const AgentSuggestionMessage = ({
         <Flex align="center" gap="sm">
           <Text
             size="sm"
-            c={
-              suggestedTransform.id
-                ? "text-secondary"
-                : "var(--mb-color-saturated-blue)"
-            }
+            c={isNew ? "var(--mb-color-saturated-blue)" : "text-secondary"}
           >
-            {suggestedTransform.id ? t`Revision` : t`New`}
+            {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
             <Icon name={opened ? "chevrondown" : "chevronup"} size=".75rem" />
