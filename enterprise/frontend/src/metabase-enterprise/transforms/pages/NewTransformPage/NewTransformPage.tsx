@@ -106,11 +106,12 @@ export function NewTransformPageInner({
     openModal();
   };
 
+  const handleRejectProposed = () => dispatch(setSuggestedTransform(undefined));
+
   const handleCancel = () => {
     dispatch(push(getTransformListUrl()));
+    handleRejectProposed();
   };
-
-  const onRejectProposed = () => dispatch(setSuggestedTransform(undefined));
 
   const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
@@ -144,7 +145,7 @@ export function NewTransformPageInner({
         proposedSource={proposedSource}
         onSave={handleSave}
         onCancel={handleCancel}
-        onRejectProposed={onRejectProposed}
+        onRejectProposed={handleRejectProposed}
         onAcceptProposed={handleSave}
       />
       {isModalOpened && source && (
