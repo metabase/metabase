@@ -4,10 +4,13 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.app-db.core :as app-db]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.yaml :as yaml]
+   [toucan2.connection :as t2.connection]
+   [toucan2.core :as t2]))
 
 (defn- ingest-content
   [file-content]
@@ -55,7 +58,8 @@
         calls (atom 0)]
     (letfn [(progress-callback [_]
               (let [current-calls (swap! calls inc)]
-                (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize))))]
+                (t2/with-connection [_conn (app-db/app-db)]
+                  (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize)))))]
       (->CallbackIngestable ingestable progress-callback))))
 
 ;; Wraps another Ingestable and filters the `list-files` content to only content that has the specified
