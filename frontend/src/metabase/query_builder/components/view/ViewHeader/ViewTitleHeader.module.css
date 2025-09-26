@@ -61,7 +61,11 @@
   line-height: 1rem;
   padding-inline: 0.5rem;
   color: var(--mb-color-text-primary);
-  background-color: color-mix(in srgb, var(--mb-color-filter) 15%, white);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-filter) 15%,
+    var(--mb-color-white)
+  );
 }
 
 .SummarizeButton {
