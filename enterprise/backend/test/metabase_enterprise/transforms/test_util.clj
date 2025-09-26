@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -82,17 +84,14 @@
 (defn wait-for-table
   "Wait for a table to appear in metadata, with timeout."
   [^String table-name timeout-ms]
-  (let [timer (u/start-timer)]
+  (let [mp    (mt/metadata-provider)
+        limit (+ (System/currentTimeMillis) timeout-ms)]
     (loop []
-      (let [table (t2/select-one :model/Table :name table-name)
-            fields (t2/select :model/Field :table_id (:id table))]
-        (cond
-          (and table (seq fields)) table
-          (> (u/since-ms timer) timeout-ms)
-          (throw (ex-info (format "Table %s did not appear after %dms" table-name timeout-ms)
-                          {:table-name table-name :timeout-ms timeout-ms}))
-          :else (do (Thread/sleep 100)
-                    (recur)))))))
+      (Thread/sleep 200)
+      (when (> (System/currentTimeMillis) limit)
+        (throw (ex-info "table has not been created" {:table-name table-name, :timeout-ms timeout-ms})))
+      (or (m/find-first (comp #{table-name} :name) (lib.metadata/tables mp))
+          (recur)))))
 
 (defn test-run
   [transform-id]
