@@ -47,10 +47,10 @@ Row and column security show specific data to each person based on their [user a
 
 You can **restrict rows** by filtering a column using a [user attribute value](#choosing-user-attributes-for-row-and-column-security).
 
-For example, you can filter the Accounts table for a group so that:
+For example, you can filter the Accounts table for a group so that the user attribute filters the table:
 
-- A person with the user attribute value "Basic" will see rows where `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
-- A person with the user attribute value "Premium" will see the rows where `Plan = "Premium"` (rows where the Plan column matches the value "Premium").
+- "Basic" will see rows where `Plan = "Basic"` (rows where the Plan column matches the value "Basic").
+- "Premium" will see the rows where `Plan = "Premium"` (rows where the Plan column matches the value "Premium").
 
 ### Custom row and column security: use a SQL question to create a custom "view" of a table
 
@@ -70,10 +70,10 @@ You can use a question to:
 
 Row security displays a filtered table, in place of an original table, to a specific group. How Metabase filters that table depends on the value in each person's user attribute.
 
-For example, you can set up a row-level security so that:
+For example, you can set up a row-level security so that the user attribute `plan` shows different rows for different values:
 
-- Someone with the user attribute with key of "plan" and a value of "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (that is, only the rows where the Plan column matches the value "Basic").
-- Someone with a "plan" user attribute set to "Premium" will see a different version of the Accounts table with the filter `Plan = "Premium"` applied.
+- "Basic" will see a version of the Accounts table with a filter for `Plan = "Basic"` (that is, only the rows where the Plan column matches the value "Basic").
+- "Premium" will see a different version of the Accounts table with the filter `Plan = "Premium"` applied.
 
 ## Choosing user attributes for row and column security
 
@@ -189,6 +189,42 @@ Note that the parameters must be required for SQL questions used to create custo
 ```
 
 Learn more about [SQL parameters](../questions/native-editor/sql-parameters.md)
+
+### Advanced row-level security: filtering tables for people that have multiple IDs
+
+For example, say have a table like this:
+
+| User_ID | Value |
+|---------|-------|
+| 1       | 10    |
+| 1       | 50    |
+| 2       | 5     |
+| 2       | 50    |
+| 3       | 5     |
+| 3       | 5     |
+
+If you want to give someone access to multiple user IDs (e.g., the person should see rows for both `User_ID` 1 and 2.), you can set up a user attribute, like `user_id` that can handle comma-separated values like "1,2". 
+
+1. Create a SQL question that parses the comma-separated string and filters the table:
+
+```sql
+{%raw%}
+SELECT *
+FROM users_with_values
+WHERE user_id = ANY(STRING_TO_ARRAY(REGEXP_REPLACE(TRIM({{user_id}}), '\\s*,\\s*', ','), ','))
+{% endraw %}
+```
+
+This query:
+
+- Trims whitespace from the user attribute value
+- Replaces any spaces around commas with just commas
+- Converts the comma-separated string to an array
+- Filters rows where the user_id matches any value in the array
+
+The `STRING_TO_ARRAY()` and `REGEXP_REPLACE()` functions are PostgreSQL-specific. To see which functions your database supports, see your database's documentation.
+
+3. Set up the row and column security using this SQL question. See [setting up column security](#setting-up-column-security).
 
 ## Preventing row and column security permissions conflicts
 
