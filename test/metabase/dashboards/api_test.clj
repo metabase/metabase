@@ -4735,9 +4735,8 @@
                                     {:id (mt/id :products)
                                      :fields sequential?}
                                     {:id (mt/id :venues)}])
-                          (sort-by :id
-                                   [{:id (str "card__" card-id-2)
-                                     :fields sequential?}]))
+                          [{:id (str "card__" card-id-2)
+                            :fields sequential?}])
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
@@ -4748,6 +4747,7 @@
     (mt/with-temp
       [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
        :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
+                                                                :database (mt/id)
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2

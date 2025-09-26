@@ -110,4 +110,15 @@ export function setGlobalEmbeddingColors(
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
   });
+
+  /**
+   * (EMB-696)
+   * Reset colors set previously that's now not passed in `sdkColors`.
+   * Otherwise, previously modified colors will persist, and won't be reset to default values.
+   */
+  Object.keys(colors).forEach((key) => {
+    if (!combinedThemeColors[key as ColorName]) {
+      delete colors[key as ColorName];
+    }
+  });
 }

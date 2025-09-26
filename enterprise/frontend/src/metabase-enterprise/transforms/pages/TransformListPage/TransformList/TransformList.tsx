@@ -16,18 +16,28 @@ import type { Transform } from "metabase-types/api";
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
+import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
+import { hasFilterParams } from "../utils";
 
 import S from "./TransformList.module.css";
 
-export function TransformList() {
+type TransformListProps = {
+  params: TransformListParams;
+};
+
+export function TransformList({ params }: TransformListProps) {
   const systemTimezone = useSetting("system-timezone");
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
     error: transformsError,
-  } = useListTransformsQuery();
+  } = useListTransformsQuery({
+    last_run_start_time: params.lastRunStartTime,
+    last_run_statuses: params.lastRunStatuses,
+    tag_ids: params.tagIds,
+  });
   const {
     data: tags = [],
     isLoading: isLoadingTags,
@@ -46,7 +56,12 @@ export function TransformList() {
   }
 
   if (transforms.length === 0) {
-    return <ListEmptyState label={t`No transforms yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState
+        label={hasFilters ? t`No transforms found` : t`No transforms yet`}
+      />
+    );
   }
 
   return (

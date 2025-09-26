@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.common
+  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -7,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [update-keys #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -33,7 +34,7 @@
   "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
   [m]
   (when (map? m)
-    (let [m (perf/update-keys m keyword)]
+    (let [m (update-keys m keyword)]
       (cond-> m
         (string? (:lib/type m)) (update :lib/type keyword)))))
 
@@ -53,7 +54,7 @@
   "Convert a map to kebab case, for use with `:decode/normalize`."
   [m]
   (when (map? m)
-    (perf/update-keys m memoized-kebab-key)))
+    (update-keys m memoized-kebab-key)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
@@ -154,7 +155,7 @@
 ;;; only support fixing really broken types like `:type/creationtime` to `:type/CreationTime` in prod... Malli checks
 ;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
 
-(mu/defn- normalize-base-type* :- [:ref ::base-type]
+(mu/defn- normalize-base-type* :- [:maybe [:ref ::base-type]]
   [x]
   (normalize-keyword x))
 

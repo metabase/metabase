@@ -8,7 +8,7 @@
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp]]
+   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp get-test-schema]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -52,12 +52,6 @@
       ;; Convert to legacy MBQL which the transform API expects
     (lib.convert/->legacy-MBQL query)))
 
-(defn- get-test-schema
-  "Get the schema from the products table in the test dataset.
-   This is needed for databases like BigQuery that require a schema/dataset."
-  []
-  (t2/select-one-fn :schema :model/Table (mt/id :transforms_products)))
-
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
@@ -72,6 +66,80 @@
                                    :target {:type   "table"
                                             :schema schema
                                             :name   table-name}})))))))
+
+(deftest create-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Creating a query transform without :transforms feature returns 403"
+      (mt/with-premium-features #{}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [query  (make-query "Gadget")
+                schema (get-test-schema)
+                response (mt/user-http-request :crowberto :post 402 "ee/transform"
+                                               {:name   "Test Transform"
+                                                :source {:type  "query"
+                                                         :query query}
+                                                :target {:type   "table"
+                                                         :schema schema
+                                                         :name   "test_transform"}})]
+            (is (= "error-premium-feature-not-available" (:status response)))))))
+
+    (testing "Creating a query transform with :transforms feature succeeds"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_query_transform"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name   "Test Transform"
+                                                  :source {:type  "query"
+                                                           :query query}
+                                                  :target {:type   "table"
+                                                           :schema schema
+                                                           :name   table-name}})]
+              (is (some? (:id response))))))))))
+
+(deftest update-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Updating a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_update"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  transform-payload {:name   "Original Transform"
+                                     :source {:type  "query"
+                                              :query query}
+                                     :target {:type   "table"
+                                              :schema schema
+                                              :name   table-name}}
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              ;; Now test update without feature flag
+              (mt/with-premium-features #{}
+                (let [response (mt/user-http-request :crowberto :put
+                                                     (format "ee/transform/%d" (:id created))
+                                                     (assoc transform-payload :name "Updated Transform"))]
+                  (is (= "error-premium-feature-not-available" (:status response))))))))))))
+
+(deftest run-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Running a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_run"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  transform-payload {:name   "Test Run Transform"
+                                     :source {:type  "query"
+                                              :query query}
+                                     :target {:type   "table"
+                                              :schema schema
+                                              :name   table-name}}
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              ;; Now test run without feature flag
+              (mt/with-premium-features #{}
+                (let [response (mt/user-http-request :crowberto :post
+                                                     (format "ee/transform/%d/run" (:id created)))]
+                  (is (= "error-premium-feature-not-available" (:status response))))))))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -92,6 +160,35 @@
                   _         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                   list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
               (is (seq list-resp)))))))))
+
+(deftest filter-transforms-test
+  (testing "should be able to filter transforms"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Transform               {t1-id :id} {}
+                       :model/Transform               {t2-id :id} {}
+                       :model/TransformTag            {tag1-id :id} {:name "tag1"}
+                       :model/TransformTag            {tag2-id :id} {:name "tag2"}
+                       :model/TransformTransformTag _ {:transform_id t1-id :tag_id tag1-id :position 1}
+                       :model/TransformTransformTag _ {:transform_id t2-id :tag_id tag2-id :position 1}
+                       :model/TransformRun _          {:transform_id t1-id :status "started" :run_method "manual"
+                                                       :start_time (parse-instant "2025-08-26T10:12:11")
+                                                       :end_time nil
+                                                       :is_active true}]
+          (testing "no filters"
+            (is (=? [{:id t1-id} {:id t2-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform"))))
+          (testing "last_run_start_time filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :last_run_start_time "2025-08-26T10:12:11"))))
+          (testing "last_run_statuses filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :last_run_statuses ["started" "succeeded"]))))
+          (testing "tag_ids filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag1-id])))
+            (is (=? [{:id t2-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag2-id])))))))))
 
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

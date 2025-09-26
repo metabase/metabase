@@ -4,7 +4,10 @@
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :refer [spit-yaml!]]
    [metabase.models.serialization :as serdes]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   [java.io File]
+   [java.nio.file Path]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,8 +19,7 @@
       (str/replace "/"  "__SLASH__")
       (str/replace "\\" "__BACKSLASH__")))
 
-(defn- file
-  [ctx entity]
+(defn- file ^File [ctx entity]
   (let [;; Get the desired [[serdes/storage-path]].
         base-path   (serdes/storage-path entity ctx)
         dirnames    (drop-last base-path)
@@ -26,9 +28,12 @@
     (apply io/file (:root-dir ctx) (map escape-segment (concat dirnames [basename])))))
 
 (defn- store-entity! [opts entity]
-  (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
-  (spit-yaml! (file opts entity) entity)
-  (:serdes/meta entity))
+  (let [f (file opts entity)]
+    (log/info "Storing" {:path (serdes/log-path-str (:serdes/meta entity))
+                         :file (str (.relativize (Path/of (str (:root-dir opts)) (make-array String 0))
+                                                 (.toPath f)))})
+    (spit-yaml! f entity)
+    (:serdes/meta entity)))
 
 (defn- store-settings! [{:keys [root-dir]} settings]
   (when (seq settings)

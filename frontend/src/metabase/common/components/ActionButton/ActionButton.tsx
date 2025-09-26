@@ -14,7 +14,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import type { CancellablePromise } from "metabase/lib/promise";
 import { cancelable } from "metabase/lib/promise";
-import { Center, Icon, Loader } from "metabase/ui";
+import { Center, Group, Icon, Loader } from "metabase/ui";
 
 export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   // need to expose this ref to allow Tooltip to bind to the correct element
@@ -28,7 +28,6 @@ export interface ActionButtonProps extends Omit<ButtonProps, "onClick"> {
   className?: string;
   successClassName?: string;
   failedClassName?: string;
-  forceActiveStyle?: boolean;
   children?: React.ReactNode;
 }
 
@@ -48,7 +47,6 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
       className = ButtonsS.Button,
       successClassName = ButtonsS.ButtonSuccess, // not used
       failedClassName = ButtonsS.ButtonDanger, // not used
-      forceActiveStyle = false,
       children,
       innerRef,
       ...buttonProps
@@ -122,15 +120,11 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
         {...buttonProps}
         ref={innerRef}
         data-action-status={actionStatus}
-        className={
-          forceActiveStyle
-            ? ButtonsS.Button
-            : cx(className, {
-                [successClassName]: result === "success",
-                [failedClassName]: result === "failed",
-                [CS.pointerEventsNone]: isActionDisabled,
-              })
-        }
+        className={cx(className, {
+          [successClassName]: result === "success",
+          [failedClassName]: result === "failed",
+          [CS.pointerEventsNone]: isActionDisabled,
+        })}
         onClick={handleClick}
       >
         {active ? (
@@ -142,10 +136,10 @@ const ActionButton = forwardRef<ActionButtonHandle, ActionButtonProps>(
             activeText
           )
         ) : result === "success" ? (
-          <span>
-            {forceActiveStyle ? null : <Icon name="check" size={12} />}
-            <span className={CS.ml1}>{successText}</span>
-          </span>
+          <Group align="center" gap="sm">
+            <Icon name="check" />
+            <span>{successText}</span>
+          </Group>
         ) : result === "failed" ? (
           failedText
         ) : (

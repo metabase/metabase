@@ -40,6 +40,7 @@ import {
 } from "metabase/ui";
 import { DeleteObjectModal } from "metabase/visualizations/components/ObjectDetail/DeleteObjectModal";
 import * as Lib from "metabase-lib";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ForeignKey,
@@ -108,6 +109,7 @@ export function DetailViewSidesheet({
   const icon = getEntityIcon(table?.entity_type);
   const modelId = getModelId(table);
   const isNavEnabled = rowFromProps != null && showNav;
+  const hasPk = columns.some(isPK);
 
   const [actionId, setActionId] = useState<WritebackActionId>();
   const [deleteActionId, setDeleteActionId] = useState<WritebackActionId>();
@@ -361,24 +363,27 @@ export function DetailViewSidesheet({
             </Stack>
           </Group>
 
-          {table && tableForeignKeys && tableForeignKeys.length > 0 && (
-            <Box
-              flex="1"
-              bg="var(--mb-color-background-light)"
-              px={rem(56)}
-              py={rem(48)}
-            >
-              <Relationships
-                columns={columns}
-                row={row}
-                rowId={rowId}
-                rowName={rowName}
-                table={table}
-                tableForeignKeys={tableForeignKeys}
-                onClick={onClose}
-              />
-            </Box>
-          )}
+          {table &&
+            hasPk &&
+            tableForeignKeys &&
+            tableForeignKeys.length > 0 && (
+              <Box
+                flex="1"
+                bg="var(--mb-color-background-light)"
+                px={rem(56)}
+                py={rem(48)}
+              >
+                <Relationships
+                  columns={columns}
+                  row={row}
+                  rowId={rowId}
+                  rowName={rowName}
+                  table={table}
+                  tableForeignKeys={tableForeignKeys}
+                  onClick={onClose}
+                />
+              </Box>
+            )}
         </Stack>
       </Sidesheet>
 

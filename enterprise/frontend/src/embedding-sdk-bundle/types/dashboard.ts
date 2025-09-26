@@ -3,6 +3,7 @@ import type {
   SdkCollectionId,
 } from "embedding-sdk-bundle/types/collection";
 import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
+import type { CardDisplayType } from "metabase-types/api";
 
 import type { SdkEntityId } from "./entity-id";
 
@@ -41,6 +42,14 @@ export type DashboardEventHandlersProps = {
    * Callback that is called when the dashboard is loaded without cards.
    */
   onLoadWithoutCards?: (dashboard: MetabaseDashboard | null) => void;
+
+  /**
+   * A callback function that triggers when a question is opened from a dashboard card
+   * or when the user changes the visualization type of a question.
+   *
+   * @param visualization the new visualization type
+   */
+  onVisualizationChange?: (visualization: CardDisplayType) => void;
 };
 
 /**

@@ -10,7 +10,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
@@ -99,21 +99,22 @@
                                :where [:and [:= :m.id model-id] [:not :c.archived]]
                                :order-by [[[:lower :c.name] :asc]]})
        ;; now check if model-id really occurs as a card ID
+       ;;
+       ;; existing usage -- do not use in new code
+       #_{:clj-kondo/ignore [:deprecated-var]}
        (filter (fn [card] (some #{model-id} (-> card :dataset_query query/collect-card-ids))))))
 
 (defn- cards-for-segment-or-metric
   [model-type model-id]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (->> (t2/select :model/Card (merge order-by-name
                                        {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
          ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
          (filter (fn [card]
-                   (when-let [legacy-query (some-> card :dataset_query)]
-                     (let [mp    (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
-                           query (lib/query mp legacy-query)]
-                       (case model-type
-                         :segment (lib/uses-segment? query model-id)
-                         :metric  (lib/uses-metric? query model-id)))))))))
+                   (when-let [query (some-> card :dataset_query not-empty lib-be/normalize-query)]
+                     (case model-type
+                       :segment (lib/uses-segment? query model-id)
+                       :metric  (lib/uses-metric? query model-id))))))))
 
 (defmethod cards-for-filter-option* :using_segment
   [_filter-option model-id]
@@ -256,7 +257,7 @@
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   ([dataset-query]
    (some-> (:database dataset-query)
-           lib.metadata.jvm/application-database-metadata-provider
+           lib-be/application-database-metadata-provider
            (dataset-query->query dataset-query)))
   ([metadata-provider dataset-query]
    (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
@@ -377,7 +378,7 @@
                                             (set)
                                             (remove #(contains? database-ids %))
                                             (into database-id->metadata-provider
-                                                  (map (juxt identity lib.metadata.jvm/application-database-metadata-provider))))
+                                                  (map (juxt identity lib-be/application-database-metadata-provider))))
         compatible-cards (->> matching-cards
                               (filter mi/can-read?)
                               (filter #(or
@@ -402,7 +403,7 @@
    (fetch-compatible-series
     card
     options
-    {(:database_id card) (lib.metadata.jvm/application-database-metadata-provider (:database_id card))}
+    {(:database_id card) (lib-be/application-database-metadata-provider (:database_id card))}
     []))
 
   ([card {:keys [page-size] :as options} database-id->metadata-provider current-cards]

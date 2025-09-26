@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { JobListPage } from "./pages/JobListPage";
 import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
-import { NewTransformQueryPage } from "./pages/NewTransformQueryPage";
+import { NewTransformPage } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
@@ -34,8 +34,9 @@ if (hasPremiumFeature("transforms")) {
           <Route path="jobs/:jobId" component={JobPage} />
           <Route path=":transformId" component={TransformPage} />
         </Route>
-        <Route path="new/:type" component={NewTransformQueryPage} />
-        <Route path="new/card/:cardId" component={NewTransformQueryPage} />
+        {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
+        <Route path="new/:type" component={NewTransformPage} />
+        <Route path="new/card/:cardId" component={NewTransformPage} />
         <Route path=":transformId/query" component={TransformQueryPage} />
       </Route>
     </Route>

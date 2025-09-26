@@ -788,18 +788,6 @@
       (t/is (= [:aggregation 0]
                (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))
 
-(t/deftest ^:parallel remove-namespaced-options-test
-  (t/are [clause expected] (= expected
-                              (mbql.u/remove-namespaced-options clause))
-    [:field 1 {::namespaced true}]                [:field 1 nil]
-    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
-    [:expression "wow"]                           [:expression "wow"]
-    [:expression "wow" {::namespaced true}]       [:expression "wow"]
-    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
-    [:aggregation 0]                              [:aggregation 0]
-    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
-    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
-
 (t/deftest ^:parallel with-temporal-unit-test
   (t/is (= [:field 1 {:temporal-unit :day}]
            (mbql.u/with-temporal-unit [:field 1 nil] :day)))

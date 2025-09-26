@@ -228,7 +228,7 @@
         query-options    (merge {:order-by order-by :offset offset :limit limit}
                                 count-options)
         runs             (t2/select :model/TransformRun query-options)]
-    {:data   (t2/hydrate runs :transform)
+    {:data   (t2/hydrate runs [:transform :transform_tag_ids])
      :limit  limit
      :offset offset
      :total  (t2/count :model/TransformRun count-options)}))

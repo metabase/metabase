@@ -78,11 +78,14 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSource,
+  PythonTransformTableAliases,
   Revision,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -848,4 +851,34 @@ export const PLUGIN_GIT_SYNC: {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+};
+
+export type PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: ComponentType;
+  SourceSection: ComponentType<{ transform: Transform }>;
+  TransformEditor: ComponentType<{
+    initialSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    };
+    isNew?: boolean;
+    isSaving?: boolean;
+    isRunnable?: boolean;
+    onSave: (newSource: PythonTransformSource) => void;
+    onCancel: () => void;
+  }>;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+  getCreateTransformsMenuItems: () => ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  TransformEditor: NotFoundPlaceholder,
+  SourceSection: PluginPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+  getCreateTransformsMenuItems: () => null,
 };

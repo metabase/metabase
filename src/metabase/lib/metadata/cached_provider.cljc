@@ -1,13 +1,15 @@
 (ns metabase.lib.metadata.cached-provider
+  (:refer-clojure :exclude [update-keys])
   (:require
-   #?@(:clj ([pretty.core :as pretty]))
+   #?@(:clj ([metabase.util.json :as json]
+             [pretty.core :as pretty]))
    [clojure.set :as set]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [update-keys]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -35,7 +37,7 @@
                      [:metadata/metric        ::lib.schema.metadata/metric]
                      [:metadata/segment       ::lib.schema.metadata/segment]]]
   (let [metadata (-> metadata
-                     (perf/update-keys u/->kebab-case-en)
+                     (update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
     (store-in-cache! cache [metadata-type id] metadata))
   true)
@@ -158,3 +160,10 @@
   ^CachedProxyMetadataProvider [metadata-provider]
   (log/debugf "Wrapping %s in CachedProxyMetadataProvider" (pr-str metadata-provider))
   (->CachedProxyMetadataProvider (atom {}) metadata-provider))
+
+#?(:clj
+   ;; do not encode MetadataProviders to JSON, just generate `nil` instead.
+   (json/add-encoder
+    CachedProxyMetadataProvider
+    (fn [_mp json-generator]
+      (json/generate-nil nil json-generator))))

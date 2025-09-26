@@ -330,6 +330,17 @@ async function handleQBInit(
   const query = question.query();
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
 
+  // For unsaved native queries, ensure template tags are parsed from query text
+  // This handles cases like AI-generated queries with model references {{#1}}
+  if (isNative && !question.isSaved()) {
+    question = question.setQuery(
+      Lib.withNativeQuery(
+        question.query(),
+        Lib.rawNativeQuery(question.query()),
+      ),
+    );
+  }
+
   if (question.isSaved()) {
     const type = question.type();
 

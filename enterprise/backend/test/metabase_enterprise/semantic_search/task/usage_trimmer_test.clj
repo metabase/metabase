@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-search.task.usage-trimmer :as semantic.task.trimmer]
-   [metabase.test :as mt]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [toucan2.core :as t2])
   (:import
    (java.sql Timestamp)
@@ -11,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 (deftest trim-test
-  (mt/with-premium-features #{:semantic-search}
+  (when (semantic.u/semantic-search-available?)
     (t2/delete! :model/SemanticSearchTokenTracking)
     (let [now (LocalDateTime/now)
           ;; semantic.task.trimmer/storage-months is set to 2

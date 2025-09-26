@@ -36,7 +36,7 @@
                                :week-of-year    (u.date/extract dt :week-of-year)}]
         (testing (format "unit = %s" unit)
           (is (= (str expected)
-                 (str (names/humanize-datetime t-str unit))))))))
+                 (str (#'names/humanize-datetime t-str unit))))))))
   (testing "Extracted unit handling"
     (is (= :sunday (#'u.date/start-of-week)) "adjust the test, it assumes Sunday as first day of the week")
     (let [t 3]                          ; t = 2 or t = 4 would also work
@@ -49,11 +49,11 @@
                                :week-of-year    t}]
         (testing (format "unit = %s" unit)
           (is (= (str expected)
-                 (str (names/humanize-datetime t unit)))))))))
+                 (str (#'names/humanize-datetime t unit)))))))))
 
 (deftest ^:parallel pluralize-test
   (are [expected n] (= (str expected)
-                       (str (names/pluralize n)))
+                       (str (#'names/pluralize n)))
     (tru "{0}st" 1)   1
     (tru "{0}nd" 22)  22
     (tru "{0}rd" 303) 303
@@ -65,7 +65,7 @@
     (doseq [unit (disj (set (concat u.date/extract-units u.date/truncate-units))
                        :iso-day-of-year :second-of-minute :millisecond)]
       (testing unit
-        (is (some? (names/humanize-datetime "1990-09-09T12:30:00" unit)))))))
+        (is (some? (#'names/humanize-datetime "1990-09-09T12:30:00" unit)))))))
 
 ;;; ------------------- Cell titles -------------------
 (deftest ^:parallel cell-title-test
@@ -181,7 +181,7 @@
     (mt/dataset test-data
       (is (= "TestColumn is 2 and Created At is in February 2024"
              (#'names/humanize-filter-value
-              nil
+              {:database (mt/id)}
               ["and"
                ["=" ["expression" "TestColumn" {:base-type "type/Integer"}] 2]
                ["=" ["field" (mt/id :orders :created_at)
