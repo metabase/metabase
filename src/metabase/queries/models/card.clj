@@ -1259,7 +1259,7 @@
             ;; Dimensions are columns that are not aggregations
             (remove (comp #{:source/aggregations} :lib/source) columns)))))))
 
-(defn extract-non-temporal-dimension-ids
+(defn- extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
   [{:keys [dataset_query]}]
   (let [dimensions (dataset-query->dimensions dataset_query)
@@ -1269,11 +1269,21 @@
                         sort)]
     (json/encode (or dim-ids []))))
 
-(defn has-temporal-dimension?
+(defn- has-temporal-dimension?
   "Return true if the query has any temporal dimensions. See PR 60912"
   [{:keys [dataset_query]}]
   (let [dimensions (dataset-query->dimensions dataset_query)]
     (boolean (some lib.types/temporal? dimensions))))
+
+(defn- maybe-extract-native-query
+  "Return the native SQL text (truncated to `max-search-len`) if `dataset_query` is native; else nil."
+  [{:keys [dataset_query]}]
+  (def dataset_query dataset_query)
+  (let [query ((:out mi/transform-metabase-query) dataset_query)
+        query-text (when (= :native (:type query))
+                     (get-in query [:native :query]))]
+    (when query-text
+      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
 (defn ^:private base-search-spec
   []
@@ -1287,7 +1297,8 @@
                                          :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id          true
                   :last-viewed-at       :last_used_at
-                  :native-query         (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :native-query         {:fn maybe-extract-native-query
+                                         :req-fields [:dataset_query]}
                   :official-collection  [:= "official" :collection.authority_level]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
