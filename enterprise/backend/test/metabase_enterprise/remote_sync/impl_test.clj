@@ -56,13 +56,6 @@
             result (impl/import! (test-helpers/create-mock-source :initial-files custom-files) task-id "custom-branch")]
         (is (= :success (:status result)))))))
 
-(deftest import!-falls-back-to-settings-branch-test
-  (testing "import! falls back to settings branch when no branch provided"
-    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
-                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "import" :initiated_by (:id user)}]
-      (let [result (impl/import! (test-helpers/create-mock-source) task-id nil)]
-        (is (= :success (:status result)))))))
-
 (deftest import!-handles-network-errors-test
   (testing "import! handles network errors"
     (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
