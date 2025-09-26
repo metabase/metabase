@@ -1,11 +1,11 @@
 (ns metabase-enterprise.representations.v0.question
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.serialization :as serdes]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -75,42 +75,28 @@
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
-(defn yaml->toucan
-  "Convert a validated v0 question representation into data suitable for creating/updating a Card (Question).
-
-   Returns a map with keys matching the Card model fields.
-   Does NOT insert into the database - just transforms the data.
-
-   For POC: Focuses on the minimal fields needed."
+(defmethod import/yaml->toucan :v0/question
   [{question-name :name
     :keys [type ref description database collection] :as representation}
    & {:keys [creator-id]
       :or {creator-id config/internal-mb-user-id}}]
   (let [database-id (v0-common/find-database-id database)
-        ;; Ugliness within ugliness:
         entity-id (v0-common/generate-entity-id representation)
         query (v0-common/representation->dataset-query representation)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
     (merge
-     {;; :id
-      ;; :created_at
-      ;; :updated_at
-      :entity_id entity-id
+     {:entity_id entity-id
       :creator_id creator-id
       :name question-name
       :description (or description "")
-      :display :table                   ; TODO: Default display type
+      :display :table
       :dataset_query query
       :visualization_settings {}
       :database_id database-id
-      ;; :table_id
-      ;; :archived
-      ;; :public_uuid
       :query_type (if (= (:type query) "native") :native :query)
       :type :question}
-     ;; Optional fields
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
@@ -140,18 +126,10 @@
       (update-database-for-import collection-ref)
       (update-source-table-for-import collection-ref)))
 
-(defn persist!
-  "Ingest a v0 question representation and create or update a Card (Question) in the database.
-
-   For POC: Uses ref as a stable identifier for upserts.
-   If a question with the same ref exists (via entity_id), it will be updated.
-   Otherwise a new question will be created.
-
-   Returns the created/updated Card."
-  [representation & {:keys [creator-id]
-                     :or {creator-id config/internal-mb-user-id}}]
+(defmethod import/persist! :v0/question [representation & {:keys [creator-id]
+                                                           :or {creator-id config/internal-mb-user-id}}]
   (let [representation (patch-refs-for-import representation nil)
-        question-data (yaml->toucan representation :creator-id creator-id)
+        question-data (import/yaml->toucan representation :creator-id creator-id)
         entity-id (:entity_id question-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
@@ -183,8 +161,7 @@
 (defn- card-ref [s]
   (let [[type id] (str/split s #"__")
         id (Long/parseLong id)
-        rep (metabase-enterprise.representations.core/export (t2/select-one :model/Card :id id))]
-    ;; todo: remove this circularity
+        rep (export/export-entity (t2/select-one :model/Card :id id))]
     (str "ref:" (:ref rep))))
 
 (defn- update-source-table-for-export [query]
@@ -233,7 +210,7 @@
       (update-source-table-for-export)
       (update-fields-for-export)))
 
-(defn export [card]
+(defmethod export/export-entity :question [card]
   (let [query (patch-refs-for-export (:dataset_query card))]
     (cond-> {:name (:name card)
              ;;:version "question-v0"

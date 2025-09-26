@@ -1,6 +1,8 @@
 (ns metabase-enterprise.representations.v0.model
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -314,16 +316,7 @@
 
 ;;; ------------------------------------ Public API ------------------------------------
 
-(defn yaml->toucan
-  "Convert a validated v0 model representation into data suitable for creating/updating a Card (Model).
-
-   Returns a map with keys matching the Card model fields.
-   Does NOT insert into the database - just transforms the data.
-
-   Key differences from questions:
-   - :type is :model instead of :question
-   - Includes result_metadata with column definitions
-   - Display is typically :table since models represent structured data"
+(defmethod import/yaml->toucan :v0/model
   [{model-name :name
     :keys [type ref description database collection columns] :as representation}]
   (let [database-id (v0-common/find-database-id database)
@@ -332,34 +325,22 @@
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
     (merge
-     {;; Core fields
-      :name model-name
+     {:name model-name
       :description (or description "")
-      :display :table                   ; Models are typically displayed as tables
+      :display :table
       :dataset_query dataset-query
       :visualization_settings {}
       :database_id database-id
       :query_type (if (= (:type dataset-query) "native") :native :query)
       :type :model}
-     ;; Result metadata with column definitions
      (when columns
        {:result_metadata (process-column-metadata columns)})
-     ;; Optional collection
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
-(defn persist!
-  "Ingest a v0 model representation and create or update a Card (Model) in the database.
-
-   Uses ref as a stable identifier for upserts.
-   If a model with the same ref exists (via entity_id), it will be updated.
-   Otherwise a new model will be created.
-
-   Returns the created/updated Card."
-  [representation & {:keys [creator-id]
-                     :or {creator-id config/internal-mb-user-id}}]
-  (let [model-data (yaml->toucan representation)
-        ;; Generate stable entity_id from ref and collection
+(defmethod import/persist! :v0/model [representation & {:keys [creator-id]
+                                                        :or {creator-id config/internal-mb-user-id}}]
+  (let [model-data (import/yaml->toucan representation)
         entity-id (v0-common/generate-entity-id representation)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
@@ -385,8 +366,8 @@
     (vector? table)
     (let [[db schema table] table]
       {:database db
-       :schema   schema
-       :table    table})
+       :schema schema
+       :table table})
 
     (string? table)
     (let [referred-card (t2/select-one :model/Card :entity_id table)]
@@ -401,7 +382,7 @@
   (-> card
       (update-source-table)))
 
-(defn export [card]
+(defmethod export/export-entity :model [card]
   (let [query (serdes/export-mbql (:dataset_query card))]
     (cond-> {:name (:name card)
              ;;:version "question-v0"

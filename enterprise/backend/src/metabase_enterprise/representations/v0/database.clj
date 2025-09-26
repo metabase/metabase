@@ -4,6 +4,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
@@ -116,8 +118,8 @@
                     node))
                 database))
 
-(defn yaml->toucan [representation & {:keys [creator-id]
-                                      :or {creator-id config/internal-mb-user-id}}]
+(defmethod import/yaml->toucan :v0/database [representation & {:keys [creator-id]
+                                                               :or {creator-id config/internal-mb-user-id}}]
   (cond-> (-> representation
               (set/rename-keys {:connection_details :details})
               (select-keys [:name :engine :description :details])
@@ -126,11 +128,11 @@
     creator-id
     (assoc :creator_id creator-id)))
 
-(defn persist! [representation & {:keys [creator-id]
-                                  :or {creator-id config/internal-mb-user-id}}]
-  (let [representation (yaml->toucan representation :creator-id creator-id)]
+(defmethod import/persist! :v0/database [representation & {:keys [creator-id]
+                                                           :or {creator-id config/internal-mb-user-id}}]
+  (let [representation (import/yaml->toucan representation :creator-id creator-id)]
     (if-some [existing (t2/select-one :model/Database
-                                      :name   (:name   representation)
+                                      :name (:name representation)
                                       :engine (:engine representation))]
       (do
         (log/info "Found existing database" (:name representation) "with ref" (:ref representation))
@@ -156,10 +158,10 @@
     (cond-> {:name (:name field)
              :type (or (:database_type field)
                        (name (or (:base_type field) :unknown)))}
-      (:description field)                 (assoc :description (:description field))
+      (:description field) (assoc :description (:description field))
       (= (:database_required field) false) (assoc :nullable true)
-      (:pk field)                          (assoc :pk true)
-      fk-ref                               (assoc :fk fk-ref))))
+      (:pk field) (assoc :pk true)
+      fk-ref (assoc :fk fk-ref))))
 
 (defn- get-table-columns
   "Get all columns for a table with their metadata"
@@ -169,11 +171,11 @@
 
 (defn- process-schema-tables
   [[schema-name tables]]
-  {:name   (or schema-name "PUBLIC")
+  {:name (or schema-name "PUBLIC")
    :tables (vec (for [table tables]
                   (cond-> {:name (:name table)}
                     (:description table) (assoc :description (:description table))
-                    :always              (assoc :columns (get-table-columns (:id table))))))})
+                    :always (assoc :columns (get-table-columns (:id table))))))})
 
 (defn- get-database-schemas
   "Get all schemas, tables, and columns for a database"
@@ -195,7 +197,7 @@
             details
             driver.u/default-sensitive-fields)))
 
-(defn export [database]
+(defmethod export/export-entity :model/Database [database]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
     (-> {:type :v0/database
          :ref ref

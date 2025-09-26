@@ -4,10 +4,13 @@
   (:require
    [clj-yaml.core :as clj-yaml]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.core :as m]
    [malli.transform :as mt]
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.database :as v0-db]
@@ -36,14 +39,14 @@
 (def ^:private type->schema
   "Registry mapping type strings to their corresponding schemas.
    Keys are strings like 'v0/question', values are qualified keywords."
-  {:v0/question   ::v0-question/question
-   :v0/model      ::v0-model/model
-   :v0/metric     ::v0-metric/metric
+  {:v0/question ::v0-question/question
+   :v0/model ::v0-model/model
+   :v0/metric ::v0-metric/metric
    :v0/collection ::v0-coll/collection
-   :v0/database   ::v0-db/database
-   :v0/document   ::v0-doc/document
-   :v0/snippet    ::v0-snippet/snippet
-   :v0/transform  ::v0-transform/transform})
+   :v0/database ::v0-db/database
+   :v0/document ::v0-doc/document
+   :v0/snippet ::v0-snippet/snippet
+   :v0/transform ::v0-transform/transform})
 
 ;;; ------------------------------------ Public API ------------------------------------
 
@@ -92,19 +95,13 @@
 ;;;;;;;;;;;
 ;; Import
 
-;; TODO: replace with multimethods
-(defn- ingest*
+(defn yaml->toucan
+  "Convert a validated representation into data suitable for creating/updating an entity.
+   Returns a map with keys matching the Toucan model fields.
+   Does NOT insert into the database - just transforms the data.
+   Delegates to the multimethod yaml->toucan for extensibility."
   [valid-representation]
-  (case (:type valid-representation)
-    :v0/question (v0-question/persist! valid-representation)
-    :v0/model    (v0-model/persist!    valid-representation)
-    :v0/database (v0-db/persist!       valid-representation)))
-
-(defn- translate*
-  [valid-representation]
-  (case (:type valid-representation)
-    :v0/question (v0-question/yaml->toucan valid-representation)
-    :v0/model    (v0-model/yaml->toucan    valid-representation)))
+  (import/yaml->toucan valid-representation))
 
 (defn import-yaml
   "Parse a YAML representation file and return the data structure.
@@ -116,17 +113,11 @@
       (log/error e "Failed to parse YAML file" file)
       nil)))
 
-(defn yaml->toucan
-  "Converts the yaml format into our internal toucan structure"
-  [representation]
-  (when-let [validated (validate representation)]
-    (translate* validated)))
-
 (defn persist!
   "Persist the representation with t2"
   [representation]
   (when-let [validated (validate representation)]
-    (ingest* validated)))
+    (import/persist! validated)))
 
 (comment
   (yaml->toucan
@@ -134,15 +125,11 @@
 
 ;; =============================================================== ;;
 
-(defn export [t2-model]
-  (case (t2/model t2-model)
-    :model/Card (case (:type t2-model)
-                  :question (v0-question/export t2-model)
-                  :model    (v0-model/export    t2-model)
-                  :metric   (v0-metric/export   t2-model))
-    :model/Collection (v0-coll/export      t2-model)
-    :model/Transform  (v0-transform/export t2-model)
-    :model/Database   (v0-db/export        t2-model)))
+(defn export
+  "Export a Metabase entity to its human-readable representation.
+   Delegates to the multimethod export-entity for extensibility."
+  [t2-model]
+  (export/export-entity t2-model))
 
 (defn- write-em
   "Writes representations to a directory `dir`. Will take a collection-id and serialize the whole collection, creating a folder named <collection-name> there. Example, supposing a collection id of 8 with name \"custom\",
@@ -226,9 +213,9 @@
                         :collection [collection]}
                        (for [subdir subdirs
                              :let [collection' (t2/instance :model/Collection
-                                                            {:name     (.getName (io/file subdir))
-                                                             :id       (id! :collection)
-                                                             :slug     (.getName (io/file subdir))
+                                                            {:name (.getName (io/file subdir))
+                                                             :id (id! :collection)
+                                                             :slug (.getName (io/file subdir))
                                                              :location (str (:location collection) (:id collection) "/")})]]
                          (populate subdir collection')))))
             (fix-refs [ingested refs->id]
@@ -243,14 +230,14 @@
                                   {:source-table (format "card__%d" (refs->id (:ref ((some-fn :source-table :source_table) x))))})
 
                            (ref-map? x) (refs->id (:ref x))
-                           :else  x)))
+                           :else x)))
                ingested))]
       (let [dir (io/file directory-path)]
         (if-not (.exists dir)
           (throw (ex-info (format "Directory does not exist: %s" directory-path) {:directory directory-path}))
-          (let [collection (t2/instance :model/Collection {:name     (.getName (io/file directory-path))
-                                                           :id       (id! :collection)
-                                                           :slug     (.getName (io/file directory-path))
+          (let [collection (t2/instance :model/Collection {:name (.getName (io/file directory-path))
+                                                           :id (id! :collection)
+                                                           :slug (.getName (io/file directory-path))
                                                            :location "/"})
                 instances (populate dir collection)]
             (fix-refs instances @ref->id)))))))
@@ -366,10 +353,10 @@
   (t2/select-one :model/Collection :id 2))
 
 (def ^:private type->model
-  {"question"  :model/Card
-   "metric"    :model/Card
-   "model"     :model/Card
-   "database"  :model/Database
+  {"question" :model/Card
+   "metric" :model/Card
+   "model" :model/Card
+   "database" :model/Database
    "transform" :model/Transform})
 
 (defn- read-from-ref [ref]
@@ -377,16 +364,13 @@
     (export (t2/select-one (type->model type) :id (Long/parseLong id)))))
 
 (defn export-set [representation]
-  (loop [acc  #{representation}
+  (loop [acc #{representation}
          prev #{}]
-    (if-some [new (seq (clojure.set/difference acc prev))]
+    (if-some [new (seq (set/difference acc prev))]
       (let [refs (set (mapcat v0-common/refs new))
             reps (map read-from-ref refs)]
         (recur (into acc reps) acc))
       acc)))
-
-(defn yaml-files [dir]
-  (file-seq dir))
 
 (defn order-representations [representations]
   (loop [acc []
@@ -394,16 +378,28 @@
     (let [done (set (map :ref acc))]
       (if (empty? remaining)
         acc
-        (let [ready (filter #(clojure.set/subset? (v0-common/refs %) done)
+        (let [ready (filter #(set/subset? (v0-common/refs %) done)
                             remaining)]
-          (recur (into acc ready) (clojure.set/difference remaining (set acc))))))))
+          (recur (into acc ready) (set/difference remaining (set acc))))))))
 
-(comment
-  (export-set (export (t2/select-one :model/Card :id 97)))
-
-  (->> "eric-test"
-       java.io.File.
-       yaml-files
+(defn yaml-files
+  "Returns imported reference models from the yaml files in dir, in safe persistence order."
+  [dir]
+  (->> (java.io.File. dir)
+       file-seq
        (filter #(str/ends-with? (.getName %) ".yml"))
        (map import-yaml)
        (order-representations)))
+
+(comment
+  #_(let [reps' (resolve-databases reps)
+          ordered (order-representations reps')]
+      (reduce (fn [index entity]
+                (let [persisted (persist! entity index)]
+                  (assoc index (:ref entity) persisted)))
+              {}
+              ordered))
+  #_3)
+
+(comment
+  (export-set (export (t2/select-one :model/Card :id 97))))

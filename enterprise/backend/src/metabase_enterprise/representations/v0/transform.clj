@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [malli.core :as m]
    [malli.error :as me]
+   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -165,8 +166,8 @@
     (vector? table)
     (let [[db schema table] table]
       {:database db
-       :schema   schema
-       :table    table})
+       :schema schema
+       :table table})
 
     (string? table)
     (let [referred-card (t2/select-one :model/Card :entity_id table)]
@@ -181,8 +182,7 @@
   (-> card
       (update-source-table)))
 
-(defn export [transform]
-  (clojure.pprint/pprint transform)
+(defmethod export/export-entity :model/Transform [transform]
   (let [query (serdes/export-mbql (-> transform :source :query))]
     (cond-> {:name (:name transform)
              ;;:version "question-v0"
@@ -200,7 +200,7 @@
 
       (= "table" (-> transform :target :type))
       (assoc :target_table {:schema (-> transform :target :schema)
-                            :table  (-> transform :target :name)})
+                            :table (-> transform :target :name)})
 
       :always
       patch-refs

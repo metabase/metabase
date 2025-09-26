@@ -1,6 +1,7 @@
 (ns metabase-enterprise.representations.v0.metric
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -335,7 +336,7 @@
      {;; Core fields
       :name model-name
       :description (or description "")
-      :display :table                   ; Models are typically displayed as tables
+      :display :table ; Models are typically displayed as tables
       :dataset_query dataset-query
       :visualization_settings {}
       :database_id database-id
@@ -385,8 +386,8 @@
     (vector? table)
     (let [[db schema table] table]
       {:database db
-       :schema   schema
-       :table    table})
+       :schema schema
+       :table table})
 
     (string? table)
     (let [referred-card (t2/select-one :model/Card :entity_id table)]
@@ -401,7 +402,7 @@
   (-> card
       (update-source-table)))
 
-(defn export [card]
+(defmethod export/export-entity :metric [card]
   (let [query (serdes/export-mbql (:dataset_query card))]
     (cond-> {:name (:name card)
              ;;:version "question-v0"
