@@ -13,7 +13,8 @@
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]))
 
 (set! *warn-on-reflection* true)
 
@@ -74,7 +75,7 @@
        (map (comp (colors) #(mod % (count (colors))) hash))
        ensure-distinct-colors))
 
-(defn- colorize
+(mu/defn- colorize
   "Pick the chart colors acording to the following rules:
   * If there is more than one breakout dimension let the frontend do it as presumably
     the second dimension will be used as color key and we can't know the values it
@@ -85,22 +86,19 @@
 
   Colors are then determined by using the hashs of color keys to index into the vector
   of available colors."
-  [{:keys [visualization dataset_query]}]
-  (let [display     (first visualization)
-        breakout    (-> dataset_query :query :breakout)
-        aggregation (-> dataset_query :query :aggregation)]
-    (when (and (#{"line" "row" "bar" "scatter" "area"} display)
-               (= (count breakout) 1))
-      (let [color-keys (if (and (#{"bar" "row"} display)
-                                (some->> aggregation
-                                         flatten
-                                         first
-                                         qp.util/normalize-token
-                                         (= :count)))
-                         (->> breakout
-                              magic.util/collect-field-references
-                              (map magic.util/field-reference->id))
-                         aggregation)]
+  [{:keys [visualization], query :dataset_query} :- [:map
+                                                     [:dataset_query ::lib.schema/query]]]
+  (let [display      (keyword (first visualization))
+        breakouts    (lib/breakouts query)
+        aggregations (lib/aggregations query)]
+    (when (and (#{:line :row :bar :scatter :area} display)
+               (= (count breakouts) 1))
+      (let [color-keys (if (and (#{:bar :row} display)
+                                (lib/clause-of-type? (first aggregations) :count))
+                         (into #{}
+                               (mapcat lib/all-field-ids)
+                               breakouts)
+                         aggregations)]
         {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings

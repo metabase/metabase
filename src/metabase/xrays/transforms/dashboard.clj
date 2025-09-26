@@ -2,6 +2,9 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -38,15 +41,14 @@
 (mu/defn- card-for-source-table
   [table :- [:map
              [:db_id ::lib.schema.id/database]]]
-  {:pre [(map? table)]}
-  {:creator_id             api/*current-user-id*
-   :dataset_query          {:type     :query
-                            :query    {:source-table (u/the-id table)}
-                            :database (:db_id table)}
-   :name                   (:display_name table)
-   :collection_id          nil
-   :visualization_settings {}
-   :display                :table})
+  {:pre [(map? table) (pos-int? (:db_id table))]}
+  (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
+    {:creator_id             api/*current-user-id*
+     :dataset_query          (lib/query mp (lib.metadata/table mp (u/the-id table)))
+     :name                   (:display_name table)
+     :collection_id          nil
+     :visualization_settings {}
+     :display                :table}))
 
 (defn- sources [steps]
   (when-let [table-ids (->> steps

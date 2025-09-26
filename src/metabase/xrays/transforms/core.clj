@@ -19,7 +19,11 @@
     :refer [domain-entity-specs DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :refer [Step transform-specs TransformSpec]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]))
 
 (mu/defn- add-bindings :- Bindings
   [bindings     :- Bindings
@@ -32,7 +36,7 @@
              bindings
              new-bindings))
 
-(defn- mbql-reference->col-name
+(defn- ^:deprecated ^:deprecated mbql-reference->col-name
   [field-clause]
   (lib.util.match/match-one field-clause
     [:field (field-name :guard string?) _]
@@ -44,29 +48,30 @@
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
    {:keys [joins name]} :- Step
-   query                :- mbql.s/Query]
+   query                :- ::lib.schema/query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
-    (into {} (for [{:keys [name] :as col} (qp.preprocess/query->expected-cols query)]
-               [(if (flattened-bindings name)
-                  name
+    (into {} (for [{desired-column-alias :lib/desired-column-alias, col-name :name, :as col} (qp.preprocess/query->expected-cols query)
+                   :let [desired-column-alias (or desired-column-alias col-name)]]
+               [(if (flattened-bindings desired-column-alias)
+                  desired-column-alias
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
                   ;; our parlance
                   (or (some->> flattened-bindings
-                               (m/find-first (comp #{name} mbql-reference->col-name))
+                               (m/find-first (comp #{desired-column-alias} mbql-reference->col-name))
                                key)
                       ;; If that doesn't work either, it's a duplicated col from a join
-                      name))
+                      desired-column-alias))
                 (de/mbql-reference col)]))))
 
-(defn- maybe-add-fields
-  [bindings {:keys [aggregation source]} query]
+(mu/defn- maybe-add-fields :- ::lib.schema/query
+  [bindings {:keys [aggregation source]} query :- ::lib.schema/query]
   (if-not aggregation
     (assoc query :fields (vals (get-in bindings [source :dimensions])))
     query))
 
-(defn- maybe-add-expressions
-  [bindings {:keys [expressions name]} query]
+(mu/defn- maybe-add-expressions :- ::lib.schema/query
+  [bindings {:keys [expressions name]} query :- ::lib.schema/query]
   (if expressions
     (let [expr-clauses (->> expressions
                             keys
@@ -77,45 +82,54 @@
                                    [:expression expression]))))
     query))
 
-(defn- maybe-add-aggregation
-  [bindings {:keys [name aggregation]} query]
+(mu/defn- maybe-add-aggregation :- ::lib.schema/query
+  [bindings {:keys [name aggregation]} query :- ::lib.schema/query]
   (let [aggs (->> (for [agg (keys aggregation)]
                     [:aggregation-options (get-in bindings [name :dimensions agg]) {:name agg}])
                   not-empty)]
     (m/assoc-some query :aggregation aggs)))
 
-(defn- maybe-add-breakout
-  [bindings {:keys [name breakout]} query]
+(mu/defn- maybe-add-breakout :- ::lib.schema/query
+  [bindings {:keys [name breakout]} query :- ::lib.schema/query]
   (let [breakouts (not-empty
                    (for [breakout breakout]
                      (de/resolve-dimension-clauses bindings name breakout)))]
     (m/assoc-some query :breakout breakouts)))
 
-(mu/defn- ->source-table-reference
+(mu/defn- ^:deprecated ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
   [entity :- SourceEntity]
   (if (mi/instance-of? :model/Table entity)
     (u/the-id entity)
     (str "card__" (u/the-id entity))))
 
-(defn- maybe-add-joins
+(mu/defn- maybe-add-joins :- ::lib.schema/query
   [bindings {context-source :source joins :joins} query]
-  (m/assoc-some query :joins
-                (not-empty
-                 (for [{:keys [source condition strategy]} joins]
-                   (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
-                        :source-table (-> source bindings :entity ->source-table-reference)
-                        :alias        source
-                        :fields       :all}
-                       (m/assoc-some :strategy strategy))))))
+  (letfn [(add-join [query {:keys [source condition strategy], :as _join}]
+            (let [source-entity (-> source bindings :entity)
+                  join-clause (-> (lib/join-clause (case (t2/model source-entity)
+                                                     :model/Table (lib-be/instance->metadata source-entity :metadata/table)
+                                                     :model/Card  (lib-be/instance->metadata source-entity :metadata/card)))
+                                  (lib/with-join-alias source)
+                                  (lib/with-join-fields :all)
+                                  (lib/with-join-conditions (de/resolve-dimension-clauses bindings context-source condition))
+                                  (cond-> strategy
+                                    (lib/with-join-strategy strategy)))]
+              (lib/join query join-clause)))]
+    (reduce add-join query joins)))
 
-(defn- maybe-add-filter
-  [bindings {:keys [name filter]} query]
-  (m/assoc-some query :filter (de/resolve-dimension-clauses bindings name filter)))
+(mu/defn- maybe-add-filter :- ::lib.schema/query
+  [bindings {:keys [name filter]} query :- ::lib.schema/query]
+  (let [filter-clause (de/resolve-dimension-clauses bindings name filter)]
+    (cond-> query
+      filter-clause
+      (lib/filter filter-clause))))
 
-(defn- maybe-add-limit
-  [_bindings {:keys [limit]} query]
-  (m/assoc-some query :limit limit))
+(mu/defn- maybe-add-limit :- ::lib.schema/query
+  [_bindings {:keys [limit]} query :- ::lib.schema/query]
+  (cond-> query
+    limit
+    (lib/limit limit)))
 
 (mu/defn- transform-step! :- Bindings
   [bindings :- Bindings
@@ -125,19 +139,19 @@
                            (add-bindings name (get-in bindings [source :dimensions]))
                            (add-bindings name expressions)
                            (add-bindings name aggregation))
-        inner-query    (->> {:source-table (->source-table-reference source-entity)}
+        database-id    (or ((some-fn :db_id :database_id) source-entity)
+                           (throw (ex-info "Source entity is missing Database ID" {:source-entity source-entity})))
+        mp             (lib-be/application-database-metadata-provider database-id)
+        query          (->> (lib/query mp (case (t2/model source-entity)
+                                            :model/Table (lib-be/instance->metadata source-entity :metadata/table)
+                                            :model/Card  (lib-be/instance->metadata source-entity :metadata/card)))
                             (maybe-add-fields local-bindings step)
                             (maybe-add-expressions local-bindings step)
                             (maybe-add-aggregation local-bindings step)
                             (maybe-add-breakout local-bindings step)
                             (maybe-add-joins local-bindings step)
                             (maybe-add-filter local-bindings step)
-                            (maybe-add-limit local-bindings step))
-        query          {:type     :query
-                        :query    inner-query
-                        :database (or ((some-fn :db_id :database_id) source-entity)
-                                      (throw (ex-info "Source entity is missing Database ID"
-                                                      {:source-entity source-entity})))}]
+                            (maybe-add-limit local-bindings step))]
     (assoc bindings name {:entity     (tf.materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 

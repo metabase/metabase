@@ -2,7 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
@@ -14,7 +15,8 @@
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.related :as related]))
+   [metabase.xrays.related :as related]
+   [metabase.lib.schema.expression :as lib.schema.expression]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))
@@ -43,16 +45,13 @@
 (def ^:private ^{:arglists '([card])} display-type
   (comp qp.util/normalize-token :display))
 
-(defn- add-filter-clauses
+(mu/defn- add-filter-clauses :- ::lib.schema/query
   "Add `new-filter-clauses` to a query. There is actually an `mbql.u/add-filter-clause` function we should be using
   instead, but that validates its input and output, and the queries that come in here aren't always valid (for
   example, missing `:database`). If we can, it would be nice to use that instead of reinventing the wheel here."
-  [{{existing-filter-clause :filter} :query, :as query}, new-filter-clauses]
-  (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
-        new-filter-clause (when (seq clauses)
-                            (mbql.normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
-    (cond-> query
-      (seq new-filter-clause) (assoc-in [:query :filter] new-filter-clause))))
+  [query              :- ::lib.schema/query
+   new-filter-clauses :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
+  (reduce lib/filter query new-filter-clauses))
 
 (defn- inject-filter
   "Inject filter clause into card."
@@ -61,11 +60,12 @@
       (update :dataset_query #(add-filter-clauses % [query-filter cell-query]))
       (update :series (partial map (partial inject-filter root)))))
 
-(defn- multiseries?
-  [card]
+(mu/defn- multiseries?
+  [{query :dataset_query, :as card} :- [:map
+                                        [:dataset_query ::lib.schema/query]]]
   (or (-> card :series not-empty)
-      (-> card (get-in [:dataset_query :query :aggregation]) count (> 1))
-      (-> card (get-in [:dataset_query :query :breakout]) count (> 1))))
+      (> (count (lib/aggregations query)) 1)
+      (> (count (lib/breakouts query)) 1)))
 
 (defn- overlay-comparison?
   [card]
@@ -79,7 +79,9 @@
           card-left                (->> card (inject-filter left) clone-card)
           card-right               (->> card (inject-filter right) clone-card)
           [color-left color-right] (->> [left right]
-                                        (map #(get-in % [:dataset_query :query :filter]))
+                                        (map (fn [_]
+                                               (throw (ex-info "NOCOMMIT" {}))))
+                                        #_(map #(get-in % [:dataset_query :query :filter]))
                                         populate/map-to-colors)]
       (if (overlay-comparison? card)
         (let [card   (-> card-left
@@ -162,21 +164,30 @@
                                                 (/ populate/grid-width 2))]
     [dashboard (max height-left height-right)]))
 
-(defn- series-labels
-  [card]
+(mu/defn- series-labels
+  [card :- [:map
+            [:dataset_query ::lib.schema/query]]]
   (get-in card [:visualization_settings :graph.series_labels]
           (map (comp capitalize-first names/metric-name)
-               (get-in card [:dataset_query :query :aggregation]))))
+               (lib/aggregations (:dataset_query card)))))
 
-(defn- unroll-multiseries
-  [card]
+(mu/defn- unroll-multiseries
+  [card :- [:map
+            [:dataset_query ::lib.schema/query]]]
   (if (and (multiseries? card)
            (-> card :display (= :line)))
     (for [[aggregation label] (map vector
-                                   (get-in card [:dataset_query :query :aggregation])
+                                   (lib/aggregations (:dataset_query card))
                                    (series-labels card))]
       (-> card
-          (assoc-in [:dataset_query :query :aggregation] [aggregation])
+          (update :dataset_query (fn [query]
+                                   ;; remove ALL aggregations
+                                   (let [query (reduce
+                                                lib/remove-clause
+                                                query
+                                                (lib/aggregations query))]
+                                     ;; then add back just one
+                                     (lib/aggregate query aggregation))))
           (assoc :name label)
           (m/dissoc-in [:visualization_settings :graph.series_labels])))
     [card]))

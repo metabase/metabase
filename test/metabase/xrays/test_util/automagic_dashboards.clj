@@ -2,16 +2,18 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]
+   [metabase.util.malli.registry :as mr]))
 
-(defmacro with-dashboard-cleanup!
+(defmacro with-rollback-only-transaction
   "Execute body and cleanup all dashboard elements created."
   [& body]
-  `(mt/with-model-cleanup [:model/Card :model/Dashboard :model/Collection :model/DashboardCard]
+  `(t2/with-transaction [_conn# nil {:rollback-only true}]
      ~@body))
 
 (defn- collect-urls
@@ -35,8 +37,7 @@
   (testing "Card should be valid"
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
-        (is (malli= mbql.s/Query
-                    (mbql.normalize/normalize query)))))))
+        (is (mr/validate ::lib.schema/query query))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?
@@ -47,7 +48,7 @@
     (testing (format "\nDashboard =\n%s\n" (u/pprint-to-str dashboard))
       (testing "Dashboard should have a name"
         (is (some? (:name dashboard))))
-      (testing "Cards should have correct cardinality"
+      (testing "Dashboard should have correct number of dashcards"
         (is (= cardinality (-> dashboard :dashcards count))))
       (testing "URLs should be valid"
         (test-urls-are-valid dashboard))

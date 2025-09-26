@@ -17,7 +17,9 @@
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema :as lib.schema]))
 
 (set! *warn-on-reflection* true)
 
@@ -112,10 +114,10 @@
 
 (mu/defn adhoc-query-instance :- (ms/InstanceOf :model/Query)
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
+  [query :- ::lib.schema/query]
   (mi/instance :model/Query
                (merge (queries/query->database-and-table-ids query)
-                      {:dataset_query (mi/maybe-normalize-query :out query)})))
+                      {:dataset_query query})))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]

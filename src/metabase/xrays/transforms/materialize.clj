@@ -4,7 +4,10 @@
    [metabase.collections.models.collection :as collection]
    [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.util.malli :as mu]
+   [metabase.queries.schema :as queries.schema]))
 
 (declare get-or-create-root-container-collection!)
 
@@ -49,9 +52,10 @@
     (t2/delete! :model/Card :collection_id collection-id)
     (create-collection! name description)))
 
-(defn make-card-for-step!
+(mu/defn make-card-for-step!
   "Make and save a card for a given transform step and query."
-  [{:keys [name transform description]} query]
+  [{:keys [name transform description]} :- ::queries.schema/card
+   query                                :- ::lib.schema/query]
   (->> {:creator_id             api/*current-user-id*
         :dataset_query          query
         :description            description

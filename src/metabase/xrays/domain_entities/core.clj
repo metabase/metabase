@@ -8,7 +8,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.domain-entities.specs :refer [domain-entity-specs MBQL]]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema :as lib.schema]))
 
 (def ^:private ^{:arglists '([field])} field-type
   "Return the most specific type of a given field."
@@ -43,9 +46,9 @@
    dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
-      (let [field-clause (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
-        (cond-> field-clause
-          (not= source table-or-dimension) (mbql.u/assoc-field-options :join-alias table-or-dimension)))
+      (let [field-ref (get-in bindings [table-or-dimension :dimensions maybe-dimension])]
+        (cond-> field-ref
+          (not= source table-or-dimension) (lib/with-join-alias table-or-dimension)))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (mu/defn resolve-dimension-clauses
@@ -58,12 +61,10 @@
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
 
-(mu/defn mbql-reference :- MBQL
+(mu/defn ^:deprecated mbql-reference :- MBQL
   "Return MBQL clause for a given field-like object."
-  [{:keys [id name base_type]}]
-  (if id
-    [:field id nil]
-    [:field name {:base-type base_type}]))
+  [col :- ::lib.schema.metadata/column]
+  (lib/ref col))
 
 (defn- has-attribute?
   [entity {:keys [field _domain_entity _has_many]}]

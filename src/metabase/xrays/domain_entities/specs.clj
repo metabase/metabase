@@ -3,17 +3,17 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.util.yaml :as yaml]))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"
-  [:fn
-   {:decode/domain-entity-spec mbql.normalize/normalize
-    :decode/transform-spec     mbql.normalize/normalize
+  [:schema
+   {:decode/domain-entity-spec lib/normalize
+    :decode/transform-spec     lib/normalize
     :error/message             "valid MBQL clause"}
-   mbql.u/mbql-clause?])
+   [:ref ::lib.schema.mbql-clause/clause]])
 
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"

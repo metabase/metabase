@@ -245,9 +245,11 @@
   [card-or-question]
   (some? (source-card-id card-or-question)))
 
-(def ^:private ^{:arglists '([card-or-question])} native-query?
+(mu/defn native-query?
   "Is this card or question native (SQL)?"
-  (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
+  [card-or-query :- [:map
+                     [:dataset_query ::lib.schema/query]]]
+  (lib/native-only-query? (:dataset_query card-or-query)))
 
 (defn- source-question
   [card-or-question]
@@ -257,8 +259,9 @@
 (defn- table-like?
   [card-or-question]
   (and
-   (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
-   (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
+   (throw (ex-info "NOCOMMIT" {}))
+   #_(nil? (get-in card-or-question [:dataset_query :query :aggregation]))
+   #_(nil? (get-in card-or-question [:dataset_query :query :breakout]))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -289,7 +292,7 @@
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
-     :query-filter               (get-in card [:dataset_query :query :filter])
+     :query-filter               (throw (ex-info "NOCOMMIT" {})) #_(get-in query [:dataset_query :query :filter])
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
@@ -305,7 +308,7 @@
     {:entity                     query
      :source                     source
      :database                   (:database-id query)
-     :query-filter               (get-in query [:dataset_query :query :filter])
+     :query-filter               (throw (ex-info "NOCOMMIT" {})) #_(get-in query [:dataset_query :query :filter])
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
                                    (table-like? query)   (-> source ->root :full-name)
@@ -753,11 +756,14 @@
            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
            (log/error "X-Rays do not support V2 Metrics.")
            (let [table-id (table-id question)]
-             (mi/instance :xrays/Metric {:definition {:aggregation  [aggregation-clause]
-                                                      :source-table table-id}
+             (mi/instance :xrays/Metric {:definition
+                                         (throw (ex-info "NOCOMMIT" {}))
+                                         #_{:aggregation  [aggregation-clause]
+                                            :source-table table-id}
                                          :name       (names/metric->description root aggregation-clause)
                                          :table_id   table-id}))))
-       (get-in question [:dataset_query :query :aggregation])))
+       (throw (ex-info "NOCOMMIT" {}))
+       #_(get-in question [:dataset_query :query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root question]

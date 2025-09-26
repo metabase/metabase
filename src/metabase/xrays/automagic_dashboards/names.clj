@@ -10,7 +10,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.time :as u.time]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.automagic-dashboards.util :as magic.util]))
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.lib.core :as lib]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
 ;; here so make sure to do a *thorough* find and replace on this.
@@ -63,9 +64,9 @@
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
+  (let [aggregations (->> (lib/aggregations (:dataset_query question))
                           (metric->description root))
-        dimensions   (->> (get-in question [:dataset_query :query :breakout])
+        dimensions   (->> (lib/breakouts (:dataset_query question))
                           (mapcat magic.util/collect-field-references)
                           (map (partial magic.util/->field root))
                           (map :display_name)
@@ -231,7 +232,7 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
-                   (metric->description root aggregation)
+  (str/join " " [(if-let [aggregations (some-> (get-in root [:entity :dataset_query]) lib/aggregations)]
+                   (metric->description root aggregations)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

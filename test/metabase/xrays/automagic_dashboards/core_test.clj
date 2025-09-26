@@ -16,6 +16,7 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -29,6 +30,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :once (fixtures/initialize :db :test-users :web-server))
+
 ;;; ------------------- Dashboard template matching  -------------------
 
 (deftest ^:parallel dashboard-template-matching-test
@@ -37,8 +40,9 @@
               (t2/select-one :model/Table :id)
               (#'magic/->root)
               (#'magic/matching-dashboard-templates (dashboard-templates/get-dashboard-templates ["table"]))
-              (map (comp first :applies_to)))))
+              (map (comp first :applies_to))))))
 
+(deftest ^:parallel dashboard-template-matching-test-2
   (testing "Test fallback to GenericTable"
     (is (= [:entity/GenericTable :entity/*]
            (->> (-> (t2/select-one :model/Table :id (mt/id :users))
@@ -187,42 +191,42 @@
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 
-(deftest automagic-analysis-test
+(deftest ^:parallel automagic-analysis-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
                                        (t2/select :model/Table :db_id (mt/id) {:order-by [[:name :asc]]})
                                        [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
 
-(deftest automagic-analysis-test-2
+(deftest ^:parallel automagic-analysis-test-2
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (is (= 1
              (->> (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {:show 1})
                   :dashcards
                   (filter :card)
                   count))))))
 
-(deftest weird-characters-in-names-test
+(deftest ^:parallel weird-characters-in-names-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (-> (t2/select-one :model/Table :id (mt/id :venues))
           (assoc :display_name "%Venues")
           (test-automagic-analysis 7)))))
 
 ;; Cardinality of cards genned from fields is much more labile than anything else
 ;; Not just with respect to drivers, but all sorts of other stuff that makes it chaotic
-(deftest mass-field-test
+(deftest ^:parallel mass-field-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [field (t2/select :model/Field
                                :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id))]
                                :visibility_type "normal"
                                {:order-by [[:id :asc]]})]
         (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
-(deftest parameter-mapping-test
+(deftest ^:parallel parameter-mapping-test
   (mt/dataset test-data
     (testing "mbql queries have parameter mappings with field ids"
       (let [table (t2/select-one :model/Table :id (mt/id :products))
@@ -235,7 +239,7 @@
                                  (:dashcards dashboard))]
         (is (= expected-targets actual-targets))))))
 
-(deftest parameter-mapping-test-2
+(deftest ^:parallel parameter-mapping-test-2
   (mt/dataset test-data
     (testing "native queries have parameter mappings with field ids"
       (let [query (mt/native-query {:query "select * from products"})]
@@ -263,7 +267,7 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 7))))))
 
@@ -279,7 +283,7 @@
                                                               :type :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 17))))))
 
 (deftest native-query-test
@@ -292,7 +296,7 @@
                                                               :type :native
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
@@ -319,7 +323,7 @@
                                                               :type     :query
                                                               :database lib.schema.id/saved-questions-virtual-database-id}}]
         (mt/with-test-user :rasta
-          (automagic-dashboards.test/with-dashboard-cleanup!
+          (automagic-dashboards.test/with-rollback-only-transaction
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (t2/select-one :model/Card :id card-id) 7)))))))
 
@@ -346,7 +350,7 @@
                                                                               :type     :query
                                                                               :database lib.schema.id/saved-questions-virtual-database-id}}]
           (mt/with-test-user :rasta
-            (automagic-dashboards.test/with-dashboard-cleanup!
+            (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
               (test-automagic-analysis (t2/select-one :model/Card :id card-id) 6))))))))
 
@@ -841,7 +845,7 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 17))))))
 
@@ -854,7 +858,7 @@
                                                               :type     :native
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
@@ -868,7 +872,7 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one :model/Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
@@ -886,7 +890,7 @@
         (let [entity     (t2/select-one :model/Card :id card-id)
               cell-query [:= [:field (mt/id :venues :category_id) nil] 2]]
           (mt/with-test-user :rasta
-            (automagic-dashboards.test/with-dashboard-cleanup!
+            (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id) =
               (let [all-dashcard-filters (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
                                               :dashcards
@@ -905,14 +909,14 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one :model/Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
 (deftest adhoc-filter-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
@@ -921,7 +925,7 @@
 
 (deftest adhoc-count-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
                                                                       :breakout [[:field (mt/id :venues :category_id) nil]]
                                                                       :source-table (mt/id :venues)}
@@ -931,7 +935,7 @@
 
 (deftest adhoc-fk-breakout-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
                                                                       :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
                                                                       :source-table (mt/id :checkins)}
@@ -941,7 +945,7 @@
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
@@ -950,7 +954,7 @@
 
 (deftest join-splicing-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [join-vec    [{:source-table (mt/id :categories)
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
@@ -983,7 +987,7 @@
                        :model/Table    {table-id :id} {:db_id db-id}
                        :model/Field    _ {:table_id table-id}
                        :model/Field    _ {:table_id table-id}]
-          (automagic-dashboards.test/with-dashboard-cleanup!
+          (automagic-dashboards.test/with-rollback-only-transaction
             (is (=? [{:tables [{:table {:id table-id}}]}]
                     (magic/candidate-tables (t2/select-one :model/Database :id db-id))))))))))
 
@@ -993,7 +997,7 @@
                  :model/Field    _ {:table_id table-id}
                  :model/Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup!
+      (automagic-dashboards.test/with-rollback-only-transaction
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
@@ -1013,7 +1017,7 @@
                  :model/Field    _ {:table_id table-id :semantic_type :type/PK}
                  :model/Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup!
+      (automagic-dashboards.test/with-rollback-only-transaction
         (is (partial= {:list-like?  true
                        :num-fields 2}
                       (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
@@ -1026,7 +1030,7 @@
                  :model/Field    _              {:table_id table-id :semantic_type :type/FK}
                  :model/Field    _              {:table_id table-id :semantic_type :type/FK}]
     (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup!
+      (automagic-dashboards.test/with-rollback-only-transaction
         (testing "filters out link-tables"
           (is (empty?
                (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]]))))))))
@@ -1310,7 +1314,7 @@
             X-rays fails on explicit joins, when metric is for the joined table"
     (mt/dataset test-data
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (let [query-with-joins {:database   (mt/id)
                                   :type       :query
                                   :query      {:source-table (mt/id :reviews)
