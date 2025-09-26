@@ -8,6 +8,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
@@ -36,6 +37,12 @@
   "Check if this is a query transform: native query / mbql query."
   [transform]
   (= :query (-> transform :source :type keyword)))
+
+(defn native-query-transform?
+  "Check if this is a native query transform"
+  [transform]
+  (and (query-transform? transform)
+       (= :native (lib/normalized-query-type (-> transform :source :query)))))
 
 (defn python-transform?
   "Check if this is a Python transform."
