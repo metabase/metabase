@@ -24,7 +24,7 @@
   [ttype f]
   (let [{task-id :id
          existing? :existing?}
-        (cluster-lock/with-cluster-lock cluster-lock
+        (cluster-lock/with-cluster-lock impl/cluster-lock
           (if-let [{id :id} (remote-sync.task/current-task)]
             {:existing? true :id id}
             (remote-sync.task/create-sync-task! ttype api/*current-user-id*)))]
@@ -188,28 +188,6 @@
     {:status 400
      :body {:status "error"
             :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
-
-(api.macros/defendpoint :post "/branches"
-  "Create a new branch from an existing branch.
-
-  Requires superuser permissions."
-  [_route
-   _query
-   {:keys [name base_branch]} :- [:map
-                                  [:name ms/NonBlankString]
-                                  [:base_branch {:optional true} ms/NonBlankString]]]
-  (api/check-superuser)
-  (if-let [source (source/source-from-settings)]
-    (try
-      (source.p/create-branch source name (or base_branch "main"))
-      {:status "success"
-       :message (format "Branch '%s' created from '%s'" name (or base_branch "main"))}
-      (catch Exception e
-        (log/errorf e "Failed to create branch '%s': %s" name (.getMessage e))
-        (throw (ex-info (format "Failed to create branch: %s" (.getMessage e))
-                        {:status-code 400}))))
-    (throw (ex-info "Git source not configured"
-                    {:status-code 400}))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."
