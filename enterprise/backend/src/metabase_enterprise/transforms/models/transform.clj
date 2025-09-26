@@ -147,7 +147,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy [:name :description :entity_id]
-   :skip []
+   :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :source {:export serdes/export-mbql :import serdes/import-mbql}
