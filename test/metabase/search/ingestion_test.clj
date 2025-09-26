@@ -26,8 +26,8 @@
                (#'search.ingestion/searchable-text record))))))
 
   (testing "searchable-text with map format and transforms"
-    (let [spec-fn              (constantly {:search-terms {:name        search.spec/camel-case
-                                                           :description nil}})
+    (let [spec-fn              (constantly {:search-terms {:name        search.spec/explode-camel-case
+                                                           :description true}})
           record               {:model       "test"
                                 :name        "CamelCaseTest"
                                 :description "Simple description"}]

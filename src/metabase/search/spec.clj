@@ -144,7 +144,7 @@
    [:attrs Attrs]
    [:search-terms [:or
                    [:sequential {:min 1} :keyword]
-                   [:map-of :keyword [:maybe fn?]]]]
+                   [:map-of :keyword [:or fn? true?]]]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -386,7 +386,7 @@
 
 ;;;; indexing helpers
 
-(defn camel-case
+(defn explode-camel-case
   "Transform CamelCase into 'CamelCase Camel Case' so that every word can be searchable"
   [s]
   (str s " " (str/replace s #"([a-z])([A-Z])" "$1 $2")))
