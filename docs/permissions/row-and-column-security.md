@@ -1,5 +1,6 @@
 ---
 title: Row and column security
+summary: Control what data different groups can see by filtering rows and columns based on user attributes. Useful for multi-tenant analytics.
 redirect_from:
   - /docs/latest/enterprise-guide/data-sandboxes
   - /docs/latest/permissions/data-sandboxes
@@ -57,7 +58,7 @@ To **restrict rows _and_ columns**, you can use a SQL question to filter the tab
 
 For example, say your original Accounts table includes the columns: `ID`, `Email`, `Plan`, and `Created At`. If you want to hide the Email column, you can create a "Restricted Accounts" SQL question with the columns: `ID`, `Plan`, and `Created At`.
 
-You can use a question to filter tables to:
+You can use a question to:
 
 - [Display an edited column instead of hiding the column](#displaying-edited-columns).
 - [Pass a user attribute to a SQL parameter](#restricting-rows-with-user-attributes-using-a-sql-variable).
@@ -179,7 +180,7 @@ In steps 9-10 of the [row restriction setup](#restricting-rows-with-user-attribu
 WHERE plan = "Basic"
 ```
 
-Note that the parameters must be required for SQL questions used to create a custom views. E.g., you cannot use an optional parameter; the following won't work:
+Note that the parameters must be required for SQL questions used to create custom views. For example, you can't use an optional parameter; the following won't work:
 
 ```sql
 {%raw%}
@@ -199,7 +200,7 @@ The Email column may get exposed to someone if:
 
 - The person belongs to [multiple row and column security policies](#multiple-row-and-column-security-permissions).
 - Someone else in a non-secured group shares the Email column from:
-  - A [SQL question](../questions/native-editor/writing-sql.md).
+  - A [SQL question](../questions/native-editor/writing-sql.md)
   - A [public link](#public-sharing)
   - An [alert, or dashboard subscription](../permissions/notifications.md)
 
@@ -243,12 +244,13 @@ To prevent this from happening, you'll have to [disable public sharing](../embed
 
 Metabase can only create row and column security using the group membership or user attributes of people who are logged in. Since public links don't require logins, Metabase won't have enough info to apply permissions.
 
-## Limitations
+## Limitations of row and column security
 
-Row and column security is limited to questions built with the [query builder](../questions/query-builder/editor.md).
+Some things to keep in mind when using row and column security.
 
 ### Groups with native query permissions (access to the SQL editor) can bypass row and column security
 
+Row and column security is limited to the [query builder](../questions/query-builder/editor.md).
 You can't set up [native query persmissons](./data.md#create-queries-permissions) for groups with row and column security.
 
 To enforce row-level permissions with the native query editor, check out [impersonation](./impersonation.md).
@@ -262,6 +264,22 @@ Since Metabase can't parse SQL queries, the results of SQL questions will always
 ### Non-SQL databases have limited row and column security
 
 MongoDB only supports [row-level security](#row-level-security-filter-by-a-column-in-the-table). Row and column security permissions are unavailable for Apache Druid.
+
+### Advanced data types require a workaround
+
+If you're trying to set up row security on a column with an advanced data type (like enums or arrays), you'll need to convert that data to a basic type first. Options include:
+
+#### Option 1: Use SQL to cast the advanced data type to a basic SQL casting
+
+Create a SQL question that casts the advanced data type column to a basic data type, then use that question for your row and column security setup.
+
+#### Option 2: Create a database view
+
+If you can't use SQL casting in Metabase, create a view in your database that converts the advanced data type to a basic type, then set up row and column security on that view instead of the original table.
+
+#### Option 3: Use transforms 
+
+ Use a [transform](../data-modeling/transforms.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead.
 
 ## Further reading
 
