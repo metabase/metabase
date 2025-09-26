@@ -5,10 +5,7 @@ import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import type {
-  MetabaseFetchRequestTokenFn,
-  MetabaseFetchStaticTokenFn,
-} from "embedding-sdk-bundle/types/refresh-token";
+import type { MetabaseFetchRequestTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 import type { SdkErrorComponent } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -21,7 +18,6 @@ const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
-const SET_FETCH_STATIC_TOKEN_FN = "sdk/SET_FETCH_STATIC_TOKEN_FN";
 
 export const setIsStaticEmbedding = createAction<boolean>(
   SET_IS_STATIC_EMBEDDING,
@@ -40,8 +36,6 @@ export const setErrorComponent = createAction<null | SdkErrorComponent>(
 );
 export const setFetchRefreshTokenFn =
   createAction<null | MetabaseFetchRequestTokenFn>(SET_FETCH_REQUEST_TOKEN_FN);
-export const setFetchStaticTokenFn =
-  createAction<null | MetabaseFetchStaticTokenFn>(SET_FETCH_STATIC_TOKEN_FN);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
@@ -101,7 +95,6 @@ const initialState: SdkState = {
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
-  fetchStaticTokenFn: null,
 };
 
 export const sdk = createReducer(initialState, (builder) => {
@@ -168,10 +161,6 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(setFetchRefreshTokenFn, (state, action) => {
     state.fetchRefreshTokenFn = action.payload;
-  });
-
-  builder.addCase(setFetchStaticTokenFn, (state, action) => {
-    state.fetchStaticTokenFn = action.payload;
   });
 
   builder.addCase(setUsageProblem, (state, action) => {

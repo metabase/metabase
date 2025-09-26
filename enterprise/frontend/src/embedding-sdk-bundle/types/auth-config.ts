@@ -1,7 +1,4 @@
-import type {
-  MetabaseFetchRequestTokenFn,
-  MetabaseFetchStaticTokenFn,
-} from "embedding-sdk-bundle/types/refresh-token";
+import type { MetabaseFetchRequestTokenFn } from "embedding-sdk-bundle/types/refresh-token";
 
 /**
  * @inline
@@ -28,7 +25,6 @@ export type MetabaseAuthConfigWithJwt = BaseMetabaseAuthConfig & {
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
 
   apiKey?: never;
-  fetchStaticToken?: never;
 };
 
 /**
@@ -43,7 +39,6 @@ export type MetabaseAuthConfigWithSaml = BaseMetabaseAuthConfig & {
   preferredAuthMethod?: "saml";
   apiKey?: never;
   fetchRequestToken?: never;
-  fetchStaticToken?: never;
 };
 
 /**
@@ -53,18 +48,12 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   apiKey: string;
   preferredAuthMethod?: never;
   fetchRequestToken?: never;
-  fetchStaticToken?: never;
 };
 
 /**
  * @category MetabaseProvider
  */
 export type MetabaseStaticAuthConfig = BaseMetabaseAuthConfig & {
-  /**
-   * Fetches a static token for static (no-user) embedding
-   */
-  fetchStaticToken: MetabaseFetchStaticTokenFn;
-
   apiKey?: never;
   preferredAuthMethod?: never;
   fetchRequestToken?: never;

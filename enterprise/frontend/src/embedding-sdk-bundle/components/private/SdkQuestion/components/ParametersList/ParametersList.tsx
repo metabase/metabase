@@ -11,7 +11,7 @@ import type { ParameterId } from "metabase-types/api";
  * @category InteractiveQuestion
  */
 export const QuestionParametersList = () => {
-  const { question, updateQuestion, hiddenParameters } =
+  const { question, originalQuestion, updateQuestion } =
     useSdkQuestionContext();
 
   const isNativeQuestion = useMemo(() => {
@@ -27,20 +27,20 @@ export const QuestionParametersList = () => {
   const query = useMemo(() => question?.legacyNativeQuery(), [question]);
 
   const parameters = useMemo(() => {
-    if (!question) {
+    if (!question || !originalQuestion) {
       return [];
     }
 
-    const allParameters = question.parameters();
+    const originalParameters = originalQuestion.card().parameters ?? [];
 
-    if (!hiddenParameters || !hiddenParameters.length) {
-      return allParameters;
-    }
-
-    return allParameters.filter(
-      (parameter) => !hiddenParameters.includes(parameter.slug),
-    );
-  }, [hiddenParameters, question]);
+    return question
+      .parameters()
+      .filter(({ id }) =>
+        originalParameters.find(
+          (originalParameter) => originalParameter.id === id,
+        ),
+      );
+  }, [originalQuestion, question]);
 
   if (!question || !query || !isNativeQuestion) {
     return null;
@@ -73,6 +73,7 @@ export const QuestionParametersList = () => {
       setParameterIndex={setParameterIndex}
       enableParameterRequiredBehavior
       commitImmediately={false}
+      isSortable={false}
     />
   );
 };

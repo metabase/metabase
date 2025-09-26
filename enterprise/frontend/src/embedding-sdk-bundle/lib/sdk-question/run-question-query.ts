@@ -54,7 +54,9 @@ export async function runQuestionQuerySdk(
     });
 
     // Default values for rows/cols are needed because the `data` is missing in the case of Static Embedding
-    const [{ data = { rows: [], cols: [] } }] = queryResults;
+    const [{ data = isStaticEmbedding ? { rows: [], cols: [] } : undefined }] =
+      queryResults;
+
     const sensibleDisplays = getSensibleDisplays(data);
     question = question.maybeResetDisplay(data, sensibleDisplays, undefined);
   }

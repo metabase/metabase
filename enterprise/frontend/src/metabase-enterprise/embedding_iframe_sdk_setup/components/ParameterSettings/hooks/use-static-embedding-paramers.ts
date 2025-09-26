@@ -34,8 +34,6 @@ export const useStaticEmbeddingParameters = () => {
         (acc, [slug, state]) => {
           if (state === "locked") {
             acc.lockedParameters.push(slug);
-            // Also hide params to prevent showing ParametersList
-            acc.hiddenParameters.push(slug);
           }
 
           if (state === "disabled") {

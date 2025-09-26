@@ -268,7 +268,7 @@ export const StaticEmbedSetupPane = ({
                 <ParametersSettings
                   resourceType={resourceType}
                   resourceParameters={resourceParameters}
-                  allowEditable
+                  withInitialValues={false}
                   embeddingParams={embeddingParams}
                   lockedParameters={lockedParameters}
                   parameterValues={parameterValues}
@@ -278,6 +278,13 @@ export const StaticEmbedSetupPane = ({
                       ...state,
                       [id]: value,
                     }))
+                  }
+                  onRemoveParameterValue={({ id }) =>
+                    setParameterValues((state) => {
+                      const nextState = { ...state };
+                      delete nextState[id];
+                      return nextState;
+                    })
                   }
                 />
               }

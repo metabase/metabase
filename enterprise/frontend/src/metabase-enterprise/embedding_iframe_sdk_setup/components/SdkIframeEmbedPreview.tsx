@@ -14,13 +14,13 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
-import { getInitialSqlParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/utils/get-initial-sql-parameters";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
+import { getVisibleParameters } from "./ParameterSettings/utils/get-visible-parameters";
 import { useGetStaticEmbeddingPreviewSignedToken } from "./Preview/hooks/use-get-static-embedding-preview-signed-token";
 import S from "./SdkIframeEmbedPreview.module.css";
 
@@ -165,9 +165,12 @@ export const SdkIframeEmbedPreview = () => {
             "entity-types": s.entityTypes
               ? JSON.stringify(s.entityTypes)
               : undefined,
-            "initial-sql-parameters": s.sqlParameters
+            "initial-sql-parameters": s.initialSqlParameters
               ? JSON.stringify(
-                  getInitialSqlParameters(s.sqlParameters, s.lockedParameters),
+                  getVisibleParameters(
+                    s.initialSqlParameters,
+                    s.lockedParameters,
+                  ),
                 )
               : undefined,
             "hidden-parameters": s.hiddenParameters
@@ -184,8 +187,10 @@ export const SdkIframeEmbedPreview = () => {
             "dashboard-id": !isStaticEmbedding ? s.dashboardId : signedToken,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
-            "initial-parameters": s.parameters
-              ? JSON.stringify(s.parameters)
+            "initial-parameters": s.initialParameters
+              ? JSON.stringify(
+                  getVisibleParameters(s.initialParameters, s.lockedParameters),
+                )
               : undefined,
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)

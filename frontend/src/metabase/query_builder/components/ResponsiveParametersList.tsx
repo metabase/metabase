@@ -18,6 +18,7 @@ interface ResponsiveParametersListProps {
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
   enableParameterRequiredBehavior: boolean;
   commitImmediately?: boolean;
+  isSortable?: boolean;
 }
 
 export const ResponsiveParametersList = ({
@@ -28,6 +29,7 @@ export const ResponsiveParametersList = ({
   setParameterIndex,
   enableParameterRequiredBehavior,
   commitImmediately = true,
+  isSortable,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
   const isSmallScreen = useIsSmallScreen();
@@ -89,6 +91,7 @@ export const ResponsiveParametersList = ({
           setParameterIndex={setParameterIndex}
           enableParameterRequiredBehavior={enableParameterRequiredBehavior}
           isEditing
+          isSortable={isSortable}
           commitImmediately={commitImmediately}
         />
       </Box>

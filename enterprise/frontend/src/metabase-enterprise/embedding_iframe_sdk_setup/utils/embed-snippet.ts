@@ -7,21 +7,23 @@ import {
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
 import type {
+  DashboardEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import { getVisibleParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/utils/get-visible-parameters";
 
 import type {
+  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
+  SdkIframeQuestionEmbedSettings,
 } from "../types";
 
 import { filterEmptySettings } from "./filter-empty-settings";
 
 type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
-
-const FETCH_STATIC_TOKEN_TEMPLATE = "{{FETCH_STATIC_TOKEN}}";
 
 export function getEmbedSnippet({
   embeddingType,
@@ -73,7 +75,21 @@ export function getEmbedCustomElementSnippet({
     .with("browser", () => "metabase-browser")
     .exhaustive();
 
-  const settingsWithExplorationOverride = match(experience)
+  const settingsWithOverrides = match(experience)
+    .with("chart", () => {
+      const questionSettings = settings as SdkIframeQuestionEmbedSettings;
+
+      return {
+        ...settings,
+        initialSqlParameters: getVisibleParameters(
+          questionSettings.initialSqlParameters,
+          questionSettings.lockedParameters,
+        ),
+        hiddenParameters: questionSettings.hiddenParameters?.length
+          ? questionSettings.hiddenParameters
+          : undefined,
+      } as QuestionEmbedOptions;
+    })
     .with(
       "exploration",
       () =>
@@ -83,10 +99,24 @@ export function getEmbedCustomElementSnippet({
           template: undefined,
         }) as QuestionEmbedOptions,
     )
+    .with("dashboard", () => {
+      const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
+
+      return {
+        ...settings,
+        initialParameters: getVisibleParameters(
+          dashboardSettings.initialParameters,
+          dashboardSettings.lockedParameters,
+        ),
+        hiddenParameters: dashboardSettings.hiddenParameters?.length
+          ? dashboardSettings.hiddenParameters
+          : undefined,
+      } as DashboardEmbedOptions;
+    })
     .otherwise(() => settings);
 
   const attributes = transformEmbedSettingsToAttributes(
-    settingsWithExplorationOverride,
+    settingsWithOverrides,
     isStaticEmbedding
       ? ALLOWED_STATIC_EMBED_SETTING_KEYS_MAP[experience]
       : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
@@ -159,11 +189,6 @@ export function getMetabaseConfigSnippet({
 
     // Append these settings that can't be controlled by users.
     instanceUrl,
-
-    ...(isStaticEmbedding &&
-      settings.staticEmbeddingType === "client-fetched" && {
-        fetchStaticToken: FETCH_STATIC_TOKEN_TEMPLATE,
-      }),
   };
 
   // filter out empty arrays, strings, objects, null and undefined.
@@ -174,10 +199,6 @@ export function getMetabaseConfigSnippet({
   return JSON.stringify(filteredConfig, null, 2)
     .replace(/^{/, "")
     .replace(/}$/, "")
-    .replace(
-      `"${FETCH_STATIC_TOKEN_TEMPLATE}"`,
-      config.fetchStaticToken?.toString() ?? "",
-    )
     .split("\n")
     .map((line) => `  ${line}`)
     .join("\n")

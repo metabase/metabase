@@ -43,15 +43,15 @@ export const ParameterSettings = () => {
       (slug: string, value: ParameterValueOrArray | null | undefined) => {
         if (settings.dashboardId) {
           updateSettings({
-            parameters: {
-              ...settings.parameters,
+            initialParameters: {
+              ...settings.initialParameters,
               [slug]: value,
             },
           });
         } else if (settings.questionId) {
           updateSettings({
-            sqlParameters: {
-              ...settings.sqlParameters,
+            initialSqlParameters: {
+              ...settings.initialSqlParameters,
               [slug]: value,
             },
           });
@@ -60,6 +60,24 @@ export const ParameterSettings = () => {
       [settings, updateSettings],
     ),
     SET_INITIAL_PARAMETER_DEBOUNCE_MS,
+  );
+  const removeInitialParameterValue = useCallback(
+    (slug: string) => {
+      if (settings.dashboardId) {
+        const nextInitialParameters = { ...settings.initialParameters };
+        delete nextInitialParameters[slug];
+        updateSettings({
+          initialParameters: nextInitialParameters,
+        });
+      } else if (settings.questionId) {
+        const nextInitialSqlParameters = { ...settings.initialSqlParameters };
+        delete nextInitialSqlParameters[slug];
+        updateSettings({
+          initialSqlParameters: nextInitialSqlParameters,
+        });
+      }
+    },
+    [settings, updateSettings],
   );
 
   const parameterValuesById = useMemo(
@@ -104,11 +122,12 @@ export const ParameterSettings = () => {
         embeddingParams={embeddingParams}
         lockedParameters={lockedParameters}
         parameterValues={parameterValuesById}
-        allowEditable
+        withInitialValues
         onChangeEmbeddingParameters={setEmbeddingParameters}
         onChangeParameterValue={({ slug, value }) =>
           updateInitialParameterValue(slug, value)
         }
+        onRemoveParameterValue={({ slug }) => removeInitialParameterValue(slug)}
       />
     );
   }
