@@ -311,11 +311,7 @@ Create a SQL question that casts the advanced data type column to a basic data t
 
 #### Option 2: Create a database view
 
-If you can't use SQL casting in Metabase, create a view in your database that converts the advanced data type to a basic type, then set up row and column security on that view instead of the original table.
-
-#### Option 3: Use transforms 
-
- Use a [transform](../data-modeling/transforms.md) to create a table that casts the advanced data type to a basic type. Then set up row and column security on the transformed table instead.
+If you can't use SQL casting in Metabase, create a view in your database that converts the advanced data type to a basic type, then set up row and column security on that view instead of the original table. You'll also need to block the original table.
 
 ## Further reading
 
