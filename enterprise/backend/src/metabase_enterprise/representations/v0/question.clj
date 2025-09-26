@@ -250,9 +250,6 @@
              :database (:database query))
 
       :always
-      (doto prn)
-
-      :always
       v0-common/remove-nils)))
 
 (comment
