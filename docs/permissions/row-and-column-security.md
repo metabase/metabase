@@ -305,7 +305,7 @@ MongoDB only supports [row-level security](#row-level-security-filter-by-a-colum
 
 If you're trying to set up row security on a column with an advanced data type (like enums or arrays), you'll need to convert that data to a basic type first. Options include:
 
-#### Option 1: Use SQL to cast the advanced data type to a basic SQL casting
+#### Option 1: Use SQL to cast the advanced data type to a basic SQL type
 
 Create a SQL question that casts the advanced data type column to a basic data type, then use that question for your row and column security setup.
 
