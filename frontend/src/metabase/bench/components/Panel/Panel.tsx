@@ -20,7 +20,7 @@ export function BenchPanel({
         display: "flex",
         flexDirection: "column",
         backgroundColor: "var(--mb-color-bg-secondary)",
-        border: "1px solid var(--mb-color-border)",
+        borderRight: "1px solid var(--mb-color-border)",
       }}
     >
       <Box
