@@ -18,6 +18,7 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -253,8 +254,9 @@
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
         _         (check-feature-enabled! transform)
         start-promise (promise)]
-    (transforms.i/execute! transform {:start-promise start-promise
-                                      :run-method :manual})
+    (u.jvm/in-virtual-thread*
+     (transforms.i/execute! transform {:start-promise start-promise
+                                       :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise
