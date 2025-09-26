@@ -36,7 +36,7 @@ import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
 export const useCommandPalette = ({
-  // disabled,
+  disabled,
   locationQuery,
 }: {
   disabled: boolean;
@@ -86,17 +86,17 @@ export const useCommandPalette = ({
       limit: 20,
     },
     {
-      skip: !debouncedSearchText || !isSearchTypeaheadEnabled,
+      skip: !debouncedSearchText || !isSearchTypeaheadEnabled || disabled,
       refetchOnMountOrArgChange: true,
     },
   );
 
   const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery();
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && !disabled) {
       refetchRecents();
     }
-  }, [isVisible, refetchRecents]);
+  }, [isVisible, refetchRecents, disabled]);
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
@@ -122,7 +122,7 @@ export const useCommandPalette = ({
     return ret;
   }, [debouncedSearchText, docsUrl]);
 
-  const showDocsAction = showMetabaseLinks && hasQuery;
+  const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
   useRegisterActions(showDocsAction ? docsAction : [], [
     docsAction,
@@ -130,6 +130,10 @@ export const useCommandPalette = ({
   ]);
 
   const searchResultActions = useMemo<PaletteAction[]>(() => {
+    if (disabled) {
+      return [];
+    }
+
     const searchLocation = {
       pathname: "search",
       query: {
@@ -217,6 +221,7 @@ export const useCommandPalette = ({
     }
     return [];
   }, [
+    disabled,
     dispatch,
     debouncedSearchText,
     searchQuery,
@@ -231,6 +236,10 @@ export const useCommandPalette = ({
   useRegisterActions(searchResultActions, [searchResultActions]);
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
+    if (disabled) {
+      return [];
+    }
+
     return (
       filterRecentItems(recentItems ?? []).map((item) => {
         const icon = getIcon(item);
@@ -251,7 +260,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [recentItems]);
+  }, [disabled, recentItems]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
@@ -259,6 +268,10 @@ export const useCommandPalette = ({
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
+    if (disabled) {
+      return [];
+    }
+
     // Subpaths - i.e. paths to items within the main Admin tabs - are needed
     // in the command palette but are not part of the main list of admin paths
     const adminSubpaths = isAdmin
@@ -276,10 +289,10 @@ export const useCommandPalette = ({
         href: adminPath.path,
       },
     }));
-  }, [isAdmin, adminPaths]);
+  }, [disabled, isAdmin, adminPaths]);
 
   const settingsActions = useMemo<PaletteAction[]>(() => {
-    if (!canUserAccessSettings) {
+    if (disabled || !canUserAccessSettings) {
       return [];
     }
 
@@ -305,7 +318,7 @@ export const useCommandPalette = ({
           href: `/admin/settings/${slug}`,
         },
       }));
-  }, [canUserAccessSettings, isAdmin, settingValues]);
+  }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
   useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
     adminActions,
