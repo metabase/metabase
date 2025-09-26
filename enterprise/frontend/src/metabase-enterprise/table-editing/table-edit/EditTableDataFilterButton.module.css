@@ -6,7 +6,11 @@
 
     &:hover {
       color: var(--mb-color-filter);
-      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 10%,
+        var(--mb-color-white)
+      );
     }
   }
 }
@@ -17,7 +21,11 @@
     transition: background 300ms linear;
 
     &:hover {
-      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 10%,
+        var(--mb-color-white)
+      );
     }
 
     &:hover,
@@ -36,5 +44,9 @@
   line-height: 1rem;
   padding-inline: 0.5rem;
   color: var(--mb-color-text-primary);
-  background-color: color-mix(in srgb, var(--mb-color-filter) 15%, white);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-filter) 15%,
+    var(--mb-color-white)
+  );
 }
