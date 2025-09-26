@@ -1,12 +1,12 @@
-import { t } from "ttag";
+import { ErroringQuestions } from "../ErroringQuestions";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { UpsellPerformanceTools } from "metabase/admin/upsells";
-
+/**
+ * Upsell component for erroring questions in OSS.
+ * This uses the ErroringQuestions component which handles both the upsell case
+ * and potential data scenarios with proper click handling.
+ */
 export const ToolsUpsell = () => {
-  return (
-    <SettingsPageWrapper title={t`Erroring questions`}>
-      <UpsellPerformanceTools source="settings-tools" />
-    </SettingsPageWrapper>
-  );
+  // Use the ErroringQuestions component which will show the upsell by default
+  // but can handle data if it's ever provided in edge cases
+  return <ErroringQuestions />;
 };
