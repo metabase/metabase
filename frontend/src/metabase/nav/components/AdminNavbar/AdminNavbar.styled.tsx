@@ -12,6 +12,8 @@ import { color } from "metabase/ui/utils/colors";
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`
+  --mb-color-text-white: var(--mantine-color-white);
+
   padding: 0.5rem 1rem;
   background: ${() => color("admin-navbar")};
   color: var(--mb-color-text-white);
@@ -79,8 +81,8 @@ export const AdminExitLink = styled(Link)`
 
   &:hover {
     color: var(--mb-color-text-white);
-    background-color: ${() => darken("filter")};
-    border-color: ${() => darken("filter")};
+    background-color: ${() => darken("admin-navbar")};
+    border-color: ${() => darken("admin-navbar")};
   }
 `;
 

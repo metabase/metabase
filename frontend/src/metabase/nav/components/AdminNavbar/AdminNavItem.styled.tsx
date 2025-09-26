@@ -31,11 +31,11 @@ export const AdminNavLink = styled(
       ? "var(--mb-color-text-white)"
       : "color-mix(in srgb, var(--mb-color-text-white), transparent 35%)"};
   background-color: ${(props) =>
-    props.isSelected ? darken("filter") : "transparent"};
+    props.isSelected ? darken("admin-navbar") : "transparent"};
 
   &:hover {
     color: var(--mb-color-text-white);
-    background-color: ${() => darken("filter")};
+    background-color: ${() => darken("admin-navbar")};
   }
 `;
 
