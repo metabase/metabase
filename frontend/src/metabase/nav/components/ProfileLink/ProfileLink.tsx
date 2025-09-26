@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -25,13 +24,14 @@ import {
   getApplicationName,
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
-import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, type IconName, Menu, Tooltip } from "metabase/ui";
+import type { AdminPath, State } from "metabase-types/store";
 
 import { useHelpLink } from "./useHelpLink";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
   isNewInstance: getIsNewInstance(state),
@@ -41,23 +41,40 @@ const mapDispatchToProps = {
   openDiagnostics,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(ProfileLink);
+interface ProfileLinkProps {
+  adminItems: AdminPath[];
+  canAccessOnboardingPage: boolean;
+  isNewInstance: boolean;
+  onLogout: () => void;
+  openDiagnostics: () => void;
+}
 
-function ProfileLink({
+interface MenuItem {
+  title: string;
+  icon?: IconName | null;
+  externalLink?: boolean;
+  link?: string;
+  action?: () => void;
+  separator?: boolean;
+  event?: string;
+}
+
+function ProfileLinkInner({
   adminItems,
   canAccessOnboardingPage,
   isNewInstance,
   onLogout,
   openDiagnostics,
-}) {
-  const [modalOpen, setModalOpen] = useState(null);
+}: ProfileLinkProps) {
+  const [modalOpen, setModalOpen] = useState<string | null>(null);
   const version = useSetting("version");
   const applicationName = useSelector(getApplicationName);
-  const { tag, date, ...versionExtra } = version;
+  const { tag, ...versionExtra } = version;
+  const date = versionExtra.date as string | undefined;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
 
-  const openModal = (modalName) => {
+  const openModal = (modalName: string) => {
     setModalOpen(modalName);
   };
 
@@ -130,7 +147,7 @@ function ProfileLink({
         action: () => onLogout(),
         event: `Navbar;Profile Dropdown;Logout`,
       },
-    ].filter(Boolean);
+    ].filter(Boolean) as MenuItem[];
   };
 
   // show trademark if application name is not whitelabeled
@@ -173,7 +190,7 @@ function ProfileLink({
                 : "button";
 
             return (
-              <Menu.Item
+              <Menu.Item<typeof component>
                 key={item.title}
                 leftSection={item.icon && <Icon name={item.icon} />}
                 onClick={() => {
@@ -183,7 +200,7 @@ function ProfileLink({
                 }}
                 component={component}
                 href={item.link}
-                to={item.link}
+                to={item.link || ""}
                 target={item.externalLink ? "_blank" : undefined}
                 rel={item.externalLink ? "noopener noreferrer" : undefined}
               >
@@ -213,11 +230,11 @@ function ProfileLink({
               <p className={cx(CS.textMedium, CS.textBold)}>
                 {t`Built on`} {date}
               </p>
-              {!/^v\d+\.\d+\.\d+$/.test(tag) && (
+              {tag && !/^v\d+\.\d+\.\d+$/.test(tag) && (
                 <div>
                   {_.map(versionExtra, (value, key) => (
                     <p key={key} className={cx(CS.textMedium, CS.textBold)}>
-                      {capitalize(key)}: {value}
+                      {capitalize(key)}: {String(value)}
                     </p>
                   ))}
                 </div>
@@ -253,10 +270,6 @@ function ProfileLink({
   );
 }
 
-ProfileLink.propTypes = {
-  adminItems: PropTypes.array,
-  canAccessOnboardingPage: PropTypes.bool,
-  isNewInstance: PropTypes.bool,
-  onLogout: PropTypes.func.isRequired,
-  openDiagnostics: PropTypes.func.isRequired,
-};
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+export const ProfileLink = connector(ProfileLinkInner);
