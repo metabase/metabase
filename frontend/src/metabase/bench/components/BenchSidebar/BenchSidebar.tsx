@@ -1,4 +1,13 @@
-import { Box, NavLink, Stack, Text, Divider, Icon, Menu, Group } from "metabase/ui";
+import {
+  Box,
+  NavLink,
+  Stack,
+  Text,
+  Divider,
+  Icon,
+  Menu,
+  Group,
+} from "metabase/ui";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import { Link } from "react-router";
@@ -76,39 +85,6 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
     }
   });
 
-  const navItems = [
-    {
-      label: t`Overview`,
-      icon: <Icon name="home" size={16} />,
-      path: "/bench/overview",
-    },
-    {
-      label: t`Transforms`,
-      icon: <Icon name="sql" size={16} />,
-      path: "/bench/transforms",
-    },
-    {
-      label: t`Table Metadata`,
-      icon: <Icon name="database" size={16} />,
-      path: "/bench/metadata",
-    },
-    {
-      label: t`Segments`,
-      icon: <Icon name="filter" size={16} />,
-      path: "/bench/segments",
-    },
-    {
-      label: t`Metrics`,
-      icon: <Icon name="metric" size={16} />,
-      path: "/bench/metrics",
-    },
-    {
-      label: t`Models`,
-      icon: <Icon name="model" size={16} />,
-      path: "/bench/models",
-    },
-  ];
-
   return (
     <Box
       style={{
@@ -152,21 +128,33 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
           <Menu.Dropdown>
             <Menu.Item
               leftSection={<Icon name="rocket" size={16} />}
-              rightSection={<Text size="xs" c="dimmed">⌘1</Text>}
+              rightSection={
+                <Text size="xs" c="dimmed">
+                  ⌘1
+                </Text>
+              }
               onClick={handleExploreClick}
             >
               {t`Explore`}
             </Menu.Item>
             <Menu.Item
               leftSection={<Icon name="notebook" size={16} />}
-              rightSection={<Text size="xs" c="dimmed">⌘2</Text>}
+              rightSection={
+                <Text size="xs" c="dimmed">
+                  ⌘2
+                </Text>
+              }
               onClick={handleWorkbenchClick}
             >
               {t`Workbench`}
             </Menu.Item>
             <Menu.Item
               leftSection={<Icon name="gear" size={16} />}
-              rightSection={<Text size="xs" c="dimmed">⌘3</Text>}
+              rightSection={
+                <Text size="xs" c="dimmed">
+                  ⌘3
+                </Text>
+              }
               onClick={handleAdminClick}
             >
               {t`Admin`}
@@ -183,22 +171,77 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
       </Box>
 
       <Stack gap={4} px="md" style={{ flex: 1 }}>
-        {navItems.map((item, index) => (
-          <Box key={item.path}>
-            <NavLink
-              component={Link}
-              to={item.path}
-              label={item.label}
-              description={item.description}
-              leftSection={item.icon}
-              active={isActive(item.path)}
-              px="lg"
-              py="md"
-            />
-            {/* Add extra spacing after Overview */}
-            {index === 0 && <Box h="md" />}
-          </Box>
-        ))}
+        <Box mb="sm">
+          <NavLink
+            component={Link}
+            to="/bench/overview"
+            label={t`Overview`}
+            leftSection={<Icon name="home" size={16} />}
+            active={isActive("/bench/overview")}
+            px="lg"
+            py="md"
+          />
+        </Box>
+
+        <Box mb="sm">
+          <NavLink
+            component={Link}
+            to="/bench/metadata"
+            label={t`Metadata`}
+            leftSection={<Icon name="database" size={16} />}
+            active={isActive("/bench/metadata")}
+            px="lg"
+            py="md"
+          />
+        </Box>
+
+        <Box>
+          <NavLink
+            component={Link}
+            to="/bench/transforms"
+            label={t`Transforms`}
+            leftSection={<Icon name="sql" size={16} />}
+            active={isActive("/bench/transforms")}
+            px="lg"
+            py="md"
+          />
+        </Box>
+
+        <Box>
+          <NavLink
+            component={Link}
+            to="/bench/segments"
+            label={t`Segments`}
+            leftSection={<Icon name="filter" size={16} />}
+            active={isActive("/bench/segments")}
+            px="lg"
+            py="md"
+          />
+        </Box>
+
+        <Box>
+          <NavLink
+            component={Link}
+            to="/bench/models"
+            label={t`Models`}
+            leftSection={<Icon name="model" size={16} />}
+            active={isActive("/bench/models")}
+            px="lg"
+            py="md"
+          />
+        </Box>
+
+        <Box mt="lg">
+          <NavLink
+            component={Link}
+            to="/bench/metrics"
+            label={t`Metrics`}
+            leftSection={<Icon name="metric" size={16} />}
+            active={isActive("/bench/metrics")}
+            px="lg"
+            py="md"
+          />
+        </Box>
       </Stack>
 
       <Box px="md" mt="auto" pt="lg">

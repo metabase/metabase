@@ -5,7 +5,6 @@ import {
   Loader,
   Stack,
   Text,
-  useMantineTheme,
 } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import { useState, forwardRef, useImperativeHandle } from "react";
@@ -25,8 +24,6 @@ interface QueryPreviewRef {
 
 export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
   function QueryPreview({ query, databaseId, onRunQuery }, ref) {
-    const theme = useMantineTheme();
-    const isDark = theme.colorScheme === "dark";
     const [shouldExecute, setShouldExecute] = useState(false);
 
     const datasetQuery: DatasetQuery | typeof skipToken =
@@ -81,10 +78,8 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
           justify="space-between"
           p="md"
           style={{
-            borderBottom: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
-            backgroundColor: isDark
-              ? theme.colors.dark[6]
-              : theme.colors.gray[0],
+            borderBottom: `1px solid var(--mb-color-border)`,
+            backgroundColor: "var(--mb-color-bg-light)",
           }}
         >
           <Group gap="sm">
@@ -121,8 +116,8 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
             <Box
               p="md"
               style={{
-                backgroundColor: isDark ? "#2D1B1B" : theme.colors.red[0],
-                border: `1px solid ${isDark ? "#5C2E2E" : theme.colors.red[3]}`,
+                backgroundColor: "var(--mb-color-bg-error)",
+                border: "1px solid var(--mb-color-border-error)",
                 borderRadius: "4px",
               }}
             >
@@ -130,13 +125,13 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                 <Icon
                   name="warning"
                   size={16}
-                  color={isDark ? theme.colors.red[4] : theme.colors.red[6]}
+                  color="var(--mb-color-text-error)"
                 />
                 <Stack gap="xs">
-                  <Text fw={500} size="sm" c="red">
+                  <Text fw={500} size="sm" c="error">
                     Query Error
                   </Text>
-                  <Text size="sm" c="red">
+                  <Text size="sm" c="error">
                     {error && typeof error === "object" && "data" in error
                       ? (error.data as any)?.message || "Unknown error occurred"
                       : String(error)}
@@ -171,7 +166,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                 <Box
                   style={{
                     overflowX: "auto",
-                    border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+                    border: "1px solid var(--mb-color-border)",
                     borderRadius: "4px",
                   }}
                 >
@@ -179,9 +174,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                     <thead>
                       <tr
                         style={{
-                          backgroundColor: isDark
-                            ? theme.colors.dark[6]
-                            : theme.colors.gray[0],
+                          backgroundColor: "var(--mb-color-bg-light)",
                         }}
                       >
                         {dataset.data.cols.map((col, index) => (
@@ -192,7 +185,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                               textAlign: "left",
                               borderRight:
                                 index < dataset.data.cols.length - 1
-                                  ? `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`
+                                  ? "1px solid var(--mb-color-border)"
                                   : "none",
                               fontSize: "12px",
                               fontWeight: 500,
@@ -211,7 +204,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                             borderBottom:
                               rowIndex <
                               Math.min(dataset.data.rows.length, 100) - 1
-                                ? `1px solid ${isDark ? theme.colors.dark[5] : theme.colors.gray[2]}`
+                                ? "1px solid var(--mb-color-border)"
                                 : "none",
                           }}
                         >
@@ -222,7 +215,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                                 padding: "8px 12px",
                                 borderRight:
                                   cellIndex < row.length - 1
-                                    ? `1px solid ${isDark ? theme.colors.dark[5] : theme.colors.gray[2]}`
+                                    ? "1px solid var(--mb-color-border)"
                                     : "none",
                                 fontSize: "12px",
                                 maxWidth: "200px",
@@ -249,9 +242,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                       p="md"
                       style={{
                         textAlign: "center",
-                        backgroundColor: isDark
-                          ? theme.colors.dark[6]
-                          : theme.colors.gray[0],
+                        backgroundColor: "var(--mb-color-bg-light)",
                       }}
                     >
                       <Text size="sm">
@@ -265,10 +256,8 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
                   p="md"
                   style={{
                     textAlign: "center",
-                    backgroundColor: isDark
-                      ? theme.colors.dark[6]
-                      : theme.colors.gray[0],
-                    border: `1px solid ${isDark ? theme.colors.dark[4] : theme.colors.gray[3]}`,
+                    backgroundColor: "var(--mb-color-bg-light)",
+                    border: "1px solid var(--mb-color-border)",
                     borderRadius: "4px",
                   }}
                 >
@@ -282,7 +271,7 @@ export const QueryPreview = forwardRef<QueryPreviewRef, QueryPreviewProps>(
 
           {!shouldExecute && (
             <Box style={{ textAlign: "center" }} py="xl">
-              <Icon name="play" size={32} color="var(--mantine-color-gray-4)" />
+              <Icon name="play" size={32} color="var(--mb-color-text-light)" />
               <Text size="sm" mt="md">
                 Press ⌘↵ or click Run to execute the query
               </Text>

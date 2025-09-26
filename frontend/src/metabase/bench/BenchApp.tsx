@@ -1,14 +1,17 @@
-import { Box, Text, Tabs } from "metabase/ui";
-import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { keymap } from "@codemirror/view";
-import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
-import styles from "./BenchApp.module.css";
 import { push } from "react-router-redux";
-import { useDispatch } from "metabase/lib/redux";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useGetTransformQuery } from "metabase-enterprise/api";
+
 import { skipToken } from "metabase/api";
+import { CodeMirror } from "metabase/common/components/CodeMirror";
+import { color } from "metabase/lib/colors";
+import { useDispatch } from "metabase/lib/redux";
+import { language } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language";
+import { Box, Text } from "metabase/ui";
+import { useGetTransformQuery } from "metabase-enterprise/api";
+import { t } from "ttag";
+
 import {
   BenchPanel,
   TransformEntitiesList,
@@ -17,6 +20,7 @@ import {
   TransformExecutionCard,
   CollectionsCard,
 } from "./components";
+import styles from "./BenchApp.module.css";
 import type { Transform } from "metabase-types/api";
 
 interface BenchAppProps {
@@ -32,11 +36,10 @@ export function BenchApp({ params }: BenchAppProps) {
     ? parseInt(params.transformId, 10)
     : undefined;
 
-  const { data: selectedTransform, isLoading: isLoadingTransform } =
-    useGetTransformQuery(transformId ?? skipToken);
+  const { data: selectedTransform } = useGetTransformQuery(transformId ?? skipToken);
 
-  const [code, setCode] = useState(`-- Welcome to the Metabase Bench
--- This is your SQL editor for transform development
+  const [code, setCode] = useState(`-- ${t`Welcome to the Metabase Bench`} // eslint-disable-line no-literal-metabase-strings -- This string only shows for admins.
+-- ${t`This is your SQL editor for transform development`}
 
 SELECT
   customer_id,
@@ -49,12 +52,15 @@ ORDER BY total_spent DESC;`);
 
   // Update editor content when transform is loaded
   useEffect(() => {
-    if (selectedTransform?.source?.query?.native?.query) {
+    if (selectedTransform?.source?.query &&
+        selectedTransform.source.query.type === 'native' &&
+        'native' in selectedTransform.source.query &&
+        selectedTransform.source.query.native?.query) {
       setCode(selectedTransform.source.query.native.query);
     } else if (!transformId) {
       // Reset to welcome message when no transform is selected
-      setCode(`-- Welcome to the Metabase Bench
--- This is your SQL editor for transform development
+      setCode(`-- ${t`Welcome to the Metabase Bench`} // eslint-disable-line no-literal-metabase-strings -- This string only shows for admins.
+-- ${t`This is your SQL editor for transform development`}
 
 SELECT
   customer_id,
@@ -97,105 +103,89 @@ ORDER BY total_spent DESC;`);
           }}
         />
 
-        {/* Center Panel - Code Editor and Preview */}
+        {/* Center Panel - Code Editor with nested Preview */}
         <Panel defaultSize={60} minSize={30}>
           <Box h="100%" p="md">
-            <PanelGroup direction="vertical">
-              {/* Code Editor */}
-              <Panel defaultSize={60} minSize={30}>
-                <Box
-                  h="100%"
-                  p="md"
-                  style={{
-                    backgroundColor: "var(--mb-color-bg-white)",
-                    border: "1px solid var(--mb-color-border)",
-                    borderRadius: "8px",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <Box mb="md">
+            <Box
+              h="100%"
+              p="md"
+              style={{
+                backgroundColor: "var(--mb-color-bg-white)",
+                border: "1px solid var(--mb-color-border)",
+                borderRadius: "8px",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <Box mb="md">
                     <Text fw={500}>
                       {selectedTransform
                         ? selectedTransform.name
-                        : "SQL Editor"}
+                        : t`SQL Editor`}
                     </Text>
                     {selectedTransform && (
                       <Text size="sm">
-                        Target:{" "}
+                        {t`Target`}:{" "}
                         {selectedTransform.target.schema
                           ? `${selectedTransform.target.schema}.`
                           : ""}
                         {selectedTransform.target.name}
                       </Text>
                     )}
-                  </Box>
-                  <Box
-                    style={{ flex: 1, position: "relative" }}
-                    className={styles.benchEditor}
-                  >
-                    <CodeMirror
-                      value={code}
-                      onChange={(value) => setCode(value)}
-                      height="100%"
-                      style={{
-                        height: "100%",
-                        fontSize: "14px",
-                      }}
-                      basicSetup={{
-                        lineNumbers: true,
-                        foldGutter: true,
-                        dropCursor: false,
-                        allowMultipleSelections: false,
-                      }}
-                      extensions={[
-                        ...language({ engine: "postgres" }),
-                        keymap.of([
-                          {
-                            key: "Mod-Enter",
-                            run: () => {
-                              handleRunQuery();
-                              return true;
-                            },
-                          },
-                        ]),
-                      ]}
-                      placeholder="Enter your SQL code here..."
-                    />
-                  </Box>
-                </Box>
-              </Panel>
-
-              <PanelResizeHandle
-                style={{
-                  height: "4px",
-                  cursor: "row-resize",
-                  borderRadius: "2px",
-                  margin: "2px 0",
-                }}
-              />
-
-              {/* Query Preview */}
-              <Panel defaultSize={40} minSize={20}>
-                <Box
-                  h="100%"
-                  p="md"
+              </Box>
+              <Box
+                style={{ flex: 1, position: "relative" }}
+                className={styles.benchEditor}
+              >
+                <CodeMirror
+                  value={code}
+                  onChange={(value) => setCode(value)}
+                  height="100%"
                   style={{
-                    backgroundColor: "var(--mb-color-bg-white)",
-                    border: "1px solid var(--mb-color-border)",
-                    borderRadius: "8px",
-                    display: "flex",
-                    flexDirection: "column",
+                    height: "100%",
+                    fontSize: "14px",
                   }}
-                >
-                  <QueryPreview
-                    ref={queryPreviewRef}
-                    query={code}
-                    databaseId={selectedTransform?.source?.query?.database}
-                  />
-                </Box>
-              </Panel>
-            </PanelGroup>
+                  basicSetup={{
+                    lineNumbers: true,
+                    foldGutter: true,
+                    dropCursor: false,
+                    allowMultipleSelections: false,
+                  }}
+                  extensions={[
+                    ...language({ engine: "postgres" }),
+                    keymap.of([
+                      {
+                        key: "Mod-Enter",
+                        run: () => {
+                          handleRunQuery();
+                          return true;
+                        },
+                      },
+                    ]),
+                  ]}
+                  placeholder="Enter your SQL code here..."
+                />
+              </Box>
+
+              {/* Nested Query Preview Card */}
+              <Box
+                mt="md"
+                style={{
+                  backgroundColor: "var(--mb-color-bg-white)",
+                  border: "1px solid var(--mb-color-border)",
+                  borderRadius: "8px",
+                  boxShadow: `0 2px 8px ${color("shadow")}`,
+                  maxHeight: "40vh",
+                  minHeight: "200px",
+                }}
+              >
+                <QueryPreview
+                  ref={queryPreviewRef}
+                  query={code}
+                  databaseId={selectedTransform?.source?.query?.database}
+                />
+              </Box>
+            </Box>
           </Box>
         </Panel>
 
@@ -233,8 +223,8 @@ ORDER BY total_spent DESC;`);
                   borderRadius: "4px",
                 }}
               >
-                <Text size="xs">Lines: {code.split("\n").length}</Text>
-                <Text size="xs">Characters: {code.length}</Text>
+                <Text size="xs">{t`Lines`}: {code.split("\n").length}</Text>
+                <Text size="xs">{t`Characters`}: {code.length}</Text>
               </Box>
             </Box>
           </Box>
