@@ -19,6 +19,9 @@
 ;; nil when they do no match
 (defrecord WrappingSource [original-source path-filters]
   source.p/LibrarySource
+  (create-branch [_ branch base]
+    (source.p/create-branch original-source branch base))
+
   (branches [_]
     (source.p/branches original-source))
 
@@ -33,8 +36,8 @@
 
   (write-files! [_ message files]
     (source.p/write-files! original-source message
-                           (filter (fn [file-path]
-                                     (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))
+                           (filter (fn [file-spec]
+                                     (some (fn [path-filter] (re-matches path-filter (:path file-spec))) path-filters))
                                    files))))
 
 (methodical/defmethod source.p/->ingestable :default

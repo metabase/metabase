@@ -156,6 +156,9 @@ width: fixed
 
 (defrecord MockLibrarySource [source-id base-url branch fail-mode files-atom]
   source.p/LibrarySource
+  (create-branch [_this _branch _base]
+    nil)
+
   (branches [_this]
     (case fail-mode
       :branches-error (throw (java.net.UnknownHostException. "Network error"))
