@@ -12,12 +12,6 @@ Here are the different ways you can embed Metabase.
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
-## Embedded analytics SDK with React
-
-With the [Embedded analytics SDK](./sdk/introduction.md), you can embed individual Metabase components with React (like standalone charts, dashboards, the query builder, and more). You can manage access and interactivity per component, and you have advanced customization for seamless styling.
-
-**When to use the Embedded analytics SDK**: you want the most control over how you embed Metabase in your React app.
-
 ## Embedded analytics JS
 
 With [Embedded analytics JS](./embedded-analytics-js.md), you can embed individual Metabase components in your web app with JavaScript — no React required. Choose from dashboards, questions, or the query builder, and configure per‑component options like drill‑through, parameters, downloads, and theming. Embedded Analytics JS integrates with [SSO](securing-embeds.md) and [data permissions](../permissions/embedding.md).
