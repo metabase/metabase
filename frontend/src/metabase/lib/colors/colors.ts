@@ -215,7 +215,7 @@ export const colorConfig = {
   "accent-gray": { light: baseColors.orion[10], dark: "#373A40" },
   "admin-navbar": {
     light: baseColors.octopus[60],
-    dark: baseColors.octopus[60],
+    dark: baseColors.octopus[50],
   },
   "background-brand": {
     light: baseColors.brand[40],
