@@ -1,21 +1,50 @@
 (ns metabase.queries.metadata
   (:require
    [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
+;; This mirrors the function in src/metabase/warehouses/api.clj
+(mu/defn- add-native-perms-info :- [:maybe
+                                    [:sequential
+                                     [:map
+                                      [:native_permissions [:enum :write :none]]]]]
+  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
+  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
+  and save new Cards with native queries; `:none` means you can do neither.
+
+  For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
+  permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
+  native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
+  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
+  [dbs :- [:maybe [:sequential :map]]]
+  (perms/prime-db-cache (map :id dbs))
+  (for [db dbs]
+    (assoc db
+           :native_permissions
+           (if (= :query-builder-and-native
+                  (perms/full-db-permission-for-user
+                   api/*current-user-id*
+                   :perms/create-queries
+                   (u/the-id db)))
+             :write
+             :none))))
+
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (into [] (filter mi/can-read?)
-          (t2/select :model/Database :id [:in ids]))))
+    (->> (t2/select :model/Database :id [:in ids])
+         (into [] (filter mi/can-read?))
+         add-native-perms-info)))
 
 (defn- field-ids->table-ids
   [field-ids]
