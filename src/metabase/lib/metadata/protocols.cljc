@@ -10,7 +10,7 @@
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
   other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment :metadata/native-query-snippet])
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment :metadata/native-query-snippet :metadata/transform])
 
 (mr/def ::metadata-spec
   "Spec for fetching objects from a metadata provider. `:lib/type` is the type of the object to fetch, and the other
@@ -163,12 +163,6 @@
   [:fn
    {:error/message "Valid MetadataProvider, or a map with a MetadataProvider in the key :lib/metadata (i.e. a query)"}
    #'metadata-providerable?])
-
-(mr/def ::metadata-type-excluding-database
-  "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
-  other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/segment :metadata/native-query-snippet
-   :metadata/transform])
 
 (mr/def ::metadata
   [:map
