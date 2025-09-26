@@ -177,7 +177,7 @@
   [query             :- ::lib.schema/query
    source-table-id   :- ::lib.schema.id/table
    joined-table-ids  :- [:set ::lib.schema.id/table]
-   constraints       :- ::constraints]
+   constraints       :- [:maybe ::constraints]]
   (reduce
    (fn [query {:keys [field-id] :as constraint}]
      ;; only add a where clause for the Field if it's part of the source Table or if we're actually joining against
@@ -395,7 +395,7 @@
    query
    joins))
 
-(def ^:private Options
+(mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
   [:map {:closed true}
    [:original-field-id {:optional true} [:maybe ::lib.schema.id/field]]
@@ -408,7 +408,8 @@
   "Generate the MBQL query powering `chain-filter`."
   [field-id                          :- ::lib.schema.id/field
    constraints                       :- [:maybe ::constraints]
-   {:keys [original-field-id limit]} :- [:maybe Options]]
+   {:keys [original-field-id limit]} :- [:maybe ::options]]
+  (log/tracef "Chain filter %s with constraints %s" (name-for-logging :model/Field field-id) (u/cprint-to-str constraints))
   (let [database-id      (field/field-id->database-id field-id)
         mp               (lib-be/application-database-metadata-provider database-id)
         source-table-id  (field/field-id->table-id field-id)
@@ -424,9 +425,7 @@
     (when original-field-id
       (log/tracef "Finding values of %s, remapped from %s."
                   (name-for-logging :model/Field field-id)
-                  (name-for-logging :model/Field original-field-id))
-      (log/tracef "MBQL clause for %s is %s"
-                  (name-for-logging :model/Field original-field-id) (pr-str original-field)))
+                  (name-for-logging :model/Field original-field-id)))
     (when (seq joins)
       (log/tracef "Generating joins and filters for source %s with joins info\n%s"
                   (name-for-logging :model/Table source-table-id) (u/cprint-to-str joins)))
@@ -445,14 +444,14 @@
                                 ;; original Table instead of a LEFT JOIN with this additional filter clause? Would
                                 ;; that still work?
                                 (lib/filter (lib/not-null original-field))
-                                ;; for Field->Field remapping we want to return pairs of [original-value
-                                ;; remapped-value], but sort by [remapped-value]
-                                (lib/order-by field)
                                 ;; original-field-id is used to power Field->Field breakouts.
                                 ;; We include both remapped and original
                                 (lib/breakout original-field)
-                                (lib/breakout field))
-                (not original-field) (-> (lib/breakout (lib.metadata/field mp field-id))))
+                                (lib/breakout field)
+                                ;; for Field->Field remapping we want to return pairs of [original-value
+                                ;; remapped-value], but sort by [remapped-value]
+                                (lib/order-by field))
+                (not original-field) (lib/breakout field))
         (add-filters source-table-id joined-table-ids constraints)
         schema.metadata-queries/add-required-filters-if-needed-mbql5)))
 
@@ -462,7 +461,7 @@
   "Chain filtering without all the fancy remapping stuff on top of it."
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   options     :- [:maybe Options]]
+   options     :- [:maybe ::options]]
   (let [mbql-query (chain-filter-mbql-query field-id constraints options)]
     (log/debugf "Chain filter MBQL query:\n%s" (u/cprint-to-str mbql-query))
     (try
@@ -691,7 +690,7 @@
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
    query       :- ms/NonBlankString
-   options     :- [:maybe Options]]
+   options     :- [:maybe ::options]]
   (check-valid-search-field field-id)
   (let [constraints (conj constraints {:field-id field-id
                                        :op       :contains
@@ -714,7 +713,7 @@
    v->human-readable :- ::parameters.schema/human-readable-remapping-map
    constraints       :- [:maybe ::constraints]
    query             :- ms/NonBlankString
-   options           :- [:maybe Options]]
+   options           :- [:maybe ::options]]
   (or (when-let [unremapped-values (not-empty (matching-unremapped-values query v->human-readable))]
         (let [constraints (conj constraints {:field-id field-id
                                              :op       :=
@@ -791,7 +790,7 @@
 
 ;;; ------------------ Filterable Field IDs (powers GET /api/dashboard/params/valid-filter-fields) -------------------
 
-(mu/defn filterable-field-ids :- [:set :metabase.lib.schema.id/field]
+(mu/defn filterable-field-ids :- [:maybe [:set :metabase.lib.schema.id/field]]
   "Return the subset of `filter-ids` we can actually use in a `chain-filter` query to fetch values of Field with
   `id`.
 

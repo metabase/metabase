@@ -272,8 +272,8 @@
                 {:name                 "Card as source"
                  :slug                 "card"
                  :id                   "_CARD_"
-                 :type                 "category"
-                 :values_source_type   "card"
+                 :type                 :category
+                 :values_source_type   :card
                  :values_source_config {:card_id     (:id card)
                                         :value_field (mt/$ids $venues.name)}}
                 nil
@@ -292,8 +292,8 @@
                     {:name                 "Card as source"
                      :slug                 "card"
                      :id                   "_CARD_"
-                     :type                 "category"
-                     :values_source_type   "card"
+                     :type                 :category
+                     :values_source_type   :card
                      :values_source_config {:card_id     (:id card)
                                             :value_field (mt/$ids $venues.name)}}
                     nil
@@ -312,8 +312,8 @@
                     {:name                 "Card as source"
                      :slug                 "card"
                      :id                   "_CARD_"
-                     :type                 "category"
-                     :values_source_type   "card"
+                     :type                 :category
+                     :values_source_type   :card
                      :values_source_config {:card_id     (:id card)
                                             :value_field [:field Integer/MAX_VALUE nil]}}
                     nil

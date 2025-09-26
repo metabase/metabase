@@ -1,4 +1,5 @@
 (ns metabase.models.interface-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]

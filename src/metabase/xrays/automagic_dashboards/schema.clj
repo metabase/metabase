@@ -2,7 +2,6 @@
   (:require
    [malli.core :as mc]
    [malli.util :as mut]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]))

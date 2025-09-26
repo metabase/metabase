@@ -41,7 +41,10 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib-be.core :as lib-be]))
 
 (def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
@@ -365,7 +368,7 @@
            (rf result row)))))))
 
 ;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
-(defn distinct-values
+(mu/defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values
   are past the threshold, this returns a subset of possible values values where the total length of all items is less
   than [[*total-max-length*]]. It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned
@@ -378,12 +381,18 @@
   (This function provides the values that normally get saved as a Field's FieldValues. You most likely should not be
   using this directly in code outside of this namespace, unless it's for a very specific reason, such as certain cases
   where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
-  [field]
+  [field :- [:or
+             (ms/InstanceOf :model/Field)
+             ::lib.schema.metadata/column]]
   (try
-    (let [result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
-                           (:table_id field)
-                           {:breakout [[:field (u/the-id field) nil]]
-                            :limit    *absolute-max-distinct-values-limit*}
+    (let [field           (cond-> field
+                            (t2/model field) (lib-be/instance->metadata :metadata/column))
+          result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                           (:table-id field)
+                           (fn [query]
+                             (-> query
+                                 (lib/breakout field)
+                                 (lib/limit *absolute-max-distinct-values-limit*)))
                            (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values

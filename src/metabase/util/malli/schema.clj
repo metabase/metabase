@@ -24,7 +24,7 @@
       [user :- (ms/InstanceOf User)]
       ...)"
   (memoize
-   (fn [model]
+   (mu/fn [model :- :keyword]
      (mu/with-api-error-message
       [:fn
        {:error/message (format "value must be an instance of %s" (name model))}
