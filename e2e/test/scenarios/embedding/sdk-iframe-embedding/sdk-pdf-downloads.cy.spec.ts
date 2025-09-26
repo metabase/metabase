@@ -5,6 +5,32 @@ import type { BaseEmbedTestPageOptions } from "e2e/support/helpers";
 H.describeWithSnowplowEE(
   "scenarios > embedding > sdk iframe embedding > pdf downloads",
   () => {
+    const setup = (options: Partial<BaseEmbedTestPageOptions>) => {
+      const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-dashboard",
+            attributes: {
+              dashboardId: ORDERS_DASHBOARD_ID,
+              withDownloads: true,
+            },
+          },
+        ],
+        ...options,
+      });
+
+      cy.wait("@getDashCardQuery");
+
+      // Check that the dashboard loaded fine
+      frame.within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+        H.assertTableRowsCount(2000);
+      });
+
+      return frame;
+    };
+
     beforeEach(() => {
       H.resetSnowplow();
       cy.deleteDownloadsFolder();
@@ -15,32 +41,6 @@ H.describeWithSnowplowEE(
     });
 
     describe("Dashboard PDF downloads", () => {
-      const setup = (options: Partial<BaseEmbedTestPageOptions>) => {
-        const frame = H.loadSdkIframeEmbedTestPage({
-          elements: [
-            {
-              component: "metabase-dashboard",
-              attributes: {
-                dashboardId: ORDERS_DASHBOARD_ID,
-                withDownloads: true,
-              },
-            },
-          ],
-          ...options,
-        });
-
-        cy.wait("@getDashCardQuery");
-
-        // Check that the dashboard loaded fine
-        frame.within(() => {
-          cy.findByText("Orders in a dashboard").should("be.visible");
-          cy.findByText("Orders").should("be.visible");
-          H.assertTableRowsCount(2000);
-        });
-
-        return frame;
-      };
-
       beforeEach(() => {
         H.prepareSdkIframeEmbedTest({ signOut: true });
       });
