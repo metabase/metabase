@@ -176,11 +176,11 @@
 
 (search.spec/define-spec "transform"
   {:model        :model/Transform
-   :attrs        {:archived             false
-                  :collection-id        false
-                  :created-at           true
-                  :updated-at           true
-                  :native-query         {:fn maybe-extract-transform-query-text
-                                         :req-fields [:source]}}
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true
+                  :native-query  {:fn maybe-extract-transform-query-text
+                                  :req-fields [:source]}}
    :search-terms [:name :description]
    :render-terms {:description true}})
