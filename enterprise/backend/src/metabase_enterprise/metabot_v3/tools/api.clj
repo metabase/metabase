@@ -1041,13 +1041,14 @@
 (mr/def ::search-arguments
   [:and
    [:map
-    [:term_queries     {:optional true} [:maybe [:sequential :string]]]
-    [:semantic_queries {:optional true} [:maybe [:sequential :string]]]
-    [:entity_types     {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database"]]]]
-    [:database_id      {:optional true} [:maybe :int]]
-    [:created_at       {:optional true} [:maybe ms/NonBlankString]]
-    [:last_edited_at   {:optional true} [:maybe ms/NonBlankString]]
-    [:limit            {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
+    [:term_queries        {:optional true} [:maybe [:sequential :string]]]
+    [:semantic_queries    {:optional true} [:maybe [:sequential :string]]]
+    [:entity_types        {:optional true} [:maybe [:sequential [:enum "table" "model" "question" "dashboard" "metric" "database" "transform"]]]]
+    [:database_id         {:optional true} [:maybe :int]]
+    [:created_at          {:optional true} [:maybe ms/NonBlankString]]
+    [:last_edited_at      {:optional true} [:maybe ms/NonBlankString]]
+    [:search_native_query {:optional true, :default false} [:maybe :boolean]]
+    [:limit               {:optional true, :default 50} [:and :int [:fn #(<= 1 % 100)]]]]
    [:map {:encode/tool-api-request
           #(update-keys % (comp keyword u/->kebab-case-en))}]])
 
