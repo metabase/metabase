@@ -2037,8 +2037,8 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
-           metabase-enterprise.transforms.interface
            metabase-enterprise.transforms.instrumentation
+           metabase-enterprise.transforms.interface
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
