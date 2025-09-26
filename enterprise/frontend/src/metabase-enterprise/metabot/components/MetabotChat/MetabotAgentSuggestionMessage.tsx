@@ -189,7 +189,7 @@ export const AgentSuggestionMessage = ({
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
 
-  const handleFocus = (config?: { skipToSave?: boolean }) => {
+  const handleFocus = () => {
     const transform = processTransform(suggestedTransform);
 
     const url = match(transform)
@@ -198,11 +198,7 @@ export const AgentSuggestionMessage = ({
         { source: { type: "python" } },
         () => "/admin/transforms/new/python",
       )
-      .with(
-        { source: { type: "query" } },
-        () =>
-          `/admin/transforms/new/native${config?.skipToSave ? "?autoSave=true" : ""}`,
-      )
+      .with({ source: { type: "query" } }, () => "/admin/transforms/new/native")
       .exhaustive();
     dispatch(push(url) as UnknownAction);
     dispatch(setSuggestedTransform(transform));
@@ -234,7 +230,7 @@ export const AgentSuggestionMessage = ({
 
     if (!isViewing && !suggestedTransform.id) {
       dispatch(setSuggestedTransform(processedTransform));
-      handleFocus({ skipToSave: true });
+      handleFocus();
     }
 
     await handleSave(processedTransform.source);

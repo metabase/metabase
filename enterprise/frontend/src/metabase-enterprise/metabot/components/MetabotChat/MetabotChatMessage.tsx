@@ -1,24 +1,17 @@
-import { useClipboard, useDisclosure } from "@mantine/hooks";
+import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
-import { match } from "ts-pattern";
-import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
-  Collapse,
   Flex,
   type FlexProps,
-  Group,
   Icon,
   type IconName,
-  Paper,
-  Stack,
   Text,
 } from "metabase/ui";
-import { RingProgress } from "metabase/ui";
 import type {
   MetabotAgentChatMessage,
   MetabotAgentTextChatMessage,
@@ -26,11 +19,12 @@ import type {
   MetabotErrorMessage,
   MetabotUserChatMessage,
 } from "metabase-enterprise/metabot/state";
-import type { MetabotFeedback, MetabotTodoItem } from "metabase-types/api";
+import type { MetabotFeedback } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
+import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
 
@@ -133,141 +127,6 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   submittedFeedback: "positive" | "negative" | undefined;
   onInternalLinkClick?: (link: string) => void;
 }
-
-type TodoStatusConfig = {
-  icon: IconName;
-  iconColor: string;
-  color: string;
-  td?: string;
-};
-
-const todoStatusConfig: Record<MetabotTodoItem["status"], TodoStatusConfig> = {
-  completed: { icon: "check", iconColor: "success", color: "text-secondary" },
-  in_progress: { icon: "play", iconColor: "brand", color: "text-primary" },
-  cancelled: {
-    icon: "close",
-    iconColor: "text-light",
-    td: "line-through",
-    color: "text-secondary",
-  },
-  // TODO: Fix circle
-  pending: {
-    icon: "circle" as IconName,
-    iconColor: "text-medium",
-    color: "text-primary",
-  },
-};
-
-const AgentTodoListMessage = ({ todos }: { todos: MetabotTodoItem[] }) => {
-  const [opened, { toggle }] = useDisclosure(true);
-
-  return (
-    <Paper
-      shadow="none"
-      radius="md"
-      // eslint-disable-next-line no-color-literals
-      bg="rgba(5, 114, 210, 0.07)"
-      // eslint-disable-next-line no-color-literals
-      style={{ border: `1px solid rgba(5, 114, 210, 0.69)` }}
-      py="md"
-      px="1.25rem"
-    >
-      <Group align="center" justify="space-between" onClick={toggle}>
-        {/* eslint-disable-next-line no-color-literals */}
-        <Text fw="bold" c="rgba(5, 114, 210, 0.69)">{t`Todos`}</Text>
-        <Flex align="center" justify="center" h="md" w="md">
-          <Icon
-            name={opened ? "chevrondown" : "chevronup"}
-            size=".75rem"
-            // eslint-disable-next-line no-color-literals
-            c="rgba(5, 114, 210, 0.69)"
-          />
-        </Flex>
-      </Group>
-
-      <Collapse in={opened} pt="md" pb="sm">
-        <Stack gap="md" w="100%">
-          {todos.map((todo) => {
-            const config = todoStatusConfig[todo.status];
-
-            return (
-              <Flex
-                key={todo.id}
-                style={{ borderRadius: "2px" }}
-                align="flex-start"
-              >
-                {match(todo.status)
-                  .with("pending", () => (
-                    <RingProgress
-                      size={28}
-                      ml="-2px"
-                      mr=".25rem"
-                      thickness={1.5}
-                      sections={[{ value: 0, color: "white" }]}
-                      // eslint-disable-next-line no-color-literals
-                      rootColor="rgba(5, 114, 210, 0.45)"
-                    />
-                  ))
-                  .with("completed", () => (
-                    <Flex
-                      h="1.5rem"
-                      w="1.5rem"
-                      // eslint-disable-next-line no-color-literals
-                      bg="rgba(5, 114, 210, 0.69)"
-                      style={{ borderRadius: "50%", flexShrink: 0 }}
-                      align="center"
-                      justify="center"
-                      mr=".4rem"
-                    >
-                      <Icon name="check" size="1rem" c="white" />
-                    </Flex>
-                  ))
-                  .with("in_progress", () => (
-                    <RingProgress
-                      size={30}
-                      ml="-3px"
-                      mr="xs"
-                      thickness={3}
-                      sections={[
-                        // eslint-disable-next-line no-color-literals
-                        { value: 70, color: "rgba(5, 114, 210, 0.82)" },
-                      ]}
-                      // eslint-disable-next-line no-color-literals
-                      rootColor="rgba(5, 114, 210, 0.45)"
-                    />
-                  ))
-                  .with("cancelled", () => (
-                    <Flex
-                      h="1.5rem"
-                      w="1.5rem"
-                      // eslint-disable-next-line no-color-literals
-                      bg="rgba(5, 114, 210, 0.69)"
-                      style={{ borderRadius: "50%", flexShrink: 0 }}
-                      align="center"
-                      justify="center"
-                      mr="sm"
-                    >
-                      <Icon name="close" size="1rem" c="white" />
-                    </Flex>
-                  ))
-                  .exhaustive()}
-                <Text
-                  lh={1.2}
-                  size="md"
-                  mt=".4rem"
-                  td={config.td}
-                  c={config.color}
-                >
-                  {todo.content}
-                </Text>
-              </Flex>
-            );
-          })}
-        </Stack>
-      </Collapse>
-    </Paper>
-  );
-};
 
 export const AgentMessage = ({
   message,
