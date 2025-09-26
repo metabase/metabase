@@ -1,5 +1,5 @@
 import type { Query } from "history";
-import { useKBar, useMatches } from "kbar";
+import { VisualState, useKBar, useMatches } from "kbar";
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router";
 import { useKeyPressEvent } from "react-use";
@@ -112,7 +112,7 @@ export const PaletteResults = ({
 
                   {item === t`Results` && searchResults?.data.length && (
                     <Text
-                      c="link"
+                      c="brand"
                       component={Link}
                       fw={700}
                       id="search-results-metadata"
@@ -124,6 +124,8 @@ export const PaletteResults = ({
                         },
                       }}
                       onClick={() => {
+                        query.setVisualState(VisualState.hidden);
+
                         trackSearchClick({
                           itemType: "view_more",
                           position: 0,
