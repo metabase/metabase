@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -18,7 +16,7 @@ interface PaletteResultItemProps {
 }
 
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
-  const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
+  const icon = item.icon ? getCommandPaletteIcon(item) : null;
 
   const subtext = item.extra?.subtext;
 
@@ -30,15 +28,14 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       align="start"
       justify="space-between"
       gap="0.5rem"
-      fw={700}
       style={{
         cursor: item.disabled ? "default" : "pointer",
         borderRadius: "0.5rem",
         flexGrow: 1,
         flexBasis: 0,
       }}
-      bg={active ? "var(--mb-color-brand)" : undefined}
-      c={active ? "var(--mb-color-text-white)" : "var(--mb-color-text-dark)"}
+      bg={active ? "var(--mb-color-brand-light)" : undefined}
+      c="var(--mb-color-text-dark)"
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
     >
@@ -55,6 +52,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       <Flex
         direction="column"
         style={{
+          gap: 4,
           flexGrow: 1,
           flexBasis: 0,
           overflowX: "hidden",
@@ -76,56 +74,45 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               status={item.extra.moderatedStatus}
               filled
               size={14}
-              color={
-                active ? "var(--mb-color-text-white)" : "var(--mb-color-brand)"
-              }
+              color="var(--mb-color-brand)"
               style={{
                 verticalAlign: "text-bottom",
               }}
               ml="0.5rem"
             />
           )}
-          {subtext && (
-            <Text
-              component="span"
-              ml="0.25rem"
-              c={
-                active
-                  ? "var(--mb-color-brand-light)"
-                  : "var(--mb-color-text-light)"
-              }
-              fz="0.75rem"
-              lh="1rem"
-              fw="normal"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              — {subtext}
-            </Text>
-          )}
         </Box>
-        <Text
-          component="span"
-          color={
-            active ? "var(--mb-color-text-white)" : "var(--mb-color-text-light)"
-          }
-          fw="normal"
-          style={{
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.subtitle}
-        </Text>
+
+        {item.subtitle && (
+          <Text
+            c="var(--mb-color-text-light)"
+            component="span"
+            lh="1rem"
+            style={{
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.subtitle}
+          </Text>
+        )}
       </Flex>
       {/** Active container */}
-      {active && (
-        <Flex aria-hidden gap="0.5rem" fw={400}>
-          {t`Open`} <Icon name="enter_or_return" />
-        </Flex>
+      {subtext && (
+        <Text
+          component="span"
+          ml="0.25rem"
+          c="var(--mb-color-text-light)"
+          fz="0.75rem"
+          lh="1rem"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          {subtext}
+        </Text>
       )}
     </Flex>
   );

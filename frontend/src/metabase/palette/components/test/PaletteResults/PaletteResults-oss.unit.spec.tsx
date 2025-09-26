@@ -30,7 +30,7 @@ describe("PaletteResults", () => {
 
   it("should show you recent items", async () => {
     setup();
-    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+    expect(await screen.findByText("Recents")).toBeInTheDocument();
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("lame collection");
@@ -65,7 +65,7 @@ describe("PaletteResults", () => {
       ],
     });
 
-    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+    expect(await screen.findByText("Recents")).toBeInTheDocument();
 
     expect(
       await screen.findAllByRole("option", { name: "My Awesome Data" }),

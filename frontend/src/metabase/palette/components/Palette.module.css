@@ -1,0 +1,22 @@
+.input {
+  --search-icon-size: 16px;
+
+  padding: var(--mantine-spacing-xl);
+  padding-left: calc(
+    var(--mantine-spacing-xl) + var(--search-icon-size) +
+      var(--mantine-spacing-sm)
+  );
+  padding-bottom: var(--mantine-spacing-sm);
+  font-size: 17px;
+  width: 100%;
+  border: none;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  color: var(--mb-color-text-dark);
+  line-height: 1rem;
+  outline: none;
+}
+
+.iconContainer {
+  pointer-events: none;
+}
