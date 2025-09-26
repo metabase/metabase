@@ -42,8 +42,6 @@ title: Driver interface changelog
 
 - Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
 
-- Added multi-method `metabase.driver/compile-rename-table` for drivers to generate SQL to rename tables.
-
 ## Metabase 0.56.3
 
 - Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.

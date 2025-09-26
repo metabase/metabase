@@ -869,11 +869,6 @@
   (let [table-str (get-table-str output-table)]
     [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
 
-#_(defmethod driver/compile-drop-table :bigquery-cloud-sdk
-    [_driver table]
-    (let [table-str (get-table-str table)]
-      [(str "DROP TABLE IF EXISTS " table-str)]))
-
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]

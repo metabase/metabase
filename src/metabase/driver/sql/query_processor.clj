@@ -2080,11 +2080,3 @@
   (format-honeysql driver
                    {:create-table-as [(keyword output-table)]
                     :raw query}))
-
-#_(defmethod driver/compile-drop-table :sql
-    [driver table]
-    (format-honeysql driver {:drop-table [:if-exists (keyword table)]}))
-
-#_(defmethod driver/compile-rename-table :sql
-    [driver old-name new-name]
-    (format-honeysql driver {:alter-table [(keyword old-name) {:rename-table (keyword new-name)}]}))
