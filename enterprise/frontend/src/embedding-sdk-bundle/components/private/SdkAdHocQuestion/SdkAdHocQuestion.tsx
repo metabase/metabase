@@ -31,6 +31,7 @@ export const SdkAdHocQuestion = ({
   withDownloads = false,
   initialSqlParameters,
   onNavigateBack,
+  onVisualizationChange,
 }: SdkAdHocQuestionProps &
   Pick<
     SdkQuestionProps,
@@ -50,6 +51,7 @@ export const SdkAdHocQuestion = ({
     | "withChartTypeSelector"
     | "withDownloads"
     | "initialSqlParameters"
+    | "onVisualizationChange"
   >) => {
   const { location, params } = useMemo(
     () => getQuestionParameters(questionPath),
@@ -87,6 +89,7 @@ export const SdkAdHocQuestion = ({
       title={title}
       withResetButton={withResetButton}
       withChartTypeSelector={withChartTypeSelector}
+      onVisualizationChange={onVisualizationChange}
     >
       {children}
     </SdkQuestion>
