@@ -1,5 +1,6 @@
 import * as I from "icepick";
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -134,37 +135,40 @@ export const translateFieldValuesInSeries = (
     }
     const untranslatedRows = singleSeries.data.rows.concat();
 
-    let translatedRows: RowValue[][];
+    const translatedRows: RowValue[][] = match(singleSeries.card?.display)
+      .with("pie", () => {
+        const pieRows =
+          singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
+        const keyToNameMap = Object.fromEntries(
+          pieRows.map((row) => [row.key, row.name]),
+        );
 
-    if (singleSeries.card?.display === "pie") {
-      const pieRows =
-        singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
-      const keyToNameMap = Object.fromEntries(
-        pieRows.map((row) => [row.key, row.name]),
-      );
-
-      // The pie chart relies on the rows to generate its legend,
-      // which is why we need to translate them too
-      // They're in the format of:
-      // [
-      //   ["Doohickey", 123],
-      //   ["Widget", 456],
-      //   ...
-      // ]
-      //
-      translatedRows = singleSeries.data.rows.map((row) =>
-        row.map((value) => {
-          if (typeof value === "string" && keyToNameMap[value] !== undefined) {
-            return tc(keyToNameMap[value]);
-          }
-          return tc(value);
-        }),
-      );
-    } else {
-      translatedRows = singleSeries.data.rows.map((row) =>
-        row.map((value) => tc(value)),
-      );
-    }
+        // The pie chart relies on the rows to generate its legend,
+        // which is why we need to translate them too
+        // They're in the format of:
+        // [
+        //   ["Doohickey", 123],
+        //   ["Widget", 456],
+        //   ...
+        // ]
+        //
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => {
+            if (
+              typeof value === "string" &&
+              keyToNameMap[value] !== undefined
+            ) {
+              return tc(keyToNameMap[value]);
+            }
+            return tc(value);
+          }),
+        );
+      })
+      .otherwise(() => {
+        return singleSeries.data.rows.map((row) =>
+          row.map((value) => tc(value)),
+        );
+      });
 
     return {
       ...singleSeries,
