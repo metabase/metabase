@@ -5,6 +5,10 @@ import {
   useEffect,
   useState,
 } from "react";
+import { noop } from "underscore";
+
+import { useSelector } from "metabase/lib/redux/hooks";
+import { getIsEmbedding } from "metabase/selectors/embed";
 
 export type ColorScheme = "light" | "dark" | "auto";
 
@@ -15,7 +19,14 @@ interface ColorSchemeContextType {
   toggleColorScheme: () => void;
 }
 
-const ColorSchemeContext = createContext<ColorSchemeContextType | null>(null);
+const defaultValue: ColorSchemeContextType = {
+  colorScheme: "light",
+  resolvedColorScheme: "light",
+  setColorScheme: noop,
+  toggleColorScheme: noop,
+};
+
+const ColorSchemeContext = createContext<ColorSchemeContextType>(defaultValue);
 
 interface ColorSchemeProviderProps {
   children: ReactNode;
@@ -39,6 +50,7 @@ export function ColorSchemeProvider({
   children,
   defaultColorScheme = "light",
 }: ColorSchemeProviderProps) {
+  const isEmbedding = useSelector(getIsEmbedding);
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
     // Try to get saved preference from localStorage
     if (typeof window !== "undefined") {
@@ -75,26 +87,26 @@ export function ColorSchemeProvider({
     }
   }, [colorScheme]);
 
-  const toggleColorScheme = () => {
-    setColorScheme((current) => {
-      switch (current) {
-        case "light":
-          return "dark";
-        case "dark":
-          return "auto";
-        case "auto":
-        default:
-          return "light";
-      }
-    });
-  };
-
-  const value: ColorSchemeContextType = {
-    colorScheme,
-    resolvedColorScheme,
-    setColorScheme,
-    toggleColorScheme,
-  };
+  const value: ColorSchemeContextType = isEmbedding
+    ? defaultValue
+    : {
+        colorScheme,
+        resolvedColorScheme,
+        setColorScheme,
+        toggleColorScheme: () => {
+          setColorScheme((current) => {
+            switch (current) {
+              case "light":
+                return "dark";
+              case "dark":
+                return "auto";
+              case "auto":
+              default:
+                return "light";
+            }
+          });
+        },
+      };
 
   return (
     <ColorSchemeContext.Provider value={value}>
