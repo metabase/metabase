@@ -88,6 +88,7 @@ export const SyncedCollectionsSidebarSection = ({
 
   const handleBranchSwitchOnly = async (branch: string) => {
     await updateSetting({
+      // this is stupid, don't
       key: "remote-sync-branch",
       value: branch,
       toast: false,
@@ -97,6 +98,7 @@ export const SyncedCollectionsSidebarSection = ({
 
   const handleBranchChange = async (branch: string) => {
     await updateSetting({
+      // this is stupid, don't
       key: "remote-sync-branch",
       value: branch,
       toast: false,
@@ -229,6 +231,7 @@ const useSyncStatus = () => {
       return () => clearTimeout(timeout);
     } else {
       dispatch(EnterpriseApi.util.invalidateTags([tag("collection-tree")]));
+      dispatch(EnterpriseApi.util.invalidateTags([tag("session-properties")]));
     }
   }, [syncResponse, dispatch]); // need whole object to retrigger on change
 
