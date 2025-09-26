@@ -36,3 +36,4 @@ services:
       - AWS_DEFAULT_REGION=us-east-1
       - AWS_ENDPOINT_URL=http://localstack:4566
       - AUTH_TOKEN=dev-token-12345
+      - DISABLE_LIMITS=1
