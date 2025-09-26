@@ -83,6 +83,20 @@ const baseColors = {
     5: "hsla(204, 66%, 8%, 0.02)",
   },
 
+  orionAlphaInverse: {
+    100: "hsla(0, 0%, 100%, 1.00)",
+    90: "hsla(0, 0%, 100%, 0.98)",
+    80: "hsla(0, 0%, 100%, 0.95)",
+    70: "hsla(0, 0%, 100%, 0.85)",
+    60: "hsla(0, 0%, 100%, 0.69)",
+    50: "hsla(0, 0%, 100%, 0.53)",
+    40: "hsla(0, 0%, 100%, 0.46)",
+    30: "hsla(0, 0%, 100%, 0.33)",
+    20: "hsla(0, 0%, 100%, 0.21)",
+    10: "hsla(0, 0%, 100%, 0.10)",
+    5: "hsla(0, 0%, 100%, .01)",
+  },
+
   // Lobster
   lobster: {
     100: "hsla(0, 81%, 11%, 1)",
@@ -386,7 +400,7 @@ export const colorConfig = {
     dark: baseColors.brand[40],
   },
   "text-dark": {
-    light: baseColors.orion[80],
+    /* @deprecated, use text-primary */ light: baseColors.orion[80],
     dark: "#C1C2C5",
   },
   "text-disabled": {
