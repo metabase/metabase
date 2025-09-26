@@ -8,7 +8,7 @@
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
@@ -23,6 +23,10 @@
    (java.util Date)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:const transform-temp-table-prefix
+  "Prefix used for temporary tables created during transform execution."
+  "mb_transform_temp_table")
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -250,17 +254,18 @@
 
 (defn temp-table-name
   "Generate a temporary table name with the given suffix and current timestamp in seconds.
-   If table name would exceed max table name length for the driver, fallback to using a shorter base-name."
-  [driver base-table-name suffix]
-  {:pre [(keyword? base-table-name)]}
-  (let [suffix (str "_" suffix "_" (quot (System/currentTimeMillis) 1000))
-        max-len (or (driver/table-name-length-limit driver) Integer/MAX_VALUE)
-        max-prefix-len (- max-len (count suffix))
-        table-name (name base-table-name)
-        prefix (subs table-name 0 (min (count table-name) max-prefix-len))]
-    (assert (pos? max-prefix-len))
-    (keyword (namespace base-table-name)
-             (str prefix suffix))))
+  If table name would exceed max table name length for the driver, fallback to using a shorter base-name"
+  [driver schema]
+  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
+        timestamp (str (System/currentTimeMillis))
+        prefix    (str transform-temp-table-prefix "_")
+        available (- max-len (count prefix))
+        ;; If we don't have enough space, take the later digits of the timestamp
+        suffix    (if (>= available (count timestamp))
+                    timestamp
+                    (subs timestamp (- (count timestamp) available)))
+        table-name (str prefix suffix)]
+    (keyword schema table-name)))
 
 (defn rename-tables!
   "Rename multiple tables atomically within a transaction using the new driver/rename-tables method.
@@ -268,6 +273,13 @@
   [driver database-id rename-map]
   (log/infof "Renaming tables: %s" (pr-str rename-map))
   (driver/rename-tables! driver database-id rename-map))
+
+(defenterprise is-temp-transform-table?
+  "Return true when `table` matches the transform temporary table naming pattern and transforms are enabled."
+  :feature :transforms
+  [table]
+  (when-let [table-name (:name table)]
+    (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
 (defn db-routing-enabled?
   "Returns whether or not the given database is either a router or destination database"
