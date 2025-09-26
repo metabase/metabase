@@ -140,14 +140,16 @@ function ProfileLink({
   const menuItems = generateOptionsForUser();
 
   return (
-    <div>
+    <>
       <Menu position="bottom-end" shadow="md" width={200}>
         <Menu.Target>
           <Tooltip label={t`Settings`}>
             <ActionIcon
-              size="lg"
-              variant="subtle"
-              c="text-dark"
+              size="2.25rem"
+              p="sm"
+              variant="outline"
+              color="text-dark"
+              bd="1px solid var(--mb-color-border)"
               aria-label={t`Settings`}
             >
               <Icon name="gear" size={16} />
@@ -247,7 +249,7 @@ function ProfileLink({
       {modalOpen === "diagnostic" && (
         <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
       )}
-    </div>
+    </>
   );
 }
 

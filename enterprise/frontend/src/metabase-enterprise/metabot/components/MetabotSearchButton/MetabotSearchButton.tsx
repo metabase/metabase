@@ -1,18 +1,13 @@
 import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
-import { c, t } from "ttag";
+import { c } from "ttag";
 
 import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
-import { METAKEY } from "metabase/lib/browser";
 import S from "metabase/nav/components/search/SearchButton/SearchButton.module.css";
-import { Button, Flex, Icon, Text, Tooltip, UnstyledButton } from "metabase/ui";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-
-import { trackMetabotChatOpened } from "../../analytics";
+import { Button, Flex, Icon } from "metabase/ui";
 
 export const MetabotSearchButton = () => {
   const kbar = useKBar();
-  const metabot = useMetabotAgent();
 
   const { setVisualState } = kbar.query;
 
@@ -22,9 +17,7 @@ export const MetabotSearchButton = () => {
 
   const isSmallScreen = useIsSmallScreen();
 
-  const label = c("'Search' here is a verb").t`Ask Metabot or search`;
-
-  const tooltipMessage = metabot.visible ? t`Close Metabot` : t`Open Metabot`;
+  const label = c("'Search' here is a verb").t`Search...`;
 
   if (isSmallScreen) {
     return (
@@ -50,32 +43,17 @@ export const MetabotSearchButton = () => {
         border: "1px solid var(--mb-color-border)",
       }}
     >
-      <UnstyledButton
-        className={S.iconButton}
-        aria-label={t`Metabot`}
-        onClick={() => {
-          if (!metabot.visible) {
-            trackMetabotChatOpened("search");
-          }
-
-          metabot.setVisible(!metabot.visible);
-        }}
-      >
-        <Tooltip
-          offset={{ mainAxis: 20 }}
-          label={`${tooltipMessage} (${METAKEY}+b)`}
-        >
-          <Icon name="metabot" h="1rem" />
-        </Tooltip>
-      </UnstyledButton>
-      <UnstyledButton
+      <Button
         className={S.searchTextButton}
+        h="2.25rem"
         aria-label={label}
         onClick={handleClick}
+        variant="subtle"
+        color="text-light"
+        leftSection={<Icon name="search" />}
       >
-        <Text>{label}</Text>
-        <Text className={S.shortcutText}>{`${METAKEY}+k`}</Text>
-      </UnstyledButton>
+        {label}
+      </Button>
     </Flex>
   );
 };

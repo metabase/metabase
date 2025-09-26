@@ -720,6 +720,7 @@ export const PLUGIN_METABOT = {
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
   MetabotToggleButton: PluginPlaceholder,
+  MetabotAppBarButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
