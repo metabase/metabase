@@ -337,7 +337,8 @@
                                            (update :dashboard_tab_id (or old->new-tab-id {}))
                                            (assoc :card_id (:id card)))]
                           dashcard)))
-      (collections/check-non-remote-synced-dependencies dashboard))))
+      (cond-> dashboard
+        (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
 
 (def ^:private ParamWithMapping
   [:map

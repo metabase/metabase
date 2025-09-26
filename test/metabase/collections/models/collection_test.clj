@@ -1807,6 +1807,9 @@
                                                         :query_type :native
                                                         :dataset_query (mt/native-query {:query "SELECT * FROM {{snippet}}"
                                                                                          :template-tags {"snippet" {:type "snippet"
+                                                                                                                    :name "snippet"
+                                                                                                                    :display-name "snippet"
+                                                                                                                    :snippet-name "snippet"
                                                                                                                     :snippet-id card-in-regular-id}}})}]
       ;; Test by creating an actual dependency relationship
       ;; Since serdes/descendants relies on actual relationships, we need real dependencies
@@ -1926,8 +1929,11 @@
                                                                :collection_id snippet-coll-id}
                    :model/Card {card-id :id} {:name "Card with Snippet"
                                               :query_type :native
-                                              :dataset_query (mt/native-query {:query "SELECT * FROM table"
-                                                                               :template-tags {"snippet" {:type "snippet"
+                                              :dataset_query (mt/native-query {:query "SELECT * FROM table where {{snippet}}"
+                                                                               :template-tags {"snippet" {:name "snippet"
+                                                                                                          :type "snippet"
+                                                                                                          :snippet-name "snippet"
+                                                                                                          :display-name "Snippet"
                                                                                                           :snippet-id snippet-id}}})}]
       (let [result (collection/non-remote-synced-dependencies (t2/instance :model/Card {:id card-id}))]
         (is (set? result)
