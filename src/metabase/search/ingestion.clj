@@ -54,8 +54,8 @@
   (let [search-terms (:search-terms (search.spec/spec (:model m)))
         getter       (if (map? search-terms)
                        (fn [[k tx]]
-                         (some-> (get m k)
-                                 (cond-> tx tx)))
+                         (let [tx (if (true? tx) identity tx)]
+                           (some-> (get m k) tx)))
                        m)
         xf           (comp (keep getter)
                            (map str/trim)

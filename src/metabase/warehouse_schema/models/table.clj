@@ -384,9 +384,9 @@
                   :view-count    true
                   :created-at    true
                   :updated-at    true}
-   :search-terms {:name         search.spec/camel-case
-                  :display_name nil
-                  :description  nil}
+   :search-terms {:name         search.spec/explode-camel-case
+                  :display_name true
+                  :description  true}
    :render-terms {:initial-sync-status true
                   :table-id            :id
                   :table-description   :description
