@@ -108,6 +108,7 @@ export const _SdkQuestion = ({
   title,
   withResetButton = true,
   withChartTypeSelector = true,
+  onVisualizationChange,
 }: SdkQuestionProps): JSX.Element | null => (
   <SdkQuestionProvider
     questionId={questionId}
@@ -127,6 +128,7 @@ export const _SdkQuestion = ({
     backToDashboard={backToDashboard}
     getClickActionMode={getClickActionMode}
     navigateToNewCard={navigateToNewCard}
+    onVisualizationChange={onVisualizationChange}
   >
     {children ?? (
       <SdkQuestionDefaultView
