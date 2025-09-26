@@ -154,6 +154,7 @@ export const getCartesianChartOption = (
     ...getSharedEChartsOptions(isAnimated),
     grid: {
       ...chartMeasurements.padding,
+      outerBoundsMode: "none",
     },
     dataset: echartsDataset,
     series: seriesOption,
