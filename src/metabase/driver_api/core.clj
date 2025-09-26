@@ -104,6 +104,7 @@
  lib.metadata/database
  lib.metadata/field
  lib.metadata/fields
+ lib.metadata/active-fields
  lib.metadata/table
  lib.metadata/tables
  lib.metadata/transforms

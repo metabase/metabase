@@ -157,16 +157,17 @@
                                    :display-name    (:name target)
                                    :visibility-type nil}))
         existing-cols  (when existing-table
-                         (lib.metadata/fields (inner-mp mp) (:id existing-table)))
+                         (lib/returned-columns (lib/query (inner-mp mp) existing-table)))
         output-cols    (delay
                          ;; Note that this will analyze the query with any upstream changes included!
                          (let [new-cols (get-returned-columns mp (:query source))
                                by-name  (m/index-by :lib/desired-column-alias existing-cols)]
                            (into [] (for [col new-cols
                                           :let [old-col (by-name (:lib/desired-column-alias col))]]
-                                      (merge (select-keys col [:name :display-name
+                                      (merge (select-keys col [:display-name
                                                                :base-type :effective-type :semantic-type])
-                                             {:lib/type :metadata/column
+                                             {:name     (:lib/desired-column-alias col)
+                                              :lib/type :metadata/column
                                               :id       (or (:id old-col) (fake-id))
                                               :table-id (:id output-table)})))))
         outputs-by-id   (delay (m/index-by :id @output-cols))]

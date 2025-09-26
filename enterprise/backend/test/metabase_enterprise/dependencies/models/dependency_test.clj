@@ -141,6 +141,34 @@
                                      deps.graph/transitive-dependents
                                      :card)))))))))))
 
+(deftest ^:sequential card-deps-graph-metric-test
+  (testing "deps graph is connected properly for a question using a metric"
+    (mt/dataset test-data
+      (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+        (mt/with-premium-features #{:dependencies}
+          (let [metric-card (card/create-card! {:name        "Test Metric"
+                                                :database_id (mt/id)
+                                                :table_id    (mt/id :orders)
+                                                :display     :scalar
+                                                :query_type  :query
+                                                :type        :metric
+                                                :dataset_query (mt/mbql-query orders {:aggregation [[:count]]})
+                                                :visualization_settings {}}
+                                               user)
+                question-card (card/create-card! {:name        "Question using Metric"
+                                                  :database_id (mt/id)
+                                                  :display     :table
+                                                  :query_type  :query
+                                                  :type        :question
+                                                  :dataset_query (mt/mbql-query orders
+                                                                   {:aggregation [[:metric (:id metric-card)]]})
+                                                  :visualization_settings {}}
+                                                 user)]
+            (testing "raw deps are recorded correctly for question using metric"
+              (is (=? #{(depends-on-> :card (:id question-card) :table (mt/id :orders))
+                        (depends-on-> :card (:id question-card) :card (:id metric-card))}
+                      (upstream-of :card (:id question-card)))))))))))
+
 (deftest dependency-analysis-version-test
   (testing "dependency_analysis_version is updated when entities are created or updated"
     (testing "cards"

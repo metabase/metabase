@@ -159,25 +159,139 @@
         (validates? mp driver 18 empty?))
 
       (testing "Card reference expanded to subquery - invalid column"
-        (validates? mp driver 19 false))
+        (validates? mp driver 19
+                    [{:column "DESCRIPTION",
+                      :alias nil,
+                      :type :single-column,
+                      :source-columns
+                      [[{:column "ID",
+                         :alias "ID",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "EAN",
+                         :alias "EAN",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "TITLE",
+                         :alias "TITLE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CATEGORY",
+                         :alias "CATEGORY",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "VENDOR",
+                         :alias "VENDOR",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "PRICE",
+                         :alias "PRICE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "RATING",
+                         :alias "RATING",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CREATED_AT",
+                         :alias "CREATED_AT",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
+                      :metabase.driver.sql/bad-reference true}]))
 
       (testing "Card reference with alias - valid column"
         (validates? mp driver 20 empty?))
 
       (testing "Card reference with alias - invalid column"
-        (validates? mp driver 21 false))
+        (validates? mp driver 21
+                    [{:column "PASSWORD",
+                      :alias nil,
+                      :type :single-column,
+                      :source-columns
+                      [[{:column "ID",
+                         :alias "ID",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "EAN",
+                         :alias "EAN",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "TITLE",
+                         :alias "TITLE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CATEGORY",
+                         :alias "CATEGORY",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "VENDOR",
+                         :alias "VENDOR",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "PRICE",
+                         :alias "PRICE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "RATING",
+                         :alias "RATING",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CREATED_AT",
+                         :alias "CREATED_AT",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
+                      :metabase.driver.sql/bad-reference true}]))
 
       (testing "Wildcard selection from card reference"
         (validates? mp driver 22 empty?))
 
       (testing "Invalid column from aliased card"
-        (validates? mp driver 23 false)))))
+        (validates? mp driver 23
+                    [{:column "LATITUDE",
+                      :alias nil,
+                      :type :single-column,
+                      :source-columns
+                      [[{:column "ID",
+                         :alias "ID",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "EAN",
+                         :alias "EAN",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "TITLE",
+                         :alias "TITLE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CATEGORY",
+                         :alias "CATEGORY",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "VENDOR",
+                         :alias "VENDOR",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "PRICE",
+                         :alias "PRICE",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "RATING",
+                         :alias "RATING",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
+                        {:column "CREATED_AT",
+                         :alias "CREATED_AT",
+                         :type :single-column,
+                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
+                      :metabase.driver.sql/bad-reference true}])))))
 
 (defn- check-result-metadata [driver mp query expected]
   (is (=? expected
           (->> query
                (fake-query mp)
                (deps.native-validation/native-result-metadata driver mp)))))
+
+(defn- add-desired-column-alias [fields]
+  (map #(assoc % :lib/desired-column-alias (:name %)) fields))
 
 (deftest result-metadata-test
   (testing "Calculates result metadata"
@@ -187,22 +301,33 @@
         (check-result-metadata
          driver mp
          "select * from orders"
-         (lib.metadata/fields mp (meta/id :orders))))
+         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
       (testing "Selecting a table wildcard"
         (check-result-metadata
          driver mp
          "select orders.* from orders"
-         (lib.metadata/fields mp (meta/id :orders))))
+         (add-desired-column-alias (lib.metadata/fields mp (meta/id :orders)))))
       (testing "Selecting a single col"
         (check-result-metadata
          driver mp
          "select total from orders"
-         [(lib.metadata/field mp (meta/id :orders :total))]))
+         (add-desired-column-alias [(lib.metadata/field mp (meta/id :orders :total))])))
       (testing "Selecting a nonexistent col"
         (check-result-metadata
          driver mp
          "select bad from orders"
          []))
+      (testing "Selecting a col with an alias"
+        (check-result-metadata
+         driver mp
+         "select subtotal as new_subtotal from orders"
+         [{:lib/type :metadata/column,
+           :base-type :type/Float,
+           :semantic-type nil,
+           :name "SUBTOTAL",
+           :lib/desired-column-alias "NEW_SUBTOTAL"
+           :database-type "DOUBLE PRECISION",
+           :display-name "Subtotal"}]))
       (testing "Selecting a custom col"
         (check-result-metadata
          driver mp
@@ -217,6 +342,7 @@
          driver mp
          "select total from orders union select subtotal from orders"
          [{:name "TOTAL",
+           :lib/desired-column-alias "TOTAL",
            :display-name "Total",
            :base-type :type/Float,
            :effective-type :type/Float,
@@ -226,6 +352,7 @@
          driver mp
          "select category from products union select title from products"
          [{:name "CATEGORY",
+           :lib/desired-column-alias "CATEGORY",
            :display-name "Category",
            :base-type :type/Text,
            :effective-type :type/Text,
