@@ -137,17 +137,21 @@ export const translateFieldValuesInSeries = (
     let translatedRows: RowValue[][];
 
     if (singleSeries.card?.display === "pie") {
-      const pieRows = singleSeries.card.visualization_settings?.["pie.rows"];
-      const keyToNameMap = pieRows
-        ? pieRows.reduce(
-            (acc, row) => {
-              acc[row.key] = row.name;
-              return acc;
-            },
-            {} as Record<string, string>,
-          )
-        : {};
+      const pieRows =
+        singleSeries.card.visualization_settings?.["pie.rows"] ?? [];
+      const keyToNameMap = Object.fromEntries(
+        pieRows.map((row) => [row.key, row.name]),
+      );
 
+      // The pie chart relies on the rows to generate its legend,
+      // which is why we need to translate them too
+      // They're in the format of:
+      // [
+      //   ["Doohickey", 123],
+      //   ["Widget", 456],
+      //   ...
+      // ]
+      //
       translatedRows = singleSeries.data.rows.map((row) =>
         row.map((value) => {
           if (typeof value === "string" && keyToNameMap[value] !== undefined) {
