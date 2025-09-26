@@ -16,34 +16,29 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- transform-deps [transform]
-  (if (transforms.util/python-transform? transform)
-    ;; Python transforms have dependencies via source-tables mapping
-    (into #{}
-          (map #(hash-map :table %))
-          (vals (get-in transform [:source :source-tables])))
-    ;; Query transforms have dependencies via SQL query analysis
-    (let [query (-> (get-in transform [:source :query])
-                    transforms.util/massage-sql-query
-                    qp.preprocess/preprocess
-                    ;; legacy usage -- don't do things like this going forward
-                    #_{:clj-kondo/ignore [:discouraged-var]}
-                    lib/->legacy-MBQL)]
-      (case (:type query)
-        :native (driver/native-query-deps (-> (qp.store/metadata-provider)
-                                              lib.metadata/database
-                                              :engine)
-                                          (get-in query [:native :query]))
-        :query (into #{}
-                     (keep #(clojure.core.match/match %
-                              [:source-table source] (when (int? source)
-                                                       {:table source})
-                              _ nil))
-                     (tree-seq coll? seq query))))))
+(defmethod transforms.i/dependencies :query
+  [transform]
+  (let [query (-> (get-in transform [:source :query])
+                  transforms.util/massage-sql-query
+                  qp.preprocess/preprocess
+                  ;; legacy usage -- don't do things like this going forward
+                  #_{:clj-kondo/ignore [:discouraged-var]}
+                  lib/->legacy-MBQL)]
+    (case (:type query)
+      :native (driver/native-query-deps (-> (qp.store/metadata-provider)
+                                            lib.metadata/database
+                                            :engine)
+                                        (get-in query [:native :query]))
+      :query (into #{}
+                   (keep #(clojure.core.match/match %
+                            [:source-table source] (when (int? source)
+                                                     {:table source})
+                            _ nil))
+                   (tree-seq coll? seq query)))))
 
 (defn- dependency-map [transforms]
   (into {}
-        (map (juxt :id transform-deps))
+        (map (juxt :id transforms.i/dependencies))
         transforms))
 
 (defn- output-table-map [transforms]
@@ -132,9 +127,9 @@
       (let [db-transforms (filter #(= (get-in % [:source :query :database]) db-id) transforms)
             output-tables (output-table-map db-transforms)
             transform-ids (into #{} (map :id) db-transforms)
-            node->children #(->> % transforms-by-id transform-deps (keep (fn [{:keys [table transform]}]
-                                                                           (or (output-tables table)
-                                                                               (transform-ids transform)))))
+            node->children #(->> % transforms-by-id transforms.i/dependencies (keep (fn [{:keys [table transform]}]
+                                                                                      (or (output-tables table)
+                                                                                          (transform-ids transform)))))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]
         (when cycle

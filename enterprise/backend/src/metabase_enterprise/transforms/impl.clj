@@ -5,9 +5,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.schema.common :as schema.common]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

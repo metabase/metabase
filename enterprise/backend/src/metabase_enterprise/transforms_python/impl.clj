@@ -14,3 +14,9 @@
 (defmethod transforms.i/execute! :python
   [transform options]
   (transforms-python.execute/execute! transform options))
+
+(defmethod transforms.i/dependencies :python
+  [transform]
+  (into #{}
+        (map #(hash-map :table %))
+        (vals (get-in transform [:source :source-tables]))))

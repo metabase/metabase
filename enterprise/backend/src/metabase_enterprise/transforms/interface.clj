@@ -19,3 +19,13 @@
   {:added "0.47.0" :arglists '([transform options])}
   (fn [transform _options]
     (transform->transform-type transform)))
+
+(defmulti cancel!
+  "Execute a transform with an option."
+  {:added "0.47.0" :arglists '([transform options])}
+  (fn [transform _options]
+    (transform->transform-type transform)))
+
+(defmulti dependencies
+  "Return a set of dependencies required to run this transforms."
+  transform->transform-type)
