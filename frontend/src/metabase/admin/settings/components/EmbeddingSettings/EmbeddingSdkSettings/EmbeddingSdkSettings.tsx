@@ -125,8 +125,6 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
-      <UpsellDevInstances location="embedding-page" />
-
       <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
         <Group>
           <Text fz="h3" fw={600} c="text-dark">
@@ -280,6 +278,8 @@ export function EmbeddingSdkSettings() {
           </Text>
         </Flex>
       </Alert>
+
+      <UpsellDevInstances location="embedding-page" />
     </SettingsPageWrapper>
   );
 }
