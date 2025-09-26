@@ -50,13 +50,14 @@ const getCellBackgroundColor = ({
   isTransparent,
 }: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
   const backgroundColor = theme.other.table.cell.backgroundColor;
+  const isDarkMode = theme.other.colorScheme === "dark";
 
   if (isTransparent) {
     return "transparent";
   }
 
   if (isEmphasized) {
-    if (isNightMode) {
+    if (isNightMode || isDarkMode) {
       return color("bg-black");
     }
 
@@ -67,7 +68,7 @@ const getCellBackgroundColor = ({
     return alpha("border", 0.25);
   }
 
-  if (isNightMode) {
+  if (isNightMode || isDarkMode) {
     return alpha("bg-black", 0.1);
   }
 
@@ -92,7 +93,7 @@ const getColor = ({
   theme,
   isNightMode,
 }: PivotTableCellProps & { theme: MantineTheme }) => {
-  if (isNightMode) {
+  if (isNightMode || theme.other.colorScheme === "dark") {
     return color("text-white");
   }
 
