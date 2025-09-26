@@ -967,6 +967,7 @@
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
            metabase.query-processor.middleware.wrap-value-literals
+           metabase.query-processor.parameters.dates
            metabase.query-processor.parameters.operators
            metabase.query-processor.pipeline
            metabase.query-processor.pivot
