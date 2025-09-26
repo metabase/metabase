@@ -166,6 +166,15 @@ This is where left panel tools (mostly lists) will go. All listing components sh
 ## Left Panel Background
 Left panel listing sidebars should use a secondary background color to distinguish them from the main content area.
 
+### Creating new entities of that type
+
+In the header above the listed items should be the name of the type of entity, as well as some action icon buttons
+- All {entity type} subtle button with a chevron down on the right that triggers a menu that says "filters coming soon"
+- <Spacer >
+- Sort - opens a dropdown that lets me sort the list by alphabetical, most recent, least recent and other eventual sorts
+- Plus - creates new entity - links to /new on that tool route.
+
+
 # Main view
 For most modes this will be either a notebook instance or a sql editor.
 
