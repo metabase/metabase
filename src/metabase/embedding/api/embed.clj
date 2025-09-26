@@ -317,42 +317,48 @@
                                                          :qp qp.pivot/run-pivot-query)
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
-(api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/card/:token/:zoom/:x/:y"
   "Generates a single tile image for an embedded Card using the map visualization."
-  [{:keys [token zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:token string?]]]
-   {:keys [parameters]}
+  [{:keys [token zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:token string?]
+       [:zoom ms/Int]
+       [:x ms/Int]
+       [:y ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (let [unsigned   (unsign-and-translate-ids token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned)
-        parameters (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
+        parameters (when parameters (json/decode+kw parameters))
+        lat-field  (json/decode+kw latField)
+        lon-field  (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
-(api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+(api.macros/defendpoint :get "/tiles/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card on an embedded Dashboard using the map visualization."
-  [{:keys [token dashcard-id card-id zoom x y lat-field lon-field]}
-   :- [:merge
-       :api.tiles/route-params
-       [:map
-        [:token       string?]
-        [:dashcard-id ms/PositiveInt]
-        [:card-id     ms/PositiveInt]]]
-   {:keys [parameters]}
+  [{:keys [token dashcard-id card-id zoom x y]}
    :- [:map
-       [:parameters {:optional true} ms/JSONString]]]
+       [:token       string?]
+       [:dashcard-id ms/PositiveInt]
+       [:card-id     ms/PositiveInt]
+       [:zoom        ms/Int]
+       [:x           ms/Int]
+       [:y           ms/Int]]
+   {:keys [parameters latField lonField]}
+   :- [:map
+       [:parameters {:optional true} ms/JSONString]
+       [:latField string?]
+       [:lonField string?]]]
   (let [unsigned     (unsign-and-translate-ids token)
-        dashboard-id    (api.embed.common/unsigned-token->dashboard-id unsigned)
-        parameters   (json/decode+kw parameters)
-        lat-field    (json/decode+kw lat-field)
-        lon-field    (json/decode+kw lon-field)]
+        dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
+        parameters   (when parameters (json/decode+kw parameters))
+        lat-field    (json/decode+kw latField)
+        lon-field    (json/decode+kw lonField)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))

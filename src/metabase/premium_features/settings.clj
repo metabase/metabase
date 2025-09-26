@@ -295,6 +295,10 @@
   "Should we allow users to use transforms?"
   :transforms)
 
+(define-premium-feature ^{:added "0.57.0"} enable-python-transforms?
+  "Should we allow users to use Python transforms?"
+  :transforms-python)
+
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
   :dependencies)
@@ -345,6 +349,7 @@
    :sso_saml                       (enable-sso-saml?)
    :table_data_editing             (table-data-editing?)
    :transforms                     (enable-transforms?)
+   :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)})
 

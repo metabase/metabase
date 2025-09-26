@@ -883,7 +883,10 @@
     :enabled   (premium-features/table-data-editing?)}
    {:name      :transforms
     :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}])
+    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-python
+    :available (premium-features/enable-python-transforms?)
+    :enabled   (premium-features/enable-python-transforms?)}])
 
 (defn- snowplow-features
   []

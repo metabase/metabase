@@ -7,6 +7,7 @@ import {
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 
 import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
@@ -18,6 +19,7 @@ type TransformPageLayoutPropsParams = {
 
 type TransformPageLayoutProps = {
   params: TransformPageLayoutPropsParams;
+  fullWidth?: boolean;
   children?: ReactNode;
 };
 
@@ -47,16 +49,22 @@ export function DetailsPageLayout({
 function TransformPageLayout({
   params,
   maw,
+  fullWidth,
   children,
 }: TransformPageLayoutOwnProps) {
   return (
     <AdminSettingsLayout
       sidebar={<TransformPageSidebar params={params} />}
       maw={maw}
+      fullWidth={fullWidth}
     >
       {children}
     </AdminSettingsLayout>
   );
+}
+
+export function FullWidthTransformPageLayout(props: TransformPageLayoutProps) {
+  return <TransformPageLayout {...props} fullWidth />;
 }
 
 type TransformPageSidebarProps = {
@@ -91,6 +99,7 @@ function TransformPageSidebar({ params }: TransformPageSidebarProps) {
         icon="list"
         active={pathname === runListUrl}
       />
+      {PLUGIN_TRANSFORMS_PYTHON.getTransformsNavLinks()}
     </AdminNavWrapper>
   );
 }

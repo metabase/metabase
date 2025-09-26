@@ -1,5 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -17,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]
    [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`

@@ -15,7 +15,7 @@ import type {
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { DashboardId } from "metabase-types/api";
+import type { CardDisplayType, DashboardId } from "metabase-types/api";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type SdkQuestionConfig = {
@@ -86,6 +86,13 @@ type SdkQuestionConfig = {
     model: "dashboard";
     name: string;
   };
+
+  /**
+   * A callback function that triggers when the visualization type changes.
+   *
+   * @param display the new display type
+   */
+  onVisualizationChange?: (display: CardDisplayType) => void;
 };
 
 export type QuestionMockLocationParameters = {
@@ -121,6 +128,7 @@ export type SdkQuestionContextType = Omit<
     | "targetCollection"
     | "withDownloads"
     | "backToDashboard"
+    | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
     mode: QueryClickActionsMode | Mode | null | undefined;

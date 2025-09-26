@@ -47,6 +47,7 @@
                               :sso-ldap
                               :sso-saml
                               :transforms
+                              :transforms-python
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -91,6 +92,7 @@
             :sso_saml                       true
             :table_data_editing             false
             :transforms                     true
+            :transforms-python              true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

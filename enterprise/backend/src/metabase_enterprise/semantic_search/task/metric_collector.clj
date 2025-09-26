@@ -4,12 +4,10 @@
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
    [honey.sql :as sql]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.dlq :as semantic.dlq]
    [metabase-enterprise.semantic-search.env :as semantic.env]
-   [metabase-enterprise.semantic-search.util :as semantic.util]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.analytics.core :as analytics]
-   [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [next.jdbc :as jdbc]
@@ -37,7 +35,7 @@
   (let [{:keys [gate-table-name]} (semantic.env/get-index-metadata)]
     (assert (string? gate-table-name))
     (log/debugf "Checking size of gate table %s" gate-table-name)
-    (if (semantic.util/table-exists? pgvector gate-table-name)
+    (if (semantic.u/table-exists? pgvector gate-table-name)
       (let [table-size (row-count pgvector gate-table-name)]
         (log/debugf "Setting `semantic-gate-size` metric to %d" table-size)
         (analytics/set! :metabase-search/semantic-gate-size table-size)
@@ -46,7 +44,7 @@
 
 (defn- active-index-id
   [pgvector index-metadata]
-  (if (semantic.util/table-exists? pgvector (:control-table-name index-metadata))
+  (if (semantic.u/table-exists? pgvector (:control-table-name index-metadata))
     (:id (jdbc/execute-one!
           pgvector
           (sql/format {:select [[:active_id :id]]
@@ -59,7 +57,7 @@
   (if-some [active-index-id (active-index-id pgvector index-metadata)]
     (let [dlq-table-name (name (semantic.dlq/dlq-table-name-kw index-metadata active-index-id))]
       (log/debugf "Checking size of DLQ table %s" dlq-table-name)
-      (when (semantic.util/table-exists? pgvector dlq-table-name)
+      (when (semantic.u/table-exists? pgvector dlq-table-name)
         (let [table-size (row-count pgvector dlq-table-name)]
           (log/debugf "Setting `semantic-dlq-size` metric to %d" table-size)
           (analytics/set! :metabase-search/semantic-dlq-size table-size)
@@ -67,10 +65,11 @@
     (log/warn "DLQ table does not exist. Index may not have been initialized.")))
 
 (defn- collect-metrics! []
-  (let [pgvector (semantic.env/get-pgvector-datasource!)
-        index-metadata (semantic.env/get-index-metadata)]
-    (collect-gate-size! pgvector)
-    (collect-dlq-size! pgvector index-metadata)))
+  (when (semantic.u/semantic-search-available?)
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          index-metadata (semantic.env/get-index-metadata)]
+      (collect-gate-size! pgvector)
+      (collect-dlq-size! pgvector index-metadata))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Collect expensive semantic search metrics"}
@@ -81,8 +80,7 @@
 
 (defmethod task/init! ::SemanticMetricCollector
   [_]
-  (when (and (string? (not-empty semantic.db.datasource/db-url))
-             (premium-features/has-feature? :semantic-search))
+  (when (semantic.u/semantic-search-available?)
     (let [job (jobs/build
                (jobs/of-type SemanticMetricCollector)
                (jobs/with-identity collector-job-key))
@@ -95,6 +93,3 @@
                      (simple/repeat-forever)))
                    (triggers/start-now))]
       (task/schedule-task! job trigger))))
-
-(comment
-  (task/trigger-now! collector-job-key))

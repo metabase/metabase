@@ -173,6 +173,7 @@
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
+     metabase-enterprise.transforms-python.python-runner-test/execute!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
@@ -418,6 +419,7 @@
   metabase-enterprise.transforms.api-test/with-transform-tags                           clojure.core/let
   metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
   metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
+  metabase-enterprise.transforms.execute/with-transform-lifecycle                       clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -519,6 +521,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
+   metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
@@ -832,7 +835,16 @@
   performance-sensitive
   {:linters
    {:discouraged-var
-    {clojure.core/update-keys {:message "Use metabase.util.performance/update-keys"}}}}
+    {clojure.core/every?          {:message "Use metabase.util.performance/every?"}
+     clojure.core/mapv            {:message "Use metabase.util.performance/mapv"}
+     clojure.core/run!            {:message "Use metabase.util.performance/run!"}
+     clojure.core/select-keys     {:message "Use metabase.util.performance/select-keys"}
+     clojure.core/some            {:message "Use metabase.util.performance/some"}
+     clojure.core/update-keys     {:message "Use metabase.util.performance/update-keys"}
+     clojure.walk/keywordize-keys {:message "Use metabase.util.performance/keywordize-keys"}
+     clojure.walk/postwalk        {:message "Use metabase.util.performance/postwalk"}
+     clojure.walk/prewalk         {:message "Use metabase.util.performance/prewalk"}
+     clojure.walk/walk            {:message "Use metabase.util.performance/walk"}}}}
 
   qp-and-driver-source-namespaces
   {:linters

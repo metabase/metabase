@@ -1,8 +1,14 @@
 const { H } = cy;
 
+import dedent from "ts-dedent";
+
 import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { CardType, TransformTagId } from "metabase-types/api";
+import type {
+  CardType,
+  PythonTransformTableAliases,
+  TransformTagId,
+} from "metabase-types/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -123,7 +129,7 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
     it("should be able to use the data reference and snippets when writing a SQL transform", () => {
       H.createSnippet({
         name: "snippet1",
-        content: "1",
+        content: "'foo'",
       });
 
       visitTransformListPage();
@@ -171,11 +177,134 @@ H.describeWithSnowplowEE("scenarios > admin > transforms", () => {
           .click();
 
         editorSidebar().should("not.exist");
+
+        cy.findByTestId("native-query-editor-action-buttons")
+          .findByLabelText("Preview the query")
+          .click();
+
+        H.modal().findByText("'foo'").should("be.visible");
       }
 
       testDataReference();
       testSnippets();
     });
+
+    it(
+      "should be possible to create and run a Python transform",
+      { tags: ["@transforms-python"] },
+      () => {
+        setPythonRunnerSettings();
+        cy.log("create a new transform");
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("Python script").click();
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_create",
+          event_detail: "python",
+          triggered_from: "transform-page-create-menu",
+        });
+
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a database")
+          .click();
+
+        cy.log("Unsupported databases should be disabled");
+        H.popover()
+          .findByRole("option", { name: "Sample Database" })
+          .should("have.attr", "aria-disabled", "true");
+
+        cy.log("Select database");
+        H.popover().findByText(DB_NAME).click();
+
+        getPythonDataPicker().button("Select a table…").click();
+        H.entityPickerModal().findByText("Animals").click();
+
+        getPythonDataPicker().within(() => {
+          cy.findByText("Writable Postgres12 / Schema A").should("be.visible");
+          cy.findByText("Animals").should("be.visible");
+          cy.findByPlaceholderText("Enter alias").should(
+            "have.value",
+            "animals",
+          );
+          cy.findByPlaceholderText("Enter alias")
+            .clear()
+            .type("foo bar")
+            .blur();
+          cy.findByPlaceholderText("Enter alias").should(
+            "have.value",
+            "foo_bar",
+          );
+        });
+
+        H.PythonEditor.value()
+          .should("contain", "def transform(foo_bar):")
+          .should(
+            "contain",
+            'foo_bar: DataFrame containing the data from the "Writable Postgres12.Schema A.Animals" table',
+          );
+
+        getPythonDataPicker().within(() => {
+          cy.findByText("Add a table").click();
+          cy.button("Select a table…").click();
+        });
+
+        H.entityPickerModal().within(() => {
+          cy.log("Selecting the same table should not be possible");
+          cy.findByText("Animals")
+            .parent()
+            .parent()
+            .parent()
+            .should("have.attr", "data-disabled", "true");
+
+          cy.findByText("Schema B").click();
+          cy.findByText("Animals").click();
+        });
+
+        getPythonDataPicker().within(() => {
+          cy.icon("refresh").click();
+          cy.findAllByPlaceholderText("Enter alias")
+            .first()
+            .should("have.value", "animals_1")
+            .clear()
+            .type("foo bar")
+            .blur()
+            .should("have.value", "foo_bar");
+          cy.findAllByPlaceholderText("Enter alias")
+            .eq(1)
+            .should("have.value", "animals")
+            .clear()
+            .type("foo bar")
+            .blur()
+            .should("have.value", "foo_bar_1");
+        });
+
+        getQueryEditor().button("Save").click();
+
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Python transform");
+          cy.findByLabelText("Table name").clear().type("python_transform");
+          cy.button("Save").click();
+        });
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_created",
+        });
+
+        cy.log("run the transform and make sure its table can be queried");
+        runTransformAndWaitForSuccess();
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_trigger_manual_run",
+          triggered_from: "transform-page",
+        });
+
+        getRunSection().should("contain", "Executing Python transform");
+
+        getTableLink().click();
+        H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+        H.assertQueryBuilderRowCount(1);
+      },
+    );
 
     it("should be able to create and run a transform from a question or a model", () => {
       function testCardSource({
@@ -507,6 +636,114 @@ LIMIT
     });
   });
 
+  describe("filtering", () => {
+    it("should be able to filter transforms", () => {
+      createMbqlTransform({ visitTransform: true });
+      runJobAndWaitForSuccess();
+
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        targetTable: TARGET_TABLE_2,
+        visitTransform: true,
+      });
+      getTagsInput().click();
+      H.popover().findByText("hourly").click();
+      H.undoToast().findByText("Transform tags updated").should("be.visible");
+
+      visitTransformListPage();
+
+      function testLastRunDateFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+
+        cy.log("last run at - add a filter");
+        getLastRunDateFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("Relative date range…").click();
+          cy.findByText("Current").click();
+          cy.findByText("Week").click();
+        });
+
+        getLastRunDateFilterWidget().should("contain", "This week");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("not.exist");
+        });
+
+        cy.log("last run at filter - remove filter");
+        getLastRunDateFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+      }
+
+      function testLastRunStatusFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+
+        cy.log("last run status - add a filter");
+        getLastRunStatusFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("Success").click();
+          cy.findByText("Add filter").click();
+        });
+
+        getLastRunStatusFilterWidget().should("contain", "Success");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("not.exist");
+        });
+
+        cy.log("last run status filter - remove filter");
+        getLastRunStatusFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+      }
+
+      function testTagFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+
+        cy.log("tags - add a filter");
+        getTagFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("hourly").click();
+          cy.findByText("daily").click();
+          cy.button("Add filter").click();
+        });
+
+        getTagFilterWidget().should("contain", "2 tags");
+        getContentTable().within(() => {
+          cy.findByText("SQL transform").should("be.visible");
+          cy.findByText("MBQL transform").should("not.exist");
+        });
+
+        cy.log("last run status filter - remove filter");
+        getTagFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("MBQL transform").should("be.visible");
+          cy.findByText("SQL transform").should("be.visible");
+        });
+      }
+
+      testLastRunDateFilter();
+      testLastRunStatusFilter();
+      testTagFilter();
+    });
+  });
+
   describe("name and description", () => {
     it("should be able to edit the name and description after creation", () => {
       createMbqlTransform({ visitTransform: true });
@@ -562,7 +799,6 @@ LIMIT
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
-      H.popover().findByText("New tag").should("be.visible");
       H.undoToast().should("contain.text", "Transform tags updated");
     });
 
@@ -618,7 +854,6 @@ LIMIT
       getTagsInput().type("New tag");
       H.popover().findByText("New tag").click();
       cy.wait("@createTag");
-      H.popover().findByText("New tag").should("be.visible");
 
       cy.log("Navigate to transform B");
       getNavSidebar().findByText("Transforms").click();
@@ -988,6 +1223,7 @@ LIMIT
                 },
                 target: {
                   type: "table",
+                  database: WRITABLE_DB_ID,
                   name: TARGET_TABLE,
                   schema: TARGET_SCHEMA,
                 },
@@ -1101,6 +1337,7 @@ LIMIT
             },
             target: {
               type: "table",
+              database: WRITABLE_DB_ID,
               name: TARGET_TABLE,
               schema: TARGET_SCHEMA,
             },
@@ -1152,6 +1389,38 @@ LIMIT
       cy.log("update the query");
       getTransformPage().findByRole("link", { name: "Edit query" }).click();
       H.NativeEditor.type(" WHERE name = 'Duck'");
+      getQueryEditor().button("Save changes").click();
+      cy.wait("@updateTransform");
+
+      cy.log("run the transform and make sure the query has changed");
+      runTransformAndWaitForSuccess();
+      getTableLink().click();
+      H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
+      H.assertQueryBuilderRowCount(1);
+    });
+
+    it("should be able to update a Python query", () => {
+      setPythonRunnerSettings();
+      cy.log("create a new transform");
+      H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then(
+        (id) => {
+          createPythonTransform({
+            body: dedent`
+          import pandas as pd
+
+          def transform(foo):
+            return pd.DataFrame([{"foo": 42 }])
+        `,
+            sourceTables: { foo: id },
+            visitTransform: true,
+          });
+        },
+      );
+
+      cy.log("update the query");
+      getTransformPage().findByRole("link", { name: "Edit script" }).click();
+      H.PythonEditor.type("{backspace}{backspace}{backspace} + 10 }])");
+
       getQueryEditor().button("Save changes").click();
       cy.wait("@updateTransform");
 
@@ -1277,6 +1546,7 @@ LIMIT
           },
           target: {
             type: "table",
+            database: WRITABLE_DB_ID,
             name: TARGET_TABLE,
             schema: TARGET_SCHEMA,
           },
@@ -1343,7 +1613,7 @@ LIMIT
         "contain",
         "Last ran a few seconds ago successfully.",
       );
-      getRunStatus().should(
+      getRunSection().should(
         "contain",
         "This run succeeded before it had a chance to cancel.",
       );
@@ -1386,6 +1656,136 @@ LIMIT
       createMbqlTransform({ name: "Transform A", visitTransform: true });
       H.main().findByText("Dependencies").should("not.exist");
     });
+  });
+
+  describe("python > common library", () => {
+    it(
+      "should be possible to edit and save the common library",
+      { tags: ["@transforms-python"] },
+      () => {
+        visitCommonLibrary();
+
+        cy.log("updating the library should be possible");
+        H.PythonEditor.clear().type(
+          dedent`
+          def useful_calculation(a, b):
+          return a + b
+        `,
+        );
+        getLibraryEditorHeader().findByText("Save").click();
+
+        cy.log("the contents should be saved properly");
+        visitCommonLibrary();
+        H.PythonEditor.value().should(
+          "eq",
+          dedent`
+          def useful_calculation(a, b):
+              return a + b
+          `,
+        );
+
+        cy.log("reverting the changes should be possible");
+        H.PythonEditor.clear().type("# oops");
+        getLibraryEditorHeader().findByText("Revert").click();
+        H.PythonEditor.value().should(
+          "eq",
+          dedent`
+          def useful_calculation(a, b):
+              return a + b
+          `,
+        );
+      },
+    );
+
+    it(
+      "should be possible to use the common library",
+      { tags: ["@transforms-python"] },
+      () => {
+        setPythonRunnerSettings();
+        createPythonLibrary(
+          "common.py",
+          dedent`
+            def useful_calculation(a, b):
+              return a + b
+          `,
+        );
+
+        visitTransformListPage();
+        getTransformListPage().button("Create a transform").click();
+        H.popover().findByText("Python script").click();
+
+        H.PythonEditor.clear().type(
+          dedent`
+          import pandas as pd
+
+          def transform():
+          return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
+        `,
+        );
+
+        getQueryEditor().findByText("Import common library").click();
+        H.PythonEditor.value().should("contain", "import common");
+
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a database")
+          .click();
+
+        H.popover().findByText(DB_NAME).click();
+
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a table…")
+          .click();
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Schema a").click();
+          cy.findByText("Animals").click();
+        });
+
+        getQueryEditor().button("Save").click();
+
+        H.modal().within(() => {
+          cy.findByLabelText("Name").clear().type("Python transform");
+          cy.findByLabelText("Table name").clear().type("python_transform");
+          cy.button("Save").click();
+        });
+
+        runTransformAndWaitForSuccess();
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Python Transform")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(1);
+        cy.findByTestId("scalar-value").should("have.text", "3");
+        H.expectUnstructuredSnowplowEvent({
+          event: "transform_created",
+        });
+
+        cy.log("update the common library and run the transform again");
+        cy.go("back");
+        createPythonLibrary(
+          "common.py",
+          dedent`
+            def useful_calculation(a, b):
+              return a + b + 40
+          `,
+        );
+        runTransformAndWaitForSuccess();
+        getTableLink().click();
+        H.queryBuilderHeader()
+          .findByText("Python Transform")
+          .should("be.visible");
+        H.assertQueryBuilderRowCount(1);
+        cy.findByTestId("scalar-value").should("have.text", "43");
+      },
+    );
+
+    function visitCommonLibrary(path = "common.py") {
+      cy.visit(`/admin/transforms/library/${path}`);
+    }
+
+    function getLibraryEditorHeader() {
+      return cy.findByTestId("library-editor-header");
+    }
   });
 });
 
@@ -1624,12 +2024,34 @@ describe("scenarios > admin > transforms > jobs", () => {
         event: "transform_job_trigger_manual_run",
         triggered_from: "job-page",
       });
+
+      getJobPage()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
+
       getNavSidebar().findByText("Runs").click();
       getContentTable().within(() => {
         cy.findByText("MBQL transform").should("be.visible");
         cy.findByText("Success").should("be.visible");
         cy.findByText("Manual").should("be.visible");
       });
+    });
+
+    it("should display the error message from a failed run", () => {
+      H.createTransformTag({ name: "New tag" }).then(({ body: tag }) => {
+        createSqlTransform({
+          sourceQuery: "SELECT * FROM abc",
+          tagIds: [tag.id],
+        });
+        H.createTransformJob(
+          { name: "New job", tag_ids: [tag.id] },
+          { visitTransformJob: true },
+        );
+      });
+      runJobAndWaitForFailure();
+      getJobPage().findByText("Last run failed a few seconds ago.");
+      getRunErrorInfoButton().click();
+      H.modal().should("contain.text", 'relation "abc" does not exist');
     });
   });
 
@@ -1685,13 +2107,11 @@ describe("scenarios > admin > transforms > jobs", () => {
     it("should be able to filter jobs ", () => {
       cy.log("run hourly job so know that was recently run");
       visitJobListPage();
-
       getContentTable().findByText("Hourly job").click();
       runJobAndWaitForSuccess();
-
       visitJobListPage();
 
-      function testLastRunFilter() {
+      function testLastRunDateFilter() {
         cy.log("no filters");
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
@@ -1701,14 +2121,14 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
 
         cy.log("last run at - add a filter");
-        getLastRunAtFilterWidget().click();
+        getLastRunDateFilterWidget().click();
         H.popover().findByText("Previous month").click();
 
-        getLastRunAtFilterWidget().should("contain", "Previous month");
+        getLastRunDateFilterWidget().should("contain", "Previous month");
         getContentTable().should("not.exist");
 
         cy.log("last run at filter - remove filter");
-        getLastRunAtFilterWidget().button("Remove filter").click();
+        getLastRunDateFilterWidget().button("Remove filter").click();
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
           cy.findByText("Daily job").should("be.visible");
@@ -1717,7 +2137,42 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
       }
 
-      function testNextRunFilter() {
+      function testLastRunStatusFilter() {
+        cy.log("no filters");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+
+        cy.log("last run status - add a filter");
+        getLastRunStatusFilterWidget().click();
+        H.popover().within(() => {
+          cy.findByText("In progress").click();
+          cy.findByText("Success").click();
+          cy.button("Add filter").click();
+        });
+
+        getLastRunStatusFilterWidget().should("contain", "2 statuses");
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("not.exist");
+          cy.findByText("Weekly job").should("not.exist");
+          cy.findByText("Monthly job").should("not.exist");
+        });
+
+        cy.log("last run at filter - remove filter");
+        getLastRunStatusFilterWidget().button("Remove filter").click();
+        getContentTable().within(() => {
+          cy.findByText("Hourly job").should("be.visible");
+          cy.findByText("Daily job").should("be.visible");
+          cy.findByText("Weekly job").should("be.visible");
+          cy.findByText("Monthly job").should("be.visible");
+        });
+      }
+
+      function testNextRunDateFilter() {
         cy.log("no filters");
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
@@ -1727,7 +2182,7 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
 
         cy.log("next run - add a filter");
-        getNextRunFilterWidget().click();
+        getNextRunDateFilterWidget().click();
         H.popover().within(() => {
           cy.findByText("Fixed date range…").click();
           cy.findByLabelText("Start date").clear().type("12/10/2024");
@@ -1735,14 +2190,14 @@ describe("scenarios > admin > transforms > jobs", () => {
           cy.button("Apply").click();
         });
 
-        getNextRunFilterWidget().should(
+        getNextRunDateFilterWidget().should(
           "contain",
           "December 10, 2024 - January 5, 2025",
         );
         getContentTable().should("not.exist");
 
         cy.log("next run filter - remove filter");
-        getNextRunFilterWidget().button("Remove filter").click();
+        getNextRunDateFilterWidget().button("Remove filter").click();
         getContentTable().within(() => {
           cy.findByText("Hourly job").should("be.visible");
           cy.findByText("Daily job").should("be.visible");
@@ -1815,8 +2270,9 @@ describe("scenarios > admin > transforms > jobs", () => {
         });
       }
 
-      testLastRunFilter();
-      testNextRunFilter();
+      testLastRunDateFilter();
+      testLastRunStatusFilter();
+      testNextRunDateFilter();
       testTagFilter();
     });
   });
@@ -2241,6 +2697,10 @@ function getRunStatus() {
   return cy.findByTestId("run-status");
 }
 
+function getRunSection() {
+  return cy.findByTestId("run-section");
+}
+
 function getRunListLink() {
   return cy.findByRole("link", { name: "See all runs" });
 }
@@ -2301,12 +2761,16 @@ function getTransformFilterWidget() {
   return cy.findByRole("group", { name: "Transform" });
 }
 
-function getLastRunAtFilterWidget() {
+function getLastRunDateFilterWidget() {
   return cy.findByRole("group", { name: "Last run at" });
 }
 
-function getNextRunFilterWidget() {
-  return cy.findByRole("group", { name: "Next run" });
+function getLastRunStatusFilterWidget() {
+  return cy.findByRole("group", { name: "Last run status" });
+}
+
+function getNextRunDateFilterWidget() {
+  return cy.findByRole("group", { name: "Next run at" });
 }
 
 function getStatusFilterWidget() {
@@ -2322,11 +2786,11 @@ function getRunMethodFilterWidget() {
 }
 
 function getStartAtFilterWidget() {
-  return cy.findByRole("group", { name: "Start at" });
+  return cy.findByRole("group", { name: "Started at" });
 }
 
 function getEndAtFilterWidget() {
-  return cy.findByRole("group", { name: "End at" });
+  return cy.findByRole("group", { name: "Ended at" });
 }
 
 function visitTransformListPage() {
@@ -2355,6 +2819,11 @@ function runTransformAndWaitForFailure() {
 function runJobAndWaitForSuccess() {
   getRunButton().click();
   getRunButton().should("have.text", "Ran successfully");
+}
+
+function runJobAndWaitForFailure() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Run failed");
 }
 
 function createMbqlTransform({
@@ -2391,6 +2860,7 @@ function createMbqlTransform({
         },
         target: {
           type: "table",
+          database: WRITABLE_DB_ID,
           name: targetTable,
           schema: targetSchema,
         },
@@ -2429,6 +2899,42 @@ function createSqlTransform({
       },
       target: {
         type: "table",
+        database: WRITABLE_DB_ID,
+        name: targetTable,
+        schema: targetSchema,
+      },
+      tag_ids: tagIds,
+    },
+    { wrapId: true, visitTransform },
+  );
+}
+function createPythonTransform({
+  body,
+  sourceTables,
+  targetTable = TARGET_TABLE,
+  targetSchema = TARGET_SCHEMA,
+  tagIds,
+  visitTransform,
+}: {
+  body: string;
+  sourceTables: PythonTransformTableAliases;
+  targetTable?: string;
+  targetSchema?: string;
+  tagIds?: TransformTagId[];
+  visitTransform?: boolean;
+}) {
+  H.createTransform(
+    {
+      name: "Python transform",
+      source: {
+        type: "python",
+        "source-database": WRITABLE_DB_ID,
+        "source-tables": sourceTables,
+        body,
+      },
+      target: {
+        type: "table",
+        database: WRITABLE_DB_ID,
         name: targetTable,
         schema: targetSchema,
       },
@@ -2473,4 +2979,36 @@ function assertOptionNotSelected(name: string) {
 
 function editorSidebar() {
   return cy.findByTestId("editor-sidebar");
+}
+
+function getPythonDataPicker() {
+  return cy.findByTestId("python-data-picker");
+}
+
+function createPythonLibrary(path: string, source: string) {
+  cy.request("PUT", `/api/ee/transforms-python/library/${path}`, {
+    source,
+  });
+}
+
+function setPythonRunnerSettings() {
+  H.updateEnterpriseSetting("python-runner-url", "http://localhost:5001");
+  H.updateEnterpriseSetting("python-runner-api-token", "dev-token-12345");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-endpoint",
+    "http://localhost:4566",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-region", "us-east-1");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-bucket",
+    "metabase-python-runner",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-prefix", "test-prefix");
+  H.updateEnterpriseSetting("python-storage-s-3-access-key", "test");
+  H.updateEnterpriseSetting("python-storage-s-3-secret-key", "test");
+  H.updateEnterpriseSetting(
+    "python-storage-s-3-container-endpoint",
+    "http://localstack:4566",
+  );
+  H.updateEnterpriseSetting("python-storage-s-3-path-style-access", true);
 }

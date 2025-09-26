@@ -143,7 +143,7 @@ export const DocumentHeader = ({
                   aria-label={t`Show all comments`}
                   data-hide-on-print
                 >
-                  <Icon name="message" />
+                  <Icon name="comment" />
                 </ActionIcon>
               )}
 
@@ -152,12 +152,11 @@ export const DocumentHeader = ({
                   className={S.commentsIcon}
                   component={Link}
                   to={`/document/${document.id}/comments/all`}
-                  variant="subtle"
                   size="md"
                   aria-label={t`Show all comments`}
                   data-hide-on-print
                 >
-                  <Icon name="message" />
+                  <Icon name="comment" />
                 </ActionIcon>
               )}
             </Box>

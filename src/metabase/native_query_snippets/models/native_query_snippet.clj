@@ -1,5 +1,6 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
+   [honey.sql.helpers :as sql.helpers]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -133,8 +134,15 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "NativeQuerySnippet" [_ opts]
-  (serdes/extract-query-collections :model/NativeQuerySnippet opts))
+(defmethod serdes/extract-query "NativeQuerySnippet" [_ {:keys [collection-set where]}]
+  ;; NativeQuerySnippets leave in their own special collections, so the logic is the following:
+  ;; - you either are exporting one of those
+  ;; - or it was requested as a dependency of some Card, so export it regardless of collection
+  (t2/reducible-select :model/NativeQuerySnippet (cond-> {:where [:or
+                                                                  [:in :collection_id (remove nil? collection-set)]
+                                                                  (when (some nil? collection-set)
+                                                                    [:= :collection_id nil])]}
+                                                   where (sql.helpers/where :or where))))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
   {:copy [:archived :content :description :entity_id :name :template_tags]
@@ -142,11 +150,15 @@
                :collection_id (serdes/fk :model/Collection)
                :creator_id (serdes/fk :model/User)}})
 
+(defmethod serdes/required "NativeQuerySnippet"
+  [_model id]
+  (when-let [collection_id (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id)]
+    {["Collection" collection_id] {"NativeQuerySnippet" id}}))
+
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]
-  (if collection_id
-    [[{:model "Collection" :id collection_id}]]
-    []))
+  (when collection_id
+    [[{:model "Collection" :id collection_id}]]))
 
 (defmethod serdes/storage-path "NativeQuerySnippet" [snippet ctx]
   ;; Intended path here is ["snippets" "<nested ... collections>" "<snippet_eid_and_slug>"]

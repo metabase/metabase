@@ -1,4 +1,5 @@
 (ns metabase.lib.metadata.cached-provider
+  (:refer-clojure :exclude [update-keys])
   (:require
    #?@(:clj ([metabase.util.json :as json]
              [pretty.core :as pretty]))
@@ -8,7 +9,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [update-keys]]))
 
 #?(:clj (set! *warn-on-reflection* true))
 
@@ -37,7 +38,7 @@
                      [:metadata/segment              ::lib.schema.metadata/segment]
                      [:metadata/native-query-snippet ::lib.schema.metadata/native-query-snippet]]]
   (let [metadata (-> metadata
-                     (perf/update-keys u/->kebab-case-en)
+                     (update-keys u/->kebab-case-en)
                      (assoc :lib/type metadata-type))]
     (store-in-cache! cache [metadata-type :id id] metadata))
   true)

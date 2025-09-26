@@ -6,12 +6,15 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -77,10 +80,10 @@ export function TransformQueryPageBody({
     },
   });
 
-  const handleSaveQuery = async (query: DatasetQuery) => {
+  const handleSaveSource = async (source: TransformSource) => {
     await handleInitialSave({
       id: transform.id,
-      source: { type: "query", query },
+      source,
     });
   };
 
@@ -88,13 +91,24 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  if (transform.source.type === "python") {
+    return (
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handleSourceSave}
+        onCancel={handleCancel}
+      />
+    );
+  }
   return (
     <>
       <QueryEditor
-        initialQuery={transform.source.query}
+        initialSource={transform.source}
         isNew={false}
         isSaving={isSaving || isCheckingDependencies}
-        onSave={handleSaveQuery}
+        onSave={handleSaveSource}
         onCancel={handleCancel}
       />
       {isConfirmationShown && checkData != null && (
