@@ -64,19 +64,14 @@ export function NewMetricPage() {
     <Box h="100%" style={{ overflow: "hidden" }}>
       <Stack h="100%" gap="md">
         {/* Header with title and actions */}
-        <Box p="md">
-          <Group position="apart">
+        <Box>
+          <Group position="apart" style={{ borderBottom: "1px solid var(--mb-color-border)" }}>
             <Box>
-              <Text size="xl" fw="bold">
-                New Metric
-              </Text>
-              <Text size="sm">
-                Create a new metric using the notebook editor
-              </Text>
+              New metric
             </Box>
 
-            <Group>
-              <Button variant="subtle" onClick={handleCancel}>
+            <Group ml="auto">
+              <Button variant="subtle" size="sm" onClick={handleCancel}>
                 Cancel
               </Button>
               <Button
@@ -85,7 +80,7 @@ export function NewMetricPage() {
                 onClick={handleSaveMetric}
                 disabled={!isRunnable}
               >
-                Save Metric
+                Save
               </Button>
             </Group>
           </Group>
@@ -100,15 +95,6 @@ export function NewMetricPage() {
             overflow: "hidden",
           }}
         >
-          <Box p="md">
-            <Text size="lg" fw="bold">
-              Metric Definition
-            </Text>
-            <Text size="sm">
-              Use the notebook editor to define your metric calculation
-            </Text>
-          </Box>
-
           <Box
             style={{ flex: 1, height: "calc(100% - 60px)", overflow: "auto" }}
           >
