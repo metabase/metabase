@@ -1,5 +1,6 @@
 .DashboardBody {
   flex: 1 0 auto;
+  background-color: var(--mb-color-bg-secondary);
 
   &.isEditingOrSharing {
     flex-basis: 0;
@@ -42,7 +43,7 @@
   min-height: 100%;
   height: 1px;
   /* prevents header from scrolling so we can have a fixed sidebar */
-  background-color: var(--mb-color-bg-secondary);
+  /* background-color: var(--mb-color-bg-secondary); */
 
   &.isFullHeight {
     height: 100%;
