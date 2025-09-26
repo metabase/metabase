@@ -130,7 +130,12 @@
 (api.macros/defendpoint :get "/current-task"
   "Get the current sync task"
   []
-  (remote-sync.task/most-recent-task))
+  (let [task (remote-sync.task/most-recent-task)]
+    (assoc task :status (cond
+                          (remote-sync.task/failed? task) :errored
+                          (remote-sync.task/successful? task) :successful
+                          (remote-sync.task/timed-out? task) :timed-out
+                          :else :running))))
 
 (api.macros/defendpoint :put "/settings"
   "Update Git Sync related settings. You must be a superuser to do this."

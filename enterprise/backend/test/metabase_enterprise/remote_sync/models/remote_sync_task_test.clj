@@ -2,6 +2,7 @@
   "Unit tests for the remote-sync-task model."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as rst]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
@@ -41,7 +42,8 @@
         (is (some? (:started_at task)))
         (is (nil? (:ended_at task)))
         (is (= 0.0 (:progress task)))
-        (is (nil? (:error_message task)))))))
+        (is (nil? (:error_message task)))
+        (rst/complete-sync-task! (:id task))))))
 
 (deftest create-sync-task-with-additional-fields-test
   (testing "creates a sync task with additional fields"
@@ -50,7 +52,8 @@
                                      :email "test@example.com"}]
       (let [task (rst/create-sync-task! "export" (:id user) {:progress 0.5})]
         (is (= "export" (:sync_task_type task)))
-        (is (= 0.5 (:progress task)))))))
+        (is (= 0.5 (:progress task)))
+        (rst/complete-sync-task! (:id task))))))
 
 (deftest create-sync-task-validates-type-enum-test
   (testing "validates sync task type enum"
@@ -75,7 +78,8 @@
         (rst/update-progress! (:id task) 0.25)
         (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
           (is (= 0.25 (:progress updated-task)))
-          (is (some? (:last_progress_report_at updated-task))))))))
+          (is (some? (:last_progress_report_at updated-task))))
+        (rst/complete-sync-task! (:id task))))))
 
 (deftest update-progress-multiple-times-test
   (testing "updates progress multiple times"
@@ -89,7 +93,8 @@
 
         (rst/update-progress! (:id task) 0.75)
         (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
-          (is (= 0.75 (:progress updated-task))))))))
+          (is (= 0.75 (:progress updated-task))))
+        (rst/complete-sync-task! (:id task))))))
 
 (deftest update-progress-edge-case-values-test
   (testing "handles edge case progress values"
@@ -103,7 +108,8 @@
 
         (rst/update-progress! (:id task) 1.0)
         (let [updated-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
-          (is (= 1.0 (:progress updated-task))))))))
+          (is (= 1.0 (:progress updated-task))))
+        (rst/complete-sync-task! (:id task))))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for complete-sync-task!
@@ -175,7 +181,8 @@
         (is (= (:id user) (get-in hydrated-task [:initiated_by_user :id])))
         (is (= "Test" (get-in hydrated-task [:initiated_by_user :first_name])))
         (is (= "User" (get-in hydrated-task [:initiated_by_user :last_name])))
-        (is (= "test@example.com" (get-in hydrated-task [:initiated_by_user :email])))))))
+        (is (= "test@example.com" (get-in hydrated-task [:initiated_by_user :email])))
+        (rst/complete-sync-task! (:id task))))))
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for Edge Cases and Error Handling
@@ -188,7 +195,8 @@
                                                :initiated_by nil
                                                :started_at (mi/now)})]
       (is (some? task))
-      (is (nil? (:initiated_by task))))))
+      (is (nil? (:initiated_by task)))
+      (rst/complete-sync-task! (:id task)))))
 
 (deftest hydration-handles-nil-user-gracefully-test
   (testing "hydration handles nil user gracefully"
@@ -197,7 +205,8 @@
                                                :initiated_by nil
                                                :started_at (mi/now)})
           hydrated-task (t2/hydrate task :initiated_by_user)]
-      (is (nil? (:initiated_by_user hydrated-task))))))
+      (is (nil? (:initiated_by_user hydrated-task)))
+      (rst/complete-sync-task! (:id task)))))
 
 (deftest task-lifecycle-creation-to-completion-test
   (testing "task lifecycle - from creation to completion"
@@ -245,5 +254,135 @@
     (mt/with-temp [:model/User user {:first_name "Test"
                                      :last_name "User"
                                      :email "test@example.com"}]
-      (rst/create-sync-task! "import" (:id user))
-      (is (thrown-with-msg? Exception #"A running task exists" (rst/create-sync-task! "import" (:id user)))))))
+      (let [task (rst/create-sync-task! "import" (:id user))]
+        (is (thrown-with-msg? Exception #"A running task exists" (rst/create-sync-task! "import" (:id user))))
+        (rst/complete-sync-task! (:id task))))))
+
+ ;;; ------------------------------------------------------------------------------------------------
+;;; Tests for successful?, failed?, and timed-out?
+;;; ------------------------------------------------------------------------------------------------
+
+(deftest successful?-test
+  (testing "successful? returns true for completed task without error"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))]
+        (rst/complete-sync-task! (:id task))
+        (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (true? (rst/successful? completed-task)))))))
+
+  (testing "successful? returns false for incomplete task"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))
+            running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (false? (rst/successful? running-task)))
+        (rst/complete-sync-task! (:id task)))))
+
+  (testing "successful? returns false for failed task"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))]
+        (rst/fail-sync-task! (:id task) "error")
+        (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (false? (rst/successful? failed-task))))))))
+
+(deftest failed?-test
+  (testing "failed? returns true for task with error and ended_at"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))]
+        (rst/fail-sync-task! (:id task) "Connection failed")
+        (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (true? (rst/failed? failed-task)))))))
+
+  (testing "failed? returns false for incomplete task"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))
+            running-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+        (is (false? (rst/failed? running-task)))
+        (rst/complete-sync-task! (:id task)))))
+
+  (testing "failed? returns false for successful task"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))]
+        (rst/complete-sync-task! (:id task))
+        (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (false? (rst/failed? completed-task))))))))
+
+(deftest timed-out?-returns-true-for-stale-task-test
+  (testing "timed-out? returns true for incomplete task with old last_progress_report_at"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))
+            old-time (t/minus (t/offset-date-time) (t/hours 2))]
+        (try
+          (t2/update! :model/RemoteSyncTask (:id task)
+                      {:last_progress_report_at old-time})
+          (let [stale-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+            (is (true? (rst/timed-out? stale-task))))
+          (finally
+            (rst/complete-sync-task! (:id task))))))))
+
+(deftest timed-out?-returns-false-for-active-task-test
+  (testing "timed-out? returns false for incomplete task with recent last_progress_report_at"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))]
+        (try
+          (rst/update-progress! (:id task) 0.5)
+          (let [active-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+            (is (false? (rst/timed-out? active-task))))
+          (finally
+            (rst/complete-sync-task! (:id task))))))))
+
+(deftest timed-out?-returns-false-for-completed-task-test
+  (testing "timed-out? returns false for completed task even with old last_progress_report_at"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))
+            old-time (t/minus (t/offset-date-time) (t/hours 2))]
+        (t2/update! :model/RemoteSyncTask (:id task)
+                    {:last_progress_report_at old-time})
+        (rst/complete-sync-task! (:id task))
+        (let [completed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (false? (rst/timed-out? completed-task))))))))
+
+(deftest timed-out?-returns-false-for-failed-task-test
+  (testing "timed-out? returns false for failed task even with old last_progress_report_at"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))
+            old-time (t/minus (t/offset-date-time) (t/hours 2))]
+        (t2/update! :model/RemoteSyncTask (:id task)
+                    {:last_progress_report_at old-time})
+        (rst/fail-sync-task! (:id task) "Task failed")
+        (let [failed-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+          (is (false? (rst/timed-out? failed-task))))))))
+
+(deftest timed-out?-returns-false-at-boundary-test
+  (testing "timed-out? returns false at time limit boundary"
+    (mt/with-temp [:model/User user {:first_name "Test"
+                                     :last_name "User"
+                                     :email "test@example.com"}]
+      (let [task (rst/create-sync-task! "import" (:id user))
+            boundary-time (t/minus (t/offset-date-time) (t/minutes 59))]
+        (try
+          (t2/update! :model/RemoteSyncTask (:id task)
+                      {:last_progress_report_at boundary-time})
+          (let [boundary-task (t2/select-one :model/RemoteSyncTask :id (:id task))]
+            (is (false? (rst/timed-out? boundary-task))))
+          (finally
+            (rst/complete-sync-task! (:id task))))))))

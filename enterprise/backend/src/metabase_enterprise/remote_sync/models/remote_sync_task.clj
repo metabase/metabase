@@ -102,7 +102,7 @@
                           [:<> :started_at nil]
                           [:= :ended_at nil]
                           [:<
-                           (t/minus (t/instant) (t/millis (settings/remote-sync-task-time-limit-ms)))
+                           (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms)))
                            :last_progress_report_at]]
                   :limit 1
                   :order-by [[:started_at :desc]
@@ -129,6 +129,13 @@
   [task]
   (and (some? (:error_message task))
        (some? (:ended_at task))))
+
+(defn timed-out?
+  "Returns truthy iff this is a timed-out, incomplete task"
+  [task]
+  (and (nil? (:ended_at task))
+       (t/< (:last_progress_report_at task)
+            (t/minus (t/offset-date-time) (t/millis (settings/remote-sync-task-time-limit-ms))))))
 
 ;;; ------------------------------------------- Hydration -------------------------------------------
 
