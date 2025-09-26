@@ -16,6 +16,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private yaml-options {:flow-style            :block
+                             :indent                2
+                             :indicator-indent      2
+                             :indent-with-indicator true})
+
 (api.macros/defendpoint :post "/load/:collection-id"
   "Create a new thingy inside of a collection."
   [{:keys [collection-id]}
@@ -47,7 +52,7 @@
       (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
-    (yaml/generate-string rep)))
+    (yaml/generate-string rep yaml-options)))
 
 (api.macros/defendpoint :get "/model/:id"
   "Download a yaml representation of a model."
@@ -62,7 +67,7 @@
       (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
-    (yaml/generate-string rep)))
+    (yaml/generate-string rep yaml-options)))
 
 (api.macros/defendpoint :get "/metric/:id"
   "Download a yaml representation of a model."
@@ -79,7 +84,7 @@
           yaml/generate-string)
       (catch Exception e
         (log/error e "Does not validate.")
-        (yaml/generate-string rep)))))
+        (yaml/generate-string rep yaml-options)))))
 
 (api.macros/defendpoint :get "/transform/:id"
   "Download a yaml representation of a model."
@@ -96,7 +101,7 @@
           yaml/generate-string)
       (catch Exception e
         (log/error e "Does not validate.")
-        (yaml/generate-string rep)))))
+        (yaml/generate-string rep yaml-options)))))
 
 (comment
   (def m (t2/select-one :model/Transform))
@@ -116,7 +121,22 @@
       (rep/validate rep)
       (catch Exception e
         (log/error e "Does not validate.")))
-    (yaml/generate-string rep)))
+    (yaml/generate-string rep yaml-options)))
+
+(api.macros/defendpoint :get "/database/:id"
+  "Download a yaml representation of a database."
+  [{:keys [id]}
+   _query-params
+   _body-params
+   _request]
+  (let [id (Long/parseLong id)
+        database (api/check-404 (t2/select-one :model/Database :id id))
+        rep (rep/export database)]
+    (try
+      (rep/validate rep)
+      (catch Exception e
+        (log/error e "Does not validate.")))
+    (yaml/generate-string rep yaml-options)))
 
 (comment
   (binding [api/*current-user-id* 1]
