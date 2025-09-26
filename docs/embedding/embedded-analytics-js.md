@@ -114,7 +114,7 @@ Note the `defer` attribute and the reference to your Metabase URL in the script 
 
 If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
 
-You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [Quickstart](#quickstart).
+You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [quickstart](#quickstart).
 
 ## Customizing embeds
 
