@@ -183,7 +183,9 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("native-query-top-bar")
       .findByLabelText("Preview the query")
       .click();
-    H.modal().findByText("select 'foo'").should("be.visible");
+    H.modal().within(() => {
+      H.codeMirrorValue().should("eq", "select\n  'foo'");
+    });
   });
 });
 
