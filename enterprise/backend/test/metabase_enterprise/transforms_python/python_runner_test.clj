@@ -499,7 +499,12 @@
 (deftest python-runner-timeout-test
   (testing "Python script execution respects timeout setting"
     (tu/with-temporary-setting-values [transforms-python.settings/python-runner-timeout-seconds 5]
-      (let [long-running-code "import time\ntime.sleep(10)\nprint('This should timeout')"
+      (let [long-running-code (str "import time\n"
+                                   "import pandas as pd\n"
+                                   "\n"
+                                   "def transform():\n"
+                                   "    time.sleep(10)  # Sleep longer than timeout\n"
+                                   "    return pd.DataFrame({'result': ['should_not_reach_here']})")
             result (execute! {:code long-running-code})]
         (testing "Script should timeout after 5 seconds"
           (is (contains? result :error))
