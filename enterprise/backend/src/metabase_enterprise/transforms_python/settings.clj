@@ -113,3 +113,14 @@
   :export?    false
   :encryption :no
   :audit      :getter)
+
+(setting/defsetting python-runner-timeout-seconds
+  (deferred-tru "Timeout in seconds for Python script execution. Defaults to 30 minutes (1800 seconds).")
+  :type       :integer
+  :visibility :admin
+  :default    1800 ;; 30 minutes
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
