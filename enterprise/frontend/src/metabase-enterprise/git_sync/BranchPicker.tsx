@@ -46,14 +46,16 @@ export const BranchPicker = ({
   const branches = useMemo(() => branchesData?.items || [], [branchesData]);
 
   const filteredBranches = useMemo(() => {
+    const availableBranches = branches.filter((branch) => branch !== value);
+
     if (!searchValue) {
-      return branches;
+      return availableBranches;
     }
     const search = searchValue.toLowerCase();
-    return branches
+    return availableBranches
       .filter((branch) => branch.toLowerCase().includes(search))
       .slice(0, 5);
-  }, [branches, searchValue]);
+  }, [branches, searchValue, value]);
 
   const exactMatch = branches.some(
     (branch) => branch.toLowerCase() === searchValue.toLowerCase(),
@@ -70,12 +72,19 @@ export const BranchPicker = ({
 
   const handleCreateBranch = async () => {
     combobox.closeDropdown();
-    onChange(searchValue, true);
+    const branchName = searchValue;
     setSearchValue("");
-    createBranch({
-      name: searchValue,
-      baseBranch: baseBranch || value,
-    });
+
+    try {
+      await createBranch({
+        name: branchName,
+        baseBranch: baseBranch || value,
+      }).unwrap();
+
+      onChange(branchName, true);
+    } catch (error) {
+      console.error("Failed to create branch:", error);
+    }
   };
 
   useEffect(() => {
@@ -129,7 +138,6 @@ export const BranchPicker = ({
             value={searchValue}
             onChange={(e) => setSearchValue(e.currentTarget.value)}
             leftSection={<Icon name="search" size={16} />}
-            size="sm"
             data-autofocus
           />
         </Box>
@@ -156,7 +164,7 @@ export const BranchPicker = ({
                   {filteredBranches.length > 0 && (
                     <>
                       <Combobox.Options>
-                        <Box px="xs" py="xs">
+                        <Box px="sm" py="sm">
                           <Text
                             size="xs"
                             c="text-light"
@@ -174,20 +182,8 @@ export const BranchPicker = ({
                             data-testid={`branch-item-${branch}`}
                             py="sm"
                           >
-                            <Group justify="space-between" wrap="nowrap">
-                              <Group gap="xs" wrap="nowrap">
-                                <Icon
-                                  name="schema"
-                                  size={16}
-                                  c={branch === value ? "brand" : "text"}
-                                />
-                                <Text fw={branch === value ? "bold" : "normal"}>
-                                  {branch}
-                                </Text>
-                              </Group>
-                              {branch === value && (
-                                <Icon name="check" size={16} c="success" />
-                              )}
+                            <Group gap="xs" wrap="nowrap">
+                              <Text>{branch}</Text>
                             </Group>
                           </Combobox.Option>
                         ))}

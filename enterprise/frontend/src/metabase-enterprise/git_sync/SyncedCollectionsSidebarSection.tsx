@@ -76,12 +76,23 @@ export const SyncedCollectionsSidebarSection = ({
     }
 
     setNextBranch(branch);
-    // If creating a new branch from current branch, we don't show the discard modal since the new branch will have the same content
-    if (isDirty && !isNewBranch) {
+
+    if (isNewBranch) {
+      handleBranchSwitchOnly(branch);
+    } else if (isDirty) {
       openConfirm();
     } else {
       handleBranchChange(branch);
     }
+  };
+
+  const handleBranchSwitchOnly = async (branch: string) => {
+    await updateSetting({
+      key: "remote-sync-branch",
+      value: branch,
+      toast: false,
+    });
+    setNextBranch(branch);
   };
 
   const handleBranchChange = async (branch: string) => {
