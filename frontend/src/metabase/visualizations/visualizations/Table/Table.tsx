@@ -201,7 +201,7 @@ class Table extends Component<TableProps, TableState> {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    ...tableColumnSettings,
+    ...tableColumnSettings({ isShowingDetailsOnlyColumns: false }),
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       get section() {
