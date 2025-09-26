@@ -27,6 +27,9 @@ export function BenchToolbar({
     >
       {/* Left navigation buttons */}
       <Group gap="xs">
+        <ActionIcon onClick={onSidebarToggle}>
+          <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
+        </ActionIcon>
         <ActionIcon variant="subtle" size="sm">
           <Icon name="chevronleft" />
         </ActionIcon>
@@ -46,17 +49,7 @@ export function BenchToolbar({
         }}
       />
 
-      {/* Right side toggles */}
       <Group gap="xs">
-        {/* Sidebar toggle */}
-        <ActionIcon
-          variant={isSidebarOpen ? "subtle" : "filled"}
-          onClick={onSidebarToggle}
-        >
-          <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
-        </ActionIcon>
-
-        {/* Metabot toggle */}
         <ActionIcon
           variant={isMetabotOpen ? "filled" : "subtle"}
           onClick={onMetabotToggle}
