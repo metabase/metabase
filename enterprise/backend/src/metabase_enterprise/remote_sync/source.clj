@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [methodical.core :as methodical])
   (:import
@@ -71,7 +72,7 @@
     (throw entity))
   (u/prog1 {:path (remote-sync-path opts entity)
             :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})}
-           (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
+    (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
 
 (defn store!
   "Store files from `stream` to `source` on `branch`. Commits with `message`."
