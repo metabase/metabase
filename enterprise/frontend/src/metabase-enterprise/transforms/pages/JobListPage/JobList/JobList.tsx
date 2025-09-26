@@ -33,8 +33,9 @@ export function JobList({ params }: { params: JobListParams }) {
     error: jobsError,
   } = useListTransformJobsQuery({
     last_run_start_time: params.lastRunStartTime,
+    last_run_statuses: params.lastRunStatuses,
     next_run_start_time: params.nextRunStartTime,
-    transform_tag_ids: params.transformTagIds,
+    tag_ids: params.tagIds,
   });
   const {
     data: tags = [],
