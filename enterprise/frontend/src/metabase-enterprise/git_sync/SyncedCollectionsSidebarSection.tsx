@@ -20,6 +20,8 @@ import {
   Group,
   HoverCard,
   Icon,
+  Modal,
+  Progress,
   ScrollArea,
   Text,
   Tooltip,
@@ -66,7 +68,7 @@ export const SyncedCollectionsSidebarSection = ({
 
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
 
-  const { status, message } = useSyncStatus();
+  const { status, message, progress } = useSyncStatus();
 
   const isLoading = isImporting || status !== "idle";
 
@@ -139,6 +141,9 @@ export const SyncedCollectionsSidebarSection = ({
                   <Icon name="upload" c="brand" size={20} />
                 </Button>
               </Group>
+              {isLoading && (
+                <LoadingModal status={status} progress={progress} />
+              )}
             </Box>
           </Flex>
 
@@ -172,7 +177,6 @@ export const SyncedCollectionsSidebarSection = ({
         onClose={closeConfirm}
         title={t`Switch branches?`}
         message={t`Switching branches will discard these unsynced changes:`}
-        // TODO: list unsynced changes
         confirmButtonText={t`Import from Git`}
         onConfirm={() => handleBranchChange(nextBranch)}
       >
@@ -261,5 +265,33 @@ function SyncError({ message }: { message: string }) {
         </Box>
       </HoverCard.Dropdown>
     </HoverCard>
+  );
+}
+
+function LoadingModal({
+  status,
+  progress,
+}: {
+  status: string;
+  progress: number;
+}) {
+  return (
+    <Modal
+      opened
+      title={t`Syncing`}
+      size="sm"
+      withCloseButton={false}
+      onClose={() => null} // modal can't be closed
+    >
+      <Box p="xl">
+        <Text mb="md" ta="center">
+          {status === "import" ? t`Importing` : t`Exporting`}...
+        </Text>
+        <Progress value={progress * 100} transitionDuration={300} animated />
+        <Text fz="sm" lh="sm" mt="lg">
+          {t`Please wait until the sync completes to edit content.`}
+        </Text>
+      </Box>
+    </Modal>
   );
 }
