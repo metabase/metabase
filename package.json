@@ -147,7 +147,7 @@
     "tippy.js": "^6.3.7",
     "ts-pattern": "^5.1.2",
     "ttag": "1.7.21",
-    "typescript": "^5.4.5",
+    "typescript": "^5.9.2",
     "underscore": "~1.13.3",
     "yup": "^0.32.11"
   },

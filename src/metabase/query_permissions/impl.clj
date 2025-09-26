@@ -9,6 +9,7 @@
    [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -19,7 +20,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -214,45 +214,58 @@
                    card-ids)})))
 
 (defn- legacy-mbql-required-perms
-  [query {:keys [throw-exceptions? already-preprocessed?]}]
-  (try
-    (let [query (mbql.normalize/normalize query)]
-      ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id #_{:clj-kondo/ignore [:deprecated-var]} (qp.util/query->source-card-id query)]
-        {:paths (source-card-read-perms source-card-id)}
-        ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-        (let [query (cond-> query
-                      (not already-preprocessed?) preprocess-query)
-              {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
-          (merge
-           (when (seq card-ids)
-             {:card-ids card-ids})
-           (when (seq table-ids)
-             {:perms/view-data      (zipmap table-ids (repeat :unrestricted))})
-           (when (seq table-query-ids)
-             {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
-           (when native?
-             (native-query-perms query))))))
-    ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
-    ;; that means no one will ever get to see it
-    (catch Throwable e
-      (let [e (ex-info "Error calculating permissions for query"
-                       {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
-                                   query)}
-                       e)]
-        (if throw-exceptions? (throw e) (log/error e)))
-      {:perms/create-queries {0 :query-builder}}))) ; table 0 will never exist
+  ([query options]
+   (legacy-mbql-required-perms nil query options))
+
+  ([metadata-provider
+    query
+    {:keys [throw-exceptions? already-preprocessed?]}]
+   (try
+     (let [metadata-provider (or metadata-provider
+                                 (when (qp.store/initialized?)
+                                   (qp.store/metadata-provider)))
+           query (mbql.normalize/normalize query)]
+       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
+       (if-let [source-card-id (some-> query
+                                       not-empty
+                                       (->> (lib-be/normalize-query metadata-provider))
+                                       lib/source-card-id)]
+         {:paths (source-card-read-perms source-card-id)}
+         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
+         (let [query                                                (cond-> query
+                                                                      (not already-preprocessed?) preprocess-query)
+               {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
+           (merge
+            (when (seq card-ids)
+              {:card-ids card-ids})
+            (when (seq table-ids)
+              {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
+            (when (seq table-query-ids)
+              {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
+            (when native?
+              (native-query-perms query))))))
+     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
+     ;; that means no one will ever get to see it
+     (catch Throwable e
+       (let [e (ex-info "Error calculating permissions for query"
+                        {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
+                                    query)}
+                        e)]
+         (if throw-exceptions? (throw e) (log/error e)))
+       {:perms/create-queries {0 :query-builder}})))) ; table 0 will never exist
 
 (defn- mbql5-required-perms
   "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
   legacy implementation(s) of [[required-perms]]."
   [query perms-opts]
-  (-> query
-      lib/normalize
-      ;; allowing for now until we convert this namespace to be MBQL-5-only
-      #_{:clj-kondo/ignore [:discouraged-var]}
-      lib/->legacy-MBQL
-      (legacy-mbql-required-perms perms-opts)))
+  (let [mp (when (lib/metadata-provider? (:lib/metadata query))
+             (:lib/metadata query))]
+    (-> query
+        lib/normalize
+        ;; allowing for now until we convert this namespace to be MBQL-5-only
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        lib/->legacy-MBQL
+        (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
 
 (defn required-perms-for-query
   "Returns a map representing the permissions requried to run `query`. The map has the optional keys

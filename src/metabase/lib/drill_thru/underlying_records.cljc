@@ -28,6 +28,7 @@
   Question transformation:
 
   - Set display \"table\""
+  (:refer-clojure :exclude [mapv])
   (:require
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -46,7 +47,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]))
 
 (mu/defn underlying-records-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.underlying-records]
   "When clicking on a particular broken-out group, offer a look at the details of all the rows that went into this

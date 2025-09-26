@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { render, screen, within } from "__support__/ui";
 
 import type { StepperCardClickAction, StepperStep } from "./StepperWithCards";
 import { StepperWithCards } from "./StepperWithCards";
@@ -30,7 +30,7 @@ const createMockSteps = (
 };
 
 describe("StepperWithCards", () => {
-  it("should not automatically tick off former steps when completing a later step", () => {
+  it("should not automatically tick off former steps when completing a later step", async () => {
     const steps = createMockSteps([
       {
         id: "step1",
@@ -68,12 +68,20 @@ describe("StepperWithCards", () => {
     expect(allSteps[1]).toHaveAttribute("data-done", "false");
     expect(allSteps[2]).toHaveAttribute("data-done", "true");
 
-    // Only one check icon should be visible.
-    const checkIcons = screen.getAllByLabelText("check icon");
-    expect(checkIcons).toHaveLength(1);
+    // stepper header + 3 cards are done
+    expect(screen.getAllByLabelText("check icon")).toHaveLength(4);
+
+    // each card header should have a check icon if done
+    for (const id of [3, 5, 6]) {
+      expect(
+        await within(screen.getByTestId(`step-card-${id}`)).findByLabelText(
+          "check icon",
+        ),
+      ).toBeInTheDocument();
+    }
   });
 
-  it("should consider optional cards as completed when determining step completion", () => {
+  it("should consider optional cards as completed when determining step completion", async () => {
     const steps = createMockSteps([
       {
         id: "step1",
@@ -93,8 +101,11 @@ describe("StepperWithCards", () => {
     // Only the first step should be marked as done.
     expect(allSteps[0]).toHaveAttribute("data-done", "true");
 
-    const checkIcons = screen.getAllByLabelText("check icon");
-    expect(checkIcons).toHaveLength(1);
+    // step header + done card should have check icons
+    expect(screen.getAllByLabelText("check icon")).toHaveLength(2);
+    await within(screen.getByTestId(`step-card-1`)).findByLabelText(
+      "check icon",
+    );
   });
 
   it("should disable locked cards", () => {

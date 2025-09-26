@@ -18,6 +18,7 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
@@ -59,7 +60,7 @@ type TargetInfoProps = {
 
 function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId = sourceDatabaseId(source);
 
   const { data: databaseFromApi, isLoading: isDatabaseLoading } =
     useGetDatabaseQuery(

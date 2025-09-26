@@ -187,9 +187,10 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
-    style: options.number_style,
+    style: options.number_style as Intl.NumberFormatOptions["style"],
     currency: options.currency,
-    currencyDisplay: options.currency_style,
+    currencyDisplay:
+      options.currency_style as Intl.NumberFormatOptions["currencyDisplay"],
     // always use grouping separators, but we may replace/remove them depending on number_separators option
     useGrouping: true,
     minimumIntegerDigits: options.minimumIntegerDigits,

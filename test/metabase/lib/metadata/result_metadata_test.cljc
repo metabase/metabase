@@ -1094,3 +1094,15 @@
                [:field "NAME"   {}]
                [:field "NAME_2" {}]]
               (map :field-ref (#'result-metadata/deduplicate-field-refs cols)))))))
+
+(deftest ^:parallel remove-namespaced-options-test
+  (are [clause expected] (= expected
+                            (#'result-metadata/remove-namespaced-options clause))
+    [:field 1 {::namespaced true}]                [:field 1 nil]
+    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
+    [:expression "wow"]                           [:expression "wow"]
+    [:expression "wow" {::namespaced true}]       [:expression "wow"]
+    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
+    [:aggregation 0]                              [:aggregation 0]
+    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
+    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))

@@ -7,7 +7,9 @@ import CS from "metabase/css/core/index.css";
 import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
 import { Group, Stack, Text } from "metabase/ui";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
 
@@ -46,7 +48,7 @@ export const ParameterSettings = () => {
 
   const updateInitialParameterValue = useDebouncedCallback(
     useCallback(
-      (paramId: string, value: string) => {
+      (paramId: string, value: ParameterValueOrArray | null | undefined) => {
         if (settings.dashboardId) {
           updateSettings({
             initialParameters: {
@@ -110,7 +112,7 @@ export const ParameterSettings = () => {
   if (availableParameters.length > 0) {
     return (
       <Stack>
-        {uiParameters.map((parameter) => (
+        {uiParameters.map((parameter: UiParameter) => (
           <Group justify="space-between" align="center" key={parameter.id}>
             <ParameterWidget
               className={CS.m0}
