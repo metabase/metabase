@@ -170,10 +170,16 @@
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       true
-                               transformed-sql-card-id  true
+          (is (=? {:card      {direct-sql-card-id       [{:table {:table "NONEXISTENT_TABLE"},
+                                                          :type :all-columns,
+                                                          :metabase.driver.sql/bad-reference true}]
+                               transformed-sql-card-id  [{:table {:schema "TRANSFORMED", :table "OUTPUT_TF31"},
+                                                          :type :all-columns,
+                                                          :metabase.driver.sql/bad-reference true}]
                                transformed-mbql-card-id [[:field {} (:id rating)]]}
-                   :transform {(:id sql-transform)      true}}
+                   :transform {(:id sql-transform)      [{:table {:table "NONEXISTENT_TABLE"},
+                                                          :type :all-columns,
+                                                          :metabase.driver.sql/bad-reference true}]}}
                   errors))
           (is (= #{:card :transform}
                  (set (keys errors))))
