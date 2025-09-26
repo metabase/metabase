@@ -19,7 +19,7 @@ export const processResults = (
 
   const actions = processSection(t`Actions`, groupedResults["basic"]);
   const metabotActions = processSection(t`Metabot`, groupedResults["metabot"]);
-  const search = processSection(t`Search results`, groupedResults["search"]);
+  const search = processSection(t`Results`, groupedResults["search"]);
   const recent = processSection(t`Recents`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);

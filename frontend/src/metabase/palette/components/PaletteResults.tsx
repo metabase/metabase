@@ -27,7 +27,7 @@ export const PaletteResults = (props: Props) => {
   );
 
   useEffect(() => {
-    if (processedResults[0] === t`Search results`) {
+    if (processedResults[0] === t`Results`) {
       query.setActiveIndex(2);
     }
   }, [processedResults, query]);
