@@ -88,7 +88,7 @@
                   (let [db-id (mt/id)
                         tables (t2/select :model/Table :db_id db-id :active true)]
                     (is (not-any? transforms.util/is-temp-transform-table? tables)
-                        (str "No temp tables should remain after successful Python transform"))
+                        "No temp tables should remain after successful Python transform")
 
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
                         "Table should contain the expected data after swap")))))))))))
