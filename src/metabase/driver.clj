@@ -1190,9 +1190,9 @@
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
   types."
   {:added "0.57.0",
-   :arglists '([driver database {:keys [type schema name] :as _transform-details}])}
-  (fn [driver _database transform-details]
-    [(dispatch-on-initialized-driver driver) (:type transform-details)])
+   :arglists '([driver database {:keys [type schema name] :as _target}])}
+  (fn [driver _database {:keys [type]}]
+    [(dispatch-on-initialized-driver driver) (keyword type)])
   :hierarchy #'hierarchy)
 
 (defmulti native-query-deps

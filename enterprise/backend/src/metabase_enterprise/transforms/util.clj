@@ -64,11 +64,11 @@
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling."
-  [run-id driver {:keys [db-id conn-spec output-schema]} run-transform!]
+  [run-id driver {:keys [db-id conn-spec target]} run-transform!]
   ;; local run is responsible for status, using canceling lifecycle
   (try
-    (when-not (driver/schema-exists? driver db-id output-schema)
-      (driver/create-schema-if-needed! driver conn-spec output-schema))
+    (when-not (driver/schema-exists? driver db-id (:schema target))
+      (driver/create-schema-if-needed! driver conn-spec (:schema target)))
     (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
     (let [cancel-chan (a/promise-chan)
           ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
