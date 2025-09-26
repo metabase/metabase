@@ -140,22 +140,6 @@
         (log/info "Creating new database" (:name representation))
         (first (t2/insert-returning-instances! :model/Database representation))))))
 
-(defn export [database]
-  (-> {:type :v0/database
-       :ref (v0-common/unref (v0-common/->ref (:id database) :database))
-       :name (:name database)
-       :engine (:engine database)
-       :description (not-empty (:description database))
-       :connection_details (:details database)
-       ;; need connection_details and schemas
-       }
-      v0-common/remove-nils))
-
-(comment
-
-  (:details (t2/select-one :model/Database :id 53))
-  (export (t2/select-one :model/Database :id 53)))
-
 ;;; ------------------------------------ Export Functions ------------------------------------
 
 (defn- get-fk-reference
@@ -201,66 +185,28 @@
 
 (defn- sanitize-connection-details
   "Remove sensitive fields from connection details using Metabase's official list"
-  [details]
+  [details ref]
   (when details
-    (reduce-kv (fn [m k v]
-                 (if (contains? driver.u/default-sensitive-fields (keyword k))
-                   m
-                   (assoc m k v)))
-               {}
-               details)))
+    (reduce (fn [m k]
+              (if (contains? m k)
+                (assoc m k (-> (format "env:%s_%s" ref (name k))
+                               (str/replace #"-" "_")
+                               (u/upper-case-en)))
+                m))
+            details
+            driver.u/default-sensitive-fields)))
 
-(defn- get-database-ref
-  "Generate a ref field for a database"
-  [db]
-  (when-let [db-name (:name db)]
-    (-> db-name
-        u/lower-case-en
-        (str/replace #"[^a-z0-9-_]+" "-")
-        (str/replace #"^-+|-+$" ""))))
+(defn export [database]
+  (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
+    (-> {:type :v0/database
+         :ref ref
+         :name (:name database)
+         :engine (:engine database)
+         :description (not-empty (:description database))
+         :connection_details (some-> (:details database)
+                                     (sanitize-connection-details ref))
+         :schemas (get-database-schemas (:id database))}
+        v0-common/remove-nils)))
 
-(defn database->representation
-  "Export a Database entity to its v0 representation format"
-  ([database-id] (database->representation database-id {}))
-  ([database-id {:keys [include-schemas? include-connection-details?]
-                 :or   {include-schemas?            true
-                        include-connection-details? true}}]
-   (when-let [db (t2/select-one :model/Database :id database-id)]
-     (let [base-rep {:type   :v0/database
-                     :ref    (or (get-database-ref db) "database")
-                     :name   (:name db)
-                     :engine (name (:engine db))}
-           details  (when (and include-connection-details? (:details db))
-                      (sanitize-connection-details (:details db)))]
-       (cond-> base-rep
-         (:description db) (assoc :description (:description db))
-         (seq details)     (assoc :connection_details details)
-         include-schemas?  (assoc :schemas (get-database-schemas database-id)))))))
-
-(defn database->yaml
-  "Export a Database entity to YAML representation format
-   Options for YAML formatting (in :dumper-options):
-   - :flow-style - :auto (default), :block (expanded), :flow (compact)
-   - :indent - block indentation (default 2)
-   - :indicator-indent - indentation for - indicators (default 0)"
-  ([database-id] (database->yaml database-id {}))
-  ([database-id opts]
-   (let [dumper-opts (merge {:flow-style :auto
-                             :indent 2}
-                            (:dumper-options opts))
-         export-opts (dissoc opts :dumper-options)]
-     (-> (database->representation database-id export-opts)
-         (update :type name) ; Convert keyword to string for YAML
-         (yaml/generate-string :dumper-options dumper-opts)))))
-
-(defn database->pretty-yaml
-  "Export a Database entity to YAML with fully expanded block style.
-   This produces the most readable output with each field on its own line."
-  ([database-id] (database->pretty-yaml database-id {}))
-  ([database-id opts]
-   (database->yaml database-id
-                   (assoc opts :dumper-options
-                          {:flow-style            :block
-                           :indent                2
-                           :indicator-indent      2
-                           :indent-with-indicator true}))))
+(comment
+  (export (t2/select-one :model/Database 52)))
