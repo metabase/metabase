@@ -49,7 +49,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once (fixtures/initialize :test-users :db :web-server))
 
 (deftest ^:parallel update-colvalmap-setting-test
   (testing "update-colvalmap-setting function with regex matching"
@@ -2326,7 +2326,7 @@
                                                          :parameter_mappings     [{:parameter_id "abc"
                                                                                    :card_id      123
                                                                                    :hash         "abc"
-                                                                                   :target       "foo"}]
+                                                                                   :target       [:dimension [:template-tag "foo"]]}]
                                                          :visualization_settings {}}]
                                             :tabs      []}))))))
 
@@ -3317,7 +3317,7 @@
                     :has_more_values false}
                    (mt/user-http-request :rasta :get 200 url)))))))))
 
-(deftest chain-filter-multiple-test
+(deftest ^:parallel chain-filter-multiple-test
   (testing "Chain filtering works when a few filters are specified"
     (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
       (testing "GET /api/dashboard/:id/params/:param-key/values"
@@ -3325,12 +3325,22 @@
                                                   (:not-category-name param-keys) "American")]
           (is (= {:values          [["African"] ["Artisan"] ["Asian"]]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest ^:parallel chain-filter-multiple-test-2
+  (testing "Chain filtering works when a few filters are specified"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "GET /api/dashboard/:id/params/:param-key/values"
         (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
                                                   (:category-contains param-keys) "m")]
           (is (= {:values          [["American"] ["Comedy Club"] ["Dim Sum"]]
                   :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))
+                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))
+
+(deftest ^:parallel chain-filter-multiple-test-3
+  (testing "Chain filtering works when a few filters are specified"
+    (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
+      (testing "GET /api/dashboard/:id/params/:param-key/values"
         (testing "contains is case insensitive"
           (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys)
                                                     (:not-category-name param-keys) "American"
@@ -3509,7 +3519,7 @@
               (mt/let-url [url (chain-filter-values-url dash-id (:id param))]
                 (is (some? (mt/user-http-request :rasta :get 200 url))))))))))
 
-(deftest valid-filter-fields-test
+(deftest ^:parallel valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(result= [expected {:keys [filtered filtering]}]
               (testing (format "\nGET dashboard/params/valid-filter-fields")
@@ -3525,16 +3535,19 @@
                       %categories.name (sort [%venues.price %categories.name])}
                      {:filtered [%venues.price %categories.name], :filtering [%categories.name %venues.price]}))
           (testing "filtered-ids cannot be nil"
-            (is (= {:errors {:filtered "vector of value must be an integer greater than zero."}
+            (is (= {:errors {:filtered "vector of Valid Field ID"}
                     :specific-errors
                     {:filtered ["missing required key, received: nil"]}}
-                   (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name]))))))
-      (testing "should check perms for the Fields in question"
-        (mt/with-temp-copy-of-db
-          (perms.test-util/with-no-data-perms-for-all-users!
-            (is (= "You don't have permissions to do that."
-                   (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
-                                                  :filtered [%venues.price] :filtering [%categories.name]))))))))))
+                   (mt/user-http-request :rasta :get 400 "dashboard/params/valid-filter-fields" :filtering [%categories.name])))))))))
+
+(deftest valid-filter-fields-test-2
+  (testing "GET /api/dashboard/params/valid-filter-fields"
+    (testing "should check perms for the Fields in question"
+      (mt/with-temp-copy-of-db
+        (perms.test-util/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
+                                                :filtered [%venues.price] :filtering [%categories.name])))))))))
 
 (deftest uuid-id-column-is-not-implicitly-remapped-test
   (mt/test-drivers

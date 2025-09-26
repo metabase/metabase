@@ -1413,6 +1413,7 @@
            database-routing
            driver
            events
+           legacy-mbql
            lib
            lib-be
            models

@@ -18,12 +18,12 @@
    {:pre [(integer? table-id)]}
    (binding [qp.i/*disable-qp-logging* true]
      (qp/process-query
-      {:type       :query
-       :database   (t2/select-one-fn :db_id :model/Table table-id)
-       :query      (-> mbql-query
-                       (assoc :source-table table-id)
-                       schema.metadata-queries/add-required-filters-if-needed)
-       :middleware {:disable-remaps? true}}
+      (-> {:type       :query
+           :database   (t2/select-one-fn :db_id :model/Table table-id)
+           :query      (-> mbql-query
+                           (assoc :source-table table-id))
+           :middleware {:disable-remaps? true}}
+          schema.metadata-queries/add-required-filters-if-needed)
       rff))))
 
 (defn field-distinct-count

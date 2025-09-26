@@ -1180,8 +1180,8 @@
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [_route-params
    {:keys [filtered filtering]} :- [:map
-                                    [:filtered  (ms/QueryVectorOf ms/PositiveInt)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
+                                    [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]

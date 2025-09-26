@@ -136,17 +136,17 @@
    query-string       :- [:maybe ms/NonBlankString]
    default-case-thunk :- [:=> [:cat :any] ms/FieldValuesResult]]
   (case (:values_source_type parameter)
-    "static-list" (static-list-values parameter query-string)
-    "card"        (let [card (t2/select-one :model/Card :id (get-in parameter [:values_source_config :card_id]))]
-                    (when-not (mi/can-read? card)
-                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
-                    (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
-                      (card-values parameter query-string)
-                      (default-case-thunk)))
-    nil           (default-case-thunk)
+    :static-list (static-list-values parameter query-string)
+    :card        (let [card (t2/select-one :model/Card :id (get-in parameter [:values_source_config :card_id]))]
+                   (when-not (mi/can-read? card)
+                     (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+                   (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
+                     (card-values parameter query-string)
+                     (default-case-thunk)))
+    nil          (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
-                     :parameter parameter}))))
+                     :parameter   parameter}))))
 
 (defn pk-of-fk-pk-field-ids
   "Check if the collection `field-ids` contains the IDs of FK fields pointing to the same PK and
@@ -188,10 +188,10 @@
    value
    default-case-thunk :- [:=> [:cat] :any]]
   (case (:values_source_type param)
-    "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
-                                (get-in param [:values_source_config :values]))
-    "card"        nil
-    nil           (default-case-thunk)
+    :static-list (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                               (get-in param [:values_source_config :values]))
+    :card        nil
+    nil          (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
                     {:status-code 400
-                     :parameter param}))))
+                     :parameter   param}))))

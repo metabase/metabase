@@ -56,11 +56,11 @@
   (testing "Can handle multi-arg string filters when chaining (#57287)"
     (doseq [value ["Omer" ["Omer"] ["Omer" "Clovis"]]]
       (testing (str "with value " (pr-str value))
-        (are [op] (nil? (->> (#'chain-filter/filter-clause (mt/id :venues)
-                                                           {:field-id (mt/id :venues :name)
-                                                            :op op
-                                                            :value value
-                                                            :options nil})
+        (are [op] (nil? (->> (#'chain-filter/add-filter (mt/id :venues)
+                                                        {:field-id (mt/id :venues :name)
+                                                         :op op
+                                                         :value value
+                                                         :options nil})
                              (mr/explain mbql.s/Filter)
                              me/humanize))
           :starts-with :ends-with :contains :does-not-contain)))))
@@ -573,9 +573,9 @@
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
     (mt/$ids
       (is (= [:time-interval $checkins.date -32 :week {:include-current false}]
-             (#'chain-filter/filter-clause $$checkins {:field-id %checkins.date
-                                                       :op       :=
-                                                       :value    "past32weeks"}))))))
+             (#'chain-filter/add-filter $$checkins {:field-id %checkins.date
+                                                    :op       :=
+                                                    :value    "past32weeks"}))))))
 
 (mt/defdataset nil-values-dataset
   [["tbl"

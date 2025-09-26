@@ -53,26 +53,35 @@
    :keyword
    ::lib.schema.common/non-blank-string])
 
+(mr/def ::values-source-type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])
+
+(mr/def ::values-query-type
+  [:enum {:decode/normalize lib.schema.common/normalize-keyword} :none :list :search])
+
 (mr/def ::parameter
   "Schema for a valid Parameter. We're not using [[metabase.legacy-mbql.schema/Parameter]] here because this Parameter
   is meant to be used for Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   [:map
    {:description "parameter must be a map with :id and :type keys"}
-   [:id   ::lib.schema.common/non-blank-string]
-   [:type ::keyword-or-non-blank-string]
-   ;; TODO how to merge this with ParameterSource above?
-   [:values_source_type   {:optional true} [:enum "static-list" "card" nil]]
-   [:values_source_config {:optional true} ::values-source-config]
-   [:slug                 {:optional true} :string]
-   [:name                 {:optional true} :string]
    [:default              {:optional true} :any]
+   ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
+   [:filteringParameters  {:optional true} [:maybe [:sequential ::lib.schema.parameter/id]]]
+   [:id                   ::lib.schema.parameter/id]
+   [:mappings             {:optional true} [:maybe [:or
+                                                    [:sequential [:ref ::parameter-mapping]]
+                                                    [:set [:ref ::parameter-mapping]]]]]
+   [:name                 {:optional true} :string]
+   ;; ok now I know you're trying to mess with me
    [:sectionId            {:optional true} ::lib.schema.common/non-blank-string]
-   [:temporal_units       {:optional true} [:sequential ::lib.schema.temporal-bucketing/unit]]
-   [:mappings             {:optional true} [:maybe
-                                            [:or
-                                             [:sequential [:ref ::parameter-mapping]]
-                                             [:set [:ref ::parameter-mapping]]]]]])
+   [:slug                 {:optional true} :string]
+   [:target               {:optional true} [:ref ::lib.schema.parameter/target]]
+   [:temporal_units       {:optional true} [:maybe [:sequential ::lib.schema.temporal-bucketing/unit]]]
+   [:type                 [:ref ::lib.schema.parameter/type]]
+   [:values_query_type    {:optional true} [:maybe ::values-query-type]]
+   [:values_source_config {:optional true} [:maybe ::values-source-config]]
+   [:values_source_type   {:optional true} [:maybe ::values-source-type]]])
 
 (mu/defn normalize-parameter :- ::parameter
   "Normalize `parameter` when coming out of the application database or in via an API request."

@@ -40,7 +40,7 @@
        :op       op
        :options  options})))
 
-(mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
+(mu/defn ^:private chain-filter-constraints :- ::chain-filter/constraints
   [dashboard                   :- :map
    constraint-param-key->value :- [:map-of string? any?]]
   (vec (for [[param-key value] constraint-param-key->value

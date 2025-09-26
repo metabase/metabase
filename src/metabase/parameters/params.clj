@@ -11,6 +11,7 @@
   - custom-values: see [metabase.parameters.custom-values]"
   (:require
    [clojure.set :as set]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.app-db.core :as app-db]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -40,10 +41,11 @@
   "Receive a Paremeterized Object and check if its parameters is valid."
   [{:keys [parameters]}]
   (let [schema [:maybe ::parameters.schema/parameters]]
-    (when-not (mr/validate schema parameters)
-      (throw (ex-info ":parameters must be a sequence of maps with :id and :type keys"
+    (when-let [error (mr/explain schema parameters)]
+      (throw (ex-info (str ":parameters must be a sequence of maps with :id and :type keys; "
+                           (pr-str (me/humanize error)))
                       {:parameters parameters
-                       :errors     (:errors (mr/explain schema parameters))})))))
+                       :errors     (:errors error)})))))
 
 (defn assert-valid-parameter-mappings
   "Receive a Paremeterized Object and check if its parameters is valid."

@@ -169,7 +169,6 @@
  qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.writeback/execute-write-sql!
  qp/process-query
- schema.metadata-queries/add-required-filters-if-needed
  secrets/clean-secret-properties-from-details
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting

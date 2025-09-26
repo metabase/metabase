@@ -863,7 +863,7 @@
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
   (are [b1 b2 expected-identifier->action] (= expected-identifier->action
-                                               (#'card/breakouts->identifier->action b1 b2))
+                                              (#'card/breakouts->identifier->action b1 b2))
     [[:field 10 {:temporal-unit :day}]]
     nil
     nil
