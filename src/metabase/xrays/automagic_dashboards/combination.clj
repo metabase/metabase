@@ -23,7 +23,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
@@ -35,8 +34,7 @@
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]
-   [toucan2.core :as t2]))
+   [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]))
 
 (defn add-breakouts-and-filter
   "Add breakouts and filters to a query based on the breakout fields and filter clauses"

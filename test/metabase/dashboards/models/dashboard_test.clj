@@ -231,7 +231,7 @@
            #":parameters must be a sequence of maps with :id and :type keys"
            (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))))
 
-(deftest ^:parallel validate-parameters-test-2
+(deftest validate-parameters-test-2
   (testing "Should validate Dashboard :parameters when"
     (testing "updating"
       (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
