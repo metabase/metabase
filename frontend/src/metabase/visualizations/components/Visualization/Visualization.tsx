@@ -611,6 +611,10 @@ class Visualization extends PureComponent<
       onEditSummary,
       queryBuilderMode,
       rawSeries = [],
+      isSelectable,
+      rowChecked,
+      onAllSelectClick,
+      onRowSelectClick,
       visualizerRawSeries,
       renderEmptyMessage,
       renderLoadingView = LoadingView,
@@ -861,6 +865,10 @@ class Visualization extends PureComponent<
                     isRawTable={isRawTable}
                     isQueryBuilder={!!isQueryBuilder}
                     isSettings={!!isSettings}
+                    isSelectable={isSelectable}
+                    rowChecked={rowChecked}
+                    onAllSelectClick={onAllSelectClick}
+                    onRowSelectClick={onRowSelectClick}
                     isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                     scrollToLastColumn={scrollToLastColumn}
                     metadata={metadata}
