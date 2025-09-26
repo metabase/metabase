@@ -25,7 +25,6 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "fetchRequestToken",
     "useExistingUserSession",
     "isStatic",
-    "fetchStaticToken",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",

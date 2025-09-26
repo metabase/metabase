@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useAsyncFn } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -24,12 +23,8 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
-import { resolveTokenForMaybeStaticEntity } from "embedding-sdk-bundle/lib/resolve-token-for-maybe-static-entity";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import {
-  getFetchStaticTokenFn,
-  getIsStaticEmbedding,
-} from "embedding-sdk-bundle/store/selectors";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -130,7 +125,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId: rawDashboardId,
+  dashboardId,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -157,36 +152,12 @@ const SdkDashboardInner = ({
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
-  const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
-
-  const [
-    {
-      loading: tokenLoading,
-      value: { entityId: dashboardId = null } = {
-        entityId: null,
-      },
-    },
-    resolveDashboardId,
-  ] = useAsyncFn(
-    () =>
-      resolveTokenForMaybeStaticEntity({
-        entityType: "dashboard",
-        entityId: rawDashboardId,
-        isStaticEmbedding,
-        customFetchStaticTokenFn,
-      }),
-    [rawDashboardId, isStaticEmbedding, customFetchStaticTokenFn],
-  );
 
   useEffect(() => {
-    resolveDashboardId().then(({ entityId: dashboardId, isToken }) => {
-      const token = isToken && dashboardId ? dashboardId.toString() : null;
-
-      if (isStaticEmbedding) {
-        setEmbedDashboardEndpoints(token ?? "");
-      }
-    });
-  }, [isStaticEmbedding, resolveDashboardId]);
+    if (isStaticEmbedding) {
+      setEmbedDashboardEndpoints(dashboardId.toString());
+    }
+  }, [dashboardId, isStaticEmbedding]);
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -265,7 +236,7 @@ const SdkDashboardInner = ({
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
 
-  if (tokenLoading || isLocaleLoading) {
+  if (isLocaleLoading) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkLoader />

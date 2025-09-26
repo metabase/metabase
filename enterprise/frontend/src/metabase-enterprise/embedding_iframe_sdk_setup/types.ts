@@ -1,9 +1,4 @@
-import type {
-  SdkDashboardId,
-  SdkQuestionId,
-  SqlParameterValues,
-} from "embedding-sdk-bundle/types";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
@@ -12,7 +7,6 @@ import type {
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedStaticEmbeddingSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
-import type { SdkIframeEmbedSetupStaticEmbeddingType } from "metabase-enterprise/embedding_iframe_sdk_setup/enums";
 import type { BaseRecentItem } from "metabase-types/api";
 
 export type SdkIframeEmbedSetupExperience =
@@ -38,22 +32,14 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
 > & { id: string | number };
 
 export type SdkIframeEmbedSetupStaticEmbeddingSettings =
-  SdkIframeEmbedStaticEmbeddingSettings & {
-    staticEmbeddingType: SdkIframeEmbedSetupStaticEmbeddingType;
-  };
+  SdkIframeEmbedStaticEmbeddingSettings;
 
-export type SdkIframeDashboardEmbedSettings = Omit<
-  DashboardEmbedOptions,
-  "initialParameters"
-> & {
-  parameters?: ParameterValues;
+export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions & {
+  lockedParameters?: string[];
 };
 
-export type SdkIframeQuestionEmbedSettings = Omit<
-  QuestionEmbedOptions,
-  "initialSqlParameters"
-> & {
-  sqlParameters?: SqlParameterValues;
+export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions & {
+  lockedParameters?: string[];
 };
 
 export type SdkIframeEmbedSetupTemplateSettings =

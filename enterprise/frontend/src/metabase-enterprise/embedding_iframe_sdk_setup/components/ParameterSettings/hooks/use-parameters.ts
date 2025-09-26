@@ -27,8 +27,8 @@ export const useParameters = () => {
 
   const getParameterValuesBySlug = useCallback(() => {
     return match(settings)
-      .with({ dashboardId: P.nonNullable }, (s) => s.parameters ?? {})
-      .with({ questionId: P.nonNullable }, (s) => s.sqlParameters ?? {})
+      .with({ dashboardId: P.nonNullable }, (s) => s.initialParameters ?? {})
+      .with({ questionId: P.nonNullable }, (s) => s.initialSqlParameters ?? {})
       .otherwise(() => ({}));
   }, [settings]);
 

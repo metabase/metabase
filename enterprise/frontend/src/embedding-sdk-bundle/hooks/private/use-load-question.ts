@@ -1,7 +1,6 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
-import { resolveTokenForMaybeStaticEntity } from "embedding-sdk-bundle/lib/resolve-token-for-maybe-static-entity";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -9,10 +8,7 @@ import {
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import {
-  getFetchStaticTokenFn,
-  getIsStaticEmbedding,
-} from "embedding-sdk-bundle/store/selectors";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
@@ -20,6 +16,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
+import { isJWT } from "metabase/lib/utils";
 import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -62,7 +59,7 @@ export interface LoadQuestionHookResult {
 }
 
 export function useLoadQuestion({
-  questionId: rawQuestionId,
+  questionId,
   options,
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
@@ -84,7 +81,6 @@ export function useLoadQuestion({
     questionState;
 
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
-  const customFetchStaticTokenFn = useSdkSelector(getFetchStaticTokenFn);
 
   const deferredRef = useRef<Deferred>();
 
@@ -104,7 +100,7 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const shouldLoadQuestion = rawQuestionId != null || deserializedCard != null;
+  const shouldLoadQuestion = questionId != null || deserializedCard != null;
   const [isQuestionLoading, setIsQuestionLoading] =
     useState(shouldLoadQuestion);
 
@@ -114,15 +110,7 @@ export function useLoadQuestion({
     }
 
     try {
-      const { entityId: questionId = null, isToken } =
-        await resolveTokenForMaybeStaticEntity({
-          entityType: "question",
-          entityId: rawQuestionId,
-          isStaticEmbedding,
-          customFetchStaticTokenFn,
-        });
-
-      const token = isToken && questionId ? questionId.toString() : null;
+      const token = isJWT(questionId) ? questionId.toString() : null;
 
       mergeQuestionState({
         token,
@@ -176,10 +164,9 @@ export function useLoadQuestion({
     dispatch,
     options,
     deserializedCard,
-    rawQuestionId,
     isStaticEmbedding,
-    customFetchStaticTokenFn,
     sqlParameterKey,
+    questionId,
     targetDashboardId,
   ]);
 

@@ -20,12 +20,8 @@ import type {
   SdkIframeEmbedEvent,
   SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
-  SdkIframeEmbedSetStaticTokenMessage,
   SdkIframeEmbedSettings,
-  SdkIframeEmbedTagFetchStaticTokenMessage,
-  SdkIframeEmbedTagFunctionCallMessage,
   SdkIframeEmbedTagMessage,
-  SdkIframeFunctionCallHandlerData,
 } from "./types/embed";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
@@ -147,16 +143,6 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
   protected abstract _attributeNames: readonly string[];
 
   static readonly VERSION = "1.1.0";
-
-  private readonly functionCallMessageHandlerDataList: SdkIframeFunctionCallHandlerData[] =
-    [
-      {
-        functionCallMessageType: "metabase.embed.functionCall.fetchStaticToken",
-        functionResultMessageType:
-          "metabase.embed.functionResult.fetchStaticToken",
-        handler: this._fetchStaticToken,
-      },
-    ];
 
   private _isEmbedReady: boolean = false;
   private _eventHandlers: Map<
@@ -388,14 +374,13 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       settings.apiKey,
       settings.useExistingUserSession,
       settings.preferredAuthMethod,
-      settings.fetchStaticToken,
     ].filter(
       (method) => method !== undefined && method !== null && method !== false,
     );
 
     if (authMethods.length > 1) {
       raiseError(
-        "apiKey, useExistingUserSession, preferredAuthMethod, and fetchStaticToken are mutually exclusive, only one can be specified.",
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
       );
     }
   }
@@ -409,20 +394,6 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     }
 
     if (!event.data) {
-      return;
-    }
-
-    const functionCallHandler = this.functionCallMessageHandlerDataList.find(
-      (data) => data.functionCallMessageType === event.data.type,
-    );
-
-    if (functionCallHandler) {
-      await functionCallHandler?.handler.call(
-        this,
-        functionCallHandler,
-        event.data as SdkIframeEmbedTagFunctionCallMessage,
-      );
-
       return;
     }
 
@@ -535,32 +506,6 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
       // eslint-disable-next-line no-literal-metabase-strings -- header name
       ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
     };
-  }
-
-  private async _fetchStaticToken(
-    handlerData: SdkIframeFunctionCallHandlerData,
-    message: SdkIframeEmbedTagFetchStaticTokenMessage,
-  ) {
-    const { fetchStaticToken } = this.properties;
-
-    if (!fetchStaticToken) {
-      throw new Error(
-        "fetchStaticToken function is not provided in the embed settings",
-      );
-    }
-
-    const staticToken = await fetchStaticToken({
-      entityType: message.data.params.entityType,
-      entityId: message.data.params.entityId,
-    });
-
-    this.sendMessage<SdkIframeEmbedSetStaticTokenMessage>(
-      handlerData.functionResultMessageType,
-      {
-        messageId: message.data.messageId,
-        result: staticToken,
-      },
-    );
   }
 }
 

@@ -76,15 +76,18 @@ export const SelectEmbedResourceStep = () => {
         dashboardId: id,
 
         // Clear parameters
-        parameters: {},
+        initialParameters: {},
         hiddenParameters: [],
+        lockedParameters: [],
       });
     } else if (experience === "chart") {
       updateSettings({
         questionId: id,
 
         // Clear parameters
-        sqlParameters: {},
+        initialSqlParameters: {},
+        hiddenParameters: [],
+        lockedParameters: [],
       });
     } else if (experience === "browser") {
       updateSettings({

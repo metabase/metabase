@@ -4,9 +4,6 @@ import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
 import type {
   MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
-  MetabaseFetchStaticTokenFn,
-  MetabaseFetchStaticTokenFnData,
-  UserBackendJwtResponse,
 } from "embedding-sdk-bundle/types/refresh-token";
 import type {
   CollectionBrowserListColumns,
@@ -19,27 +16,10 @@ import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
-export type SdkIframeEventBusCalledFunctionName = "fetchStaticToken";
-
-export type SdkIframeEventFunctionCallMessageHandler = (
-  handlerData: SdkIframeFunctionCallHandlerData,
-  message: SdkIframeEmbedTagFunctionCallMessage,
-) => void | Promise<void>;
-
-export type SdkIframeFunctionCallHandlerData = {
-  functionCallMessageType: SdkIframeEmbedTagFunctionCallMessage["type"];
-  functionResultMessageType: SdkIframeEmbedFunctionResultMessage["type"];
-  handler: SdkIframeEventFunctionCallMessageHandler;
-};
-
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
-  | SdkIframeEmbedTagRequestSessionTokenMessage
-  | SdkIframeEmbedTagFunctionCallMessage;
-
-export type SdkIframeEmbedTagFunctionCallMessage =
-  SdkIframeEmbedTagFetchStaticTokenMessage;
+  | SdkIframeEmbedTagRequestSessionTokenMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
@@ -47,24 +27,13 @@ export type SdkIframeEmbedTagIframeReadyMessage = {
 export type SdkIframeEmbedTagRequestSessionTokenMessage = {
   type: "metabase.embed.requestSessionToken";
 };
-export type SdkIframeEmbedTagFetchStaticTokenMessage = {
-  type: "metabase.embed.functionCall.fetchStaticToken";
-  data: {
-    messageId: string;
-    params: MetabaseFetchStaticTokenFnData;
-  };
-};
 
 /** Events that the sdk embed route listens for */
 export type SdkIframeEmbedMessage =
   | SdkIframeEmbedSetSettingsMessage
   | SdkIframeEmbedSubmitSessionTokenMessage
   | SdkIframeEmbedReportAuthenticationError
-  | SdkIframeEmbedReportAnalytics
-  | SdkIframeEmbedFunctionResultMessage;
-
-export type SdkIframeEmbedFunctionResultMessage =
-  SdkIframeEmbedSetStaticTokenMessage;
+  | SdkIframeEmbedReportAnalytics;
 
 export type SdkIframeEmbedSetSettingsMessage = {
   type: "metabase.embed.setSettings";
@@ -90,13 +59,6 @@ export type SdkIframeEmbedReportAnalytics = {
     embedHostUrl: string;
   };
 };
-export type SdkIframeEmbedSetStaticTokenMessage = {
-  type: "metabase.embed.functionResult.fetchStaticToken";
-  data: {
-    messageId: string;
-    result: UserBackendJwtResponse;
-  };
-};
 
 // --- Embed Option Interfaces ---
 
@@ -109,7 +71,6 @@ export interface DashboardEmbedOptions {
   withDownloads?: boolean;
 
   // parameters
-  lockedParameters?: string[];
   initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
@@ -130,7 +91,6 @@ export interface QuestionEmbedOptions {
   isSaveEnabled?: boolean;
 
   // parameters
-  lockedParameters?: string[];
   initialSqlParameters?: SqlParameterValues;
   hiddenParameters?: string[];
 
@@ -198,9 +158,6 @@ export type SdkIframeEmbedBaseSettings = {
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
-  fetchStaticToken?: (
-    data: MetabaseFetchStaticTokenFnData,
-  ) => Promise<UserBackendJwtResponse>;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;
@@ -211,7 +168,6 @@ export type SdkIframeEmbedBaseSettings = {
 
 export type SdkIframeEmbedStaticEmbeddingSettings = {
   isStatic: boolean;
-  fetchStaticToken?: MetabaseFetchStaticTokenFn;
 };
 
 export type SdkIframeEmbedTemplateSettings =
