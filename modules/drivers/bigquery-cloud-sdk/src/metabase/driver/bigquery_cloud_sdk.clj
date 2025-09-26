@@ -1023,6 +1023,12 @@
          list-datasets
          (some #{schema}))))
 
+(defmethod driver/rename-table! :bigquery-cloud-sdk
+  [driver db old-name new-name]
+  (let [old-name (str (namespace old-name) "." (name old-name))
+        sql (format "ALTER TABLE `%s` RENAME TO `%s`;" old-name (name new-name))]
+    (driver/execute-raw-queries! driver (:details db) [sql])))
+
 (defmethod driver/table-name-length-limit :bigquery-cloud-sdk
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
