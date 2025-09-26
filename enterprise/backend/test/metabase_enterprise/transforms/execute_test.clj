@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.impl :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]

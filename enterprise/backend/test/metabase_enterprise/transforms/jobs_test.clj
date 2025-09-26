@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [clojure.tools.logging :as log]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.impl :as transforms.execute]
    [metabase-enterprise.transforms.jobs :as jobs]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.test :as mt]))

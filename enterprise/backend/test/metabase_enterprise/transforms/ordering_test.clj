@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.ordering-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.impl :as transforms.execute]
    [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]

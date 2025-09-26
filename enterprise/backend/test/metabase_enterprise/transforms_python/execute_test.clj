@@ -31,7 +31,7 @@
                                                             "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                        :target (assoc target :database (mt/id))}]
                 (mt/with-temp [:model/Transform transform initial-transform]
-                  (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
+                  (transforms-python.execute/execute! transform {:run-method :manual})
                   (transforms.tu/wait-for-table table-name 10000)
 
                   (let [initial-rows (transforms.tu/table-rows table-name)]
@@ -51,7 +51,7 @@
                                                                    (.await swap-latch)
                                                                    (original-rename-tables-atomic! driver db-id rename-pairs))]
                       (let [transform-future (future
-                                               (transforms-python.execute/execute-python-transform!
+                                               (transforms-python.execute/execute!
                                                 (t2/select-one :model/Transform (:id transform))
                                                 {:run-method :manual}))]
                         (is (= [["Alice" 25] ["Bob" 30]]
@@ -81,10 +81,10 @@
                                                         "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
                                    :target (assoc target :database (mt/id))}]
                 (mt/with-temp [:model/Transform transform transform-def]
-                  (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
+                  (transforms-python.execute/execute! transform {:run-method :manual})
                   (transforms.tu/wait-for-table table-name 10000)
 
-                  (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
+                  (transforms-python.execute/execute! transform {:run-method :manual})
 
                   (let [db-id (mt/id)
                         tables (t2/select :model/Table :db_id db-id :active true)]

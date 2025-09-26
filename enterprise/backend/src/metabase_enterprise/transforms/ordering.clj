@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
@@ -67,7 +68,7 @@
   (let [;; Group all transforms by their database
         transforms-by-db (->> transforms
                               (map (fn [transform]
-                                     (let [db-id (transforms.util/target-database-id transform)]
+                                     (let [db-id (transforms.i/target-db-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
 
