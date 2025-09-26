@@ -13,7 +13,9 @@
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
-;; This mirrors the function in src/metabase/warehouses/api.clj
+;; This is similar to the function in src/metabase/warehouses/api.clj, but we want to
+;; allow filtering the DBs in case of audit database, we don't want to allow users to modify
+;; its queries.
 (mu/defn- add-native-perms-info :- [:maybe
                                     [:sequential
                                      [:map
@@ -26,9 +28,9 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [dbs :- [:maybe [:sequential :map]]]
+  [predicate dbs :- [:maybe [:sequential :map]]]
   (perms/prime-db-cache (map :id dbs))
-  (for [db dbs]
+  (for [db (filter predicate dbs)]
     (assoc db
            :native_permissions
            (if (= :query-builder-and-native
@@ -42,9 +44,10 @@
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (->> (t2/select :model/Database :id [:in ids])
-         (into [] (filter mi/can-read?))
-         add-native-perms-info)))
+    (add-native-perms-info
+     #(false? (:is_audit %))
+     (into [] (filter mi/can-read?)
+           (t2/select :model/Database :id [:in ids])))))
 
 (defn- field-ids->table-ids
   [field-ids]
