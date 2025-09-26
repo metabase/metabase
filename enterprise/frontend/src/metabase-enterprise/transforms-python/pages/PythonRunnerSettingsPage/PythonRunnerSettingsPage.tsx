@@ -17,6 +17,13 @@ export function PythonRunnerSettingsPage() {
           placeholder="http://localhost:5001"
           inputType="text"
         />
+        <AdminSettingInput
+          name="python-runner-timeout-seconds"
+          title={t`Python Script Execution Timeout`}
+          description={t`Timeout in seconds for Python script execution. Defaults to 30 minutes (1800 seconds).`}
+          placeholder="1800"
+          inputType="number"
+        />
       </SettingsSection>
       <SettingsSection title={t`S3 Storage Configuration`}>
         <AdminSettingInput
