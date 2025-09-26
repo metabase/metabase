@@ -23,11 +23,6 @@
   "Execute a transform operation. Runs the actual transformation process, which might involve running SQL queries,
   Python scripts, or other transformation logic depending on the transform type.
 
-  The `options` map may include:
-  - `:dry-run?` - When true, validates the transform without executing it
-  - `:overwrite?` - Whether to overwrite existing target data
-  - Additional type-specific options
-
   This method performs side effects and may take significant time depending on the data volume. Implementations
   should handle errors gracefully and provide appropriate logging."
   {:added "0.47.0" :arglists '([transform options])}
