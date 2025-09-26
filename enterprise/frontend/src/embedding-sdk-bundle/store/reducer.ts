@@ -5,7 +5,10 @@ import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk-bundle/types/refresh-token";
+import type {
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
+} from "embedding-sdk-bundle/types/refresh-token";
 import type { SdkErrorComponent } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -35,6 +38,8 @@ export const setFetchRefreshTokenFn =
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
+let refreshTokenPromise: Promise<MetabaseEmbeddingSessionToken | null> | null =
+  null;
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
@@ -52,11 +57,20 @@ export const getOrRefreshSession = createAsyncThunk(
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
 
-    if (state.loading || isTokenValid) {
+    if (isTokenValid) {
       return token;
     }
 
-    return dispatch(refreshTokenAsync(authConfig)).unwrap();
+    if (refreshTokenPromise) {
+      return refreshTokenPromise;
+    }
+
+    refreshTokenPromise = dispatch(refreshTokenAsync(authConfig)).unwrap();
+    refreshTokenPromise.finally(() => {
+      refreshTokenPromise = null;
+    });
+
+    return refreshTokenPromise;
   },
 );
 
