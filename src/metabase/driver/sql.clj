@@ -9,6 +9,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -119,24 +120,37 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
-  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
-                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
+(def ^:const tmp-transform-suffix
+  "Suffix used for a temporary transform table that will be renamed to the final transform table."
+  "__metabase_transform_tmp_name")
 
-(defn qualified-name
-  "Return the name of the target table of a transform as a possibly qualified symbol."
-  [{schema :schema, table-name :name}]
-  (if schema
-    (keyword schema table-name)
-    (keyword table-name)))
+(defn- get-tmp-transform-name [table-name suffix]
+  (str (driver.impl/truncate-alias (str table-name "__" (str/replace (random-uuid) "-" ""))
+                                   (- driver.impl/default-alias-max-length-bytes (count suffix)))
+       suffix))
+
+;; TODO(rileythomp, 2025-09-09): This probably doesn't need to be a driver multi-method
+(defmethod driver/run-transform! [:sql :table]
+  [driver {:keys [db-id query target conn-spec] :as _transform-details}]
+  (let [db (driver-api/with-metadata-provider db-id (driver-api/database (driver-api/metadata-provider)))
+        {schema :schema table-name :name} target
+        output-table (keyword schema table-name)]
+    (if (driver/table-exists? driver db target)
+      (let [tmp-name (get-tmp-transform-name table-name tmp-transform-suffix)
+            tmp-table (keyword schema tmp-name)
+            create-tmp-table-query (driver/compile-transform driver query tmp-table)
+            rows-affected (first (driver/execute-raw-queries! driver conn-spec [create-tmp-table-query]))]
+        (driver/drop-transform-target! driver db target)
+        (driver/rename-table! driver db tmp-table output-table)
+        rows-affected)
+      (let [query [(driver/compile-transform driver query output-table)]]
+        {:rows-affected (first (driver/execute-raw-queries! driver conn-spec query))}))))
 
 (defmethod driver/drop-transform-target! [:sql :table]
-  [driver database target]
+  [driver database {:keys [schema name]}]
   ;; driver/drop-table! takes table-name as a string, but the :sql-jdbc implementation uses
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
-  (driver/drop-table! driver (:id database) (qualified-name target)))
+  (driver/drop-table! driver (:id database) (keyword schema name)))
 
 (defn normalize-name
   "Normalizes the (primarily table/column) name passed in.

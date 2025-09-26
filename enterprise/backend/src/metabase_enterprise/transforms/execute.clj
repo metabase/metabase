@@ -13,14 +13,11 @@
 
 (mr/def ::transform-details
   [:map
+   [:db-id :int]
    [:transform-type [:enum {:decode/normalize schema.common/normalize-keyword} :table]]
-   [:conn-spec :any]
    [:query :string]
-   [:output-table [:keyword {:decode/normalize schema.common/normalize-keyword}]]])
-
-(mr/def ::transform-opts
-  [:map
-   [:overwrite? :boolean]])
+   [:target :any]
+   [:conn-spec :any]])
 
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
@@ -36,11 +33,9 @@
            feature (transforms.util/required-database-feature transform)
            transform-details {:db-id db
                               :transform-type (keyword (:type target))
-                              :conn-spec (driver/connection-spec driver database)
                               :query (transforms.util/compile-source source)
-                              :output-schema (:schema target)
-                              :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? true}]
+                              :target target
+                              :conn-spec (driver/connection-spec driver database)}]
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))
@@ -54,7 +49,7 @@
          (log/info "Executing transform" id "with target" (pr-str target))
          (transforms.util/run-cancelable-transform!
           run-id driver transform-details
-          (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
+          (fn [_cancel-chan] (driver/run-transform! driver transform-details)))
          (transforms.instrumentation/with-stage-timing [run-id :table-sync]
            (transforms.util/sync-target! target database run-id))))
      (catch Throwable t
