@@ -133,12 +133,11 @@
                                       :name   (:name   representation)
                                       :engine (:engine representation))]
       (do
-        (log/info "Updating existing database" (:name representation) "with ref" (:ref representation))
-        (t2/update! :model/Database (:id existing) representation)
-        (t2/select-one :model/Database :id (:id existing)))
-      (do
-        (log/info "Creating new database" (:name representation))
-        (first (t2/insert-returning-instances! :model/Database representation))))))
+        (log/info "Found existing database" (:name representation) "with ref" (:ref representation))
+        existing)
+      (throw (ex-info (str "Could not match database by name: " (:name representation)
+                           " and engine: " (:engine representation))
+                      {:representation representation})))))
 
 ;;; ------------------------------------ Export Functions ------------------------------------
 
