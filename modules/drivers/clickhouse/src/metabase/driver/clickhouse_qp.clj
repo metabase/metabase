@@ -243,7 +243,7 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDate]
   [_ ^java.time.LocalDate t]
-  t)
+  [:'parseDateTimeBestEffort t])
 
 (defn- local-date-time
   [^java.time.LocalTime t]

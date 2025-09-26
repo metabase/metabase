@@ -681,19 +681,19 @@
                        [:field (mt/id :people :longitude) nil]]}})
 
 (deftest card-tile-query-test
-  (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
                                                 :enable_embedding true}]
         (let [token (embed-test/card-token card-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "preview_embed/tiles/card/%s/1/1/1/%s/%s"
-                                                 token
-                                                 (tiles.api-test/encoded-lat-field-ref)
-                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
+                     :crowberto :get 200 (format "preview_embed/tiles/card/%s/1/1/1"
+                                                 token)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
 (deftest dashcard-tile-query-test
-  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
 
@@ -702,9 +702,9 @@
                                                               :dashboard_id dashboard-id}]
         (let [token (embed-test/dash-token dashboard-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
+                     :crowberto :get 200 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
                                                  token
                                                  dashcard-id
-                                                 card-id
-                                                 (tiles.api-test/encoded-lat-field-ref)
-                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
+                                                 card-id)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))

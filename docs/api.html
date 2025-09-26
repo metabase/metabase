@@ -18554,6 +18554,168 @@ redirect_from:
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/tiles/card/{token}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/tiles/card/{token}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for an embedded Card using the map visualization.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
+    "/api/preview_embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "description" : "Generates a single tile image for a Card on an embedded Dashboard using the map visualization.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "lat-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "lon-field",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/product-feedback/" : {
       "post" : {
         "summary" : "POST /api/product-feedback/",

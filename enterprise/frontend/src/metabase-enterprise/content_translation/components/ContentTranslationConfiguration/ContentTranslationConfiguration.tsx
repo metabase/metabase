@@ -124,10 +124,10 @@ export const ContentTranslationConfiguration = () => {
           {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
           <DescriptionText>{t`Upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).`}</DescriptionText>
           <DescriptionText>{t`The dictionary must be a CSV with these columns:`}</DescriptionText>
-          <List ms="sm" c="text-medium">
-            <List.Item c="inherit">{t`Locale Code`}</List.Item>
-            <List.Item c="inherit">{t`String`}</List.Item>
-            <List.Item c="inherit">{t`Translation`}</List.Item>
+          <List ms="sm">
+            <List.Item>{t`Locale Code`}</List.Item>
+            <List.Item>{t`String`}</List.Item>
+            <List.Item>{t`Translation`}</List.Item>
           </List>
           <DescriptionText>{t`Don't put any sensitive data in the dictionary, since anyone can see the dictionary—including viewers of public links.`}</DescriptionText>
           <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
