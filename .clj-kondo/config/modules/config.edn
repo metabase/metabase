@@ -1842,7 +1842,8 @@
            warehouse-schema
            warehouses
            enterprise/documents
-           enterprise/transforms}}
+           enterprise/transforms
+           enterprise/transforms-python}}
 
   enterprise/permission-debug
   {:team "UX West"
