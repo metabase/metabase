@@ -1,20 +1,44 @@
+import { useMemo } from "react";
 import { jt, t } from "ttag";
 
+import { ERROR_DOC_LINKS } from "embedding-sdk-bundle/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
 import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
 import Alert from "metabase/common/components/Alert";
 import { color } from "metabase/lib/colors";
-import { Box, Center, Code } from "metabase/ui";
+import { Anchor, Box, Center, Code } from "metabase/ui";
 
-export const SdkError = ({ message }: SdkErrorComponentProps) => {
+export const SdkError = ({ message, error }: SdkErrorComponentProps) => {
   const CustomError = useSdkSelector(getErrorComponent);
 
   const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
+  const errorMessage = useMemo(() => {
+    if (error && "code" in error && typeof error.code === "string") {
+      const docsLink = ERROR_DOC_LINKS[error.code as MetabaseErrorCode];
+
+      if (docsLink) {
+        return (
+          <span>
+            {error.message || message}{" "}
+            <Anchor
+              href={docsLink}
+              target="_blank"
+              rel="noopener noreferrer"
+            >{t`Read more.`}</Anchor>
+          </span>
+        );
+      }
+    }
+
+    return message;
+  }, [message, error]);
+
   return (
     <Center h="100%" w="100%" mx="auto" data-testid="sdk-error-container">
-      <ErrorMessageComponent message={message} />
+      <ErrorMessageComponent message={errorMessage} />
     </Center>
   );
 };
