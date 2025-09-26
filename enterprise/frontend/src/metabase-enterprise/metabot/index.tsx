@@ -13,6 +13,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { trackMetabotChatOpened } from "./analytics";
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
@@ -77,6 +78,7 @@ if (hasPremiumFeature("metabot_v3")) {
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
   PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
+  PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 } else if (hasPremiumFeature("offer_metabase_ai")) {
