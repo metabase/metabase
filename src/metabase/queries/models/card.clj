@@ -1278,7 +1278,6 @@
 (defn- maybe-extract-native-query
   "Return the native SQL text (truncated to `max-search-len`) if `dataset_query` is native; else nil."
   [{:keys [dataset_query]}]
-  (def dataset_query dataset_query)
   (let [query ((:out mi/transform-metabase-query) dataset_query)
         query-text (when (= :native (:type query))
                      (get-in query [:native :query]))]
