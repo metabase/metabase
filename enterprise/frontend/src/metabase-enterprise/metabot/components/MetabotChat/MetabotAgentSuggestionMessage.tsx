@@ -205,9 +205,8 @@ export const AgentSuggestionMessage = ({
       // Create a temporary source to process template tags
       const processedTransform = processTransform(suggestedTransform, source);
       const { error } = await updateTransform({
-        ...suggestedTransform,
-        ...processedTransform,
         id: suggestedTransform.id,
+        source: processedTransform.source,
       });
 
       if (error) {
@@ -216,27 +215,27 @@ export const AgentSuggestionMessage = ({
         sendSuccessToast(t`Transform query updated`);
       }
     } else {
+      // TODO: handle create
       // console.log("TODO");
     }
   };
 
   const handleAccept = async () => {
+    const processedTransform = processTransform(suggestedTransform);
+
     if (!isViewing && !suggestedTransform.id) {
-      const processedTransform = processTransform(suggestedTransform);
       dispatch(setSuggestedTransform(processedTransform));
       handleFocus({ skipToSave: true });
     }
 
-    if (suggestedTransform.id) {
-      await handleSave(suggestedTransform.source);
-      metabot.submitInput({
-        type: "action",
-        message:
-          "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
-        // @ts-expect-error -- TODO
-        userMessage: "✅ You accepted the change",
-      });
-    }
+    await handleSave(processedTransform.source);
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
+      // @ts-expect-error -- TODO
+      userMessage: "✅ You accepted the change",
+    });
   };
   const handleReject = () => {
     dispatch(setSuggestedTransform(undefined));
