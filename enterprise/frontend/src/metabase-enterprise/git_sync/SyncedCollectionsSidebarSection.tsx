@@ -11,17 +11,15 @@ import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
-import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView.tsx";
+import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import {
-  Autocomplete,
   Box,
   Button,
   Flex,
   Group,
   HoverCard,
   Icon,
-  Loader,
   ScrollArea,
   Text,
   Tooltip,
@@ -29,13 +27,13 @@ import {
 import {
   EnterpriseApi,
   tag,
-  useGetBranchesQuery,
   useGetChangedEntitiesQuery,
   useGetCurrentSyncTaskQuery,
   useImportFromBranchMutation,
 } from "metabase-enterprise/api";
 import type { Collection } from "metabase-types/api";
 
+import { BranchPicker } from "./BranchPicker";
 import { ChangesLists, PushChangesModal } from "./PushChangesModal";
 
 const SYNC_STATUS_DELAY = 3000;
@@ -49,7 +47,6 @@ export const SyncedCollectionsSidebarSection = ({
   collectionItem: CollectionTreeItem | null;
   onItemSelect: () => void;
 }) => {
-  const { data } = useGetBranchesQuery();
   const { updateSetting, value: currentBranch } =
     useAdminSetting("remote-sync-branch");
   const [importFromBranch, { isLoading: isImporting }] =
@@ -58,7 +55,6 @@ export const SyncedCollectionsSidebarSection = ({
     useDisclosure(false);
   const [showPush, { open: openPush, close: closePush }] = useDisclosure(false);
 
-  const branches = data?.items?.length ? data.items : ["main"];
   const [nextBranch, setNextBranch] = useState<string>(currentBranch ?? "main");
 
   useEffect(() => {
@@ -74,9 +70,14 @@ export const SyncedCollectionsSidebarSection = ({
 
   const isLoading = isImporting || status !== "idle";
 
-  const handleBranchSelect = (branch: string) => {
+  const handleBranchSelect = (branch: string, isNewBranch = false) => {
+    if (branch === currentBranch) {
+      return;
+    }
+
     setNextBranch(branch);
-    if (isDirty) {
+    // If creating a new branch from current branch, we don't show the discard modal since the new branch will have the same content
+    if (isDirty && !isNewBranch) {
       openConfirm();
     } else {
       handleBranchChange(branch);
@@ -101,41 +102,31 @@ export const SyncedCollectionsSidebarSection = ({
       <SidebarSection>
         <ErrorBoundary>
           <Flex justify="space-between">
-            <Box>
+            <Box w="100%">
               <Group gap="sm">
                 <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
                 {message && <SyncError message={message} />}
               </Group>
-              {isLoading ? (
-                <Box pl="xl" py="sm">
-                  <Loader size="xs" />
-                </Box>
-              ) : (
-                <Autocomplete
-                  leftSection={<Icon name="schema" c="brand" size="sm" />}
-                  rightSection={<Icon name="chevrondown" size={12} />}
-                  data={branches}
-                  styles={{
-                    input: {
-                      border: "none",
-                      color: "var(--mb-color-brand)",
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                    },
-                  }}
+              <Group p="sm" pl="14px" gap="sm" w="100%">
+                <BranchPicker
                   value={nextBranch ?? "main"}
-                  variant="unstyled"
-                  onChange={setNextBranch}
-                  placeholder={t`Select branch`}
+                  onChange={handleBranchSelect}
                   disabled={isLoading}
-                  onBlur={(e) => handleBranchSelect(e.target.value)}
-                  limit={5}
+                  isLoading={isLoading}
+                  baseBranch={currentBranch ?? "main"}
                 />
-              )}
+                <Button
+                  variant="subtle"
+                  onClick={openPush}
+                  disabled={isLoading}
+                  h={24}
+                  px={0}
+                  ml="auto"
+                >
+                  <Icon name="upload" c="brand" size={20} />
+                </Button>
+              </Group>
             </Box>
-            <Button variant="subtle" onClick={openPush} disabled={isLoading}>
-              <Icon name="upload" c="brand" size={20} />
-            </Button>
           </Flex>
 
           {!hasSyncedCollections && (

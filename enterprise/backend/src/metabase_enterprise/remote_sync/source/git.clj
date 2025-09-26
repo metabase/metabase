@@ -209,9 +209,34 @@
        (map #(str/replace-first (.getName ^Ref %) "refs/heads/" ""))
        sort))
 
+(defn create-branch
+  "Create a new branch from an existing branch"
+  [{:keys [^Git git] :as source} branch-name base-branch]
+  (fetch! source)
+  (let [repo (.getRepository git)
+        base-ref (qualify-branch base-branch)
+        new-branch-ref (qualify-branch branch-name)
+        base-commit-id (or (.resolve repo base-ref)
+                           (.resolve repo "refs/heads/main")
+                           (.resolve repo "refs/heads/master"))]
+    (when-not base-commit-id
+      (throw (ex-info (format "Base branch '%s' not found" base-branch)
+                      {:base-branch base-branch})))
+    (when (.resolve repo new-branch-ref)
+      (throw (ex-info (format "Branch '%s' already exists" branch-name)
+                      {:branch branch-name})))
+    (doto (.updateRef repo new-branch-ref)
+      (.setNewObjectId base-commit-id)
+      (.update))
+    (push-branch! (assoc source :commit-ish branch-name))
+    branch-name))
+
 (defrecord GitSource [git remote-url commit-ish token]
   source.p/LibrarySource
   (branches [source] (branches source))
+
+  (create-branch [source branch-name base-branch]
+    (create-branch source branch-name base-branch))
 
   (list-files [this]
     (list-files this))

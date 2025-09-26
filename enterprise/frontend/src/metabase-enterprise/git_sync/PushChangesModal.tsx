@@ -8,7 +8,6 @@ import { modelToUrl } from "metabase/lib/urls";
 import {
   Alert,
   Anchor,
-  Autocomplete,
   Badge,
   Box,
   Button,
@@ -29,7 +28,6 @@ import type { Collection } from "metabase-types/api";
 import {
   type DirtyEntity,
   useExportChangesMutation,
-  useGetBranchesQuery,
   useGetChangedEntitiesQuery,
 } from "../api/git-sync";
 
@@ -269,10 +267,8 @@ export const PushChangesModal = ({
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
   const [forceMode, setForceMode] = useState(false);
-  const { value: defaultBranch, updateSetting } =
+  const { value: currentBranch, updateSetting } =
     useAdminSetting("remote-sync-branch");
-  const { data: branchData } = useGetBranchesQuery();
-  const [branch, setBranch] = useState(defaultBranch);
 
   const [
     exportChanges,
@@ -297,16 +293,20 @@ export const PushChangesModal = ({
   }, [isSuccess, onClose]);
 
   const handlePush = useCallback(() => {
+    if (!currentBranch) {
+      throw new Error("Current branch is not set");
+    }
+
     exportChanges({
       message: commitMessage.trim() || undefined,
       forceSync: forceMode,
-      branch: branch ?? "main",
+      branch: currentBranch,
     });
     updateSetting({
       key: "remote-sync-branch",
-      value: branch ?? "main",
+      value: currentBranch,
     });
-  }, [commitMessage, forceMode, exportChanges, branch, updateSetting]);
+  }, [commitMessage, forceMode, exportChanges, currentBranch, updateSetting]);
 
   return (
     <Modal
@@ -331,13 +331,7 @@ export const PushChangesModal = ({
 
         <Stack gap="lg">
           <ChangesLists collections={collections} />
-          <Autocomplete
-            data={branchData?.items || []}
-            value={branch ?? "main"}
-            onChange={setBranch}
-            label={t`Select branch`}
-            limit={5}
-          />
+
           <CommitMessageSection
             value={commitMessage}
             onChange={setCommitMessage}

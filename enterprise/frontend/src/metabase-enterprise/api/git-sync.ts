@@ -143,6 +143,19 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("remote-sync-branches")],
     }),
+    createBranch: builder.mutation<void, { name: string; baseBranch?: string }>(
+      {
+        query: ({ name, baseBranch }) => ({
+          method: "POST",
+          url: `/api/ee/remote-sync/branches`,
+          body: {
+            name,
+            base_branch: baseBranch || "main",
+          },
+        }),
+        invalidatesTags: () => [tag("remote-sync-branches")],
+      },
+    ),
     getCurrentSyncTask: builder.query<CurrentTaskResponse, void>({
       query: () => ({
         method: "GET",
@@ -159,6 +172,7 @@ export const {
   useUpdateGitSyncSettingsMutation,
   useExportChangesMutation,
   useGetBranchesQuery,
+  useCreateBranchMutation,
   useImportFromBranchMutation,
   useGetCurrentSyncTaskQuery,
 } = gitSyncApi;

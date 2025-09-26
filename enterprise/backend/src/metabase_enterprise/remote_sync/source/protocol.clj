@@ -4,6 +4,9 @@
   (branches [source]
     "Returns a map of branch names available in the source")
 
+  (create-branch [source branch-name base-branch]
+    "Creates a new branch from an existing branch")
+
   (list-files [source]
     "Lists all files in the source")
 
