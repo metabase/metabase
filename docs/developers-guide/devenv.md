@@ -7,7 +7,7 @@ title: Development environment
 The Metabase application has two basic components:
 
 1. A backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
-2. A frontend written as a Javascript single-page application which provides the web UI.
+2. A frontend written as a JavaScript single-page application which provides the web UI.
 
 Both components are built and assembled together into a single JAR file. In the directory where you run the JAR, you can create a JAR file (if Metabase hasn't already created it) and add drivers in there (the drivers are also JARs).
 
@@ -149,15 +149,14 @@ use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-
 
 ### Multiple Instances
 
-You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
+By default Rspack runs the development server on port `8088`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
 
 Frontend:
-- If you are running the frontend with `yarn build-hot`, set the `PORT` environment variable: `PORT=3001 MB_EDITION=ee yarn build-hot`
+- If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
 - If you are building the frontend statically with `yarn build`, there is nothing different to do
 
 Backend:
-- Set the `MB_JETTY_PORT` environment variable
-- If you are running the frontend with `yarn build-hot`, set `MB_WEBPACK_PORT` to the same port as the `PORT` variable above
+- Set the `MB_JETTY_PORT` environment variable and `MB_FRONTEND_DEV_PORT` to the same one as for the frontend.
 
 ### The application database
 

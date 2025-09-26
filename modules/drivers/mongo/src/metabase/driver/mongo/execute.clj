@@ -215,9 +215,10 @@
         db-name (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
-      (a/go
-        (when (a/<! (driver-api/canceled-chan))
-          (mongo.util/kill-session! client-database session)))
+      (when-let [cancel-chan (driver-api/canceled-chan)]
+        (a/go
+          (when (a/<! cancel-chan)
+            (mongo.util/kill-session! client-database session))))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name
                                                       session

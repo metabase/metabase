@@ -119,8 +119,8 @@
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
 
-(def ^:private webpack-port (or (env/env :mb-webpack-port) "8080"))
-(def ^:private webpack-address (str "http://localhost:" webpack-port))
+(def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
+(def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -136,7 +136,7 @@
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
-                                    webpack-address)
+                                    frontend-address)
                                   ;; for react dev tools to work in Firefox until resolution of
                                   ;; https://github.com/facebook/react/issues/17997
                                   (when config/is-dev?
@@ -155,7 +155,7 @@
                                    (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
-                                   webpack-address)
+                                   frontend-address)
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
@@ -174,7 +174,7 @@
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
-                                   (str "*:" webpack-port " ws://*:" webpack-port))
+                                   (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]
