@@ -24,7 +24,7 @@ import {
 } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Icon, type IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
 import {
   type RecentItem,
   isRecentCollectionItem,
@@ -36,8 +36,10 @@ import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
 export const useCommandPalette = ({
+  // disabled,
   locationQuery,
 }: {
+  disabled: boolean;
   locationQuery: Query;
 }) => {
   const dispatch = useDispatch();
@@ -170,63 +172,37 @@ export const useCommandPalette = ({
       ];
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
-        return [
-          {
-            id: `search-results-metadata`,
-            name: t`View and filter all ${searchResults?.total} results`,
+        return searchResults.data.map((result, index) => {
+          const wrappedResult = Search.wrapEntity(result, dispatch);
+          const icon = getIcon(wrappedResult);
+          return {
+            id: `search-result-${result.model}-${result.id}`,
+            name: result.name,
+            subtitle: result.description || "",
+            icon: icon.name,
             section: "search",
             keywords: debouncedSearchText,
-            icon: "link" as IconName,
+            priority: Priority.NORMAL - index,
             perform: () => {
               trackSearchClick({
-                itemType: "view_more",
-                position: 0,
+                itemType: "item",
+                position: index,
                 context: "command-palette",
                 searchEngine: searchResults?.engine || "unknown",
                 requestId: searchRequestId,
-                entityModel: null,
-                entityId: null,
+                entityModel: result.model,
+                entityId: typeof result.id === "number" ? result.id : null,
                 searchTerm: debouncedSearchText,
               });
             },
-            priority: Priority.HIGH,
             extra: {
-              href: searchLocation,
+              moderatedStatus: result.moderated_status,
+              href: wrappedResult.getUrl(),
+              iconColor: icon.color,
+              subtext: getSearchResultSubtext(wrappedResult),
             },
-          },
-        ].concat(
-          searchResults.data.map((result, index) => {
-            const wrappedResult = Search.wrapEntity(result, dispatch);
-            const icon = getIcon(wrappedResult);
-            return {
-              id: `search-result-${result.model}-${result.id}`,
-              name: result.name,
-              subtitle: result.description || "",
-              icon: icon.name,
-              section: "search",
-              keywords: debouncedSearchText,
-              priority: Priority.NORMAL - index,
-              perform: () => {
-                trackSearchClick({
-                  itemType: "item",
-                  position: index,
-                  context: "command-palette",
-                  searchEngine: searchResults?.engine || "unknown",
-                  requestId: searchRequestId,
-                  entityModel: result.model,
-                  entityId: typeof result.id === "number" ? result.id : null,
-                  searchTerm: debouncedSearchText,
-                });
-              },
-              extra: {
-                moderatedStatus: result.moderated_status,
-                href: wrappedResult.getUrl(),
-                iconColor: icon.color,
-                subtext: getSearchResultSubtext(wrappedResult),
-              },
-            };
-          }),
-        );
+          };
+        });
       } else {
         return [
           {
@@ -336,6 +312,12 @@ export const useCommandPalette = ({
     settingsActions,
     hasQuery,
   ]);
+
+  return {
+    searchRequestId,
+    searchResults,
+    searchTerm: debouncedSearchText,
+  };
 };
 
 export const getSearchResultSubtext = (wrappedSearchResult: any) => {

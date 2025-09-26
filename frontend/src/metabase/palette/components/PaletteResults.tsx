@@ -1,9 +1,21 @@
+import type { Query } from "history";
 import { useKBar, useMatches } from "kbar";
 import { useEffect, useMemo } from "react";
+import { Link } from "react-router";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
-import { Box, Flex, Stack, type StackProps } from "metabase/ui";
+import { trackSearchClick } from "metabase/search/analytics";
+import {
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  type StackProps,
+  Text,
+  rem,
+} from "metabase/ui";
+import type { SearchResponse } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "../types";
 import { navigateActionIndex, processResults } from "../utils";
@@ -13,9 +25,20 @@ import { PaletteResultList } from "./PaletteResultsList";
 
 const PAGE_SIZE = 4;
 
-type Props = Omit<StackProps, "children">;
+type Props = Omit<StackProps, "children"> & {
+  locationQuery: Query;
+  searchRequestId: string | undefined;
+  searchResults: SearchResponse | undefined;
+  searchTerm: string;
+};
 
-export const PaletteResults = (props: Props) => {
+export const PaletteResults = ({
+  locationQuery,
+  searchRequestId,
+  searchResults,
+  searchTerm,
+  ...props
+}: Props) => {
   // Used for finding actions within the list
   const { query } = useKBar();
 
@@ -71,23 +94,56 @@ export const PaletteResults = (props: Props) => {
           return (
             <Flex lh="1rem" pb="2px">
               {typeof item === "string" ? (
-                <Box
-                  px="1.5rem"
+                <Group
                   fz="14px"
-                  pt="1rem"
-                  pb="0.5rem"
-                  style={
-                    isFirst
+                  justify="space-between"
+                  px="lg"
+                  pt="md"
+                  pb="sm"
+                  mt={isFirst ? undefined : "md"}
+                  style={{
+                    borderTop: isFirst
                       ? undefined
-                      : {
-                          borderTop: "1px solid var(--mb-color-border)",
-                          marginTop: "1rem",
-                        }
-                  }
+                      : "1px solid var(--mb-color-border)",
+                  }}
                   w="100%"
                 >
                   {item}
-                </Box>
+
+                  {item === t`Results` && searchResults?.data.length && (
+                    <Text
+                      c="link"
+                      component={Link}
+                      fw={700}
+                      id="search-results-metadata"
+                      to={{
+                        pathname: "search",
+                        query: {
+                          ...locationQuery,
+                          q: searchTerm,
+                        },
+                      }}
+                      onClick={() => {
+                        trackSearchClick({
+                          itemType: "view_more",
+                          position: 0,
+                          context: "command-palette",
+                          searchEngine: searchResults?.engine || "unknown",
+                          requestId: searchRequestId,
+                          entityModel: null,
+                          entityId: null,
+                          searchTerm,
+                        });
+                      }}
+                    >
+                      <Group align="center" gap={rem(4)}>
+                        {t`View and filter all ${searchResults?.total} results`}
+
+                        <Icon name="chevronright" size={12} />
+                      </Group>
+                    </Text>
+                  )}
+                </Group>
               ) : (
                 <PaletteResultItem item={item} active={active} />
               )}

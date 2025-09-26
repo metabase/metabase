@@ -1,6 +1,10 @@
 import { KBarPortal, KBarSearch, VisualState, useKBar } from "kbar";
 import { type HTMLAttributes, forwardRef, useEffect, useRef } from "react";
-import { type PlainRoute, withRouter } from "react-router";
+import {
+  type PlainRoute,
+  type WithRouterProps,
+  withRouter,
+} from "react-router";
 import { t } from "ttag";
 
 import { useOnClickOutside } from "metabase/common/hooks/use-on-click-outside";
@@ -24,15 +28,6 @@ import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicAc
 import S from "./Palette.module.css";
 import { PaletteResults } from "./PaletteResults";
 
-/**
- * Thin wrapper for useCommandPalette.
- * Limits re-render scope and provides an easy way to enable/disable entire hook.
- */
-const AdvancedPaletteActions = withRouter((props) => {
-  useCommandPalette({ locationQuery: props.location.query });
-  return null;
-});
-
 /** Command palette */
 export const Palette = withRouter((props) => {
   const isLoggedIn = useSelector((state) => !!getUser(state));
@@ -52,48 +47,59 @@ export const Palette = withRouter((props) => {
   }, [disabled, query]);
 
   return (
-    <>
-      <KBarPortal>
-        <PaletteContainer />
-      </KBarPortal>
-      {!disabled && <AdvancedPaletteActions />}
-    </>
+    <KBarPortal>
+      <PaletteContainer disabled={disabled} />
+    </KBarPortal>
   );
 });
 
-const PaletteContainer = () => {
-  const { query } = useKBar((state) => ({ actions: state.actions }));
-  const ref = useRef(null);
+const PaletteContainer = withRouter(
+  ({ disabled, ...props }: WithRouterProps & { disabled: boolean }) => {
+    const { query } = useKBar((state) => ({ actions: state.actions }));
+    const ref = useRef(null);
 
-  useOnClickOutside(ref, () => {
-    query.setVisualState(VisualState.hidden);
-  });
+    const locationQuery = props.location.query;
+    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+      locationQuery,
+      disabled,
+    });
 
-  return (
-    <PaletteCard ref={ref}>
-      <Stack gap={rem(4)} pb="lg">
-        <Box pos="relative">
-          <KBarSearch
-            className={S.input}
-            defaultPlaceholder={t`Search for anything…`}
+    useOnClickOutside(ref, () => {
+      query.setVisualState(VisualState.hidden);
+    });
+
+    return (
+      <PaletteCard ref={ref}>
+        <Stack gap={rem(4)} pb="lg">
+          <Box pos="relative">
+            <KBarSearch
+              className={S.input}
+              defaultPlaceholder={t`Search for anything…`}
+            />
+
+            <Stack
+              className={S.iconContainer}
+              align="center"
+              left="var(--mantine-spacing-xl)"
+              pos="absolute"
+              bottom={10}
+            >
+              <Icon c="text-dark" name="search" />
+            </Stack>
+          </Box>
+
+          <PaletteResults
+            align="stretch"
+            locationQuery={locationQuery}
+            searchRequestId={searchRequestId}
+            searchResults={searchResults}
+            searchTerm={searchTerm}
           />
-
-          <Stack
-            className={S.iconContainer}
-            align="center"
-            left="var(--mantine-spacing-xl)"
-            pos="absolute"
-            bottom={10}
-          >
-            <Icon c="text-dark" name="search" />
-          </Stack>
-        </Box>
-
-        <PaletteResults align="stretch" />
-      </Stack>
-    </PaletteCard>
-  );
-};
+        </Stack>
+      </PaletteCard>
+    );
+  },
+);
 
 export const PaletteCard = forwardRef<
   HTMLDivElement,
