@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
+   [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -263,12 +264,15 @@
       (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
-        (throw (ex-info "Python runner call failed"
-                        {:status-code           400
-                         :api-status-code       status
-                         :body                  body
-                         :events                events
-                         :transform-run-message (message-log->transform-run-message message-log)}))
+        (do
+          (when (:timeout body)
+            (transform-run/timeout-run! run-id))
+          (throw (ex-info "Python runner call failed"
+                          {:status-code           400
+                           :api-status-code       status
+                           :body                  body
+                           :events                events
+                           :transform-run-message (message-log->transform-run-message message-log)})))
         (try
           (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
                 temp-file (.toFile temp-path)]
