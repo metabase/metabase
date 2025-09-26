@@ -22,8 +22,12 @@ export function MetricsApp({ children }: MetricsAppProps) {
     <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Metrics List */}
-        <Panel defaultSize={20} minSize={15} maxSize={35}>
-          <BenchPanel title="Metrics" height="100%">
+        <Panel defaultSize={33} minSize={25} maxSize={45}>
+          <BenchPanel
+            title="Metrics"
+            height="100%"
+            createNewPath="/bench/metrics/new"
+          >
             <MetricsEntitiesList
               selectedMetricId={selectedMetric?.id}
               onMetricClick={handleMetricClick}
@@ -41,7 +45,7 @@ export function MetricsApp({ children }: MetricsAppProps) {
         />
 
         {/* Main Panel - Metric Details and Results */}
-        <Panel defaultSize={80} minSize={50}>
+        <Panel defaultSize={67} minSize={55}>
           <Box h="100%" p="md">
             <Box
               h="100%"

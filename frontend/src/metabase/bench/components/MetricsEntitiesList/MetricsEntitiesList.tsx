@@ -28,12 +28,6 @@ export function MetricsEntitiesList({
 
   return (
     <Stack spacing="md">
-      <Link to="bench/metrics/new">
-        <Button variant="light" leftIcon={<Icon name="add" />} fullWidth>
-          New Metric
-        </Button>
-      </Link>
-
       {metrics.length === 0 ? (
         <Text size="sm" ta="center" py="md">
           No metrics found

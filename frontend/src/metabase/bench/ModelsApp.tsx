@@ -23,8 +23,12 @@ export function ModelsApp({ params }: ModelsAppProps) {
     <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Models List */}
-        <Panel defaultSize={20} minSize={15} maxSize={35}>
-          <BenchPanel title="Models" height="100%">
+        <Panel defaultSize={33} minSize={25} maxSize={45}>
+          <BenchPanel
+            title="Models"
+            height="100%"
+            createNewPath="/bench/models/new"
+          >
             <ModelsEntitiesList
               selectedModelId={selectedModel?.id}
               onModelClick={handleModelClick}
@@ -42,7 +46,7 @@ export function ModelsApp({ params }: ModelsAppProps) {
         />
 
         {/* Main Panel - Model Details and Results */}
-        <Panel defaultSize={80} minSize={50}>
+        <Panel defaultSize={67} minSize={55}>
           <Box h="100%" p="md">
             <Box
               h="100%"

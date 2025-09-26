@@ -12,8 +12,12 @@ export function SegmentsApp({ children }: SegmentsAppProps) {
     <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Segments List */}
-        <Panel defaultSize={20} minSize={15} maxSize={35}>
-          <BenchPanel title="Segments" height="100%">
+        <Panel defaultSize={33} minSize={25} maxSize={45}>
+          <BenchPanel
+            title="Segments"
+            height="100%"
+            createNewPath="/bench/segments/new"
+          >
             <SegmentsEntitiesList />
           </BenchPanel>
         </Panel>
@@ -28,7 +32,7 @@ export function SegmentsApp({ children }: SegmentsAppProps) {
         />
 
         {/* Main Panel - Segment Details and Results */}
-        <Panel defaultSize={80} minSize={50}>
+        <Panel defaultSize={67} minSize={55}>
           <Box h="100%" p="md">
             <Box
               h="100%"
