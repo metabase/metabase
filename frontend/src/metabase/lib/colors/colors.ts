@@ -280,12 +280,12 @@ export const colorConfig = {
     dark: "#373A40",
   },
   "brand-alpha-04": {
-    light: `color-mix(in srgb, ${baseColors.blue[40]} 4%, transparent)`,
-    dark: `color-mix(in srgb, ${baseColors.blue[40]} 4%, transparent)`,
+    light: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
+    dark: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
   },
   "brand-alpha-88": {
-    light: `color-mix(in srgb, ${baseColors.blue[40]} 88%, transparent)`,
-    dark: `color-mix(in srgb, ${baseColors.blue[40]} 88%, transparent)`,
+    light: `color-mix(in srgb, var(--mb-color-brand) 88%, transparent)`,
+    dark: `color-mix(in srgb, var(--mb-color-brand) 88%, transparent)`,
   },
   "brand-dark": {
     light: baseColors.brand[60],
