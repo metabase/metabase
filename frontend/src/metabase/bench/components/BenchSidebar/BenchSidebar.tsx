@@ -171,7 +171,7 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
       </Box>
 
       <Stack gap={4} px="md" style={{ flex: 1 }}>
-        <Box mb="sm">
+        <Box>
           <NavLink
             component={Link}
             to="/bench/overview"
@@ -182,8 +182,9 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
             py="md"
           />
         </Box>
+        <Divider />
 
-        <Box mb="sm">
+        <Box>
           <NavLink
             component={Link}
             to="/bench/metadata"
@@ -194,6 +195,7 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
             py="md"
           />
         </Box>
+        <Divider />
 
         <Box>
           <NavLink
@@ -230,8 +232,9 @@ function BenchSidebarComponent({ location }: BenchSidebarProps) {
             py="md"
           />
         </Box>
+        <Divider />
 
-        <Box mt="lg">
+        <Box>
           <NavLink
             component={Link}
             to="/bench/metrics"
