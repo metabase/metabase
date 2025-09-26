@@ -2,6 +2,7 @@
   "Test helpers for remote sync functionality, including MockLibrarySource implementation."
   (:require
    [clojure.string :as str]
+   [clojure.test :as t]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -236,3 +237,19 @@ width: fixed
   "Macro to wrap a body to execute in a clean change log table"
   [& body]
   `(clean-change-log (fn [] ~@body)))
+
+(defn clean-task-table
+  "Reset the task table to an empty state before running tests."
+  [f]
+  (let [old-models (t2/select :model/RemoteSyncTask)]
+    (try
+      (t2/delete! :model/RemoteSyncTask)
+      (f)
+      (finally
+        (t2/delete! :model/RemoteSyncTask)
+        (when (seq old-models)
+          (t2/insert! :model/RemoteSyncTask old-models))))))
+
+(def clean-remote-sync-state
+  "Fixture to make sure sync state is clean"
+  (t/compose-fixtures clean-change-log clean-task-table))

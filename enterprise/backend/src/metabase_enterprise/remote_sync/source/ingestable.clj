@@ -9,7 +9,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
-   [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
 
 (defn- ingest-content

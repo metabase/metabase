@@ -20,6 +20,8 @@
   [& {:keys [branches error-on-branches?]
       :or {branches ["main" "develop"]}}]
   (reify source.p/LibrarySource
+    (create-branch [_ _branch _base]
+      nil)
     (branches [_]
       (if error-on-branches?
         (throw (Exception. "Repository not found"))

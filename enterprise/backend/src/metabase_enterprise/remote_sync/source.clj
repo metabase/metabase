@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.source
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -64,18 +65,21 @@
 
 (defn- ->file-spec
   "Converts entity from serdes stream into file spec for source write-files! "
-  [opts entity]
+  [task-id count opts idx entity]
   (when (instance? Exception entity)
     ;; Just short-circuit if there are errors.
     (throw entity))
-  {:path (remote-sync-path opts entity)
-   :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})})
+  (u/prog1 {:path (remote-sync-path opts entity)
+            :content (yaml/generate-string entity {:dumper-options {:flow-style :block :split-lines false}})}
+           (remote-sync.task/update-progress! task-id (-> (inc idx) (/ count) (* 0.65) (+ 0.3)))))
 
 (defn store!
   "Store files from `stream` to `source` on `branch`. Commits with `message`."
-  [stream source message]
-  (let [opts (serdes/storage-base-context)]
-    (source.p/write-files! source message (map #(->file-spec opts %) stream))))
+  [stream source task-id message]
+  (let [opts (serdes/storage-base-context)
+        ;; Bound the count of the items in the stream we don't accidentally realize the entire list into memory
+        stream-count (bounded-count 10000 stream)]
+    (source.p/write-files! source message (map-indexed #(->file-spec task-id stream-count opts %1 %2) stream))))
 
 (defn source-from-settings
   "Returns a source based on the current settings, optionally passing an alternate branch"

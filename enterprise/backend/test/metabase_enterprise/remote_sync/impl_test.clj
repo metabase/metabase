@@ -16,8 +16,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :each (fn [f]
                       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (t2/delete! :model/RemoteSyncTask)
-                        (mt/with-model-cleanup [:model/RemoteSyncChangeLog] (f)))))
+                        (test-helpers/clean-remote-sync-state f))))
 
 ;; import! tests
 
@@ -271,7 +270,7 @@
           (let [result (impl/export! mock-source task-id "test-branch" "Test commit" ["test-collection-1xxxx"])]
             (is (= :success (:status result)))
             ;; Verify progress was called with expected values
-            (is (= 1 (count @progress-calls)))
+            (is (= 2 (count @progress-calls)))
             (is (= task-id (:task-id (first @progress-calls))))
             ;; Check progress value is expected
-            (is (= 0.8 (:progress (first @progress-calls))))))))))
+            (is (= 0.3 (:progress (first @progress-calls))))))))))

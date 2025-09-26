@@ -4,14 +4,10 @@
    [metabase-enterprise.remote-sync.source.ingestable :as ingestable]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase-enterprise.serialization.core :as serialization]
-   [metabase.models.serialization :as serdes]
-   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
-(use-fixtures :each (fn [f]
-                      (t2/delete! :model/RemoteSyncTask)
-                      (mt/with-model-cleanup [:model/RemoteSyncChangeLog] (f))))
+(use-fixtures :each test-helpers/clean-remote-sync-state)
 
 (use-fixtures :once (fixtures/initialize :db))
 

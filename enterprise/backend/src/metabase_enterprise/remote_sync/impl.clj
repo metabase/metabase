@@ -138,21 +138,22 @@
      (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
        (try
          (serdes/with-cache
-           (-> (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
-                                       :no-collections           false
-                                       :no-data-model            true
-                                       :no-settings              true
-                                       :include-field-values     :false
-                                       :include-database-secrets :false
-                                       :continue-on-error        false})
-               (source/store! source message)))
-         (remote-sync.task/update-progress! task-id 0.8)
-         (doseq [collection collections]
-           (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                            {:target-branch branch
-                                             :collection-id collection
-                                             :status  "success"
-                                             :message message}))
+           (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
+                                                :no-collections           false
+                                                :no-data-model            true
+                                                :no-settings              true
+                                                :no-transforms            true
+                                                :include-field-values     :false
+                                                :include-database-secrets :false
+                                                :continue-on-error        false})]
+             (remote-sync.task/update-progress! task-id 0.3)
+             (source/store! models source task-id message))
+           (doseq [collection collections]
+             (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
+                                              {:target-branch branch
+                                               :collection-id collection
+                                               :status  "success"
+                                               :message message})))
          {:status :success}
 
          (catch Exception e
