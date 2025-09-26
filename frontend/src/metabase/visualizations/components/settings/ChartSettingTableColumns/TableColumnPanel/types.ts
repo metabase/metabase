@@ -8,8 +8,3 @@ export type ColumnItem = {
   column: DatasetColumn;
   columnSettingIndex: number;
 };
-
-export type DragColumnProps = {
-  oldIndex: number;
-  newIndex: number;
-};
