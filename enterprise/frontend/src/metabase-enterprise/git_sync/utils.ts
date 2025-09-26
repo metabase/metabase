@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
+import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { IconName } from "metabase/ui";
+import type { Collection } from "metabase-types/api";
 
 import type { DirtyEntity } from "../api/git-sync";
 
@@ -134,4 +136,58 @@ export const parseExportError = (
     errorMessage: t`Something went wrong. Please try again.`,
     hasConflict: false,
   };
+};
+
+export const buildCollectionMap = (
+  collectionTree: Collection[],
+): Map<number, Collection> => {
+  const map = new Map<number, Collection>();
+
+  const processCollection = (collection: Collection) => {
+    if (typeof collection.id === "number") {
+      map.set(collection.id, collection);
+    }
+    if (collection.children) {
+      collection.children.forEach(processCollection);
+    }
+  };
+
+  collectionTree.forEach(processCollection);
+  return map;
+};
+
+export const getCollectionFullPath = (
+  collectionId: number | undefined,
+  collectionMap: Map<number, Collection>,
+): string => {
+  if (!collectionId) {
+    return t`Root`;
+  }
+
+  const collection = collectionMap.get(collectionId);
+  if (!collection) {
+    return t`Root`;
+  }
+
+  if (collection.effective_ancestors) {
+    return getCollectionPathAsString(collection);
+  }
+
+  if (collection.location) {
+    const locationParts = collection.location.split("/").filter(Boolean);
+    const pathParts: string[] = [];
+
+    locationParts.forEach((idStr) => {
+      const parentId = parseInt(idStr);
+      const parent = collectionMap.get(parentId);
+      if (parent) {
+        pathParts.push(parent.name);
+      }
+    });
+
+    pathParts.push(collection.name);
+    return pathParts.join(" / ");
+  }
+
+  return collection.name;
 };

@@ -203,7 +203,7 @@ export const BranchPicker = ({
                         <Group gap="xs" wrap="nowrap">
                           <Icon name="add" size={16} />
                           <Box>
-                            <Text>{t`Create branch "${searchValue}"`}</Text>
+                            <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
                             <Text size="xs" c="text-light">
                               {t`from ${baseBranch || value}`}
                             </Text>

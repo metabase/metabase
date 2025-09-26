@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
+import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { useAdminSetting } from "metabase/api/utils";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
@@ -32,6 +33,8 @@ import {
 } from "../api/git-sync";
 
 import {
+  buildCollectionMap,
+  getCollectionFullPath,
   getSyncStatusColor,
   getSyncStatusIcon,
   getSyncStatusLabel,
@@ -75,7 +78,7 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
   });
 
   return (
-    <Group gap="xs" ml="md">
+    <Group gap="xs" wrap="nowrap">
       <Icon name={entityIcon.name} size={14} c="text-light" />
       <Anchor
         href={modelToUrl(entity) || "#"}
@@ -98,35 +101,146 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
   );
 };
 
-interface SyncStatusGroupProps {
-  syncStatus: DirtyEntity["sync_status"];
+interface AllChangesViewProps {
   entities: DirtyEntity[];
+  collections: Collection[];
 }
 
-const SyncStatusGroup = ({ syncStatus, entities }: SyncStatusGroupProps) => (
-  <Box key={syncStatus}>
-    <Box p="md">
-      <Group gap="sm" mb="sm">
-        <Icon
-          name={getSyncStatusIcon(syncStatus)}
-          size={16}
-          c={getSyncStatusColor(syncStatus)}
-        />
-        <Text fw={600} size="sm">
-          {getSyncStatusLabel(syncStatus)}
-        </Text>
-        <Badge size="xs" variant="light" color={getSyncStatusColor(syncStatus)}>
-          {entities.length}
+const AllChangesView = ({ entities, collections }: AllChangesViewProps) => {
+  const { data: collectionTree = [] } = useListCollectionsTreeQuery();
+
+  const collectionMap = useMemo(() => {
+    const map = buildCollectionMap(collectionTree);
+
+    collections.forEach((c) => {
+      if (typeof c.id === "number" && !map.has(c.id)) {
+        map.set(c.id, c);
+      }
+    });
+
+    return map;
+  }, [collectionTree, collections]);
+
+  const groupedByStatus = groupEntitiesBySyncStatus(entities);
+
+  const groupedData = useMemo(() => {
+    const result: Array<{
+      status: DirtyEntity["sync_status"];
+      groups: Array<{
+        path: string;
+        collectionId: number | undefined;
+        items: DirtyEntity[];
+      }>;
+    }> = [];
+
+    SYNC_STATUS_ORDER.forEach((status) => {
+      const items = groupedByStatus[status];
+      if (!items || items.length === 0) {
+        return;
+      }
+
+      const byCollection = _.groupBy(items, (e) => e.collection_id || 0);
+
+      const pathGroups = Object.entries(byCollection)
+        .map(([collectionId, entities]) => ({
+          path: getCollectionFullPath(
+            Number(collectionId) || undefined,
+            collectionMap,
+          ),
+          collectionId: Number(collectionId) || undefined,
+          items: entities,
+        }))
+        .sort((a, b) => a.path.localeCompare(b.path));
+
+      result.push({
+        status,
+        groups: pathGroups,
+      });
+    });
+
+    return result;
+  }, [groupedByStatus, collectionMap]);
+
+  const totalChanges = entities.length;
+
+  return (
+    <Box>
+      <Group gap="xs" mb="md" align="end">
+        <Title order={3} mr="sm">
+          {t`Changes to push`}
+        </Title>
+        <Badge size="sm" variant="light">
+          {ngettext(
+            msgid`${totalChanges} item`,
+            `${totalChanges} items`,
+            totalChanges,
+          )}
         </Badge>
       </Group>
-      <Stack gap="xs">
-        {entities.map((entity) => (
-          <EntityLink key={`${entity.model}-${entity.id}`} entity={entity} />
-        ))}
-      </Stack>
+
+      <Paper
+        withBorder
+        radius="md"
+        mah={400}
+        styles={{
+          root: {
+            overflowY: "auto",
+          },
+        }}
+      >
+        <Stack gap={0}>
+          {groupedData.map(({ status, groups }, statusIndex) => (
+            <Fragment key={status}>
+              {statusIndex > 0 && <Divider />}
+              <Box pb="sm">
+                <Box p="md" pb="sm">
+                  <Group gap="sm">
+                    <Icon
+                      name={getSyncStatusIcon(status)}
+                      size={16}
+                      c={getSyncStatusColor(status)}
+                    />
+                    <Text fw={600} size="sm">
+                      {getSyncStatusLabel(status)}
+                    </Text>
+                    <Badge
+                      size="xs"
+                      variant="light"
+                      color={getSyncStatusColor(status)}
+                    >
+                      {groups.reduce((sum, g) => sum + g.items.length, 0)}
+                    </Badge>
+                  </Group>
+                </Box>
+
+                {groups.map((group) => (
+                  <Box key={`${status}-${group.collectionId}`}>
+                    <Box px="md" pb="sm">
+                      <Group gap="xs" mb="xs">
+                        <Icon name="folder" size={14} c="text-light" />
+                        <Text size="xs" c="text-medium" fw={500}>
+                          {group.path}
+                        </Text>
+                      </Group>
+                      <Stack gap="xs" ml="lg">
+                        {group.items.map((entity) => (
+                          <EntityLink
+                            key={`${entity.model}-${entity.id}`}
+                            entity={entity}
+                          />
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Fragment>
+          ))}
+        </Stack>
+      </Paper>
     </Box>
-  </Box>
-);
+  );
+};
 
 export const ChangesLists = ({
   collections,
@@ -147,88 +261,19 @@ export const ChangesLists = ({
     );
   }
 
-  const changedEntities = _.groupBy(
-    dirtyData?.dirty || [],
-    (entity) => entity.collection_id || 0,
-  );
+  const allEntities = dirtyData?.dirty || [];
 
-  return (
-    <Box>
-      {collections.map((collection, idx) => (
-        <Fragment key={collection.id}>
-          {idx > 0 && <Divider my="lg" />}
-          <ChangesList
-            collection={collection}
-            entities={changedEntities[collection.id] ?? []}
-          />
-        </Fragment>
-      ))}
-    </Box>
-  );
-};
-
-const ChangesList = ({
-  collection,
-  entities,
-}: {
-  collection: Collection;
-  entities: DirtyEntity[];
-}) => {
-  const groupedEntities = groupEntitiesBySyncStatus(entities);
-
-  const getStatusPriority = (status: string): number => {
-    const index = SYNC_STATUS_ORDER.indexOf(
-      status as DirtyEntity["sync_status"],
+  if (allEntities.length === 0) {
+    return (
+      <Box ta="center" py="xl">
+        <Text c="text-light" size="sm">
+          {t`No changes to push`}
+        </Text>
+      </Box>
     );
-    return index >= 0 ? index : SYNC_STATUS_ORDER.length;
-  };
+  }
 
-  const sortedGroups = Object.entries(groupedEntities).sort(
-    ([statusA], [statusB]) => {
-      return getStatusPriority(statusA) - getStatusPriority(statusB);
-    },
-  );
-
-  const hasChanges = entities.length > 0;
-
-  return (
-    <Box>
-      <Group gap="xs" mb="md" align="end">
-        <Title order={3} mr="sm">
-          {collection.name}
-        </Title>
-        <Badge size="sm" variant="light">
-          {ngettext(
-            msgid`${entities.length} item changed`,
-            `${entities.length} items changed`,
-            entities.length,
-          )}
-        </Badge>
-      </Group>
-      {hasChanges && (
-        <Paper
-          withBorder
-          radius="md"
-          mah={300}
-          styles={{
-            root: {
-              overflowY: "auto",
-            },
-          }}
-        >
-          <Stack gap={0}>
-            {sortedGroups.map(([syncStatus, items]) => (
-              <SyncStatusGroup
-                key={syncStatus}
-                syncStatus={syncStatus as DirtyEntity["sync_status"]}
-                entities={items}
-              />
-            ))}
-          </Stack>
-        </Paper>
-      )}
-    </Box>
-  );
+  return <AllChangesView entities={allEntities} collections={collections} />;
 };
 
 interface CommitMessageSectionProps {
