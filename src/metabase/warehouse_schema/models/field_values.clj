@@ -28,6 +28,9 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.app-db.core :as app-db]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -41,10 +44,7 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib-be.core :as lib-be]))
+   [toucan2.core :as t2]))
 
 (def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."

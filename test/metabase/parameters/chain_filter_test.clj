@@ -409,7 +409,6 @@
             :has_more_values false}
            (chain-filter-search venues.name {venues.price 1} "tAcO")))))
 
-
 (deftest ^:parallel chain-filter-search-test-3
   (testing "search for something crazy = should return empty results"
     (is (= {:values          []
