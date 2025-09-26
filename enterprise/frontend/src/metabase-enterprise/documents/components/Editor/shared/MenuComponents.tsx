@@ -29,6 +29,7 @@ export interface MenuItem {
   model?: SuggestionModel;
   id?: number | string;
   href?: string;
+  hasSubmenu?: boolean;
 }
 
 export const MenuItemComponent = ({
@@ -65,6 +66,10 @@ export const MenuItemComponent = ({
           </Text>
         )}
       </Stack>
+
+      {item.hasSubmenu && (
+        <Icon name="chevronright" size=".75rem" color="text-light" />
+      )}
     </Group>
   </UnstyledButton>
 );

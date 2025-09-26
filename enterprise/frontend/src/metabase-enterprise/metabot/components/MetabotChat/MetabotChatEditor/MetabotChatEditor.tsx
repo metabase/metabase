@@ -75,7 +75,7 @@ export const MetabotChatEditor = forwardRef<
         suggestion: {
           render: createSuggestionRenderer(
             createMentionSuggestion({
-              searchModels: ["database", "table", "dataset", "transform"],
+              searchModels: ["dataset", "transform", "table", "database"],
             }),
           ),
         },

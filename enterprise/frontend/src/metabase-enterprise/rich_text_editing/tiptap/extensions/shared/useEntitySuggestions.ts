@@ -1,7 +1,7 @@
-import type { Editor } from "@tiptap/core";
-import { useCallback, useEffect, useState } from "react";
+import type { Editor, Range } from "@tiptap/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
@@ -10,12 +10,16 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
-import { entityToUrlableModel } from "./suggestionUtils";
+import {
+  buildSearchModelMenuItems,
+  entityToUrlableModel,
+} from "./suggestionUtils";
 import { useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
   query: string;
   editor: Editor;
+  range?: Range;
   onSelectEntity: (item: {
     id: number | string;
     model: string;
@@ -31,17 +35,14 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | null;
   totalItems: number;
+  selectedSearchModelName?: string;
   handlers: {
     selectItem: (index: number) => void;
     upHandler: () => void;
     downHandler: () => void;
     enterHandler: () => void;
     onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-    handleModalSelect: (item: QuestionPickerValueItem) => void;
-    handleModalClose: () => void;
-    openModal: () => void;
     hoverHandler: (index: number) => void;
   };
 }
@@ -49,12 +50,14 @@ interface UseEntitySuggestionsResult {
 export function useEntitySuggestions({
   query,
   editor,
+  range,
   onSelectEntity,
   enabled = true,
   searchModels,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<"question-picker" | null>(null);
+  const [selectedSearchModel, setSelectedSearchModel] =
+    useState<SuggestionModel | null>(null);
 
   const handleRecentSelect = useCallback(
     (item: RecentItem) => {
@@ -92,23 +95,79 @@ export function useEntitySuggestions({
     [onSelectEntity],
   );
 
-  const { menuItems, isLoading, searchResults } = useEntitySearch({
+  const handleSearchModelSelect = useCallback(
+    (model: SuggestionModel) => {
+      // clear any input the user made to filter search models
+      if (range) {
+        editor.chain().focus().deleteRange(range).insertContent("@").run();
+      }
+      setSelectedSearchModel(model);
+      // TODO: avoid set timeout, currently it doesn't work without - repo via selecting via keyboard second entity and then you'll have last value in next list selected
+      setTimeout(() => {
+        setSelectedIndex(0);
+      }, 0);
+    },
+    [editor, range],
+  );
+
+  const filteredSearchModels = useMemo(() => {
+    return (searchModels || []).filter((model) => {
+      const modelName = getTranslatedEntityName(model) ?? "";
+      return modelName.toLowerCase().startsWith(query.toLowerCase());
+    });
+  }, [searchModels, query]);
+
+  // Use selected model if available, otherwise use all models for fallback search
+  const effectiveSearchModels = useMemo(() => {
+    return selectedSearchModel ? [selectedSearchModel] : filteredSearchModels;
+  }, [selectedSearchModel, filteredSearchModels]);
+
+  // Determine if we're in model selection mode
+  const searchModelMenuItems = useMemo(() => {
+    return selectedSearchModel
+      ? []
+      : buildSearchModelMenuItems(
+          filteredSearchModels,
+          handleSearchModelSelect,
+        );
+  }, [filteredSearchModels, selectedSearchModel, handleSearchModelSelect]);
+
+  // Check if we have any matching search models
+  const hasSearchModels = (searchModels?.length ?? 0) > 0;
+  const hasMatchingSearchModels = effectiveSearchModels.length > 0;
+
+  // TODO: factor in a threshold
+  const isInModelSelectionMode =
+    !selectedSearchModel && hasSearchModels && hasMatchingSearchModels;
+  const shouldEnableEntitySearch = enabled && !isInModelSelectionMode;
+
+  const {
+    menuItems: entityMenuItems,
+    isLoading,
+    searchResults,
+  } = useEntitySearch({
     query,
     onSelectRecent: handleRecentSelect,
     onSelectSearchResult: handleSearchResultSelect,
     onSelectUser: handleUserSelect,
-    enabled,
-    searchModels,
+    enabled: shouldEnableEntitySearch,
+    searchModels: effectiveSearchModels,
   });
 
-  const totalItems = menuItems.length + 1;
+  // Combine menu items based on current mode
+  const menuItems = useMemo(() => {
+    if (isInModelSelectionMode) {
+      return searchModelMenuItems;
+    }
+    return entityMenuItems;
+  }, [isInModelSelectionMode, searchModelMenuItems, entityMenuItems]);
+
+  const totalItems = menuItems.length;
 
   const selectItem = useCallback(
     (index: number) => {
       if (index < menuItems.length) {
         menuItems[index].action();
-      } else {
-        setModal("question-picker");
       }
     },
     [menuItems],
@@ -154,50 +213,28 @@ export function useEntitySuggestions({
     [upHandler, downHandler, enterHandler],
   );
 
-  const handleModalSelect = useCallback(
-    (item: QuestionPickerValueItem) => {
-      onSelectEntity({
-        id: item.id,
-        model: item.model,
-        label: item.name,
-        href: modelToUrl(entityToUrlableModel(item, item.model)),
-      });
-      setModal(null);
-    },
-    [onSelectEntity],
-  );
-
-  const handleModalClose = useCallback(() => {
-    setModal(null);
-    setTimeout(() => {
-      editor.commands.focus();
-    }, 0);
-  }, [editor]);
-
-  const openModal = useCallback(() => {
-    setModal("question-picker");
-  }, []);
-
   useEffect(() => {
     setSelectedIndex(0);
   }, [menuItems.length]);
 
+  // Get the translated name for the selected search model
+  const selectedSearchModelName = selectedSearchModel
+    ? getTranslatedEntityName(selectedSearchModel) || selectedSearchModel
+    : undefined;
+
   return {
     menuItems,
-    isLoading,
+    isLoading: isInModelSelectionMode ? false : isLoading,
     searchResults,
     selectedIndex,
-    modal,
     totalItems,
+    selectedSearchModelName,
     handlers: {
       selectItem,
       upHandler,
       downHandler,
       enterHandler,
       onKeyDown,
-      handleModalSelect,
-      handleModalClose,
-      openModal,
       hoverHandler,
     },
   };

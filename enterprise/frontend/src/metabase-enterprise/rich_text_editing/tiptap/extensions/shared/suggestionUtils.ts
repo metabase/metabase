@@ -1,3 +1,4 @@
+import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type { UrlableModel } from "metabase/lib/urls/modelToUrl";
@@ -76,6 +77,23 @@ export function buildUserMenuItems(
       id: user.id,
       model: "user",
       action: () => onSelect(user),
+    };
+  });
+}
+
+export function buildSearchModelMenuItems(
+  searchModels: SuggestionModel[],
+  onSelect: (model: SuggestionModel) => void,
+): MenuItem[] {
+  return searchModels.map((model) => {
+    const iconData = getIcon({ model });
+    const modelName = getTranslatedEntityName(model);
+    return {
+      icon: iconData.name,
+      label: modelName || model,
+      model,
+      action: () => onSelect(model),
+      hasSubmenu: true,
     };
   });
 }
