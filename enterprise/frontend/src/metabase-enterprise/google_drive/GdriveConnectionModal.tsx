@@ -140,7 +140,7 @@ function GoogleSheetsConnectModal({
       <SegmentedControl
         fullWidth
         autoContrast
-        color="var(--mb-color-brand)"
+        color="brand"
         c="var(--mb-color-text-white)"
         value={linkType}
         onChange={setLinkType}

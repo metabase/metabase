@@ -70,7 +70,7 @@ export const Color = {
         value: "transparent",
       },
     ],
-    color: "var(--mb-color-brand)",
+    color: "brand",
     c: "var(--mb-color-text-white)",
   },
 };
