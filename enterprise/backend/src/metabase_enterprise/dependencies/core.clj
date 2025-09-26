@@ -64,6 +64,10 @@
   (fn [_mp entity-type _entity-id]
     entity-type))
 
+(defmethod check-entity :default
+  [_mp _entity-type _entity-id]
+  nil)
+
 (defmethod check-entity :card
   [mp entity-type entity-id]
   (let [query (:dataset-query (lib.metadata/card mp entity-id))
