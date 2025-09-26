@@ -6,6 +6,7 @@ import { jt, t } from "ttag";
 import Button from "metabase/common/components/Button";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
@@ -208,13 +209,15 @@ function UnsubscribeRoot({ children }: { children: JSX.Element }) {
   const loginPageIllustration = useSelector(getLoginPageIllustration);
   return (
     <LayoutRoot>
-      {loginPageIllustration && (
-        <LayoutIllustration
-          data-testid="unsubscribe-page-illustration"
-          backgroundImageSrc={loginPageIllustration.src}
-          isDefault={loginPageIllustration.isDefault}
-        />
-      )}
+      {loginPageIllustration &&
+        (loginPageIllustration.isDefault ? (
+          <LighthouseIllustration />
+        ) : (
+          <LayoutIllustration
+            data-testid="unsubscribe-page-illustration"
+            backgroundImageSrc={loginPageIllustration.src}
+          />
+        ))}
       <LayoutBody>
         <Center mih={"100%"} miw={"100%"}>
           <Stack>
