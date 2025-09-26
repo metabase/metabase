@@ -19,7 +19,7 @@ This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot
 
 Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
 
-Restricting Metabot to verified content can help Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
+Restricting Metabot to verified models and metrics (and only models and metrics) can help Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
 ## When embedding Metabot, you can pick a collection for Metabot to have access to
 
