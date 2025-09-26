@@ -144,10 +144,17 @@ export type RunTransformResponse = {
   message?: string;
 };
 
+export type ListTransformsRequest = {
+  last_run_start_time?: string;
+  last_run_statuses?: TransformRunStatus[];
+  tag_ids?: TransformTagId[];
+};
+
 export type ListTransformJobsRequest = {
   last_run_start_time?: string;
+  last_run_statuses?: TransformRunStatus[];
   next_run_start_time?: string;
-  transform_tag_ids?: TransformTagId[];
+  tag_ids?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {

@@ -87,17 +87,25 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  []
+  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (api/check-superuser)
-  (-> (t2/select :model/Transform)
-      (t2/hydrate :last_run :transform_tag_ids)
-      (->> (map #(update % :last_run transforms.util/localize-run-timestamps)))))
+  (let [transforms (t2/select :model/Transform)]
+    (into []
+          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (map #(update % :last_run transforms.util/localize-run-timestamps)))
+          (t2/hydrate transforms :last_run :transform_tag_ids))))
 
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
-   _query-params]
-  (get-transforms))
+   query-params :-
+   [:map
+    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+  (get-transforms query-params))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."

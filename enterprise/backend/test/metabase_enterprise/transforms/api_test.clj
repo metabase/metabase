@@ -161,6 +161,35 @@
                   list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
               (is (seq list-resp)))))))))
 
+(deftest filter-transforms-test
+  (testing "should be able to filter transforms"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Transform               {t1-id :id} {}
+                       :model/Transform               {t2-id :id} {}
+                       :model/TransformTag            {tag1-id :id} {:name "tag1"}
+                       :model/TransformTag            {tag2-id :id} {:name "tag2"}
+                       :model/TransformTransformTag _ {:transform_id t1-id :tag_id tag1-id :position 1}
+                       :model/TransformTransformTag _ {:transform_id t2-id :tag_id tag2-id :position 1}
+                       :model/TransformRun _          {:transform_id t1-id :status "started" :run_method "manual"
+                                                       :start_time (parse-instant "2025-08-26T10:12:11")
+                                                       :end_time nil
+                                                       :is_active true}]
+          (testing "no filters"
+            (is (=? [{:id t1-id} {:id t2-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform"))))
+          (testing "last_run_start_time filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :last_run_start_time "2025-08-26T10:12:11"))))
+          (testing "last_run_statuses filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :last_run_statuses ["started" "succeeded"]))))
+          (testing "tag_ids filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag1-id])))
+            (is (=? [{:id t2-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag2-id])))))))))
+
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
