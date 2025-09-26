@@ -1,4 +1,4 @@
-import { jt, t } from "ttag";
+import { c } from "ttag";
 
 import { isWithinIframe } from "metabase/lib/dom";
 import { setUIControls } from "metabase/query_builder/actions";
@@ -26,7 +26,7 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
       type: "custom",
       view: ({ dispatch }) => (
         <Flex display="flex" align="baseline" gap="0.25rem">
-          {jt`${(
+          {c('in the sentence "Save this question to drill-through"').jt`${(
             <Button
               key=""
               variant="subtle"
@@ -35,7 +35,8 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
                 dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }))
               }
             >
-              {t`Save`}
+              {c('in the sentence "Save this question to drill-through"')
+                .t`Save`}
             </Button>
           )} this question to drill-through.`}
         </Flex>
