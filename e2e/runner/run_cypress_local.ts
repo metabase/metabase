@@ -1,3 +1,7 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+
 import { FAILURE_EXIT_CODE, SUCCESS_EXIT_CODE } from "./constants/exit-code";
 import CypressBackend from "./cypress-runner-backend";
 import runCypress from "./cypress-runner-run-tests";
@@ -9,6 +13,8 @@ import {
 } from "./cypress-runner-utils";
 import { startHostAppContainers } from "./embedding-sdk/host-apps/start-host-app-containers";
 import { startSampleAppContainers } from "./embedding-sdk/sample-apps/start-sample-app-containers";
+
+let tempSampleDBDir: string | null = null;
 
 // if you want to change these, set them as environment variables in your shell
 const userOptions = {
@@ -92,6 +98,14 @@ const init = async () => {
         process.exit(FAILURE_EXIT_CODE);
       }
 
+      // Use a temporary copy of the sample db so it won't use and lock the db used for local development
+      tempSampleDBDir = path.join(
+        os.tmpdir(),
+        `metabase-sample-db-e2e-${process.pid}`,
+      );
+      fs.mkdirSync(tempSampleDBDir, { recursive: true });
+      process.env.MB_SAMPLE_DB_DIR = tempSampleDBDir;
+
       printBold("⏳ Starting backend");
       await CypressBackend.start();
     }
@@ -145,6 +159,20 @@ const cleanup = async (exitCode: string | number = SUCCESS_EXIT_CODE) => {
   if (options.BUILD_JAR) {
     printBold("⏳ Cleaning up...");
     await CypressBackend.stop();
+  }
+
+  // Add cleanup for the temporary sample database directory
+  if (tempSampleDBDir) {
+    try {
+      fs.rmSync(tempSampleDBDir, { recursive: true, force: true });
+      printBold(
+        `🗑️ Cleaned up temporary sample database directory: ${tempSampleDBDir}`,
+      );
+    } catch (e) {
+      console.error(
+        `Error cleaning up temporary sample database directory: ${e}`,
+      );
+    }
   }
 
   if (options.STOP_CONTAINERS) {
