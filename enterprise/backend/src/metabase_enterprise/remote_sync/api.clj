@@ -21,7 +21,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- run-async!
-  [ttype f]
+  [ttype branch f]
   (let [{task-id :id
          existing? :existing?}
         (cluster-lock/with-cluster-lock impl/cluster-lock
@@ -34,22 +34,23 @@
                        :timeout-ms (settings/remote-sync-task-time-limit-ms)}
        (let [result (f task-id)]
          (case (:status result)
-           :success (remote-sync.task/complete-sync-task! task-id)
+           :success (do (remote-sync.task/complete-sync-task! task-id)
+                        (settings/remote-sync-branch! branch))
            :error (remote-sync.task/fail-sync-task! task-id (:message result))
            (remote-sync.task/fail-sync-task! task-id "Unexpected Error")))))
     task-id))
 
 (defn- async-import!
   [branch]
-  (run-async! "import" (fn [task-id] (impl/import! (source/source-from-settings branch) task-id branch))))
+  (run-async! "import" branch (fn [task-id] (impl/import! (source/source-from-settings branch) task-id branch))))
 
 (defn- async-export!
   [branch message collection]
-  (run-async! "export" (fn [task-id] (impl/export! (source/source-from-settings branch)
-                                                   task-id
-                                                   branch
-                                                   message
-                                                   collection))))
+  (run-async! "export" branch (fn [task-id] (impl/export! (source/source-from-settings branch)
+                                                          task-id
+                                                          branch
+                                                          message
+                                                          collection))))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
@@ -206,6 +207,7 @@
   (if-let [source (source/source-from-settings)]
     (try
       (source.p/create-branch source name (or base_branch "main"))
+      (settings/remote-sync-branch! name)
       {:status "success"
        :message (format "Branch '%s' created from '%s'" name (or base_branch "main"))}
       (catch Exception e
