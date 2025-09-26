@@ -227,6 +227,7 @@
   (testing "Works when there are no tasks at all"
     (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task"))))
   (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                 :last_progress_report_at :%now
                                                  :started_at :%now}]
     (testing "Returns the current task if one exists"
       (is (=? {:id integer?
@@ -239,6 +240,7 @@
                :ended_at some?}
               (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))
   (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                 :last_progress_report_at :%now
                                                  :started_at :%now}]
     (testing "Returns the current task if one exists"
       (is (=? {:id integer?

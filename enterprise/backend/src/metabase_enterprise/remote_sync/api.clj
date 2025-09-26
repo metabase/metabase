@@ -131,7 +131,7 @@
 (api.macros/defendpoint :get "/current-task"
   "Get the current sync task"
   []
-  (let [task (remote-sync.task/most-recent-task)]
+  (when-let [task (remote-sync.task/most-recent-task)]
     (assoc task :status (cond
                           (remote-sync.task/failed? task) :errored
                           (remote-sync.task/successful? task) :successful
