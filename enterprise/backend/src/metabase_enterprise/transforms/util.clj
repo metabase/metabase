@@ -253,8 +253,8 @@
   (driver/drop-table! driver database-id table-name))
 
 (defn temp-table-name
-  "Generate a temporary table name with the given suffix and current timestamp in seconds.
-  If table name would exceed max table name length for the driver, fallback to using a shorter base-name"
+  "Generate a temporary table name with current timestamp in milliseconds.
+  If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
   [driver schema]
   (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
         timestamp (str (System/currentTimeMillis))

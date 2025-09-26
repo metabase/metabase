@@ -156,7 +156,9 @@
   [driver db-id table-name metadata data-source]
   (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))
         temp-table-name (u/poll {:thunk #(transforms.util/temp-table-name driver (namespace table-name))
-                                 :done? #(not= source-table-name %)})]
+                                 :done? #(not= source-table-name %)
+                                 ;; Poll every 1ms to quickly generate a different timestamp-based table name
+                                 :interval-ms 1})]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
 
