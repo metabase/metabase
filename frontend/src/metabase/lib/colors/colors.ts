@@ -296,11 +296,11 @@ export const colorConfig = {
     dark: baseColors.brand[70],
   },
   "brand-light": {
-    light: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 80%)`,
+    light: baseColors.brand[30],
     dark: "#1A3A52",
   },
   "brand-lighter": {
-    light: `color-mix(in srgb, ${baseColors.blue[40]}, #fff 90%)`,
+    light: baseColors.brand[20],
     dark: "#0F2A3C",
   },
   brand: {
