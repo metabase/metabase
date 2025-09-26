@@ -85,6 +85,7 @@ export function EditorBody({
     () => ({
       height: EDITOR_HEIGHT,
       resizeHandles: ["s"],
+      className: S.root,
       style: isResizing ? undefined : { transition: "height 0.25s" },
       onResizeStart: () => setIsResizing(true),
       onResizeStop: () => setIsResizing(false),
@@ -143,8 +144,8 @@ export function EditorBody({
     />
   ) : (
     <ResizableBox
-      className={S.root}
       axis="y"
+      className={S.root}
       height={EDITOR_HEIGHT}
       handle={<ResizeHandle />}
       resizeHandles={["s"]}
