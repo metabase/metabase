@@ -68,10 +68,11 @@
                #(contains? (u/traverse [item]
                                        (fn [dep]
                                          (try
-                                           (zipmap (or (dep @dep-cache)
-                                                       (swap! dep-cache assoc dep
-                                                              (serdes/dependencies
-                                                               (serialization/ingest-one ingestable dep))))
+                                           (zipmap (or (get @dep-cache dep)
+                                                       (get (swap! dep-cache assoc dep
+                                                                   (serdes/dependencies
+                                                                    (serialization/ingest-one ingestable dep)))
+                                                            dep))
                                                    (repeat dep))
                                            (catch Exception _
                                              nil))))

@@ -24,7 +24,7 @@
 
   (list-files [_]
     (filter (fn [file-path]
-              #p (some (fn [path-filter] #p (re-matches #p path-filter #p file-path)) path-filters))
+              (some (fn [path-filter] (re-matches path-filter file-path)) path-filters))
             (source.p/list-files original-source)))
 
   (read-file [_ path]

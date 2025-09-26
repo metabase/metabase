@@ -20,8 +20,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private cluster-lock ::remote-sync-task)
-
 (defn- run-async!
   [ttype f]
   (let [{task-id :id

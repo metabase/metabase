@@ -208,10 +208,10 @@ width: fixed
                                (generate-dashboard-yaml "Q_jD-f-9clKLFZ2TfUG2h" "Shared Dashboard" "M-Q4pcV0qkiyJ0kiSWECl"
                                                         :dashcards [{:entity_id "UkpFcfUZMZt9ehChwnrAO" :card_id "f1C68pznmrpN1F5xFDj6d"}])}
 
-                       "develop" {"collections/test-dev-collection.yaml"
+                       "develop" {"collections/test-dev-collectionxx-_/test-dev-collection.yaml"
                                   (generate-collection-yaml "test-dev-collectionxx" "Dev Collection")
 
-                                  "cards/test-dev-card.yaml"
+                                  "collections/test-dev-collectionxx-_/cards/test-dev-card.yaml"
                                   (generate-card-yaml "test-dev-cardxxxxxxxx" "Dev Card" "test-dev-collectionxx")}}
 
         files-atom (atom (or initial-files default-files))]

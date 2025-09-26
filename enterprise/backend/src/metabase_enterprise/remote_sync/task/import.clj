@@ -4,9 +4,15 @@
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [diehard.core :as dh]
    [metabase-enterprise.remote-sync.impl :as impl]
+   [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
-   [metabase.task.core :as task]))
+   [metabase-enterprise.remote-sync.source :as source]
+   [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.config.core :as config]
+   [metabase.task.core :as task]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,7 +21,23 @@
   (when (and (settings/remote-sync-enabled)
              (= "import" (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
-    (impl/import! (settings/remote-sync-branch))))
+    (let [{task-id :id
+           existing? :existing?}
+          (cluster-lock/with-cluster-lock impl/cluster-lock
+            (if-let [{id :id} (remote-sync.task/current-task)]
+              {:existing? true :id id}
+              (remote-sync.task/create-sync-task! "import" config/internal-mb-user-id)))]
+      (if-not existing?
+        (log/warn "Remote sync in progress")
+        (dh/with-timeout {:interrupt? true
+                          :timeout-ms (settings/remote-sync-task-time-limit-ms)}
+          (let [result (impl/import! (source/source-from-settings (settings/remote-sync-branch))
+                                     task-id
+                                     (settings/remote-sync-branch))]
+            (case (:status result)
+              :success (remote-sync.task/complete-sync-task! task-id)
+              :error (remote-sync.task/fail-sync-task! task-id (:message result))
+              (remote-sync.task/fail-sync-task! task-id "Unexpected Error"))))))))
 
 (task/defjob ^{:doc "Auto-imports any remote collections."} AutoImport [_]
   (auto-import!))

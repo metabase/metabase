@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
@@ -168,3 +167,7 @@
             :message (format "Failed to export to git repository: %s" (ex-message e))})))
      {:status  :error
       :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
+
+(def cluster-lock
+  "Shared cluster lock name for remote-sync tasks"
+  ::remote-sync-task)

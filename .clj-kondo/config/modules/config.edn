@@ -1864,6 +1864,7 @@
    :uses #{api
            app-db
            collections
+           config
            events
            models
            premium-features
