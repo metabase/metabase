@@ -7,7 +7,7 @@ import {
   MOCK_AD_HOC_QUESTION_ID,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
-import { Box } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 
 import { MetabotQuestion } from "./MetabotQuestion";
 
@@ -32,6 +32,24 @@ const Template: StoryFn<MetabotQuestionProps> = () => {
 
 export const Default = {
   render: Template,
+};
+
+export const Centered = {
+  render() {
+    return (
+      <Stack align="center" justify="center">
+        <Flex
+          m="40px"
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "16px",
+          }}
+        >
+          <MetabotQuestion height="calc(100vh - 80px)" />
+        </Flex>
+      </Stack>
+    );
+  },
 };
 
 export const RedirectReaction = {
