@@ -119,7 +119,7 @@
  limit/determine-query-max-rows
  logger/level-enabled?
  mbql.s/Join
- mbql.s/MBQLQuery
+ mbql.s/MBQLInnerQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
