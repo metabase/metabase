@@ -22,7 +22,7 @@
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
@@ -30,7 +30,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -629,15 +628,15 @@
     (events/publish-event! :event/dashboard-delete {:object dashboard :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
-(defn- param-target->field-id [target query]
-  (when-let [field-clause (params/param-target->field-clause target {:dataset_query query})]
-    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
+(mu/defn- param-target->field-id :- [:maybe ::lib.schema.id/field]
+  [target query]
+  (params/param-target->field-id target {:dataset_query query}))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
 (mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
-  [parameter-mappings :- [:sequential dashboard-card/ParamMapping]]
+  [parameter-mappings :- [:sequential ::parameters.schema/parameter-mapping]]
   (when (seq parameter-mappings)
     ;; calculate a set of all Field IDs referenced by parameter mappings; then from those Field IDs calculate a set of
     ;; all Table IDs to which those Fields belong. This is done in a batched fashion so we can avoid N+1 query issues
@@ -760,9 +759,7 @@
    [:size_y                              ms/PositiveInt]
    [:row                                 ms/IntGreaterThanOrEqualToZero]
    [:col                                 ms/IntGreaterThanOrEqualToZero]
-   [:parameter_mappings {:optional true} [:maybe [:sequential [:map
-                                                               [:parameter_id ms/NonBlankString]
-                                                               [:target       :any]]]]]
+   [:parameter_mappings {:optional true} [:maybe [:sequential [:ref ::parameters.schema/parameter-mapping]]]]
    [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
@@ -889,7 +886,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;; End functions to handle broken subscriptions
 
-(defn- update-dashboard
+(defn- update-dashboard!
   "Updates a Dashboard. Designed to be reused by PUT /api/dashboard/:id and PUT /api/dashboard/:id/cards"
   [id {:keys [dashcards tabs parameters] :as dash-updates}]
   (span/with-span!
@@ -1010,7 +1007,7 @@
                     [:id ms/PositiveInt]]
    _query-params
    dash-updates :- DashUpdates]
-  (update-dashboard id dash-updates))
+  (update-dashboard! id dash-updates))
 
 (api.macros/defendpoint :put "/:id/cards"
   "(DEPRECATED -- Use the `PUT /api/dashboard/:id` endpoint instead.)
@@ -1035,7 +1032,7 @@
                             [:tabs  {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]]]
   (log/warn
    "DELETE /api/dashboard/:id/cards is deprecated. Use PUT /api/dashboard/:id instead.")
-  (let [dashboard (update-dashboard id {:dashcards cards :tabs tabs})]
+  (let [dashboard (update-dashboard! id {:dashcards cards :tabs tabs})]
     {:cards (:dashcards dashboard)
      :tabs  (:tabs dashboard)}))
 
@@ -1183,8 +1180,8 @@
   `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query"
   [_route-params
    {:keys [filtered filtering]} :- [:map
-                                    [:filtered  (ms/QueryVectorOf ms/PositiveInt)]
-                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]]]
+                                    [:filtered  (ms/QueryVectorOf ::lib.schema.id/field)]
+                                    [:filtering {:optional true} [:maybe (ms/QueryVectorOf ::lib.schema.id/field)]]]]
   (let [filtered-field-ids  (if (sequential? filtered) (set filtered) #{filtered})
         filtering-field-ids (if (sequential? filtering) (set filtering) #{filtering})]
     (doseq [field-id (set/union filtered-field-ids filtering-field-ids)]

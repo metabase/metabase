@@ -12,6 +12,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -172,7 +173,7 @@
                    (= tag-type :temporal-unit))
                [param-name tag-type])))
       (filter some?))
-     (get-in query [:native :template-tags]))))
+     (lib/all-template-tags-map query))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
   (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]

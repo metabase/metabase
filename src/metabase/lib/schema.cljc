@@ -442,10 +442,11 @@
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]
    (common/disallowed-keys
-    {:filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
-     :source-query ":source-query is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
-     :expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
+    {:expressions  ":expressions is not allowed in the top level of a query, only in MBQL stages"
+     :filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
+     :joins        ":joins is not allowed in the top level of a query, only in MBQL stages"
+     :source-query ":source-query is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"})])
 
 (defn native-only-query?

@@ -48,22 +48,20 @@
                                                 [:substring [:field (u/the-id field) nil]
                                                  1 truncation-size]]])))
         expressions        (into {} (vals field->expressions))]
-    {:database   (:db_id table)
-     :type       :query
-     :query      (cond-> {:source-table (u/the-id table)
-                          :expressions  expressions
-                          :fields       (vec (for [field fields]
-                                               (if-let [[expression-name _] (get field->expressions field)]
-                                                 [:expression expression-name]
-                                                 [:field (u/the-id field) nil])))
-                          :limit        limit}
-                   order-by
-                   (assoc :order-by order-by)
-
-                   true
-                   schema.metadata-queries/add-required-filters-if-needed)
-     :middleware {:format-rows?           false
-                  :skip-results-metadata? true}}))
+    (-> {:database (:db_id table)
+         :type     :query
+         :query    (cond-> {:source-table (u/the-id table)
+                            :expressions  expressions
+                            :fields       (vec (for [field fields]
+                                                 (if-let [[expression-name _] (get field->expressions field)]
+                                                   [:expression expression-name]
+                                                   [:field (u/the-id field) nil])))
+                            :limit        limit}
+                     order-by
+                     (assoc :order-by order-by))
+         :middleware {:format-rows?           false
+                      :skip-results-metadata? true}}
+        schema.metadata-queries/add-required-filters-if-needed)))
 
 (mu/defn table-rows-sample
   "Run a basic MBQL query to fetch a sample of rows of `fields` belonging to a `table`.

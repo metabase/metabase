@@ -1,20 +1,31 @@
 (ns metabase.queries.schema
   (:require
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.regex :as u.regex]))
+   [potemkin :as p]))
 
-(def card-types
-  "All acceptable card types.
-
-  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean
-  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
-  to differentiate between all types. So we've added a new `type` column for this purpose.
-
-  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
-  gradually."
-  #{:model :question :metric})
+(p/import-vars
+ [lib.schema.metadata
+  card-types])
 
 (mr/def ::card-type
-  (into [:enum {:decode/json keyword
-                :api/regex   (u.regex/re-or (map name card-types))}]
-        card-types))
+  ::lib.schema.metadata/card.type)
+
+(mr/def ::empty-map
+  "An empty map, allowed for Card.dataset_query for historic purposes."
+  [:= {} {}])
+
+(mr/def ::query
+  "Schema for Card.dataset_query."
+  [:multi {:dispatch (comp boolean empty?)}
+   [true  ::empty-map]
+   [false [:ref ::lib.schema/query]]])
+
+(mr/def ::card
+  "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
+  [:map
+   [:id            {:optional true} [:maybe ::lib.schema.id/card]]
+   [:dataset_query {:optional true} [:maybe ::query]]
+   [:type          {:optional true} [:maybe ::lib.schema.metadata/card.type]]])

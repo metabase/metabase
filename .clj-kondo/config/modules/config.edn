@@ -765,6 +765,7 @@
   parameters
   {:team "Querying"
    :api  #{metabase.parameters.chain-filter
+           metabase.parameters.core
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
@@ -882,6 +883,7 @@
            config
            driver
            events
+           lib
            models
            notification
            permissions
@@ -978,6 +980,7 @@
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
            metabase.query-processor.middleware.wrap-value-literals
+           metabase.query-processor.parameters.dates
            metabase.query-processor.parameters.operators
            metabase.query-processor.pipeline
            metabase.query-processor.pivot
@@ -1424,6 +1427,7 @@
            database-routing
            driver
            events
+           legacy-mbql
            lib
            lib-be
            models

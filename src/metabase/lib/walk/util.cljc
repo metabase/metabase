@@ -3,6 +3,7 @@
   (:require
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
@@ -86,7 +87,7 @@
   "Set of all Field IDs referenced in `:field` refs in a query or MBQL clause."
   [query-or-clause :- [:or
                        ::lib.schema/query
-                       vector?]]
+                       ::lib.schema.mbql-clause/clause]]
   (let [field-ids   (volatile! (transient #{}))
         walk-clause (fn [clause]
                       (lib.util.match/match-lite clause

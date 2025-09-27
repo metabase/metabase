@@ -247,7 +247,7 @@
      ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
      ;; that means no one will ever get to see it
      (catch Throwable e
-       (let [e (ex-info "Error calculating permissions for query"
+       (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e))
                         {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
                                     query)}
                         e)]

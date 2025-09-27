@@ -26,3 +26,16 @@
       (mu/disable-enforcement
         (is (= :type/CreationTime
                (lib/normalize ::lib.schema.common/base-type "type/creationtime")))))))
+
+(deftest ^:parallel url-encoded-string-regex-test
+  (are [s] (re-matches lib.schema.common/url-encoded-string-regex s)
+    "a"
+    "Hello%20World"
+    "user%40example.com"
+    "test_string-123.txt"
+    "%3Cscript%3E")
+  (are [s] (not (re-matches lib.schema.common/url-encoded-string-regex s))
+    "a/b"
+    "Hello World"
+    "user@example.com"
+    "<script>"))

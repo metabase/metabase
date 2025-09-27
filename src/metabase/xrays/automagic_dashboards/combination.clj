@@ -21,8 +21,9 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
@@ -87,15 +88,16 @@
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))
         model?       (and (mi/instance-of? :model/Card source)
-                          (queries/model? source))]
+                          (queries/model? source))
+        mp (lib-be/application-database-metadata-provider database)]
+    ;; TODO (Cam 9/25/25) -- update X-Rays code to use Lib everywhere instead of hand-rolling legacy MBQL like this.
     (assoc ground-metric-with-dimensions
-           :dataset_query (-> {:database database
-                               :type     :query
-                               :query    (cond-> (assoc metric-definition
-                                                        :source-table source-table)
-                                           (and (not model?)
-                                                query-filter) (assoc :filter query-filter))}
-                              mbql.normalize/normalize))))
+           :dataset_query (lib/query mp {:database database
+                                         :type     :query
+                                         :query    (cond-> (assoc metric-definition
+                                                                  :source-table source-table)
+                                                     (and (not model?)
+                                                          query-filter) (assoc :filter query-filter))}))))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -194,9 +196,7 @@
                                          [:merge
                                           ads/combined-metric
                                           [:map
-                                           [:dataset_query
-                                            [:map
-                                             [:database ::lib.schema.id/database]]]]]]
+                                           [:dataset_query ::lib.schema/query]]]]
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
   [base-context      :- ::ads/context

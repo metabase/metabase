@@ -44,6 +44,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)
@@ -125,7 +126,7 @@
     :dataset_query          query
     :visualization_settings {:global {:title nil}}}))
 
-(defn- do-with-temp-native-card!
+(defn- do-with-temp-native-card
   [f]
   (mt/with-temp [:model/Database   db    {:details (:details (mt/db)), :engine :h2}
                  :model/Table      _     {:db_id (u/the-id db), :name "CATEGORIES"}
@@ -134,11 +135,11 @@
                                                          :native   {:query "SELECT COUNT(*) FROM CATEGORIES;"}}}]
     (f db card)))
 
-(defmacro ^:private with-temp-native-card!
+(defmacro ^:private with-temp-native-card
   {:style/indent 1}
   [[db-binding card-binding] & body]
-  `(do-with-temp-native-card! (fn [~(or db-binding '_) ~(or card-binding '_)]
-                                ~@body)))
+  `(do-with-temp-native-card (fn [~(or db-binding '_) ~(or card-binding '_)]
+                               ~@body)))
 
 (defn do-with-cards-in-a-collection! [card-or-cards-or-ids grant-perms-fn! f]
   (mt/with-non-admin-groups-no-root-collection-perms
@@ -166,7 +167,7 @@
   [card-or-cards-or-ids & body]
   `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
 
-(defn- do-with-temp-native-card-with-params! [f]
+(defn- do-with-temp-native-card-with-params [f]
   (mt/with-temp
     [:model/Database   db    {:details (:details (mt/db)), :engine :h2}
      :model/Table      _     {:db_id (u/the-id db), :name "VENUES"}
@@ -181,13 +182,13 @@
                                                                     :required     true}}}}}]
     (f db card)))
 
-(defmacro ^:private with-temp-native-card-with-params! {:style/indent 1} [[db-binding card-binding] & body]
-  `(do-with-temp-native-card-with-params! (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
+(defmacro ^:private with-temp-native-card-with-params {:style/indent 1} [[db-binding card-binding] & body]
+  `(do-with-temp-native-card-with-params (fn [~(or db-binding '_) ~(or card-binding '_)] ~@body)))
 
-(deftest run-query-with-parameters-test
+(deftest ^:parallel run-query-with-parameters-test
   (testing "POST /api/card/:id/query"
     (testing "should respect `:parameters`"
-      (with-temp-native-card-with-params! [{db-id :id} {card-id :id}]
+      (with-temp-native-card-with-params [{db-id :id} {card-id :id}]
         (is (=? {:database_id db-id
                  :row_count   1
                  :data        {:rows [[8]]}}
@@ -448,7 +449,6 @@
           :user-id      user-id
           :is-creation? true
           :object {:id card-1-id}}))
-
       (doseq [user-id [(mt/user->id :crowberto) (mt/user->id :rasta)]]
         (revision/push-revision!
          {:entity       :model/Card
@@ -607,7 +607,6 @@
   {:name                   "Card with dimension is unixtimestmap"
    :visualization_settings {:graph.dimensions ["timestamp"]
                             :graph.metrics ["severity"]}
-
    :display                :line
    :result_metadata        [{:base_type :type/BigInteger
                              :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime
@@ -621,87 +620,79 @@
                              :semantic_type :type/Number}]})
 
 (deftest series-are-compatible-test
-  (mt/dataset test-data
-    (let [database-id->metadata-provider {(mt/id) (mt/metadata-provider)}]
-      (testing "area-line-bar charts"
-        (mt/with-temp
-          [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
-                                                   (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
-                                                                          :breakout    [!month.orders.created_at]}))
-                                                  {:visualization_settings {:graph.metrics    ["sum"]
-                                                                            :graph.dimensions ["CREATED_AT"]}}
-                                                  {:name    "datetime card"
-                                                   :display :line})
-           :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
-                                                   (mt/mbql-query orders {:aggregation [:count]
-                                                                          :breakout    [$orders.quantity]}))
-                                                  {:visualization_settings {:graph.metrics    ["count"]
-                                                                            :graph.dimensions ["QUANTITY"]}}
-                                                  {:name    "number card"
-                                                   :display :line})
-           :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
-                                                   (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
-                                                  {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
-                                                  {:name    "card has no metric"
-                                                   :display :line})
-           :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
-                                                   (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
-                                                                          :breakout    [!month.orders.created_at]}))
-                                                  {:visualization_settings {:graph.metrics    ["sum"]
-                                                                            :graph.dimensions ["CREATED_AT"]}}
-                                                  {:name    "table card"
-                                                   :display :combo})]
-          (testing "2 datetime cards can be combined"
-            (is (true? (api.card/series-are-compatible? datetime-card datetime-card database-id->metadata-provider))))
-
-          (testing "2 number cards can be combined"
-            (is (true? (api.card/series-are-compatible? number-card number-card database-id->metadata-provider))))
-
-          (testing "number card can't be combined with datetime cards"
-            (is (false? (api.card/series-are-compatible? number-card datetime-card database-id->metadata-provider)))
-            (is (false? (api.card/series-are-compatible? datetime-card number-card database-id->metadata-provider))))
-
-          (testing "can combine series with UNIX millisecond timestamp and datetime"
-            (is (true? (api.card/series-are-compatible? millisecond-card datetime-card database-id->metadata-provider)))
-            (is (true? (api.card/series-are-compatible? datetime-card millisecond-card database-id->metadata-provider))))
-
-          (testing "can't combines series with UNIX milliseceond timestamp and number"
-            (is (false? (api.card/series-are-compatible? millisecond-card number-card database-id->metadata-provider)))
-            (is (false? (api.card/series-are-compatible? number-card millisecond-card database-id->metadata-provider))))
-
-          (testing "second card must has a metric"
-            (is (false? (api.card/series-are-compatible? datetime-card without-metric-card database-id->metadata-provider))))
-
-          (testing "can't combine card of any other types rather than line/bar/area"
-            (is (nil? (api.card/series-are-compatible? datetime-card combo-card database-id->metadata-provider))))))
-
-      (testing "scalar test"
-        (mt/with-temp
-          [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues {:aggregation [[:count]]}))
-                                             {:name "A Scalar 1" :display :scalar})
-           :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues {:aggregation [[:count]]}))
-                                             {:name "A Scalar 2" :display :scalar})
-
-           :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
-                                              (mt/mbql-query venues {:aggregation [[:count]
-                                                                                   [:sum $venues.price]]}))
-                                             {:name "A Scalar with 2 columns" :display :scalar})
-           :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
-                                               (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
-                                                                      :breakout    [$venues.category_id]}))
+  (testing "area-line-bar charts"
+    (mt/with-temp
+      [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
+                                               (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                      :breakout    [!month.orders.created_at]}))
                                               {:visualization_settings {:graph.metrics    ["sum"]
-                                                                        :graph.dimensions ["CATEGORY_ID"]}}
-                                              {:name "Line card" :display :line})]
-          (testing "2 scalars with 1 column can be combined"
-            (is (true? (api.card/series-are-compatible? scalar-1 scalar-2 database-id->metadata-provider))))
-          (testing "can't be combined if either one of 2 cards has more than one column"
-            (is (false? (api.card/series-are-compatible? scalar-1 scalar-2-cols database-id->metadata-provider)))
-            (is (false? (api.card/series-are-compatible? scalar-2-cols scalar-2 database-id->metadata-provider))))
+                                                                        :graph.dimensions ["CREATED_AT"]}}
+                                              {:name    "datetime card"
+                                               :display :line})
+       :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
+                                               (mt/mbql-query orders {:aggregation [:count]
+                                                                      :breakout    [$orders.quantity]}))
+                                              {:visualization_settings {:graph.metrics    ["count"]
+                                                                        :graph.dimensions ["QUANTITY"]}}
+                                              {:name    "number card"
+                                               :display :line})
+       :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
+                                               (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
+                                              {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
+                                              {:name    "card has no metric"
+                                               :display :line})
+       :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
+                                               (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                      :breakout    [!month.orders.created_at]}))
+                                              {:visualization_settings {:graph.metrics    ["sum"]
+                                                                        :graph.dimensions ["CREATED_AT"]}}
+                                              {:name    "table card"
+                                               :display :combo})]
+      (testing "2 datetime cards can be combined"
+        (is (true? (api.card/series-are-compatible? datetime-card datetime-card))))
+      (testing "2 number cards can be combined"
+        (is (true? (api.card/series-are-compatible? number-card number-card))))
+      (testing "number card can't be combined with datetime cards"
+        (is (false? (api.card/series-are-compatible? number-card datetime-card)))
+        (is (false? (api.card/series-are-compatible? datetime-card number-card))))
+      (testing "can combine series with UNIX millisecond timestamp and datetime"
+        (is (true? (api.card/series-are-compatible? millisecond-card datetime-card)))
+        (is (true? (api.card/series-are-compatible? datetime-card millisecond-card))))
+      (testing "can't combines series with UNIX milliseceond timestamp and number"
+        (is (false? (api.card/series-are-compatible? millisecond-card number-card)))
+        (is (false? (api.card/series-are-compatible? number-card millisecond-card))))
+      (testing "second card must has a metric"
+        (is (false? (api.card/series-are-compatible? datetime-card without-metric-card))))
+      (testing "can't combine card of any other types rather than line/bar/area"
+        (is (nil? (api.card/series-are-compatible? datetime-card combo-card)))))))
 
-          (testing "can only be cominbed with scalar cards"
-            (is (false? (api.card/series-are-compatible? scalar-1 line-card database-id->metadata-provider)))))))))
+(deftest series-are-compatible-test-2
+  (testing "scalar test"
+    (mt/with-temp
+      [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues {:aggregation [[:count]]}))
+                                         {:name "A Scalar 1" :display :scalar})
+       :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues {:aggregation [[:count]]}))
+                                         {:name "A Scalar 2" :display :scalar})
+
+       :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
+                                          (mt/mbql-query venues {:aggregation [[:count]
+                                                                               [:sum $venues.price]]}))
+                                         {:name "A Scalar with 2 columns" :display :scalar})
+       :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
+                                          {:visualization_settings {:graph.metrics    ["sum"]
+                                                                    :graph.dimensions ["CATEGORY_ID"]}}
+                                          {:name "Line card" :display :line})]
+      (testing "2 scalars with 1 column can be combined"
+        (is (true? (api.card/series-are-compatible? scalar-1 scalar-2))))
+      (testing "can't be combined if either one of 2 cards has more than one column"
+        (is (false? (api.card/series-are-compatible? scalar-1 scalar-2-cols)))
+        (is (false? (api.card/series-are-compatible? scalar-2-cols scalar-2))))
+      (testing "can only be cominbed with scalar cards"
+        (is (false? (api.card/series-are-compatible? scalar-1 line-card)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
@@ -709,30 +700,27 @@
 
 (deftest ^:parallel doc-test
   (testing "Make sure generated docstring resolves Malli schemas in the registry correctly (#46799)"
-    (let [openapi-object             (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries.api.card) "/api/card")
-          schemas                    (get-in openapi-object [:components :schemas])
-          body-properties            (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
-          _                          (is (some? body-properties))
-          type-schema-ref            (some-> (get-in body-properties ["type" :$ref])
-                                             (str/replace #"^#/components/schemas/" "")
-                                             (str/replace #"\Q~1\E" "/"))
-          _                          (is (some? type-schema-ref))
-          type-schema                (get schemas type-schema-ref)
-          result-metadata-schema-ref (some-> (get-in body-properties ["result_metadata" :$ref])
-                                             (str/replace #"^#/components/schemas/" "")
-                                             (str/replace #"\Q~1\E" "/"))
-          _                          (is (some? result-metadata-schema-ref))
-          result-metadata-schema     (get schemas result-metadata-schema-ref)]
+    (let [openapi-object         (open-api/open-api-spec (api.macros/ns-handler 'metabase.queries.api.card) "/api/card")
+          schemas                (get-in openapi-object [:components :schemas])
+          body-properties        (get-in openapi-object [:paths "/api/card/" :post :requestBody :content "application/json" :schema :properties])
+          _                      (is (some? body-properties))
+          resolve-schema         (fn resolve-schema [schema]
+                                   (or (some-> schema
+                                               :$ref
+                                               (str/replace #"^#/components/schemas/" "")
+                                               (->> (get schemas))
+                                               resolve-schema)
+                                       schema))
+          type-schema            (resolve-schema (get body-properties "type"))
+          result-metadata-schema (resolve-schema (get body-properties "result_metadata"))]
       (testing 'type
-        (testing (pr-str type-schema-ref)
-          (is (=? {:type :string, :enum [:question :metric :model]}
-                  type-schema))))
+        (is (=? {:type :string, :enum [:question :metric :model]}
+                type-schema)))
       (testing 'result_metadata
-        (testing (pr-str result-metadata-schema-ref)
-          (is (=? {:type        :array
-                   :description "value must be an array of valid results column metadata maps."
-                   :optional    true}
-                  result-metadata-schema)))))))
+        (is (=? {:type        :array
+                 :description "value must be an array of valid results column metadata maps."
+                 :optional    true}
+                result-metadata-schema))))))
 
 (deftest create-a-card
   (testing "POST /api/card"
@@ -819,7 +807,7 @@
 
 (deftest create-card-validation-test-2
   (testing "POST /api/card"
-    (with-temp-native-card-with-params! [db card]
+    (with-temp-native-card-with-params [db card]
       (testing "You cannot create a card with variables as a model"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :post 400 "card"
@@ -937,7 +925,7 @@
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [:model/Card]
-      (let [card        (card-with-name-and-query)]
+      (let [card (card-with-name-and-query)]
         (is (=? {:id pos-int?}
                 (mt/user-http-request :crowberto
                                       :post
@@ -945,7 +933,7 @@
                                       "card"
                                       (assoc card :result_metadata []))))))))
 
-(deftest cache-ttl-save
+(deftest cache-ttl-save-1
   (testing "POST /api/card/:id"
     (testing "saving cache ttl by post actually saves it"
       (mt/with-model-cleanup [:model/Card]
@@ -955,7 +943,9 @@
                                                    :post
                                                    200
                                                    "card"
-                                                   (assoc card :cache_ttl 1234)))))))))
+                                                   (assoc card :cache_ttl 1234))))))))))
+
+(deftest cache-ttl-save-2
   (testing "PUT /api/card/:id"
     (testing "saving cache ttl by put actually saves it"
       (mt/with-temp [:model/Card card]
@@ -964,7 +954,10 @@
                                                  :put
                                                  200
                                                  (str "card/" (u/the-id card))
-                                                 {:cache_ttl 1234}))))))
+                                                 {:cache_ttl 1234}))))))))
+
+(deftest cache-ttl-save-3
+  (testing "PUT /api/card/:id"
     (testing "nilling out cache ttl works"
       (mt/with-temp [:model/Card card]
         (is (= nil
@@ -1183,7 +1176,12 @@
             (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
               (is (malli= [:map
                            [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                           [:query          [:= {} (mt/obj->json->obj query)]]
+                           [:query          [:map
+                                             [:lib/type [:= "mbql/query"]]
+                                             [:stages [:sequential
+                                                       {:min 1, :max 1}
+                                                       [:map
+                                                        [:source-table [:= (mt/id :venues)]]]]]]]
                            [:required-perms :map]
                            [:actual-perms   [:sequential perms.u/PathSchema]]
                            [:trace          [:sequential :any]]]
@@ -1220,7 +1218,6 @@
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :get 200 (str "card/" (:id card))))
             "initial result_metadata is inferred correctly")
-
         (is (=? {:type            "model"
                  :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
@@ -1279,7 +1276,7 @@
   (testing "can update a metric"
     (mt/with-temp [:model/Card card {:dataset_query (mbql-count-query)
                                      :type "metric"}]
-      (is (=? {:dataset_query {:query {:source-table (mt/id :checkins)}}
+      (is (=? {:dataset_query {:stages [{:source-table (mt/id :checkins)}]}
                :type    "metric"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                     {:dataset_query (mbql-count-query (mt/id) (mt/id :checkins))}))))))
@@ -1355,7 +1352,9 @@
                                               :last_name    "Toucan"
                                               :first_name   "Rasta"
                                               :email        "rasta@metabase.com"})
-                    :dataset_query          (mt/obj->json->obj (:dataset_query card))
+                    :dataset_query          (-> (:dataset_query card)
+                                                (dissoc :lib/metadata)
+                                                mt/obj->json->obj)
                     :display                "table"
                     :query_type             "query"
                     :visualization_settings {}
@@ -1609,7 +1608,7 @@
 
 (deftest update-card-validation-test
   (testing "PUT /api/card"
-    (with-temp-native-card-with-params! [_db card]
+    (with-temp-native-card-with-params [_db card]
       (testing  "You cannot update a model to have variables"
         (is (= "A model made from a native SQL question cannot have a variable or field filter."
                (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card)) {:type :model})))))))
@@ -1863,119 +1862,140 @@
             (testing "\nadmin"
               (testing "*should* be allowed to update query"
                 (is (=? {:id            card-id
-                         :dataset_query (mt/obj->json->obj (mt/mbql-query checkins))}
+                         :dataset_query {:lib/type "mbql/query"
+                                         :stages   [{:source-table (mt/id :checkins)}]}}
                         (update-card! :crowberto 200 {:dataset_query (mt/mbql-query checkins)})))))
-
             (testing "\nnon-admin"
               (testing "should be allowed to update fields besides query"
                 (is (=? {:id   card-id
                          :name "Updated name"}
                         (update-card! :rasta 200 {:name "Updated name"}))))
-
               (testing "should *not* be allowed to update query"
                 (testing "Permissions errors should be meaningful and include info for debugging (#14931)"
                   (is (malli= [:map
                                [:message        [:= "You cannot save this Question because you do not have permissions to run its query."]]
-                               [:query          [:= {} (mt/obj->json->obj (mt/mbql-query users))]]
+                               [:query          [:map
+                                                 [:stages [:sequential
+                                                           {:min 1, :max 1}
+                                                           [:map
+                                                            [:source-table [:= (mt/id :users)]]]]]]]
                                [:required-perms :map]
                                [:actual-perms   [:sequential perms.u/PathSchema]]
                                [:trace          [:sequential :any]]]
                               (update-card! :rasta 403 {:dataset_query (mt/mbql-query users)}))))
                 (testing "make sure query hasn't changed in the DB"
-                  (is (= (mt/mbql-query checkins)
-                         (t2/select-one-fn :dataset_query :model/Card :id card-id)))))
-
+                  (is (=? {:lib/type :mbql/query
+                           :stages   [{:source-table (mt/id :checkins)}]}
+                          (t2/select-one-fn :dataset_query :model/Card :id card-id)))))
               (testing "should be allowed to update other fields if query is passed in but hasn't changed (##11719)"
                 (is (=? {:id            card-id
                          :name          "Another new name"
-                         :dataset_query (mt/obj->json->obj (mt/mbql-query checkins))}
-                        (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)})))))))))))
+                         :dataset_query {:lib/type "mbql/query"
+                                         :stages   [{:source-table (mt/id :checkins)}]}}
+                        (update-card! :rasta 200 {:name "Another new name", :dataset_query (t2/select-one-fn :dataset_query :model/Card card-id)})))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- test-alert-deletion! [{:keys [message card deleted? expected-email-re f]}]
+  (testing message
+    (notification.tu/with-channel-fixtures [:channel/email]
+      (api.notification-test/with-send-messages-sync!
+        (notification.tu/with-card-notification
+          [notification {:card     (merge {:name "YOLO"} card)
+                         :handlers [{:channel_type :channel/email
+                                     :recipients  [{:type    :notification-recipient/user
+                                                    :user_id (mt/user->id :crowberto)}
+                                                   {:type    :notification-recipient/user
+                                                    :user_id (mt/user->id :rasta)}
+                                                   {:type    :notification-recipient/raw-value
+                                                    :details {:value "ngoc@metabase.com"}}]}]}]
+          (when deleted?
+            (let [[email] (notification.tu/with-mock-inbox-email!
+                            (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
+              (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
+                       :subject "One of your alerts has stopped working"
+                       :body    [{(str expected-email-re) true}]}
+                      (mt/summarize-multipart-single-email email expected-email-re)))))
+          (if deleted?
+            (is (not (t2/exists? :model/Notification :id (:id notification)))
+                "Alert should have been deleted")
+            (is (t2/exists? :model/Notification :id (:id notification))
+                "Alert should not have been deleted")))))))
+
 (deftest alert-deletion-test
-  (doseq [{:keys [message card deleted? expected-email-re f]}
-          [{:message           "Archiving a Card should trigger Alert deletion"
-            :deleted?          true
-            :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
-            :f                 (fn [card]
-                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}
-           {:message           "Validate changing a display type triggers alert deletion"
-            :card              {:display :table}
-            :deleted?          true
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [card]
-                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}
-           {:message           "Changing the display type from line to table should force a delete"
-            :card              {:display :line}
-            :deleted?          true
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [card]
-                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}
-           {:message           "Removing the goal value will trigger the alert to be deleted"
-            :card              {:display                :line
-                                :visualization_settings {:graph.goal_value 10}}
-            :deleted?          true
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
-            :f                 (fn [card]
-                                 (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}
-           {:message           "Adding an additional breakout does not cause the alert to be removed if no goal is set"
-            :card              {:display                :line
-                                :visualization_settings {}
-                                :dataset_query          (assoc-in
-                                                         (mbql-count-query (mt/id) (mt/id :checkins))
-                                                         [:query :breakout]
-                                                         [[:field
-                                                           (mt/id :checkins :date)
-                                                           {:temporal-unit :hour}]])}
-            :deleted?          false
-            :f                 (fn [card]
-                                 (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                       {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                                 [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                     [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}
-           {:message           "Adding an additional breakout will cause the alert to be removed if a goal is set"
-            :card              {:display                :line
-                                :visualization_settings {:graph.goal_value 10}
-                                :dataset_query          (assoc-in
-                                                         (mbql-count-query (mt/id) (mt/id :checkins))
-                                                         [:query :breakout]
-                                                         [[:field
-                                                           (mt/id :checkins :date)
-                                                           {:temporal-unit :hour}]])}
-            :deleted?          true
-            :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
-            :f                 (fn [card]
-                                 (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
-                                                       {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
-                                                                                 [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :hour}]
-                                                                                                     [:field (mt/id :checkins :date) {:temporal-unit :minute}]])}))}]]
-    (testing message
-      (notification.tu/with-channel-fixtures [:channel/email]
-        (api.notification-test/with-send-messages-sync!
-          (notification.tu/with-card-notification
-            [notification {:card     (merge {:name "YOLO"} card)
-                           :handlers [{:channel_type :channel/email
-                                       :recipients  [{:type    :notification-recipient/user
-                                                      :user_id (mt/user->id :crowberto)}
-                                                     {:type    :notification-recipient/user
-                                                      :user_id (mt/user->id :rasta)}
-                                                     {:type    :notification-recipient/raw-value
-                                                      :details {:value "ngoc@metabase.com"}}]}]}]
-            (when deleted?
-              (let [[email] (notification.tu/with-mock-inbox-email!
-                              (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
-                (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
-                         :subject "One of your alerts has stopped working"
-                         :body    [{(str expected-email-re) true}]}
-                        (mt/summarize-multipart-single-email email expected-email-re)))))
-            (if deleted?
-              (is (= nil (t2/select-one :model/Notification :id (:id notification)))
-                  "Alert should have been deleted")
-              (is (not= nil (t2/select-one :model/Notification :id (:id notification)))
-                  "Alert should not have been deleted"))))))))
+  (test-alert-deletion!
+   {:message           "Archiving a Card should trigger Alert deletion"
+    :deleted?          true
+    :expected-email-re #"Alerts about [A-Za-z]+ \(#\d+\) have stopped because the question was archived by Rasta Toucan"
+    :f                 (fn [card]
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived true}))}))
+
+(deftest alert-deletion-test-2
+  (test-alert-deletion!
+   {:message           "Validate changing a display type triggers alert deletion"
+    :card              {:display :table}
+    :deleted?          true
+    :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+    :f                 (fn [card]
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :line}))}))
+
+(deftest alert-deletion-test-3
+  (test-alert-deletion!
+   {:message           "Changing the display type from line to table should force a delete"
+    :card              {:display :line}
+    :deleted?          true
+    :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+    :f                 (fn [card]
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:display :table}))}))
+
+(deftest alert-deletion-test-4
+  (test-alert-deletion!
+   {:message           "Removing the goal value will trigger the alert to be deleted"
+    :card              {:display                :line
+                        :visualization_settings {:graph.goal_value 10}}
+    :deleted?          true
+    :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Rasta Toucan"
+    :f                 (fn [card]
+                         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:visualization_settings {:something "else"}}))}))
+
+(deftest alert-deletion-test-5
+  (test-alert-deletion!
+   {:message  "Adding an additional breakout does not cause the alert to be removed if no goal is set"
+    :card     {:display                :line
+               :visualization_settings {}
+               :dataset_query          (assoc-in
+                                        (mbql-count-query (mt/id) (mt/id :checkins))
+                                        [:query :breakout]
+                                        [[:field
+                                          (mt/id :checkins :date)
+                                          {:temporal-unit :month}]])}
+    :deleted? false
+    :f        (fn [card]
+                (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                      {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :month}]
+                                                                                    [:field (mt/id :checkins :date) {:temporal-unit :year}]])}))}))
+
+(deftest alert-deletion-test-6
+  (test-alert-deletion!
+   {:message           "Adding an additional breakout will cause the alert to be removed if a goal is set"
+    :card              {:display                :line
+                        :visualization_settings {:graph.goal_value 10}
+                        :dataset_query          (assoc-in
+                                                 (mbql-count-query (mt/id) (mt/id :checkins))
+                                                 [:query :breakout]
+                                                 [[:field
+                                                   (mt/id :checkins :date)
+                                                   {:temporal-unit :month}]])}
+    :deleted?          true
+    :expected-email-re #"Alerts about <a href=\"https?://[^\/]+\/question/\d+\">([^<]+)<\/a> have stopped because the question was edited by Crowberto Corv"
+    :f                 (fn [card]
+                         (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
+                                               {:dataset_query (assoc-in (mbql-count-query (mt/id) (mt/id :checkins))
+                                                                         [:query :breakout] [[:field (mt/id :checkins :date) {:temporal-unit :month}]
+                                                                                             [:field (mt/id :checkins :date) {:temporal-unit :year}]])}))}))
 
 (deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesnt-delete-the-alert
   (doseq [{:keys [message display]}
@@ -2030,7 +2050,7 @@
 
 (deftest csv-download-test
   (testing "no parameters"
-    (with-temp-native-card! [_ card]
+    (with-temp-native-card [_ card]
       (with-cards-in-readable-collection! card
         (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card)))]
           (is (= ["COUNT(*)"
@@ -2040,7 +2060,7 @@
 
 (deftest csv-download-test-2
   (testing "with parameters"
-    (with-temp-native-card-with-params! [_ card]
+    (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection! card
         (let [response (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))
                                              {:parameters test-params})]
@@ -2051,14 +2071,14 @@
 
 (deftest json-download-test
   (testing "no parameters"
-    (with-temp-native-card! [_ card]
+    (with-temp-native-card [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card)) {:format_rows true})))))))
 
 (deftest json-download-test-2
   (testing "with parameters"
-    (with-temp-native-card-with-params! [_ card]
+    (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
@@ -2161,7 +2181,7 @@
 
 (deftest xlsx-download-test
   (testing "no parameters"
-    (with-temp-native-card! [_ card]
+    (with-temp-native-card [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
@@ -2169,7 +2189,7 @@
 
 (deftest xlsx-download-test-2
   (testing "with parameters"
-    (with-temp-native-card-with-params! [_ card]
+    (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
@@ -2178,7 +2198,7 @@
 
 (defn- parse-xlsx-results-to-strings
   "Parse an excel response into a 2-D array of formatted values"
-  [results]
+  [^bytes results]
   (let [df (DataFormatter.)]
     (->> results
          ByteArrayInputStream.
@@ -2188,7 +2208,7 @@
          (mapv (fn [row]
                  (mapv (fn [cell] (.formatCellValue df cell)) (spreadsheet/cell-seq row)))))))
 
-(deftest xlsx-timestamp-formatting-test
+(deftest ^:parallel xlsx-timestamp-formatting-test
   (testing "A timestamp should format correctly in an excel export (#14393)"
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                      :type     :native
@@ -2204,7 +2224,7 @@
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
                                       {:format_rows true}))))))))
 
-(deftest xlsx-default-currency-formatting-test
+(deftest ^:parallel xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
     (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
                                                               :type     :native
@@ -2611,10 +2631,9 @@
       (testing "Changing core attributes un-verifies the card"
         (with-card :verified
           (is (verified? card))
-          (is (=? {:dataset_query {:query {:source-table pos-int?}}}
-                  card)
-              "(This test is written to expect a legacy query)")
-          (update-card card (update-in card [:dataset_query :query :source-table] inc))
+          (is (=? {:dataset_query {:stages [{:source-table pos-int?}]}}
+                  card))
+          (update-card card (update-in card [:dataset_query :stages 0 :source-table] inc))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
             (is (= "Unverified due to edit"
@@ -3060,8 +3079,8 @@
    (param-values-url card-or-id param-key nil))
   ([card-or-id param-key query]
    (if query
-     (format "card/%d/params/%s/search/%s" (u/the-id card-or-id) (name param-key) query)
-     (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-key)))))
+     (format "card/%d/params/%s/search/%s" (u/the-id card-or-id) (codec/form-encode (name param-key)) query)
+     (format "card/%d/params/%s/values" (u/the-id card-or-id) (codec/form-encode (name param-key))))))
 
 (defn do-with-card-param-values-fixtures
   "Impl of `with-card-param-values-fixtures` macro."
@@ -3144,7 +3163,7 @@
   [[binding card-values] & body]
   `(do-with-card-param-values-fixtures ~card-values (fn [~binding] ~@body)))
 
-(deftest parameter-remapping-test
+(deftest ^:parallel parameter-remapping-test
   (with-card-param-values-fixtures [{:keys [card field-filter-card name-mapped-card param-keys]}]
     (letfn [(request [{:keys [id] :as _card} value-source value]
               (mt/user-http-request :crowberto :get 200
@@ -3160,7 +3179,7 @@
       (is (= ["African" "Af"] (request card :static-list-label "African")))
       (is (= [42 "Reyes Strosin"] (request name-mapped-card :labeled-field-values "42"))))))
 
-(deftest parameters-with-source-is-card-test
+(deftest ^:parallel parameters-with-source-is-card-test
   (testing "getting values"
     (binding [custom-values/*max-rows* 5]
       (with-card-param-values-fixtures [{:keys [card param-keys]}]
@@ -3280,7 +3299,7 @@
             (is (not ((into #{} (mapcat identity) (:values response)) "The Virgil")))))))))
 
 (deftest parameters-with-field-to-field-remapping-test
-  (let [param-key "id_param_id"]
+  (let [param-key "id/param"]
     (mt/with-temp
       [:model/Card card {:dataset_query
                          {:database (mt/id)
@@ -3668,15 +3687,18 @@
 (deftest ^:parallel query-metadata-test
   (mt/with-temp
     [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)
-                                  :database_id (mt/id)}
-     :model/Card {card-id-2 :id} (native-card-with-template-tags)]
+                                  :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
            {:fields empty?
             :tables (sort-by :id [{:id (mt/id :products)}])
             :databases [{:id (mt/id) :engine string?}]}
            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
-               (api.test-util/select-query-metadata-keys-for-debugging)))))
+               (api.test-util/select-query-metadata-keys-for-debugging)))))))
+
+(deftest ^:parallel query-metadata-test-2
+  (mt/with-temp
+    [:model/Card {card-id-2 :id} (native-card-with-template-tags)]
     (testing "Parameterized native query"
       (is (=?
            {:fields (sort-by :id

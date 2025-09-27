@@ -62,7 +62,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -169,7 +168,6 @@
  qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.writeback/execute-write-sql!
  qp/process-query
- schema.metadata-queries/add-required-filters-if-needed
  secrets/clean-secret-properties-from-details
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting

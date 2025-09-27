@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -24,7 +25,7 @@
   #_(derive :hook/search-index))
 
 (t2/deftransforms :model/DashboardCard
-  {:parameter_mappings     mi/transform-parameters-list
+  {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
@@ -189,15 +190,6 @@
                   (:series old-dashboard-card []))
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
-
-(def ParamMapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
-    #_[:target       :any]]])
 
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
