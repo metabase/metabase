@@ -1,7 +1,6 @@
 (ns metabase-enterprise.transforms-python.execute
   (:require
    [clojure.core.async :as a]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
@@ -17,8 +16,10 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io Closeable File)
+   (java.io Closeable InputStream)
    (java.net SocketException)
+   (java.nio.file Files CopyOption StandardCopyOption)
+   (java.nio.file.attribute FileAttribute)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
@@ -259,9 +260,7 @@
             :run-id         run-id
             :table-name->id (:source-tables source)
             :shared-storage @shared-storage-ref})
-          ;; TODO temporary to keep more code stable while refactoring
-          ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
-          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+          {:keys [output-stream output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
@@ -273,15 +272,15 @@
                          :body              body
                          :events            events}))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
+          (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
+                temp-file (.toFile temp-path)]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
                                :raw-body               body
                                :events                 events})))
             (try
-              (with-open [writer (io/writer temp-file)]
-                (.write writer ^String output))
+              (Files/copy ^InputStream output-stream temp-path (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING]))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))

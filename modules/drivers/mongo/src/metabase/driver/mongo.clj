@@ -695,8 +695,8 @@
             documents (map #(into {} (map vector col-names %))
                            data)]
         (if (> (bounded-count 2 documents) 1)
-          ;; TODO: batch to avoid realizing everything in memory
-          (mongo.util/insert-many collection documents)
+          (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) documents)]
+            (mongo.util/insert-many collection chunk))
           (mongo.util/insert-one collection (first documents)))))))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
