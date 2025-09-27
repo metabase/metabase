@@ -683,6 +683,7 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-endpoint"?: string | null;
   "python-storage-s-3-region"?: string | null;
   "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-prefix"?: string | null;
   "python-storage-s-3-access-key"?: string | null;
   "python-storage-s-3-secret-key"?: string | null;
   "python-storage-s-3-container-endpoint"?: string | null;
