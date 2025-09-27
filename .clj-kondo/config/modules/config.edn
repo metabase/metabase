@@ -1241,6 +1241,7 @@
            events
            lib
            models
+           premium-features
            query-processor
            settings
            task

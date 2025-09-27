@@ -23,14 +23,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:const temp-table-suffix-new
-  "Suffix used for temporary tables containing new data during swap operations."
-  "new")
-
-(def ^:const temp-table-suffix-old
-  "Suffix used for temporary tables containing old data during swap operations."
-  "old")
-
 (defn- empty-message-log
   "Returns a new message log.
 
@@ -164,8 +156,11 @@
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees.
    Creates new table, then atomically renames target->old and new->target, then drops old."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)
-        temp-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-old)]
+  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))
+        temp-table-name (u/poll {:thunk #(transforms.util/temp-table-name driver (namespace table-name))
+                                 :done? #(not= source-table-name %)
+                                 ;; Poll every 1ms to quickly generate a different timestamp-based table name
+                                 :interval-ms 1})]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
 
@@ -185,7 +180,7 @@
   "Transfer data using create + drop + rename to minimize time without data.
    Creates new table, drops old table, then renames new->target."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)]
+  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))]
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
 

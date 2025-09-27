@@ -16,24 +16,17 @@
       (let [driver driver/*driver*]
 
         (testing "Basic table name generation"
-          (let [result (transforms.util/temp-table-name driver :base_table "test")]
+          (let [result (transforms.util/temp-table-name driver nil)
+                table-name (name result)]
             (is (keyword? result))
             (is (nil? (namespace result)))
-            (is (str/starts-with? (name result) "base_table_test_"))))
-
-        (testing "Table name with very large base name respects driver limits"
-          (let [very-long-base-name (keyword (apply str (repeat 200 "a")))
-                result (transforms.util/temp-table-name driver very-long-base-name "test")
-                max-len (or (driver/table-name-length-limit driver) Integer/MAX_VALUE)
-                actual-name (name result)]
-            (is (keyword? result))
-            (is (<= (count actual-name) max-len))
-            (is (re-find #"_test_\d+$" actual-name))))
+            (is (str/starts-with? table-name "mb_transform_temp_table_"))
+            (is (re-matches #"mb_transform_temp_table_\d+" table-name))))
 
         (testing "Table name preserves namespace when present"
-          (let [result (transforms.util/temp-table-name driver :schema/base_table "test")]
+          (let [result (transforms.util/temp-table-name driver "schema")]
             (is (= "schema" (namespace result)))
-            (is (str/starts-with? (name result) "base_table_test_"))))))))
+            (is (str/starts-with? (name result) "mb_transform_temp_table_"))))))))
 
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
@@ -41,9 +34,7 @@
       (let [driver driver/*driver*
             db-id (mt/id)
 
-            long-base-name (keyword (apply str (repeat 1000 "test")))
-
-            table-name (transforms.util/temp-table-name driver long-base-name "temp")
+            table-name (transforms.util/temp-table-name driver nil)
             schema-name (when (get-method sql.tx/session-schema driver)
                           (sql.tx/session-schema driver))
             qualified-table-name (if schema-name
@@ -62,3 +53,19 @@
                 (catch Exception _e
                   ;; Ignore cleanup errors
                   nil)))))))))
+
+(deftest is-temp-transform-tables-test
+  (testing "tables with shcema"
+    (let [table-with-schema    {:name (name (transforms.util/temp-table-name :postgres "schema"))}
+          table-without-schema {:name (name (transforms.util/temp-table-name :postgres "schema"))}]
+      (mt/with-premium-features #{}
+        (is (false? (transforms.util/is-temp-transform-table? table-with-schema)))
+        (is (false? (transforms.util/is-temp-transform-table? table-without-schema))))
+      (mt/with-premium-features #{:transforms}
+        (is (transforms.util/is-temp-transform-table? table-without-schema))
+        (is (transforms.util/is-temp-transform-table? table-with-schema)))))
+
+  (testing "Ignores non-transform tables"
+    (mt/with-premium-features #{:transforms}
+      (is (false? (transforms.util/is-temp-transform-table? {:name :orders})))
+      (is (false? (transforms.util/is-temp-transform-table? {:name :public/orders}))))))

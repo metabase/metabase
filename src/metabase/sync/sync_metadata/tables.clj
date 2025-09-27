@@ -11,6 +11,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -80,6 +81,12 @@
     #"^lobos_migrations$"
     ;; MSSQL
     #"^syncobj_0x.*"})
+
+(defenterprise is-temp-transform-table?
+  "Return true if `table` references a temporary transform table created during transforms execution."
+  metabase-enterprise.transforms.util
+  [_table]
+  false)
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
@@ -243,7 +250,9 @@
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
   (into #{}
-        (remove metabase-metadata/is-metabase-metadata-table?)
+        (remove (fn [table]
+                  (or (metabase-metadata/is-metabase-metadata-table? table)
+                      (is-temp-transform-table? table))))
         (:tables db-metadata)))
 
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]
