@@ -33,7 +33,7 @@ const MentionSuggestionComponent = forwardRef<
   SuggestionRef,
   MentionSuggestionProps
 >(function MentionSuggestionComponent(
-  { items: _items, command, editor, range: _range, query, searchModels },
+  { items: _items, command, editor, range, query, searchModels },
   ref,
 ) {
   const document = useSelector(getCurrentDocument);
@@ -49,7 +49,7 @@ const MentionSuggestionComponent = forwardRef<
         model: item.model,
         label: item.label,
         href: item.href,
-        document,
+        document, // only used for analytics tracking purposes
       });
     },
     [command, document],
@@ -60,11 +60,12 @@ const MentionSuggestionComponent = forwardRef<
     isLoading,
     searchResults,
     selectedIndex,
-    modal,
+    selectedSearchModelName,
     handlers,
   } = useEntitySuggestions({
     query,
     editor,
+    range,
     searchModels,
     onSelectEntity,
   });
@@ -83,13 +84,10 @@ const MentionSuggestionComponent = forwardRef<
         menuItems={menuItems}
         selectedIndex={selectedIndex}
         onItemSelect={handlers.selectItem}
-        onFooterClick={handlers.openModal}
         query={query}
         searchResults={searchResults}
-        modal={modal}
-        onModalSelect={handlers.handleModalSelect}
-        onModalClose={handlers.handleModalClose}
         onItemHover={handlers.hoverHandler}
+        selectedSearchModelName={selectedSearchModelName}
       />
     </SuggestionPaper>
   );

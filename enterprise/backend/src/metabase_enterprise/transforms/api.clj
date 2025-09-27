@@ -85,14 +85,9 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
-(api.macros/defendpoint :get "/"
+(defn get-transforms
   "Get a list of transforms."
-  [_route-params
-   {:keys [last_run_start_time last_run_statuses tag_ids]} :-
-   [:map
-    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
-    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
-    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (api/check-superuser)
   (let [transforms (t2/select :model/Transform)]
     (into []
@@ -101,6 +96,16 @@
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids))))
+
+(api.macros/defendpoint :get "/"
+  "Get a list of transforms."
+  [_route-params
+   query-params :-
+   [:map
+    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
+  (get-transforms query-params))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."
@@ -129,11 +134,9 @@
       ;; Return with hydrated tag_ids
       (t2/hydrate transform :transform_tag_ids))))
 
-(api.macros/defendpoint :get "/:id"
+(defn get-transform
   "Get a specific transform."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (log/info "get transform" id)
+  [id]
   (api/check-superuser)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         target-table (transforms.util/target-table (transforms.util/target-database-id transform) target :active true)]
@@ -141,6 +144,13 @@
         (t2/hydrate :last_run :transform_tag_ids)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table))))
+
+(api.macros/defendpoint :get "/:id"
+  "Get a specific transform."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (log/info "get transform" id)
+  (get-transform id))
 
 (api.macros/defendpoint :get "/:id/dependencies"
   "Get the dependencies of a specific transform."

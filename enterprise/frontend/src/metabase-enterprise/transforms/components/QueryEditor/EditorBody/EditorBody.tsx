@@ -16,6 +16,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Database as ApiDatabase,
+  DatasetQuery,
   NativeQuerySnippet,
   RecentItem,
 } from "metabase-types/api";
@@ -56,6 +57,9 @@ type EditorBodyProps = {
   nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
+  proposedQuestion?: Question;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: DatasetQuery) => void;
 };
 
 export function EditorBody({
@@ -77,6 +81,9 @@ export function EditorBody({
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
   onOpenModal,
+  proposedQuestion,
+  onRejectProposed,
+  onAcceptProposed,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -140,6 +147,9 @@ export function EditorBody({
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
       onOpenModal={onOpenModal}
+      proposedQuestion={proposedQuestion}
+      onRejectProposed={onRejectProposed}
+      onAcceptProposed={onAcceptProposed}
     />
   ) : (
     <ResizableBox

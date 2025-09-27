@@ -29,6 +29,10 @@ import {
 } from "metabase-enterprise/api";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  parseMetabaseProtocolMarkdownLink,
+} from "metabase-enterprise/metabot/utils/links";
 import type {
   Card,
   CardDisplayType,
@@ -225,11 +229,29 @@ export const SmartLink = Node.create<{
           return null; // Return null to prevent node creation
         },
       }),
+      nodePasteRule({
+        find: new RegExp(METABSE_PROTOCOL_MD_LINK, "g"),
+        type: this.type,
+        getAttributes: (match) => {
+          const url = match[0];
+          const parsedEntity = parseMetabaseProtocolMarkdownLink(url);
+
+          if (parsedEntity) {
+            return {
+              entityId: parsedEntity.id,
+              model: parsedEntity.model,
+              label: parsedEntity.name,
+            };
+          }
+
+          return null; // Return null to prevent node creation
+        },
+      }),
     ];
   },
 });
 
-const useEntityData = (
+export const useEntityData = (
   entityId: number | null,
   model: SuggestionModel | null,
 ) => {
@@ -335,17 +357,27 @@ const useEntityData = (
 
 export const SmartLinkComponent = memo(
   ({ node }: NodeViewProps) => {
-    const { entityId, model } = node.attrs;
-    const { entity, isLoading, error } = useEntityData(entityId, model);
+    const { entityId, model, label } = node.attrs;
+
+    const {
+      entity: networkEntity,
+      isLoading,
+      error,
+    } = useEntityData(entityId, model);
+    const cachedEntity = { id: entityId, model, name: label };
+    const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
     useEffect(() => {
-      if (entity?.name) {
-        dispatch(updateMentionsCache({ entityId, model, name: entity.name }));
+      if (entity) {
+        const name =
+          "display_name" in entity ? entity.display_name : entity?.name;
+        dispatch(updateMentionsCache({ entityId, model, name }));
       }
-    }, [dispatch, entity?.name, entityId, model]);
+    }, [dispatch, entity, entityId, model]);
 
-    if (isLoading) {
+    const showLoading = isLoading && !entity;
+    if (showLoading) {
       return (
         <NodeViewWrapper as="span">
           <span className={styles.smartLink}>
@@ -382,7 +414,10 @@ export const SmartLinkComponent = memo(
     const entityUrlableModel = entityToUrlableModel(entity, model);
     const entityUrl = modelToUrl(entityUrlableModel);
 
-    const iconData = getIcon(entityToObjectWithModel(entity, model));
+    // TODO: fix type cast...
+    const iconData = getIcon(entityToObjectWithModel(entity as any, model));
+
+    const name = "display_name" in entity ? entity.display_name : entity?.name;
 
     return (
       <NodeViewWrapper as="span">
@@ -398,7 +433,7 @@ export const SmartLinkComponent = memo(
         >
           <span className={styles.smartLinkInner}>
             <Icon name={iconData.name} className={styles.icon} />
-            {entity.name}
+            {name}
           </span>
         </a>
       </NodeViewWrapper>

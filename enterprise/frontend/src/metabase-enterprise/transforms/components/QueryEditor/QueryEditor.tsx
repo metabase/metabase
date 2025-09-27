@@ -12,6 +12,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
   QueryTransformSource,
+  Transform,
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
@@ -35,23 +36,32 @@ import {
 } from "./utils";
 
 type QueryEditorProps = {
+  transform?: Pick<Transform, "name">;
   initialSource: QueryTransformSource;
+  proposedSource?: QueryTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   onSave: (source: QueryTransformSource) => void;
+  onChange?: (source: QueryTransformSource) => void;
   onCancel: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: QueryTransformSource) => void;
 };
 
 export function QueryEditor({
+  transform,
   initialSource,
+  proposedSource,
   isNew = true,
   isSaving = false,
   onSave,
+  onChange,
   onCancel,
+  onRejectProposed,
+  onAcceptProposed,
 }: QueryEditorProps) {
-  const { question, isQueryDirty, setQuestion } = useQueryState(
-    initialSource.query,
-  );
+  const { question, proposedQuestion, isQueryDirty, setQuestion } =
+    useQueryState(initialSource.query, proposedSource?.query);
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const {
     result,
@@ -61,7 +71,7 @@ export function QueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question);
+  } = useQueryResults(question, proposedQuestion);
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
@@ -69,6 +79,7 @@ export function QueryEditor({
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
+    onChange?.({ type: "query", query: question.datasetQuery() });
   };
 
   const handleSave = () => {
@@ -147,6 +158,7 @@ export function QueryEditor({
       >
         <EditorHeader
           validationResult={validationResult}
+          name={transform?.name}
           isNew={isNew}
           isSaving={isSaving}
           isQueryDirty={isQueryDirty}
@@ -157,6 +169,7 @@ export function QueryEditor({
           <Stack flex="2 1 100%" pos="relative">
             <EditorBody
               question={question}
+              proposedQuestion={proposedQuestion}
               isNative={isNative}
               isRunnable={isRunnable}
               isRunning={isRunning}
@@ -166,6 +179,12 @@ export function QueryEditor({
               onChange={handleChange}
               onRunQuery={runQuery}
               onCancelQuery={cancelQuery}
+              onRejectProposed={onRejectProposed}
+              onAcceptProposed={
+                proposedSource
+                  ? () => onAcceptProposed?.(proposedSource)
+                  : undefined
+              }
               databases={databases?.data ?? []}
               onToggleDataReference={handleToggleDataReference}
               onToggleSnippetSidebar={handleToggleSnippetSidebar}
@@ -186,7 +205,6 @@ export function QueryEditor({
               onRunQuery={runQuery}
               onCancelQuery={() => undefined}
             />
-
             {!isNative && (
               <NativeQuerySidebarToggle
                 isShowingNativeQueryPreview={isShowingNativeQueryPreview}

@@ -65,7 +65,13 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  {:select [[[:max :recent_views.timestamp] :last_viewed_at]]
+  {:select [[[:case
+              ;; Transforms get a hardcoded 15-day last_viewed_at because we don't track views on them
+              [:= :search_index.model [:inline "transform"]]
+              [:- [:now] [:interval "15 days"]]
+              :else
+              [:max :recent_views.timestamp]]
+             :last_viewed_at]]
    :from   [:recent_views]
    :where  [:and
             [:= :recent_views.user_id current-user-id]

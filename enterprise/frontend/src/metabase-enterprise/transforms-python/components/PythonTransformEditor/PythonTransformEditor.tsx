@@ -30,20 +30,26 @@ export type PythonTransformSourceDraft = {
 
 export type PythonTransformEditorProps = {
   initialSource: PythonTransformSourceDraft;
+  proposedSource?: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
   onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
+  onRejectProposed?: () => void;
+  onAcceptProposed?: (query: PythonTransformSource) => void;
 };
 
 export function PythonTransformEditor({
   initialSource,
+  proposedSource,
   isNew = true,
   isSaving = false,
   isRunnable = true,
   onSave,
   onCancel,
+  onRejectProposed,
+  onAcceptProposed,
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
@@ -86,6 +92,14 @@ export function PythonTransformEditor({
       onSave(source);
     }
   };
+
+  const handleAcceptProposed =
+    proposedSource && onAcceptProposed
+      ? () => {
+          handleScriptChange(proposedSource.body);
+          onAcceptProposed(proposedSource);
+        }
+      : undefined;
 
   const showDebugger = useShouldShowPythonDebugger();
 
@@ -134,8 +148,11 @@ export function PythonTransformEditor({
             onRun={run}
             onCancel={cancel}
             source={source.body}
+            proposedSource={proposedSource?.body}
             onChange={handleScriptChange}
             withDebugger={showDebugger}
+            onAcceptProposed={handleAcceptProposed}
+            onRejectProposed={onRejectProposed}
           />
           {showDebugger && (
             <PythonEditorResults

@@ -24,6 +24,9 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
+export type SuggestedTransform = Partial<Pick<Transform, "id">> &
+  Pick<Transform, "name" | "description" | "source" | "target">;
+
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
 export type PythonTransformSource = {
@@ -32,6 +35,7 @@ export type PythonTransformSource = {
   "source-database": DatabaseId;
   "source-tables": PythonTransformTableAliases;
 };
+
 export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;

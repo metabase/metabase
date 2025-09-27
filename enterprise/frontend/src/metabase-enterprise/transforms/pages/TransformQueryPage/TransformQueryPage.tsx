@@ -1,16 +1,25 @@
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { skipToken } from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+import {
+  getMetabotSuggestedTransform,
+  setSuggestedTransform,
+} from "metabase-enterprise/metabot/state";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -54,7 +63,50 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleSourceSave = async (source: TransformSource) => {
+  const metabot = useMetabotAgent();
+
+  const initialSource = transform.source;
+  const [source, setSource] = useState(initialSource);
+
+  const suggestedTransform = useSelector(
+    (state) => getMetabotSuggestedTransform(state, transform.id) as any,
+  ) as ReturnType<typeof getMetabotSuggestedTransform>;
+
+  // TODO: should getMetabotSuggestedTransform selector do this?
+  const isPropsedSame = _.isEqual(suggestedTransform?.source, initialSource);
+  const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
+
+  useRegisterMetabotContextProvider(async () => {
+    const viewedTransform = suggestedTransform ?? { ...transform, source };
+    return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
+  }, [transform, source, suggestedTransform]);
+
+  const onRejectProposed = () => {
+    dispatch(setSuggestedTransform(undefined));
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: the user has rejected your changes, ask for clarification on what they'd like to do instead.",
+      // @ts-expect-error -- TODO
+      userMessage: "❌ You rejected the change",
+    });
+  };
+  const onAcceptProposed = async (source: TransformSource) => {
+    await handleSourceSave(source, { leaveEditor: false });
+    dispatch(setSuggestedTransform(undefined));
+    metabot.submitInput({
+      type: "action",
+      message:
+        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
+      // @ts-expect-error -- TODO
+      userMessage: "✅ You accepted the change",
+    });
+  };
+
+  const handleSourceSave = async (
+    source: TransformSource,
+    { leaveEditor } = { leaveEditor: true },
+  ) => {
     const { error } = await updateTransform({
       id: transform.id,
       source,
@@ -64,7 +116,9 @@ export function TransformQueryPageBody({
       sendErrorToast(t`Failed to update transform query`);
     } else {
       sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
+      if (leaveEditor) {
+        dispatch(push(getTransformUrl(transform.id)));
+      }
     }
   };
 
@@ -74,22 +128,39 @@ export function TransformQueryPageBody({
 
   if (transform.source.type === "python") {
     return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+      <AdminSettingsLayout fullWidth key={transform.id}>
+        <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          initialSource={transform.source}
+          proposedSource={
+            proposedSource?.type === "python" ? proposedSource : undefined
+          }
+          isNew={false}
+          isSaving={isLoading}
+          onSave={handleSourceSave}
+          onCancel={handleCancel}
+          onRejectProposed={onRejectProposed}
+          onAcceptProposed={onAcceptProposed}
+        />
+      </AdminSettingsLayout>
+    );
+  }
+
+  return (
+    <AdminSettingsLayout fullWidth key={transform.id}>
+      <QueryEditor
         initialSource={transform.source}
+        transform={transform}
         isNew={false}
         isSaving={isLoading}
         onSave={handleSourceSave}
+        onChange={setSource}
         onCancel={handleCancel}
+        proposedSource={
+          proposedSource?.type === "query" ? proposedSource : undefined
+        }
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
       />
-    );
-  }
-  return (
-    <QueryEditor
-      initialSource={transform.source}
-      isNew={false}
-      isSaving={isLoading}
-      onSave={handleSourceSave}
-      onCancel={handleCancel}
-    />
+    </AdminSettingsLayout>
   );
 }

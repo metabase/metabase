@@ -1,10 +1,37 @@
 import Question from "metabase-lib/v1/Question";
-import type { Card, DatasetQuery } from "metabase-types/api";
+import type {
+  Card,
+  DatasetQuery,
+  PythonTransformSource,
+  QueryTransformSource,
+} from "metabase-types/api";
+
+export type InitialPythonTransformSource = Omit<
+  PythonTransformSource,
+  "source-database"
+> & {
+  "source-database": PythonTransformSource["source-database"] | undefined;
+};
+
+export type InitialTransformSource =
+  | QueryTransformSource
+  | InitialPythonTransformSource;
+
+export function getInitialTransformSource(
+  card: Card | undefined,
+  type: DatasetQuery["type"] | "python",
+): InitialTransformSource {
+  if (type === "python") {
+    return getInitialPythonTransformSource();
+  }
+
+  return getInitialQueryTransformSource(card, type);
+}
 
 export function getInitialQueryTransformSource(
   card: Card | undefined,
   type: DatasetQuery["type"] | undefined,
-) {
+): QueryTransformSource {
   const query =
     card != null
       ? card.dataset_query
@@ -13,7 +40,7 @@ export function getInitialQueryTransformSource(
   return { type: "query" as const, query };
 }
 
-export function getInitialPythonTransformSource() {
+export function getInitialPythonTransformSource(): InitialPythonTransformSource {
   return {
     type: "python" as const,
     "source-database": undefined,

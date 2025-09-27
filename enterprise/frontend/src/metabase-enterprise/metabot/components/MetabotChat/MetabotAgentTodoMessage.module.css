@@ -1,0 +1,49 @@
+.todoContainer {
+  background: rgba(5, 114, 210, 0.07);
+  border: 1px solid rgba(5, 114, 210, 0.69);
+}
+
+.todoHeader {
+  cursor: pointer;
+  user-select: none;
+}
+
+.primaryColor {
+  color: rgba(5, 114, 210, 0.69);
+}
+
+.todoItem {
+  border-radius: 2px;
+}
+
+.statusIndicator {
+  height: 0.8rem;
+  width: 0.8rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pendingIndicator {
+  border: 1.5px solid rgba(5, 114, 210, 0.69);
+  margin-top: 1px;
+}
+
+.completedIndicator {
+  background: rgba(5, 114, 210, 0.69);
+  margin-top: 2px;
+}
+
+.inProgressIndicator {
+  background: rgba(5, 114, 210, 0.69);
+  margin-top: 2px;
+}
+
+.cancelledIndicator {
+  background: rgba(5, 114, 210, 0.69);
+  margin-top: 2px;
+}
+
+/* there is a problem with the arrow right icon pointing left... */
+.rotateIcon {
+  transform: rotate(180deg);
+}
