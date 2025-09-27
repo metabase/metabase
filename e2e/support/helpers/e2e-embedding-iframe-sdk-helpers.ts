@@ -24,6 +24,7 @@ export interface BaseEmbedTestPageOptions {
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
+    fetchRequestToken?: () => Promise<{ jwt: string }>;
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
@@ -39,7 +40,7 @@ export interface BaseEmbedTestPageOptions {
     afterEmbed?: string;
   };
 
-  onVisitPage?(): void;
+  onVisitPage?(win: Cypress.AUTWindow): void;
 }
 
 export interface MetabaseElement {
@@ -267,14 +268,7 @@ export const getNewEmbedConfigurationScript = ({
   useExistingUserSession,
   preferredAuthMethod,
   locale,
-}: {
-  instanceUrl?: string;
-  theme?: MetabaseTheme;
-  apiKey?: string;
-  useExistingUserSession?: boolean;
-  preferredAuthMethod?: "jwt" | "saml";
-  locale?: string;
-} = {}) => {
+}: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
     apiKey,
