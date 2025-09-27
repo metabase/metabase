@@ -49,7 +49,8 @@
                               :type/Integer        "INTEGER"
                               :type/Text           "VARCHAR(1024)"
                               :type/Time           "TIME"
-                              :type/TimeWithTZ     "TIMETZ"}]
+                              :type/TimeWithTZ     "TIMETZ"
+                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (mu/defn- db-name :- :string
@@ -122,7 +123,7 @@
   [{:keys [field-definitions rows]} ^String filename]
   (try
     (let [has-custom-pk? (when-let [pk (not-empty (sql.tx/fielddefs->pk-field-names field-definitions))]
-                           (not= ["id"] pk))
+                           (= ["id"] pk))
           column-names   (cond->> (mapv :field-name field-definitions)
                            (not has-custom-pk?)
                            (cons "id"))
