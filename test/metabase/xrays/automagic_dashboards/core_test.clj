@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.test-metadata :as meta]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -154,15 +155,13 @@
       (testing "The source of a query is the underlying datasource of the query"
         (let [query (mi/instance
                      :model/Query
-                     {:database-id   (mt/id)
-                      :table-id      (mt/id :orders)
-                      :dataset_query {:database (mt/id)
-                                      :type     :query
-                                      :query    {:source-table (mt/id :orders)
-                                                 :aggregation  [[:count]]}}})
+                     {:database-id   (meta/id)
+                      :table-id      (meta/id :orders)
+                      :dataset_query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                         (lib/aggregate (lib/count)))})
               {:keys [entity source]} (#'magic/->root query)]
           (is (= entity query))
-          (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
+          (is (= source (meta/table-metadata :orders))))))))
 
 (deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"

@@ -22,11 +22,11 @@
                                                                 [:dimension "CategoriesStats.FK"]]}]
                                      :limit       3}}}
       (#'tf.specs/add-metadata-to-steps)
-      (#'tf.specs/coerce-to-transform-spec)))
+      ((#'tf.specs/transform-spec-coercer))))
 
-(defmacro with-test-transform-specs!
+(defmacro with-test-transform-specs
   "Evaluate `body` in a context where `transforms.specs/transform-specs` have been swapped for `test-transform-specs`"
   [& body]
   `(testing "with-test-transform-specs\n"
-     (with-redefs [tf.specs/transform-specs (delay [test-transform-spec])]
+     (binding [tf.specs/*specs-delay* (delay [test-transform-spec])]
        ~@body)))

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
@@ -13,8 +14,7 @@
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

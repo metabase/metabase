@@ -2,12 +2,15 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [toucan2.core :as t2]
-   [metabase.lib.schema :as lib.schema]
    [metabase.util.malli :as mu]
-   [metabase.queries.schema :as queries.schema]))
+   [metabase.xrays.transforms.schema :as transforms.schema]
+   [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
 
@@ -27,10 +30,13 @@
                      :name     collection-name
                      :location location)))
 
-(defn- create-collection!
+(mu/defn- create-collection!
   ([collection-name description]
    (create-collection! collection-name description (root-container-location)))
-  ([collection-name description location]
+
+  ([collection-name :- ::lib.schema.common/non-blank-string
+    description     :- [:maybe :string]
+    location        :- [:maybe :string]]
    (first (t2/insert-returning-pks! :model/Collection
                                     {:name        collection-name
                                      :description description
@@ -44,26 +50,26 @@
     (or (get-collection name location)
         (create-collection! name nil location))))
 
-(defn fresh-collection-for-transform!
+(mu/defn fresh-collection-for-transform!
   "Create a new collection for all the artefacts belonging to transform, or reset it if it already
    exists."
-  [{:keys [name description]}]
-  (if-let [collection-id (get-collection name)]
-    (t2/delete! :model/Card :collection_id collection-id)
-    (create-collection! name description)))
+  [{:transform/keys [name description]} :- ::transforms.schema/transform-spec]
+  (when-let [collection-id (get-collection name)]
+    (t2/delete! :model/Card :collection_id collection-id))
+  (create-collection! name description))
 
-(mu/defn make-card-for-step!
+(mu/defn make-card-for-step! :- ::lib.schema.metadata/card
   "Make and save a card for a given transform step and query."
-  [{:keys [name transform description]} :- ::queries.schema/card
-   query                                :- ::lib.schema/query]
-  (->> {:creator_id             api/*current-user-id*
-        :dataset_query          query
-        :description            description
-        :name                   name
-        :collection_id          (get-collection transform)
-        :result_metadata        (qp.preprocess/query->expected-cols query)
-        :visualization_settings {}
-        :display                :table}
-       queries/populate-card-query-fields
-       (t2/insert-returning-instances! :model/Card)
-       first))
+  [{step-name :transform.step/name, :transform.step/keys [transform-name description]} :- ::transforms.schema/step
+   query :- ::lib.schema/query]
+  (-> {:creator_id             api/*current-user-id*
+       :dataset_query          query
+       :description            description
+       :name                   step-name
+       :collection_id          (get-collection transform-name)
+       :result_metadata        (qp.preprocess/query->expected-cols query)
+       :visualization_settings {}
+       :display                :table}
+      queries/populate-card-query-fields
+      (->> (t2/insert-returning-instance! :model/Card))
+      (lib-be/instance->metadata :metadata/card)))

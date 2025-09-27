@@ -6,9 +6,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.util.malli.registry :as mr]))
+   [toucan2.core :as t2]))
 
 (defmacro with-rollback-only-transaction
   "Execute body and cleanup all dashboard elements created."

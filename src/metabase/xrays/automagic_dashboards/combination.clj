@@ -34,7 +34,9 @@
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]))
+   [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]
+   [metabase.lib.metadata :as lib.metadata]
+   [toucan2.core :as t2]))
 
 (defn add-breakouts-and-filter
   "Add breakouts and filters to a query based on the breakout fields and filter clauses"
@@ -84,20 +86,27 @@
   and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
    {{:keys [database]} :root :keys [source query-filter]} :- ::ads/context]
-  (let [source-table (if (->> source (mi/instance-of? :model/Table))
-                       (-> source u/the-id)
-                       (->> source u/the-id (str "card__")))
-        model?       (and (mi/instance-of? :model/Card source)
-                          (queries/model? source))
-        mp (lib-be/application-database-metadata-provider database)]
-    ;; TODO (Cam 9/25/25) -- update X-Rays code to use Lib everywhere instead of hand-rolling legacy MBQL like this.
-    (assoc ground-metric-with-dimensions
-           :dataset_query (lib/query mp {:database database
-                                         :type     :query
-                                         :query    (cond-> (assoc metric-definition
-                                                                  :source-table source-table)
-                                                     (and (not model?)
-                                                          query-filter) (assoc :filter query-filter))}))))
+  (let [model? (and (mi/instance-of? :model/Card source)
+                    (queries/model? source))
+        mp     (lib-be/application-database-metadata-provider database)
+        source (case (t2/model source)
+                 :model/Table (lib-be/instance->metadata source :metadata/table)
+                 :model/Card  (lib-be/instance->metadata source :metadata/card))
+        query  (lib/query mp source)
+        query  (try
+                 (reduce
+                  (fn [query [k v]]
+                    (case k
+                      :aggregation (reduce lib/aggregate query v)
+                      :breakout    (reduce lib/breakout query v)))
+                  query
+                  metric-definition)
+                 (catch Throwable e
+                   (throw (ex-info (format "Error merging :metric-definition: %s" (ex-message e))
+                                   {:metric-definition metric-definition}))))
+        query  (cond-> query
+                 (and query-filter (not model?)) (lib/filter query-filter))]
+    (assoc ground-metric-with-dimensions :dataset_query query)))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]

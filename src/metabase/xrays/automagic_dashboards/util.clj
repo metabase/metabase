@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -15,8 +16,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]))
+   [toucan2.core :as t2]))
 
 (defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
@@ -69,8 +69,9 @@
                              (ms/InstanceOf :model/Field)
                              ::ads/field]]
   "Return `Field` instance for a given ID or name in the context of root."
-  [{{result-metadata :result_metadata} :source, :as root} :- ::ads/root
+  [{{result-metadata :result_metadata, :as _source} :source, :as root} :- ::ads/root
    field-id-or-name-or-clause :- [:or ::lib.schema.id/field ms/NonBlankString :mbql.clause/field]]
+  (log/warn "THIS PROBABLY NEEDS TO BE FIXED #3 -- don't use result_metadata, use lib/returned-columns (which means source must be lib metadata)")
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]

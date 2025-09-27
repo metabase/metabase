@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema :as lib.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -17,9 +18,7 @@
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.schema :as lib.schema]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

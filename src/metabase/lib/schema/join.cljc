@@ -62,7 +62,10 @@
   supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left
   joins will support the `:left-join` feature.
 
-  When `:strategy` is not specified, `:left-join` is the default strategy."
+  When `:strategy` is not specified, `:left-join` is the default strategy.
+
+  These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
+  driver supports `:full-join` before generating a Join clause using that strategy."
   [:enum
    {:decode/normalize common/normalize-keyword, :default :left-join}
    :left-join

@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
@@ -15,8 +16,7 @@
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.related :as related]
-   [metabase.lib.schema.expression :as lib.schema.expression]))
+   [metabase.xrays.related :as related]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))

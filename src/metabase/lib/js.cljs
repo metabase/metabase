@@ -968,10 +968,6 @@
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
 
-;; TODO: find-filter-for-legacy-filter is dead code and should be removed.
-
-;; TODO: find-filterable-column-for-legacy-ref is dead code and should be removed.
-
 ;; # Expressions
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported
 ;; to Clojure someday, but perhaps not - it's quite standalone and there's no use case for that logic in the BE.

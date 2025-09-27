@@ -21,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [select-keys mapv]]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
@@ -283,7 +284,7 @@
   [aggregation-clause]
   aggregation-clause)
 
-(def ^:private Aggregable
+(mr/def ::aggregable
   "Schema for something you can pass to [[aggregate]] to add to a query as an aggregation."
   [:or
    ::lib.schema.aggregation/aggregation
@@ -297,7 +298,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    aggregable :- Aggregable]
+    aggregable :- ::aggregable]
    ;; if this is a Metric metadata, convert it to `:metric` MBQL clause before adding.
    (if (= (lib.dispatch/dispatch-value aggregable) :metadata/metric)
      (recur query stage-number (lib.ref/ref aggregable))

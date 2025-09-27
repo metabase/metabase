@@ -1,117 +1,50 @@
 (ns metabase.xrays.domain-entities.specs
   (:require
    [malli.core :as mc]
+   [malli.error :as me]
    [malli.transform :as mtx]
-   [medley.core :as m]
-   [metabase.lib.core :as lib]
-   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.yaml :as yaml]
+   [metabase.xrays.domain-entities.schema :as domain-entities.schema]))
 
-(def MBQL
-  "MBQL clause (ie. a vector starting with a keyword)"
-  [:schema
-   {:decode/domain-entity-spec lib/normalize
-    :decode/transform-spec     lib/normalize
-    :error/message             "valid MBQL clause"}
-   [:ref ::lib.schema.mbql-clause/clause]])
+(defn- add-to-hierarchy!
+  [{domain-entity-name :name, :as spec}]
+  (let [spec-type (keyword "DomainEntity" domain-entity-name)]
+    (derive spec-type :DomainEntity/*)
+    (assoc spec :type spec-type)))
 
-(def FieldType
-  "Field type designator -- a keyword derived from `type/*`"
-  [:keyword
-   (letfn [(decoder [k]
-             (keyword "type" (name k)))]
-     {:decode/domain-entity-spec decoder
-      :decode/transform-spec     decoder})])
-
-(def ^:private DomainEntityReference :string)
-
-(def ^:private DomainEntityType
-  [:and
-   :keyword
-   [:fn
-    {:error/message "Valid DomainEntity"}
-    #(isa? % :DomainEntity/*)]])
-
-(def ^:private Identifier :string)
-
-(def ^:private Description :string)
-
-(def ^:private Attributes
-  [:sequential
-   [:map
-    [:field         {:optional true} FieldType]
-    [:domain_entity {:optional true} DomainEntityReference]
-    [:has_many      {:optional true} [:map
-                                      [:domain_entity DomainEntityReference]]]]])
-
-(def ^:private BreakoutDimensions
-  [:sequential
-   {:decode/domain-entity-spec (fn [breakout-dimensions]
-                                 (for [dimension breakout-dimensions]
-                                   (if (string? dimension)
-                                     (do
-                                       (mc/assert FieldType (keyword "type" dimension))
-                                       [:dimension dimension])
-                                     dimension)))}
-   MBQL])
-
-(def ^:private ^{:arglists '([m])} add-name-from-key
-  (partial m/map-kv-vals (fn [k v]
-                           (assoc v :name k))))
-
-(def ^:private Metrics
-  [:map-of
-   {:decode/domain-entity-spec add-name-from-key}
-   Identifier
-   [:map
-    [:aggregation MBQL]
-    [:name        Identifier]
-    [:breakout    {:optional true} BreakoutDimensions]
-    [:filter      {:optional true} MBQL]
-    [:description {:optional true} Description]]])
-
-(def ^:private Segments
-  [:map-of
-   {:decode/domain-entity-spec add-name-from-key}
-   Identifier
-   [:map
-    [:filter MBQL]
-    [:name   Identifier]
-    [:description {:optional true} Description]]])
-
-(def DomainEntitySpec
-  "Domain entity spec"
-  [:map
-   [:name                DomainEntityReference]
-   [:type                DomainEntityType]
-   [:required_attributes Attributes]
-   [:description         {:optional true} Description]
-   [:optional_attributes {:optional true} Attributes]
-   [:metrics             {:optional true} Metrics]
-   [:segments            {:optional true} Segments]
-   [:breakout_dimensions {:optional true} BreakoutDimensions]])
-
-(defn- add-to-hiearchy!
-  [{:keys [name refines] :as spec}]
-  (let [spec-type (keyword "DomainEntity" name)
-        refines   (some->> refines (keyword "DomainEntity"))]
-    (derive spec-type (or refines :DomainEntity/*))
-    (-> spec
-        (dissoc :refines)
-        (assoc :type spec-type))))
-
-(defn- coerce-to-domain-entity-spec [spec]
-  (mc/coerce DomainEntitySpec
-             spec
-             (mtx/transformer
-              mtx/string-transformer
-              mtx/json-transformer
-              (mtx/transformer {:name :domain-entity-spec}))))
+(defn- domain-entity-spec-coercer []
+  (letfn [(transformer []
+            (mtx/transformer
+             mtx/string-transformer
+             mtx/json-transformer
+             (mtx/key-transformer {:decode u/->kebab-case-en})
+             {:name :normalize}
+             {:name :domain-entity-spec}))
+          (coercer []
+            (mc/coercer
+             ::domain-entities.schema/domain-entity-spec
+             (transformer)
+             identity
+             (fn raise [{:keys [explain value]}]
+               (throw (ex-info "Error normalizing domain entity"
+                               {:value value, :error (me/humanize explain)})))))]
+    (mr/cached ::coercer ::domain-entities.schema/domain-entity-spec coercer)))
 
 (def ^:private domain-entities-dir "domain_entity_specs/")
 
-(def domain-entity-specs
+(defn- domain-entity-specs* []
+  (into {}
+        (map (juxt :domain-entity/name identity))
+        (yaml/load-dir domain-entities-dir (comp (domain-entity-spec-coercer) add-to-hierarchy!))))
+
+(def ^:private ^:dynamic *specs-delay*
+  "Dynamic so we can override this in tests."
+  (delay (domain-entity-specs*)))
+
+(mu/defn domain-entity-specs :- [:map-of ::domain-entities.schema/domain-entity.name ::domain-entities.schema/domain-entity-spec]
   "List of registered domain entities."
-  (delay (into {} (for [spec (yaml/load-dir domain-entities-dir (comp coerce-to-domain-entity-spec
-                                                                      add-to-hiearchy!))]
-                    [(:name spec) spec]))))
+  []
+  @*specs-delay*)
