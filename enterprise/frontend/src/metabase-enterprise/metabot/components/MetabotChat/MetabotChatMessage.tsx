@@ -1,9 +1,9 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
   Flex,
@@ -12,6 +12,7 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
+import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
 import type {
   MetabotChatMessage,
   MetabotErrorMessage,
@@ -260,19 +261,26 @@ export const Messages = ({
     modal: undefined,
   });
 
+  const [submitMetabotFeedback] = useSubmitMetabotFeedbackMutation();
+
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
 
-    downloadObjectAsJson(metabotFeedback, `metabot-feedback-${message_id}`);
-    sendToast({ icon: "check", message: "Feedback downloaded successfully" });
+    const { error } = await submitMetabotFeedback(metabotFeedback);
 
-    setFeedbackState((prevState) => ({
-      submitted: {
-        ...prevState.submitted,
-        [message_id]: positive ? "positive" : "negative",
-      },
-      modal: undefined,
-    }));
+    if (error) {
+      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+    } else {
+      sendToast({ icon: "check", message: t`Feedback submitted` });
+
+      setFeedbackState((prevState) => ({
+        submitted: {
+          ...prevState.submitted,
+          [message_id]: positive ? "positive" : "negative",
+        },
+        modal: undefined,
+      }));
+    }
   };
 
   const onAgentMessageCopy = useCallback(
