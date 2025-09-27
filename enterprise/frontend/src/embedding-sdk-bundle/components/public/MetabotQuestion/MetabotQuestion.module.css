@@ -25,7 +25,7 @@
 }
 
 /* Auto layout mobile breakpoint */
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .autoLayout {
     flex-direction: column;
   }
