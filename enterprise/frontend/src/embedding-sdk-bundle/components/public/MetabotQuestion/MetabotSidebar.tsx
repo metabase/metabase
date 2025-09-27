@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { Stack } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import {
@@ -23,9 +21,7 @@ export function MetabotSidebar() {
     sample: true,
   });
 
-  const suggestedPrompts = useMemo(() => {
-    return suggestedPromptsQuery.currentData?.prompts ?? [];
-  }, [suggestedPromptsQuery]);
+  const suggestedPrompts = suggestedPromptsQuery.currentData?.prompts ?? [];
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
