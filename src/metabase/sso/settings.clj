@@ -137,6 +137,13 @@
   :default    false
   :audit      :getter)
 
+(defsetting ldap-timeout-seconds
+  (deferred-tru "Maximum time, in seconds, to wait for LDAP server before falling back to local authentication")
+  :type :double
+  :encryption :no
+  :export? false
+  :default 15.0)
+
 ;;;
 ;;; Google Auth
 ;;;

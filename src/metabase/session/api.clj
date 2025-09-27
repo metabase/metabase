@@ -67,7 +67,15 @@
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
-        (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
+        (log/error e "Problem connecting to LDAP server, will fall back to local authentication"))
+      (catch dev.failsafe.TimeoutExceededException e
+        (log/error e "Timeout from LDAP server, will fall back to local authentication"))
+      ;; Failsafe wraps exceptions in a `FailsafeException` - unwrap these if necessary
+      (catch dev.failsafe.FailsafeException e
+        (let [cause (.getCause e)]
+          (if (instance? LDAPSDKException cause)
+            (log/error cause "Problem connecting to LDAP server, will fall back to local authentication")
+            (throw e)))))))
 
 (mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
