@@ -52,24 +52,20 @@
   display: none;
 }
 
-.stackedLayout .stackedOverflowButton {
-  display: block;
-}
-
 .sidebarLayout .sidebar {
   border-left: 1px solid var(--mb-color-border);
 }
 
-/* Overflow button styles */
-.stackedOverflowButton {
-  display: none;
-  border-radius: 4px;
+/* Overflow menu is only visible in stacked layout. */
+.stackedLayout .stackedOverflowButton {
+  display: flex;
   padding: 0.25rem;
+  border-radius: 4px;
   transition: background-color 0.2s ease;
 }
 
-.stackedOverflowButton:hover {
-  background-color: var(--mb-color-focus);
+.stackedLayout .stackedOverflowButton:hover {
+  background-color: var(--mb-color-brand-lighter);
 }
 
 /* Prompt suggestions */
