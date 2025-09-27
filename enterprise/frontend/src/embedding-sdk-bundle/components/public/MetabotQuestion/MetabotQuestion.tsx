@@ -1,100 +1,91 @@
-import { useId } from "react";
-import { t } from "ttag";
+import { useId, useMemo } from "react";
+import { match } from "ts-pattern";
 
-import {
-  SdkLoader,
-  withPublicComponentWrapper,
-} from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { Flex, Paper, Stack, Text } from "metabase/ui";
-import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
-import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
-import {
-  useMetabotAgent,
-  useMetabotChatHandlers,
-} from "metabase-enterprise/metabot/hooks";
+import { Stack } from "metabase/ui";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
-import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
+import S from "./MetabotQuestion.module.css";
 import { metabotQuestionSchema } from "./MetabotQuestion.schema";
+import { MetabotQuestionEmptyState } from "./MetabotQuestionEmptyState";
+import { MetabotSidebar } from "./MetabotSidebar";
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
+import type { MetabotQuestionProps } from "./types";
 
-const MetabotQuestionInner = () => {
+const MetabotQuestionInner = ({
+  height,
+  width,
+  className,
+  style,
+  layout = "auto",
+}: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
+  const isSmallScreen = useIsSmallScreen();
 
-  if (isLocaleLoading) {
-    return <SdkLoader />;
+  const hasQuestion = !!navigateToPath;
+
+  const derivedLayout = useMemo(() => {
+    return match([layout, isSmallScreen])
+      .with(["auto", true], () => "stacked")
+      .with(["auto", false], () => "sidebar")
+      .otherwise(([layout]) => layout);
+  }, [layout, isSmallScreen]);
+
+  function renderQuestion() {
+    if (!hasQuestion || isLocaleLoading) {
+      return <MetabotQuestionEmptyState />;
+    }
+
+    return (
+      <SdkAdHocQuestion
+        questionPath={navigateToPath}
+        title={false}
+        isSaveEnabled={false}
+      >
+        <SdkQuestionDefaultView
+          withChartTypeSelector
+          title={
+            <Stack gap="sm" mb="1rem">
+              <QuestionTitle />
+              <QuestionDetails />
+            </Stack>
+          }
+        />
+      </SdkAdHocQuestion>
+    );
   }
 
   return (
-    <Flex direction="column" align="center" gap="md">
-      <MetabotMessages />
+    <FlexibleSizeComponent
+      height={height}
+      width={width}
+      className={className}
+      style={style}
+    >
+      <div
+        className={S.container}
+        data-layout={derivedLayout}
+        data-testid="metabot-question-container"
+      >
+        <div className={S.content}>{renderQuestion()}</div>
 
-      <MetabotChatEmbedding />
-
-      {!!navigateToPath && (
-        <SdkAdHocQuestion
-          questionPath={navigateToPath}
-          title={false}
-          isSaveEnabled={false}
-        >
-          <SdkQuestionDefaultView
-            withChartTypeSelector
-            title={
-              <Stack gap="sm" mb="1rem">
-                <QuestionTitle />
-                <QuestionDetails />
-              </Stack>
-            }
-          />
-        </SdkAdHocQuestion>
-      )}
-
-      <Disclaimer />
-    </Flex>
+        <div className={S.chat}>
+          <MetabotSidebar />
+        </div>
+      </div>
+    </FlexibleSizeComponent>
   );
 };
 
-function MetabotMessages() {
-  const metabot = useMetabotAgent();
-  const { messages, errorMessages } = metabot;
-  const { handleRetryMessage } = useMetabotChatHandlers();
-  const { setNavigateToPath } = useMetabotReactions();
-
-  if (!messages.length && !errorMessages.length) {
-    return null;
-  }
-
-  return (
-    <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg">
-      <Flex direction="column">
-        <Messages
-          messages={messages}
-          errorMessages={errorMessages}
-          onRetryMessage={handleRetryMessage}
-          isDoingScience={metabot.isDoingScience}
-          showFeedbackButtons={false}
-          onInternalLinkClick={setNavigateToPath}
-        />
-      </Flex>
-
-      {metabot.isLongConversation && <MetabotResetLongChatButton />}
-    </Paper>
-  );
-}
-
-function Disclaimer() {
-  return (
-    <Text c="var(--mb-color-text-secondary)">{t`AI can make mistakes. Double-check results.`}</Text>
-  );
-}
-
-const MetabotQuestionWrapped = () => {
+const MetabotQuestionWrapped = (props: MetabotQuestionProps) => {
   const ensureSingleInstanceId = useId();
 
   return (
@@ -105,7 +96,7 @@ const MetabotQuestionWrapped = () => {
         "Multiple instances of MetabotQuestion detected. Ensure only one instance of MetabotQuestion is rendered at a time."
       }
     >
-      <MetabotQuestionInner />
+      <MetabotQuestionInner {...props} />
     </EnsureSingleInstance>
   );
 };
