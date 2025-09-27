@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { t } from "ttag";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
@@ -141,9 +141,24 @@ function SidebarChatHistory() {
   const { messages, errorMessages } = metabot;
   const { handleRetryMessage } = useMetabotChatHandlers();
   const { setNavigateToPath } = useMetabotReactions();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages are received
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop =
+        scrollContainerRef.current.scrollHeight;
+    }
+  }, [messages.length, errorMessages.length, metabot.isDoingScience]);
 
   return (
-    <Stack flex={1} gap={0} style={{ overflowY: "auto" }} p="md">
+    <Stack
+      ref={scrollContainerRef}
+      flex={1}
+      gap={0}
+      style={{ overflowY: "auto" }}
+      p="md"
+    >
       {messages.length > 0 || errorMessages.length > 0 ? (
         <Messages
           messages={messages}
@@ -180,7 +195,7 @@ function SidebarInput() {
     <Flex
       gap="xs"
       px="md"
-      pt="sm"
+      py="sm"
       mih="48px"
       style={{ borderTop: "1px solid var(--mb-color-border)" }}
       align="center"
