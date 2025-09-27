@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
+   [metabase.analytics.sdk :as sdk]
    [metabase.notification.seed :as notification.seed]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -315,3 +316,23 @@
                :limit  50
                :offset 0}
               (mt/user-http-request :rasta :get 200 "ee/comment/mentions" :limit 50))))))
+
+(deftest iframe-comments-test
+  (testing "comments are disabled inside of an iframe"
+    (mt/with-temp [:model/Document {doc-id :id}     {}
+                   :model/Comment  {comment-id :id} {:target_id doc-id}]
+      (testing "Comments are not shown if in iframe"
+        (is (=? {:comments [{:id comment-id}]}
+                (mt/user-http-request :rasta :get 200 (str "ee/comment/")
+                                      :target_type "document"
+                                      :target_id doc-id)))
+        (is (=? {:comments []
+                 :disabled true}
+                (mt/user-http-request :rasta :get 200 (str "ee/comment/")
+                                      {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}}
+                                      :target_type "document"
+                                      :target_id doc-id))))
+      (testing "Users mentions are not available either"
+        (is (= "Not found."
+               (mt/user-http-request :rasta :get 404 (str "ee/comment/mentions")
+                                     {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}})))))))
