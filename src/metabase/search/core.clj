@@ -44,6 +44,7 @@
 
  [search.ingestion
   bulk-ingest!
+  max-searchable-value-length
   searchable-value-trim-sql]
 
  [search.spec

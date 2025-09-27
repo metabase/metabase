@@ -204,7 +204,10 @@
     (find-fields-kw expr)
 
     (and (vector? expr) (> (count expr) 1))
-    (into [] (mapcat find-fields-expr) (subvec expr 1))))
+    (into [] (mapcat find-fields-expr) (subvec expr 1))
+
+    (and (map? expr) (:req-fields expr))
+    (into [] (mapcat find-fields-expr) (:req-fields expr))))
 
 (defn- find-fields-attr [[k v]]
   (when v
