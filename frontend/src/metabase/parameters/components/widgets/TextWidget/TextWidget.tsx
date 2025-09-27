@@ -94,7 +94,6 @@ export class TextWidget extends Component<TextWidgetProps, State> {
           if (e.key === "Escape") {
             target.blur();
           } else if (e.key === "Enter") {
-            setValue(this.state.value ?? null);
             target.blur();
           }
         }}
