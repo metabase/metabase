@@ -39,6 +39,8 @@
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment :metadata/segment)]]]
    [:native-query-snippets {:optional true}
     [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/native-query-snippet :metadata/native-query-snippet)]]]
+   [:transforms {:optional true}
+    [:maybe [:sequential (with-optional-lib-type :map :metadata/transform)]]]
    [:settings {:optional true}
     [:maybe [:map-of :keyword any?]]]])
 
@@ -54,7 +56,8 @@
                      :metadata/card                 :cards
                      :metadata/segment              :segments
                      :metadata/native-query-snippet :native-query-snippets
-                     :metadata/metric               :cards)]
+                     :metadata/metric               :cards
+                     :metadata/transform            :transforms)]
     (into []
           (comp (metadata.protocols/default-spec-filter-xform metadata-spec)
                 (map #(assoc % :lib/type metadata-type)))

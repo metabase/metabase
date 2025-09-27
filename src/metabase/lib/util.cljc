@@ -745,3 +745,31 @@
       (concat (collect-source-tables source-query) from-joins)
       (cond->> from-joins
         (:source-table legacy-query) (cons (:source-table legacy-query))))))
+
+(defn- split-tables-and-legacy-card-refs [source-ids]
+  (-> (reduce (fn [m src]
+                (if-let [card-id (legacy-string-table-id->card-id src)]
+                  (update m :card conj! card-id)
+                  (update m :table conj! src)))
+              {:card  (transient #{})
+               :table (transient #{})}
+              source-ids)
+      (update-vals persistent!)))
+
+(mu/defn source-tables-and-cards :- [:map
+                                     [:card  {:optional true} [:set ::lib.schema.id/card]]
+                                     [:table {:optional true} [:set ::lib.schema.id/table]]]
+  "Returns all the table and card IDs that this list of **legacy, MBQL 4 queries** depend on."
+  [legacy-queries]
+  (let [metric-ids (-> (lib.util.match/match legacy-queries
+                         [:metric (id :guard pos-int?) & _]
+                         id)
+                       set)
+        source-ids (-> #{}
+                       (into (map #(str "card__" %)) metric-ids)
+                       (into
+                        ;; existing usage -- do not use in new code
+                        #_{:clj-kondo/ignore [:deprecated-var]}
+                        (mapcat #(collect-source-tables (:query %)))
+                        legacy-queries))]
+    (split-tables-and-legacy-card-refs source-ids)))

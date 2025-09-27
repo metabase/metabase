@@ -90,7 +90,7 @@
                                              :git/sha "4998a1fdd9d3713d7034d04509e9212204773bf2"
                                              :git/url "https://github.com/eerohele/pp"}
   ;; TODO: replace back to normal artifact
-  io.github.metabase/macaw                  {:mvn/version "0.2.27"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.28"}             ; Parse native SQL queries
   io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
                                             {:mvn/version "1.7.1"}              ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector

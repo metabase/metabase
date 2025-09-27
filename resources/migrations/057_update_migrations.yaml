@@ -1352,6 +1352,187 @@ databaseChangeLog:
               - column:
                   name: comment_id
       rollback: # will be removed along the table
+  - changeSet:
+      id: v57.2025-09-08T17:50:00
+      author: metamben
+      comment: Drop old dependency table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: dependency
+      changes:
+        - dropTable:
+            tableName: dependency
+      rollback:
+        - createTable:
+            tableName: dependency
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model
+            columns:
+              column:
+                name: model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model_id
+            columns:
+              column:
+                name: model_id
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_model
+            columns:
+              column:
+                name: dependent_on_model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_id
+            columns:
+              column:
+                name: dependent_on_id
+        # - modifySql:                 # doesn't work with liquibase 4.33.0
+        #     dbms: postgresql
+        #     replace:
+        #       replace: WITHOUT
+        #       with: WITH
+
+  - changeSet:
+      id: v57.2025-09-08T18:00:00
+      author: metamben
+      comment: Create dependency table to track dependencies in a general way
+
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: dependency
+      changes:
+        - createTable:
+            tableName: dependency
+            remarks: A table to track dependencies between Metabase entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  remarks: The type of the dependent entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: int
+                  remarks: The ID of the dependent entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  remarks: The type of the entity depended on
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  remarks: The ID of the entity depended on
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-08T18:10:00
+      author: metamben
+      comment: Unique constraint to prevent duplicate dependencies
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: dependency
+                constraintName: idx_unique_dependency
+      changes:
+        - addUniqueConstraint:
+            tableName: dependency
+            columnNames: from_entity_type, from_entity_id, to_entity_type, to_entity_id
+            constraintName: idx_unique_dependency
+
+  - changeSet:
+      id: v57.2025-09-08T18:20:00
+      author: metamben
+      comment: Index for finding dependencies FROM a specific entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: dependency
+                indexName: idx_dependency_from
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_from
+            columns:
+              - column:
+                  name: from_entity_type
+              - column:
+                  name: from_entity_id
+
+  - changeSet:
+      id: v57.2025-09-08T18:30:00
+      author: metamben
+      comment: Index for finding dependencies TO a specific entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: dependency
+                indexName: idx_dependency_to
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_to
+            columns:
+              - column:
+                  name: to_entity_type
+              - column:
+                  name: to_entity_id
 
   - changeSet:
       id: v57.2025-09-11T10:00:00
@@ -1464,6 +1645,85 @@ databaseChangeLog:
                   remarks: HTML-rendered version of the comment content
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v57.2025-09-18T10:00:00
+      author: metamben
+      comment: Add dependency_analysis_version to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:01:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to report_card
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:02:00
+      author: metamben
+      comment: Add dependency_analysis_version to transform
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:03:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to transform
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:04:00
+      author: metamben
+      comment: Add dependency_analysis_version to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:05:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to native_query_snippet
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
 
   - changeSet:
       id: v57.2025-09-19T11:30:20
