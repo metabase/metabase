@@ -7,7 +7,7 @@ import {
   MOCK_AD_HOC_QUESTION_ID,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 
 import { MetabotQuestion } from "./MetabotQuestion";
 
@@ -23,11 +23,7 @@ export default {
 };
 
 const Template: StoryFn<MetabotQuestionProps> = () => {
-  return (
-    <Box mih="100vh">
-      <MetabotQuestion height="100vh" />
-    </Box>
-  );
+  return <MetabotQuestion height="100vh" />;
 };
 
 export const FullWidth = {
