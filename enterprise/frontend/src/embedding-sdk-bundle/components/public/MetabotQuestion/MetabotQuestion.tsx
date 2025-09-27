@@ -41,6 +41,9 @@ import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = ({
   height,
+  width,
+  className,
+  style,
   layout = "auto",
 }: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
@@ -77,7 +80,12 @@ const MetabotQuestionInner = ({
   }
 
   return (
-    <FlexibleSizeComponent height={height}>
+    <FlexibleSizeComponent
+      height={height}
+      width={width}
+      className={className}
+      style={style}
+    >
       <div
         className={cx(S.container, {
           [S.autoLayout]: layout === "auto",
@@ -121,7 +129,7 @@ function SidebarHeader() {
   };
 
   return (
-    <Flex justify="space-between" align="center" px="md" pt="md">
+    <Flex justify="space-between" align="center" px="md" py="sm">
       <Text fz="sm" c="var(--mb-color-text-tertiary)">
         {t`AI isn't perfect. Double-check results.`}
       </Text>
