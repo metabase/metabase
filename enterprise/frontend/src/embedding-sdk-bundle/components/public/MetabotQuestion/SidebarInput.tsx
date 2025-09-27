@@ -66,6 +66,7 @@ export function SidebarInput({
               fw={400}
               onClick={() => onSubmitPrompt(prompt)}
               className={S.promptSuggestionButton}
+              data-testid="metabot-suggestion-button"
             >
               {prompt}
             </Button>
