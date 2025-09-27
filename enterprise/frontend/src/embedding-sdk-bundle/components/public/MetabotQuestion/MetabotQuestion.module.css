@@ -76,6 +76,7 @@
 /* Prompt suggestions */
 .promptSuggestionsContainer {
   flex-shrink: 0;
+  max-width: 30rem;
 }
 
 .promptSuggestionButton {
