@@ -207,6 +207,38 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
         .should("contain.text", "Show me total sales by product");
     });
   });
+
+  it("should switch to stacked layout on small viewport", () => {
+    setup(metabotResponse);
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      // On desktop, use the sidebar layout
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+
+      // On mobile, use the stacked layout
+      cy.viewport(400, 600);
+      cy.findByTestId("metabot-overflow-button").should("be.visible");
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "stacked",
+      );
+
+      // On desktop, use the sidebar layout
+      cy.viewport(1200, 800);
+      cy.findByTestId("metabot-overflow-button").should("not.be.visible");
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+    });
+  });
 });
 
 const mockSuggestedPrompts = () => {

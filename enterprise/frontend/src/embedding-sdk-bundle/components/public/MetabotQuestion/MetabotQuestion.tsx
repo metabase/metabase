@@ -72,6 +72,8 @@ const MetabotQuestionInner = ({
           [S.sidebarLayout]: derivedLayout === "sidebar",
           [S.stackedLayout]: derivedLayout === "stacked",
         })}
+        data-layout={derivedLayout}
+        data-testid="metabot-question-container"
       >
         <div className={S.content}>{renderQuestion()}</div>
 
