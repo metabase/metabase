@@ -226,25 +226,23 @@ export type SdkIframeEmbedSetupExperience =
   | "exploration"
   | "browser";
 
-export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_experience_selected";
+export type EmbedWizardOpenedEvent = ValidateEvent<{
+  event: "embed_wizard_opened";
+}>;
+
+export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_experience_completed";
   event_detail: SdkIframeEmbedSetupExperience;
 }>;
 
-export type EmbedWizardResourceSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_resource_selected";
+export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_resource_selection_completed";
   event_detail: SdkIframeEmbedSetupExperience;
-  target_id: number;
 }>;
 
-export type EmbedWizardOptionChangedEvent = ValidateEvent<{
-  event: "embed_wizard_option_changed";
+export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_options_completed";
   event_detail: string;
-}>;
-
-export type EmbedWizardAuthSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_auth_selected";
-  event_detail: "sso" | "user-session";
 }>;
 
 export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
@@ -381,10 +379,10 @@ export type XRaySavedEvent = ValidateEvent<{
 export type XRayEvent = XRayClickedEvent | XRaySavedEvent;
 
 export type EmbedWizardEvent =
-  | EmbedWizardExperienceSelectedEvent
-  | EmbedWizardResourceSelectedEvent
-  | EmbedWizardOptionChangedEvent
-  | EmbedWizardAuthSelectedEvent
+  | EmbedWizardOpenedEvent
+  | EmbedWizardExperienceCompletedEvent
+  | EmbedWizardResourceSelectionCompletedEvent
+  | EmbedWizardOptionsCompletedEvent
   | EmbedWizardCodeCopiedEvent;
 
 export type TableEditingEvent =

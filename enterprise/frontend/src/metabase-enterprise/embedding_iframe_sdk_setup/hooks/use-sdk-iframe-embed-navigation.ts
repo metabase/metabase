@@ -1,10 +1,15 @@
 import { useMemo } from "react";
 
+import {
+  trackEmbedWizardExperienceCompleted,
+  trackEmbedWizardOptionsCompleted,
+  trackEmbedWizardResourceSelectionCompleted,
+} from "../analytics";
 import { EMBED_STEPS } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
-  const { experience, currentStep, setCurrentStep } =
+  const { experience, currentStep, setCurrentStep, settings } =
     useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
@@ -18,6 +23,14 @@ export function useSdkIframeEmbedNavigation() {
     );
 
     const nextStep = availableSteps[currentIndex + 1];
+
+    if (currentStep === "select-embed-experience") {
+      trackEmbedWizardExperienceCompleted(experience);
+    } else if (currentStep === "select-embed-resource") {
+      trackEmbedWizardResourceSelectionCompleted(experience);
+    } else if (currentStep === "select-embed-options") {
+      trackEmbedWizardOptionsCompleted(settings);
+    }
 
     if (nextStep) {
       setCurrentStep(nextStep.id);
