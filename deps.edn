@@ -191,7 +191,7 @@
   redux/redux                               {:git/url "https://github.com/metabase/redux"
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.14.2"}             ; HTTP abstraction
+  ring/ring-core                            {:mvn/version "1.15.2"}             ; HTTP abstraction
   ring/ring-jetty-adapter                   {:mvn/version "1.14.2"              ; Ring adapter for Jetty
                                              :exclusions  [org.eclipse.jetty/jetty-server
                                                            org.eclipse.jetty/jetty-unixdomain-server
