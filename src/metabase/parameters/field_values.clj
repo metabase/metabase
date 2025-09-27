@@ -146,6 +146,7 @@
              select-kvs {:field_id (:id field) :type :advanced :hash_key hash-key}
              fv (app-db/select-or-insert! :model/FieldValues select-kvs
                                           #(prepare-advanced-field-values field hash-key constraints))]
+         (t2/update! :model/FieldValues (:id fv) {:last_used_at :%now})
          ;; If it's expired, delete then try to re-create it
          (if (some-> fv field-values/advanced-field-values-expired?)
            (do
