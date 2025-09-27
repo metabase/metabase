@@ -80,6 +80,7 @@ const MetabotQuestionInner = ({
     <FlexibleSizeComponent height={height}>
       <div
         className={cx(S.container, {
+          [S.autoLayout]: layout === "auto",
           [S.sidebarLayout]: layout === "sidebar",
           [S.stackedLayout]: layout === "stacked",
         })}

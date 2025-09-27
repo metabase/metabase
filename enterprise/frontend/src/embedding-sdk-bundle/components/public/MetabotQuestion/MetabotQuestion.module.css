@@ -21,6 +21,10 @@
   height: 100%;
 }
 
+.autoLayout .sidebar {
+  border-left: 1px solid var(--mb-color-border);
+}
+
 /* Auto layout mobile breakpoint */
 @media (max-width: 768px) {
   .autoLayout {
@@ -38,6 +42,10 @@
     height: 40%;
     max-width: none;
     border-top: 1px solid var(--mb-color-border);
+    border-left: none;
+  }
+
+  .autoLayout .sidebar {
     border-left: none;
   }
 }
