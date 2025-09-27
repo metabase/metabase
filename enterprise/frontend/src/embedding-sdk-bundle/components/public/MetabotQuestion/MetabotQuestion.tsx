@@ -17,6 +17,7 @@ import {
   Flex,
   Icon,
   Loader,
+  Menu,
   Stack,
   Text,
   Textarea,
@@ -149,7 +150,13 @@ function SidebarHeader() {
   };
 
   return (
-    <Flex justify="space-between" align="center" px="md" py="sm">
+    <Flex
+      justify="space-between"
+      align="center"
+      px="md"
+      py="sm"
+      className={S.sidebarHeader}
+    >
       <Text fz="sm" c="var(--mb-color-text-tertiary)">
         {t`AI isn't perfect. Double-check results.`}
       </Text>
@@ -233,6 +240,10 @@ function SidebarInput({
 
   const resetInput = () => {
     handleResetInput();
+  };
+
+  const startNewConversation = () => {
+    metabot.resetConversation();
   };
 
   return (
@@ -343,6 +354,27 @@ function SidebarInput({
             <Icon name="close" c="var(--mb-color-text-secondary)" size="1rem" />
           </UnstyledButton>
         )}
+
+        {/* Overflow menu - only shown in stacked layout and auto layout mobile */}
+        <Menu position="top-end" withinPortal>
+          <Menu.Target>
+            <UnstyledButton
+              data-testid="metabot-overflow-button"
+              className={S.stackedOverflowButton}
+            >
+              <Icon name="ellipsis" c="var(--mb-color-text-secondary)" />
+            </UnstyledButton>
+          </Menu.Target>
+
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<Icon name="edit_document_outlined" size="1rem" />}
+              onClick={startNewConversation}
+            >
+              {t`Start new chat`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Flex>
     </Stack>
   );
