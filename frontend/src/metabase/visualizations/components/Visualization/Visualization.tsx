@@ -141,6 +141,7 @@ type VisualizationOwnProps = {
   isDashboard?: boolean;
   isDocument?: boolean;
   isMobile?: boolean;
+  isRunning?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
@@ -602,6 +603,7 @@ class Visualization extends PureComponent<
       isPreviewing,
       isRawTable,
       isQueryBuilder,
+      isRunning,
       isSettings,
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
@@ -795,7 +797,7 @@ class Visualization extends PureComponent<
             replacementContent
           ) : isDashboard && noResults ? (
             <NoResultsView isSmall={small} />
-          ) : error ? (
+          ) : error && !isRunning ? (
             <ErrorView
               error={errorMessageOverride ?? error}
               icon={errorIcon}
