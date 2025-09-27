@@ -639,8 +639,7 @@ describe("issue 37726", () => {
   });
 });
 
-// unskip once metabase#42049 is addressed
-describe("issue 42049", { tags: "@skip" }, () => {
+describe("issue 42049", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -703,11 +702,11 @@ describe("issue 42049", { tags: "@skip" }, () => {
     cy.get("@headerCells").eq(1).should("have.text", "Created At");
     cy.get("@headerCells").eq(2).should("have.text", "Quantity");
 
-    cy.findByRole("button", { name: "Filter" }).click();
+    cy.findByTestId("question-filter-header").click();
 
-    cy.findByRole("dialog").within(() => {
-      cy.findByRole("button", { name: "Last month" }).click();
-      cy.findByRole("button", { name: "Apply filters" }).click();
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.button("Previous month").click();
     });
 
     cy.wait("@cardQuery");
