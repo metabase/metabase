@@ -8,8 +8,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
+import { color } from "metabase/ui/utils/colors";
 import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {

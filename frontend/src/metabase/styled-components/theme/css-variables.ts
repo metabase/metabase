@@ -5,21 +5,27 @@ import { getIn } from "icepick";
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { colorConfig } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
+
+const createColorVars = (colorScheme: "light" | "dark"): string =>
+  Object.entries(colorConfig)
+    .map(([name, value]) => `--mb-color-${name}: ${value[colorScheme]};`)
+    .join("\n");
 
 /**
  * Defines the CSS variables used across Metabase.
  */
 export function getMetabaseCssVariables(theme: MantineTheme) {
+  const colorScheme = theme.other?.colorScheme || "light";
+
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      --mb-color-brand: ${theme.colors.brand[0]};
-      --mb-color-summarize: ${theme.colors.summarize[0]};
-      --mb-color-filter: ${theme.colors.filter[0]};
+      ${createColorVars(colorScheme)}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }

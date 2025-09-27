@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
 import { useSelector } from "metabase/lib/redux";
@@ -42,13 +43,15 @@ export const HomeLayout = ({ children }: HomeLayoutProps): ReactNode => {
 
   return (
     <LayoutRoot data-testid="home-page">
-      {landingPageIllustration && (
-        <LayoutIllustration
-          data-testid="landing-page-illustration"
-          backgroundImageSrc={landingPageIllustration.src}
-          isDefault={landingPageIllustration.isDefault}
-        />
-      )}
+      {landingPageIllustration &&
+        (landingPageIllustration.isDefault ? (
+          <LighthouseIllustration />
+        ) : (
+          <LayoutIllustration
+            data-testid="landing-page-illustration"
+            backgroundImageSrc={landingPageIllustration.src}
+          />
+        ))}
       <HomeGreeting />
       {isAdmin && (
         <Tooltip label={t`Pick a dashboard to serve as the homepage`}>

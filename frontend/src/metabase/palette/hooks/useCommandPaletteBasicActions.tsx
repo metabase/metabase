@@ -24,6 +24,7 @@ import {
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
+import { useColorScheme } from "metabase/ui";
 
 import {
   type RegisterShortcutProps,
@@ -288,5 +289,14 @@ export const useCommandPaletteBasicActions = ({
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,
+  ]);
+
+  const { toggleColorScheme } = useColorScheme();
+
+  useRegisterShortcut([
+    {
+      id: "toggle-dark-mode",
+      perform: toggleColorScheme,
+    },
   ]);
 };
