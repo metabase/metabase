@@ -4,63 +4,6 @@
   height: 100%;
 }
 
-/* Auto layout: defaults to sidebar */
-.autoLayout {
-  flex-direction: row;
-}
-
-.autoLayout .content {
-  flex: 1;
-  height: 100%;
-}
-
-.autoLayout .chat {
-  width: 100%;
-  max-width: 300px;
-  height: 100%;
-}
-
-.autoLayout .sidebar {
-  border-left: 1px solid var(--mb-color-border);
-}
-
-.autoLayout .stackedOverflowButton {
-  display: none;
-}
-
-/* Auto layout: stacked mobile breakpoint */
-@media (max-width: 600px) {
-  .autoLayout {
-    flex-direction: column;
-  }
-
-  .autoLayout .content {
-    flex: 0 0 60%;
-    height: 60%;
-    overflow: hidden;
-  }
-
-  .autoLayout .chat {
-    flex: 0 0 40%;
-    height: 40%;
-    max-width: none;
-    border-top: 1px solid var(--mb-color-border);
-    border-left: none;
-  }
-
-  .autoLayout .sidebar {
-    border-left: none;
-  }
-
-  .autoLayout .stackedOverflowButton {
-    display: block;
-  }
-
-  .autoLayout .sidebarHeader {
-    display: none;
-  }
-}
-
 /* Sidebar layout - always horizontal */
 .sidebarLayout {
   flex-direction: row;
@@ -101,12 +44,32 @@
   border-left: none;
 }
 
+.stackedLayout .sidebar {
+  border-left: none;
+}
+
 .stackedLayout .sidebarHeader {
   display: none;
 }
 
+.stackedLayout .stackedOverflowButton {
+  display: block;
+}
+
 .sidebarLayout .sidebar {
   border-left: 1px solid var(--mb-color-border);
+}
+
+/* Overflow button styles */
+.stackedOverflowButton {
+  display: none;
+  border-radius: 4px;
+  padding: 0.25rem;
+  transition: background-color 0.2s ease;
+}
+
+.stackedOverflowButton:hover {
+  background-color: var(--mb-color-focus);
 }
 
 /* Prompt suggestions */

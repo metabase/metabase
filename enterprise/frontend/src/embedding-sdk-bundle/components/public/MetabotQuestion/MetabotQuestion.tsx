@@ -11,6 +11,7 @@ import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdH
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   Button,
@@ -49,12 +50,17 @@ const MetabotQuestionInner = ({
 }: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
+  const isSmallScreen = useIsSmallScreen();
 
   if (isLocaleLoading) {
     return <SdkLoader />;
   }
 
   const hasQuestion = !!navigateToPath;
+
+  // Determine derived layout based on auto mode
+  const derivedLayout =
+    layout === "auto" ? (isSmallScreen ? "stacked" : "sidebar") : layout;
 
   function renderQuestion() {
     if (!hasQuestion) {
@@ -89,9 +95,8 @@ const MetabotQuestionInner = ({
     >
       <div
         className={cx(S.container, {
-          [S.autoLayout]: layout === "auto",
-          [S.sidebarLayout]: layout === "sidebar",
-          [S.stackedLayout]: layout === "stacked",
+          [S.sidebarLayout]: derivedLayout === "sidebar",
+          [S.stackedLayout]: derivedLayout === "stacked",
         })}
       >
         <div className={S.content}>{renderQuestion()}</div>
