@@ -124,7 +124,7 @@ function getTotalGraphicOption(
           fontWeight: "700",
           textAlign: "center",
           fontFamily: renderingContext.fontFamily,
-          fill: renderingContext.getColor("text-dark"),
+          fill: renderingContext.getColor("text-primary"),
           text: valueText,
         },
       },
@@ -288,7 +288,7 @@ function getSeriesDataFromSlices(
           },
           label: {
             opacity:
-              labelColor === renderingContext.getColor("text-dark") ? 0.3 : 1,
+              labelColor === renderingContext.getColor("text-primary") ? 0.3 : 1,
           },
         },
       };
