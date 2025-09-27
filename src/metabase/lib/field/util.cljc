@@ -5,6 +5,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -68,14 +69,33 @@
   `:lib/deduplicated-name` to a sequence of columns.
 
     (into [] (add-unique-names-xform) cols)"
-  ([metadata-providerable]
-   (add-source-and-desired-aliases-xform metadata-providerable (lib.util/unique-name-generator)))
+  ([query :- ::lib.schema/query]
+   ;; do not truncate really long aliases coming back from native queries, if the native query returned it then
+   ;; presumably it's ok with the database that ran the query and we need to use the original name to refer back
+   ;; to it in subsequent stages.
+   ;;
+   ;; source alias can be the original name altho I can't really think of a good case for using it in a native
+   ;; query. Thus for something like
+   ;;
+   ;;    SELECT x, x
+   ;;
+   ;; then:
+   ;;
+   ;;    | :lib/source-column-alias | :lib/desired-column-alias |
+   ;;    |--------------------------+---------------------------|
+   ;;    |                        x |                         x |
+   ;;    |                        x |                       x_2 |
+   ;;
+   (let [unique-name-generator (if (lib.util/native-stage? query -1)
+                                 (lib.util/non-truncating-unique-name-generator)
+                                 (lib.util/unique-name-generator))]
+     (add-source-and-desired-aliases-xform query unique-name-generator)))
 
   ([metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
     unique-name-fn        :- ::lib.util/unique-name-generator]
    (comp (add-deduplicated-names)
          (map (fn [col]
-                (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
+                (let [source-alias  ((some-fn :lib/source-column-alias :lib/original-name :name) col)
                       desired-alias (unique-name-fn
                                      (lib.join.util/desired-alias metadata-providerable col))]
                   (assoc col
