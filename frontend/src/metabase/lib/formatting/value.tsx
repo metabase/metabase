@@ -1,6 +1,5 @@
 import cx from "classnames";
 import dayjs from "dayjs";
-import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
@@ -132,7 +131,7 @@ function formatStringFallback(value: any, options: OptionsType = {}) {
   return value;
 }
 
-export function formatValueRaw(
+function formatValueRaw(
   value: unknown,
   options: OptionsType = {},
 ): React.ReactElement | string | number | null {
@@ -185,7 +184,7 @@ export function formatValueRaw(
   } else if (isEmail(column)) {
     return formatEmail(value as string, options);
   } else if (isTime(column)) {
-    return formatTime(value as Moment, column.unit, options);
+    return formatTime(value as string, column.unit, options);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(
       value as string | number,
