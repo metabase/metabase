@@ -11,6 +11,8 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.format :as u.format]
+   [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -41,7 +43,7 @@
   []
   (atom {:pre-python  []                                    ; log! outputs previous to the python execution, i.e table read progress
          :python      nil                                   ; events json structured logs from the /logs endpoint
-         :post-python []}))                                    ; log! outputs after the python execution, i.e. output reads, writes to target
+         :post-python []}))                                 ; log! outputs after the python execution, i.e. output reads, writes to target
 
 (defn- log!
   "Appends a string to the message log, the string is user facing and should be suitable for presentation as part of the `transform_run.message` field."
@@ -265,19 +267,18 @@
         (replace-python-logs! message-log events))
       (if (not= 200 status)
         (throw (ex-info "Python runner call failed"
-                        {:status-code           400
-                         :api-status-code       status
-                         :body                  body
-                         :events                events
-                         :transform-run-message (message-log->transform-run-message message-log)}))
+                        {:transform-message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))
+                         :status-code       400
+                         :api-status-code   status
+                         :body              body
+                         :events            events}))
         (try
           (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
                                :raw-body               body
-                               :events                 events
-                               :transform-run-message  (message-log->transform-run-message message-log)})))
+                               :events                 events})))
             (try
               (with-open [writer (io/writer temp-file)]
                 (.write writer ^String output))
@@ -291,8 +292,18 @@
           (catch Exception e
             (log/error e "Failed to to create resulting table")
             (throw (ex-info "Failed to create the resulting table"
-                            {:transform-run-message (message-log->transform-run-message message-log)}
+                            {:transform-message (or (:transform-message (ex-data e))
+                                                    ;; TODO keeping messaging the same at this level
+                                                    ;;  should be more specific in underlying calls
+                                                    (i18n/tru "Failed to create the resulting table"))}
                             e))))))))
+
+(defn- exceptional-run-message [message-log ex]
+  (str/join "\n" (remove str/blank? [(message-log->transform-run-message message-log)
+                                     (or (:transform-message (ex-data ex))
+                                         (if (instance? InterruptedException ex)
+                                           (i18n/tru "Transform interrupted")
+                                           (i18n/tru "Something went wrong")))])))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
@@ -306,7 +317,7 @@
           {driver :engine :as db} (t2/select-one :model/Database (:database target))
           {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
       (some-> start-promise (deliver [:started run-id]))
-      (log! message-log "Executing Python transform")
+      (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
       (let [start-ms          (u/start-timer)
             transform-details {:db-id          (:id db)
@@ -316,9 +327,10 @@
                                :output-table   (transforms.util/qualified-table-name driver target)}
             run-fn            (fn [cancel-chan]
                                 (run-python-transform! transform db run-id cancel-chan message-log)
-                                (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
+                                (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
-            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
+            ex-message-fn     #(exceptional-run-message message-log %)
+            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn)]
         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id
