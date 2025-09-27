@@ -6,12 +6,12 @@
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.filters :as filters]
-   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
@@ -135,15 +135,17 @@
 (mu/defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard
-   {:keys [title description dataset_query width height id] :as card} :- ::ads/card
+   {:keys [title description dataset_query width height id] :as card} :- [:map
+                                                                          [:dataset_query
+                                                                           [:map
+                                                                            [:database ::lib.schema.id/database]]]]
    [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
                   :name          title
                   :collection_id nil
-                  :id            (when (pos-int? id)
-                                   id)}
+                  :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  (as-> $card (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
                                (queries/populate-card-query-fields $card))))]
@@ -234,10 +236,11 @@
 (def ^:private ^Long ^:const group-heading-height 2)
 
 (mu/defn- add-group
-  [dashboard :- ::ads/dashboard
-   grid
-   group
-   cards    :- [:sequential ::ads/card]]
+  [dashboard grid group cards :- [:sequential
+                                  [:map
+                                   [:dataset_query
+                                    [:map
+                                     [:database ::lib.schema.id/database]]]]]]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
                     group (+ group-heading-height))]
@@ -299,7 +302,13 @@
 (mu/defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards], :as _dashboard} :- ::ads/dashboard
+  ([{:keys [title transient_title description groups filters cards]} :- [:map
+                                                                         [:cards
+                                                                          [:sequential
+                                                                           [:map
+                                                                            [:dataset_query
+                                                                             [:map
+                                                                              [:database ::lib.schema.id/database]]]]]]]
     n]
    (let [n             (cond
                          (= n :all)   (count cards)
@@ -324,7 +333,7 @@
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))
          dashboard (update dashboard :dashcards (fn [dashcards]
-                                                  (let [cards (keep :card dashcards)]
+                                                  (let [cards (map :card dashcards)]
                                                     (mapv
                                                      (fn [dashcard card]
                                                        (m/assoc-some dashcard :card card))
