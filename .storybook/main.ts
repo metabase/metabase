@@ -1,9 +1,10 @@
-import type { StorybookConfig } from "@storybook/react-webpack5";
-const appConfig = require("../rspack.main.config.js");
-const webpack = require("webpack");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+import { defineConfig } from "@rsbuild/core";
+import { pluginMdx } from "@rsbuild/plugin-mdx";
+import { pluginReact } from "@rsbuild/plugin-react";
+import type { StorybookConfig } from "storybook-react-rsbuild";
 
 const { CSS_CONFIG } = require("../frontend/build/shared/rspack/css-config");
+const appConfig = require("../rspack.main.config.js");
 
 const mainAppStories = [
   "../frontend/**/*.mdx",
@@ -24,60 +25,59 @@ const config: StorybookConfig = {
   ],
 
   framework: {
-    name: "@storybook/react-webpack5",
+    name: "storybook-react-rsbuild",
     options: {},
   },
   typescript: {
     reactDocgen: "react-docgen-typescript",
   },
 
-  webpackFinal: (config) => {
+  rsbuildFinal: (rsBuildConfig) => {
     return {
-      ...config,
-      resolve: {
-        ...config.resolve,
-        alias: {
-          ...config.resolve?.alias,
-          ...appConfig.resolve.alias,
-        },
-        extensions: appConfig.resolve.extensions,
-      },
-      plugins: [
-        ...(config.plugins ?? []),
-        new MiniCssExtractPlugin({
-          ignoreOrder: true,
-        }),
-        new webpack.ProvidePlugin({
-          Buffer: ["buffer", "Buffer"],
-        }),
-        new webpack.EnvironmentPlugin({
-          IS_EMBEDDING_SDK: "false",
-        }),
-      ],
-      module: {
-        ...config.module,
-        rules: [
-          ...(config.module?.rules ?? []).filter(
-            (rule) => !isCSSRule(rule) && !isSvgRule(rule),
-          ),
-          ...appConfig.module.rules.filter((rule: any) => isSvgRule(rule)),
-          // We use MiniCssExtractPlugin, because Storybook can't properly work with `rspack.CssExtractRspackPlugin`
-          {
-            test: /\.css$/,
-            use: [
-              {
-                loader: MiniCssExtractPlugin.loader,
-                options: { publicPath: "./" },
+      ...rsBuildConfig,
+      plugins: [pluginReact(), pluginMdx()],
+      tools: {
+        rspack: (rsPackConfig) => {
+          console.log("builtin rspack", rsPackConfig);
+          console.log("metabase appConfig", appConfig);
+
+          console.log("builtin rules module", rsPackConfig.module.rules);
+          console.log("metabase rules module", appConfig.module.rules);
+
+          return {
+            ...rsPackConfig,
+            resolve: {
+              ...rsPackConfig.resolve,
+              alias: {
+                ...rsPackConfig.resolve?.alias,
+                ...appConfig.resolve.alias,
               },
-              { loader: "css-loader", options: CSS_CONFIG },
-              { loader: "postcss-loader" },
+              extensions: appConfig.resolve.extensions,
+            },
+            plugins: [
+              ...(rsPackConfig.plugins ?? []),
+              ...(appConfig.plugins ?? []),
             ],
-          },
-        ],
+            module: {
+              ...rsPackConfig.module,
+              rules: [
+                ...(rsPackConfig.module?.rules ?? []).filter(
+                  (rule) => !isCSSRule(rule) && !isSvgRule(rule),
+                ),
+                ...appConfig.module.rules.filter(
+                  (rule: any) => isSvgRule(rule) || isCSSRule(rule),
+                ),
+              ],
+            },
+          };
+        },
       },
     };
   },
 };
+
+// Storybook v8 requires default export
+// eslint-disable-next-line import/no-default-export
 export default config;
 
 const isCSSRule = (rule: any) => rule.test?.toString() === "/\\.css$/";
