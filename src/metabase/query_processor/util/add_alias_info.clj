@@ -331,10 +331,14 @@
             (when-let [col (m/find-first (fn [col]
                                            (= (:lib/deduplicated-name col) id-or-name))
                                          source-metadata)]
-              (when-let [desired-column-alias (:lib/desired-column-alias col)]
-                (m/find-first (fn [[_tag _id-or-name opts]]
-                                (= (::desired-alias opts) desired-column-alias))
-                              all-exports)))))
+              (or (when-let [desired-column-alias (:lib/desired-column-alias col)]
+                    (m/find-first (fn [[_tag _id-or-name opts]]
+                                    (= (::desired-alias opts) desired-column-alias))
+                                  all-exports))
+                  (when-let [field-id-or-name (-> col :field_ref second)]
+                    (m/find-first (fn [[_tag id-or-name _opts]]
+                                    (= id-or-name field-id-or-name))
+                                  all-exports))))))
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
