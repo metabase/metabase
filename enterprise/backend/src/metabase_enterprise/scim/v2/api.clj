@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -171,7 +172,7 @@
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
 
-(mu/defn ^:private scim-user->mb :- user/NewUser
+(mu/defn ^:private scim-user->mb :- users.schema/NewUser
   "Given a SCIM user, returns a Metabase user."
   [user]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user

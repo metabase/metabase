@@ -5,7 +5,6 @@
    [metabase-enterprise.sso.settings :as ee.sso.settings]
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.sso.core :as sso]
-   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -63,10 +62,10 @@
    {:keys [sync-groups?], :as settings}                                  :- sso/LDAPSettings]
   (let [user (or (attribute-synced-user user-info)
                  (sso-utils/check-user-provisioning :ldap)
-                 (-> (user/create-new-ldap-auth-user! {:first_name       first-name
-                                                       :last_name        last-name
-                                                       :email            email
-                                                       :login_attributes attributes})
+                 (-> (sso/create-new-ldap-auth-user! {:first_name       first-name
+                                                      :last_name        last-name
+                                                      :email            email
+                                                      :login_attributes attributes})
                      (assoc :is_active true)))]
     (u/prog1 user
       (when sync-groups?
