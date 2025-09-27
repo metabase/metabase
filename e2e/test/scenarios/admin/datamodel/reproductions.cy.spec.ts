@@ -356,12 +356,12 @@ describe("issues 55617, 55618", () => {
 
     cy.log("field list view (metabase#55617)");
     cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(8)
+      .eq(6)
       .should("have.value", "Discount")
       .click();
     H.popover().findByText("No semantic type").click();
     cy.findAllByPlaceholderText("Select a semantic type")
-      .eq(8)
+      .eq(6)
       .should("have.value", "No semantic type");
 
     cy.log("field detail view");
