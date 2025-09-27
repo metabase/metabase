@@ -225,17 +225,9 @@
   "Get `Card` with ID."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {ignore-view? :ignore_view, :keys [context]} :- [:map
-                                                    [:ignore_view {:optional true} [:maybe :boolean]]
-                                                    [:context     {:optional true} [:maybe [:enum :collection]]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (u/prog1 card
-      (when-not ignore-view?
-        (events/publish-event! :event/card-read
-                               {:object-id (:id <>)
-                                :user-id api/*current-user-id*
-                                :context (or context :question)})))))
+   _query]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (get-card resolved-id)))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
@@ -812,10 +804,10 @@
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)]
     (qp.card/process-query-for-card
      resolved-card-id :api
-     :parameters   parameters
+     :parameters parameters
      :ignore-cache ignore_cache
      :dashboard-id dashboard_id
-     :context      (if collection_preview :collection :question)
+     :context (if collection_preview :collection :question)
      :middleware   {:process-viz-settings? false})))
 
 (api.macros/defendpoint :post "/:card-id/query/:export-format"
