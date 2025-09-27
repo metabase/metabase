@@ -3,10 +3,7 @@ import { useEffect, useId, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
-import {
-  SdkLoader,
-  withPublicComponentWrapper,
-} from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
@@ -52,10 +49,6 @@ const MetabotQuestionInner = ({
   const { navigateToPath } = useMetabotReactions();
   const isSmallScreen = useIsSmallScreen();
 
-  if (isLocaleLoading) {
-    return <SdkLoader />;
-  }
-
   const hasQuestion = !!navigateToPath;
 
   // Determine derived layout based on auto mode
@@ -63,7 +56,7 @@ const MetabotQuestionInner = ({
     layout === "auto" ? (isSmallScreen ? "stacked" : "sidebar") : layout;
 
   function renderQuestion() {
-    if (!hasQuestion) {
+    if (!hasQuestion || isLocaleLoading) {
       return <MetabotQuestionEmptyState />;
     }
 
@@ -127,15 +120,7 @@ function MetabotSidebar() {
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
 
   return (
-    <Stack
-      w="100%"
-      h="100%"
-      gap={0}
-      className={S.sidebar}
-      style={{
-        position: "relative",
-      }}
-    >
+    <Stack className={S.sidebar}>
       <SidebarHeader />
       <SidebarChatHistory />
       <SidebarInput
@@ -156,10 +141,10 @@ function SidebarHeader() {
 
   return (
     <Flex
-      justify="space-between"
-      align="center"
       px="md"
       py="sm"
+      justify="space-between"
+      align="center"
       className={S.sidebarHeader}
     >
       <Text fz="sm" c="var(--mb-color-text-tertiary)">
