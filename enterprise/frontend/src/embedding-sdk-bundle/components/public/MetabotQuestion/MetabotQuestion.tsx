@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useEffect, useId, useRef } from "react";
 import { t } from "ttag";
 
@@ -30,6 +31,7 @@ import {
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import { cancelInflightAgentRequests } from "metabase-enterprise/metabot/state";
 
+import S from "./MetabotQuestion.module.css";
 import {
   type MetabotQuestionProps,
   metabotQuestionSchema,
@@ -37,7 +39,10 @@ import {
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
 
-const MetabotQuestionInner = ({ height }: MetabotQuestionProps) => {
+const MetabotQuestionInner = ({
+  height,
+  layout = "auto",
+}: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
 
@@ -47,43 +52,44 @@ const MetabotQuestionInner = ({ height }: MetabotQuestionProps) => {
 
   const hasQuestion = !!navigateToPath;
 
+  function renderQuestion() {
+    if (!hasQuestion) {
+      return <MetabotQuestionEmptyState />;
+    }
+
+    return (
+      <SdkAdHocQuestion
+        questionPath={navigateToPath}
+        title={false}
+        isSaveEnabled={false}
+      >
+        <SdkQuestionDefaultView
+          withChartTypeSelector
+          title={
+            <Stack gap="sm" mb="1rem">
+              <QuestionTitle />
+              <QuestionDetails />
+            </Stack>
+          }
+        />
+      </SdkAdHocQuestion>
+    );
+  }
+
   return (
     <FlexibleSizeComponent height={height}>
-      <Flex w="100%" h="100%">
-        {hasQuestion ? (
-          <SdkAdHocQuestion
-            questionPath={navigateToPath}
-            title={false}
-            isSaveEnabled={false}
-          >
-            <SdkQuestionDefaultView
-              withChartTypeSelector
-              title={
-                <Stack gap="sm" mb="1rem">
-                  <QuestionTitle />
-                  <QuestionDetails />
-                </Stack>
-              }
-            />
-          </SdkAdHocQuestion>
-        ) : (
-          <Stack h="100%" w="100%" gap="lg" align="center" justify="center">
-            <Icon
-              name="ai"
-              c="var(--mb-color-bg-black)"
-              size="5rem"
-              opacity={0.25}
-            />
+      <div
+        className={cx(S.container, {
+          [S.sidebarLayout]: layout === "sidebar",
+          [S.stackedLayout]: layout === "stacked",
+        })}
+      >
+        <div className={S.content}>{renderQuestion()}</div>
 
-            <Stack gap="xs" align="center">
-              <Text lh="md">{t`Ask questions to AI.`}</Text>
-              <Text lh="md">{t`Results will appear here.`}</Text>
-            </Stack>
-          </Stack>
-        )}
-
-        <MetabotSidebar />
-      </Flex>
+        <div className={S.chat}>
+          <MetabotSidebar />
+        </div>
+      </div>
     </FlexibleSizeComponent>
   );
 };
@@ -92,12 +98,11 @@ function MetabotSidebar() {
   return (
     <Stack
       w="100%"
-      maw={300}
       h="100%"
       gap={0}
+      className={S.sidebar}
       style={{
         position: "relative",
-        borderLeft: "1px solid var(--mb-color-border)",
       }}
     >
       <SidebarHeader />
@@ -296,4 +301,15 @@ const MetabotQuestionWrapped = (props: MetabotQuestionProps) => {
 export const MetabotQuestion = Object.assign(
   withPublicComponentWrapper(MetabotQuestionWrapped),
   { schema: metabotQuestionSchema },
+);
+
+export const MetabotQuestionEmptyState = () => (
+  <Stack h="100%" w="100%" gap="lg" align="center" justify="center">
+    <Icon name="ai" c="var(--mb-color-bg-black)" size="5rem" opacity={0.25} />
+
+    <Stack gap="xs" align="center">
+      <Text lh="md">{t`Ask questions to AI.`}</Text>
+      <Text lh="md">{t`Results will appear here.`}</Text>
+    </Stack>
+  </Stack>
 );

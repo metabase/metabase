@@ -30,7 +30,7 @@ const Template: StoryFn<MetabotQuestionProps> = () => {
   );
 };
 
-export const Default = {
+export const FullWidth = {
   render: Template,
 };
 
@@ -89,4 +89,40 @@ export const MultipleInstances = {
       <Template />
     </>
   ),
+};
+
+export const SidebarLayout = {
+  render() {
+    return (
+      <Stack align="center" justify="center">
+        <Flex
+          m="40px"
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "16px",
+          }}
+        >
+          <MetabotQuestion height="calc(100vh - 80px)" layout="sidebar" />
+        </Flex>
+      </Stack>
+    );
+  },
+};
+
+export const StackedLayout = {
+  render() {
+    return (
+      <Stack align="center" justify="center">
+        <Flex
+          m="40px"
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "16px",
+          }}
+        >
+          <MetabotQuestion height="calc(100vh - 80px)" layout="stacked" />
+        </Flex>
+      </Stack>
+    );
+  },
 };
