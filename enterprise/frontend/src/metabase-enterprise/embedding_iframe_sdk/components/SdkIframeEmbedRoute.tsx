@@ -5,6 +5,7 @@ import { PublicComponentStylesWrapper } from "embedding-sdk-bundle/components/pr
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import {
@@ -188,6 +189,12 @@ const SdkIframeEmbedView = ({
           />
         );
       },
+    )
+    .with(
+      {
+        componentName: "metabase-metabot",
+      },
+      (settings) => <MetabotQuestion layout={settings.layout} height="100%" />,
     )
     .otherwise(() => null);
 };
