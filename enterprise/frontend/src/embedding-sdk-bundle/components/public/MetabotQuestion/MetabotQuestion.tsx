@@ -1,5 +1,6 @@
 import cx from "classnames";
-import { useId } from "react";
+import { useId, useMemo } from "react";
+import { match } from "ts-pattern";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -32,9 +33,12 @@ const MetabotQuestionInner = ({
 
   const hasQuestion = !!navigateToPath;
 
-  // Determine derived layout based on auto mode
-  const derivedLayout =
-    layout === "auto" ? (isSmallScreen ? "stacked" : "sidebar") : layout;
+  const derivedLayout = useMemo(() => {
+    return match([layout, isSmallScreen])
+      .with(["auto", true], () => "stacked")
+      .with(["auto", false], () => "sidebar")
+      .otherwise(([layout]) => layout);
+  }, [layout, isSmallScreen]);
 
   function renderQuestion() {
     if (!hasQuestion || isLocaleLoading) {
