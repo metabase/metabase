@@ -1,25 +1,8 @@
-import type { CSSProperties } from "react";
 import * as Yup from "yup";
 
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 
-export interface MetabotQuestionProps extends CommonStylingProps {
-  /**
-   * Layout mode for the MetabotQuestion component
-   */
-  layout?: "auto" | "sidebar" | "stacked";
-
-  /**
-   * A number or string specifying a CSS size value that specifies the height of the component
-   */
-  height?: CSSProperties["height"];
-
-  /**
-   * A number or string specifying a CSS size value that specifies the width of the component
-   */
-  width?: CSSProperties["width"];
-}
+import type { MetabotQuestionProps } from "./types";
 
 const propsSchema: Yup.SchemaOf<MetabotQuestionProps> = Yup.object({
   height: Yup.mixed().optional(),
@@ -31,6 +14,4 @@ const propsSchema: Yup.SchemaOf<MetabotQuestionProps> = Yup.object({
     .optional(),
 });
 
-export const metabotQuestionSchema: FunctionSchema = {
-  input: [propsSchema],
-};
+export const metabotQuestionSchema: FunctionSchema = { input: [propsSchema] };
