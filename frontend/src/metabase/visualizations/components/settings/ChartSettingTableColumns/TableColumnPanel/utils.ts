@@ -1,8 +1,6 @@
-import _ from "underscore";
-
+import { getColumnIcon } from "metabase/common/utils/columns";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import type { IconName } from "metabase/ui";
-import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
+import * as Lib from "metabase-lib";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
@@ -17,46 +15,67 @@ import type { ColumnItem } from "./types";
 export function getColumnItems(
   columns: DatasetColumn[],
   columnSettings: TableColumnOrderSetting[],
-  tc: ContentTranslationFunction = _.identity,
+  tc: ContentTranslationFunction,
+  isShowingDetailsOnlyColumns: boolean,
 ): ColumnItem[] {
   const columnIndexes = findColumnIndexesForColumnSettings(
     columns,
     columnSettings,
   );
 
-  return columnSettings.map((columnSetting, columnSettingIndex) => {
-    const columnIndex = columnIndexes[columnSettingIndex];
-    const column = columns[columnIndex];
+  return columnSettings.reduce(
+    (columnItems: ColumnItem[], columnSetting, columnSettingIndex) => {
+      const columnIndex = columnIndexes[columnSettingIndex];
+      const column = columns[columnIndex];
 
-    return {
-      name: column.name,
-      enabled: columnSetting.enabled,
-      index: columnSettingIndex,
-      icon: getIconForField(column) as IconName,
-      column: { ...column, display_name: tc(column.display_name) },
-      columnSetting,
-    };
-  });
+      if (
+        isShowingDetailsOnlyColumns ||
+        column.visibility_type !== "details-only"
+      ) {
+        columnItems.push({
+          name: column.name,
+          enabled: columnSetting.enabled,
+          icon: getColumnIcon(Lib.legacyColumnTypeInfo(column)),
+          column: { ...column, display_name: tc(column.display_name) },
+          columnSettingIndex,
+        });
+      }
+
+      return columnItems;
+    },
+    [],
+  );
 }
 
 export function toggleColumnInSettings(
-  { index, columnSetting }: ColumnItem,
-  columnItems: ColumnItem[],
+  columnSettings: TableColumnOrderSetting[],
+  { columnSettingIndex }: ColumnItem,
   isEnabled: boolean,
 ): TableColumnOrderSetting[] {
-  const newSettings = columnItems.map(({ columnSetting }) => columnSetting);
-  newSettings[index] = { ...columnSetting, enabled: isEnabled };
+  const newSettings = [...columnSettings];
+  newSettings[columnSettingIndex] = {
+    ...columnSettings[columnSettingIndex],
+    enabled: isEnabled,
+  };
   return newSettings;
 }
 
 export const moveColumnInSettings = (
+  columnSettings: TableColumnOrderSetting[],
   columnItems: ColumnItem[],
   oldIndex: number,
   newIndex: number,
 ) => {
+  const oldSettingIndex = columnItems[oldIndex].columnSettingIndex;
+  const newSettingIndex = columnItems[newIndex].columnSettingIndex;
+
   // delete a setting from the old index and put it to the new index, shifting all elements
-  const newSettings = columnItems.map(({ columnSetting }) => columnSetting);
-  newSettings.splice(newIndex, 0, newSettings.splice(oldIndex, 1)[0]);
+  const newSettings = [...columnSettings];
+  newSettings.splice(
+    newSettingIndex,
+    0,
+    newSettings.splice(oldSettingIndex, 1)[0],
+  );
   return newSettings;
 };
 
