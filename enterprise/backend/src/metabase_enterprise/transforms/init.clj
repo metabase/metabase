@@ -1,7 +1,7 @@
 (ns metabase-enterprise.transforms.init
   (:require
    [metabase-enterprise.transforms.canceling]
-   [metabase-enterprise.transforms.execute]
+   [metabase-enterprise.transforms.impl]
    [metabase-enterprise.transforms.jobs]
    [metabase-enterprise.transforms.models.job-run]
    [metabase-enterprise.transforms.models.transform]

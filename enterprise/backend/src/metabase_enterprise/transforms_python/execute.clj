@@ -294,7 +294,7 @@
                             {:transform-run-message (message-log->transform-run-message message-log)}
                             e))))))))
 
-(defn execute-python-transform!
+(defn execute!
   "Execute a Python transform by calling the python runner.
 
   Blocks until the transform returns."

@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests ^:mb/transforms-python-test metabase-enterprise.transforms-python.ordering-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.ordering :as ordering]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -36,7 +37,7 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'ordering/transform-deps transform)))
+    (#'transforms.i/dependencies transform)))
 
 (deftest python-transform-basic-dependencies-test
   (testing "Python transforms with source-tables dependencies are extracted correctly"
