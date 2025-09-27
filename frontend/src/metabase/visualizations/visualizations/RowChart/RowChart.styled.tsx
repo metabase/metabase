@@ -27,6 +27,8 @@ export const RowChartContainer = styled.div`
   bottom: 0;
   right: 0;
   left: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 `;
 
 export const RowChartLegendLayout = styled(LegendLayout)`
