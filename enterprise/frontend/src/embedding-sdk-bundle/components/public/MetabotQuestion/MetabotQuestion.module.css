@@ -1,76 +1,75 @@
-.container {
-  display: flex;
-  width: 100%;
-  height: 100%;
-}
-
 .sidebar {
   width: 100%;
   height: 100%;
   position: relative;
 }
 
-.sidebarLayout {
-  flex-direction: row;
-}
-
-.sidebarLayout .content {
-  flex: 1;
-  height: 100%;
-}
-
-.sidebarLayout .chat {
-  width: 100%;
-  height: 100%;
-  max-width: 18.75rem;
-}
-
-.sidebarLayout .stackedOverflowButton {
-  display: none;
-}
-
-/* Stacked layout - always vertical */
-.stackedLayout {
-  flex-direction: column;
-}
-
-.stackedLayout .content {
-  flex: 0 0 60%;
-  height: 60%;
-  overflow: hidden;
-}
-
-.stackedLayout .chat {
-  flex: 0 0 40%;
-  height: 40%;
-  width: 100%;
-  max-width: none;
-  border-top: 1px solid var(--mb-color-border);
-  border-left: none;
-}
-
-.stackedLayout .sidebar {
-  border-left: none;
-}
-
-.stackedLayout .sidebarHeader {
-  display: none;
-}
-
-.sidebarLayout .sidebar {
-  border-left: 1px solid var(--mb-color-border);
-}
-
-/* Overflow menu is only visible in stacked layout. */
-.stackedLayout .stackedOverflowButton {
+.container {
   display: flex;
-  padding: 0.25rem;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-}
+  width: 100%;
+  height: 100%;
 
-.stackedLayout .stackedOverflowButton:hover {
-  background-color: var(--mb-color-brand-lighter);
+  &[data-layout="sidebar"] {
+    flex-direction: row;
+
+    .content {
+      flex: 1;
+      height: 100%;
+    }
+
+    .chat {
+      width: 100%;
+      height: 100%;
+      max-width: 18.75rem;
+    }
+
+    .stackedOverflowButton {
+      display: none;
+    }
+
+    .sidebar {
+      border-left: 1px solid var(--mb-color-border);
+    }
+  }
+
+  &[data-layout="stacked"] {
+    flex-direction: column;
+
+    .content {
+      flex: 0 0 60%;
+      height: 60%;
+      overflow: hidden;
+    }
+
+    .chat {
+      flex: 0 0 40%;
+      height: 40%;
+      width: 100%;
+      max-width: none;
+      border-top: 1px solid var(--mb-color-border);
+      border-left: none;
+    }
+
+    .sidebar {
+      border-left: none;
+    }
+
+    .sidebarHeader {
+      display: none;
+    }
+
+    /* Overflow menu is only visible in stacked layout. */
+    .stackedOverflowButton {
+      display: flex;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: var(--mb-color-brand-lighter);
+      }
+    }
+  }
 }
 
 /* Prompt suggestions */

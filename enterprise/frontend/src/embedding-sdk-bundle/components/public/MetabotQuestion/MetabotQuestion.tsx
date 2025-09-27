@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { useId, useMemo } from "react";
 import { match } from "ts-pattern";
 
@@ -72,10 +71,7 @@ const MetabotQuestionInner = ({
       style={style}
     >
       <div
-        className={cx(S.container, {
-          [S.sidebarLayout]: derivedLayout === "sidebar",
-          [S.stackedLayout]: derivedLayout === "stacked",
-        })}
+        className={S.container}
         data-layout={derivedLayout}
         data-testid="metabot-question-container"
       >
