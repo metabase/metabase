@@ -21,6 +21,7 @@ Object.assign(
     getUiName: () => t`Line`,
     identifier: "line",
     iconName: "line",
+    maxDimensionsSupported: 3,
     // eslint-disable-next-line ttag/no-module-declaration
     noun: t`line chart`,
     minSize: getMinSize("line"),
