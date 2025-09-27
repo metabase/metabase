@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
@@ -13,6 +13,7 @@ import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
+  Button,
   Flex,
   Icon,
   Loader,
@@ -22,6 +23,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 import {
@@ -32,12 +34,10 @@ import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metab
 import { cancelInflightAgentRequests } from "metabase-enterprise/metabot/state";
 
 import S from "./MetabotQuestion.module.css";
-import {
-  type MetabotQuestionProps,
-  metabotQuestionSchema,
-} from "./MetabotQuestion.schema";
+import { metabotQuestionSchema } from "./MetabotQuestion.schema";
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
+import type { MetabotQuestionProps } from "./types";
 
 const MetabotQuestionInner = ({
   height,
@@ -104,6 +104,22 @@ const MetabotQuestionInner = ({
 };
 
 function MetabotSidebar() {
+  const metabot = useMetabotAgent();
+  const { handleSubmitInput } = useMetabotChatHandlers();
+
+  const suggestedPromptsQuery = useGetSuggestedMetabotPromptsQuery({
+    metabot_id: metabot.metabotId,
+    limit: 3,
+    sample: true,
+  });
+
+  const suggestedPrompts = useMemo(() => {
+    return suggestedPromptsQuery.currentData?.prompts ?? [];
+  }, [suggestedPromptsQuery]);
+
+  const hasMessages =
+    metabot.messages.length > 0 || metabot.errorMessages.length > 0;
+
   return (
     <Stack
       w="100%"
@@ -116,7 +132,11 @@ function MetabotSidebar() {
     >
       <SidebarHeader />
       <SidebarChatHistory />
-      <SidebarInput />
+      <SidebarInput
+        suggestedPrompts={suggestedPrompts}
+        hasMessages={hasMessages}
+        onSubmitPrompt={handleSubmitInput}
+      />
     </Stack>
   );
 }
@@ -157,6 +177,8 @@ function SidebarChatHistory() {
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  const hasMessages = messages.length > 0 || errorMessages.length > 0;
+
   // Auto-scroll to bottom when new messages are received
   useEffect(() => {
     if (scrollContainerRef.current) {
@@ -173,7 +195,7 @@ function SidebarChatHistory() {
       style={{ overflowY: "auto" }}
       p="md"
     >
-      {messages.length > 0 || errorMessages.length > 0 ? (
+      {hasMessages ? (
         <Messages
           messages={messages}
           errorMessages={errorMessages}
@@ -188,7 +210,15 @@ function SidebarChatHistory() {
   );
 }
 
-function SidebarInput() {
+function SidebarInput({
+  suggestedPrompts,
+  hasMessages,
+  onSubmitPrompt,
+}: {
+  suggestedPrompts: Array<{ prompt: string }>;
+  hasMessages: boolean;
+  onSubmitPrompt: (prompt: string) => void;
+}) {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
   const dispatch = useSdkDispatch();
@@ -206,88 +236,115 @@ function SidebarInput() {
   };
 
   return (
-    <Flex
-      gap="xs"
-      px="md"
-      pt="0.6rem"
-      pb="0.2rem"
-      style={{ borderTop: "1px solid var(--mb-color-border)" }}
-      align="center"
-      justify="center"
-    >
+    <Stack gap={0}>
+      {/* Suggested prompts - show only when no messages and not doing science */}
+      {!hasMessages &&
+        !metabot.isDoingScience &&
+        suggestedPrompts.length > 0 && (
+          <Stack gap="sm" p="md" className={S.promptSuggestionsContainer}>
+            {suggestedPrompts.map(({ prompt }, index) => (
+              <Button
+                key={index}
+                size="xs"
+                variant="outline"
+                fw={400}
+                onClick={() => onSubmitPrompt(prompt)}
+                className={S.promptSuggestionButton}
+              >
+                {prompt}
+              </Button>
+            ))}
+          </Stack>
+        )}
+
+      {/* Input area */}
       <Flex
-        style={{ flexShrink: 0, marginBottom: "8px" }}
-        justify="center"
+        gap="xs"
+        px="md"
+        pt="0.6rem"
+        pb="0.2rem"
+        style={{ borderTop: "1px solid var(--mb-color-border)" }}
         align="center"
+        justify="center"
       >
-        {metabot.isDoingScience ? (
-          <Loader size="sm" />
-        ) : (
-          <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
+        <Flex
+          style={{ flexShrink: 0, marginBottom: "8px" }}
+          justify="center"
+          align="center"
+        >
+          {metabot.isDoingScience ? (
+            <Loader size="sm" />
+          ) : (
+            <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
+          )}
+        </Flex>
+
+        <Textarea
+          id="metabot-chat-input"
+          data-testid="metabot-chat-input"
+          w="100%"
+          autosize
+          minRows={1}
+          maxRows={4}
+          ref={metabot.promptInputRef}
+          autoFocus
+          value={metabot.prompt}
+          disabled={metabot.isDoingScience}
+          placeholder={placeholder}
+          onChange={(e) => metabot.setPrompt(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.nativeEvent.isComposing) {
+              return;
+            }
+
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmitInput(metabot.prompt);
+            }
+          }}
+          styles={{
+            input: {
+              border: "none",
+              borderRadius: "0",
+              backgroundColor: "transparent",
+              "&:focus": {
+                outline: "none",
+                borderColor: "transparent",
+              },
+            },
+          }}
+        />
+
+        {metabot.isDoingScience && (
+          <UnstyledButton
+            h="1rem"
+            data-testid="metabot-cancel-request"
+            onClick={cancelRequest}
+            style={{ marginBottom: "8px" }}
+          >
+            <Tooltip label={t`Stop generation`}>
+              <Icon
+                name="stop"
+                c="var(--mb-color-text-secondary)"
+                size="1rem"
+              />
+            </Tooltip>
+          </UnstyledButton>
+        )}
+
+        {!metabot.isDoingScience && metabot.prompt.length > 0 && (
+          <UnstyledButton
+            h="1rem"
+            onClick={resetInput}
+            data-testid="metabot-close-chat"
+            style={{ marginBottom: "8px" }}
+          >
+            <Icon name="close" c="var(--mb-color-text-secondary)" size="1rem" />
+          </UnstyledButton>
         )}
       </Flex>
-
-      <Textarea
-        id="metabot-chat-input"
-        data-testid="metabot-chat-input"
-        w="100%"
-        autosize
-        minRows={1}
-        maxRows={4}
-        ref={metabot.promptInputRef}
-        autoFocus
-        value={metabot.prompt}
-        disabled={metabot.isDoingScience}
-        placeholder={placeholder}
-        onChange={(e) => metabot.setPrompt(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing) {
-            return;
-          }
-
-          if (e.key === "Enter") {
-            e.preventDefault();
-            e.stopPropagation();
-            handleSubmitInput(metabot.prompt);
-          }
-        }}
-        styles={{
-          input: {
-            border: "none",
-            borderRadius: "0",
-            backgroundColor: "transparent",
-            "&:focus": {
-              outline: "none",
-              borderColor: "transparent",
-            },
-          },
-        }}
-      />
-
-      {metabot.isDoingScience && (
-        <UnstyledButton
-          h="1rem"
-          data-testid="metabot-cancel-request"
-          onClick={cancelRequest}
-          style={{ marginBottom: "8px" }}
-        >
-          <Tooltip label={t`Stop generation`}>
-            <Icon name="stop" c="var(--mb-color-text-secondary)" size="1rem" />
-          </Tooltip>
-        </UnstyledButton>
-      )}
-
-      {!metabot.isDoingScience && metabot.prompt.length > 0 && (
-        <UnstyledButton
-          h="1rem"
-          onClick={resetInput}
-          data-testid="metabot-close-chat"
-          style={{ marginBottom: "8px" }}
-        >
-          <Icon name="close" c="var(--mb-color-text-secondary)" size="1rem" />
-        </UnstyledButton>
-      )}
-    </Flex>
+    </Stack>
   );
 }
 
