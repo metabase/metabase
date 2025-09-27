@@ -389,6 +389,32 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
+  describe("<metabase-metabot>", () => {
+    it("should use sidebar layout by default when no layout attribute is provided", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("metabot-question-container")
+        .should("have.attr", "data-layout", "sidebar");
+    });
+
+    it("should respect the layout attribute when set to stacked", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot layout="stacked" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("metabot-question-container")
+        .should("have.attr", "data-layout", "stacked");
+    });
+  });
+
   describe("common checks", () => {
     describe("should be permissive with json attributes", () => {
       // NOTE: pay attention if you use initialFilters for these tests, as when the filters are not parsed correctly

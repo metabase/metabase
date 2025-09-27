@@ -194,7 +194,7 @@ const SdkIframeEmbedView = ({
       {
         componentName: "metabase-metabot",
       },
-      (settings) => <MetabotQuestion layout={settings.layout} />,
+      (settings) => <MetabotQuestion layout={settings.layout} height="100%" />,
     )
     .otherwise(() => null);
 };
