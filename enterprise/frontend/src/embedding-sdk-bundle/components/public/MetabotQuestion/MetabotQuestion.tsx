@@ -195,8 +195,8 @@ function SidebarInput() {
     <Flex
       gap="xs"
       px="md"
-      py="sm"
-      mih="48px"
+      pt="0.6rem"
+      pb="0.2rem"
       style={{ borderTop: "1px solid var(--mb-color-border)" }}
       align="center"
       justify="center"
