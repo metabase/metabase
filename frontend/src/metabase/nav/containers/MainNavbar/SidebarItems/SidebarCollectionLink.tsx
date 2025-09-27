@@ -41,6 +41,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       isSelected,
       hasChildren,
       onToggleExpand,
+      rightSection,
     }: Props,
     ref,
   ) {
@@ -108,6 +109,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
             <SidebarIcon {...icon} isSelected={isSelected} />
           </TreeNode.IconContainer>
           <NameContainer>{collection.name}</NameContainer>
+          {rightSection?.(collection)}
         </FullWidthLink>
       </CollectionNodeRoot>
     );

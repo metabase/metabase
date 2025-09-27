@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -114,19 +115,20 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/remote-sync-protected))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
-   (if (and
-        ;; We want to make sure there's an existing audit collection before doing the equality check below.
-        ;; If there is no audit collection, this will be nil:
-        (some? (:id (audit/default-audit-collection)))
-        ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (audit/default-audit-collection))))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+   (and
+    (not (and
+         ;; We want to make sure there's an existing audit collection before doing the equality check below.
+         ;; If there is no audit collection, this will be nil:
+          (some? (:id (audit/default-audit-collection)))
+         ;; Is a direct descendant of audit collection
+          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
@@ -932,9 +934,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                           metadata
-                                                                                           (assoc :result_metadata metadata))))]
+                                              (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
+                                                                                                    metadata
+                                                                                                    (assoc :result_metadata metadata)))
+                                                (when (collections/remote-synced-collection? (:collection_id <>))
+                                                  (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
@@ -1111,7 +1115,13 @@
         (log/error "Update of dependent card parameters failed!")
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
-                   "`card-updates`:" (pr-str card-updates)))))
+                   "`card-updates`:" (pr-str card-updates))))
+    (when (collections/remote-synced-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
+      (collections/check-non-remote-synced-dependencies (t2/select-one :model/Card :id (:id card-before-update))))
+    (when (and (api/column-will-change? :collection_id card-before-update card-updates)
+               (collections/moving-from-remote-synced? (:collection_id card-before-update) (:collection_id card-updates)))
+      (collections/check-remote-synced-dependents (:collection_id card-before-update)
+                                                  card-before-update)))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`

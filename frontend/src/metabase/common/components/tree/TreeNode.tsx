@@ -22,6 +22,7 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
       hasChildren,
       onSelect,
       onToggleExpand,
+      rightSection,
       ...props
     }: TreeNodeProps,
     ref,
@@ -76,6 +77,7 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
           </IconContainer>
         )}
         <NameContainer data-testid="tree-item-name">{name}</NameContainer>
+        {rightSection?.(item)}
       </TreeNodeRoot>
     );
   },

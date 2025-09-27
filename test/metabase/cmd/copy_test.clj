@@ -38,6 +38,8 @@
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
+    :model/RemoteSyncChangeLog
+    :model/RemoteSyncTask
     :model/SearchIndexMetadata
     :model/SemanticSearchTokenTracking
     :model/TaskHistory

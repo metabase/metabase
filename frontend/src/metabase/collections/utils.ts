@@ -73,6 +73,10 @@ export function isInstanceAnalyticsCustomCollection(
   );
 }
 
+export function isSyncedCollection(collection: Partial<Collection>): boolean {
+  return PLUGIN_COLLECTIONS.isSyncedCollection(collection);
+}
+
 export function isExamplesCollection(collection: Collection): boolean {
   return !!collection.is_sample && collection.name === "Examples";
 }
@@ -131,6 +135,12 @@ export function isPersonalCollectionOrChild(
 
 export function isRootCollection(collection: Pick<Collection, "id">): boolean {
   return canonicalCollectionId(collection?.id) === null;
+}
+
+export function isTopLevelCollection(
+  collection: Pick<Collection, "location">,
+): boolean {
+  return collection.location === "/";
 }
 
 export function isItemPinned(item: CollectionItem) {

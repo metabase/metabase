@@ -58,6 +58,10 @@
   on a future deserialization."
   false)
 
+(def ^:dynamic *syncing-source-of-truth-entities*
+  "This is dynamically bound to the set of entities that we are syncing when syncing the source of truth."
+  #{})
+
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
   ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
@@ -582,7 +586,6 @@
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/created-at-timestamped? :hook/entity-id)
-
 ;; --- helper fns
 (defn changes-with-pk
   "The row merged with the changes in pre-update hooks.
@@ -851,3 +854,13 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+  [_model k models]
+  (instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id can-write?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
