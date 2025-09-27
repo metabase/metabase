@@ -4,6 +4,12 @@ import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
+// File size formatting constants
+const DATASIZE_UNITS_BINARY = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+const DATASIZE_UNITS_DECIMAL = ["B", "KB", "MB", "GB", "TB", "PB"];
+const DATASIZE_BASE_BINARY = 1024;
+const DATASIZE_BASE_DECIMAL = 1000;
+
 const FIXED_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   useGrouping: true,
   minimumFractionDigits: 0,
@@ -15,13 +21,17 @@ const PRECISION_NUMBER_FORMATTER = new Intl.NumberFormat("en", {
   maximumFractionDigits: 2,
 });
 
+export type DataSizeUnitSystem = "binary" | "decimal";
+
 export type FormatNumberOptions = {
-  _numberFormatter?: Intl.NumberFormat;
+  _numberFormatter?: Intl.NumberFormat | null;
   compact?: boolean;
   currency?: string;
   currency_in_header?: boolean;
   currency_style?: string;
   decimals?: string | number;
+  datasize_unit_system?: DataSizeUnitSystem;
+  datasize_unit_in_header?: boolean;
   maximumFractionDigits?: number;
   minimumFractionDigits?: number;
   minimumIntegerDigits?: number;
@@ -95,6 +105,8 @@ export function formatNumber(
 
   if (options.compact) {
     return formatNumberCompact(number, options);
+  } else if (options.number_style === "datasize") {
+    return formatNumberDataSize(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -122,6 +134,14 @@ export function formatNumber(
         nf = options._numberFormatter;
       } else {
         nf = numberFormatterForOptions(options);
+      }
+
+      // Handle null formatter (e.g., for filesize which doesn't use Intl.NumberFormat)
+      if (!nf) {
+        // For filesize and other custom formats that don't use Intl.NumberFormat,
+        // just return the raw number as a string - the filesize formatting
+        // is handled elsewhere in the function
+        return String(number);
       }
 
       let formatted = nf.format(number);
@@ -179,11 +199,20 @@ export function formatChangeWithSign(
   return change > 0 ? `+${formattedNumber}` : formattedNumber;
 }
 
-export function numberFormatterForOptions(options: FormatNumberOptions) {
+export function numberFormatterForOptions(
+  options: FormatNumberOptions,
+): Intl.NumberFormat | null {
   options = {
     ...getDefaultNumberOptions(options),
     ...options,
   };
+
+  // datameasure is a custom format, not supported by Intl.NumberFormat
+  // Return null for datameasure - formatNumber will handle it specially
+  if (options.number_style === "datasize") {
+    return null;
+  }
+
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
   // TODO: if we do that how can we get localized currency names?
   return new Intl.NumberFormat("en", {
@@ -215,6 +244,11 @@ function formatNumberCompact(
         ...COMPACT_CURRENCY_OPTIONS,
       });
 
+      // nf should never be null for currency formatting, but TypeScript needs the check
+      if (!nf) {
+        return String(value);
+      }
+
       if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
         return nf.format(value);
       }
@@ -238,7 +272,67 @@ function formatNumberCompact(
       minimumFractionDigits: 1,
     });
   }
+  if (options.number_style === "datasize") {
+    // Compact data sizes should still show units but with abbreviated numbers
+    return formatNumberDataSize(value, options);
+  }
   return _formatNumberCompact(value, options);
+}
+
+function formatNumberDataSize(
+  value: number | bigint,
+  options: FormatNumberJsxOptions,
+): string {
+  const unitSystem = options.datasize_unit_system || "binary";
+  const units =
+    unitSystem === "binary" ? DATASIZE_UNITS_BINARY : DATASIZE_UNITS_DECIMAL;
+  const base =
+    unitSystem === "binary" ? DATASIZE_BASE_BINARY : DATASIZE_BASE_DECIMAL;
+
+  const absValue = abs(value);
+  let unitIndex = 0;
+  let scaledValue = Number(absValue);
+
+  // Find appropriate unit
+  while (scaledValue >= base && unitIndex < units.length - 1) {
+    scaledValue /= base;
+    unitIndex++;
+  }
+
+  // Format the number part using basic formatter without grouping
+  const maxDecimals =
+    unitIndex === 0
+      ? 0
+      : typeof options.decimals === "number"
+        ? options.decimals
+        : 2;
+  let formatted: string;
+
+  if (maxDecimals === 0) {
+    // No decimals for bytes
+    formatted = Math.round(scaledValue).toString();
+  } else if (typeof options.decimals === "number") {
+    // User explicitly set decimals - honor exactly
+    formatted = scaledValue.toFixed(options.decimals);
+  } else {
+    // Default behavior - show up to 2 decimals but remove trailing zeros
+    formatted = parseFloat(scaledValue.toFixed(2)).toString();
+  }
+
+  // Apply custom number separators if specified
+  const separators = options.number_separators;
+  if (separators && separators !== DEFAULT_NUMBER_SEPARATORS) {
+    formatted = replaceNumberSeparators(formatted, separators);
+  }
+
+  // Handle unit display
+  const unit = units[unitIndex];
+  if (options.type === "cell" && options.datasize_unit_in_header) {
+    // Unit will be shown in header, just return the number
+    return (value < 0 ? "-" : "") + formatted;
+  }
+
+  return (value < 0 ? "-" : "") + formatted + " " + unit;
 }
 
 function _formatNumberCompact(

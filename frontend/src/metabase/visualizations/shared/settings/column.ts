@@ -1,4 +1,8 @@
-import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
+import {
+  isCurrency,
+  isDataSize,
+  isPercentage,
+} from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
 
 export function getDefaultNumberStyle(
@@ -11,6 +15,10 @@ export function getDefaultNumberStyle(
 
   if (isPercentage(column)) {
     return "percent";
+  }
+
+  if (isDataSize(column)) {
+    return "datasize";
   }
 
   return "decimal";
@@ -58,4 +66,12 @@ export function getDefaultCurrencyInHeader() {
 
 export function getDefaultNumberSeparators() {
   return ".,";
+}
+
+export function getDefaultDataSizeUnitSystem() {
+  return "binary";
+}
+
+export function getDefaultDataSizeUnitInHeader() {
+  return false;
 }
