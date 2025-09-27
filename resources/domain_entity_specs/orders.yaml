@@ -13,7 +13,7 @@ metrics:
     name: Total income
     description: Sum of income
   AvgIncome:
-    aggregation: [avg, [dimensions, Income]]
+    aggregation: [avg, [dimension, Income]]
     name: Average income
   AvgQuantity:
     aggregation: [avg, [dimension, Quantity]]

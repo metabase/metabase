@@ -5,7 +5,7 @@
    [metabase.xrays.api.automagic-dashboards :as api.automagic-dashboards]
    [metabase.xrays.automagic-dashboards.comparison :as c]
    [metabase.xrays.automagic-dashboards.core :as magic]
-   [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
+   [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [toucan2.core :as t2]))
 
 (def ^:private segment
@@ -27,7 +27,7 @@
 (deftest test-1
   (mt/with-temp [:model/Segment {segment-id :id} @segment]
     (mt/with-test-user :rasta
-      (with-dashboard-cleanup!
+      (with-rollback-only-transaction
         (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) (t2/select-one :model/Segment :id segment-id))))
         (is (some? (test-comparison (t2/select-one :model/Segment :id segment-id) (t2/select-one :model/Table :id (mt/id :venues)))))))))
 
@@ -36,12 +36,12 @@
                  :model/Segment {segment2-id :id} {:table_id   (mt/id :venues)
                                                    :definition {:filter [:< [:field (mt/id :venues :price) nil] 4]}}]
     (mt/with-test-user :rasta
-      (with-dashboard-cleanup!
+      (with-rollback-only-transaction
         (is (some? (test-comparison (t2/select-one :model/Segment :id segment1-id) (t2/select-one :model/Segment :id segment2-id))))))))
 
 (deftest test-3
   (mt/with-test-user :rasta
-    (with-dashboard-cleanup!
+    (with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query    {:filter       (-> @segment :definition :filter)
                                                                          :source-table (mt/id :venues)}
                                                               :type     :query
@@ -55,5 +55,5 @@
                                                             :type     :query
                                                             :database (mt/id)}}]
     (mt/with-test-user :rasta
-      (with-dashboard-cleanup!
+      (with-rollback-only-transaction
         (is (some? (test-comparison (t2/select-one :model/Table :id (mt/id :venues)) (t2/select-one :model/Card :id card-id))))))))

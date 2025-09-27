@@ -245,9 +245,11 @@
   [card-or-question]
   (some? (source-card-id card-or-question)))
 
-(def ^:private ^{:arglists '([card-or-question])} native-query?
+(mu/defn native-query?
   "Is this card or question native (SQL)?"
-  (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
+  [card-or-query :- [:map
+                     [:dataset_query ::lib.schema/query]]]
+  (lib/native-only-query? (:dataset_query card-or-query)))
 
 (defn- source-question
   [card-or-question]
@@ -255,10 +257,10 @@
     (t2/select-one :model/Card :id source-card-id)))
 
 (defn- table-like?
-  [card-or-question]
+  [{query :dataset_query, :as _card-or-question}]
   (and
-   (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
-   (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
+   (empty? (lib/aggregations query))
+   (empty? (lib/breakouts query))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -284,12 +286,14 @@
     :else                   (->> card table-id (t2/select-one :model/Table :id))))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card]
+  [card :- [:map
+            [:database_id   ::lib.schema.id/database]
+            [:dataset_query ::lib.schema/query]]]
   (let [source (source card)]
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
-     :query-filter               (get-in card [:dataset_query :query :filter])
+     :query-filter               (lib/filters (:dataset_query card))
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
@@ -299,13 +303,15 @@
 
 (mu/defmethod ->root :model/Query :- ::ads/root
   [query :- [:map
-             [:database-id ::lib.schema.id/database]]]
+             ;; why does a Toucan model have a kebab-case key?
+             [:database-id ::lib.schema.id/database]
+             [:dataset_query ::lib.schema/query]]]
   (let [source (source query)
         root   {:database (:database-id query), :source source}]
     {:entity                     query
      :source                     source
      :database                   (:database-id query)
-     :query-filter               (get-in query [:dataset_query :query :filter])
+     :query-filter               (lib/filters (:dataset_query query))
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
                                    (table-like? query)   (-> source ->root :full-name)
@@ -753,11 +759,14 @@
            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
            (log/error "X-Rays do not support V2 Metrics.")
            (let [table-id (table-id question)]
-             (mi/instance :xrays/Metric {:definition {:aggregation  [aggregation-clause]
-                                                      :source-table table-id}
+             (mi/instance :xrays/Metric {:definition
+                                         (do
+                                           (log/warn "THIS PROBABLY NEEDS TO BE FIXED #1")
+                                           {:aggregation  [aggregation-clause]
+                                            :source-table table-id})
                                          :name       (names/metric->description root aggregation-clause)
                                          :table_id   table-id}))))
-       (get-in question [:dataset_query :query :aggregation])))
+       (lib/aggregations (:dataset_query question))))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root question]

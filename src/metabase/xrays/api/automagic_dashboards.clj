@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.schema :as lib.schema]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
@@ -112,10 +113,10 @@
 
 (mu/defn adhoc-query-instance :- (ms/InstanceOf :model/Query)
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
-  [query :- :map]
+  [query :- ::lib.schema/query]
   (mi/instance :model/Query
                (merge (queries/query->database-and-table-ids query)
-                      {:dataset_query (mi/maybe-normalize-query :out query)})))
+                      {:dataset_query query})))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]

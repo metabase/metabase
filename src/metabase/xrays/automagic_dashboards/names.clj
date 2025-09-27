@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
@@ -10,7 +11,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.time :as u.time]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.automagic-dashboards.util :as magic.util]))
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [metabase.util.log :as log]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
 ;; here so make sure to do a *thorough* find and replace on this.
@@ -46,26 +48,30 @@
 (defn metric->description
   "Return a description for the metric."
   [root aggregation-clause]
-  (join-enumeration
-   (for [metric (if (sequential? (first aggregation-clause))
-                  aggregation-clause
-                  [aggregation-clause])]
-     (if (magic.util/adhoc-metric? metric)
-       (tru "{0} of {1}" (metric-name metric) (or (some->> metric
-                                                           second
-                                                           (magic.util/->field root)
-                                                           :display_name)
-                                                  (source-name root)))
-       (metric-name metric)))))
+  (log/warn "THIS PROBABLY NEEDS TO BE FIXED #2")
+  (try
+    (join-enumeration
+     (for [metric (if (sequential? (first aggregation-clause))
+                    aggregation-clause
+                    [aggregation-clause])]
+       (if (magic.util/adhoc-metric? metric)
+         (tru "{0} of {1}" (metric-name metric) (or (some->> metric
+                                                             (magic.util/->field root)
+                                                             :display_name)
+                                                    (source-name root)))
+         (metric-name metric))))
+    (catch Throwable e
+      (log/error e "FIXME")
+      "<FIXME>")))
 
 (mu/defn question-description
   "Generate a description for the question."
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
+  (let [aggregations (->> (lib/aggregations (:dataset_query question))
                           (metric->description root))
-        dimensions   (->> (get-in question [:dataset_query :query :breakout])
+        dimensions   (->> (lib/breakouts (:dataset_query question))
                           (mapcat magic.util/collect-field-references)
                           (map (partial magic.util/->field root))
                           (map :display_name)
@@ -231,7 +237,7 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
-                   (metric->description root aggregation)
+  (str/join " " [(if-let [aggregations (some-> (get-in root [:entity :dataset_query]) lib/aggregations)]
+                   (metric->description root aggregations)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

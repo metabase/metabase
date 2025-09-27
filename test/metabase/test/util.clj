@@ -860,7 +860,15 @@
       (created-query-cache!)
       (is cached?))
 
-  Only works for models that have a numeric primary key e.g. `:id`."
+  Only works for models that have a numeric primary key e.g. `:id`.
+
+  DEPRECATED: You can do
+
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      ...)
+
+  instead which is thread-safe."
+  {:deprecated "0.57.0"}
   [models & body]
   `(do-with-model-cleanup ~models (fn [] ~@body)))
 

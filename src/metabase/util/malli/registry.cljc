@@ -59,7 +59,7 @@
               #_{:clj-kondo/ignore [:discouraged-var]}
               (mc/validator schema)
               (catch #?(:clj Throwable :cljs :default) e
-                (throw (ex-info (str "Error making validator for " (pr-str schema) ":" (ex-message e))
+                (throw (ex-info (str "Error making validator for " (pr-str schema) ": " (ex-message e))
                                 {:schema schema}
                                 e)))))
           (make-validator []
@@ -93,7 +93,7 @@
                   (when-not (validator* value)
                     (explainer* value))))
               (catch #?(:clj Throwable :cljs :default) e
-                (throw (ex-info (str "Error making explainer for " (pr-str schema) ":" (ex-message e))
+                (throw (ex-info (str "Error making explainer for " (pr-str schema) ": " (ex-message e))
                                 {:schema schema}
                                 e)))))]
     (cached :explainer schema make-explainer)))

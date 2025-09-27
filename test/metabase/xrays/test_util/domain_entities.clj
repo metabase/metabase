@@ -14,7 +14,7 @@
                                ;; These are here just for uniquness
                                {:field "Longitude"}
                                {:field "Latitude"}]
-         :refines             "Venues parent"
+         ;; :refines             "Venues parent"
          :breakout_dimensions ["FK"]
          :metrics             {"Avg Price" {:aggregation [:avg [:dimension "Category"]]}}}
         {:name                "VenuesEnhanced"
@@ -23,14 +23,14 @@
                                {:field "MaxPrice"}]}]
        (map (fn [spec]
               [(:name spec) (-> spec
-                                (#'de.specs/add-to-hiearchy!)
-                                (#'de.specs/coerce-to-domain-entity-spec))]))
+                                (#'de.specs/add-to-hierarchy!)
+                                ((#'de.specs/domain-entity-spec-coercer)))]))
        (into {})))
 
-(defmacro with-test-domain-entity-specs!
+(defmacro with-test-domain-entity-specs
   "Evaluate `body` in a context where `domain-entities.specs/domain-entity-specs` have been swapped for
   `test-domain-entity-specs`"
   [& body]
   `(testing "with-test-domain-entity-specs\n"
-     (with-redefs [de.specs/domain-entity-specs (delay test-domain-entity-specs)]
+     (binding [de.specs/*specs-delay* (atom test-domain-entity-specs)]
        ~@body)))

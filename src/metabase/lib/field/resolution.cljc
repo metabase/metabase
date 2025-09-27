@@ -217,7 +217,7 @@
     :lib/original-binning    opts-fn-original-binning
     :options                 opts-fn-options}))
 
-(mu/defn- options-metadata :- :map
+(mu/defn options-metadata :- :map
   "Part of [[resolve-field-ref]] -- calculate metadata based on options map of the field ref itself."
   [opts :- ::lib.schema.ref/field.options]
   (into {}

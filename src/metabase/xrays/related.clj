@@ -27,6 +27,7 @@
 
 (defn- collect-context-bearing-forms
   [form]
+  (throw (ex-info "NOCOMMIT" {}))
   (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
           (comp (filter (mr/validator ContextBearingForm))
@@ -41,10 +42,12 @@
 
 (defmethod definition :xrays/Metric
   [metric]
+  (throw (ex-info "NOCOMMIT" {}))
   (-> metric :definition ((juxt :aggregation :filter))))
 
 (defmethod definition :model/Card
   [card]
+  (throw (ex-info "NOCOMMIT" {}))
   (-> card
       :dataset_query
       :query
@@ -52,10 +55,12 @@
 
 (defmethod definition :model/Segment
   [segment]
+  (throw (ex-info "NOCOMMIT" {}))
   (-> segment :definition :filter))
 
 (defmethod definition :model/Field
   [field]
+  (throw (ex-info "NOCOMMIT" {}))
   [[:field-id (:id field)]])
 
 (defn- similarity

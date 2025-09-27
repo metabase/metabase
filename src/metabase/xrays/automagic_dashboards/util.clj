@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.legacy-mbql.predicates :as mbql.preds]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -41,9 +41,9 @@
 
 (def ^{:arglists '([metric])} saved-metric?
   "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
-  (partial mbql.u/is-clause? :metric))
+  #(lib/clause-of-type? % :metric))
 
-(def ^{:arglists '([metric])} custom-expression?
+(def ^{:arglists '([metric])} ^:deprecated custom-expression?
   "Is this a custom expression?"
   (partial mbql.u/is-clause? :aggregation-options))
 
@@ -55,12 +55,12 @@
   "Encode given object as base-64 encoded JSON."
   (comp codec/base64-encode codecs/str->bytes json/encode))
 
-(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
+(mu/defn ^:deprecated field-reference->id :- [:maybe [:or ms/NonBlankString ::lib.schema.id/field]]
   "Extract field ID from a given field reference form."
   [clause]
-  (lib.util.match/match-one clause [:field id _] id))
+  (lib.util.match/match-one clause [:field _opts id] id))
 
-(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
+(mu/defn ^:deprecated collect-field-references :- [:maybe [:sequential :mbql.clause/field]]
   "Collect all `:field` references from a given form."
   [form]
   (lib.util.match/match form :field &match))
@@ -69,14 +69,15 @@
                              (ms/InstanceOf :model/Field)
                              ::ads/field]]
   "Return `Field` instance for a given ID or name in the context of root."
-  [{{result-metadata :result_metadata} :source, :as root} :- ::ads/root
-   field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
+  [{{result-metadata :result_metadata, :as _source} :source, :as root} :- ::ads/root
+   field-id-or-name-or-clause :- [:or ::lib.schema.id/field ms/NonBlankString :mbql.clause/field]]
+  (log/warn "THIS PROBABLY NEEDS TO BE FIXED #3 -- don't use result_metadata, use lib/returned-columns (which means source must be lib metadata)")
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
     (or
      ;; Handle integer Field IDs.
-     (when (integer? id-or-name)
+     (when (pos-int? id-or-name)
        (t2/select-one :model/Field :id id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)

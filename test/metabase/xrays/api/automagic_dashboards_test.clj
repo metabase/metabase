@@ -12,7 +12,7 @@
    [metabase.util :as u]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [metabase.xrays.test-util.automagic-dashboards :refer [with-dashboard-cleanup!]]
+   [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
    [metabase.xrays.test-util.domain-entities :as test.de]
    [metabase.xrays.test-util.transforms :as transforms.test]
    [metabase.xrays.transforms.core :as tf]
@@ -49,7 +49,7 @@
 
   ([template args revoke-fn validation-fn]
    (mt/with-test-user :rasta
-     (with-dashboard-cleanup!
+     (with-rollback-only-transaction
        (mt/with-full-data-perms-for-all-users!
          (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)
                resp         (mt/user-http-request :rasta :get 200 api-endpoint)
@@ -277,10 +277,10 @@
 (deftest transforms-test
   (testing "GET /api/automagic-dashboards/transform/:id"
     (mt/with-test-user :crowberto
-      (transforms.test/with-test-transform-specs!
-        (test.de/with-test-domain-entity-specs!
+      (transforms.test/with-test-transform-specs
+        (test.de/with-test-domain-entity-specs
           (mt/with-model-cleanup [:model/Card :model/Collection]
-            (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
+            (tf/apply-transform! (mt/id) "PUBLIC" (first (tf.specs/transform-specs)))
             (is (= [[1 "Red Medicine" 4 10.065 -165.374 3 1.5 4 3 2 1]
                     [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                     [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
@@ -524,7 +524,7 @@
   "Create a dashboard via API twice, once with a limit and once without, and return the results."
   [limit template args]
   (mt/with-test-user :crowberto
-    (with-dashboard-cleanup!
+    (with-rollback-only-transaction
       (let [api-endpoint  (apply format (str "automagic-dashboards/" template) args)
             resp          (mt/user-http-request :crowberto :get 200 api-endpoint)
             slimmed       (mt/user-http-request :crowberto :get 200 api-endpoint :show limit)

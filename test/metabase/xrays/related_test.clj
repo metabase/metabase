@@ -17,7 +17,7 @@
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 
-(deftest similiarity-test
+(deftest ^:parallel similiarity-test
   (mt/with-temp [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query venues
                                                                {:aggregation  [[:sum $price]]
                                                                 :breakout     [$category_id]})}
