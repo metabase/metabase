@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
+   [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
@@ -52,6 +53,7 @@
 (defn- handle-import-exception
   [e collections sync-timestamp branch]
   (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
+  (analytics/inc! :metabase-remote-sync/imports-failed)
   (let [error-msg (cond
                     (or (instance? java.net.UnknownHostException e)
                         (instance? java.net.UnknownHostException (ex-cause e)))
@@ -89,6 +91,7 @@
   "Reloads the Metabase entities from the git repo"
   [source task-id branch & [collections]]
   (log/info "Reloading remote entities from the remote source")
+  (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
     (if source
       (try
@@ -125,7 +128,9 @@
          :message "Successfully reloaded from git repository"}
 
         (catch Exception e
-          (handle-import-exception e collections sync-timestamp branch)))
+          (handle-import-exception e collections sync-timestamp branch))
+        (finally
+          (analytics/observe! :metabase-remote-sync/import-duration-ms (u/since-ms sync-timestamp))))
       {:status  :error
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
@@ -135,7 +140,9 @@
    (export! source task-id branch message nil))
   ([source task-id branch message collections]
    (if source
-     (let [collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
+     (let [sync-timestamp (t/instant)
+           collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
+       (analytics/inc! :metabase-remote-sync/exports)
        (try
          (serdes/with-cache
            (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
@@ -157,6 +164,7 @@
          {:status :success}
 
          (catch Exception e
+           (analytics/inc! :metabase-remote-sync/imports-failed)
            (remote-sync.task/fail-sync-task! task-id (ex-message e))
            (doseq [collection collections]
              (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
@@ -165,7 +173,9 @@
                                                :status  "error"
                                                :message (ex-message e)}))
            {:status  :error
-            :message (format "Failed to export to git repository: %s" (ex-message e))})))
+            :message (format "Failed to export to git repository: %s" (ex-message e))})
+         (finally
+           (analytics/observe! :metabase-remote-sync/export-duration-ms (u/since-ms sync-timestamp)))))
      {:status  :error
       :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 

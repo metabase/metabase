@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
+   [metabase.analytics.core :as analytics]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -19,13 +20,29 @@
 (set! *warn-on-reflection* true)
 
 (defn- call-command [^GitCommand command]
-  (.call command))
+  (let [analytics-labels {:operation (-> command .getClass .getName) :remote false}]
+    (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
+
+    (try
+      (.call command)
+      (catch Exception e
+        (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
+        (throw (ex-info (format "Git %s failed: %s" (:operation analytics-labels) (.getMessage e))
+                        analytics-labels e))))))
 
 (defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
-  (let [credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
-    (-> command
-        (.setCredentialsProvider credentials-provider)
-        (.call))))
+  (let [analytics-labels {:operation (-> command .getClass .getName) :remote true}
+        credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
+    (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
+
+    (try
+      (-> command
+          (.setCredentialsProvider credentials-provider)
+          (.call))
+      (catch Exception e
+        (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
+        (throw (ex-info (format "Git %s failed: %s" (-> command .getClass .getName) (.getMessage e))
+                        analytics-labels e))))))
 
 (defn- qualify-branch [branch]
   (if (str/starts-with? branch "refs/heads/")
