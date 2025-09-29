@@ -23,6 +23,8 @@
    [true  ::empty-map]
    [false [:ref ::lib.schema/query]]])
 
+;;; TODO (Cam 9/29/25) -- fill this out more, `:metabase.lib.schema.metadata/card` has a lot of stuff and there's also
+;;; stuff sprinkled thruout this module
 (mr/def ::card
   "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
   [:map

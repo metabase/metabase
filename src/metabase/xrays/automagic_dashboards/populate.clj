@@ -5,10 +5,12 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.filters :as filters]
@@ -128,27 +130,29 @@
 (defn card-defaults
   "Default properties for a dashcard on magic dashboard."
   []
-  {:id                     (gensym)
-   :dashboard_tab_id       nil
+  {:dashboard_tab_id       nil
    :visualization_settings {}})
 
 (mu/defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard
-   {:keys [title description dataset_query width height id] :as card} :- [:map
-                                                                          [:dataset_query
-                                                                           [:map
-                                                                            [:database ::lib.schema.id/database]]]]
+   {query :dataset_query, :keys [title description width height id] :as card} :- [:map
+                                                                                  [:dataset_query
+                                                                                   [:map
+                                                                                    [:database ::lib.schema.id/database]]]]
    [x y]]
-  (let [card (-> {:creator_id    api/*current-user-id*
-                  :dataset_query dataset_query
-                  :description   description
-                  :name          title
-                  :collection_id nil
-                  :id            (or id (gensym))}
-                 (merge (visualization-settings card))
-                 (as-> $card (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
-                               (queries/populate-card-query-fields $card))))]
+  (let [query (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+                (lib-be/normalize-query query))
+        card  (-> {:creator_id    api/*current-user-id*
+                   :dataset_query query
+                   :description   description
+                   :name          title
+                   :collection_id nil}
+                  (merge (when (pos-int? id)
+                           {:id id})
+                         (visualization-settings card))
+                  (as-> $card (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+                                (queries/populate-card-query-fields $card))))]
     (update dashboard :dashcards conj
             (merge (card-defaults)
                    {:col                    y
@@ -299,6 +303,20 @@
     (let [g (group-by f coll)]
       (access key-order g))))
 
+(defn- create-dashboard-populate-dashcards [dashcards]
+  (let [cards                        (for [{:keys [card]} dashcards
+                                           :when          (and (:id card)
+                                                               (:dataset_query card))]
+                                       (update card :dataset_query lib-be/normalize-query))
+        card-id->can-run-adhoc-query (into {}
+                                           (map (juxt :id :can_run_adhoc_query))
+                                           (queries/with-can-run-adhoc-query cards))]
+    (for [dashcard dashcards
+          :let     [card (:card dashcard)
+                    card (when (seq card)
+                           (assoc card :can_run_adhoc_query (get card-id->can-run-adhoc-query (:id card))))]]
+      (u/assoc-dissoc dashcard :card card))))
+
 (mu/defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
@@ -332,15 +350,7 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))
-         dashboard (update dashboard :dashcards (fn [dashcards]
-                                                  (let [cards (map :card dashcards)]
-                                                    (mapv
-                                                     (fn [dashcard card]
-                                                       (m/assoc-some dashcard :card card))
-                                                     dashcards
-                                                     (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
-                                                       (queries/with-can-run-adhoc-query cards))))))]
-
+         dashboard (update dashboard :dashcards create-dashboard-populate-dashcards)]
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)
                  title

@@ -616,11 +616,15 @@
        (and top-level? (:native inner-query)) (set/rename-keys {:native :query})))))
 
 (defmethod ->legacy-MBQL :dispatch-type/map [m]
-  (into {}
-        (comp (disqualify)
-              (map (fn [[k v]]
-                     [k (->legacy-MBQL v)])))
-        m))
+  (if (and (:database m)
+           (#{:query :native} (:type m)))
+    ;; already a legacy query
+    m
+    (into {}
+          (comp (disqualify)
+                (map (fn [[k v]]
+                       [k (->legacy-MBQL v)])))
+          m)))
 
 (defmethod ->legacy-MBQL :aggregation [[_ opts agg-uuid :as ag]]
   (if (map? opts)

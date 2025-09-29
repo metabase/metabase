@@ -248,7 +248,6 @@
        card
        (-> grounded-metric
            (assoc
-            :id (gensym)
             :affinity-name card-name
             :card-score card-score
             :total-score (long (/ (apply + score-components) (count score-components)))
@@ -260,17 +259,3 @@
                    (vals merged-dims)
                    (mapv (comp :filter simple-grounded-filters) card-filters))
            (add-dataset-query base-context))))))
-
-(defn items->str
-  "Convert a seq of items to a string. If more than two items are present, they are separated by commas, including the
-  oxford comma on the final pairing."
-  [[f s :as items]]
-  (condp = (count items)
-    0 ""
-    1 (str f)
-    2 (format "%s and %s" f s)
-    (format "%s, and %s" (str/join ", " (butlast items)) (last items))))
-
-(def dim-name
-  "Name of the dimension. Trying for `:display_name` and falling back to `:name`"
-  (some-fn :display_name :name))

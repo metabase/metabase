@@ -11,34 +11,11 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [toucan2.core :as t2])
-  (:import (com.fasterxml.jackson.core JsonParseException)))
+  (:import
+   (com.fasterxml.jackson.core JsonParseException)))
 
-;; let's make sure the `transform-mbql-query`/`transform-metric-segment-definition`/`transform-parameters-list`
-;; normalization functions respond gracefully to invalid stuff when pulling them out of the Database. See #8914
-
-(deftest ^:parallel handle-bad-template-tags-test
-  (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
-                "response because of one malformed Card, dump the error to the logs and return nil.")
-    (is (= nil
-           ((:out mi/transform-mbql-query)
-            (json/encode
-             {:database 1
-              :type     :native
-              :native   {:template-tags 1000}}))))))
-
-(deftest ^:parallel template-tag-validate-saves-test
-  (testing "on the other hand we should be a little more strict on the way and disallow you from saving the invalid stuff"
-    ;; TODO -- we should make sure this returns a good error message so we don't have to dig thru the exception chain.
-    (is (thrown?
-         Exception
-         ((:in mi/transform-mbql-query)
-          {:database 1
-           :type     :native
-           :native   {:template-tags {100 [:field-id "WOW"]}}})))))
-
-(deftest ^:parallel normalize-empty-query-test
-  (is (= {}
-         ((:out mi/transform-mbql-query) "{}"))))
+;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
+;; gracefully to invalid stuff when pulling them out of the Database. See #8914
 
 (deftest handle-errors-gracefully-test
   (testing (str "Cheat and override the `normalization-tokens` function to always throw an Exception so we can make "

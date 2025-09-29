@@ -487,7 +487,6 @@
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
   metabase.util/with-timer-ms                                                           clojure.core/fn
-  metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
   metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
   metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
   monger.operators/defoperator                                                          clojure.core/def
@@ -684,7 +683,6 @@
    metabase.test/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.users.models.user-test/with-groups!                                            macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                      macros.metabase.util.namespaces/import-fn
-   metabase.xrays.domain-entities.malli/define-getters-and-setters                         macros.metabase.xrays.domain-entities.malli/define-getters-and-setters
    metabase.xrays.related-test/with-world                                                  macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment

@@ -7,7 +7,7 @@
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :refer [transform-specs]]
+   [metabase.xrays.transforms.specs :refer [*transform-specs*]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -62,7 +62,7 @@
 (defn dashboard
   "Create a (transient) dashboard for transform named `transform-name`."
   [transform-name]
-  (let [transform-spec              (m/find-first (comp #{transform-name} :name) @transform-specs)
+  (let [transform-spec              (m/find-first (comp #{transform-name} :name) @*transform-specs*)
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
                                          (t2/select 'Card :collection_id)

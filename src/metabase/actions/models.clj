@@ -1,6 +1,7 @@
 (ns metabase.actions.models
   (:require
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.query :as query]
@@ -55,7 +56,7 @@
    :visualization_settings transform-action-visualization-settings})
 
 (t2/deftransforms :model/QueryAction
-  {:dataset_query mi/transform-mbql-query})
+  {:dataset_query lib-be/transform-query})
 
 (def ^:private transform-json-with-nested-parameters
   {:in  (comp mi/json-in

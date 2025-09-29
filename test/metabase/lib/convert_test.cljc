@@ -1651,3 +1651,13 @@
            {:stage-number 0, :lib/uuid string?}
            [:field {:base-type :type/BigInteger, :lib/uuid string?} 49]]
           (lib.convert/->pMBQL [:dimension [:field 49 {:base-type :type/BigInteger}] {:stage-number 0}]))))
+
+(deftest ^:parallel ->legacy-MBQL-idempotence-test
+  (let [query {:database 1493
+               :type     :query
+               :query    {:aggregation  [[:count]]
+                          :breakout     [[:field 76313 {:source-field 76299}]]
+                          :source-table 11759
+                          :expressions  {"TestColumn" [:+ 1 1]}}}]
+    (is (= query
+           (lib.convert/->legacy-MBQL query)))))

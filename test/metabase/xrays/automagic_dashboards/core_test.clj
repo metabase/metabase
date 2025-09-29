@@ -5,9 +5,11 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -24,6 +26,7 @@
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :as automagic-dashboards.test]
    [toucan2.core :as t2]))
 
@@ -31,7 +34,7 @@
 
 ;;; ------------------- Dashboard template matching  -------------------
 
-(deftest ^:parallel dashboard-template-matching-test
+(deftest ^:paralell dashboard-template-matching-test
   (is (= [:entity/UserTable :entity/GenericTable :entity/*]
          (->> (mt/id :users)
               (t2/select-one :model/Table :id)
@@ -49,7 +52,7 @@
 
 ;;; ------------------- `->root source` -------------------
 
-(deftest ^:parallel source-root-table-test
+(deftest ^:paralell source-root-table-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Table"
     (mt/dataset test-data
       (testing "The source of a table is the table itself"
@@ -59,7 +62,7 @@
           (is (= entity table))
           (is (= source entity)))))))
 
-(deftest ^:parallel source-root-field-test
+(deftest ^:paralell source-root-field-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Field"
     (mt/dataset test-data
       (testing "The source of a field is the originating table of the field"
@@ -69,7 +72,7 @@
           (is (= source table))
           (is (= entity field)))))))
 
-(deftest ^:parallel source-root-card-test
+(deftest ^:paralell source-root-card-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -83,10 +86,12 @@
             (let [{:keys [entity source]} (#'magic/->root card)]
               (is (=? {:type :model}
                       card))
-              (is (= entity card))
-              (is (= source (assoc card :entity_type :entity/GenericTable))))))))))
+              (is (=? (dissoc entity :dataset_query)
+                      card))
+              (is (=? (dissoc source :dataset_query)
+                      (assoc card :entity_type :entity/GenericTable))))))))))
 
-(deftest ^:parallel source-root-card-test-2
+(deftest ^:paralell source-root-card-test-2
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -107,10 +112,12 @@
               (is (=? {:type :question}
                       card))
               (is (true? (#'magic/nested-query? card)))
-              (is (= entity card))
-              (is (= source (assoc nested-query :entity_type :entity/GenericTable))))))))))
+              (is (=? (dissoc entity :dataset_query)
+                      card))
+              (is (=? (dissoc source :entity_type)
+                      nested-query)))))))))
 
-(deftest ^:parallel source-root-card-test-3
+(deftest ^:paralell source-root-card-test-3
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -121,10 +128,12 @@
                 (is (=? {:type :question}
                         card))
                 (is (true? (#'magic/native-query? card)))
-                (is (= entity card))
-                (is (= source (assoc card :entity_type :entity/GenericTable)))))))))))
+                (is (=? (dissoc entity :dataset_query)
+                        card))
+                (is (=? (dissoc source :dataset_query :entity_type)
+                        card))))))))))
 
-(deftest ^:parallel source-root-card-test-4
+(deftest ^:paralell source-root-card-test-4
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -141,10 +150,11 @@
                       card))
               (is (false? (#'magic/nested-query? card)))
               (is (false? (#'magic/native-query? card)))
-              (is (= entity card))
+              (is (=? (dissoc entity :dataset_query)
+                      card))
               (is (= source (t2/select-one :model/Table :id table-id))))))))))
 
-(deftest ^:parallel source-root-query-test
+(deftest ^:paralell source-root-query-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Query"
     (mt/dataset test-data
       (testing "The source of a query is the underlying datasource of the query"
@@ -160,7 +170,7 @@
           (is (= entity query))
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
-(deftest ^:parallel source-root-segment-test
+(deftest ^:paralell source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
@@ -187,42 +197,42 @@
 
 ;; These test names were named by staring at them for a while, so they may be misleading
 
-(deftest automagic-analysis-test
+(deftest ^:parallel automagic-analysis-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [[table cardinality] (map vector
                                        (t2/select :model/Table :db_id (mt/id) {:order-by [[:name :asc]]})
                                        [2 8 11 11 15 17 5 7])]
         (test-automagic-analysis table cardinality)))))
 
-(deftest automagic-analysis-test-2
+(deftest ^:parallel automagic-analysis-test-2
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (is (= 1
              (->> (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :venues)) {:show 1})
                   :dashcards
                   (filter :card)
                   count))))))
 
-(deftest weird-characters-in-names-test
+(deftest ^:parallel weird-characters-in-names-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (-> (t2/select-one :model/Table :id (mt/id :venues))
           (assoc :display_name "%Venues")
           (test-automagic-analysis 7)))))
 
 ;; Cardinality of cards genned from fields is much more labile than anything else
 ;; Not just with respect to drivers, but all sorts of other stuff that makes it chaotic
-(deftest mass-field-test
+(deftest ^:parallel mass-field-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (doseq [field (t2/select :model/Field
                                :table_id [:in (t2/select-fn-set :id :model/Table :db_id (mt/id))]
                                :visibility_type "normal"
                                {:order-by [[:id :asc]]})]
         (is (pos? (count (:dashcards (magic/automagic-analysis field {})))))))))
 
-(deftest parameter-mapping-test
+(deftest ^:parallel parameter-mapping-test
   (mt/dataset test-data
     (testing "mbql queries have parameter mappings with field ids"
       (let [table (t2/select-one :model/Table :id (mt/id :products))
@@ -235,7 +245,7 @@
                                  (:dashcards dashboard))]
         (is (= expected-targets actual-targets))))))
 
-(deftest parameter-mapping-test-2
+(deftest ^:parallel parameter-mapping-test-2
   (mt/dataset test-data
     (testing "native queries have parameter mappings with field ids"
       (let [query (mt/native-query {:query "select * from products"})]
@@ -263,7 +273,7 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 7))))))
 
@@ -279,7 +289,7 @@
                                                               :type :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 17))))))
 
 (deftest native-query-test
@@ -292,7 +302,7 @@
                                                               :type :native
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
@@ -319,7 +329,7 @@
                                                               :type     :query
                                                               :database lib.schema.id/saved-questions-virtual-database-id}}]
         (mt/with-test-user :rasta
-          (automagic-dashboards.test/with-dashboard-cleanup!
+          (automagic-dashboards.test/with-rollback-only-transaction
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
             (test-automagic-analysis (t2/select-one :model/Card :id card-id) 7)))))))
 
@@ -346,7 +356,7 @@
                                                                               :type     :query
                                                                               :database lib.schema.id/saved-questions-virtual-database-id}}]
           (mt/with-test-user :rasta
-            (automagic-dashboards.test/with-dashboard-cleanup!
+            (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
               (test-automagic-analysis (t2/select-one :model/Card :id card-id) 6))))))))
 
@@ -529,16 +539,17 @@
     magic-card-database-id :database_id
     magic-card-query       :dataset_query
     :as                    _magic-card}]
-  (let [valid-source-ids (set (map (fn [{:keys [name id]}] (or id name)) source-meta))
-        {query-db-id  :database
-         query-actual :query} magic-card-query
-        {source-table :source-table
-         breakout     :breakout} query-actual]
+  (let [valid-source-ids        (set (map (fn [{:keys [name id]}] (or id name)) source-meta))
+        magic-card-query        (lib-be/normalize-query magic-card-query)
+        {query-db-id :database} magic-card-query]
     (is (= source-database-id magic-card-database-id))
     (is (= source-database-id query-db-id))
     (is (= source-table-id magic-card-table-id))
-    (is (= (format "card__%s" source-card-id) source-table))
-    (is (true? (every? (fn [[_ id]] (valid-source-ids id)) breakout)))))
+    (is (= source-card-id
+           (lib/source-card-id magic-card-query)))
+    (doseq [breakout (lib/breakouts magic-card-query)
+            field-id (lib/all-field-ids breakout)]
+      (is (contains? valid-source-ids field-id)))))
 
 (defn- ensure-dashboard-sourcing [source-card dashboard]
   (doseq [magic-card (->> dashboard
@@ -580,7 +591,7 @@
                                                                        (result-metadata-for-query
                                                                         source-query))
                                                     :type            :model}]
-            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+            (let [dashboard       (mt/with-test-user :rasta (magic/automagic-analysis card nil))
                   binned-field-id (mt/id :products :price)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
               ;; Count of records
@@ -592,11 +603,14 @@
               ;; This ensures we get a card that does binning on price
               (is (= binned-field-id
                      (first
-                      (for [card (:dashcards dashboard)
-                            :let [fields (get-in card [:card :dataset_query :query :breakout])]
-                            [_ field-id m] fields
-                            :when (:binning m)]
-                        field-id)))))))))))
+                      (for [dashcard (:dashcards dashboard)
+                            :let     [query (get-in dashcard [:card :dataset_query])]
+                            :when    query
+                            :let     [breakouts (lib/breakouts query)]
+                            id       (lib.util.match/match breakouts
+                                       [:field (_opts :guard :binning) (id :guard pos-int?)]
+                                       id)]
+                        id)))))))))))
 
 (deftest basic-root-model-test-2
   (testing "Simple model with a temporal dimension detected"
@@ -622,12 +636,15 @@
                                                                        (result-metadata-for-query
                                                                         source-query))
                                                     :type            :model}]
-            (let [dashboard (mt/with-test-user :rasta (magic/automagic-analysis card nil))
-                  temporal-field-ids (for [card (:dashcards dashboard)
-                                           :let [fields (get-in card [:card :dataset_query :query :breakout])]
-                                           [_ field-id m] fields
-                                           :when (:temporal-unit m)]
-                                       field-id)]
+            (let [dashboard          (mt/with-test-user :rasta (magic/automagic-analysis card nil))
+                  temporal-field-ids (for [dashcard (:dashcards dashboard)
+                                           :let     [query (get-in dashcard [:card :dataset_query])]
+                                           :when    query
+                                           :let     [breakouts (lib/breakouts query)]
+                                           id       (lib.util.match/match breakouts
+                                                      [:field (_opts :guard :temporal-unit) (id :guard pos-int?)]
+                                                      id)]
+                                       id)]
               (ensure-single-table-sourced (mt/id :products) dashboard)
               (ensure-dashboard-sourcing card dashboard)
               ;; We want to produce at least one temporal axis card
@@ -738,7 +755,7 @@
               (is (false? (str/ends-with? question-dashboard-name "model")))
               (is (true? (str/ends-with? question-dashboard-name (format "\"%s\"" (:name question-card))))))))))))
 
-(deftest model-based-automagic-dashboards-have-correct-parameter-mappings-test
+(deftest ^:parallel model-based-automagic-dashboards-have-correct-parameter-mappings-test
   (testing "Dashcard parameter mappings have valid targets when X-raying models (#58214)"
     (mt/dataset test-data
       (mt/with-temp
@@ -767,7 +784,8 @@
                (:name (mt/with-test-user :rasta (magic/automagic-analysis field nil)))))))))
 
 (deftest test-segment-title-test
-  (testing "Given the current automagic_dashboards/metric/GenericTable.yaml template (This is the default template for segments), produce the expected dashboard title"
+  (testing (str "Given the current automagic_dashboards/metric/GenericTable.yaml template (This is the default"
+                " template for segments), produce the expected dashboard title")
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp [:model/Segment {table-id    :table_id
                                      segment-name :name
@@ -841,7 +859,7 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 17))))))
 
@@ -854,7 +872,7 @@
                                                               :type     :native
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one :model/Card :id card-id) 2))))))
 
@@ -868,7 +886,7 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one :model/Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
@@ -886,12 +904,14 @@
         (let [entity     (t2/select-one :model/Card :id card-id)
               cell-query [:= [:field (mt/id :venues :category_id) nil] 2]]
           (mt/with-test-user :rasta
-            (automagic-dashboards.test/with-dashboard-cleanup!
+            (automagic-dashboards.test/with-rollback-only-transaction
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id) =
-              (let [all-dashcard-filters (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
-                                              :dashcards
-                                              (keep (comp :filter :query :dataset_query :card)))
-                    filter-contains-cell-query?                 #(= cell-query (some #{cell-query} %))]
+              (let [all-dashcard-filters        (->> (magic/automagic-analysis entity {:cell-query cell-query :show :all})
+                                                     :dashcards
+                                                     (keep #(-> %
+                                                                (get-in [:card :dataset_query])
+                                                                (magic.util/do-with-legacy-query get-in [:query :filter]))))
+                    filter-contains-cell-query? #(= cell-query (some #{cell-query} %))]
                 (is (pos? (count all-dashcard-filters)))
                 (is (every? filter-contains-cell-query? all-dashcard-filters))))))))))
 
@@ -905,23 +925,23 @@
                                                               :type     :query
                                                               :database (mt/id)}}]
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> (t2/select-one :model/Card :id card-id)
               (test-automagic-analysis [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))))
 
-(deftest adhoc-filter-test
+(deftest ^:parallel adhoc-filter-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
                                                               :database (mt/id)})]
         (test-automagic-analysis q 7)))))
 
-(deftest adhoc-count-test
+(deftest ^:parallel adhoc-count-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
                                                                       :breakout [[:field (mt/id :venues :category_id) nil]]
                                                                       :source-table (mt/id :venues)}
@@ -929,9 +949,9 @@
                                                               :database (mt/id)})]
         (test-automagic-analysis q 17)))))
 
-(deftest adhoc-fk-breakout-test
+(deftest ^:parallel adhoc-fk-breakout-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:aggregation [[:count]]
                                                                       :breakout [[:field (mt/id :venues :category_id) {:source-field (mt/id :checkins)}]]
                                                                       :source-table (mt/id :checkins)}
@@ -939,18 +959,18 @@
                                                               :database (mt/id)})]
         (test-automagic-analysis q 9)))))
 
-(deftest adhoc-filter-cell-test
+(deftest ^:parallel adhoc-filter-cell-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [q (api.automagic-dashboards/adhoc-query-instance {:query {:filter [:> [:field (mt/id :venues :price) nil] 10]
                                                                       :source-table (mt/id :venues)}
                                                               :type :query
                                                               :database (mt/id)})]
         (test-automagic-analysis q [:= [:field (mt/id :venues :category_id) nil] 2] 7)))))
 
-(deftest join-splicing-test
+(deftest ^:parallel join-splicing-test
   (mt/with-test-user :rasta
-    (automagic-dashboards.test/with-dashboard-cleanup!
+    (automagic-dashboards.test/with-rollback-only-transaction
       (let [join-vec    [{:source-table (mt/id :categories)
                           :condition    [:= [:field (mt/id :categories :id) nil] 1]
                           :strategy     :left-join
@@ -971,35 +991,37 @@
   (testing "/candidates"
     (testing "should work with the normal test-data DB"
       (mt/with-test-user :rasta
-        (is (malli= [:cat
-                     [:map
-                      [:tables [:sequential {:min 8, :max 8} :any]]]
-                     [:* :any]]
-                    (magic/candidate-tables (mt/db))))))
+        (mt/with-full-data-perms-for-all-users!
+          (is (malli= [:cat
+                       [:map
+                        [:tables [:sequential {:min 8, :max 8} :any]]]
+                       [:* :any]]
+                      (magic/candidate-tables (mt/db)))))))))
 
+(deftest ^:parallel candidates-test-2
+  (testing "/candidates"
     (testing "should work with unanalyzed tables"
       (mt/with-test-user :rasta
         (mt/with-temp [:model/Database {db-id :id} {}
                        :model/Table    {table-id :id} {:db_id db-id}
                        :model/Field    _ {:table_id table-id}
                        :model/Field    _ {:table_id table-id}]
-          (automagic-dashboards.test/with-dashboard-cleanup!
-            (is (=? [{:tables [{:table {:id table-id}}]}]
-                    (magic/candidate-tables (t2/select-one :model/Database :id db-id))))))))))
+          (is (=? [{:tables [{:table {:id table-id}}]}]
+                  (magic/candidate-tables (t2/select-one :model/Database :id db-id)))))))))
 
-(deftest call-count-test
+(deftest ^:parallel call-count-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _ {:table_id table-id}
                  :model/Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup!
+      (automagic-dashboards.test/with-rollback-only-transaction
         (let [database (t2/select-one :model/Database :id db-id)]
           (t2/with-call-count [call-count]
             (magic/candidate-tables database)
             (is (= 2 (call-count)))))))))
 
-(deftest empty-table-test
+(deftest ^:parallel empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"
     (mt/with-temp [:model/Database db {}
                    :model/Table    _  {:db_id (:id db)}]
@@ -1007,33 +1029,33 @@
         (is (= []
                (magic/candidate-tables db)))))))
 
-(deftest enhance-table-stats-test
+(deftest ^:parallel enhance-table-stats-test
   (mt/with-temp [:model/Database {db-id :id} {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _ {:table_id table-id :semantic_type :type/PK}
                  :model/Field    _ {:table_id table-id}]
     (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup!
+      (automagic-dashboards.test/with-rollback-only-transaction
         (is (partial= {:list-like?  true
                        :num-fields 2}
                       (-> (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]])
                           first)))))))
 
-(deftest enhance-table-stats-fk-test
+(deftest ^:parallel enhance-table-stats-fk-test
   (mt/with-temp [:model/Database {db-id :id}    {}
                  :model/Table    {table-id :id} {:db_id db-id}
                  :model/Field    _              {:table_id table-id :semantic_type :type/PK}
                  :model/Field    _              {:table_id table-id :semantic_type :type/FK}
                  :model/Field    _              {:table_id table-id :semantic_type :type/FK}]
     (mt/with-test-user :rasta
-      (automagic-dashboards.test/with-dashboard-cleanup!
+      (automagic-dashboards.test/with-rollback-only-transaction
         (testing "filters out link-tables"
           (is (empty?
                (#'magic/load-tables-with-enhanced-table-stats [[:= :id table-id]]))))))))
 
 ;;; ------------------- Definition overloading -------------------
 
-(deftest ^:parallel most-specific-definition-test
+(deftest ^:paralell most-specific-definition-test
   (testing "Identity"
     (is (= :d1
            (-> [{:d1 {:field_type [:type/Category] :score 100}}]
@@ -1041,7 +1063,7 @@
                first
                key)))))
 
-(deftest ^:parallel ancestors-definition-test
+(deftest ^:paralell ancestors-definition-test
   (testing "Base case: more ancestors"
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1050,7 +1072,7 @@
                first
                key)))))
 
-(deftest ^:parallel definition-tiebreak-test
+(deftest ^:paralell definition-tiebreak-test
   (testing "Break ties based on the number of additional filters"
     (is (= :d3
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1062,7 +1084,7 @@
                first
                key)))))
 
-(deftest ^:parallel definition-tiebreak-score-test
+(deftest ^:paralell definition-tiebreak-score-test
   (testing "Break ties on score"
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1072,7 +1094,7 @@
                first
                key)))))
 
-(deftest ^:parallel definition-tiebreak-precedence-test
+(deftest ^:paralell definition-tiebreak-precedence-test
   (testing "Number of additional filters has precedence over score"
     (is (= :d3
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1086,12 +1108,7 @@
 
 ;;; -------------------- Filters --------------------
 
-(defn field! [table column]
-  (or (t2/select-one :model/Field :id (mt/id table column))
-      (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
-                      {:table table :column column}))))
-
-(deftest most-specific-definition-inner-shape-test
+(deftest ^:parallel most-specific-definition-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from most-specific-definition"
     (mt/dataset test-data
       (testing ""
@@ -1161,7 +1178,7 @@
                               candidate-bindings
                               (#'interesting/most-specific-matched-dimension))))))))))))
 
-(deftest bind-dimensions-inner-shape-test
+(deftest ^:parallel bind-dimensions-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from bind-dimensions"
     (mt/dataset test-data
       (testing "Clearly demonstrate the mechanism of full dimension binding"
@@ -1194,7 +1211,7 @@
                                    :score      60}}
                  (update-in bound-dimensions ["Loc" :matches] (partial sort-by :id))))))))))
 
-(deftest binding-functions-with-all-same-names-and-types-test
+(deftest ^:parallel binding-functions-with-all-same-names-and-types-test
   (testing "Ensure expected behavior when multiple columns alias to the same base column and display metadata uses the
             same name for all columns."
     (mt/dataset test-data
@@ -1261,7 +1278,7 @@
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
-(deftest ^:parallel related-card-generation-test
+(deftest ^:paralell related-card-generation-test
   (testing "Ensure that the `related` function is called and the right cards are created."
     (mt/with-test-user :rasta
       (mt/dataset test-data
@@ -1295,7 +1312,7 @@
                       (update :zoom-in (comp vec (partial sort-by :title)))
                       (update :related (comp vec (partial sort-by :title)))))))))))
 
-(deftest ^:parallel singular-cell-dimensions-test
+(deftest ^:paralell singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
     (is (= #{1 2 "TOTAL"}
            (#'magic/singular-cell-dimension-field-ids
@@ -1305,12 +1322,12 @@
               [:= [:field 2 nil]]
               [:= [:field "TOTAL" {:base-type :type/Number}]]]})))))
 
-(deftest adhoc-query-with-explicit-joins-14793-test
+(deftest ^:parallel adhoc-query-with-explicit-joins-14793-test
   (testing "A verification of the fix for https://github.com/metabase/metabase/issues/14793,
             X-rays fails on explicit joins, when metric is for the joined table"
     (mt/dataset test-data
       (mt/with-test-user :rasta
-        (automagic-dashboards.test/with-dashboard-cleanup!
+        (automagic-dashboards.test/with-rollback-only-transaction
           (let [query-with-joins {:database   (mt/id)
                                   :type       :query
                                   :query      {:source-table (mt/id :reviews)
@@ -1342,7 +1359,7 @@
             (testing "An expectation check -- this dashboard should produce this group heading"
               (is (contains? section-headings expected-section)))))))))
 
-(deftest compare-to-the-rest-25278+32557-test
+(deftest ^:parallel compare-to-the-rest-25278+32557-test
   (testing "Ensure valid queries are generated for an automatic comparison dashboard (fixes 25278 & 32557)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
@@ -1386,7 +1403,7 @@
               (is (some? filtered-data))
               (is (not= base-data filtered-data)))))))))
 
-(deftest compare-to-the-rest-with-expression-16680-test
+(deftest ^:parallel compare-to-the-rest-with-expression-16680-test
   (testing "Ensure a valid comparison dashboard is generated with custom expressions (fixes 16680)"
     (mt/dataset test-data
       (mt/with-test-user :crowberto
@@ -1452,7 +1469,7 @@
               (is (some? card-dataset-query))
               (is (= 7 (:row_count (qp/process-query card-dataset-query)))))))))))
 
-(deftest preserve-entity-element-test
+(deftest ^:parallel preserve-entity-element-test
   (testing "Join preservation scenarios: merge, empty expressions, no expressions, no card"
     (is (= [[{:strategy :left-join, :alias "Orders"}
              {:strategy :left-join, :alias "Products"}]
@@ -1461,14 +1478,16 @@
             nil]
            (->>
             (#'magic/preserve-entity-element
-             {:dashcards [{:card {:dataset_query {:query {:joins [{:strategy :left-join :alias "Orders"}]}}}}
-                          {:card {:dataset_query {:query {:joins []}}}}
-                          {:card {:dataset_query {:query {}}}}
+             {:dashcards [{:card {:dataset_query {:database 1, :type :query, :query {:joins [{:strategy :left-join :alias "Orders"}]}}}}
+                          {:card {:dataset_query {:database 1, :type :query, :query {:joins []}}}}
+                          {:card {:dataset_query {:database 1, :type :query, :query {}}}}
                           {:viz_settings nil}]}
-             {:dataset_query {:query {:joins [{:strategy :left-join :alias "Products"}]}}}
+             {:dataset_query {:database 1, :type :query, :query {:joins [{:strategy :left-join :alias "Products"}]}}}
              :joins)
             :dashcards
-            (mapv (comp :joins :query :dataset_query :card))))))
+            (mapv (comp :joins :query :dataset_query :card)))))))
+
+(deftest ^:parallel preserve-entity-element-test-2
   (testing "Expression preservation scenarios: merge, empty expressions, no expressions, no card"
     (is (= [{"Existing" [:- 1 1] "TestColumn" [:+ 1 1]}
             {"TestColumn" [:+ 1 1]}
@@ -1476,16 +1495,16 @@
             nil]
            (->>
             (#'magic/preserve-entity-element
-             {:dashcards [{:card {:dataset_query {:query {:expressions {"Existing" [:- 1 1]}}}}}
-                          {:card {:dataset_query {:query {:expressions {}}}}}
-                          {:card {:dataset_query {:query {}}}}
+             {:dashcards [{:card {:dataset_query {:database 1, :type :query, :query {:expressions {"Existing" [:- 1 1]}}}}}
+                          {:card {:dataset_query {:database 1, :type :query, :query {:expressions {}}}}}
+                          {:card {:dataset_query {:database 1, :type :query, :query {}}}}
                           {:viz_settings nil}]}
-             {:dataset_query {:query {:expressions {"TestColumn" [:+ 1 1]}}}}
+             {:dataset_query {:database 1, :type :query, :query {:expressions {"TestColumn" [:+ 1 1]}}}}
              :expressions)
             :dashcards
             (mapv (comp :expressions :query :dataset_query :card)))))))
 
-(deftest compare-to-the-rest-15655-test
+(deftest ^:parallel compare-to-the-rest-15655-test
   (testing "Questions based on native questions should produce a valid dashboard. (#15655)"
     (let [native-query {:native   {:query "select * from people limit 1"}
                         :type     :native
@@ -1550,10 +1569,10 @@
 
 ;;; this is a fixed version of the test above that correctly generates the second card so that it matches the equivalent
 ;;; Cypress test spec.
-(deftest ^:parallel compare-to-the-rest-15655-fixed-test
+(deftest ^:paralell compare-to-the-rest-15655-fixed-test
   (testing "Questions based on native questions should produce a valid dashboard. (#15655)"
     (mt/with-temp [:model/Card {native-card-id :id} (merge (mt/card-with-source-metadata-for-query
-                                                            (lib/->legacy-MBQL (lib/native-query (mt/metadata-provider) "select * from people LIMIT 100;")))
+                                                            (lib/native-query (mt/metadata-provider) "select * from people LIMIT 100;"))
                                                            {:name "15655"})
                    :model/Card card (let [metadata-provider (mt/metadata-provider)
                                           query             (lib/query metadata-provider
@@ -1563,7 +1582,7 @@
                                                                 (lib/breakout
                                                                  (m/find-first #(= (:name %) "SOURCE")
                                                                                (lib/breakoutable-columns query))))]
-                                      (qp.test-util/card-with-source-metadata-for-query (lib/->legacy-MBQL query)))]
+                                      (qp.test-util/card-with-source-metadata-for-query query))]
       (let [cell-query ["=" ["field" "SOURCE" {"base-type" "type/Text"}] "Affiliate"]]
         (is (= ["Over time"
                 "Number of 15655 per day of the week"
@@ -1587,7 +1606,7 @@
                      ;; and "cell-query" base-64 encoded
                      (:dashcards (magic/automagic-analysis card {:cell-query cell-query})))))))))
 
-(deftest source-fields-are-populated-for-aggregations-38618-test
+(deftest ^:parallel source-fields-are-populated-for-aggregations-38618-test
   (testing "X-ray aggregates (metrics) with source fields in external tables should properly fill in `:source-field` (#38618)"
     (mt/dataset test-data
       (let [dashcard  (->> (magic/automagic-analysis (t2/select-one :model/Table :id (mt/id :reviews)) {:show :all})
@@ -1596,7 +1615,9 @@
                                      (= "Distinct Product ID"
                                         (get-in dashcard [:card :name]))))
                            first)
-            aggregate (get-in dashcard [:card :dataset_query :query :aggregation])]
+            aggregate (-> dashcard
+                          (get-in [:card :dataset_query])
+                          (magic.util/do-with-legacy-query get-in [:query :aggregation]))]
         (testing "Fields requiring a join should have :source-field populated in the aggregate."
           (is (= [[:distinct [:field (mt/id :products :id)
                               ;; This should be present vs. nil (value before issue)

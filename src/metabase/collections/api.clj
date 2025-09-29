@@ -18,6 +18,7 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -544,7 +545,7 @@
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
-      (update :dataset_query (:out mi/transform-mbql-query))
+      (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
