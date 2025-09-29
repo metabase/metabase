@@ -222,7 +222,7 @@
         ;; Progress updates
         (rst/update-progress! (:id task) 0.3)
         (let [updated (t2/select-one :model/RemoteSyncTask :id (:id task))]
-          (is (= 0.3 (:progress updated)))
+          (is (< (abs (- 0.3 (:progress updated))) 0.0001))
           (is (nil? (:ended_at updated))))
 
         ;; Completion
@@ -245,7 +245,7 @@
         (let [error-msg "Network connection lost"]
           (rst/fail-sync-task! (:id task) error-msg)
           (let [failed (t2/select-one :model/RemoteSyncTask :id (:id task))]
-            (is (= 0.7 (:progress failed))) ; Progress preserved
+            (is (< (abs (- 0.7 (:progress failed))) 0.0001))
             (is (some? (:ended_at failed)))
             (is (= error-msg (:error_message failed)))))))))
 
