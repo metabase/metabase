@@ -155,13 +155,12 @@
 (defn find-table-or-transform
   "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
    It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
-  [driver tables transforms {:keys [table schema]}]
-  (let [normalized-table (sql.normalize/normalize-name driver table)
-        normalized-schema (or (some->> schema (sql.normalize/normalize-name driver))
-                              (default-schema driver))
+  [driver tables transforms {search-table :table raw-schema :schema}]
+  (let [search-schema (or raw-schema
+                          (default-schema driver))
         matches? (fn [db-table db-schema]
-                   (and (= normalized-table db-table)
-                        (= normalized-schema db-schema)))]
+                   (and (= search-table db-table)
+                        (= search-schema db-schema)))]
     (or (some (fn [{:keys [name schema id]}]
                 (when (matches? name schema)
                   {:table id}))
@@ -170,6 +169,11 @@
                 (when (matches? name schema)
                   {:transform id}))
               transforms))))
+
+(defn- normalize-table-spec
+  [driver {:keys [table schema]}]
+  {:table (sql.normalize/normalize-name driver table)
+   :schema (some->> schema (sql.normalize/normalize-name driver))})
 
 (defmethod driver/native-query-deps :sql
   ([driver query]
@@ -183,7 +187,8 @@
           macaw/query->components
           :tables
           (map :component)
-          (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)))))))
+          (into #{} (keep #(->> (normalize-table-spec driver %)
+                                (find-table-or-transform driver db-tables db-transforms))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
