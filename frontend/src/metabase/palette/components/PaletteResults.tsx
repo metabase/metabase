@@ -51,7 +51,7 @@ export const PaletteResults = ({
 
   useEffect(() => {
     if (processedResults[0] === t`Results`) {
-      query.setActiveIndex(2);
+      query.setActiveIndex(1);
     }
   }, [processedResults, query]);
 
