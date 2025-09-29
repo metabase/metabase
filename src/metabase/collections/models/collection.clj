@@ -1794,7 +1794,7 @@
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}
-   :where        [:= :namespace nil]
+   :where        [:or [:= :namespace nil] [:= :namespace "analytics"]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and
