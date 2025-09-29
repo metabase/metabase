@@ -89,8 +89,8 @@
                                                :body (json/decode+kw (String. ^bytes (:body opts) "UTF-8"))})
                              {:status 204 :body ""})]
                 (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
-                  (is (= expected-url (:url @captured)))
-                  (is (= feedback (:body @captured))))))))
+                  (is (= {:url expected-url :body feedback} 
+                         @captured)))))))
 
         (testing "Returns 500 when http post fails"
           (mt/with-temporary-setting-values [premium-embedding-token premium-token
