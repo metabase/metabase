@@ -50,6 +50,13 @@
     false-clause
     true-clause))
 
+;; Transforms can't be archived
+(defmethod archived-clause "transform"
+  [_model archived?]
+  (if archived?
+    false-clause
+    true-clause))
+
 (defmethod archived-clause "indexed-entity"
   [_model archived?]
   (if-not archived?
