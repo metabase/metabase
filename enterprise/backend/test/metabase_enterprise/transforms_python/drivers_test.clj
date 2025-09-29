@@ -29,21 +29,22 @@
   "Execute a Python transform with the given code and tables"
   [{:keys [code tables]}]
   (with-open [shared-storage-ref (s3/open-shared-storage! (or tables {}))]
-    (let [server-url (transforms-python.settings/python-runner-url)
-          cancel-chan (a/promise-chan)
-          table-name->id (or tables {})
-          _ (python-runner/copy-tables-to-s3! {:run-id test-id
-                                               :shared-storage @shared-storage-ref
-                                               :table-name->id table-name->id
-                                               :cancel-chan cancel-chan})
-          response (python-runner/execute-python-code-http-call! {:server-url server-url
-                                                                  :code code
-                                                                  :run-id test-id
-                                                                  :table-name->id table-name->id
-                                                                  :shared-storage @shared-storage-ref})
-          {:keys [output-stream output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+    (let [server-url      (transforms-python.settings/python-runner-url)
+          cancel-chan     (a/promise-chan)
+          table-name->id  (or tables {})
+          _               (python-runner/copy-tables-to-s3! {:run-id         test-id
+                                                             :shared-storage @shared-storage-ref
+                                                             :table-name->id table-name->id
+                                                             :cancel-chan    cancel-chan})
+          response        (python-runner/execute-python-code-http-call! {:server-url     server-url
+                                                                         :code           code
+                                                                         :run-id         test-id
+                                                                         :table-name->id table-name->id
+                                                                         :shared-storage @shared-storage-ref})
+          events          (python-runner/read-events @shared-storage-ref)
+          output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
       (merge (:body response)
-             {:output (some-> output-stream slurp)
+             {:output (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
               :output-manifest output-manifest
               :stdout (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))

@@ -183,32 +183,22 @@
   (let [^PutObjectRequest request (put-object-request bucket-name key)]
     (.putObject s3-client request (RequestBody/fromFile file))))
 
-(defn read-to-stream
-  "Get back the contents of the given key as a stream."
-  ([s3-client bucket-name key] (read-to-stream s3-client bucket-name key ::throw))
-  ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (try
-     (let [^GetObjectRequest request (get-object-request bucket-name key)]
-       (.getObject s3-client request))
-     (catch NoSuchKeyException e
-       (cond
-         (identical? ::throw not-found)
-         (throw e)
-
-         (string? not-found)
-         (ByteArrayInputStream. (.getBytes ^String not-found "UTF-8"))
-
-         :else
-         not-found)))))
+(defn open-object
+  "Get back the contents of the given key as a InputStream."
+  ^InputStream [^S3Client s3-client ^String bucket-name ^String key]
+  (try
+    (let [^GetObjectRequest request (get-object-request bucket-name key)]
+      (.getObject s3-client request))
+    (catch NoSuchKeyException _ nil)))
 
 (defn read-to-string
   "Get back the contents of the given key as a string."
   ([s3-client bucket-name key] (read-to-string s3-client bucket-name key ::throw))
   ([^S3Client s3-client ^String bucket-name ^String key not-found]
-   (let [ret (read-to-stream s3-client bucket-name key not-found)]
-     (if (instance? InputStream ret)
-       (slurp ret)
-       ret))))
+   (if-some [in (open-object s3-client bucket-name key)]
+     (with-open [ret in]
+       (slurp ret))
+     not-found)))
 
 (defn delete
   ;; TODO better error handling

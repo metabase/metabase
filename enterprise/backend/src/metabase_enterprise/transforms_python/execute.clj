@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-python.execute
   (:require
    [clojure.core.async :as a]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
@@ -10,13 +11,14 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io Closeable InputStream)
+   (java.io Closeable)
    (java.net SocketException)
-   (java.nio.file Files CopyOption StandardCopyOption)
+   (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)
    (java.time Duration)))
 
@@ -244,13 +246,14 @@
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
               shared-storage-ref (s3/open-shared-storage! (:source-tables source))]
-    (let [driver     (:engine db)
-          server-url (transforms-python.settings/python-runner-url)
-          _          (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                        :shared-storage @shared-storage-ref
-                                                        :table-name->id (:source-tables source)
-                                                        :cancel-chan    cancel-chan})
-          _          (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+    (let [driver          (:engine db)
+          server-url      (transforms-python.settings/python-runner-url)
+          _               (python-runner/copy-tables-to-s3! {:run-id         run-id
+                                                             :shared-storage @shared-storage-ref
+                                                             :table-name->id (:source-tables source)
+                                                             :cancel-chan    cancel-chan})
+          _               (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url
@@ -258,28 +261,28 @@
             :run-id         run-id
             :table-name->id (:source-tables source)
             :shared-storage @shared-storage-ref})
-          {:keys [output-stream output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+
+          output-manifest (python-runner/read-output-manifest @shared-storage-ref)
+          events          (python-runner/read-events @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
       (if (not= 200 status)
         (throw (ex-info "Python runner call failed"
-                        {:status-code           400
-                         :api-status-code       status
-                         :body                  body
-                         :events                events
-                         :transform-run-message (message-log->transform-run-message message-log)}))
+                        {:transform-message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))
+                         :status-code       400
+                         :api-status-code   status
+                         :body              body}))
         (try
           (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
                 temp-file (.toFile temp-path)]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
-                               :raw-body               body
-                               :events                 events
-                               :transform-run-message  (message-log->transform-run-message message-log)})))
+                               :raw-body               body})))
             (try
-              (Files/copy ^InputStream output-stream temp-path (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING]))
+              (with-open [in (python-runner/open-output @shared-storage-ref)]
+                (io/copy in temp-file))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
