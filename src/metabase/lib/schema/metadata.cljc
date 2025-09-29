@@ -164,11 +164,22 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+;; these can both be empty strings like `""` because SQL Server (and possibly some other DBs) allow empty strings as
+;; column identifiers
+
 (mr/def ::source-column-alias
-  ::lib.schema.common/non-blank-string)
+  "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The
+  left-hand side (LHS) of
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::desired-column-alias
-  [:string {:min 1}])
+  "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N
+  becomes the source column alias in stage N+1. The right-hand side (RHS) in
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::original-name
   "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
