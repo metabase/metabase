@@ -39,7 +39,7 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:req-fields {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
@@ -52,7 +52,7 @@
   (->> (:attrs spec)
        vals
        (filter function-attr?)
-       (mapcat :req-fields)
+       (mapcat :fields)
        distinct))
 
 (def attr-types
@@ -206,8 +206,8 @@
     (and (vector? expr) (> (count expr) 1))
     (into [] (mapcat find-fields-expr) (subvec expr 1))
 
-    (and (map? expr) (:req-fields expr))
-    (into [] (mapcat find-fields-expr) (:req-fields expr))))
+    (and (map? expr) (:fields expr))
+    (into [] (mapcat find-fields-expr) (:fields expr))))
 
 (defn- find-fields-attr [[k v]]
   (when v
@@ -338,7 +338,22 @@
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
-  "Define a spec for a search model."
+  "Define a search specification for indexing and searching a Metabase model.
+
+   Spec keys:
+   - `:model` - Toucan model keyword (required)
+   - `:attrs` - Map of search index attributes (required)
+   - `:search-terms` - Vector of searchable text fields (required)
+   - `:render-terms` - Additional attributes needed for display (required)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:where` - HoneySQL where clause to filter indexed records
+   - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
+   - `:joins` - Map of join aliases to [model join-condition] tuples
+
+   Attribute value formats:
+   - `true` - Use column with same name (snake_case)
+   - `:column_name` - Use specified database column
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure funtion at index time with the given fields"
   [search-model spec]
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)

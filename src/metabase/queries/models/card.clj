@@ -1297,7 +1297,7 @@
                   :database-id          true
                   :last-viewed-at       :last_used_at
                   :native-query         {:fn maybe-extract-native-query
-                                         :req-fields [:dataset_query]}
+                                         :fields [:dataset_query]}
                   :official-collection  [:= "official" :collection.authority_level]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
@@ -1308,9 +1308,9 @@
                   :updated-at           true
                   :display-type         :this.display
                   :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
-                                         :req-fields [:dataset_query]}
+                                         :fields [:dataset_query]}
                   :has-temporal-dim     {:fn has-temporal-dimension?
-                                         :req-fields [:dataset_query]}}
+                                         :fields [:dataset_query]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
