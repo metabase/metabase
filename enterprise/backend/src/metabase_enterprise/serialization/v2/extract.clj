@@ -145,7 +145,7 @@
         escaped  (escape-analysis by-model nodes)]
     (if (seq escaped)
       (log-escape-report! escaped)
-      (let [models         (model-set opts)
+      (let [models         #p (model-set opts)
             coll-set       (get by-model "Collection")
             by-model       (select-keys by-model models)
             extract-by-ids (fn [[model ids]]

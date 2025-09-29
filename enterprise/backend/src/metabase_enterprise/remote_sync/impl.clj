@@ -150,8 +150,8 @@
                                                 :no-data-model            true
                                                 :no-settings              true
                                                 :no-transforms            true
-                                                :include-field-values     :false
-                                                :include-database-secrets :false
+                                                :include-field-values     false
+                                                :include-database-secrets false
                                                 :continue-on-error        false})]
              (remote-sync.task/update-progress! task-id 0.3)
              (source/store! models source task-id message))

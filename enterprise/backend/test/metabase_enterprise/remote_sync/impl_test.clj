@@ -252,18 +252,21 @@
 
 (deftest export!-calls-update-progress-with-expected-values-test
   (testing "export! calls update-progress! with expected progress values"
-    (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
-                   :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
-                   :model/Collection {_coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}]
-      (let [mock-source (test-helpers/create-mock-source)
-            progress-calls (atom [])]
-        (with-redefs [remote-sync.task/update-progress!
-                      (fn [task-id progress]
-                        (swap! progress-calls conj {:task-id task-id :progress progress}))]
-          (let [result (impl/export! mock-source task-id "test-branch" "Test commit" ["test-collection-1xxxx"])]
-            (is (= :success (:status result)))
-            ;; Verify progress was called with expected values
-            (is (= 2 (count @progress-calls)))
-            (is (= task-id (:task-id (first @progress-calls))))
-            ;; Check progress value is expected
-            (is (= 0.3 (:progress (first @progress-calls))))))))))
+    (mt/dataset test-data
+      (mt/with-temp [:model/User user {:first_name "Test" :last_name "User" :email "test@example.com"}
+                     :model/RemoteSyncTask {task-id :id} {:sync_task_type "export" :initiated_by (:id user)}
+                     :model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+                     :model/Collection _ {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-2xxxx" :location "/"}
+                     :model/Card _ {:collection_id coll-id}]
+        (let [mock-source (test-helpers/create-mock-source)
+              progress-calls (atom [])]
+          (with-redefs [remote-sync.task/update-progress!
+                        (fn [task-id progress]
+                          (swap! progress-calls conj {:task-id task-id :progress progress}))]
+            (let [result (impl/export! mock-source task-id "test-branch" "Test commit" ["test-collection-1xxxx"])]
+              (is (= :success (:status result)))
+              ;; Verify progress was called with expected values
+              (is (= 3 (count @progress-calls)))
+              (is (= task-id (:task-id (first @progress-calls))))
+              ;; Check progress value is expected
+              (is (= 0.3 (:progress (first @progress-calls)))))))))))
