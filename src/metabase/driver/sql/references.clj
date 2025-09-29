@@ -1,23 +1,11 @@
 (ns metabase.driver.sql.references
   (:require
-   [clojure.set :as set]
-   [clojure.string :as str]
    [macaw.ast-types :as macaw.ast-types]
-   [macaw.core :as macaw]
-   [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.sql.normalize :as sql.normalize]
-   [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
-   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [potemkin :as p]))
+   [metabase.util.performance perf :refer [every? mapv select-keys some]]))
 
 (mr/def ::single-column
   [:map
@@ -70,10 +58,10 @@
    [:bad-sql {:optional true} :boolean]])
 
 (defn- normalize-fields [driver m]
-  (m/map-vals #(if (string? %)
-                 (sql.normalize/normalize-name driver %)
-                 %)
-              m))
+  (update-vals m
+               #(if (string? %)
+                  (sql.normalize/normalize-name driver %)
+                  %)))
 
 (defn- col-fields [driver m]
   (->> (select-keys m [:type :column :table :schema :database :alias])
@@ -95,11 +83,10 @@
         sources))
 
 (defn- get-column [driver sources raw-col]
-  (if-let [literal (and
-                    (nil? (:table raw-col))
-                    (nil? (:schema raw-col))
-                    (nil? (:database raw-col))
-                    (sql.normalize/reserved-literal driver (:column raw-col)))]
+  (if (and (nil? (:table raw-col))
+           (nil? (:schema raw-col))
+           (nil? (:database raw-col))
+           (sql.normalize/reserved-literal driver (:column raw-col)))
     []
     (let [{:keys [alias column table] :as expr} (col-fields driver raw-col)
           valid-sources (if table
@@ -124,7 +111,8 @@
              (assoc :source-columns source-columns)))])))
 
 (defmulti find-used-fields
-  (fn [driver sources withs expr]
+  {:added "0.57.0", :arglists '([driver sources withs expr])}
+  (fn [driver _sources _withs expr]
     [(driver/dispatch-on-initialized-driver driver) (:type expr)])
   :hierarchy #'driver/hierarchy)
 
@@ -187,6 +175,7 @@
             (mapcat rec (:order-by expr)))))
 
 (defmulti find-returned-fields
+  {:added "0.57.0", :arglists '([driver sources withs expr])}
   (fn [driver _sources _withs expr]
     [(driver/dispatch-on-initialized-driver driver) (:type expr)])
   :hierarchy #'driver/hierarchy)
@@ -203,7 +192,7 @@
   (get-column driver sources expr))
 
 (defmethod find-returned-fields [:sql :macaw.ast/wildcard]
-  [driver sources _withs expr]
+  [_driver sources _withs _expr]
   (into []
         (mapcat :returned-fields)
         (first sources)))
@@ -226,6 +215,7 @@
                      :member-fields (into [] fields)}))))
 
 (defmulti field-references-impl
+  {:added "0.57.0", :arglists '([driver sources withs expr])}
   (fn [driver _outside-sources _withs expr]
     [(driver/dispatch-on-initialized-driver driver) (:type expr)])
   :hierarchy #'driver/hierarchy)
@@ -303,7 +293,7 @@
             {:table-alias (sql.normalize/normalize-name driver alias)})})
 
 (defmethod field-references-impl :default
-  [_driver _outside-sources _outside-withs expr]
+  [_driver _outside-sources _outside-withs _expr]
   {:used-fields #{}
    :returned-fields []
    :names nil
