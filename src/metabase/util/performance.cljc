@@ -1,13 +1,13 @@
 (ns metabase.util.performance
   "Functions and utilities for faster processing. This namespace is compatible with both Clojure and ClojureScript.
   However, some functions are either not only available in CLJS, or offer passthrough non-improved functions."
-  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys #?(:cljs clj->js)])
+  (:refer-clojure :exclude [reduce mapv run! some every? concat select-keys update-keys empty? not-empty #?(:cljs clj->js)])
   #?@(:clj ()
       :cljs [(:require
               [cljs.core :as core]
               [goog.object :as gobject])])
-  #?@(:clj [(:import (clojure.lang ITransientCollection LazilyPersistentVector RT)
-                     (java.util ArrayList HashMap Iterator))]
+  #?@(:clj [(:import (clojure.lang Counted ITransientCollection LazilyPersistentVector RT)
+                     (java.util ArrayList HashMap Iterator List))]
       :default ()))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -43,6 +43,22 @@
     (with-meta coll (meta og-form))))
 
 ;; Collection functions
+
+(defn empty?
+  "Returns true if coll has no items. Tries to avoid using `seq` for better performance."
+  [coll]
+  #?(:clj
+     (cond (instance? List coll) (.isEmpty ^List coll)
+           (instance? Counted coll) (= (.count ^Counted coll) 0)
+           :else (not (seq coll)))
+     :cljs (not (seq coll))))
+
+(defn not-empty
+  "If coll is empty, returns nil, else coll. Tries to avoid using `seq` for better performance."
+  [coll]
+  #?(:clj
+     (when-not (empty? coll) coll)
+     :cljs (clojure.core/not-empty coll)))
 
 #?(:clj
    (defn reduce
