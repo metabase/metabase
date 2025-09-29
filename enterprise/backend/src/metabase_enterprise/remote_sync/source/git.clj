@@ -271,4 +271,3 @@
      (->GitSource (clone-repository! {:url   url
                                       :token token})
                   url commit-ish token))))
-
