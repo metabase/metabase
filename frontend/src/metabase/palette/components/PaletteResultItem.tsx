@@ -18,9 +18,6 @@ interface PaletteResultItemProps {
   active: boolean;
 }
 
-const NAME_SUBTEXT_GAP = 8;
-const MODERATION_ICON_SIZE = 14;
-const MODERATION_ICON_GAP = 8;
 const NAME_LINE_HEIGHT = 16;
 
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
@@ -66,13 +63,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       )}
 
       <Stack gap="xs" flex="1" style={{ overflow: "hidden" }}>
-        <Flex
-          align="center"
-          gap={NAME_SUBTEXT_GAP}
-          justify="space-between"
-          wrap="nowrap"
-        >
-          <Group align="center" gap={MODERATION_ICON_GAP} wrap="nowrap">
+        <Flex align="center" gap="sm" justify="space-between" wrap="nowrap">
+          <Group align="center" gap="sm" wrap="nowrap">
             <Text
               c="inherit"
               component="span"
@@ -88,7 +80,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               <PLUGIN_MODERATION.ModerationStatusIcon
                 status={item.extra.moderatedStatus}
                 filled
-                size={MODERATION_ICON_SIZE}
+                size={14}
                 color="var(--mb-color-brand)"
                 style={{
                   verticalAlign: "text-bottom",
