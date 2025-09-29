@@ -181,6 +181,6 @@
                   :created-at    true
                   :updated-at    true
                   :native-query  {:fn maybe-extract-transform-query-text
-                                  :req-fields [:source]}}
+                                  :fields [:source]}}
    :search-terms [:name :description]
    :render-terms {:description true}})
