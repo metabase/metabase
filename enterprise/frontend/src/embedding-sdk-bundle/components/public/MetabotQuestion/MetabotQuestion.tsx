@@ -81,7 +81,7 @@ const MetabotQuestionInner = ({
         <div className={S.question}>{renderQuestion()}</div>
 
         <div className={S.chat}>
-          <Stack w="100%" h="100%" pos="relative">
+          <Stack w="100%" h="100%" pos="relative" gap={0}>
             <SidebarHeader />
             <MetabotChatHistory />
 
