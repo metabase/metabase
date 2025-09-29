@@ -71,5 +71,10 @@ export const trackEmbedWizardOptionsCompleted = (
   });
 };
 
-export const trackEmbedWizardCodeCopied = () =>
-  trackSimpleEvent({ event: "embed_wizard_code_copied" });
+export const trackEmbedWizardCodeCopied = (
+  authMethod: "sso" | "user_session",
+) =>
+  trackSimpleEvent({
+    event: "embed_wizard_code_copied",
+    event_detail: `auth=${authMethod}`,
+  });

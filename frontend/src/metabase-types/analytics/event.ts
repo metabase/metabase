@@ -247,6 +247,7 @@ export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
 
 export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
+  event_detail: "auth=sso" | "auth=user_session";
 }>;
 
 export type TableEditingSettingsToggledEvent = ValidateEvent<{

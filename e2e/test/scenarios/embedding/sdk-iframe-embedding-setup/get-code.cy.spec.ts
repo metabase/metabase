@@ -115,6 +115,13 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Existing Metabase session").should("be.checked");
       codeBlock().should("contain", '"useExistingUserSession": true');
+
+      cy.findByText(/Copy Code/).click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_code_copied",
+        event_detail: "auth=user_session",
+      });
     });
   });
 
@@ -127,8 +134,14 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Single sign-on (SSO)").click();
-
       codeBlock().should("not.contain", "useExistingUserSession");
+
+      cy.findByText(/Copy Code/).click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_code_copied",
+        event_detail: "auth=sso",
+      });
     });
   });
 

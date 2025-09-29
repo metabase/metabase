@@ -118,7 +118,10 @@ export const GetCodeStep = () => {
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={() => {
                   copy();
-                  trackEmbedWizardCodeCopied();
+
+                  trackEmbedWizardCodeCopied(
+                    settings.useExistingUserSession ? "user_session" : "sso",
+                  );
 
                   // Embedding Hub: track step completion
                   const settingKey: SettingKey = settings.useExistingUserSession
