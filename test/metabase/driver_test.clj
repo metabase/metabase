@@ -393,3 +393,14 @@
           (qp/process-query success-query)
           (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
           (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
+
+(deftest python-transform-drivers-multimethods-support
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (let [driver driver/*driver*]
+      (is (get-method driver/create-table! driver))
+      (is (get-method driver/table-name-length-limit driver))
+      (is (get-method driver/drop-table! driver))
+      (is (let [should-be-supported-by-all #{:type/Number :type/Text :type/Date :type/DateTime :type/DateTimeWithTZ :type/Boolean}]
+            (and (get-method driver/type->database-type driver)
+                 (every? #(driver/type->database-type driver %) should-be-supported-by-all))))
+      (is (get-method driver/insert-from-source! [driver :jsonl-file])))))

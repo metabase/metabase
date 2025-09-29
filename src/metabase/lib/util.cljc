@@ -1,5 +1,5 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some])
   (:require
    #?@(:clj
        ([potemkin :as p])
@@ -26,7 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -229,7 +229,7 @@
           (update :columns (fn [columns]
                              (mapv (fn [column]
                                      (-> column
-                                         (perf/update-keys u/->kebab-case-en)
+                                         (update-keys u/->kebab-case-en)
                                          (assoc :lib/type :metadata/column)))
                                    columns)))
           (assoc :lib/type :metadata/results)))))

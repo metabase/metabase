@@ -47,7 +47,7 @@ import {
 
 import styles from "./SmartLinkNode.module.css";
 
-type SmartLinkEntity =
+export type SmartLinkEntity =
   | Card
   | Dashboard
   | Collection
@@ -190,7 +190,7 @@ export const SmartLink = Node.create<{
           "data-model": model,
           "data-label": label ?? undefined,
           "data-site-url": this.options.siteUrl,
-          href: this.options.siteUrl + href ?? "",
+          href: this.options.siteUrl + href,
           style: "text-decoration: none;",
         },
         this.options.HTMLAttributes,
@@ -398,7 +398,7 @@ export const SmartLinkComponent = memo(
         >
           <span className={styles.smartLinkInner}>
             <Icon name={iconData.name} className={styles.icon} />
-            {entity.name}
+            {getName(entity)}
           </span>
         </a>
       </NodeViewWrapper>
@@ -426,4 +426,14 @@ function entityToObjectWithModel(
     display: (entity as Card).display as CardDisplayType,
     is_personal: (entity as Collection).is_personal,
   };
+}
+
+function getName(entity: SmartLinkEntity) {
+  if ("display_name" in entity && entity.display_name !== "") {
+    return entity.display_name;
+  }
+  if ("name" in entity && entity.name !== "") {
+    return entity.name;
+  }
+  return "";
 }

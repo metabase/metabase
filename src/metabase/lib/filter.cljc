@@ -1,5 +1,5 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case])
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -27,6 +27,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [every? some mapv]]
    [metabase.util.time :as u.time]))
 
 (doseq [tag [:and :or]]
@@ -119,7 +120,7 @@
       [(_ :guard #{:!= :not-in}) _ [:get-year _ (a :guard temporal?)] (b :guard int?)]
       (i18n/tru "{0} excludes {1}" (->unbucketed-display-name a) (u.time/format-unit b :year))
 
-      [(op :guard #{:= :in :!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard #(every? int? %))]
+      [(op :guard #{:= :in :!= :not-in}) _ [(f :guard #{:get-hour :get-month :get-quarter :get-year}) _ (a :guard temporal?)] & (args :guard (every? int? args))]
       (i18n/tru "{0} {1} {2} {3} selections"
                 (->unbucketed-display-name a)
                 (if (#{:= :in} op) "is one of" "excludes")

@@ -7,15 +7,40 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
-import type { JobListParams, RunListParams } from "./types";
+import type {
+  JobListParams,
+  RunListParams,
+  TransformListParams,
+} from "./types";
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getTransformListUrl() {
-  return ROOT_URL;
+export function getTransformListUrl({
+  lastRunStartTime,
+  lastRunStatuses,
+  tagIds,
+}: TransformListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (lastRunStartTime != null) {
+    searchParams.set("lastRunStartTime", lastRunStartTime);
+  }
+  lastRunStatuses?.forEach((status) => {
+    searchParams.append("lastRunStatuses", status);
+  });
+  tagIds?.forEach((tagId) => {
+    searchParams.append("tagIds", String(tagId));
+  });
+  const queryString = searchParams.toString();
+  if (queryString.length > 0) {
+    return `${ROOT_URL}?${queryString}`;
+  } else {
+    return ROOT_URL;
+  }
 }
 
-export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {
+export function getNewTransformFromTypeUrl(
+  type: DatasetQuery["type"] | "python",
+) {
   return `${ROOT_URL}/new/${type}`;
 }
 
@@ -33,18 +58,22 @@ export function getTransformQueryUrl(transformId: TransformId) {
 
 export function getJobListUrl({
   lastRunStartTime,
+  lastRunStatuses,
   nextRunStartTime,
-  transformTagIds,
+  tagIds,
 }: JobListParams = {}) {
   const searchParams = new URLSearchParams();
   if (lastRunStartTime != null) {
     searchParams.set("lastRunStartTime", lastRunStartTime);
   }
+  lastRunStatuses?.forEach((status) => {
+    searchParams.append("lastRunStatuses", status);
+  });
   if (nextRunStartTime != null) {
     searchParams.set("nextRunStartTime", nextRunStartTime);
   }
-  transformTagIds?.forEach((tagId) => {
-    searchParams.append("transformTagIds", String(tagId));
+  tagIds?.forEach((tagId) => {
+    searchParams.append("tagIds", String(tagId));
   });
   const queryString = searchParams.toString();
   if (queryString.length > 0) {

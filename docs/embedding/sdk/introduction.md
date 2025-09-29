@@ -36,7 +36,9 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-Enable the Embedded analytics SDK by going to **Admin settings > Settings > Embedding**. Toggle on the SDK, and hit **Configure**. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
+1. Enable the Embedded analytics SDK by going to **Admin settings > Embedding > Modular**.
+2. Toggle on **SDK for React**.
+3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
 ### Install the SDK in your React application
 

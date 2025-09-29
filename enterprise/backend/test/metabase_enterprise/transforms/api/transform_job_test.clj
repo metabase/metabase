@@ -105,8 +105,8 @@
             (testing "listing without filtering"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job")]
                 (is (= our-job-ids (returned-job-ids response)))))
-            (testing "filtering by transform_tag_ids"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :transform_tag_ids [t2-id])]
+            (testing "filtering by tag_ids"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :tag_ids [t2-id])]
                 (is (=? [{:schedule "0 0 0 * * ?"
                           :tag_ids [t2-id]
                           :name "Job 3"
@@ -114,6 +114,9 @@
                         (returned-jobs response)))))
             (testing "filtering by last_run_start_time"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :last_run_start_time "2025-08-26~")]
+                (is (= #{j2-id} (returned-job-ids response)))))
+            (testing "filtering by last_run_statuses"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :last_run_statuses ["started" "succeeded"])]
                 (is (= #{j2-id} (returned-job-ids response)))))
             (testing "filtering by last_run_end_time without scheduled job"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-26~")]
