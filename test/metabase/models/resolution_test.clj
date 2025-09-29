@@ -36,6 +36,7 @@
                     (not (str/starts-with? nspace "metabase-enterprise")))]
     (testing model
       (let [e (try
+                (prn nspace)
                 (classloader/require nspace)
                 (catch Throwable e
                   e))]
