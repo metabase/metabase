@@ -10,10 +10,12 @@ import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
 
+// TODO: add text coverage for these
 export interface MetabotConfig {
   emptyText?: string;
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
+  preventRetryMessage?: boolean;
 }
 
 export interface MetabotProps {

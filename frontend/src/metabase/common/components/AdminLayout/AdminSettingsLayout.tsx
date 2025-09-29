@@ -50,6 +50,11 @@ export const AdminSettingsLayout = ({
           hide={!isMetabotEnabledForRoute}
           config={{
             preventClose: true,
+            // we don't save snapshots of the metabot conversation "state" value and do not
+            // revert it to the point in time of a message was sent. this will cause values
+            // like the todo list to confuse the agent as there may no longer be any conversation
+            // history but an in progress/complete todo list.
+            preventRetryMessage: true,
             hideSuggestedPrompts: true,
             emptyText: t`Let's transform your data together!`,
           }}

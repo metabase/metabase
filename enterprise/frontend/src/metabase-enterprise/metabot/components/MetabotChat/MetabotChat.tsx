@@ -31,7 +31,7 @@ import { useScrollManager } from "./hooks";
 export const MetabotChat = ({ config = {} }: { config?: MetabotConfig }) => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
-    useMetabotChatHandlers();
+    useMetabotChatHandlers(config);
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -159,6 +159,7 @@ export const MetabotChat = ({ config = {} }: { config?: MetabotConfig }) => {
                 errorMessages={metabot.errorMessages}
                 onRetryMessage={handleRetryMessage}
                 isDoingScience={metabot.isDoingScience}
+                preventRetryMessage={!!config.preventRetryMessage}
                 showFeedbackButtons
               />
               {/* loading */}

@@ -1,8 +1,12 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+
+import type { MetabotConfig } from "../components/Metabot";
 
 import { useMetabotAgent } from "./use-metabot-agent";
 
-export const useMetabotChatHandlers = () => {
+export const useMetabotChatHandlers = ({
+  preventRetryMessage,
+}: Pick<MetabotConfig, "preventRetryMessage">) => {
   const {
     isDoingScience,
     setPrompt,
@@ -28,8 +32,12 @@ export const useMetabotChatHandlers = () => {
     [isDoingScience, promptInputRef, setPrompt, submitInput],
   );
 
-  const handleRetryMessage = useCallback(
-    (messageId: string) => {
+  const handleRetryMessage = useMemo(() => {
+    if (preventRetryMessage) {
+      return undefined;
+    }
+
+    return (messageId: string) => {
       if (isDoingScience) {
         return;
       }
@@ -37,9 +45,14 @@ export const useMetabotChatHandlers = () => {
       setPrompt("");
       promptInputRef?.current?.focus();
       retryMessage(messageId).catch((err) => console.error(err));
-    },
-    [isDoingScience, promptInputRef, retryMessage, setPrompt],
-  );
+    };
+  }, [
+    preventRetryMessage,
+    isDoingScience,
+    promptInputRef,
+    retryMessage,
+    setPrompt,
+  ]);
 
   const handleResetInput = useCallback(() => {
     setPrompt("");

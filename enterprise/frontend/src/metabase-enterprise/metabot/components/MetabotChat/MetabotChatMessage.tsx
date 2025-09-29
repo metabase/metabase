@@ -120,8 +120,9 @@ const FeedbackButton = ({
 
 interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
-  onRetry: (messageId: string) => void;
+  onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
+  preventRetryMessage?: boolean;
   showFeedbackButtons: boolean;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
@@ -195,13 +196,15 @@ export const AgentMessage = ({
               </>
             )}
 
-            <ActionIcon
-              onClick={() => onRetry(message.id)}
-              h="sm"
-              data-testid="metabot-chat-message-retry"
-            >
-              <Icon name="revert" size="1rem" />
-            </ActionIcon>
+            {onRetry && (
+              <ActionIcon
+                onClick={() => onRetry(message.id)}
+                h="sm"
+                data-testid="metabot-chat-message-retry"
+              >
+                <Icon name="revert" size="1rem" />
+              </ActionIcon>
+            )}
           </>
         )}
       </Flex>
@@ -268,9 +271,10 @@ export const Messages = ({
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
-  onRetryMessage: (messageId: string) => void;
+  onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
+  preventRetryMessage: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const clipboard = useClipboard();

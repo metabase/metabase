@@ -709,6 +709,7 @@ export const PLUGIN_METABOT = {
       emptyText?: string;
       hideSuggestedPrompts?: boolean;
       preventClose?: boolean;
+      preventRetryMessage?: boolean;
     };
   }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
