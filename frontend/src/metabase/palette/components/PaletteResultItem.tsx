@@ -1,7 +1,7 @@
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
 import {
@@ -49,8 +49,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         />
       )}
       {/**Text container */}
-      <Flex
-        direction="column"
+      <Stack
         style={{
           gap: 4,
           flexGrow: 1,
@@ -101,7 +100,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             {item.subtitle}
           </Text>
         )}
-      </Flex>
+      </Stack>
+
       {/** Active container */}
       {subtext && (
         <Text
