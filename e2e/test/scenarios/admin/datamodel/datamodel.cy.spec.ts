@@ -2846,8 +2846,11 @@ describe("scenarios > admin > datamodel", () => {
               'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
             );
 
-          cy.log("reopen popover");
-          FieldSection.getFilteringInput().click({ force: true });
+          cy.log("close popover by clicking on element inside panel");
+          FieldSection.get().findByText("Field settings").click();
+
+          cy.log("open popover");
+          FieldSection.getFilteringInput().click();
           H.popover().findByText("A list of all values").click();
           cy.wait("@updateField");
           verifyAndCloseToast("Filtering of Rating updated");
