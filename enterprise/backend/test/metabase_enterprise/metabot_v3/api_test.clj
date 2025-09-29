@@ -92,19 +92,14 @@
                          @captured)))))))
 
         (testing "Returns 500 when http post fails"
-          (mt/with-temporary-setting-values [premium-embedding-token premium-token
-                                             store-api-url           store-url]
+          (mt/with-temporary-setting-values [premium-embedding-token premium-token]
             (mt/with-dynamic-fn-redefs
               [http/post (fn [_url _opts]
                            (throw (ex-info "boom" {})))]
               (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:any "payload"}))))
 
+        ;; We're not testing the branch where the store-api-url is missing because that defsetting
+        ;; has the default value. It doesn't work well with `with-temporary-setting-values` helper.
         (testing "Throws when premium token is missing"
-          (mt/with-temporary-setting-values [premium-embedding-token nil
-                                             store-api-url           store-url]
-            (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"})))
-
-        (testing "Throws when `store-api-url` is missing"
-          (mt/with-temporary-setting-values [premium-embedding-token premium-token
-                                             store-api-url           nil]
+          (mt/with-temporary-setting-values [premium-embedding-token nil]
             (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"})))))))
