@@ -3885,7 +3885,7 @@ function verifyObjectDetailPreview({
       .toArray()
       .findIndex((el) => el.textContent?.trim() === label);
 
-    expect(rowNumber).to.eq(foundRowIndex + 1);
+    expect(rowNumber).to.eq(foundRowIndex);
 
     cy.findAllByTestId("value")
       .should("have.length.gte", foundRowIndex)
