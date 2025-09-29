@@ -366,10 +366,11 @@
   (assert-native-query (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
 
-(defn- get-parameter-value [tag-name {:keys [type id widget-type dimension]}]
+(defn- get-parameter-value
+  [tag-name {:keys [id dimension], param-type :type}]
   ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
   ;; value so that the query will compile.
-  (case type
+  (case param-type
     :text          {:id     id,
                     :type   :string/=,
                     :value  ["foo"],
@@ -400,9 +401,11 @@
     nil))
 
 (defn add-parameters-for-template-tags
+  "Adds dummy values for parameters that don't have one.
+  This is so that the resulting native query can be parsed. It's not expected to be executable."
   [query]
-  (let [template-tags (-> (lib.util/query-stage query 0)
-                          :template-tags)
+  (let [ttags (-> (lib.util/query-stage query 0)
+                  :template-tags)
         parameters (:parameters query)
         params-by-id (m/index-by :id parameters)
         new-parameters (into []
@@ -410,6 +413,6 @@
                                      (or (params-by-id id)
                                          (get-parameter-value tag-name tag))))
 
-                             template-tags)]
+                             ttags)]
     (cond-> query
       (seq new-parameters) (assoc :parameters new-parameters))))

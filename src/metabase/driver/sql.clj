@@ -3,7 +3,6 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -15,7 +14,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.references :as sql.references]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [some]]
@@ -194,11 +192,10 @@
 ;;; |                                              Dependencies                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- table-key [entity]
-  (select-keys entity [:table :schema]))
-
-(defmulti resolve-field (fn [_driver _metadata-provider col-spec]
-                          (:type col-spec)))
+(defmulti resolve-field
+  {:added "0.57.0" :arglists '([driver metadata-provider col-spec])}
+  (fn [_driver _metadata-provider col-spec]
+    (:type col-spec)))
 
 (defmethod resolve-field :all-columns
   [driver metadata-provider col-spec]

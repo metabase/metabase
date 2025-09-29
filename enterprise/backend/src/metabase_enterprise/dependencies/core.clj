@@ -3,7 +3,6 @@
 
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
-   [metabase-enterprise.dependencies.calculation :as deps.calculation]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
@@ -42,12 +41,12 @@
 
 (defmulti check-query-inner
   "Given a `MetadataProvider` and a lib query, find any bad refs in that query."
-  (fn [_mp driver query]
+  (fn [_mp _driver query]
     (-> (lib/query-stage query 0)
         :lib/type)))
 
 (defmethod check-query-inner :mbql.stage/mbql
-  [mp _driver query]
+  [_mp _driver query]
   (lib/find-bad-refs query))
 
 (defmethod check-query-inner :mbql.stage/native
@@ -69,16 +68,16 @@
   nil)
 
 (defmethod check-entity :card
-  [mp entity-type entity-id]
+  [mp _entity-type entity-id]
   (let [query (:dataset-query (lib.metadata/card mp entity-id))
         driver (:engine (lib.metadata/database mp))]
     (check-query mp driver query)))
 
 (defmethod check-entity :transform
-  [mp entity-type entity-id]
+  [mp _entity-type entity-id]
   (let [{{target-schema :schema target-name :name} :target
          {:keys [query]} :source
-         :as transform} (lib.metadata/transform mp entity-id)
+         :as _transform} (lib.metadata/transform mp entity-id)
         driver (:engine (lib.metadata/database mp))
         output-table (some #(when (and (= (:schema %) target-schema)
                                        (= (:name %) target-name))
