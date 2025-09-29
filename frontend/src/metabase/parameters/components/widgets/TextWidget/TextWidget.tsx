@@ -91,7 +91,10 @@ export class TextWidget extends Component<TextWidgetProps, State> {
             return;
           }
           const target = e.target as HTMLInputElement;
-          if (e.key === "Enter") {
+          if (e.key === "Escape") {
+            target.blur();
+          } else if (e.key === "Enter") {
+            setValue(this.state.value ?? null);
             target.blur();
           }
         }}
