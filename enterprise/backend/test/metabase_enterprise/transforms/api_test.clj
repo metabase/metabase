@@ -224,8 +224,14 @@
                    :model/Transform child   (-> (->transform "transform2" (mt/mbql-query nil {:source-table table}))
                                                 (assoc-in [:target :name] "orders_3"))]
       (mt/with-premium-features #{:transforms}
-        (is (= [parent]
-               (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
+        (is (=? [{:name "transform1"
+                  :source {:type "query", :query {:database (mt/id)
+                                                  :type "query"
+                                                  :query {:source-table (mt/id :orders)}}}
+                  :id (:id parent)
+                  :entity_id (:entity_id parent)
+                  :target {:schema "public", :name "orders_2", :type "table"}}]
+                (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
