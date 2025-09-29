@@ -85,7 +85,11 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
 
         {item.subtitle && (
           <Text
-            c="var(--mb-color-text-light)"
+            c={
+              active
+                ? "var(--mb-color-text-medium)"
+                : "var(--mb-color-text-light)"
+            }
             component="span"
             lh="1rem"
             style={{
@@ -103,7 +107,11 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         <Text
           component="span"
           ml="0.25rem"
-          c="var(--mb-color-text-light)"
+          c={
+            active
+              ? "var(--mb-color-text-medium)"
+              : "var(--mb-color-text-light)"
+          }
           fz="0.75rem"
           lh="1rem"
           style={{
