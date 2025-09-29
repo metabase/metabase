@@ -51,7 +51,7 @@ export const QuestionParametersList = () => {
   }
 
   const setParameterValue = (parameterId: ParameterId, value: string) => {
-    const questionWithParams = question?.setParameterValues({
+    const questionWithParams = question.setParameterValues({
       ...question._parameterValues,
       [parameterId]: value,
     });
@@ -71,7 +71,7 @@ export const QuestionParametersList = () => {
   return (
     <ResponsiveParametersList
       className={ParametersListS.ParametersList}
-      cardId={question?.id()}
+      cardId={question.id()}
       dashboardId={question.dashboardId() ?? undefined}
       parameters={parameters}
       setParameterValue={setParameterValue}

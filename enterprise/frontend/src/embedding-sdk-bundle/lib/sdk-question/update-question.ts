@@ -96,7 +96,11 @@ export const updateQuestionSdk =
     }
 
     const metadata = getMetadata(getState());
-    nextQuestion = new Question(nextQuestion.card(), metadata);
+    nextQuestion = new Question(
+      nextQuestion.card(),
+      metadata,
+      nextQuestion._parameterValues,
+    );
 
     // In most cases, we only update the question when the query change.
     // We don't usually run the query right away unless specified.
