@@ -87,7 +87,7 @@ const ObjectDetailPreviewBase = ({
         </Box>
       )}
 
-      {columns.length - headerColumns.length > 0 && (
+      {columns.length > 0 && (
         <Box pt="xl">
           <DetailsGroup
             columns={columns}
