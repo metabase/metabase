@@ -196,7 +196,10 @@
   "Resolves a field reference to one or more actual database fields.
 
   This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the field
-  references returned by sql.references/field-references."
+  references returned by sql.references/field-references.
+
+  Note: this currently sets :lib/desired-column-alias but no other :lib/* fields, because the callers of this function
+  don't need the other fields.  If we care about other :lib/* fields in the future, we can add them then."
   {:added "0.57.0" :arglists '([driver metadata-provider col-spec])}
   (fn [_driver _metadata-provider col-spec]
     (:type col-spec)))

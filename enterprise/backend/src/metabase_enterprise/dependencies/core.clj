@@ -93,8 +93,7 @@
                                                 :duplicate-fields (conj duplicate-fields field)}
                                                {:seen (conj seen name)
                                                 :duplicate-fields duplicate-fields}))
-                                           {:seen #{}
-                                            :bad nil}
+                                           {:seen #{}}
                                            output-fields)]
     (into duplicate-fields (check-query mp driver query))))
 
