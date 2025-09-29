@@ -297,6 +297,7 @@
   [search-context]
   (let [{:keys [created-at
                 created-by
+                context
                 last-edited-at
                 last-edited-by
                 models
@@ -307,15 +308,16 @@
                 display-type]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
-      (some? created-at)               (set/intersection (:created-at feature->supported-models))
-      (some? created-by)               (set/intersection (:created-by feature->supported-models))
-      (some? last-edited-at)           (set/intersection (:last-edited-at feature->supported-models))
-      (some? last-edited-by)           (set/intersection (:last-edited-by feature->supported-models))
-      (true? search-native-query)      (set/intersection (:search-native-query feature->supported-models))
-      (true? verified)                 (set/intersection (:verified feature->supported-models))
-      (some? non-temporal-dim-ids)     (set/intersection (:non-temporal-dim-ids feature->supported-models))
-      (some? has-temporal-dim)         (set/intersection (:has-temporal-dim feature->supported-models))
-      (seq   display-type)             (set/intersection (:display-type feature->supported-models)))))
+      (some? created-at)                   (set/intersection (:created-at feature->supported-models))
+      (some? created-by)                   (set/intersection (:created-by feature->supported-models))
+      (some? last-edited-at)               (set/intersection (:last-edited-at feature->supported-models))
+      (some? last-edited-by)               (set/intersection (:last-edited-by feature->supported-models))
+      (true? search-native-query)          (set/intersection (:search-native-query feature->supported-models))
+      (true? verified)                     (set/intersection (:verified feature->supported-models))
+      (some? non-temporal-dim-ids)         (set/intersection (:non-temporal-dim-ids feature->supported-models))
+      (some? has-temporal-dim)             (set/intersection (:has-temporal-dim feature->supported-models))
+      (seq   display-type)                 (set/intersection (:display-type feature->supported-models))
+      (not (#{:metabot :unknown} context)) (disj "transform"))))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
