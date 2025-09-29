@@ -117,7 +117,6 @@ export function PublicOrEmbeddedQuestionView({
       >
         {() => (
           <Visualization
-            isNightMode={theme === "night"}
             error={result?.error?.toString()}
             rawSeries={rawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}

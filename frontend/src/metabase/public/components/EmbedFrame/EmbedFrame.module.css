@@ -2,12 +2,6 @@ body:where(:global(.mb-wrapper)) {
   background-color: transparent;
 }
 
-[data-metabase-theme="light"][data-metabase-theme="light"] {
-  --mb-color-text-primary: var(--mb-color-text-dark);
-  --mb-color-text-secondary: var(--mb-color-text-medium);
-  --mb-color-text-tertiary: var(--mb-color-text-light);
-}
-
 .EmbedFrame {
   color: var(--mb-color-text-primary);
 }
@@ -55,13 +49,15 @@ body:where(:global(.mb-wrapper)) {
   border-bottom-color: var(--mb-color-border);
 }
 
-[data-metabase-theme="night"][data-metabase-theme="night"],
 /**
   * role="tooltip" works with both legacy and Mantine popover,
   * the legacy Popover however, has the role "tooltip", but with data-theme="popover",
   * so we need to target exactly just tooltips.
   */
-[role="tooltip"]:is([data-theme~="tooltip"], :global(.emotion-Tooltip-tooltip)) {
+[role="tooltip"]:is(
+    [data-theme~="tooltip"],
+    :global(.emotion-Tooltip-tooltip)
+  ) {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-white) 90%,
@@ -80,81 +76,8 @@ body:where(:global(.mb-wrapper)) {
   --mb-color-bg-light: var(--mb-color-bg-darker);
 }
 
-[data-metabase-theme="night"][data-metabase-theme="night"] {
-  --mb-color-text-selected: var(--mb-color-text-white);
-  --mb-color-text-hover: var(--mb-color-brand-light);
-  --mb-color-border: var(--mb-color-text-medium);
-  --mb-color-bg-dashboard: var(--mb-color-bg-black);
-  --mb-color-background: var(--mb-color-bg-black);
-  --mb-color-background-selected: var(--mb-color-brand-dark);
-  --mb-color-background-hover: var(--mb-color-brand-darker);
-  --mb-color-background-disabled: var(--mb-color-text-dark);
-  --mb-color-background-brand: var(--mb-color-brand-dark);
-  --mb-color-switch-off: var(--mb-color-text-dark);
-
-  .EmbedFrameHeader,
-  .EmbedFrameFooter {
-    background-color: var(--mb-color-bg-dashboard);
-    border-color: var(--mb-color-border);
-  }
-
-  .EmbedFrame .fullscreenNightText {
-    transition: var(--transition-theme-change);
-  }
-
-  /* A temporary solution until we migrated all colors in visualization to use semantic colors
-   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
-  .EmbedFrame svg text {
-    fill: var(--mb-color-text-primary);
-    stroke: none !important;
-  }
-
-  .EmbedFrame .DashCard .Card,
-  .dropdown {
-    background-color: var(--mb-color-bg-black);
-    border: 1px solid var(--mb-color-border);
-  }
-
-  .ParameterPanel.IsSticky {
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-bg-black),
-      var(--mb-color-bg-dashboard) 15%
-    );
-    border-bottom-color: var(--mb-color-border);
-  }
-}
-
 .NoBackground {
   --mb-color-bg-dashboard: transparent;
-}
-
-[data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
-  .EmbedFrame {
-    background-color: transparent;
-
-    .DashCard .Card {
-      background-color: transparent;
-    }
-  }
-
-  .WithThemeBackground {
-    background-color: transparent;
-  }
-
-  .EmbedFrameHeader,
-  .EmbedFrameFooter {
-    background-color: transparent;
-  }
-
-  .ParameterPanel.IsSticky {
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-bg-white),
-      transparent 15%
-    );
-    border-bottom-color: transparent;
-  }
 }
 
 .CompactExportAsPdfButton {

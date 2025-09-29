@@ -3,7 +3,7 @@ import type { WithRouterProps } from "react-router";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useLocationSync } from "metabase/dashboard/hooks";
 import type { RefreshPeriod } from "metabase/dashboard/types";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import { useColorScheme } from "metabase/ui";
 
 export const useDashboardLocationSync = ({
   location,
@@ -13,9 +13,8 @@ export const useDashboardLocationSync = ({
     onRefreshPeriodChange,
     isFullscreen,
     onFullscreenChange,
-    theme,
-    setTheme,
   } = useDashboardContext();
+  const { setColorSchemeOverride, colorSchemeOverride } = useColorScheme();
 
   useLocationSync<RefreshPeriod>({
     key: "refresh",
@@ -31,10 +30,12 @@ export const useDashboardLocationSync = ({
     location,
   });
 
-  useLocationSync<DisplayTheme>({
+  useLocationSync<string | null>({
     key: "theme",
-    value: theme,
-    onChange: (value) => setTheme(value ?? "light"),
+    value: colorSchemeOverride === "dark" ? "night" : null,
+    onChange: (value) => {
+      setColorSchemeOverride(value === "night" ? "dark" : null);
+    },
     location,
   });
 };
