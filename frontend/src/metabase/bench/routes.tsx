@@ -5,26 +5,29 @@ import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHist
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { createAdminRouteGuard } from "metabase/admin/utils";
-import { BrowseMetrics, BrowseModels } from "metabase/browse";
+import { BrowseMetrics } from "metabase/browse";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
+import type { AppStore } from "metabase/lib/redux";
 import { DataModel } from "metabase/metadata/pages/DataModel";
-import {
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 
 import { BenchApp } from "./components/BenchApp";
+import { ModelsBenchSection } from "./components/models/ModelsBenchSection";
 
-export const getBenchRoutes = (store: Store, CanAccessSettings: boolean, IsAdmin: boolean) => (
+export const getBenchRoutes = (
+  store: AppStore,
+  CanAccessSettings: boolean,
+  _IsAdmin: boolean,
+) => (
   <Route path="/bench" component={CanAccessSettings}>
     <Route title={t`Bench`} component={BenchApp}>
       <IndexRedirect to="overview" />
-      <Route path="overview" component={() => <div>Overview</div>} />
+      <Route path="overview" component={() => <div>{t`Overview`}</div>} />
       {PLUGIN_TRANSFORMS.getAdminRoutes()}
       <Route path="segments" component={SegmentListApp} />
-      <Route path="models" component={BrowseModels} />
+      <Route path="models" component={ModelsBenchSection} />
       <Route path="metrics" component={BrowseMetrics} />
-
 
       <Route path="metadata" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
@@ -62,7 +65,7 @@ export const getBenchRoutes = (store: Store, CanAccessSettings: boolean, IsAdmin
           />
         </Route>
       </Route>
-      <Route path="/*" component={NotFoundFallbackPage}/>
+      <Route path="/*" component={NotFoundFallbackPage} />
     </Route>
   </Route>
 );
