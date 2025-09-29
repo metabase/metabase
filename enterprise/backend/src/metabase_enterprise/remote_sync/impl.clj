@@ -130,7 +130,7 @@
         (catch Exception e
           (handle-import-exception e collections sync-timestamp branch))
         (finally
-          (analytics/observe! :metabase-remote-sync/import-duration-ms (u/since-ms sync-timestamp))))
+          (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))
       {:status  :error
        :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
@@ -175,7 +175,7 @@
            {:status  :error
             :message (format "Failed to export to git repository: %s" (ex-message e))})
          (finally
-           (analytics/observe! :metabase-remote-sync/export-duration-ms (u/since-ms sync-timestamp)))))
+           (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
      {:status  :error
       :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
 
