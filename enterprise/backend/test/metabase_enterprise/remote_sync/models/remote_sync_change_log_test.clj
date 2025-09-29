@@ -624,10 +624,10 @@
             "Should return true when changes exist in a remote-synced collection"))))
 
   (testing "dirty-global? ignores changes in non-remote-synced collections"
-    (mt/with-temp [:model/Collection _ {:id 999 :location "/" :type "default"}
-                   :model/Card _ {:collection_id 999 :id 123 :entity_id "test-entity"}
+    (mt/with-temp [:model/Collection {col-id :id} {:location "/" :type "default"}
+                   :model/Card {card-entity-id :enity-id} {:collection_id col-id}
                    :model/RemoteSyncChangeLog _ {:model_type "Card"
-                                                 :model_entity_id "test-entity"
+                                                 :model_entity_id card-entity-id
                                                  :sync_type "dirty"
                                                  :status "pending"
                                                  :most_recent true}]
