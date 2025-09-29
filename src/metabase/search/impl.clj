@@ -197,7 +197,9 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent))))
+         :effective_parent
+         :source
+         :target))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
