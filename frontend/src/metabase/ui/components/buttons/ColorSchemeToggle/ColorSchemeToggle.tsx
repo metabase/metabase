@@ -6,14 +6,7 @@ import { useColorScheme } from "metabase/ui/components/theme/ColorSchemeProvider
 
 interface ColorSchemeToggleProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl";
-  variant?:
-    | "subtle"
-    | "light"
-    | "filled"
-    | "outline"
-    | "default"
-    | "transparent"
-    | "gradient";
+  variant?: "subtle" | "viewHeader";
 }
 
 export function ColorSchemeToggle({
