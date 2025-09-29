@@ -1,6 +1,7 @@
 (ns metabase-enterprise.semantic-search.scoring
   (:require
    [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
@@ -175,7 +176,9 @@
   (into #{} (map name activity-feed/rv-models)))
 
 (def ^:private appdb-scorer-models
-  (into recent-views-models (map name search.scoring/bookmarked-models-and-sub-models)))
+  (-> recent-views-models
+      (conj "transform")
+      (into (map name) search.scoring/bookmarked-models-and-sub-models)))
 
 (comment
   (require '[clojure.set :as set]
