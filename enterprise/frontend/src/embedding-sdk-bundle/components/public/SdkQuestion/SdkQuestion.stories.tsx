@@ -1,4 +1,5 @@
 import type { StoryFn } from "@storybook/react";
+import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
@@ -7,8 +8,16 @@ import {
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
 import { Box } from "metabase/ui";
+import {
+  createMockNativeCard,
+  createMockNativeDatasetQuery,
+  createMockNativeQuery,
+  createMockParameter,
+} from "metabase-types/api/mocks";
+import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import { SdkQuestion } from "./SdkQuestion";
+import { nativeQuestionWithParametersData } from "./data/data";
 
 const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
@@ -81,6 +90,84 @@ export const Default = {
     targetCollection: undefined,
     title: true,
     withResetButton: true,
+  },
+};
+
+export const WithEditableParameters = {
+  render(args: SdkQuestionComponentProps) {
+    return (
+      <Box bg="var(--mb-color-background)" mih="100vh">
+        <SdkQuestion {...args} />
+      </Box>
+    );
+  },
+
+  args: {
+    questionId: QUESTION_ID,
+    initialSqlParameters: {
+      State: "AR",
+    },
+    hiddenParameters: ["Source"],
+  },
+
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(`*/api/card/${QUESTION_ID}`, () =>
+          HttpResponse.json(
+            createMockNativeCard({
+              name: "Test Question",
+              display: "table",
+              id: QUESTION_ID,
+              dataset_query: createMockNativeDatasetQuery({
+                native: createMockNativeQuery({
+                  query:
+                    "SELECT * FROM orders WHERE {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
+                  "template-tags": {
+                    State: {
+                      type: "text",
+                      name: "State",
+                      id: "1",
+                      "display-name": "State",
+                    },
+                    City: {
+                      type: "text",
+                      name: "City",
+                      id: "2",
+                      "display-name": "City",
+                    },
+                    Source: {
+                      type: "text",
+                      name: "Source",
+                      id: "3",
+                      "display-name": "Source",
+                    },
+                  },
+                }),
+                database: SAMPLE_DB_ID,
+              }),
+              parameters: [
+                createMockParameter({
+                  id: "1",
+                  slug: "State",
+                }),
+                createMockParameter({
+                  id: "2",
+                  slug: "City",
+                }),
+                createMockParameter({
+                  id: "3",
+                  slug: "Source",
+                }),
+              ],
+            }),
+          ),
+        ),
+        http.post(`*/api/card/${QUESTION_ID}/query`, () =>
+          HttpResponse.json(nativeQuestionWithParametersData),
+        ),
+      ],
+    },
   },
 };
 
