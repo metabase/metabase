@@ -766,31 +766,28 @@
         (testing "parameter_usage_count is 0"
           (is (= 0 (:parameter_usage_count card-with-usage-count))))))))
 
-(deftest average-query-time-and-last-query-started-test
-  (testing "cards with query execution logs"
-    (let [now (t/offset-date-time)]
-      (mt/with-temp [:model/Card {card-id :id} {}
-                     :model/QueryExecution _ {:card_id card-id
-                                              :started_at now
-                                              :cache_hit false
-                                              :running_time 100}
-                     :model/QueryExecution _ {:card_id card-id
-                                              :started_at (t/minus now (t/days 1))
-                                              :cache_hit false
-                                              :running_time 200}]
-        (let [card-with-stats (t2/hydrate (t2/select-one :model/Card :id card-id) :average_query_time :last_query_start)]
-          (testing "average_query_time is calculated correctly"
-            (is (>= 150.000 (:average_query_time card-with-stats))))
-          (testing "last_query_start is the most recent"
-            (is (= now (:last_query_start card-with-stats))))))))
-
-  (testing "cards with no query execution logs"
-    (mt/with-temp [:model/Card {card-id :id} {}]
-      (let [card-with-stats (t2/hydrate (t2/select-one :model/Card :id card-id) :average_query_time :last_query_start)]
-        (testing "average_query_time is nil"
-          (is (nil? (:average_query_time card-with-stats))))
-        (testing "last_query_start is nil"
-          (is (nil? (:last_query_start card-with-stats))))))))
+(deftest ^:parallel average-query-time-and-last-query-started-test
+  (let [now       (t/offset-date-time)
+        yesterday (t/minus now (t/days 1))]
+    (mt/with-temp
+      [:model/Card           card {}
+       :model/QueryExecution _qe1 {:card_id      (:id card)
+                                   :started_at   now
+                                   :cache_hit    false
+                                   :running_time 50}
+       :model/QueryExecution _qe2 {:card_id      (:id card)
+                                   :started_at   yesterday
+                                   :cache_hit    false
+                                   :running_time 100}]
+      (is (= 75 (-> card (t2/hydrate :average_query_time) :average_query_time int)))
+      ;; the DB might save last_query_start with a different level of precision than the JVM does, on my machine
+      ;; `offset-date-time` returns nanosecond precision (9 decimal places) but `last_query_start` is coming back with
+      ;; microsecond precision (6 decimal places). We don't care about such a small difference, just strip it off of the
+      ;; times we're comparing.
+      (is (= (.withNano now 0)
+             (-> (-> card (t2/hydrate :last_query_start) :last_query_start)
+                 t/offset-date-time
+                 (.withNano 0)))))))
 
 (deftest save-mlv2-card-test
   (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
