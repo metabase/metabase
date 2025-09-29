@@ -21,7 +21,6 @@ runs:
         if [ -d "python-runner" ]; then
           cd python-runner
           make stop || echo "WARNING: Failed to stop python runner"
-          cd ..
         fi
       shell: bash
 
