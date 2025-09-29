@@ -2,17 +2,14 @@ import { t } from "ttag";
 
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import {
-  Button,
   Flex,
   Icon,
   Loader,
   Menu,
-  Stack,
   Textarea,
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import {
   useMetabotAgent,
   useMetabotChatHandlers,
@@ -25,15 +22,6 @@ export function MetabotChatInput() {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
   const dispatch = useSdkDispatch();
-
-  // Keep in sync with [MetabotChat.tsx]
-  const suggestedPromptsQuery = useGetSuggestedMetabotPromptsQuery({
-    metabot_id: metabot.metabotId,
-    limit: 3,
-    sample: true,
-  });
-
-  const suggestedPrompts = suggestedPromptsQuery.currentData?.prompts ?? [];
 
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
@@ -51,130 +39,99 @@ export function MetabotChatInput() {
     metabot.resetConversation();
   };
 
-  const shouldShowSuggestedPrompts =
-    metabot.messages.length === 0 &&
-    metabot.errorMessages.length === 0 &&
-    !metabot.isDoingScience &&
-    suggestedPrompts.length > 0;
-
   return (
-    <Stack gap={0}>
-      {shouldShowSuggestedPrompts && (
-        <Stack gap="sm" p="md" className={S.promptSuggestionsContainer}>
-          {suggestedPrompts.map(({ prompt }, index) => (
-            <Button
-              key={index}
-              size="xs"
-              variant="outline"
-              fw={400}
-              onClick={() => handleSubmitInput(prompt)}
-              className={S.promptSuggestionButton}
-              data-testid="metabot-suggestion-button"
-            >
-              {prompt}
-            </Button>
-          ))}
-        </Stack>
+    <Flex
+      gap="xs"
+      px="md"
+      pt="0.6rem"
+      pb="0.2rem"
+      align="center"
+      justify="center"
+      style={{ borderTop: "1px solid var(--mb-color-border)" }}
+    >
+      <Flex
+        justify="center"
+        align="center"
+        style={{ flexShrink: 0, marginBottom: "8px" }}
+      >
+        {metabot.isDoingScience ? (
+          <Loader size="sm" />
+        ) : (
+          <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
+        )}
+      </Flex>
+
+      <Textarea
+        id="metabot-chat-input"
+        data-testid="metabot-chat-input"
+        w="100%"
+        autosize
+        minRows={1}
+        maxRows={4}
+        ref={metabot.promptInputRef}
+        autoFocus
+        value={metabot.prompt}
+        disabled={metabot.isDoingScience}
+        placeholder={placeholder}
+        onChange={(e) => metabot.setPrompt(e.target.value)}
+        classNames={{ input: S.chatInput }}
+        onKeyDown={(e) => {
+          if (e.nativeEvent.isComposing) {
+            return;
+          }
+
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSubmitInput(metabot.prompt);
+          }
+        }}
+      />
+
+      {metabot.isDoingScience && (
+        <UnstyledButton
+          h="1rem"
+          data-testid="metabot-cancel-request"
+          onClick={cancelRequest}
+          style={{ marginBottom: "8px" }}
+        >
+          <Tooltip label={t`Stop generation`}>
+            <Icon name="stop" c="var(--mb-color-text-secondary)" size="1rem" />
+          </Tooltip>
+        </UnstyledButton>
       )}
 
-      {/* Text Input */}
-      <Flex
-        gap="xs"
-        px="md"
-        pt="0.6rem"
-        pb="0.2rem"
-        align="center"
-        justify="center"
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
-      >
-        <Flex
-          style={{ flexShrink: 0, marginBottom: "8px" }}
-          justify="center"
-          align="center"
+      {!metabot.isDoingScience && metabot.prompt.length > 0 && (
+        <UnstyledButton
+          h="1rem"
+          onClick={resetInput}
+          data-testid="metabot-close-chat"
+          style={{ marginBottom: "8px" }}
         >
-          {metabot.isDoingScience ? (
-            <Loader size="sm" />
-          ) : (
-            <Icon name="ai" c="var(--mb-color-brand)" size="1rem" />
-          )}
-        </Flex>
+          <Icon name="close" c="var(--mb-color-text-secondary)" size="1rem" />
+        </UnstyledButton>
+      )}
 
-        <Textarea
-          id="metabot-chat-input"
-          data-testid="metabot-chat-input"
-          w="100%"
-          autosize
-          minRows={1}
-          maxRows={4}
-          ref={metabot.promptInputRef}
-          autoFocus
-          value={metabot.prompt}
-          disabled={metabot.isDoingScience}
-          placeholder={placeholder}
-          onChange={(e) => metabot.setPrompt(e.target.value)}
-          classNames={{ input: S.chatInput }}
-          onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing) {
-              return;
-            }
-
-            if (e.key === "Enter") {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSubmitInput(metabot.prompt);
-            }
-          }}
-        />
-
-        {metabot.isDoingScience && (
+      {/* Overflow menu - only shown in stacked layout and auto layout mobile */}
+      <Menu position="top-end" withinPortal>
+        <Menu.Target>
           <UnstyledButton
-            h="1rem"
-            data-testid="metabot-cancel-request"
-            onClick={cancelRequest}
-            style={{ marginBottom: "8px" }}
+            data-testid="metabot-overflow-button"
+            className={S.stackedOverflowButton}
           >
-            <Tooltip label={t`Stop generation`}>
-              <Icon
-                name="stop"
-                c="var(--mb-color-text-secondary)"
-                size="1rem"
-              />
-            </Tooltip>
+            <Icon name="ellipsis" c="var(--mb-color-text-secondary)" />
           </UnstyledButton>
-        )}
+        </Menu.Target>
 
-        {!metabot.isDoingScience && metabot.prompt.length > 0 && (
-          <UnstyledButton
-            h="1rem"
-            onClick={resetInput}
-            data-testid="metabot-close-chat"
-            style={{ marginBottom: "8px" }}
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<Icon name="edit_document_outlined" size="1rem" />}
+            onClick={startNewConversation}
           >
-            <Icon name="close" c="var(--mb-color-text-secondary)" size="1rem" />
-          </UnstyledButton>
-        )}
-
-        {/* Overflow menu - only shown in stacked layout and auto layout mobile */}
-        <Menu position="top-end" withinPortal>
-          <Menu.Target>
-            <UnstyledButton
-              data-testid="metabot-overflow-button"
-              className={S.stackedOverflowButton}
-            >
-              <Icon name="ellipsis" c="var(--mb-color-text-secondary)" />
-            </UnstyledButton>
-          </Menu.Target>
-
-          <Menu.Dropdown>
-            <Menu.Item
-              leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-              onClick={startNewConversation}
-            >
-              {t`Start new chat`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      </Flex>
-    </Stack>
+            {t`Start new chat`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+    </Flex>
   );
 }
