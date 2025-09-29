@@ -49,7 +49,8 @@
                               :type/Integer        "INTEGER"
                               :type/Text           "VARCHAR(1024)"
                               :type/Time           "TIME"
-                              :type/TimeWithTZ     "TIMETZ"}]
+                              :type/TimeWithTZ     "TIMETZ"
+                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
 (mu/defn- db-name :- :string
@@ -121,16 +122,13 @@
   "Dump a sequence of rows (as vectors) to a CSV file."
   [{:keys [field-definitions rows]} ^String filename]
   (try
-    (let [has-custom-pk? (when-let [pk (not-empty (sql.tx/fielddefs->pk-field-names field-definitions))]
-                           (not= ["id"] pk))
+    (let [needs-pk?      (empty? (sql.tx/fielddefs->pk-field-names field-definitions))
           column-names   (cond->> (mapv :field-name field-definitions)
-                           (not has-custom-pk?)
-                           (cons "id"))
+                           needs-pk? (cons "id"))
           rows-with-id (for [[i row] (m/indexed rows)]
                          (cond->> (for [v row]
                                     (value->csv v))
-                           (not has-custom-pk?)
-                           (cons (inc i))))
+                           needs-pk? (cons (inc i))))
 
           csv-rows     (cons column-names rows-with-id)]
       (try
