@@ -118,19 +118,16 @@
                     node))
                 database))
 
-(defmethod import/yaml->toucan :v0/database [representation & {:keys [creator-id]
-                                                               :or {creator-id config/internal-mb-user-id}}]
-  (cond-> (-> representation
-              (set/rename-keys {:connection_details :details})
-              (select-keys [:name :engine :description :details])
-              (hydrate-env-vars))
+(defmethod import/yaml->toucan :v0/database
+  [representation _ref-index]
+  (-> representation
+      (set/rename-keys {:connection_details :details})
+      (select-keys [:name :engine :description :details :schemas])
+      (hydrate-env-vars)))
 
-    creator-id
-    (assoc :creator_id creator-id)))
-
-(defmethod import/persist! :v0/database [representation & {:keys [creator-id]
-                                                           :or {creator-id config/internal-mb-user-id}}]
-  (let [representation (import/yaml->toucan representation :creator-id creator-id)]
+(defmethod import/persist! :v0/database
+  [representation ref-index]
+  (let [representation (import/yaml->toucan representation ref-index)]
     (if-some [existing (t2/select-one :model/Database
                                       :name (:name representation)
                                       :engine (:engine representation))]

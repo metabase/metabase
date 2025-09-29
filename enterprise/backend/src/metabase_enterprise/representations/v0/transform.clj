@@ -105,8 +105,9 @@
 
 (defn yaml->toucan
   "Convert a validated v0 transform representation into data suitable for creating/updating a Transform."
-  [{:keys [ref name description database source target] :as representation}]
-  (let [database-id (v0-common/find-database-id database)
+  [{:keys [ref name description database source target] :as representation}
+   ref-index]
+  (let [database-id (v0-common/ref->id database ref-index)
         ;; TODO: better method for persistent entity IDs
         entity-id (v0-common/generate-entity-id (assoc representation :collection "transforms"))]
     (when-not database-id
@@ -142,8 +143,8 @@
    Otherwise a new transform will be created.
 
    Returns the created/updated Transform."
-  [representation]
-  (let [transform-data (yaml->toucan representation)
+  [representation ref-index]
+  (let [transform-data (yaml->toucan representation ref-index)
         entity-id (:entity_id transform-data)
         existing (when entity-id
                    (t2/select-one :model/Transform :entity_id entity-id))]

@@ -4,6 +4,8 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.serialization :as serdes]
@@ -318,9 +320,10 @@
 
 (defmethod import/yaml->toucan :v0/model
   [{model-name :name
-    :keys [type ref description database collection columns] :as representation}]
-  (let [database-id (v0-common/find-database-id database)
-        dataset-query (v0-common/representation->dataset-query representation)]
+    :keys [type ref description database collection columns] :as representation}
+   ref-index]
+  (let [database-id (v0-common/ref->id database ref-index)
+        dataset-query (v0-mbql/import-dataset-query representation ref-index)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
@@ -338,9 +341,9 @@
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
-(defmethod import/persist! :v0/model [representation & {:keys [creator-id]
-                                                        :or {creator-id config/internal-mb-user-id}}]
-  (let [model-data (import/yaml->toucan representation)
+(defmethod import/persist! :v0/model
+  [representation ref-index]
+  (let [model-data (import/yaml->toucan representation ref-index)
         entity-id (v0-common/generate-entity-id representation)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
@@ -352,7 +355,8 @@
       (do
         (log/info "Creating new model" (:name model-data))
         (let [model-data-with-creator (-> model-data
-                                          (assoc :creator_id creator-id)
+                                          (assoc :creator_id (or api/*current-user-id*
+                                                                 config/internal-mb-user-id))
                                           (assoc :entity_id entity-id))]
           (first (t2/insert-returning-instances! :model/Card model-data-with-creator)))))))
 

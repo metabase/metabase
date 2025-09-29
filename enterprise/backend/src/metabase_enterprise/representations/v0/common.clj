@@ -1,7 +1,7 @@
 (ns metabase-enterprise.representations.v0.common
   (:require
    [clojure.string :as str]
-   [metabase.models.serialization :as serdes]
+   [clojure.walk :as walk]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -19,15 +19,6 @@
   ;; TODO: raw `:collection` key could be fragile; use name?
   (entity-id (:ref representation) (:collection representation)))
 
-(defn find-database-id
-  "Find database ID by name or ref. Returns nil if not found."
-  [database-ref]
-  (when database-ref
-    (or
-     (when (integer? database-ref) database-ref)
-     ;; Try to find by name
-     (t2/select-one-pk :model/Database :name database-ref))))
-
 (defn find-collection-id
   "Find collection ID by name or ref. Returns nil if not found."
   [collection-ref]
@@ -37,36 +28,6 @@
      ;; Try to find by slug or name
      (t2/select-one-pk :model/Collection :slug collection-ref)
      (t2/select-one-pk :model/Collection :name collection-ref))))
-
-(defn representation->dataset-query
-  "Returns Metabase's dataset_query format, given a representation.
-   For POC, we're focusing on native SQL queries."
-  [{:keys [query mbql_query database] :as representation}]
-  (let [database-id (find-database-id database)]
-    (cond
-      ;; Native SQL query - simple case for POC
-      query
-      {:type :native
-       :native {:query query}
-       :database database-id}
-
-      ;; MBQL query - use serdes/import-mbql if it's already in MBQL format
-      mbql_query
-      (try
-        (-> (serdes/import-mbql {:type :query
-                                 :database database-id
-                                 :query mbql_query})
-            (update :type keyword))
-        (catch Exception _e
-          ;; Fall back to simple structure if import fails
-          (-> {:database database-id
-               :type     :query}
-              (merge mbql_query)
-              (update :type keyword))))
-
-      :else
-      (throw (ex-info "Question must have either 'query' or 'mbql_query'"
-                      {:representation representation})))))
 
 ;; this probably exists somewhere
 (defn remove-nils [map]
@@ -86,11 +47,11 @@
 
 (defn refs [entity]
   (let [v (volatile! [])]
-    (clojure.walk/postwalk (fn [node]
-                             (when (ref? node)
-                               (vswap! v conj node))
-                             node)
-                           (dissoc entity :ref))
+    (walk/postwalk (fn [node]
+                     (when (ref? node)
+                       (vswap! v conj node))
+                     node)
+                   (dissoc entity :ref))
     (set (map unref @v))))
 
 (defn ->ref [id type]
@@ -100,3 +61,19 @@
   (when (and (string? x)
              (str/starts-with? x "env:"))
     (subs x 4)))
+
+(defn ref->id
+  "Find database ID by name or ref. Returns nil if not found."
+  [entity-ref ref-index]
+  (cond (integer? entity-ref)
+        entity-ref
+        (ref? entity-ref)
+        (->> (unref entity-ref)
+             (get ref-index)
+             :id)
+        (nil? entity-ref) nil
+        :else
+        (throw
+         (ex-info "Could not process entity ref!"
+                  {:entity-ref entity-ref
+                   :ref-index ref-index}))))

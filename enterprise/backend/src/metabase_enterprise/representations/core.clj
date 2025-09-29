@@ -100,8 +100,10 @@
    Returns a map with keys matching the Toucan model fields.
    Does NOT insert into the database - just transforms the data.
    Delegates to the multimethod yaml->toucan for extensibility."
-  [valid-representation]
-  (import/yaml->toucan valid-representation))
+  ([valid-representation]
+   (import/yaml->toucan valid-representation nil))
+  ([valid-representation ref-index]
+   (import/yaml->toucan valid-representation ref-index)))
 
 (defn import-yaml
   "Parse a YAML representation file and return the data structure.
@@ -115,9 +117,11 @@
 
 (defn persist!
   "Persist the representation with t2"
-  [representation]
-  (when-let [validated (validate representation)]
-    (import/persist! validated)))
+  ([representation]
+   (persist! representation nil))
+  ([representation ref-index]
+   (when-let [validated (validate representation)]
+     (import/persist! validated ref-index))))
 
 (comment
   (yaml->toucan
@@ -322,10 +326,7 @@
                      (last)
                      (Long/parseLong))]
           (try
-            (let [toucan-model (case (:type valid-repr)
-                                 :v0/question (v0-question/yaml->toucan valid-repr)
-                                 :v0/model (v0-model/yaml->toucan valid-repr)
-                                 :v0/metric (v0-metric/yaml->toucan valid-repr))
+            (let [toucan-model (import/yaml->toucan valid-repr nil)
                   updated-card (assoc toucan-model
                                       :id id
                                       :collection_id coll-id
@@ -337,7 +338,7 @@
 
 (comment
   (pst)
-  (v0-question/yaml->toucan (load-representation-yaml "/tmp/pre-loaded/c-2-card196324.card.yml"))
+  (import/yaml->toucan (load-representation-yaml "/tmp/pre-loaded/c-2-card196324.card.yml") nil)
   (ingest-representation (clj-yaml/parse-string (slurp "/tmp/pre-loaded/c-2-card196324.card.yml")))
   (file-seq (io/file "/tmp/pre-loaded"))
   (fetch :collection -1)
@@ -389,16 +390,36 @@
        file-seq
        (filter #(str/ends-with? (.getName %) ".yml"))
        (map import-yaml)
+       (map validate)
        (order-representations)))
 
+;;;;;;;;
+
+(defn persist-dir!
+  "Given a dir containing yaml representations, sorts them topologically, then persists them in order."
+  [dir]
+  (let [representations (yaml-files dir)]
+    (reduce (fn [index entity]
+              (try
+                (let [persisted (import/persist! entity index)]
+                  (assoc index (:ref entity) persisted))
+                (catch Exception e
+                  (log/warn "Failed to persist an entity!"
+                            (ex-info (format "Entity failed to persist for ref %s. Removing from index." (:ref entity))
+                                     {:entity entity
+                                      :ref-index index}
+                                     e))
+                  (dissoc index (:ref entity)))))
+            {}
+            representations)))
+
 (comment
-  #_(let [reps' (resolve-databases reps)
-          ordered (order-representations reps')]
-      (reduce (fn [index entity]
-                (let [persisted (persist! entity index)]
-                  (assoc index (:ref entity) persisted)))
-              {}
-              ordered))
+  (let [ordered (order-representations other-entities)]
+    (reduce (fn [index entity]
+              (let [persisted (persist! entity index)]
+                (assoc index (:ref entity) persisted)))
+            (resolve-databases db-entities)
+            ordered))
   #_3)
 
 (comment
