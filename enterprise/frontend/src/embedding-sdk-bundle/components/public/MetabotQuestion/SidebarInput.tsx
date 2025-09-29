@@ -12,6 +12,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import {
   useMetabotAgent,
   useMetabotChatHandlers,
@@ -20,20 +21,19 @@ import { cancelInflightAgentRequests } from "metabase-enterprise/metabot/state";
 
 import S from "./MetabotQuestion.module.css";
 
-interface SidebarInputProps {
-  suggestedPrompts: Array<{ prompt: string }>;
-  hasMessages: boolean;
-  onSubmitPrompt: (prompt: string) => void;
-}
-
-export function SidebarInput({
-  suggestedPrompts,
-  hasMessages,
-  onSubmitPrompt,
-}: SidebarInputProps) {
+export function SidebarInput() {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
   const dispatch = useSdkDispatch();
+
+  // Keep in sync with [MetabotChat.tsx]
+  const suggestedPromptsQuery = useGetSuggestedMetabotPromptsQuery({
+    metabot_id: metabot.metabotId,
+    limit: 3,
+    sample: true,
+  });
+
+  const suggestedPrompts = suggestedPromptsQuery.currentData?.prompts ?? [];
 
   const placeholder = metabot.isDoingScience
     ? t`Doing science...`
@@ -52,7 +52,10 @@ export function SidebarInput({
   };
 
   const shouldShowSuggestedPrompts =
-    !hasMessages && !metabot.isDoingScience && suggestedPrompts.length > 0;
+    metabot.messages.length === 0 &&
+    metabot.errorMessages.length === 0 &&
+    !metabot.isDoingScience &&
+    suggestedPrompts.length > 0;
 
   return (
     <Stack gap={0}>
@@ -64,7 +67,7 @@ export function SidebarInput({
               size="xs"
               variant="outline"
               fw={400}
-              onClick={() => onSubmitPrompt(prompt)}
+              onClick={() => handleSubmitInput(prompt)}
               className={S.promptSuggestionButton}
               data-testid="metabot-suggestion-button"
             >
