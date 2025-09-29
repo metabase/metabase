@@ -3,7 +3,7 @@ import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Box, Image, Stack, Text, rem } from "metabase/ui";
+import { Box, Code, Image, Stack, Text, rem } from "metabase/ui";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
@@ -36,13 +36,12 @@ export const Value = ({ children, column, field, value }: Props) => {
 
   if (json) {
     return (
-      <Box
+      <Code
         bd="1px solid var(--mb-color-border)"
         bdrs={4}
         bg="var(--mb-color-bg-light)"
         c="text-primary"
         className={S.json}
-        component="pre"
         fw="bold"
         lh={1.5}
         m={0}
@@ -51,7 +50,7 @@ export const Value = ({ children, column, field, value }: Props) => {
         w="100%"
       >
         {json}
-      </Box>
+      </Code>
     );
   }
 
