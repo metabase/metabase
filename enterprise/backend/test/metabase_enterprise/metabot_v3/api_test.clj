@@ -87,7 +87,7 @@
                 [http/post (fn [url opts]
                              (reset! captured {:url url
                                                :body (json/decode+kw (String. ^bytes (:body opts) "UTF-8"))})
-                             {:status 204 :body ""})]
+                             {:status 204})]
                 (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
                   (is (= {:url expected-url :body feedback}
                          @captured)))))))
