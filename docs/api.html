@@ -14570,6 +14570,16 @@ redirect_from:
                         },
                         "value" : {
                           "anyOf" : [ {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "anyOf" : [ {
+                                "type" : "string",
+                                "minLength" : 1
+                              }, {
+                                "type" : "boolean"
+                              } ]
+                            }
+                          }, {
                             "type" : "string",
                             "minLength" : 1
                           }, {
