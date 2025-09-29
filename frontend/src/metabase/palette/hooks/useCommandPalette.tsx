@@ -24,7 +24,7 @@ import {
 } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Icon } from "metabase/ui";
+import { Group, Icon } from "metabase/ui";
 import {
   type RecentItem,
   isRecentCollectionItem,
@@ -379,39 +379,24 @@ export const getRecentItemSubtext = (item: RecentItem) => {
       : item.database.name;
   } else if (item.dashboard) {
     return (
-      <>
-        <Icon
-          flex="0 0 auto"
-          name="dashboard"
-          size={12}
-          style={{ marginInline: "0.25rem" }}
-        />
+      <Group align="center" gap="xs" wrap="nowrap">
+        <Icon flex="0 0 auto" name="dashboard" size={12} />
         {item.dashboard.name}
-      </>
+      </Group>
     );
   } else if (item.parent_collection.id === null) {
     return (
-      <>
-        <Icon
-          flex="0 0 auto"
-          name="collection"
-          size={12}
-          style={{ marginInline: "0.25rem" }}
-        />
+      <Group align="center" gap="xs" wrap="nowrap">
+        <Icon flex="0 0 auto" name="collection" size={12} />
         {ROOT_COLLECTION.name}
-      </>
+      </Group>
     );
   } else {
     return (
-      <>
-        <Icon
-          flex="0 0 auto"
-          name="collection"
-          size={12}
-          style={{ marginInline: "0.25rem" }}
-        />
+      <Group align="center" gap="xs" wrap="nowrap">
+        <Icon flex="0 0 auto" name="collection" size={12} />
         {item.parent_collection.name}
-      </>
+      </Group>
     );
   }
 };
