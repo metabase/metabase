@@ -151,21 +151,14 @@ export type ScheduleType =
   // by raw cron string.
   | "cron";
 
-export const SCHEDULE_DAY = [
-  "sun",
-  "mon",
-  "tue",
-  "wed",
-  "thu",
-  "fri",
-  "sat",
-] as const;
-
-export function isScheduleDay(value: string): value is ScheduleDayType {
-  return SCHEDULE_DAY.includes(value as ScheduleDayType);
-}
-
-export type ScheduleDayType = (typeof SCHEDULE_DAY)[number];
+export type ScheduleDayType =
+  | "sun"
+  | "mon"
+  | "tue"
+  | "wed"
+  | "thu"
+  | "fri"
+  | "sat";
 
 export type ScheduleFrameType = "first" | "mid" | "last";
 

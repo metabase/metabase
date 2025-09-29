@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
-import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/api";
 import type { DatetimeUnit } from "metabase-types/api/query";
+import { SCHEDULE_DAY, isScheduleDay } from "metabase-types/guards/settings";
 
 import { parseTimestamp } from "../time-dayjs";
 
