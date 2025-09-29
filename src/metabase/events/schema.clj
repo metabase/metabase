@@ -30,7 +30,7 @@
   (let [[entry-key option schema] (if (= 2 (count entry-schema))
                                     [(first entry-schema) {} (second entry-schema)]
                                     entry-schema)]
-    [entry-key (assoc option :hydrate {:key k
+    [entry-key (assoc option :hydrate {:key   k
                                        :model model})
      schema]))
 
@@ -41,8 +41,8 @@
 
 (mr/def :event/collection-read
   [:map {:closed true}
-   [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Collection %)]]])
+   [:user-id  pos-int?]
+   [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
 ;; dashboard events
 
@@ -60,11 +60,11 @@
       (mut/assoc :dashcards [:sequential [:map [:id pos-int?]]])))
 
 (mr/def :event/dashboard-remove-cards ::dashboard-with-dashcards)
-(mr/def :event/dashboard-add-cards ::dashboard-with-dashcards)
+(mr/def :event/dashboard-add-cards    ::dashboard-with-dashcards)
 
 (mr/def :event/dashboard-read
   [:map {:closed true}
-   [:user-id [:maybe pos-int?]]
+   [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 
 ;; user events
@@ -73,7 +73,7 @@
   [:map {:closed true}
    [:user-id pos-int?]])
 
-(mr/def :event/user-login ::user)
+(mr/def :event/user-login  ::user)
 (mr/def :event/user-joined ::user)
 
 (mr/def :event/user-invited
@@ -81,21 +81,21 @@
    [:object [:map
              [:email ms/Email]
              [:is_from_setup {:optional true} :boolean]
-             [:first_name {:optional true} [:maybe :string]]
+             [:first_name    {:optional true} [:maybe :string]]
              [:invite_method {:optional true} :string]
-             [:sso_source {:optional true} [:maybe [:or :keyword :string]]]]]
+             [:sso_source    {:optional true} [:maybe [:or :keyword :string]]]]]
    [:details {:optional true}
     [:map {:closed true}
      [:invitor [:map {:closed true}
-                [:email ms/Email]
+                [:email                       ms/Email]
                 [:first_name {:optional true} [:maybe :string]]]]]]])
 
 ;; segment events
 
 (mr/def ::segment
   [:map {:closed true}
-   [:user-id pos-int?]
-   [:object [:fn #(t2/instance-of? :model/Segment %)]]])
+   [:user-id  pos-int?]
+   [:object   [:fn #(t2/instance-of? :model/Segment %)]]])
 
 (mr/def :event/segment-create ::segment)
 
@@ -144,7 +144,7 @@
 
 (mr/def :event/table-read
   [:map {:closed true}
-   [:user-id pos-int?]
+   [:user-id  pos-int?]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
 
 (mr/def ::permission-failure
@@ -153,8 +153,8 @@
    [:object [:maybe [:fn #(boolean (t2/model %))]]]
    [:has-access {:optional true} [:maybe :boolean]]])
 
-(mr/def :event/read-permission-failure ::permission-failure)
-(mr/def :event/write-permission-failure ::permission-failure)
+(mr/def :event/read-permission-failure   ::permission-failure)
+(mr/def :event/write-permission-failure  ::permission-failure)
 (mr/def :event/update-permission-failure ::permission-failure)
 
 (mr/def :event/create-permission-failure

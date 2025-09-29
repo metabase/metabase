@@ -123,10 +123,10 @@
    ;; Cards in audit collection should not be writable.
    (and
     (not (and
-         ;; We want to make sure there's an existing audit collection before doing the equality check below.
-         ;; If there is no audit collection, this will be nil:
-          (some? (:id (audit/default-audit-collection)))
-         ;; Is a direct descendant of audit collection
+        ;; We want to make sure there's an existing audit collection before doing the equality check below.
+        ;; If there is no audit collection, this will be nil:
+        (some? (:id (audit/default-audit-collection)))
+        ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -935,7 +935,7 @@
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
                                               (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                                    metadata
+                                                                                           metadata
                                                                                                     (assoc :result_metadata metadata)))
                                                 (when (collections/remote-synced-collection? (:collection_id <>))
                                                   (collections/check-non-remote-synced-dependencies <>))))]

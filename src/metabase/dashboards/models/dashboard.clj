@@ -48,10 +48,10 @@
   ([instance]
    ;; Dashboards in audit collection should be read only
    (and (not (and
-              ;; We want to make sure there's an existing audit collection before doing the equality check below.
-              ;; If there is no audit collection, this will be nil:
-              (some? (:id (audit/default-audit-collection)))
-              ;; Is a direct descendant of audit collection
+        ;; We want to make sure there's an existing audit collection before doing the equality check below.
+        ;; If there is no audit collection, this will be nil:
+        (some? (:id (audit/default-audit-collection)))
+        ;; Is a direct descendant of audit collection
               (= (:collection_id instance) (:id (audit/default-audit-collection)))))
         (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
@@ -306,37 +306,37 @@
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
   (t2/with-transaction [_conn]
-    (let [{dashcards      :dashcards
-           tabs           :tabs
-           :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-          dashboard  (first (t2/insert-returning-instances!
-                             :model/Dashboard
-                             (-> dashboard
-                                 (dissoc :dashcards :tabs :rule :related
-                                         :transient_name :transient_filters :param_fields :more)
-                                 (assoc :description description
-                                        :collection_id parent-collection-id))))
-          {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
-      (add-dashcards! dashboard
-                      (for [dashcard dashcards]
-                        (let [card     (some-> dashcard :card
-                                               (assoc :dashboard_id (:id dashboard)
-                                                      :collection_id parent-collection-id)
-                                               save-card!)
-                              series   (some->> dashcard
-                                                :series
-                                                (mapv (fn [card]
-                                                        (-> card
-                                                            (assoc :collection_id parent-collection-id)
-                                                            save-card!))))
-                              dashcard (-> dashcard
-                                           (dissoc :card :id :creator_id)
-                                           (update :parameter_mappings
-                                                   (partial map #(assoc % :card_id (:id card))))
-                                           (assoc :series series)
-                                           (update :dashboard_tab_id (or old->new-tab-id {}))
-                                           (assoc :card_id (:id card)))]
-                          dashcard)))
+  (let [{dashcards      :dashcards
+         tabs           :tabs
+         :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
+        dashboard  (first (t2/insert-returning-instances!
+                           :model/Dashboard
+                           (-> dashboard
+                               (dissoc :dashcards :tabs :rule :related
+                                       :transient_name :transient_filters :param_fields :more)
+                               (assoc :description description
+                                      :collection_id parent-collection-id))))
+        {:keys [old->new-tab-id]} (dashboard-tab/do-update-tabs! (:id dashboard) nil tabs)]
+    (add-dashcards! dashboard
+                    (for [dashcard dashcards]
+                      (let [card     (some-> dashcard :card
+                                             (assoc :dashboard_id (:id dashboard)
+                                                    :collection_id parent-collection-id)
+                                             save-card!)
+                            series   (some->> dashcard
+                                              :series
+                                              (mapv (fn [card]
+                                                      (-> card
+                                                          (assoc :collection_id parent-collection-id)
+                                                          save-card!))))
+                            dashcard (-> dashcard
+                                         (dissoc :card :id :creator_id)
+                                         (update :parameter_mappings
+                                                 (partial map #(assoc % :card_id (:id card))))
+                                         (assoc :series series)
+                                         (update :dashboard_tab_id (or old->new-tab-id {}))
+                                         (assoc :card_id (:id card)))]
+                        dashcard)))
       (cond-> dashboard
         (collections/remote-synced-collection? parent-collection-id) collections/check-non-remote-synced-dependencies))))
 

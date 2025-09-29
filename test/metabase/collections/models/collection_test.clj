@@ -64,25 +64,25 @@
 (deftest personal-collection-with-ui-details-test
   (testing "With personal_owner"
     (is (= {:personal_owner_id (mt/user->id :lucky)
-            :name "Lucky Pigeon's Personal Collection"
-            :slug "lucky_pigeon_s_personal_collection"}
+            :name              "Lucky Pigeon's Personal Collection"
+            :slug              "lucky_pigeon_s_personal_collection"}
            (collection/personal-collection-with-ui-details {:personal_owner_id (mt/user->id :lucky)})))
     (testing "Without personal_owner"
-      (is (= {:other "value"
+      (is (= {:other             "value"
               :personal_owner_id nil}
              (collection/personal-collection-with-ui-details {:other "value" :personal_owner_id nil}))))))
 
 (deftest personal-collections-with-ui-details-test
   (is (= [{:personal_owner_id (mt/user->id :lucky)
-           :name "Lucky Pigeon's Personal Collection"
-           :slug "lucky_pigeon_s_personal_collection"}
+           :name              "Lucky Pigeon's Personal Collection"
+           :slug              "lucky_pigeon_s_personal_collection"}
 
           {:personal_owner_id (mt/user->id :rasta)
-           :name "Rasta Toucan's Personal Collection"
-           :slug "rasta_toucan_s_personal_collection"}
+           :name              "Rasta Toucan's Personal Collection"
+           :slug              "rasta_toucan_s_personal_collection"}
 
           {:personal_owner_id nil
-           :other "No personal Id"}]
+           :other             "No personal Id"}]
          (collection/personal-collections-with-ui-details [{:personal_owner_id (mt/user->id :lucky)}
                                                            {:personal_owner_id (mt/user->id :rasta)}
                                                            {:personal_owner_id nil :other "No personal Id"}]))))
@@ -92,11 +92,11 @@
     (mt/with-temp [:model/Collection collection {:name "My Favorite Cards"}]
       (is (partial= (merge
                      (mt/object-defaults :model/Collection)
-                     {:name "My Favorite Cards"
-                      :slug "my_favorite_cards"
-                      :description nil
-                      :archived false
-                      :location "/"
+                     {:name              "My Favorite Cards"
+                      :slug              "my_favorite_cards"
+                      :description       nil
+                      :archived          false
+                      :location          "/"
                       :personal_owner_id nil})
                     collection)))))
 
@@ -149,13 +149,13 @@
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
     (mt/with-temp [:model/Collection collection {}
-                   :model/Card card {:collection_id (u/the-id collection)}]
+                   :model/Card       card       {:collection_id (u/the-id collection)}]
       (archive-collection! collection)
       (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
     (mt/with-temp [:model/Collection collection {}
-                   :model/Card card {:collection_id (u/the-id collection)}]
+                   :model/Card       card       {:collection_id (u/the-id collection)}]
       (archive-collection! collection)
       (is (t2/select-one-fn :archived :model/Card :id (u/the-id card)))
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
@@ -241,7 +241,7 @@
   [path]
   ;; split the path into IDs and then fetch a map of ID -> Name for each ID
   (when (seq path)
-    (let [ids (collection/location-path->ids path)
+    (let [ids      (collection/location-path->ids path)
           id->name (when (seq ids)
                      (t2/select-fn->fn :id :name :model/Collection :id [:in ids]))]
       ;; now loop through each ID and replace the ID part like (ex. /10/) with a name (ex. /A/)
@@ -260,11 +260,11 @@
 (deftest ^:parallel location-path-test
   (testing "Does our handy utility function for working with `location` paths work as expected?"
     (testing "valid input"
-      (doseq [[args expected] {[1 2 3] "/1/2/3/"
-                               nil "/"
-                               [{:id 1}] "/1/"
+      (doseq [[args expected] {[1 2 3]                   "/1/2/3/"
+                               nil                       "/"
+                               [{:id 1}]                 "/1/"
                                [{:id 1} {:id 2} {:id 3}] "/1/2/3/"
-                               [1 {:id 337}] "/1/337/"}]
+                               [1 {:id 337}]             "/1/337/"}]
         (testing (pr-str (cons 'location-path args))
           (is (= expected
                  (apply collection/location-path args))))))
@@ -283,8 +283,8 @@
 (deftest ^:parallel location-path-ids-test
   (testing "valid input"
     (doseq [[path expected] {"/1/2/3/" [1 2 3]
-                             "/" []
-                             "/1/" [1]
+                             "/"       []
+                             "/1/"     [1]
                              "/1/337/" [1 337]}]
       (testing (pr-str (list 'location-path->ids path))
         (is (= expected
@@ -312,8 +312,8 @@
 (deftest ^:parallel children-location-test
   (testing "valid input"
     (doseq [[collection expected] {{:id 1000, :location "/1/2/3/"} "/1/2/3/1000/"
-                                   {:id 1000, :location "/"} "/1000/"
-                                   {:id 1000, :location "/1/"} "/1/1000/"
+                                   {:id 1000, :location "/"}       "/1000/"
+                                   {:id 1000, :location "/1/"}     "/1/1000/"
                                    {:id 1000, :location "/1/337/"} "/1/337/1000/"}]
       (testing (pr-str (list 'children-location collection))
         (is (= expected
@@ -408,9 +408,9 @@
   (with-redefs [audit/is-collection-id-audit? (constantly false)
                 collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
     (testing "valid input"
-      (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}] "/10/20/"
-                                             ["/10/20/30/" #{10 30}] "/10/30/"
-                                             ["/10/20/30/" #{}] "/"
+      (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
+                                             ["/10/20/30/" #{10 30}]    "/10/30/"
+                                             ["/10/20/30/" #{}]         "/"
                                              ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
         (testing (format "path '%s' with visible ids '%s'" path (pr-str visible-ids))
           (is (= expected
@@ -566,20 +566,20 @@
   (with-collection-hierarchy! [{:keys [a b c d]}]
     (testing "make sure we can fetch the descendants of a Collection in the hierarchy we'd expect"
       (is (= #{{:name "B", :id true, :location "/A/", :children #{}, :description nil}
-               {:name "C"
-                :id true
+               {:name        "C"
+                :id          true
                 :description nil
-                :location "/A/"
-                :children #{{:name "D"
-                             :id true
-                             :description nil
-                             :location "/A/C/"
-                             :children #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
-                            {:name "F"
-                             :id true
-                             :description nil
-                             :location "/A/C/"
-                             :children #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}}}
+                :location    "/A/"
+                :children    #{{:name        "D"
+                                :id          true
+                                :description nil
+                                :location    "/A/C/"
+                                :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
+                               {:name        "F"
+                                :id          true
+                                :description nil
+                                :location    "/A/C/"
+                                :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}}}
              (descendants a))))
 
     (testing "try for one of the children, make sure we get just that subtree"
@@ -587,16 +587,16 @@
              (descendants b))))
 
     (testing "try for the other child, we should get just that subtree!"
-      (is (= #{{:name "D"
-                :id true
+      (is (= #{{:name        "D"
+                :id          true
                 :description nil
-                :location "/A/C/"
-                :children #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
-               {:name "F"
-                :id true
+                :location    "/A/C/"
+                :children    #{{:name "E", :id true, :description nil, :location "/A/C/D/", :children #{}}}}
+               {:name        "F"
+                :id          true
                 :description nil
-                :location "/A/C/"
-                :children #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}
+                :location    "/A/C/"
+                :children    #{{:name "G", :id true, :description nil, :location "/A/C/F/", :children #{}}}}}
              (descendants c))))
 
     (testing "try for a grandchild"
@@ -607,37 +607,37 @@
   (testing "For the *Root* Collection, can we get top-level Collections?"
     (with-collection-hierarchy! [_]
       (is (contains? (descendants collection/root-collection)
-                     {:name "A"
-                      :id true
+                     {:name        "A"
+                      :id          true
                       :description nil
-                      :location "/"
-                      :children #{{:name "C"
-                                   :id true
-                                   :description nil
-                                   :location "/A/"
-                                   :children #{{:name "D"
-                                                :id true
-                                                :description nil
-                                                :location "/A/C/"
-                                                :children #{{:name "E"
-                                                             :id true
-                                                             :description nil
-                                                             :location "/A/C/D/"
-                                                             :children #{}}}}
-                                               {:name "F"
-                                                :id true
-                                                :description nil
-                                                :location "/A/C/"
-                                                :children #{{:name "G"
-                                                             :id true
-                                                             :description nil
-                                                             :location "/A/C/F/"
-                                                             :children #{}}}}}}
-                                  {:name "B"
-                                   :id true
-                                   :description nil
-                                   :location "/A/"
-                                   :children #{}}}})))))
+                      :location    "/"
+                      :children    #{{:name        "C"
+                                      :id          true
+                                      :description nil
+                                      :location    "/A/"
+                                      :children    #{{:name        "D"
+                                                      :id          true
+                                                      :description nil
+                                                      :location    "/A/C/"
+                                                      :children    #{{:name        "E"
+                                                                      :id          true
+                                                                      :description nil
+                                                                      :location    "/A/C/D/"
+                                                                      :children    #{}}}}
+                                                     {:name        "F"
+                                                      :id          true
+                                                      :description nil
+                                                      :location    "/A/C/"
+                                                      :children    #{{:name        "G"
+                                                                      :id          true
+                                                                      :description nil
+                                                                      :location    "/A/C/F/"
+                                                                      :children    #{}}}}}}
+                                     {:name        "B"
+                                      :id          true
+                                      :description nil
+                                      :location    "/A/"
+                                      :children    #{}}}})))))
 
 (deftest descendant-ids-test
   (testing "double-check that descendant-ids is working right too"
@@ -920,8 +920,8 @@
                                      [{:location "/"} {}]
                                      [{:location "/"} 1]
                                      [nil {:location "/"}]
-                                     [{} {:location "/"}]
-                                     [1 {:location "/"}]]]
+                                     [{}  {:location "/"}]
+                                     [1   {:location "/"}]]]
       (testing (pr-str (list 'perms-for-moving collection new-parent))
         (is (thrown?
              Exception
@@ -1150,8 +1150,8 @@
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
                 "the Root Collection\n")
     (doseq [collection-namespace [nil "currency"]
-            :let [root-collection (assoc collection/root-collection :namespace collection-namespace)
-                  other-namespace (if collection-namespace nil "currency")]]
+            :let                 [root-collection (assoc collection/root-collection :namespace collection-namespace)
+                                  other-namespace (if collection-namespace nil "currency")]]
       (testing (format "Collection namespace = %s\n" (pr-str collection-namespace))
         (mt/with-temp [:model/PermissionsGroup group]
           (testing "no perms beforehand = no perms after"
@@ -1209,13 +1209,13 @@
 
       (testing "parent has no permissions"
         (mt/with-temp [:model/Collection parent {:name "{parent}"}
-                       :model/Collection child {:name "{child}", :location (collection/children-location parent)}]
+                       :model/Collection child  {:name "{child}", :location (collection/children-location parent)}]
           (is (= #{}
                  (group->perms [parent child] group)))))
 
       (testing "parent given read permissions after the fact -- should not update existing children"
         (mt/with-temp [:model/Collection parent {:name "{parent}"}
-                       :model/Collection child {:name "{child}", :location (collection/children-location parent)}]
+                       :model/Collection child  {:name "{child}", :location (collection/children-location parent)}]
           (perms/grant-collection-read-permissions! group parent)
           (is (= #{"/collection/{parent}/read/"}
                  (group->perms [parent child] group)))))
@@ -1234,7 +1234,7 @@
 
     (testing (str "Make sure that when creating a new Collection as grandchild of a Personal Collection, no group "
                   "permissions are created")
-      (mt/with-temp [:model/Collection child {:location (lucky-collection-children-location)}
+      (mt/with-temp [:model/Collection child      {:location (lucky-collection-children-location)}
                      :model/Collection grandchild {:location (collection/children-location child)}]
         (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
         (is (not (t2/exists? :model/Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
@@ -1252,7 +1252,7 @@
              (t2/update! :model/Collection (u/the-id personal-collection) {:archived true}))))))
 
   (testing "Make sure we're not allowed to *move* a Personal Collection"
-    (mt/with-temp [:model/User my-cool-user {}
+    (mt/with-temp [:model/User       my-cool-user          {}
                    :model/Collection some-other-collection {}]
       (let [personal-collection (collection/user->personal-collection my-cool-user)]
         (is (thrown?
@@ -1283,11 +1283,11 @@
 (deftest hydrate-is-personal-test
   (binding [collection/*allow-deleting-personal-collections* true]
     (mt/with-temp
-      [:model/User {user-id :id} {}
-       :model/Collection {personal-coll :id} {:personal_owner_id user-id}
-       :model/Collection {nested-personal-coll :id} {:location (format "/%d/" personal-coll)
-                                                     :personal_owner_id nil}
-       :model/Collection {top-level-coll :id} {:location "/"}
+      [:model/User       {user-id :id}               {}
+       :model/Collection {personal-coll :id}         {:personal_owner_id user-id}
+       :model/Collection {nested-personal-coll :id}  {:location          (format "/%d/" personal-coll)
+                                                      :personal_owner_id nil}
+       :model/Collection {top-level-coll :id}        {:location "/"}
        :model/Collection {nested-top-level-coll :id} {:location (format "/%d/" top-level-coll)}]
       (let [check-is-personal (fn [id-or-ids]
                                 (if (int? id-or-ids)
@@ -1318,7 +1318,7 @@
 (defmacro ^:private with-collection-hierarchy-in [parent-location [collection-symb & more] & body]
   (if-not collection-symb
     `(do ~@body)
-    `(mt/with-temp [:model/Collection ~collection-symb {:name ~(u/upper-case-en (name collection-symb))
+    `(mt/with-temp [:model/Collection ~collection-symb {:name     ~(u/upper-case-en (name collection-symb))
                                                         :location ~parent-location}]
        (with-collection-hierarchy-in (collection/children-location ~collection-symb) ~more ~@body))))
 
@@ -1457,21 +1457,21 @@
   #_{:clj-kondo/ignore [:equals-true]}
   (are [path expected] (= expected
                           (#'collection/valid-location-path? path))
-    nil false
-    "" false
-    "/" true
-    "/1" false
-    "/1/" true
-    "/1/2/" true
-    "/1/1/" false
+    nil       false
+    ""        false
+    "/"       true
+    "/1"      false
+    "/1/"     true
+    "/1/2/"   true
+    "/1/1/"   false
     "/1/2/1/" false
     "/1/2/3/" true
-    "/abc/" false
-    "1" false
-    "/1.0/" false
-    "/-1/" false
-    1 false
-    1.0 false))
+    "/abc/"   false
+    "1"       false
+    "/1.0/"   false
+    "/-1/"    false
+    1         false
+    1.0       false))
 
 (deftest check-parent-collection-namespace-matches-test
   (doseq [[parent-namespace child-namespace] [[nil "x"]
@@ -1484,8 +1484,8 @@
              clojure.lang.ExceptionInfo
              #"Collection must be in the same namespace as its parent"
              (t2/insert! :model/Collection
-                         {:location (format "/%d/" (:id parent-collection))
-                          :name "Child Collection"
+                         {:location  (format "/%d/" (:id parent-collection))
+                          :name      "Child Collection"
                           :namespace child-namespace}))))
 
       (testing (format "You should not be able to move a Collection of namespace %s into a Collection of namespace %s"
@@ -1510,8 +1510,8 @@
            clojure.lang.ExceptionInfo
            #"Personal Collections must be in the default namespace"
            (t2/insert! :model/Collection
-                       {:name "Personal Collection"
-                        :namespace "x"
+                       {:name              "Personal Collection"
+                        :namespace         "x"
                         :personal_owner_id user-id}))))))
 
 (deftest check-collection-namespace-test
@@ -1536,41 +1536,41 @@
 
 (deftest delete-collection-cascades
   (testing "When deleting a Collection, should delete things that used to be in that collection"
-    (mt/with-temp [:model/Collection {coll-id :id} {}
-                   :model/Card {card-id :id} {:collection_id coll-id}
-                   :model/Dashboard {dashboard-id :id} {:collection_id coll-id}
-                   :model/Pulse {pulse-id :id} {:collection_id coll-id}]
+    (mt/with-temp [:model/Collection {coll-id :id}      {}
+                   :model/Card       {card-id :id}      {:collection_id coll-id}
+                   :model/Dashboard  {dashboard-id :id} {:collection_id coll-id}
+                   :model/Pulse      {pulse-id :id}     {:collection_id coll-id}]
       (t2/delete! :model/Collection :id coll-id)
       (is (not (t2/exists? :model/Card :id card-id)))
       (is (not (t2/exists? :model/Dashboard :id dashboard-id)))
       (is (not (t2/exists? :model/Pulse :id pulse-id))))
-    (mt/with-temp [:model/Collection {coll-id :id} {:namespace "snippets"}
+    (mt/with-temp [:model/Collection         {coll-id :id}    {:namespace "snippets"}
                    :model/NativeQuerySnippet {snippet-id :id} {:collection_id coll-id}]
       (t2/delete! :model/Collection :id coll-id)
       (is (not (t2/exists? :model/NativeQuerySnippet :id snippet-id))
           "Snippet"))))
 
 (deftest collections->tree-test
-  (is (= [{:name "A"
-           :id 1
+  (is (= [{:name     "A"
+           :id       1
            :location "/"
-           :below #{:dataset :card}
+           :below    #{:dataset :card}
            :children [{:name "B", :id 2, :location "/1/", :children []}
-                      {:name "C"
-                       :id 3
+                      {:name     "C"
+                       :id       3
                        :location "/1/"
-                       :below #{:dataset :card}
-                       :children [{:name "D"
-                                   :id 4
+                       :below    #{:dataset :card}
+                       :children [{:name     "D"
+                                   :id       4
                                    :location "/1/3/"
-                                   :here #{:dataset}
-                                   :below #{:dataset}
+                                   :here     #{:dataset}
+                                   :below    #{:dataset}
                                    :children [{:name "E", :id 5, :location "/1/3/4/",
                                                :children [] :here #{:dataset}}]}
-                                  {:name "F"
-                                   :id 6
+                                  {:name     "F"
+                                   :id       6
                                    :location "/1/3/"
-                                   :here #{:card}
+                                   :here     #{:card}
                                    :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
           {:name "H", :id 8, :location "/", :children []}
           {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}]
@@ -1603,11 +1603,11 @@
     ;; +--+ [1] Parent Collection (All Users group has no perms)
     ;;    +--+ [2] Child Collection (All Users group has readwrite perms)
     ;;       +--+ [3] Grandchild collection (All Users group has readwrite perms)
-    (is (= [{:name "Child"
+    (is (= [{:name     "Child"
              :location "/1/"
-             :id 2
-             :here #{:card}
-             :below #{:card}
+             :id       2
+             :here     #{:card}
+             :below    #{:card}
              :children [{:name "Grandchild", :location "/1/2/", :id 3, :children [] :here #{:card}}]}]
            (collection/collections->tree {:card #{1 2 3}}
                                          [{:name "Child", :location "/1/", :id 2}
@@ -1631,28 +1631,28 @@
           (testing "sanity check: correctly-order puts collections into the order they were passed in"
             (is (= collections (correctly-order collections))))
           (testing "A correct tree is generated, with children ordered as they were passed in"
-            (is (= [{:id 3
-                     :name "a"
+            (is (= [{:id       3
+                     :name     "a"
                      :location "/"
                      :children (correctly-order
-                                [{:id 1
-                                  :name "a"
+                                [{:id       1
+                                  :name     "a"
                                   :location "/3/"
                                   :children (correctly-order
-                                             [{:id 2
-                                               :name "a"
+                                             [{:id       2
+                                               :name     "a"
                                                :location "/3/1/"
                                                :children (correctly-order
-                                                          [{:id 5
-                                                            :name "a"
+                                                          [{:id       5
+                                                            :name     "a"
                                                             :location "/3/1/2/"
                                                             :children []}])}
-                                              {:id 4
-                                               :name "a"
+                                              {:id       4
+                                               :name     "a"
                                                :location "/3/1/"
                                                :children []}])}
-                                 {:id 6
-                                  :name "a"
+                                 {:id       6
+                                  :name     "a"
                                   :location "/3/"
                                   :children []}])}]
                    (collection/collections->tree {} collections)))))))))
@@ -1663,19 +1663,19 @@
                      {:id 3, :name "c", :location "/1/2/"}
                      {:id 4, :name "d", :location "/1/2/3/"}
                      {:id 5, :name "e", :location "/1/"}]
-        clean #(walk/prewalk
-                (fn [x]
+        clean      #(walk/prewalk
+                     (fn [x]
                        ;; select important keys and remove empty children
-                  (if (map? x)
-                    (cond-> (select-keys x [:id :here :below :children])
-                      (not (seq (:children x))) (dissoc :children))
-                    x))
-                %)]
-    (is (= [{:id 1 :name "a" :location "/" :here #{:card} :below #{:card :dataset}}
-            {:id 2 :name "b" :location "/1/" :below #{:dataset}}
-            {:id 3 :name "c" :location "/1/2/" :here #{:dataset} :below #{:dataset}}
+                       (if (map? x)
+                         (cond-> (select-keys x [:id :here :below :children])
+                           (not (seq (:children x))) (dissoc :children))
+                         x))
+                     %)]
+    (is (= [{:id 1 :name "a" :location "/"       :here #{:card}    :below #{:card :dataset}}
+            {:id 2 :name "b" :location "/1/"                       :below #{:dataset}}
+            {:id 3 :name "c" :location "/1/2/"   :here #{:dataset} :below #{:dataset}}
             {:id 4 :name "d" :location "/1/2/3/" :here #{:dataset}}
-            {:id 5 :name "e" :location "/1/" :here #{:card}}]
+            {:id 5 :name "e" :location "/1/"     :here #{:card}}]
            (#'collection/annotate-collections {:card #{1 5} :dataset #{3 4}} collections)))
     (is (= [{:id 1 :here #{:card} :below #{:card :dataset}
              :children
@@ -1691,18 +1691,18 @@
 (deftest identity-hash-test
   (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Collection c1 {:name "top level"
+      (mt/with-temp [:model/Collection c1 {:name       "top level"
                                            :created_at now
-                                           :namespace "yolocorp"
-                                           :location "/"}
-                     :model/Collection c2 {:name "nested"
+                                           :namespace  "yolocorp"
+                                           :location   "/"}
+                     :model/Collection c2 {:name       "nested"
                                            :created_at now
-                                           :namespace "yolocorp"
-                                           :location (format "/%s/" (:id c1))}
-                     :model/Collection c3 {:name "grandchild"
+                                           :namespace  "yolocorp"
+                                           :location   (format "/%s/" (:id c1))}
+                     :model/Collection c3 {:name       "grandchild"
                                            :created_at now
-                                           :namespace "yolocorp"
-                                           :location (format "/%s/%s/" (:id c1) (:id c2))}]
+                                           :namespace  "yolocorp"
+                                           :location   (format "/%s/%s/" (:id c1) (:id c2))}]
         (let [c1-hash (serdes/identity-hash c1)
               c2-hash (serdes/identity-hash c2)]
           (is (= "f2620cc6"
@@ -1720,12 +1720,12 @@
 (deftest instance-analytics-collections-test
   (testing "Instance analytics and it's contents isn't writable, even for admins."
     (mt/with-temp [:model/Collection audit-collection {:type "instance-analytics"}
-                   :model/Card audit-card {:collection_id (:id audit-collection)}
-                   :model/Dashboard audit-dashboard {:collection_id (:id audit-collection)}
-                   :model/Collection cr-collection {}
-                   :model/Card cr-card {:collection_id (:id cr-collection)}
-                   :model/Dashboard cr-dashboard {:collection_id (:id cr-collection)}]
-      (with-redefs [audit/default-audit-collection (constantly audit-collection)
+                   :model/Card       audit-card       {:collection_id (:id audit-collection)}
+                   :model/Dashboard  audit-dashboard  {:collection_id (:id audit-collection)}
+                   :model/Collection cr-collection    {}
+                   :model/Card       cr-card          {:collection_id (:id cr-collection)}
+                   :model/Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
+      (with-redefs [audit/default-audit-collection          (constantly audit-collection)
                     audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}

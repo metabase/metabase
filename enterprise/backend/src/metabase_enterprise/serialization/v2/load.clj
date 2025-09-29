@@ -179,11 +179,11 @@
    :errors    []})
 
 (defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance. "
+  "Loads in a database export from an ingestion source, which is any Ingestable instance."
   [ingestion & {:keys [backfill? continue-on-error reindex?]
-                :or   {backfill?            true
-                       continue-on-error    false
-                       reindex?             true}}]
+                :or   {backfill?         true
+                       continue-on-error false
+                       reindex?          true}}]
   (u/prog1
     (t2/with-transaction [_tx]
       ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
