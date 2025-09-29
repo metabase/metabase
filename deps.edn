@@ -129,7 +129,7 @@
   org.apache.logging.log4j/log4j-layout-template-json
   {:mvn/version "2.25.1"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.25.1"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.25.2"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
