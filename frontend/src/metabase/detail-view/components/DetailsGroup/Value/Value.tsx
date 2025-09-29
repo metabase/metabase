@@ -37,12 +37,16 @@ export const Value = ({ children, column, field, value }: Props) => {
   if (json) {
     return (
       <Box
+        bd="1px solid var(--mb-color-border)"
+        bdrs={4}
+        bg="var(--mb-color-bg-light)"
         c="text-primary"
         className={S.json}
         component="pre"
         fw="bold"
         lh={1.5}
         m={0}
+        mah={rem(200)}
         p="sm"
         w="100%"
       >
