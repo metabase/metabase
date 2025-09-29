@@ -36,27 +36,25 @@ const ensureColumnValueAfterParameterEditing = ({
   columnName: string;
   columnValue: string;
 }) => {
-  cy.wait("@cardQuery").then(() => {
-    tableInteractiveBody().within(() => {
-      cy.findAllByRole("row")
-        .its("length")
-        .then((rowsLength) => {
-          cy.get(
-            `[data-column-id="${columnName}"] [data-testid="cell-data"]`,
-          ).should(($cells) => {
-            expect($cells).to.have.length(rowsLength);
+  tableInteractiveBody().within(() => {
+    cy.findAllByRole("row")
+      .its("length")
+      .then((rowsLength) => {
+        cy.get(
+          `[data-column-id="${columnName}"] [data-testid="cell-data"]`,
+        ).should(($cells) => {
+          expect($cells).to.have.length(rowsLength);
 
-            const mismatches = Cypress.$($cells).filter(
-              (_, el) => el.textContent.trim() !== columnValue,
-            );
+          const mismatches = Cypress.$($cells).filter(
+            (_, el) => el.textContent.trim() !== columnValue,
+          );
 
-            expect(
-              mismatches,
-              `cells with non-${columnValue} content`,
-            ).to.have.length(0);
-          });
+          expect(
+            mismatches,
+            `cells with non-${columnValue} content`,
+          ).to.have.length(0);
         });
-    });
+      });
   });
 };
 
@@ -223,6 +221,12 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         initialSqlParameters: { State: "NY" },
         hiddenParameters: ["Source"],
       });
+
+      cy.wait("@cardQuery");
+
+      cy.findByPlaceholderText("State").should("exist");
+      cy.findByPlaceholderText("City").should("exist");
+      cy.findByPlaceholderText("Source").should("not.exist");
 
       ensureColumnValueAfterParameterEditing({
         columnName: "STATE",
