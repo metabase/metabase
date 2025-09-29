@@ -96,3 +96,15 @@
   text-wrap-mode: wrap;
   justify-content: flex-start;
 }
+
+/* Chat input */
+.chatInput {
+  border: none;
+  border-radius: 0;
+  background-color: transparent;
+
+  &:focus {
+    outline: none;
+    border-color: transparent;
+  }
+}

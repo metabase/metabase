@@ -9,7 +9,7 @@ import {
 } from "metabase-enterprise/metabot/hooks";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
-export function SidebarChatHistory() {
+export function MetabotChatHistory() {
   const metabot = useMetabotAgent();
   const { messages, errorMessages } = metabot;
   const { handleRetryMessage } = useMetabotChatHandlers();

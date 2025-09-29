@@ -21,7 +21,7 @@ import { cancelInflightAgentRequests } from "metabase-enterprise/metabot/state";
 
 import S from "./MetabotQuestion.module.css";
 
-export function SidebarInput() {
+export function MetabotChatInput() {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleResetInput } = useMetabotChatHandlers();
   const dispatch = useSdkDispatch();
@@ -77,15 +77,15 @@ export function SidebarInput() {
         </Stack>
       )}
 
-      {/* Input area */}
+      {/* Text Input */}
       <Flex
         gap="xs"
         px="md"
         pt="0.6rem"
         pb="0.2rem"
-        style={{ borderTop: "1px solid var(--mb-color-border)" }}
         align="center"
         justify="center"
+        style={{ borderTop: "1px solid var(--mb-color-border)" }}
       >
         <Flex
           style={{ flexShrink: 0, marginBottom: "8px" }}
@@ -112,6 +112,7 @@ export function SidebarInput() {
           disabled={metabot.isDoingScience}
           placeholder={placeholder}
           onChange={(e) => metabot.setPrompt(e.target.value)}
+          classNames={{ input: S.chatInput }}
           onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) {
               return;
@@ -122,17 +123,6 @@ export function SidebarInput() {
               e.stopPropagation();
               handleSubmitInput(metabot.prompt);
             }
-          }}
-          styles={{
-            input: {
-              border: "none",
-              borderRadius: "0",
-              backgroundColor: "transparent",
-              "&:focus": {
-                outline: "none",
-                borderColor: "transparent",
-              },
-            },
           }}
         />
 
