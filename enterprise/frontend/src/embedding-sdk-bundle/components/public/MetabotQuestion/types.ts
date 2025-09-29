@@ -9,7 +9,11 @@ import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
  */
 export interface MetabotQuestionProps extends CommonStylingProps {
   /**
-   * Layout mode for the MetabotQuestion component
+   * Layout for the MetabotQuestion component.
+   *
+   * - `auto` (default): Metabot uses the `stacked` layout on mobile screens, and a `sidebar` layout on larger screens.
+   * - `stacked`: the question visualization stacks on top of the chat interface.
+   * - `sidebar`: the question visualization appears to the left of the chat interface, which is on a sidebar on the right.
    */
   layout?: "auto" | "sidebar" | "stacked";
 
