@@ -18,6 +18,7 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
       id: 1,
       name: "First Series",
       display: "line",
+      description: null,
       visualization_settings: {
         "graph.metrics": ["Revenue"],
         "graph.dimensions": ["Date"],
@@ -28,6 +29,7 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
       id: 2,
       name: "Second Series",
       display: "line",
+      description: null,
       visualization_settings: {
         "graph.metrics": ["Profit"],
         "graph.dimensions": ["Date"],
@@ -93,6 +95,37 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
       "graph.metrics": ["COLUMN_2", "COLUMN_4"],
       "graph.dimensions": ["COLUMN_1", "COLUMN_3"],
       "card.title": "First Series",
+      "card.description": null,
     });
+  });
+
+  it("should include card description in settings (metabase#63863)", () => {
+    const firstCard = createMockCard({
+      id: 1,
+      name: "Test Series",
+      description: "Test description",
+      display: "line",
+      visualization_settings: {
+        "graph.metrics": ["Revenue"],
+        "graph.dimensions": ["Date"],
+      },
+    });
+
+    const rawSeries = [
+      createMockSingleSeries(firstCard, {
+        data: createMockDatasetData({
+          cols: [
+            createMockColumn({ name: "Date" }),
+            createMockColumn({ name: "Revenue" }),
+          ],
+        }),
+      }),
+    ];
+
+    const initialState = getInitialStateForMultipleSeries(rawSeries);
+
+    expect(initialState.settings["card.description"]).toEqual(
+      "Test description",
+    );
   });
 });

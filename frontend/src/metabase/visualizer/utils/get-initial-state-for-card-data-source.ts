@@ -109,6 +109,7 @@ export function getInitialStateForCardDataSource(
     columnValuesMapping: {},
     settings: {
       "card.title": card.name,
+      "card.description": card.description,
     },
     datasetFallbacks: { [card.id]: dataset },
   };
@@ -223,6 +224,7 @@ export function getInitialStateForCardDataSource(
     ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
     "card.title": card.name,
+    "card.description": card.description,
   };
 
   return state;
