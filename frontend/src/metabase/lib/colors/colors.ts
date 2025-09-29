@@ -12,15 +12,21 @@ const baseBrand = whitelabelColors.brand || "hsla(208, 72%, 60%, 1.00)"; // defa
 // Do not export this or you will be fired
 const baseColors = {
   white: "hsla(0, 0%, 100%, 1.00)",
+  black: "hsla(0, 0%, 0%, 1.00)",
 
-  // Brand colors (dynamic based on --mb-color-brand)
+  // Brand colors (dynamic based on --mb-color-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
-    70: `color-mix(in srgb, ${baseBrand}, black 50%)`,
-    60: `color-mix(in srgb, ${baseBrand}, black 25%)`,
+    100: `color-mix(in srgb, ${baseBrand}, black 86%)`,
+    90: `color-mix(in srgb, ${baseBrand}, black 75%)`,
+    80: `color-mix(in srgb, ${baseBrand}, black 62%)`,
+    70: `color-mix(in srgb, ${baseBrand}, black 47%)`,
+    60: `color-mix(in srgb, ${baseBrand}, black 28%)`,
+    50: `color-mix(in srgb, ${baseBrand}, black 12%)`,
     40: baseBrand, // This is the base brand color
-    30: `color-mix(in srgb, ${baseBrand}, white 45%)`,
+    30: `color-mix(in srgb, ${baseBrand}, white 35%)`,
     20: `color-mix(in srgb, ${baseBrand}, white 70%)`,
-    10: `color-mix(in srgb, ${baseBrand}, white 90%)`,
+    10: `color-mix(in srgb, ${baseBrand}, white 91%)`,
+    5: `color-mix(in srgb, ${baseBrand}, white 96%)`,
   },
 
   // Deprecated Blue
@@ -53,6 +59,21 @@ const baseColors = {
     5: "hsla(210, 25%, 98%, 1.00)",
   },
 
+  // Ocean
+  ocean: {
+    100: "hsla(208, 100%, 9%, 1)",
+    90: "hsla(208, 89%, 15%, 1)",
+    80: "hsla(208, 82%, 22%, 1)",
+    70: "hsla(208, 80%, 31%, 1)",
+    60: "hsla(208, 78%, 42%, 1)",
+    50: "hsla(208, 68%, 53%, 1)",
+    40: "hsla(208, 72%, 60%, 1)",
+    30: "hsla(208, 73%, 74%, 1)",
+    20: "hsla(209, 73%, 88%, 1)",
+    10: "hsla(208, 79%, 96%, 1)",
+    5: "hsla(208, 75%, 98%, 1)",
+  },
+
   // Orion
   orion: {
     100: "hsla(204, 66%, 8%, 1)",
@@ -70,7 +91,7 @@ const baseColors = {
 
   // Orion Alpha
   orionAlpha: {
-    100: "hsla(205, 68%, 8%, 1)",
+    100: "hsla(204, 68%, 8%, 1)",
     90: "hsla(204, 66%, 8%, 0.93)",
     80: "hsla(204, 66%, 8%, 0.84)",
     70: "hsla(204, 66%, 8%, 0.74)",
@@ -78,9 +99,19 @@ const baseColors = {
     50: "hsla(204, 66%, 8%, 0.51)",
     40: "hsla(204, 66%, 8%, 0.44)",
     30: "hsla(204, 66%, 8%, 0.29)",
-    20: "hsla(204, 66%, 8%, 0.14)",
+    20: "hsla(204, 66%, 8%, 0.17)",
     10: "hsla(204, 66%, 8%, 0.05)",
     5: "hsla(204, 66%, 8%, 0.02)",
+  },
+
+  // Ocean Alpha. These are not in use yet because of whitelabeling
+  oceanAlpha: {
+    50: "hsla(208, 95%, 42%, 0.82)",
+    40: "hsla(208, 95%, 42%, 0.69)",
+    30: "hsla(208, 95%, 42%, 0.45)",
+    20: "hsla(208, 95%, 42%, 0.21)",
+    10: "hsla(208, 95%, 42%, 0.07)",
+    5: "hsla(208, 95%, 42%, 0.03)",
   },
 
   orionAlphaInverse: {
@@ -206,80 +237,85 @@ const baseColors = {
 export const colorConfig = {
   "accent-gray-dark": {
     light: baseColors.orion[20],
-    dark: baseColors.orion[20],
+    dark: baseColors.black,
   },
   "accent-gray-light": {
     light: baseColors.orion[5],
-    dark: "#2C2E33",
+    dark: baseColors.orion[80],
   },
-  "accent-gray": { light: baseColors.orion[10], dark: "#373A40" },
+  "accent-gray": { light: baseColors.orion[10], dark: baseColors.orion[80] },
   "admin-navbar": {
     light: baseColors.octopus[60],
-    dark: baseColors.octopus[60],
+    dark: baseColors.octopus[80],
   },
   "background-brand": {
     light: baseColors.brand[40],
     dark: baseColors.brand[40],
   },
   "background-disabled": {
-    light: baseColors.orion[10],
-    dark: "#2C2E33",
+    light: baseColors.orionAlpha[10],
+    dark: baseColors.orionAlphaInverse[10],
   },
   "background-error-secondary": {
     light: baseColors.lobster[5],
-    dark: baseColors.lobster[5],
+    dark: baseColors.lobster[90],
   },
   "background-hover": {
-    light: baseColors.brand[10],
-    dark: "#373A40",
+    light: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
+    dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[20],
   },
-  "background-info": { light: baseColors.orion[5], dark: baseColors.orion[5] },
+  "background-info": { light: baseColors.orion[5], dark: baseColors.orion[80] },
   "background-inverse": {
     light: baseColors.orion[80],
-    dark: baseColors.orion[80],
+    dark: baseColors.orion[20],
   },
-  "background-light": { light: baseColors.orion[5], dark: "#25262B" },
+  "background-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
   "background-selected": {
-    light: baseColors.brand[40],
+    light: baseColors.brand[50],
     dark: baseColors.brand[40],
   },
-  background: { light: baseColors.white, dark: "#1A1B1E" },
+  background: { light: baseColors.white, dark: baseColors.orion[100] }, //should be background-primary
   "bg-black-alpha-60": {
-    light: `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
-    dark: `color-mix(in srgb, ${baseColors.orion[80]} 60%, transparent)`,
+    //should be called overlay? this label is not semantic
+    light: baseColors.orionAlpha[60],
+    dark: baseColors.orionAlpha[70],
   },
-  "bg-black": { light: baseColors.orion[80], dark: "#1A1B1E" },
-  "bg-dark": { light: baseColors.orion[40], dark: "#373A40" },
-  "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[70] },
-  "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[10] },
-  "bg-light": { light: baseColors.orion[5], dark: "#25262B" },
-  "bg-medium": { light: baseColors.orion[10], dark: "#2C2E33" },
-  "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[70] },
+  "bg-black": { light: baseColors.orion[80], dark: baseColors.orion[20] }, //should be background-primary-inverse
+  "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[70] }, //should be background-tertiary-inverse
+  "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //should be background-secondary-inverse
+  "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[90] }, //should be background-error
+  "bg-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
+  "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
+  "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?
   "bg-white-alpha-15": {
-    light: `color-mix(in srgb, ${baseColors.white} 15%, transparent)`,
-    dark: `color-mix(in srgb, ${baseColors.white} 15%, transparent)`,
+    light: baseColors.orionAlphaInverse[20],
+    dark: baseColors.orionAlphaInverse[20],
   },
   "bg-white": {
+    //should be background-primary
     light: baseColors.white,
-    dark: "#1A1B1E", // TODO: Use base color
+    dark: baseColors.orion[100],
   },
   "bg-yellow": {
     light: baseColors.dubloon[5],
-    dark: baseColors.dubloon[5],
+    dark: baseColors.dubloon[90],
   },
   "border-alpha-30": {
-    light: "color-mix(in srgb, #eeecec 30%, transparent)",
-    dark: "color-mix(in srgb, #eeecec 30%, transparent)",
+    //should be border
+    light: baseColors.orionAlpha[20],
+    dark: baseColors.orionAlphaInverse[20],
   },
   "border-dark": {
-    light: baseColors.orion[60],
-    dark: baseColors.orion[60],
+    //should be border-strong
+    light: baseColors.orionAlpha[50],
+    dark: baseColors.orionAlphaInverse[50],
   },
   border: {
     light: baseColors.orion[20],
-    dark: "#373A40",
+    dark: baseColors.orionAlphaInverse[20],
   },
   "brand-alpha-04": {
+    //all of these colors derived from brand should be reworked to fit the values in the new color palette, and to have semantic names
     light: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
     dark: `color-mix(in srgb, var(--mb-color-brand) 4%, transparent)`,
   },
@@ -289,19 +325,19 @@ export const colorConfig = {
   },
   "brand-dark": {
     light: baseColors.brand[60],
-    dark: baseColors.brand[40],
+    dark: baseColors.brand[30],
   },
   "brand-darker": {
     light: baseColors.brand[70],
-    dark: baseColors.brand[30],
+    dark: baseColors.brand[20],
   },
   "brand-light": {
-    light: baseColors.brand[30],
-    dark: baseColors.brand[60],
+    light: baseColors.brand[10],
+    dark: baseColors.blue[90],
   },
   "brand-lighter": {
-    light: baseColors.brand[20],
-    dark: baseColors.brand[70],
+    light: baseColors.brand[5],
+    dark: baseColors.blue[100],
   },
   brand: {
     light: baseBrand,
@@ -309,19 +345,19 @@ export const colorConfig = {
   },
   danger: {
     light: baseColors.lobster[50],
-    dark: "#FF6B6B",
+    dark: baseColors.lobster[50],
   },
   error: {
     light: baseColors.lobster[50],
-    dark: "#FF6B6B",
+    dark: baseColors.lobster[50],
   },
   filter: {
     light: baseColors.octopus[50],
-    dark: "#9775FA",
+    dark: baseColors.octopus[40],
   },
   focus: {
     light: baseColors.blue[20],
-    dark: "#1A3A52",
+    dark: baseColors.blue[50],
   },
   "icon-primary-disabled": {
     light: baseColors.orion[30],
@@ -344,120 +380,129 @@ export const colorConfig = {
     dark: baseColors.blue[40], // not for whitelabeling
   },
   "saturated-blue": {
-    light: "hsla(208, 66%, 50%, 1.00)",
-    dark: "hsla(208, 66%, 50%, 1.00)",
+    light: baseColors.ocean[60],
+    dark: baseColors.ocean[40],
   },
   "saturated-green": {
-    light: "hsla(90, 48%, 44%, 1.00)",
-    dark: "hsla(90, 48%, 44%, 1.00)",
+    light: baseColors.palm[60],
+    dark: baseColors.palm[40],
   },
   "saturated-purple": {
-    light: "hsla(272, 36%, 52%, 1.00)",
-    dark: "hsla(272, 36%, 52%, 1.00)",
+    light: baseColors.octopus[60],
+    dark: baseColors.octopus[40],
   },
   "saturated-red": {
-    light: "hsla(0, 78%, 68%, 1.00)",
-    dark: "hsla(0, 78%, 68%, 1.00)",
+    light: baseColors.lobster[60],
+    dark: baseColors.lobster[40],
   },
   "saturated-yellow": {
-    light: "hsla(46, 94%, 63%, 1.00)",
-    dark: "hsla(46, 94%, 63%, 1.00)",
+    light: baseColors.dubloon[60],
+    dark: baseColors.dubloon[40],
   },
   "shadow-embedding-hub-card": {
+    //I think this can be removed?
     light: "hsla(208, 55%, 77%, 0.70)",
     dark: "hsla(208, 55%, 77%, 0.70)",
   },
   shadow: {
-    light: "hsla(0, 0%, 0%, 0.13)",
-    dark: "rgba(0, 0, 0, 0.25)",
+    light: baseColors.orionAlpha[20],
+    dark: `color-mix(in srgb, var(--mb-color-black) 20%, transparent)`,
   },
   "success-darker": {
+    //should be success-primary?
     light: baseColors.palm[60],
-    dark: baseColors.palm[60],
+    dark: baseColors.palm[40],
   },
   success: {
+    //should be success-secondary?
     light: baseColors.palm[50],
-    dark: "#51CF66",
+    dark: baseColors.palm[50],
   },
   summarize: {
-    light: baseColors.palm[40],
-    dark: "#69DB7C",
+    light: baseColors.palm[50],
+    dark: baseColors.palm[40],
   },
   "switch-off": {
-    light: baseColors.orion[10],
-    dark: baseColors.orion[10],
+    light: baseColors.orionAlpha[20],
+    dark: baseColors.orionAlphaInverse[20],
   },
   "syntax-parameters-active": {
     light: baseColors.mango[10],
-    dark: baseColors.mango[10],
+    dark: baseColors.mango[90],
   },
   "syntax-parameters": {
-    light: baseColors.mango[40],
+    light: baseColors.mango[60],
     dark: baseColors.mango[40],
   },
   "text-brand": {
-    light: baseColors.brand[40],
+    light: baseColors.brand[50],
     dark: baseColors.brand[40],
   },
   "text-dark": {
-    /* @deprecated, use text-primary */ light: baseColors.orion[80],
-    dark: "#C1C2C5",
+    /* @deprecated, use text-primary */ light: baseColors.orionAlpha[80],
+    dark: baseColors.orionAlphaInverse[80],
   },
   "text-disabled": {
-    light: baseColors.orion[50],
-    dark: baseColors.orion[50],
+    light: baseColors.orionAlpha[40],
+    dark: baseColors.orionAlphaInverse[40],
   },
   "text-hover": {
-    light: baseColors.brand[40],
-    dark: baseColors.brand[40],
+    light: baseColors.brand[60],
+    dark: baseColors.brand[30], //CHANGED DOWN TO HERE
   },
   "text-light": {
-    light: baseColors.orion[40],
-    dark: "#909296",
+    //should be text-disabled
+    light: baseColors.orionAlpha[40],
+    dark: baseColors.orionAlphaInverse[40],
   },
   "text-medium": {
-    light: baseColors.orion[60],
-    dark: "#A6A7AB",
+    //should be text-secondary
+    light: baseColors.orionAlpha[60],
+    dark: baseColors.orionAlphaInverse[60],
   },
   "text-primary": {
-    light: baseColors.orion[80],
-    dark: "#C1C2C5",
+    light: baseColors.orionAlpha[80],
+    dark: baseColors.orionAlphaInverse[80],
   },
   "text-secondary-inverse": {
-    light: baseColors.orion[30],
-    dark: "#6C6E73",
+    light: baseColors.orionAlphaInverse[60],
+    dark: baseColors.orionAlpha[60],
   },
   "text-secondary": {
-    light: baseColors.orion[60],
-    dark: "#A6A7AB",
+    light: baseColors.orionAlpha[60],
+    dark: baseColors.orionAlphaInverse[60],
   },
   "text-selected": {
     light: baseColors.white,
     dark: baseColors.white,
   },
   "text-tertiary": {
-    light: baseColors.orion[40],
-    dark: "#909296",
+    //should be text-disabled
+    light: baseColors.orionAlpha[40],
+    dark: baseColors.orionAlphaInverse[40],
   },
   "text-white-alpha-85": {
-    light: `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
-    dark: `color-mix(in srgb, ${baseColors.white} 85%, transparent)`,
+    //should be text-primary-inverse
+    light: baseColors.orionAlphaInverse[80],
+    dark: baseColors.orionAlpha[80],
   },
   "text-white": {
-    light: baseColors.white,
-    dark: "#1A1B1E",
+    //should be text-primary-inverse
+    light: baseColors.orionAlphaInverse[80],
+    dark: baseColors.orionAlpha[80],
   },
   "tooltip-background-focused": {
     light: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
-    dark: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
+    dark: `color-mix(in srgb, ${baseColors.orion[70]} 50%, #000)`,
   },
   "tooltip-background": {
-    light: baseColors.orion[80], // references mb-color-background-inverse
-    dark: baseColors.orion[80], // references mb-color-background-inverse
+    light: baseColors.orion[80], // references mb-color-background-primary-inverse
+    dark: baseColors.orion[70], // references mb-color-background-primary-inverse
   },
   "tooltip-text-secondary": {
-    light: baseColors.orion[40], // references mb-color-text-light
-    dark: baseColors.orion[40], // references mb-color-text-light
+    //should be text-secondary-inverse
+    light: baseColors.orionAlphaInverse[60],
+    dark: baseColors.orionAlpha[60],
   },
   "tooltip-text": {
     light: baseColors.white,
@@ -465,12 +510,13 @@ export const colorConfig = {
   },
   warning: {
     light: baseColors.dubloon[30],
-    dark: "#FFD43B",
+    dark: baseColors.dubloon[80],
   },
 
   white: {
+    //should be changed to be semantic
     light: baseColors.white,
-    dark: "#1A1B1E",
+    dark: baseColors.black,
   },
   // Legacy colors (keeping existing ones for backward compatibility)
   accent0: {
@@ -509,36 +555,42 @@ export const colorConfig = {
 
   // TODO: These were newly added in `dark-mode` branch. Fold these in above, and replace their hardcoded values with variables.
   "bg-primary": {
-    light: "#FFFFFF",
-    dark: "#1A1B1E",
+    light: baseColors.white,
+    dark: baseColors.black,
   },
   "bg-secondary": {
-    light: "#F9FBFC",
-    dark: "#25262B",
+    light: baseColors.orion[5],
+    dark: baseColors.black,
   },
   "bg-tertiary": {
-    light: "#EDF2F5",
-    dark: "#2C2E33",
+    //I don't think this is used?
+    light: baseColors.orion[10],
+    dark: baseColors.orion[90],
   },
   "bg-hover": {
-    light: "#F9FBFC",
-    dark: "#373A40",
+    //I don't think this is used?
+    light: baseColors.orion[5],
+    dark: baseColors.orion[90],
   },
   overlay: {
-    light: "hsla(225, 7.1%, 11%, 40%)",
-    dark: "hsla(225, 7.1%, 31%, 40%)",
+    //see the other color above where I mentioned it should be called overlay
+    light: baseColors.orionAlpha[60],
+    dark: baseColors.orionAlpha[70],
   },
   "text-inverse": {
-    light: "#FFFFFF",
-    dark: "#1A1B1E",
+    //should be text-primary-inverse
+    light: baseColors.orionAlphaInverse[80],
+    dark: baseColors.orionAlpha[80],
   },
   "border-primary": {
-    light: "#EEECEC",
-    dark: "#373A40",
+    //should be border-strong
+    light: baseColors.orionAlpha[50],
+    dark: baseColors.orionAlphaInverse[50],
   },
   "border-secondary": {
-    light: "#DCDFE0",
-    dark: "#2C2E33",
+    //should be border
+    light: baseColors.orionAlpha[20],
+    dark: baseColors.orionAlphaInverse[20],
   },
 };
 
