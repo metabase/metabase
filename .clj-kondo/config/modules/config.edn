@@ -1732,8 +1732,8 @@
    :api  #{metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
-           app-db
            api
+           app-db
            collections
            driver
            events
