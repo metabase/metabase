@@ -122,7 +122,7 @@ export const WithEditableParameters = {
               dataset_query: createMockNativeDatasetQuery({
                 native: createMockNativeQuery({
                   query:
-                    "SELECT * FROM orders WHERE {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
+                    "SELECT * FROM people WHERE state = {{State}} [[ and city = {{City}} ]] [[ and source = {{Source}} ]]",
                   "template-tags": {
                     State: {
                       type: "text",
