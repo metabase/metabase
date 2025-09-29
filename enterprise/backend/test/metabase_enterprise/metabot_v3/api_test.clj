@@ -64,10 +64,10 @@
 (deftest feedback-endpoint-test
   (mt/with-premium-features #{:metabot-v3}
     (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                                 {:valid    true
-                                                                  :status   "fake"
-                                                                  :features ["test" "fixture"]
-                                                                  :trial    false})]
+                                                   {:valid    true
+                                                    :status   "fake"
+                                                    :features ["test" "fixture"]
+                                                    :trial    false})]
       (let [premium-token (token-check-test/random-token)
             store-url     "http://hm.example"]
         (testing "Submits feedback to Harbormaster with token and base URL"
@@ -89,7 +89,7 @@
                                                :body (json/decode+kw (String. ^bytes (:body opts) "UTF-8"))})
                              {:status 204 :body ""})]
                 (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
-                  (is (= {:url expected-url :body feedback} 
+                  (is (= {:url expected-url :body feedback}
                          @captured)))))))
 
         (testing "Returns 500 when http post fails"
@@ -107,5 +107,5 @@
 
         (testing "Throws when `store-api-url` is missing"
           (mt/with-temporary-setting-values [premium-embedding-token premium-token
-                                           store-api-url           nil]
-          (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"}))))))
+                                             store-api-url           nil]
+            (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"})))))))
