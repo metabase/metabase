@@ -266,11 +266,8 @@ export const Messages = ({
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
 
-    const { error } = await submitMetabotFeedback(metabotFeedback);
-
-    if (error) {
-      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
-    } else {
+    try {
+      await submitMetabotFeedback(metabotFeedback).unwrap();
       sendToast({ icon: "check", message: t`Feedback submitted` });
 
       setFeedbackState((prevState) => ({
@@ -280,6 +277,8 @@ export const Messages = ({
         },
         modal: undefined,
       }));
+    } catch (error) {
+      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
     }
   };
 
