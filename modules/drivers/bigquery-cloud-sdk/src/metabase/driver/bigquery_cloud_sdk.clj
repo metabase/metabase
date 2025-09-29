@@ -976,7 +976,7 @@
                          (keyword schema name)
                          (keyword name))
         table-str (get-table-str qualified-name)
-        drop-sql (first [(str "DROP TABLE IF EXISTS " table-str)])]
+        drop-sql (str "DROP TABLE IF EXISTS " table-str)]
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 

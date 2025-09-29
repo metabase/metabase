@@ -142,7 +142,7 @@
             rows-affected (first (driver/execute-raw-queries! driver conn-spec [create-tmp-table-query]))]
         (driver/drop-transform-target! driver db target)
         (driver/rename-table! driver db tmp-table output-table)
-        rows-affected)
+        {:rows-affected rows-affected})
       (let [query [(driver/compile-transform driver query output-table)]]
         {:rows-affected (first (driver/execute-raw-queries! driver conn-spec query))}))))
 
