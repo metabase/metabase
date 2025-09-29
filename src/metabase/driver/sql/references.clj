@@ -5,7 +5,7 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance perf :refer [every? mapv select-keys some]]))
+   [metabase.util.performance :refer [every? mapv select-keys some]]))
 
 (mr/def ::single-column
   [:map
