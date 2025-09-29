@@ -42,6 +42,7 @@
           display: grid;
           gap: 0 1rem;
           grid-template-columns: 1fr;
+          grid-auto-rows: max-content;
 
           &:has(.cm-completionDetail) {
             grid-template-columns: max-content 1fr;
