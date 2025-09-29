@@ -7,7 +7,7 @@
 
 (defmulti normalize-unquoted-name
   "Normalize an unquoted table/column name according to the database's rules."
-  {:arglists '([driver name-str])}
+  {:added "0.57.0", :arglists '([driver name-str])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -34,7 +34,7 @@
   "Checks whether a particular name is actually a literal value in a given sql dialect.
 
   For example, true and false are usually booleans, not normal names."
-  {:arglists '([driver name])}
+  {:added "0.57.0", :arglists '([driver name])}
   (fn [driver name]
     [(driver/dispatch-on-initialized-driver driver) name])
   :hierarchy #'driver/hierarchy)
