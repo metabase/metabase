@@ -1,47 +1,65 @@
 (ns metabase.xrays.automagic-dashboards.schema
   (:require
    [malli.core :as mc]
-   [malli.util :as mut]))
+   [malli.util :as mut]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]))
 
-(def context
+(mr/def ::root
+  [:map
+   [:database ::lib.schema.id/database]])
+
+(mr/def ::context
   "The big ball of mud data object from which we generate x-rays"
   (mc/schema
    [:map
-    [:source any?]
-    [:root any?]
-    [:tables {:optional true} any?]
+    [:source       any?]
+    [:root         [:ref ::root]]
+    [:tables       {:optional true} any?]
     [:query-filter {:optional true} any?]]))
 
-(def dashcard
-  "The base unit thing we are trying to produce in x-rays"
-  ;; TODO - Beef these specs up, esp. the any?s
-  (mc/schema
-   [:map
-    [:dataset_query {:optional true}
-     [:map
-      [:database {:optional true} [:maybe nat-int?]]
-      [:type :keyword]
-      [:query [:map
-               [:aggregation [:sequential any?]]
-               [:breakout {:optional true} [:sequential any?]]
-               [:source-table [:or :int :string]]]]]]
-    [:dimensions {:optional true} [:sequential string?]]
-    [:group {:optional true} string?]
-    [:height pos-int?]
-    [:metrics {:optional true} any?]
-    [:position {:optional true} nat-int?]
-    [:card-score {:optional true} number?]
-    [:total-score {:optional true} nat-int?]
-    [:metric-score {:optional true} nat-int?]
-    [:score-components {:optional true} [:sequential nat-int?]]
-    [:title {:optional true} string?]
-    [:visualization {:optional true} any?]
-    [:width pos-int?]
-    [:x_label {:optional true} string?]]))
+(mr/def ::query
+  [:ref ::mbql.s/Query])
 
-(def dashcards
-  "A bunch of dashcards"
-  (mc/schema [:maybe [:sequential dashcard]]))
+(mr/def ::table-id-or-database-id
+  [:and
+   [:map
+    [:table_id          {:optional true} [:maybe ::lib.schema.id/table]]
+    [:xrays/database-id {:optional true} [:maybe ::lib.schema.id/database]]]
+   [:fn
+    {:error/message "If instance does not have :table_id, it must have :xrays/database-id"}
+    (some-fn :table_id :xrays/database-id)]])
+
+(mr/def ::field
+  [:ref ::table-id-or-database-id])
+
+(mr/def ::metric
+  [:ref ::table-id-or-database-id])
+
+#_(def dashcard
+    "The base unit thing we are trying to produce in x-rays"
+  ;; TODO - Beef these specs up, esp. the any?s
+    (mc/schema
+     [:map
+      [:dataset_query {:optional true} [:ref ::query]]
+      [:dimensions {:optional true} [:sequential string?]]
+      [:group {:optional true} string?]
+      [:height pos-int?]
+      [:metrics {:optional true} any?]
+      [:position {:optional true} nat-int?]
+      [:card-score {:optional true} number?]
+      [:total-score {:optional true} nat-int?]
+      [:metric-score {:optional true} nat-int?]
+      [:score-components {:optional true} [:sequential nat-int?]]
+      [:title {:optional true} string?]
+      [:visualization {:optional true} any?]
+      [:width pos-int?]
+      [:x_label {:optional true} string?]]))
+
+#_(def dashcards
+    "A bunch of dashcards"
+    (mc/schema [:maybe [:sequential dashcard]]))
 
 (def field-type
   "A dimension reference, as either a semantic type or entity type and semantic type."
@@ -100,100 +118,100 @@
     [:string {:min 1}]
     filter-value]))
 
-(def card-value
-  "A specification for the basic keys in the value of a card template."
-  (mc/schema
-   [:map
-    [:dimensions {:optional true} [:vector (mc/schema
-                                            [:map-of
-                                             {:min 1 :max 1}
-                                             [:string {:min 1}]
-                                             [:map
-                                              [:aggregation {:optional true} string?]]])]]
-    [:metrics {:optional true} [:vector string?]]
-    [:filters {:optional true} [:vector string?]]
-    [:card-score {:optional true} nat-int?]]))
+#_(def card-value
+    "A specification for the basic keys in the value of a card template."
+    (mc/schema
+     [:map
+      [:dimensions {:optional true} [:vector (mc/schema
+                                              [:map-of
+                                               {:min 1 :max 1}
+                                               [:string {:min 1}]
+                                               [:map
+                                                [:aggregation {:optional true} string?]]])]]
+      [:metrics {:optional true} [:vector string?]]
+      [:filters {:optional true} [:vector string?]]
+      [:card-score {:optional true} nat-int?]]))
 
-(def card-template
-  "A specification for the basic keys in a card template."
-  (mc/schema
-   [:map-of
-    {:min 1 :max 1}
-    [:string {:min 1}]
-    card-value]))
+#_(def card-template
+    "A specification for the basic keys in a card template."
+    (mc/schema
+     [:map-of
+      {:min 1 :max 1}
+      [:string {:min 1}]
+      card-value]))
 
-(def dashboard-template
-  "A specification for the basic keys in a dashboard template."
-  (mc/schema
-   [:map
-    [:dimensions {:optional true} [:vector dimension-template]]
-    [:metrics {:optional true} [:vector metric-template]]
-    [:filters {:optional true} [:vector filter-template]]
-    [:cards {:optional true} [:vector card-template]]]))
+#_(def dashboard-template
+    "A specification for the basic keys in a dashboard template."
+    (mc/schema
+     [:map
+      [:dimensions {:optional true} [:vector dimension-template]]
+      [:metrics {:optional true} [:vector metric-template]]
+      [:filters {:optional true} [:vector filter-template]]
+      [:cards {:optional true} [:vector card-template]]]))
 
 ;; Available values schema -- These are items for which fields have been successfully bound
 
-(def available-values
-  "Specify the shape of things that are available after dimension to field matching for affinity matching"
-  (mc/schema
-   [:map
-    [:available-dimensions [:map-of [:string {:min 1}] any?]]
-    [:available-metrics [:map-of [:string {:min 1}] any?]]
-    [:available-filters {:optional true} [:map-of [:string {:min 1}] any?]]]))
+#_(def available-values
+    "Specify the shape of things that are available after dimension to field matching for affinity matching"
+    (mc/schema
+     [:map
+      [:available-dimensions [:map-of [:string {:min 1}] any?]]
+      [:available-metrics [:map-of [:string {:min 1}] any?]]
+      [:available-filters {:optional true} [:map-of [:string {:min 1}] any?]]]))
 
 ;; Schemas for "affinity" functions as these can be particularly confusing
 
-(def dimension-set
-  "A set of dimensions that belong together. This is the basic unity of affinity."
-  [:set string?])
+#_(def dimension-set
+    "A set of dimensions that belong together. This is the basic unity of affinity."
+    [:set string?])
 
-(def semantic-affinity-set
-  "A set of sematic types that belong together. This is the basic unity of semantic affinity."
-  [:set :keyword])
+#_(def semantic-affinity-set
+    "A set of sematic types that belong together. This is the basic unity of semantic affinity."
+    [:set :keyword])
 
-(def affinity
-  "A collection of things that go together. In this case, we're a bit specialized on
+#_(def affinity
+    "A collection of things that go together. In this case, we're a bit specialized on
   card affinity, but the key element in the structure is `:base-dims`, which are a
    set of dimensions which, when satisfied, enable this affinity object."
-  (mc/schema
-   [:map
-    [:affinity-name :string]
-    [:affinity-set [:set :keyword]]
-    [:card-template card-value]
-    [:metric-constituent-names [:sequential :string]]
-    [:metric-field-types [:set :keyword]]
-    [:named-dimensions [:sequential :string]]
-    [:score {:optional true} nat-int?]]))
+    (mc/schema
+     [:map
+      [:affinity-name :string]
+      [:affinity-set [:set :keyword]]
+      [:card-template card-value]
+      [:metric-constituent-names [:sequential :string]]
+      [:metric-field-types [:set :keyword]]
+      [:named-dimensions [:sequential :string]]
+      [:score {:optional true} nat-int?]]))
 
-(def affinities
-  "A sequence of affinity objects."
-  (mc/schema
-   [:sequential affinity]))
+#_(def affinities
+    "A sequence of affinity objects."
+    (mc/schema
+     [:sequential affinity]))
 
-(def affinity-old
-  "A collection of things that go together. In this case, we're a bit specialized on
+#_(def affinity-old
+    "A collection of things that go together. In this case, we're a bit specialized on
   card affinity, but the key element in the structure is `:base-dims`, which are a
    set of dimensions which, when satisfied, enable this affinity object."
-  (mc/schema
-   [:map
-    [:dimensions {:optional true} [:vector string?]]
-    [:metrics {:optional true} [:vector string?]]
-    [:filters {:optional true} [:vector string?]]
-    [:score {:optional true} nat-int?]
-    [:affinity-name string?]
-    [:base-dims dimension-set]]))
+    (mc/schema
+     [:map
+      [:dimensions {:optional true} [:vector string?]]
+      [:metrics {:optional true} [:vector string?]]
+      [:filters {:optional true} [:vector string?]]
+      [:score {:optional true} nat-int?]
+      [:affinity-name string?]
+      [:base-dims dimension-set]]))
 
-(def affinities-old
-  "A sequence of affinity objects."
-  (mc/schema
-   [:sequential affinity-old]))
+#_(def affinities-old
+    "A sequence of affinity objects."
+    (mc/schema
+     [:sequential affinity-old]))
 
-(def affinity-matches
-  "A map of named affinities to all dimension sets that are associated with this name."
-  (mc/schema
-   [:map-of
-    :string
-    [:vector dimension-set]]))
+#_(def affinity-matches
+    "A map of named affinities to all dimension sets that are associated with this name."
+    (mc/schema
+     [:map-of
+      :string
+      [:vector dimension-set]]))
 
 (def item
   "A \"thing\" that we bind to, consisting, generally, of at least a name and id"
@@ -222,15 +240,15 @@
    dim-name->dim-def
    dim-name->matching-fields))
 
-(def dimension-map
-  "A map of dimension names to item satisfying that dimensions"
-  (mc/schema
-   [:map-of :string item]))
+#_(def dimension-map
+    "A map of dimension names to item satisfying that dimensions"
+    (mc/schema
+     [:map-of :string item]))
 
-(def dimension-maps
-  "A sequence of dimension maps"
-  (mc/schema
-   [:sequential dimension-map]))
+#_(def dimension-maps
+    "A sequence of dimension maps"
+    (mc/schema
+     [:sequential dimension-map]))
 
 (def normalized-metric-template
   "A \"normalized\" metric template is a map containing the metric name as a key
@@ -263,9 +281,9 @@
        [:aggregation [:sequential any?]]
        [:breakout [:sequential any?]]]]])))
 
-(comment
-  (require '[malli.generator :as mg])
-  (mg/sample dashboard-template)
-  (mg/sample affinities)
-  (mg/sample affinity-matches)
-  (mg/sample grounded-metric))
+#_(comment
+    (require '[malli.generator :as mg])
+    (mg/sample dashboard-template)
+    (mg/sample affinities)
+    (mg/sample affinity-matches)
+    (mg/sample grounded-metric))

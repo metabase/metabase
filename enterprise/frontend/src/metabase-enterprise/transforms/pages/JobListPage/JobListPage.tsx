@@ -18,7 +18,6 @@ type JobListPageProps = {
 
 export function JobListPage({ location }: JobListPageProps) {
   const params = getParsedParams(location);
-
   const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
 
   if (!tags || isLoading || error != null) {
@@ -41,7 +40,6 @@ export function JobListPage({ location }: JobListPageProps) {
           {t`Create a job`}
         </Button>
       </Group>
-
       <JobFilterList params={params} tags={tags} />
       <JobList params={params} />
     </Stack>

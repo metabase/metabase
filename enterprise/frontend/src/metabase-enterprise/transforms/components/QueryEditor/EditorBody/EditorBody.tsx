@@ -7,6 +7,7 @@ import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor, {
   type SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
@@ -19,18 +20,19 @@ import type {
   RecentItem,
 } from "metabase-types/api";
 
-import S from "./EditorBody.module.css";
-import { ResizableBoxHandle } from "./ResizableBoxHandle";
+import { ResizeHandle } from "../ResizeHandle";
 
-const EDITOR_HEIGHT = 400;
+import S from "./EditorBody.module.css";
+
+const EDITOR_HEIGHT = 550;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
-  variables: false,
   snippets: true,
-  promptInput: true,
   formatQuery: true,
-  aiGeneration: true,
+  variables: false,
+  promptInput: false,
+  aiGeneration: false,
 };
 
 type EditorBodyProps = {
@@ -50,6 +52,7 @@ type EditorBodyProps = {
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
+  onOpenModal: (type: QueryModalType) => void;
   nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
@@ -73,6 +76,7 @@ export function EditorBody({
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
+  onOpenModal,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -135,13 +139,14 @@ export function EditorBody({
       }}
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
+      onOpenModal={onOpenModal}
     />
   ) : (
     <ResizableBox
       className={S.root}
       axis="y"
       height={EDITOR_HEIGHT}
-      handle={<ResizableBoxHandle />}
+      handle={<ResizeHandle />}
       resizeHandles={["s"]}
       onResizeStart={() => setIsResizing(true)}
       onResizeStop={() => setIsResizing(false)}

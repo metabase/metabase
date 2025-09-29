@@ -372,8 +372,10 @@
                                  (u/select-keys-when body
                                                      :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
-                                 false))]
+                                 (= source "setup")))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
+      (when (= source "setup")
+        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
@@ -444,7 +446,8 @@
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-    (api/check-403 (valid-email-update? user-before-update email))
+    (when (contains? body :email)
+      (api/check-403 (valid-email-update? user-before-update email)))
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
     (when (contains? body :first_name)
       (api/checkp (valid-name-update? user-before-update :first_name first_name)

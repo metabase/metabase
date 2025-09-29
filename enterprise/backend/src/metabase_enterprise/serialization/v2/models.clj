@@ -27,7 +27,10 @@
           content
           ["FieldValues"
            "Metabot"
-           "Setting"]))
+           "Setting"
+           "Transform"
+           "TransformJob"
+           "TransformTag"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -38,9 +41,10 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
-   "MetabotEntity"
    "MetabotPrompt"
-   "TimelineEvent"])
+   "TimelineEvent"
+   "TransformJobTransformTag"
+   "TransformTransformTag"])
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
@@ -96,16 +100,12 @@
    "Sandbox"
    "SearchIndexMetadata"
    "Secret"
+   "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
-   "Transform"
-   "TransformJob"
    "TransformJobRun"
-   "TransformJobTransformTag"
    "TransformRun"
    "TransformRunCancelation"
-   "TransformTag"
-   "TransformTransformTag"
    "Undo"
    "User"
    "UserKeyValue"

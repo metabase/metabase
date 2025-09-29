@@ -7,14 +7,16 @@ import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { Card, Flex, Group, Stack } from "metabase/ui";
 import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
-import type { TransformRun } from "metabase-types/api";
+import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
+import { TagList } from "../../../components/TagList";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
 import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
+import { hasFilterParams } from "../utils";
 
 import S from "./RunList.module.css";
 
@@ -22,19 +24,23 @@ type RunListProps = {
   runs: TransformRun[];
   totalCount: number;
   params: RunListParams;
+  tags: TransformTag[];
 };
 
-export function RunList({ runs, totalCount, params }: RunListProps) {
+export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   const { page = 0 } = params;
   const hasPagination = totalCount > PAGE_SIZE;
 
   if (runs.length === 0) {
-    return <ListEmptyState label={t`No runs yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState label={hasFilters ? t`No runs found` : t`No runs yet`} />
+    );
   }
 
   return (
     <Stack gap="lg">
-      <RunTable runs={runs} />
+      <RunTable runs={runs} tags={tags} />
       {hasPagination && (
         <Group justify="end">
           <RunTablePaginationControls
@@ -51,9 +57,10 @@ export function RunList({ runs, totalCount, params }: RunListProps) {
 
 type RunTableProps = {
   runs: TransformRun[];
+  tags: TransformTag[];
 };
 
-function RunTable({ runs }: RunTableProps) {
+function RunTable({ runs, tags }: RunTableProps) {
   const systemTimezone = useSetting("system-timezone");
   const dispatch = useDispatch();
 
@@ -73,10 +80,12 @@ function RunTable({ runs }: RunTableProps) {
             <TimezoneIndicator />
           </Flex>,
           <Flex key="end-at" align="center" gap="xs">
-            <span className={S.nowrap}>{t`End at`}</span> <TimezoneIndicator />
+            <span className={S.nowrap}>{t`Ended at`}</span>{" "}
+            <TimezoneIndicator />
           </Flex>,
           t`Status`,
           t`Trigger`,
+          t`Tags`,
         ]}
       >
         {runs.map((run) => (
@@ -116,6 +125,9 @@ function RunTable({ runs }: RunTableProps) {
               />
             </td>
             <td className={S.wrap}>{formatRunMethod(run.run_method)}</td>
+            <td className={S.wrap}>
+              <TagList tags={tags} tagIds={run.transform?.tag_ids ?? []} />
+            </td>
           </tr>
         ))}
       </AdminContentTable>

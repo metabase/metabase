@@ -21,6 +21,8 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
@@ -75,23 +77,25 @@
     #{:type/CreationTimestamp} :fail}
    #{:type/Integer}))
 
-(defn add-dataset-query
+(mu/defn- add-dataset-query :- [:map
+                                [:dataset_query ::ads/query]]
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
   [{:keys [metric-definition] :as ground-metric-with-dimensions}
-   {{:keys [database]} :root :keys [source query-filter]}]
+   {{:keys [database]} :root :keys [source query-filter]} :- ::ads/context]
   (let [source-table (if (->> source (mi/instance-of? :model/Table))
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))
         model?       (and (mi/instance-of? :model/Card source)
                           (queries/model? source))]
     (assoc ground-metric-with-dimensions
-           :dataset_query {:database database
-                           :type     :query
-                           :query    (cond-> (assoc metric-definition
-                                                    :source-table source-table)
-                                       (and (not model?)
-                                            query-filter) (assoc :filter query-filter))})))
+           :dataset_query (-> {:database database
+                               :type     :query
+                               :query    (cond-> (assoc metric-definition
+                                                        :source-table source-table)
+                                           (and (not model?)
+                                                query-filter) (assoc :filter query-filter))}
+                              mbql.normalize/normalize))))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -186,10 +190,16 @@
                              (complement (comp cell-dimension? id-or-name)))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn grounded-metrics->dashcards :- [:sequential ads/combined-metric]
+(mu/defn grounded-metrics->dashcards :- [:sequential
+                                         [:merge
+                                          ads/combined-metric
+                                          [:map
+                                           [:dataset_query
+                                            [:map
+                                             [:database ::lib.schema.id/database]]]]]]
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
-  [base-context
+  [base-context      :- ::ads/context
    card-templates
    ground-dimensions :- ads/dim-name->matching-fields
    ground-filters
@@ -242,7 +252,7 @@
             :affinity-name card-name
             :card-score card-score
             :total-score (long (/ (apply + score-components) (count score-components)))
-              ;; Update dimension-name->field to include named contributions from both metrics and dimensions
+            ;; Update dimension-name->field to include named contributions from both metrics and dimensions
             :dimension-name->field all-names->field
             :score-components score-components)
            (update :metric-definition add-aggregations final-aggregate)

@@ -169,6 +169,8 @@ export type ScheduleDayType = (typeof SCHEDULE_DAY)[number];
 
 export type ScheduleFrameType = "first" | "mid" | "last";
 
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
+
 export interface FontFile {
   src: string;
   fontWeight: number;
@@ -329,6 +331,7 @@ export const tokenFeatures = [
   "documents",
   "semantic_search",
   "transforms",
+  "transforms-python",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -682,6 +685,15 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "python-runner-url"?: string | null;
+  "python-runner-api-token"?: string | null;
+  "python-storage-s-3-endpoint"?: string | null;
+  "python-storage-s-3-region"?: string | null;
+  "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-access-key"?: string | null;
+  "python-storage-s-3-secret-key"?: string | null;
+  "python-storage-s-3-container-endpoint"?: string | null;
+  "python-storage-s-3-path-style-access"?: boolean | null;
   /**
    * @deprecated
    */

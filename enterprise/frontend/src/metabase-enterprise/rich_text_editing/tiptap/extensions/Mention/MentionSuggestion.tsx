@@ -38,11 +38,17 @@ const MentionSuggestionComponent = forwardRef<
 ) {
   const document = useSelector(getCurrentDocument);
   const onSelectEntity = useCallback(
-    (item: { id: number | string; model: string; label?: string }) => {
+    (item: {
+      id: number | string;
+      model: string;
+      label?: string;
+      href?: string | null;
+    }) => {
       command({
         id: item.id,
         model: item.model,
         label: item.label,
+        href: item.href,
         document,
       });
     },

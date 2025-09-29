@@ -5,6 +5,14 @@
 
 #?(:clj (set! *warn-on-reflection* true))
 
+#?(:clj
+   (deftest ^:parallel reduce-test
+     (is (= 10 (perf/reduce + 0 [1 2 3 4])))
+     (is (= 20 (perf/reduce + 0 [1 2 3 4] [1 2 3 4])))
+     (is (= 30 (perf/reduce + 0 [1 2 3 4] [1 2 3 4] [1 2 3 4])))
+     (is (= 40 (perf/reduce + 0 [1 2 3 4] [1 2 3 4] [1 2 3 4] [1 2 3 4])))
+     (is (= "hello" (perf/reduce str "" "hello")))))
+
 (deftest ^:parallel concat-test
   (is (= [1 2 3 4 5] (perf/concat [1] [] [2] [3 4] nil '(5))))
   (is (= [] (perf/concat [] [])))

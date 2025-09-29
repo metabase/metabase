@@ -54,6 +54,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
               search_engine: P.string,
               request_id: P.string,
               entity_model: P.string,
+              entity_id: P.number,
               search_term_hash: P.string,
               search_term: null,
             },

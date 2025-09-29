@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc
   "Shared code for drivers for SQL databases using their respective JDBC drivers under the hood."
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.java.jdbc :as jdbc]
@@ -19,7 +20,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.sql Connection SQLException SQLTimeoutException)))
 
@@ -68,6 +70,8 @@
 (defmethod driver/database-supports? [:sql-jdbc :set-timezone]
   [driver _feature _db]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
+
+(defmethod driver/database-supports? [:sql-jdbc :jdbc/statements] [_driver _feature _db] true)
 
 (defmethod driver/db-default-timezone :sql-jdbc
   [driver database]
@@ -173,8 +177,7 @@
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (jdbc/execute! conn sql))))
 
-(defmethod driver/insert-into! :sql-jdbc
-  [driver db-id table-name column-names values]
+(defn- insert-into!-sqls [driver table-name column-names values inline?]
   (let [;; We need to partition the insert into multiple statements for both performance and correctness.
         ;;
         ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
@@ -188,12 +191,21 @@
         sqls       (map #(sql/format {:insert-into (keyword table-name)
                                       :columns     (quote-columns driver column-names)
                                       :values      %}
+                                     :inline inline?
                                      :quoted true
                                      :dialect dialect)
                         chunks)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
-      (doseq [sql sqls]
-        (jdbc/execute! conn sql)))))
+    sqls))
+
+(defmethod driver/insert-into! :sql-jdbc
+  [driver db-id table-name column-names values]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (doseq [sql (insert-into!-sqls driver table-name column-names values false)]
+      (jdbc/execute! conn sql))))
+
+(defmethod driver/insert-from-source! [:sql-jdbc :rows]
+  [driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (driver/insert-into! driver db-id table-name (mapv :name columns) data))
 
 (defmethod driver/add-columns! :sql-jdbc
   [driver db-id table-name column-definitions & {:keys [primary-key]}]

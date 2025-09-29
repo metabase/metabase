@@ -21,6 +21,7 @@ export interface MentionCommandProps {
   model?: string;
   document?: Document | null;
   label?: string;
+  href?: string | null;
 }
 
 export const MentionPluginKey = new PluginKey("mention");
@@ -59,8 +60,10 @@ export const MentionExtension = Extension.create<MentionOptions>({
                   entityId: props.id,
                   model: props.model,
                   label: props.label,
+                  href: props.href,
                 },
               })
+              .insertContent(" ")
               .run();
             if (props.document) {
               trackDocumentAddSmartLink(props.document);

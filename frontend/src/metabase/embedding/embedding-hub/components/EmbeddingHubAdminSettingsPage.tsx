@@ -22,9 +22,11 @@ export const EmbeddingHubAdminSettingsPage = () => {
 
       <EmbeddingHub />
 
-      <RelatedSettingsSection
-        items={getModularEmbeddingRelatedSettingItems()}
-      />
+      <Stack ml="2.7rem">
+        <RelatedSettingsSection
+          items={getModularEmbeddingRelatedSettingItems()}
+        />
+      </Stack>
     </Stack>
   );
 };

@@ -188,6 +188,7 @@ export const useCommandPalette = ({
                 searchEngine: searchResults?.engine || "unknown",
                 requestId: searchRequestId,
                 entityModel: null,
+                entityId: null,
                 searchTerm: debouncedSearchText,
               });
             },
@@ -216,6 +217,7 @@ export const useCommandPalette = ({
                   searchEngine: searchResults?.engine || "unknown",
                   requestId: searchRequestId,
                   entityModel: result.model,
+                  entityId: typeof result.id === "number" ? result.id : null,
                   searchTerm: debouncedSearchText,
                 });
               },

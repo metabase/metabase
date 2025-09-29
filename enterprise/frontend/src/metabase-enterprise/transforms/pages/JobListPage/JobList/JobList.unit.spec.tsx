@@ -19,6 +19,7 @@ import type {
 import {
   createMockTransform,
   createMockTransformJob,
+  createMockTransformRun,
 } from "metabase-types/api/mocks";
 
 import { JobList } from "./JobList";
@@ -62,6 +63,17 @@ function setup({
 }
 
 describe("JobList", () => {
+  it("should show the last run status", async () => {
+    setup({
+      jobs: [
+        createMockTransformJob({
+          last_run: createMockTransformRun({ status: "started" }),
+        }),
+      ],
+    });
+    expect(await screen.findByText("In progress")).toBeInTheDocument();
+  });
+
   it("should show the number of transforms per job", async () => {
     const job1Id = 1;
     const job2Id = 2;

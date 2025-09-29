@@ -2,7 +2,8 @@ import { html } from "@codemirror/lang-html";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
 import { python } from "@codemirror/lang-python";
-import { StreamLanguage } from "@codemirror/language";
+import { sql } from "@codemirror/lang-sql";
+import { StreamLanguage, indentUnit } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
@@ -12,14 +13,27 @@ import { useMemo } from "react";
 
 import type { CodeLanguage } from "./types";
 
-export function useExtensions({ language }: { language?: CodeLanguage }) {
+export function useExtensions({
+  language,
+  extensions,
+}: {
+  language?: CodeLanguage | Extension;
+  extensions?: Extension[];
+}) {
   return useMemo(
-    () => [...(language ? [getLanguageExtension(language)] : [])],
-    [language],
+    () => [
+      ...(extensions ?? []),
+      ...(language ? [getLanguageExtension(language)] : []),
+    ],
+    [language, extensions],
   );
 }
 
-export function getLanguageExtension(language: CodeLanguage): Extension {
+export function getLanguageExtension(language: CodeLanguage | Extension) {
+  if (typeof language !== "string") {
+    return language;
+  }
+
   switch (language) {
     case "clojure":
       return StreamLanguage.define(clojure);
@@ -28,7 +42,7 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
     case "json":
       return json();
     case "python":
-      return python();
+      return [python(), indentUnit.of("    ")];
     case "mustache":
       return handlebars;
     case "pug":
@@ -40,5 +54,7 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
         jsx: true,
         typescript: language === "typescript",
       });
+    case "sql":
+      return sql();
   }
 }

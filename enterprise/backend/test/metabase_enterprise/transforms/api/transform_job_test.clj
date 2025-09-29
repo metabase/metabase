@@ -17,14 +17,16 @@
                      :model/TransformTag tag2 {:name "test-tag-2"}]
         (testing "Creates job with valid data"
           (let [response (mt/user-http-request :crowberto :post 200 "ee/transform-job"
-                                               {:name        "Test Job"
-                                                :description "Test Description"
-                                                :schedule    "0 0 0 * * ?"
-                                                :tag_ids     [(:id tag1) (:id tag2)]})]
+                                               {:name            "Test Job"
+                                                :description     "Test Description"
+                                                :schedule        "0 0 0 * * ?"
+                                                :ui_display_type "cron/builder"
+                                                :tag_ids         [(:id tag1) (:id tag2)]})]
             (is (some? (:id response)))
             (is (= "Test Job" (:name response)))
             (is (= "Test Description" (:description response)))
             (is (= "0 0 0 * * ?" (:schedule response)))
+            (is (= "cron/builder" (:ui_display_type response)))
             (is (= (set [(:id tag1) (:id tag2)]) (set (:tag_ids response))))))
 
         (testing "Validates cron expression"
@@ -103,8 +105,8 @@
             (testing "listing without filtering"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job")]
                 (is (= our-job-ids (returned-job-ids response)))))
-            (testing "filtering by transform_tag_ids"
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :transform_tag_ids [t2-id])]
+            (testing "filtering by tag_ids"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :tag_ids [t2-id])]
                 (is (=? [{:schedule "0 0 0 * * ?"
                           :tag_ids [t2-id]
                           :name "Job 3"
@@ -112,6 +114,9 @@
                         (returned-jobs response)))))
             (testing "filtering by last_run_start_time"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :last_run_start_time "2025-08-26~")]
+                (is (= #{j2-id} (returned-job-ids response)))))
+            (testing "filtering by last_run_statuses"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :last_run_statuses ["started" "succeeded"])]
                 (is (= #{j2-id} (returned-job-ids response)))))
             (testing "filtering by last_run_end_time without scheduled job"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/transform-job" :next_run_start_time "2025-08-26~")]
@@ -157,6 +162,17 @@
                                                  {:schedule "invalid"})]
               (is (string? response))
               (is (re-find #"Invalid cron expression" response)))))))))
+
+(deftest update-job-remove-tags-test
+  (testing "PUT /api/ee/transform-job/:id"
+    (mt/with-premium-features #{:transforms}
+      (testing "should be able to remove all tags from a job"
+        (mt/with-temp [:model/TransformTag tag {}
+                       :model/TransformJob job {}
+                       :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
+          (let [response (mt/user-http-request :crowberto :put 200 (str "ee/transform-job/" (:id job))
+                                               {:tag_ids []})]
+            (is (= [] (:tag_ids response)))))))))
 
 (deftest delete-job-test
   (testing "DELETE /api/ee/transform-job/:id"

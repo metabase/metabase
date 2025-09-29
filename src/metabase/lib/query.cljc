@@ -1,7 +1,9 @@
 (ns metabase.lib.query
-  (:refer-clojure :exclude [remove])
+  (:refer-clojure :exclude [remove some select-keys mapv])
   (:require
    [medley.core :as m]
+   ;; allowed since this is needed to convert legacy queries to MBQL 5
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -27,6 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys mapv]]
    [weavejester.dependency :as dep]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
@@ -120,10 +123,10 @@
   [query :- ::lib.schema/query]
   (can-run query "question"))
 
-(defn add-types-to-fields
+(mu/defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
   `:effective-type` is required for coerced fields to pass schema checks."
-  [x metadata-provider]
+  [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (lib.util.match/match x
                        [:field
                         (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
@@ -170,12 +173,13 @@
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
   (try
-    (let [pmbql-query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                            (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
-                          (add-types-to-fields metadata-providerable))]
+    (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                        (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
+          mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
+          mbql5-query (add-types-to-fields mbql5-query mp)]
       (merge
-       pmbql-query
-       (query-with-stages metadata-providerable (:stages pmbql-query))))
+       mbql5-query
+       (query-with-stages mp (:stages mbql5-query))))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
                       {:legacy-query legacy-query}
@@ -207,12 +211,12 @@
 ;; - fill in top expression refs with metadata
 (defmethod query-method :mbql/query
   [metadata-providerable {converted? :lib.convert/converted? :as query}]
-  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-        query (-> query
-                  (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?)
-
-                  lib.normalize/normalize)
+  (let [database-id       (some #(get query %) [:database "database"])
+        metadata-provider (lib.metadata/->metadata-provider metadata-providerable database-id)
+        query             (-> query
+                              (assoc :lib/metadata metadata-provider)
+                              (dissoc :lib.convert/converted?)
+                              lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
       converted?
@@ -232,9 +236,9 @@
                                             second
                                             (select-keys [:base-type :effective-type])))
                                        (catch #?(:clj Exception :cljs :default) _
-                                        ;; This currently does not find expressions defined in join stages
+                                         ;; This currently does not find expressions defined in join stages
                                          nil))]
-                      ;; Fallback if metadata is missing
+                       ;; Fallback if metadata is missing
                        [:expression (merge found-ref opts) expression-name]))))
              (m/indexed stages))))))
 

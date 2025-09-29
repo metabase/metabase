@@ -122,7 +122,7 @@
 
 (deftest api-count-works
   (mt/with-empty-h2-app-db!
-    (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
+    (is ((fnil zero? -1) (mt/user-http-request :crowberto :get 200 "api-key/count")))
     (mt/with-temp [:model/ApiKey _ {::api-keys/unhashed-key (api-key/generate-key)
                                     :name                   "my cool name"
                                     :user_id                (mt/user->id :crowberto)
