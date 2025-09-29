@@ -1,11 +1,6 @@
 .input {
-  --search-icon-size: 16px;
-
   padding: var(--mantine-spacing-xl);
-  padding-left: calc(
-    var(--mantine-spacing-xl) + var(--search-icon-size) +
-      var(--mantine-spacing-sm)
-  );
+  padding-left: 60px;
   padding-bottom: var(--mantine-spacing-sm);
   font-size: 17px;
   width: 100%;

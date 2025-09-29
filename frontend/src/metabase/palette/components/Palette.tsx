@@ -80,7 +80,7 @@ const PaletteContainer = withRouter(
             <Stack
               className={S.iconContainer}
               align="center"
-              left="var(--mantine-spacing-xl)"
+              left={36} // align this icon with results icons
               pos="absolute"
               bottom={10}
             >
