@@ -98,7 +98,6 @@ describe("getInitialStateForCardDataSource", () => {
 
     expect(state.settings).toEqual({
       "card.title": "TablyMcTableface",
-      "card.description": null,
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
     });
@@ -189,7 +188,6 @@ describe("getInitialStateForCardDataSource", () => {
 
     expect(state.settings).toEqual({
       "card.title": "ComboMcComboface",
-      "card.description": null,
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2", "COLUMN_3"],
     });
@@ -237,7 +235,6 @@ describe("getInitialStateForCardDataSource", () => {
 
     expect(state.settings).toEqual({
       "card.title": "ScalarMcSmartface",
-      "card.description": null,
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
       "scalar.compact_primary_number": true,
@@ -286,7 +283,6 @@ describe("getInitialStateForCardDataSource", () => {
         },
         settings: {
           "card.title": card.name,
-          "card.description": null,
           "funnel.metric": "METRIC",
           "funnel.dimension": "DIMENSION",
         },

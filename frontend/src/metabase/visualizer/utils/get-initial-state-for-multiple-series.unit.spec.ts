@@ -95,7 +95,6 @@ describe("getInitialVisualizerStateForMultipleSeries", () => {
       "graph.metrics": ["COLUMN_2", "COLUMN_4"],
       "graph.dimensions": ["COLUMN_1", "COLUMN_3"],
       "card.title": "First Series",
-      "card.description": null,
     });
   });
 
