@@ -220,13 +220,31 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
 
     it("shows editable parameters controls for sql parameters of native questions", () => {
       mountInteractiveQuestion({
-        initialSqlParameters: { State: "AR" },
+        initialSqlParameters: { State: "NY" },
         hiddenParameters: ["Source"],
       });
 
       ensureColumnValueAfterParameterEditing({
         columnName: "STATE",
+        columnValue: "NY",
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByPlaceholderText("State").clear().type("AR{enter}");
+      });
+
+      ensureColumnValueAfterParameterEditing({
+        columnName: "STATE",
         columnValue: "AR",
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByPlaceholderText("City").type("El Paso{enter}");
+      });
+
+      ensureColumnValueAfterParameterEditing({
+        columnName: "CITY",
+        columnValue: "El Paso",
       });
     });
   });
