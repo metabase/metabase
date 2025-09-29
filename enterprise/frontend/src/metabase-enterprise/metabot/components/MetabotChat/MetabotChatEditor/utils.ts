@@ -1,6 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
+import { match } from "ts-pattern";
 
-import { METABSE_PROTOCOL_MD_LINK } from "metabase-enterprise/metabot/utils/links";
+import {
+  METABSE_PROTOCOL_MD_LINK,
+  createMetabaseProtocolLink,
+} from "metabase-enterprise/metabot/utils/links";
 
 function serializeNodes(nodes: JSONContent[]): string {
   return nodes.map((node) => serializeNode(node)).join("");
@@ -13,12 +17,19 @@ function serializeNode(node: JSONContent): string {
     case "text":
       return node.text || "";
     case "smartLink": {
-      const { entityId, model, label } = node.attrs || {};
-      if (!entityId || !model) {
+      const { entityId, model: entityModel, label } = node.attrs || {};
+      if (!entityId || !entityModel) {
         console.warn("SmartLink missing required attributes", node);
         return label || "[unknown]";
       }
-      return `[${label}](metabase://${model}/${entityId})`;
+      return createMetabaseProtocolLink({
+        id: entityId,
+        model: match(entityModel)
+          .with("dataset", () => "model" as const)
+          .with("card", () => "question" as const)
+          .otherwise(() => entityModel),
+        name: label,
+      });
     }
     case "hardBreak":
       return "\n";

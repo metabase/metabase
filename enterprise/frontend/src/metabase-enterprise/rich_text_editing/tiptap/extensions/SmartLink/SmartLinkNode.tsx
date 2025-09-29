@@ -366,7 +366,7 @@ export const SmartLinkComponent = memo(
       isLoading,
       error,
     } = useEntityData(entityId, model);
-    const cachedEntity = { id: entityId, model, name: label };
+    const cachedEntity = { id: parseInt(entityId, 10), model, name: label };
     const entity = networkEntity || cachedEntity;
 
     const dispatch = useDispatch();
@@ -416,8 +416,15 @@ export const SmartLinkComponent = memo(
     const entityUrlableModel = entityToUrlableModel(entity, model);
     const entityUrl = modelToUrl(entityUrlableModel);
 
-    // TODO: fix type cast...
-    const iconData = getIcon(entityToObjectWithModel(entity as any, model));
+    const iconData =
+      entity === cachedEntity
+        ? getIcon(cachedEntity)
+        : getIcon(
+            entityToObjectWithModel(
+              entity as NonNullable<typeof networkEntity>,
+              model,
+            ),
+          );
 
     return (
       <NodeViewWrapper as="span">
@@ -463,7 +470,7 @@ function entityToObjectWithModel(
   };
 }
 
-function getName(entity: SmartLinkEntity) {
+function getName(entity: { name?: string; display_name?: string }) {
   if ("display_name" in entity && entity.display_name !== "") {
     return entity.display_name;
   }

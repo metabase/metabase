@@ -23,6 +23,7 @@ interface MentionSuggestionProps {
   range: Range;
   query: string;
   searchModels?: SuggestionModel[];
+  canBrowseAll?: boolean;
 }
 
 interface SuggestionRef {
@@ -33,7 +34,15 @@ const MentionSuggestionComponent = forwardRef<
   SuggestionRef,
   MentionSuggestionProps
 >(function MentionSuggestionComponent(
-  { items: _items, command, editor, range, query, searchModels },
+  {
+    items: _items,
+    command,
+    editor,
+    range,
+    query,
+    searchModels,
+    canBrowseAll = true,
+  },
   ref,
 ) {
   const document = useSelector(getCurrentDocument);
@@ -60,6 +69,7 @@ const MentionSuggestionComponent = forwardRef<
     isLoading,
     searchResults,
     selectedIndex,
+    modal,
     selectedSearchModelName,
     handlers,
   } = useEntitySuggestions({
@@ -68,6 +78,7 @@ const MentionSuggestionComponent = forwardRef<
     range,
     searchModels,
     onSelectEntity,
+    canBrowseAll,
   });
 
   useImperativeHandle(ref, () => ({
@@ -79,15 +90,23 @@ const MentionSuggestionComponent = forwardRef<
   }
 
   return (
-    <SuggestionPaper aria-label={t`Mention Dialog`}>
+    <SuggestionPaper
+      aria-label={t`Mention Dialog`}
+      key={selectedSearchModelName}
+    >
       <EntitySearchSection
         menuItems={menuItems}
         selectedIndex={selectedIndex}
         onItemSelect={handlers.selectItem}
+        onFooterClick={handlers.openModal}
         query={query}
         searchResults={searchResults}
+        modal={modal}
+        onModalSelect={handlers.handleModalSelect}
+        onModalClose={handlers.handleModalClose}
         onItemHover={handlers.hoverHandler}
         selectedSearchModelName={selectedSearchModelName}
+        canBrowseAll={canBrowseAll}
       />
     </SuggestionPaper>
   );
@@ -97,15 +116,22 @@ export const MentionSuggestion = MentionSuggestionComponent;
 
 export const createMentionSuggestion = ({
   searchModels,
+  canBrowseAll,
 }: {
   searchModels: SuggestionModel[];
+  canBrowseAll?: boolean;
 }) => {
   return forwardRef<
     SuggestionRef,
     Omit<MentionSuggestionProps, "searchModels">
   >(function MentionSuggestionWrapper(props, ref) {
     return (
-      <MentionSuggestion {...props} ref={ref} searchModels={searchModels} />
+      <MentionSuggestion
+        {...props}
+        ref={ref}
+        searchModels={searchModels}
+        canBrowseAll={canBrowseAll}
+      />
     );
   });
 };

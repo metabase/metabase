@@ -1,6 +1,7 @@
 import type { Editor, Range } from "@tiptap/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
 import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
@@ -28,6 +29,7 @@ interface UseEntitySuggestionsOptions {
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
+  canBrowseAll: boolean;
 }
 
 interface UseEntitySuggestionsResult {
@@ -35,6 +37,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
+  modal: "question-picker" | null;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -43,6 +46,9 @@ interface UseEntitySuggestionsResult {
     downHandler: () => void;
     enterHandler: () => void;
     onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+    handleModalSelect: (item: QuestionPickerValueItem) => void;
+    handleModalClose: () => void;
+    openModal: () => void;
     hoverHandler: (index: number) => void;
   };
 }
@@ -54,8 +60,10 @@ export function useEntitySuggestions({
   onSelectEntity,
   enabled = true,
   searchModels,
+  canBrowseAll,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [modal, setModal] = useState<"question-picker" | null>(null);
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(null);
 
@@ -102,10 +110,7 @@ export function useEntitySuggestions({
         editor.chain().focus().deleteRange(range).insertContent("@").run();
       }
       setSelectedSearchModel(model);
-      // TODO: avoid set timeout, currently it doesn't work without - repo via selecting via keyboard second entity and then you'll have last value in next list selected
-      setTimeout(() => {
-        setSelectedIndex(0);
-      }, 0);
+      setSelectedIndex(0);
     },
     [editor, range],
   );
@@ -162,12 +167,14 @@ export function useEntitySuggestions({
     return entityMenuItems;
   }, [isInModelSelectionMode, searchModelMenuItems, entityMenuItems]);
 
-  const totalItems = menuItems.length;
+  const totalItems = menuItems.length + Number(canBrowseAll);
 
   const selectItem = useCallback(
     (index: number) => {
       if (index < menuItems.length) {
         menuItems[index].action();
+      } else {
+        setModal("question-picker");
       }
     },
     [menuItems],
@@ -213,6 +220,30 @@ export function useEntitySuggestions({
     [upHandler, downHandler, enterHandler],
   );
 
+  const handleModalSelect = useCallback(
+    (item: QuestionPickerValueItem) => {
+      onSelectEntity({
+        id: item.id,
+        model: item.model,
+        label: item.name,
+        href: modelToUrl(entityToUrlableModel(item, item.model)),
+      });
+      setModal(null);
+    },
+    [onSelectEntity],
+  );
+
+  const handleModalClose = useCallback(() => {
+    setModal(null);
+    setTimeout(() => {
+      editor.commands.focus();
+    }, 0);
+  }, [editor]);
+
+  const openModal = useCallback(() => {
+    setModal("question-picker");
+  }, []);
+
   useEffect(() => {
     setSelectedIndex(0);
   }, [menuItems.length]);
@@ -227,6 +258,7 @@ export function useEntitySuggestions({
     isLoading: isInModelSelectionMode ? false : isLoading,
     searchResults,
     selectedIndex,
+    modal,
     totalItems,
     selectedSearchModelName,
     handlers: {
@@ -235,6 +267,9 @@ export function useEntitySuggestions({
       downHandler,
       enterHandler,
       onKeyDown,
+      handleModalSelect,
+      handleModalClose,
+      openModal,
       hoverHandler,
     },
   };

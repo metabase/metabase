@@ -231,6 +231,7 @@ export const CommandSuggestion = forwardRef<
     onSelectEntity: onSelectLinkEntity,
     enabled: true,
     searchModels: showLinkSearch ? LINK_SEARCH_MODELS : EMBED_SEARCH_MODELS,
+    canBrowseAll: true,
   });
 
   const {

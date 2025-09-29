@@ -1,7 +1,9 @@
-import { type IconModel, getIcon } from "metabase/lib/icon";
+import { match } from "ts-pattern";
+
+import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
+import type { MetabaseProtocolEntityModel } from "metabase-enterprise/metabot/utils/links";
 import { useEntityData } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { entityToUrlableModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 
@@ -18,12 +20,19 @@ export const MarkdownSmartLink = ({
   onInternalLinkClick?: (href: string) => void;
   id: number;
   name: string;
-  model: IconModel & SuggestionModel;
+  model: MetabaseProtocolEntityModel;
 }) => {
-  const { entity, isLoading, error } = useEntityData(id, model);
+  const entityModel = match(model)
+    .with("model", () => "dataset" as const)
+    .with("question", () => "card" as const)
+    .otherwise((x) => x);
+  const icon = getIcon({ model: entityModel });
+
+  const { entity, isLoading, error } = useEntityData(id, entityModel);
+
   const entityUrl =
     !isLoading && !error && entity
-      ? (modelToUrl(entityToUrlableModel(entity, model)) ?? "")
+      ? (modelToUrl(entityToUrlableModel(entity, entityModel)) ?? "")
       : ""; // fallback to linking to nothing
 
   return (
@@ -35,7 +44,7 @@ export const MarkdownSmartLink = ({
       className={S.smartLink}
     >
       <span className={S.smartLinkInner}>
-        <Icon name={getIcon({ model }).name} className={S.icon} />
+        <Icon name={icon.name} className={S.icon} />
         {name}
       </span>
     </InternalLink>
