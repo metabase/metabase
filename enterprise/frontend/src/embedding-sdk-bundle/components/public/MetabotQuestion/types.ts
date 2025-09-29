@@ -2,6 +2,11 @@ import type { CSSProperties } from "react";
 
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 
+/**
+ * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
 export interface MetabotQuestionProps extends CommonStylingProps {
   /**
    * Layout mode for the MetabotQuestion component
