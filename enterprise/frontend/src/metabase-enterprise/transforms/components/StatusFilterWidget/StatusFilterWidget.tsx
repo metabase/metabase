@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import {
   Box,
@@ -13,9 +13,9 @@ import {
 } from "metabase/ui";
 import type { TransformRunStatus } from "metabase-types/api";
 
-import { FilterFieldSet } from "../../../../components/FilterFieldSet";
-import { FILTER_WIDGET_MIN_WIDTH } from "../../../../constants";
-import { formatStatus } from "../../../../utils";
+import { FILTER_WIDGET_MIN_WIDTH } from "../../constants";
+import { formatStatus } from "../../utils";
+import { FilterFieldSet } from "../FilterFieldSet";
 
 const STATUSES: TransformRunStatus[] = [
   "started",
@@ -25,11 +25,13 @@ const STATUSES: TransformRunStatus[] = [
 ];
 
 type StatusFilterWidgetProps = {
+  label: string;
   statuses: TransformRunStatus[];
   onChange: (statuses: TransformRunStatus[]) => void;
 };
 
 export function StatusFilterWidget({
+  label,
   statuses,
   onChange,
 }: StatusFilterWidgetProps) {
@@ -48,7 +50,7 @@ export function StatusFilterWidget({
     <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
       <Popover.Target>
         <FilterFieldSet
-          label={t`Status`}
+          label={label}
           icon="check_filled"
           displayValue={getDisplayValue(statuses)}
           onClick={toggle}
