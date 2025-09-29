@@ -11,6 +11,7 @@ import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
 
 interface ResponsiveParametersListProps {
+  className?: string;
   cardId?: CardId;
   dashboardId?: DashboardId;
   parameters: Parameter[];
@@ -22,6 +23,7 @@ interface ResponsiveParametersListProps {
 }
 
 export const ResponsiveParametersList = ({
+  className,
   cardId,
   dashboardId,
   parameters,
@@ -83,7 +85,10 @@ export const ResponsiveParametersList = ({
           </Flex>
         )}
         <SyncedParametersList
-          className={ResponsiveParametersListS.StyledParametersList}
+          className={cx(
+            ResponsiveParametersListS.StyledParametersList,
+            className,
+          )}
           cardId={cardId}
           dashboardId={dashboardId}
           parameters={parameters}

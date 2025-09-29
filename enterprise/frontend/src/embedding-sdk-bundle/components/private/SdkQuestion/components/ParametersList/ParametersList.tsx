@@ -5,6 +5,8 @@ import { ResponsiveParametersList } from "metabase/query_builder/components/Resp
 import * as Lib from "metabase-lib";
 import type { ParameterId } from "metabase-types/api";
 
+import ParametersListS from "./ParametersList.module.css";
+
 /**
  * Parameters list for SQL questions
  *
@@ -68,6 +70,7 @@ export const QuestionParametersList = () => {
 
   return (
     <ResponsiveParametersList
+      className={ParametersListS.ParametersList}
       cardId={question?.id()}
       dashboardId={question.dashboardId() ?? undefined}
       parameters={parameters}
