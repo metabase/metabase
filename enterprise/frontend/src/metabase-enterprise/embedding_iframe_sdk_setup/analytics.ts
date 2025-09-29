@@ -19,9 +19,7 @@ const EMBED_OPTIONS_TO_TRACK = [
 ] as const satisfies SdkIframeEmbedSettingKey[];
 
 export const trackEmbedWizardOpened = () =>
-  trackSimpleEvent({
-    event: "embed_wizard_opened",
-  });
+  trackSimpleEvent({ event: "embed_wizard_opened" });
 
 export const trackEmbedWizardExperienceCompleted = (
   experience: SdkIframeEmbedSetupExperience,

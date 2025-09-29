@@ -118,6 +118,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText(SECOND_QUESTION_NAME).click();
 
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
+
+      cy.findByText("Next").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_resource_selection_completed",
+        event_detail: "chart",
+      });
     });
 
     cy.log("selected question should be shown in the preview");
@@ -183,6 +190,13 @@ H.describeWithSnowplow(suiteTitle, () => {
         .first()
         .should("contain", FIRST_QUESTION_NAME)
         .should("have.attr", "data-selected", "true");
+
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selection_completed",
+      event_detail: "chart",
     });
 
     cy.wait("@cardQuery");
