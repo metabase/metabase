@@ -73,6 +73,11 @@ const subComponents: StaticQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion
         ?.DownloadWidgetDropdown,
   ),
+  ParametersList: createComponent(
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion
+        ?.ParametersList,
+  ),
 };
 
 /**

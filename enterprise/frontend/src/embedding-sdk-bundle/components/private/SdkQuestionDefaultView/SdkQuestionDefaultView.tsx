@@ -36,7 +36,6 @@ import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
-import { QuestionParametersList } from "../SdkQuestion/components/ParametersList";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
 import {
   SaveButton,
@@ -245,14 +244,6 @@ export const SdkQuestionDefaultView = ({
             </Group>
           </Group>
         )}
-      </Stack>
-
-      <Stack gap="sm" px="md">
-        <Group>
-          <Box w="100%">
-            <QuestionParametersList />
-          </Box>
-        </Group>
       </Stack>
 
       <Box

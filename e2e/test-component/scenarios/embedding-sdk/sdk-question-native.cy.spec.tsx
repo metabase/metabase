@@ -170,7 +170,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
     });
   });
 
-  describe("editable parameters", () => {
+  describe("editable parameters for a native question", () => {
     beforeEach(() => {
       setup({
         question: {
@@ -216,10 +216,31 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
       });
     });
 
-    it("shows editable parameters controls for sql parameters of native questions", () => {
+    it("does not show editable parameters controls for the default view", () => {
       mountInteractiveQuestion({
         initialSqlParameters: { State: "NY" },
         hiddenParameters: ["Source"],
+      });
+
+      cy.wait("@cardQuery");
+
+      cy.findByTestId("parameter-widget").should("not.exist");
+      cy.findByPlaceholderText("State").should("not.exist");
+      cy.findByPlaceholderText("City").should("not.exist");
+      cy.findByPlaceholderText("Source").should("not.exist");
+    });
+
+    it("shows editable parameters controls when `withParametersListWidget` is set to `true`", () => {
+      mountInteractiveQuestion({
+        initialSqlParameters: { State: "NY" },
+        hiddenParameters: ["Source"],
+        children: (
+          <>
+            <InteractiveQuestion.Title />
+            <InteractiveQuestion.ParametersList />
+            <InteractiveQuestion.QuestionVisualization />
+          </>
+        ),
       });
 
       cy.wait("@cardQuery");

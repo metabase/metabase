@@ -117,6 +117,11 @@ const subComponents: InteractiveQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.VisualizationButton,
   ),
+  ParametersList: createComponent(
+    () =>
+      getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
+        ?.ParametersList,
+  ),
 };
 
 /**
