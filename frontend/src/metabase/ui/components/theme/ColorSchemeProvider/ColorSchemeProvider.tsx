@@ -3,26 +3,34 @@ import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { noop } from "underscore";
 
-import { useSelector } from "metabase/lib/redux/hooks";
-import { getIsEmbedding } from "metabase/selectors/embed";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
-export type ColorScheme = "light" | "dark" | "auto";
+type ResolvedColorScheme = "light" | "dark";
+
+export type ColorScheme = "auto" | ResolvedColorScheme;
 
 interface ColorSchemeContextType {
   colorScheme: ColorScheme;
-  resolvedColorScheme: "light" | "dark";
+  colorSchemeOverride: null | ColorScheme;
+  resolvedColorScheme: ResolvedColorScheme;
   setColorScheme: (scheme: ColorScheme) => void;
+  setColorSchemeOverride: (scheme: null | ResolvedColorScheme) => void;
   toggleColorScheme: () => void;
 }
 
 const defaultValue: ColorSchemeContextType = {
   colorScheme: "light",
+  colorSchemeOverride: null,
   resolvedColorScheme: "light",
   setColorScheme: noop,
+  setColorSchemeOverride: noop,
   toggleColorScheme: noop,
 };
 
@@ -33,7 +41,7 @@ interface ColorSchemeProviderProps {
   defaultColorScheme?: ColorScheme;
 }
 
-function getSystemColorScheme(): "light" | "dark" {
+function getSystemColorScheme(): ResolvedColorScheme {
   if (typeof window === "undefined") {
     return "light";
   }
@@ -42,7 +50,7 @@ function getSystemColorScheme(): "light" | "dark" {
     : "light";
 }
 
-function resolveColorScheme(scheme: ColorScheme): "light" | "dark" {
+function resolveColorScheme(scheme: ColorScheme): ResolvedColorScheme {
   return scheme === "auto" ? getSystemColorScheme() : scheme;
 }
 
@@ -50,7 +58,8 @@ export function ColorSchemeProvider({
   children,
   defaultColorScheme = "light",
 }: ColorSchemeProviderProps) {
-  const isEmbedding = useSelector(getIsEmbedding);
+  const [colorSchemeOverride, setColorSchemeOverride] =
+    useState<ResolvedColorScheme | null>(null);
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
     // Try to get saved preference from localStorage
     if (typeof window !== "undefined") {
@@ -61,38 +70,37 @@ export function ColorSchemeProvider({
     }
     return defaultColorScheme;
   });
-
-  const [resolvedColorScheme, setResolvedColorScheme] = useState<
-    "light" | "dark"
-  >(() => resolveColorScheme(colorScheme));
+  const resolvedColorScheme = useMemo(() => {
+    if (getIsEmbeddingIframe()) {
+      return colorSchemeOverride || "light";
+    }
+    return resolveColorScheme(colorSchemeOverride || colorScheme);
+  }, [colorScheme, colorSchemeOverride]);
 
   useEffect(() => {
-    // Save to localStorage
     localStorage.setItem("metabase-color-scheme", colorScheme);
-
-    // Update resolved scheme
-    setResolvedColorScheme(resolveColorScheme(colorScheme));
   }, [colorScheme]);
 
+  const forceUpdate = useForceUpdate();
   useEffect(() => {
     if (colorScheme === "auto") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-      const handleChange = (e: MediaQueryListEvent) => {
-        setResolvedColorScheme(e.matches ? "dark" : "light");
-      };
+      const handleChange = () => forceUpdate();
 
       mediaQuery.addEventListener("change", handleChange);
       return () => mediaQuery.removeEventListener("change", handleChange);
     }
-  }, [colorScheme]);
+  }, [colorScheme, forceUpdate]);
 
-  const value: ColorSchemeContextType = isEmbedding
+  const value: ColorSchemeContextType = isEmbeddingSdk()
     ? defaultValue
     : {
         colorScheme,
         resolvedColorScheme,
         setColorScheme,
+        colorSchemeOverride,
+        setColorSchemeOverride,
         toggleColorScheme: () => {
           setColorScheme((current) => {
             switch (current) {

@@ -8,11 +8,7 @@ function getPieBorderColor(
   dashboardCardBg: string,
   questionBg: string,
   isDashboard: boolean | undefined,
-  isNightMode: boolean | undefined,
 ) {
-  if (isDashboard && isNightMode) {
-    return "var(--mb-color-bg-night)";
-  }
   if (isDashboard) {
     return dashboardCardBg;
   }
@@ -28,12 +24,10 @@ function getPieBorderColor(
 export function getVisualizationTheme({
   theme,
   isDashboard,
-  isNightMode,
   isStaticViz,
 }: {
   theme: Partial<MantineThemeOther>;
   isDashboard?: boolean;
-  isNightMode?: boolean;
   isStaticViz?: boolean;
 }): VisualizationTheme {
   const { cartesian, dashboard, question } = theme;
@@ -59,9 +53,7 @@ export function getVisualizationTheme({
         lineStyle: {
           color: isStaticViz
             ? color("border")
-            : isNightMode
-              ? "var(--mb-color-border-alpha-30)"
-              : cartesian.splitLine.lineStyle.color,
+            : cartesian.splitLine.lineStyle.color,
         },
       },
     },
@@ -72,7 +64,6 @@ export function getVisualizationTheme({
             dashboard.card.backgroundColor,
             question.backgroundColor,
             isDashboard,
-            isNightMode,
           ),
     },
   };

@@ -53,7 +53,6 @@ import {
   TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
-import { useGlobalTheme } from "./useGlobalTheme";
 
 export type EmbedFrameBaseProps = Partial<{
   className: string;
@@ -107,7 +106,6 @@ export const EmbedFrame = ({
   pdfDownloadsEnabled = true,
   withFooter = true,
 }: EmbedFrameProps) => {
-  useGlobalTheme(theme);
   const hasEmbedBranding = useSelector(
     (state) => !getSetting(state, "hide-embed-branding?"),
   );
