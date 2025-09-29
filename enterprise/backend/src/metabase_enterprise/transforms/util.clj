@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.util
   (:require
    [clojure.core.async :as a]
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
