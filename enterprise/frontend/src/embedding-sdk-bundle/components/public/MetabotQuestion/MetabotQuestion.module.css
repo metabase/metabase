@@ -1,9 +1,3 @@
-.sidebar {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
 .container {
   display: flex;
   width: 100%;
@@ -21,14 +15,11 @@
       width: 100%;
       height: 100%;
       max-width: 18.75rem;
+      border-left: 1px solid var(--mb-color-border);
     }
 
     .stackedOverflowButton {
       display: none;
-    }
-
-    .sidebar {
-      border-left: 1px solid var(--mb-color-border);
     }
   }
 
@@ -47,10 +38,6 @@
       width: 100%;
       max-width: none;
       border-top: 1px solid var(--mb-color-border);
-      border-left: none;
-    }
-
-    .sidebar {
       border-left: none;
     }
 

@@ -11,12 +11,15 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
+import { MetabotChatHistory } from "./MetabotChatHistory";
+import { MetabotChatInput } from "./MetabotChatInput";
+import { MetabotChatSuggestions } from "./MetabotChatSuggestions";
 import S from "./MetabotQuestion.module.css";
 import { metabotQuestionSchema } from "./MetabotQuestion.schema";
 import { MetabotQuestionEmptyState } from "./MetabotQuestionEmptyState";
-import { MetabotSidebar } from "./MetabotSidebar";
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
+import { SidebarHeader } from "./SidebarHeader";
 import type { MetabotQuestionProps } from "./types";
 
 const MetabotQuestionInner = ({
@@ -78,7 +81,15 @@ const MetabotQuestionInner = ({
         <div className={S.content}>{renderQuestion()}</div>
 
         <div className={S.chat}>
-          <MetabotSidebar />
+          <Stack w="100%" h="100%" pos="relative">
+            <SidebarHeader />
+            <MetabotChatHistory />
+
+            <Stack gap={0}>
+              <MetabotChatSuggestions />
+              <MetabotChatInput />
+            </Stack>
+          </Stack>
         </div>
       </div>
     </FlexibleSizeComponent>
