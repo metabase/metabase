@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 
 import {
   trackEmbedWizardExperienceCompleted,
@@ -24,13 +25,17 @@ export function useSdkIframeEmbedNavigation() {
 
     const nextStep = availableSteps[currentIndex + 1];
 
-    if (currentStep === "select-embed-experience") {
-      trackEmbedWizardExperienceCompleted(experience);
-    } else if (currentStep === "select-embed-resource") {
-      trackEmbedWizardResourceSelectionCompleted(experience);
-    } else if (currentStep === "select-embed-options") {
-      trackEmbedWizardOptionsCompleted(settings);
-    }
+    match(currentStep)
+      .with("select-embed-experience", () => {
+        trackEmbedWizardExperienceCompleted(experience);
+      })
+      .with("select-embed-resource", () => {
+        trackEmbedWizardResourceSelectionCompleted(experience);
+      })
+      .with("select-embed-options", () => {
+        trackEmbedWizardOptionsCompleted(settings);
+      })
+      .otherwise(() => {});
 
     if (nextStep) {
       setCurrentStep(nextStep.id);
