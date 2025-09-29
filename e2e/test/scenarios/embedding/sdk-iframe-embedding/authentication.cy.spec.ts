@@ -176,7 +176,9 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     frame.within(() => {
-      cy.findByTestId("sdk-error-container").should("exist");
+      cy.findByTestId("sdk-error-container")
+        .findByText(/Failed to fetch JWT token/)
+        .should("exist");
     });
   });
 
