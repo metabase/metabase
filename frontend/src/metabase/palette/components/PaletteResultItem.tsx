@@ -34,7 +34,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
         flexGrow: 1,
         flexBasis: 0,
       }}
-      bg={active ? "var(--mb-color-brand-light)" : undefined}
+      bg={active ? "var(--mb-color-background-hover)" : undefined}
       c="var(--mb-color-text-dark)"
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
