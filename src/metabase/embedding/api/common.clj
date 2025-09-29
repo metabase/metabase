@@ -314,6 +314,12 @@
               :qp          qp
               options)))
 
+(defn unsigned-token->card-id
+  "Get the Card ID from an unsigned token."
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+       (eid-translation/->id :model/Card)))
+
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
 (defn- remove-locked-parameters [dashboard embedding-params]
@@ -474,7 +480,8 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-(defn- unsigned-token->dashboard-id
+(defn unsigned-token->dashboard-id
+  "Get the Dashboard ID from an unsigned token."
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
        (eid-translation/->id :model/Dashboard)))
