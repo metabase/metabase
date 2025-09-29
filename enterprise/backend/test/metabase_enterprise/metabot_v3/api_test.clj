@@ -68,44 +68,44 @@
                                                                   :status   "fake"
                                                                   :features ["test" "fixture"]
                                                                   :trial    false})]
-    (let [premium-token (token-check-test/random-token)
-          store-url     "http://hm.example"]
-      (testing "Submits feedback to Harbormaster with token and base URL"
-        (mt/with-temporary-setting-values [premium-embedding-token premium-token
-                                           store-api-url           store-url]
-          (let [captured (atom nil)
-                feedback {:metabot_id 1
-                          :feedback {:positive true
-                                     :message_id "m-1"
-                                     :freeform_feedback "ok"}
-                          :conversation_data {}
-                          :version "v0.0.0"
-                          :submission_time "2025-01-01T00:00:00Z"
-                          :is_admin false}
-                expected-url (str store-url "/api/v2/metabot/feedback" premium-token)]
+      (let [premium-token (token-check-test/random-token)
+            store-url     "http://hm.example"]
+        (testing "Submits feedback to Harbormaster with token and base URL"
+          (mt/with-temporary-setting-values [premium-embedding-token premium-token
+                                             store-api-url           store-url]
+            (let [captured (atom nil)
+                  feedback {:metabot_id 1
+                            :feedback {:positive true
+                                       :message_id "m-1"
+                                       :freeform_feedback "ok"}
+                            :conversation_data {}
+                            :version "v0.0.0"
+                            :submission_time "2025-01-01T00:00:00Z"
+                            :is_admin false}
+                  expected-url (str store-url "/api/v2/metabot/feedback/" premium-token)]
+              (mt/with-dynamic-fn-redefs
+                [http/post (fn [url opts]
+                             (reset! captured {:url url
+                                               :body (json/decode+kw (String. ^bytes (:body opts) "UTF-8"))})
+                             {:status 204 :body ""})]
+                (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
+                  (is (= expected-url (:url @captured)))
+                  (is (= feedback (:body @captured))))))))
+
+        (testing "Returns 500 when http post fails"
+          (mt/with-temporary-setting-values [premium-embedding-token premium-token
+                                             store-api-url           store-url]
             (mt/with-dynamic-fn-redefs
-              [http/post (fn [url opts]
-                           (reset! captured {:url url
-                                             :body (json/decode+kw (String. ^bytes (:body opts) "UTF-8"))})
-                           {:status 204 :body ""})]
-              (let [_resp (mt/user-http-request :rasta :post 204 "ee/metabot-v3/feedback" feedback)]
-                (is (= expected-url (:url @captured)))
-                (is (= feedback (:body @captured))))))))
+              [http/post (fn [_url _opts]
+                           (throw (ex-info "boom" {})))]
+              (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:any "payload"}))))
 
-      (testing "Returns 500 when http post fails"
-        (mt/with-temporary-setting-values [premium-embedding-token premium-token
-                                           store-api-url           store-url]
-          (mt/with-dynamic-fn-redefs
-            [http/post (fn [_url _opts]
-                         (throw (ex-info "boom" {})))]
-            (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:any "payload"}))))
+        (testing "Throws when premium token is missing"
+          (mt/with-temporary-setting-values [premium-embedding-token nil
+                                             store-api-url           store-url]
+            (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"})))
 
-      (testing "Throws when premium token is missing"
-        (mt/with-temporary-setting-values [premium-embedding-token nil
-                                           store-api-url           store-url]
-          (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"})))
-
-      (testing "Throws when `store-api-url` is missing"
-        (mt/with-temporary-setting-values [premium-embedding-token premium-token
+        (testing "Throws when `store-api-url` is missing"
+          (mt/with-temporary-setting-values [premium-embedding-token premium-token
                                            store-api-url           nil]
           (mt/user-http-request :rasta :post 500 "ee/metabot-v3/feedback" {:foo "bar"}))))))
