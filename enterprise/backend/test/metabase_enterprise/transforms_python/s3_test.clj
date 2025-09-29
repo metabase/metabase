@@ -43,7 +43,7 @@
             key    (str "test-object-" (random-uuid) ".txt")
             body   (str "Hello, S3! My secret is:" (random-uuid))]
 
-        (is (thrown? NoSuchKeyException (s3/read-to-string s3-client bucket key)))
+        (is (nil? (s3/read-to-string s3-client bucket key)))
         (is (= :default (s3/read-to-string s3-client bucket key :default)))
 
         (let [tmp-file (Files/createTempFile "s3-test" ".txt" (into-array FileAttribute []))]
@@ -57,7 +57,7 @@
 
             (s3/delete s3-client bucket key)
 
-            (is (thrown? NoSuchKeyException (s3/read-to-string s3-client bucket key)))
+            (is (nil? (s3/read-to-string s3-client bucket key)))
             (is (= :default (s3/read-to-string s3-client bucket key :default)))
 
             (finally

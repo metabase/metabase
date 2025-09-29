@@ -193,7 +193,7 @@
 
 (defn read-to-string
   "Get back the contents of the given key as a string."
-  ([s3-client bucket-name key] (read-to-string s3-client bucket-name key ::throw))
+  ([s3-client bucket-name key] (read-to-string s3-client bucket-name key nil))
   ([^S3Client s3-client ^String bucket-name ^String key not-found]
    (if-some [in (open-object s3-client bucket-name key)]
      (with-open [ret in]
