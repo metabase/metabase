@@ -70,14 +70,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("second dashboard can be selected");
       cy.findByText(SECOND_DASHBOARD_NAME).click();
 
-      cy.get("@secondDashboardId").then((secondDashboardId) => {
-        H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_resource_selected",
-          target_id: secondDashboardId,
-          event_detail: "dashboard",
-        });
-      });
-
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
@@ -91,18 +83,12 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).click();
       cy.findByText(SECOND_DASHBOARD_NAME).click();
+      cy.findByText("Next").click();
     });
 
-    cy.get("@secondDashboardId").then((secondDashboardId) => {
-      cy.log("only a single snowplow event should be sent");
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_resource_selected",
-          target_id: secondDashboardId,
-          event_detail: "dashboard",
-        },
-        1,
-      );
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selection_completed",
+      event_detail: "dashboard",
     });
   });
 
@@ -130,12 +116,6 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.log("second question can be selected");
       cy.findByText(SECOND_QUESTION_NAME).click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_resource_selected",
-        target_id: ORDERS_BY_YEAR_QUESTION_ID,
-        event_detail: "chart",
-      });
 
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
@@ -166,14 +146,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText(SECOND_DASHBOARD_NAME).click();
     });
 
-    cy.get("@secondDashboardId").then((secondDashboardId) => {
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_resource_selected",
-        target_id: secondDashboardId,
-        event_detail: "dashboard",
-      });
-    });
-
     cy.log("dashboard is added to the top of recents list and selected");
     getEmbedSidebar().within(() => {
       getRecentItemCards()
@@ -202,12 +174,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByText("Select a chart").should("be.visible");
       cy.findByText("Questions").click();
       cy.findByText(FIRST_QUESTION_NAME).click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selected",
-      target_id: ORDERS_COUNT_QUESTION_ID,
-      event_detail: "chart",
     });
 
     cy.log("question is added to the top of recents list and selected");

@@ -1,7 +1,22 @@
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type {
+  SdkIframeEmbedSettingKey,
+  SdkIframeEmbedSettings,
+} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type { SdkIframeEmbedSetupExperience } from "./types";
+
+/**
+ * Tracking every embed options would be too much, so we only track
+ * the most relevant options that reveal usage patterns.
+ */
+const EMBED_OPTIONS_TO_TRACK = [
+  "drills",
+  "withTitle",
+  "withDownloads",
+  "isSaveEnabled",
+  "readOnly",
+] as const satisfies SdkIframeEmbedSettingKey[];
 
 export const trackEmbedWizardOpened = () =>
   trackSimpleEvent({
@@ -27,18 +42,28 @@ export const trackEmbedWizardResourceSelectionCompleted = (
 export const trackEmbedWizardOptionsCompleted = (
   settings: Partial<SdkIframeEmbedSettings>,
 ) => {
-  const customOptions = [];
+  const options: Record<string, string> = {
+    theme: settings.theme?.colors ? "custom" : "default",
+    auth: settings.useExistingUserSession ? "user_session" : "sso",
+  };
 
-  if (settings.theme) {
-    customOptions.push("custom-theme");
+  for (const optionKey of EMBED_OPTIONS_TO_TRACK) {
+    if (!(optionKey in settings)) {
+      continue;
+    }
+
+    const value = (settings as any)[optionKey];
+
+    if (value === null || value === undefined) {
+      continue;
+    }
+
+    options[optionKey] = value.toString();
   }
 
-  if (settings.useExistingUserSession === false) {
-    customOptions.push("custom-auth");
-  }
-
-  const eventDetail =
-    customOptions.length > 0 ? customOptions.join(",") : "default";
+  const eventDetail = Object.entries(options)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(",");
 
   trackSimpleEvent({
     event: "embed_wizard_options_completed",
@@ -47,6 +72,4 @@ export const trackEmbedWizardOptionsCompleted = (
 };
 
 export const trackEmbedWizardCodeCopied = () =>
-  trackSimpleEvent({
-    event: "embed_wizard_code_copied",
-  });
+  trackSimpleEvent({ event: "embed_wizard_code_copied" });

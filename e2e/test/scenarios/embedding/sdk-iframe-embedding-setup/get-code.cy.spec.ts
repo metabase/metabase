@@ -128,11 +128,6 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Single sign-on (SSO)").click();
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_auth_selected",
-        event_detail: "sso",
-      });
-
       codeBlock().should("not.contain", "useExistingUserSession");
     });
   });
