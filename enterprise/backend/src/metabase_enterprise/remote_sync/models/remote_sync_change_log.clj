@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.models.remote-sync-change-log
   (:require
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.util :as u]
    [methodical.core :as methodical]
@@ -162,7 +163,8 @@
   [col-id]
   (boolean
    (when-let [dirty-query (dirty-collection col-id exists-select)]
-     (:exists (t2/query-one {:select [[[:exists dirty-query] :exists]]})))))
+     (api/bit->boolean
+      (:exists (t2/query-one {:select [[[:exists dirty-query] :exists]]}))))))
 
 (defn dirty-for-collection
   "All models for collection that are dirty along with a note about why their state is dirty
@@ -184,7 +186,8 @@
   []
   (boolean
    (when-let [dirty-query (dirty-collection exists-select)]
-     (:exists (t2/query-one {:select [[[:exists dirty-query] :exists]]})))))
+     (api/bit->boolean
+      (:exists (t2/query-one {:select [[[:exists dirty-query] :exists]]}))))))
 
 (defn dirty-for-global
   "All models for any collection that are dirty along with a note about why their state is dirty

@@ -76,8 +76,8 @@
                  response)))))))
 
 (defn- wait-for-task-completion [task-id]
-  (dh/with-retry {:max-retries 5
-                  :delay-ms 100}
+  (dh/with-retry {:max-retries 10
+                  :delay-ms 500}
     (u/prog1 (t2/select-one :model/RemoteSyncTask :id task-id)
       (when (nil? (:ended_at <>))
         (throw (ex-info "Not finished" {:task-id task-id
