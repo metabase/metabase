@@ -178,15 +178,7 @@ H.describeWithSnowplowEE("documents", () => {
       cy.get<number>("@metricId").then(H.visitMetric);
       H.openQuestionActions("Edit metric definition");
       H.getNotebookStep("summarize").findByText("Min of Score").click();
-      H.popover().within(() => {
-        cy.icon("chevronleft").click();
-        cy.findByText("Custom Expression").click();
-      });
-      H.enterCustomColumnDetails({
-        name: "Custom Min",
-        formula: "Min([Score] + 1)",
-      });
-      H.popover().button("Update").click();
+      H.popover().findByText("Name").click();
       cy.findByTestId("edit-bar").button("Save changes").click();
       cy.wait("@updateCard");
     });
@@ -452,6 +444,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
               type: "table",
               name: "transform_1_stage",
               schema: "public",
+              database: WRITABLE_DB_ID,
             },
           });
 
@@ -478,6 +471,7 @@ function createMetricWithDependentMbqlQuestionsAndTransforms() {
               type: "table",
               name: "transform_2_stages",
               schema: "public",
+              database: WRITABLE_DB_ID,
             },
           });
         });
@@ -506,6 +500,7 @@ function createSqlTransformWithDependentMbqlQuestions() {
       type: "table",
       name: transformTableName,
       schema: "public",
+      database: WRITABLE_DB_ID,
     },
   }).then(({ body: transform }) => {
     cy.wrap(transform.id).as("transformId");
@@ -559,6 +554,7 @@ function createMbqlTransformWithDependentSqlTransforms() {
             type: "table",
             name: "base_transform",
             schema: "public",
+            database: WRITABLE_DB_ID,
           },
         },
         { wrapId: true },
@@ -581,6 +577,7 @@ function createMbqlTransformWithDependentSqlTransforms() {
           type: "table",
           name: "name_transform",
           schema: "public",
+          database: WRITABLE_DB_ID,
         },
       });
 
@@ -601,6 +598,7 @@ function createMbqlTransformWithDependentSqlTransforms() {
           type: "table",
           name: "score_transform",
           schema: "public",
+          database: WRITABLE_DB_ID,
         },
       });
     },
@@ -660,6 +658,7 @@ function createSnippetWithDependentQuestionsAndTransforms() {
         type: "table",
         name: "transform_with_snippet",
         schema: "public",
+        database: WRITABLE_DB_ID,
       },
     });
   });
