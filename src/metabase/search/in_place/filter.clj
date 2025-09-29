@@ -68,7 +68,7 @@
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
-   search-native-query  :- [:maybe true?]]
+   search-native-query  :- [:maybe :boolean]]
   (when-let [query (:search-string search-context)]
     (into
      [:or]
