@@ -1219,7 +1219,7 @@
                     will-be-in-remote-synced? (assoc :type remote-synced-collection-type)))
       ;; we need to update all the descendant collections as well...
       (u/prog1 (t2/query-one
-       {:update :collection
+                {:update :collection
                  :set (cond-> {:location [:replace :location orig-children-location new-children-location] :type nil}
                         will-be-in-remote-synced? (assoc :type remote-synced-collection-type))
                  :where [:like :location (str orig-children-location "%")]})

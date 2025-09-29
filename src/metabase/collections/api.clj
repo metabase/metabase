@@ -1251,7 +1251,7 @@
         effective-type (cond
                          (contains? params :type) type
                          parent-type parent-type
-                              :else nil)]
+                         :else nil)]
   ;; Now create the new Collection :)
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection

@@ -527,7 +527,7 @@
                                                                             id->new-tab-id))]
                              (api/check-500 (dashboard/add-dashcards! dash dashcards)))
                            (u/prog1 (cond-> dash
-                             (seq uncopied)
+                                      (seq uncopied)
                                       (assoc :uncopied uncopied))
                              (when (collections/moving-into-remote-synced? (:collection_id existing-dashboard)
                                                                            collection_id)
