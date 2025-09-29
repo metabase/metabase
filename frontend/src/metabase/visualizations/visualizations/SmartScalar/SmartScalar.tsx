@@ -1,17 +1,13 @@
-import cx from "classnames";
 import { type PropsWithChildren, useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { getIsNightMode } from "metabase/dashboard/selectors";
 import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 import {
@@ -125,11 +121,7 @@ export function SmartScalar({
   return (
     <ScalarWrapper>
       <ScalarContainer
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
+        className={DashboardS.fullscreenNormalText}
         data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}
@@ -175,11 +167,7 @@ function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
       style={{ cursor: onClick && "pointer" }}
       fw={700}
       lh="1rem"
-      className={cx(
-        DashboardS.fullscreenNormalText,
-        DashboardS.fullscreenNightText,
-        EmbedFrameS.fullscreenNightText,
-      )}
+      className={DashboardS.fullscreenNormalText}
       onClick={onClick}
     >
       <Ellipsified tooltip={period} lines={1} placement="bottom">
@@ -191,12 +179,10 @@ function ScalarPeriod({ period, onClick }: ScalarPeriodProps) {
 
 const Separator = ({ inTooltip }: { inTooltip?: boolean }) => {
   const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
 
-  const separatorColor =
-    isNightMode || inTooltip
-      ? lighten(theme.fn.themeColor("text-medium"), 0.15)
-      : lighten(theme.fn.themeColor("text-light"), 0.25);
+  const separatorColor = inTooltip
+    ? lighten(theme.fn.themeColor("text-medium"), 0.15)
+    : lighten(theme.fn.themeColor("text-light"), 0.25);
 
   return (
     <Text
@@ -236,7 +222,6 @@ function PreviousValueComparison({
   } = comparison;
 
   const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
@@ -320,10 +305,9 @@ function PreviousValueComparison({
     iconSize,
     children,
   }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
-    const noChangeColor =
-      inTooltip || isNightMode
-        ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-        : "text-light";
+    const noChangeColor = inTooltip
+      ? lighten(theme.fn.themeColor("text-medium"), 0.3)
+      : "text-light";
 
     return (
       <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
@@ -376,11 +360,7 @@ function PreviousValueComparison({
         justify="center"
         mx="sm"
         lh="1.2rem"
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
+        className={DashboardS.fullscreenNormalText}
       >
         <VariationPercent iconSize={ICON_SIZE}>
           {fittedChangeDisplay}

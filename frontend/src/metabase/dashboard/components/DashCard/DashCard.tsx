@@ -112,7 +112,6 @@ function DashCardInner({
     dashboard,
     slowCards,
     isEditing,
-    shouldRenderAsNightMode,
     isEditingParameter,
     navigateToNewCardFromDashboard,
     reportAutoScrolledToDashcard,
@@ -351,7 +350,6 @@ function DashCardInner({
           {
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
-            [S.isNightMode]: shouldRenderAsNightMode,
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
           },
           className,

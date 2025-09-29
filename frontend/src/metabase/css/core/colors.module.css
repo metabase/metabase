@@ -110,15 +110,3 @@
 .bgLightBlue {
   background-color: var(--mb-color-bg-light);
 }
-
-.DashboardNight .bgLight {
-  background-color: var(--mb-color-bg-black);
-}
-
-.DashboardNight .bgMedium {
-  background-color: #596269;
-}
-
-.DashboardNight .textDark {
-  color: var(--mb-color-bg-light);
-}
