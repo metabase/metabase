@@ -1210,6 +1210,7 @@
   :hierarchy #'hierarchy)
 
 (defmulti validate-native-query-fields
+  "Validates a native query and returns a list of all 'bad' field references."
   {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

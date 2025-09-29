@@ -1029,6 +1029,9 @@ ORDER BY
     )
   ) ASC"))))
 
+;; This test is horrifically long and makes cam's eyes bleed because this checks that a complex query compiles to the
+;; right ast.  Hopefully, other tests will catch any error caught by this test, but this is a bit of a failsafe.
+^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest complicated-test-1
   (is (= {:used-fields
           #{{:column "title",
@@ -1198,6 +1201,9 @@ ORDER BY
   DATE_TRUNC('month', \"source\".\"created_at\") ASC,
   \"source\".\"upper_category\" ASC"))))
 
+;; This test is horrifically long and makes cam's eyes bleed because this checks that a complex query compiles to the
+;; right ast.  Hopefully, other tests will catch any error caught by this test, but this is a bit of a failsafe.
+^{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest complicated-test-2
   (is (= {:used-fields
           #{{:column "created_at",

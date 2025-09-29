@@ -193,6 +193,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti resolve-field
+  "Resolves a field reference to one or more actual database fields.
+
+  This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the field
+  references returned by sql.references/field-references."
   {:added "0.57.0" :arglists '([driver metadata-provider col-spec])}
   (fn [_driver _metadata-provider col-spec]
     (:type col-spec)))

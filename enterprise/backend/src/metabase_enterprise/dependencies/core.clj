@@ -41,6 +41,7 @@
 
 (defmulti check-query-inner
   "Given a `MetadataProvider` and a lib query, find any bad refs in that query."
+  {:arglists '([metadata-provider driver query])}
   (fn [_mp _driver query]
     (-> (lib/query-stage query 0)
         :lib/type)))
@@ -60,6 +61,7 @@
 
 (defmulti check-entity
   "Given a `MetadataProvider`, and entity type, and an entity id, find any bad refs in that entity."
+  {:arglists '([metadata-provider entity-type entity-id])}
   (fn [_mp entity-type _entity-id]
     entity-type))
 

@@ -231,6 +231,7 @@
       normalize)))
 
 (defn maybe-normalize-transform-source
+  "Normalizes the `source` of a transform."
   [in-or-out source]
   (-> (m/map-keys keyword source)
       (update  :query (partial maybe-normalize-query in-or-out))))
@@ -270,6 +271,7 @@
    :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
 
 (def transform-transform-source
+  "Transform for transform source fields."
   {:in  (comp json-in (partial maybe-normalize-transform-source :in))
    :out (comp (catch-normalization-exceptions (partial maybe-normalize-transform-source :out)) json-out-without-keywordization)})
 

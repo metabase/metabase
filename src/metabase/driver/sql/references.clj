@@ -111,6 +111,7 @@
              (assoc :source-columns source-columns)))])))
 
 (defmulti find-used-fields
+  "Finds the fields used in a given sql expression."
   {:added "0.57.0", :arglists '([driver sources withs expr])}
   (fn [driver _sources _withs expr]
     [(driver/dispatch-on-initialized-driver driver) (:type expr)])
@@ -175,6 +176,7 @@
             (mapcat rec (:order-by expr)))))
 
 (defmulti find-returned-fields
+  "Finds the fields returned by a given sql query/expression."
   {:added "0.57.0", :arglists '([driver sources withs expr])}
   (fn [driver _sources _withs expr]
     [(driver/dispatch-on-initialized-driver driver) (:type expr)])
@@ -215,6 +217,7 @@
                      :member-fields (into [] fields)}))))
 
 (defmulti field-references-impl
+  "Implementation of field-references."
   {:added "0.57.0", :arglists '([driver sources withs expr])}
   (fn [driver _outside-sources _withs expr]
     [(driver/dispatch-on-initialized-driver driver) (:type expr)])
@@ -300,6 +303,10 @@
    :bad-sql true})
 
 (mu/defn field-references :- [:ref ::field-references]
+  "Takes a sql query in the macaw ast format and returns the fields referenced by a query.
+
+  Specifically, this returns a set of the fields used and a list of the fields returned, along with a boolean that
+  denotes when this is given an invalid query of some sort."
   [driver :- :keyword
    expr :- macaw.ast-types/ast]
   (-> (field-references-impl driver nil #{} expr)

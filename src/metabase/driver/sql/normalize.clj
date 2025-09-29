@@ -31,6 +31,10 @@
       (normalize-unquoted-name driver name-str))))
 
 (defmulti reserved-literal
+  "Checks whether a particular name is actually a literal value in a given sql dialect.
+
+  For example, true and false are usually booleans, not normal names."
+  {:arglists '([driver name])}
   (fn [driver name]
     [(driver/dispatch-on-initialized-driver driver) name])
   :hierarchy #'driver/hierarchy)
