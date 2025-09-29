@@ -289,19 +289,19 @@ export const colorConfig = {
   },
   "brand-dark": {
     light: baseColors.brand[60],
-    dark: baseColors.brand[60],
+    dark: baseColors.brand[40],
   },
   "brand-darker": {
     light: baseColors.brand[70],
-    dark: baseColors.brand[70],
+    dark: baseColors.brand[30],
   },
   "brand-light": {
     light: baseColors.brand[30],
-    dark: "#1A3A52",
+    dark: baseColors.brand[60],
   },
   "brand-lighter": {
     light: baseColors.brand[20],
-    dark: "#0F2A3C",
+    dark: baseColors.brand[70],
   },
   brand: {
     light: baseBrand,
