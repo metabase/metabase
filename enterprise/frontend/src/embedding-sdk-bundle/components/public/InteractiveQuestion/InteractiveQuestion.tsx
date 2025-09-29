@@ -10,6 +10,7 @@ import {
   EditorButton,
   Filter,
   FilterDropdown,
+  QuestionParametersList,
   QuestionResetButton,
   QuestionSettings,
   QuestionSettingsDropdown,
@@ -67,6 +68,7 @@ export type InteractiveQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  ParametersList: typeof QuestionParametersList;
 };
 
 export const _InteractiveQuestion = (props: InteractiveQuestionProps) => (
@@ -97,6 +99,7 @@ const subComponents: InteractiveQuestionComponents = {
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
   VisualizationButton: VisualizationButton,
+  ParametersList: QuestionParametersList,
 };
 
 export const InteractiveQuestion = Object.assign(

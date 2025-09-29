@@ -10,6 +10,7 @@ import {
   DownloadWidgetDropdown,
   Filter,
   FilterDropdown,
+  QuestionParametersList,
   QuestionResetButton,
   QuestionSettings,
   QuestionSettingsDropdown,
@@ -24,7 +25,7 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { StaticQuestionSdkMode } from "embedding-sdk-bundle/components/public/StaticQuestion/mode";
-import { Group, Stack } from "metabase/ui";
+import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
@@ -46,6 +47,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "hiddenParameters"
     | "withDownloads"
     | "title"
   >
@@ -70,6 +72,7 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  ParametersList: typeof QuestionParametersList;
 };
 
 const _StaticQuestion = ({
@@ -80,6 +83,7 @@ const _StaticQuestion = ({
   className,
   style,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   title = false, // Hidden by default for backwards-compatibility.
   children,
@@ -104,6 +108,7 @@ const _StaticQuestion = ({
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
     >
       {children ?? (
@@ -122,6 +127,12 @@ const _StaticQuestion = ({
                 {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
               </Group>
             )}
+
+            <Group>
+              <Box w="100%">
+                <SdkQuestion.ParametersList />
+              </Box>
+            </Group>
 
             <SdkQuestion.QuestionVisualization
               height={height}
@@ -152,6 +163,7 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  ParametersList: QuestionParametersList,
 };
 
 export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {

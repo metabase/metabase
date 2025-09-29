@@ -13,6 +13,7 @@ import {
   EditorButton,
   Filter,
   FilterDropdown,
+  QuestionParametersList,
   QuestionResetButton,
   QuestionSettings,
   QuestionSettingsDropdown,
@@ -110,6 +111,7 @@ export type SdkQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  ParametersList: typeof QuestionParametersList;
 };
 
 export const _SdkQuestion = ({
@@ -126,6 +128,7 @@ export const _SdkQuestion = ({
   entityTypes,
   targetCollection,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads = false,
   targetDashboardId,
   backToDashboard,
@@ -154,6 +157,7 @@ export const _SdkQuestion = ({
     entityTypes={entityTypes}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
+    hiddenParameters={hiddenParameters}
     withDownloads={withDownloads}
     targetDashboardId={targetDashboardId}
     backToDashboard={backToDashboard}
@@ -199,6 +203,7 @@ const subComponents: SdkQuestionComponents = {
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
   VisualizationButton: VisualizationButton,
+  ParametersList: QuestionParametersList,
 };
 
 export const SdkQuestion = Object.assign(

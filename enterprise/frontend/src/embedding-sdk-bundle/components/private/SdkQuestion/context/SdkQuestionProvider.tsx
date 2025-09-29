@@ -45,6 +45,7 @@ export const SdkQuestionProvider = ({
   entityTypes,
   targetCollection,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   targetDashboardId,
   backToDashboard,
@@ -160,6 +161,7 @@ export const SdkQuestionProvider = ({
     withDownloads,
     onRun,
     backToDashboard,
+    hiddenParameters,
     onVisualizationChange,
   };
 
