@@ -32,7 +32,7 @@ import {
 import { PaletteResults } from "../../PaletteResults";
 
 const TestComponent = withRouter(
-  ({ q, ...props }: WithRouterProps & { q: string; isLoggedIn: boolean }) => {
+  ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
     const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
       disabled: false,
