@@ -8,9 +8,11 @@ import { TextWidget } from "./TextWidget";
 const TextInputWithStateWrapper = ({
   value,
   onChange,
+  focusChanged,
 }: {
   value?: number | string;
   onChange?: (value: string | number | null) => void;
+  focusChanged?: (focused: boolean) => void;
 }) => {
   const [val, setVal] = useState<number | string | null>(value ?? "");
   return (
@@ -20,7 +22,7 @@ const TextInputWithStateWrapper = ({
         setVal(value);
         onChange?.(value);
       }}
-      focusChanged={jest.fn()}
+      focusChanged={focusChanged ?? jest.fn()}
     />
   );
 };
@@ -88,5 +90,24 @@ describe("TextWidget", () => {
     await userEvent.type(textbox, "0{enter}");
 
     expect(onChangeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not call handlers when pressing `esc`", async () => {
+    const onChangeSpy = jest.fn();
+    const focusChangedSpy = jest.fn();
+
+    render(
+      <TextInputWithStateWrapper
+        onChange={onChangeSpy}
+        focusChanged={focusChangedSpy}
+      />,
+    );
+
+    const textbox = screen.getByRole("textbox");
+
+    await userEvent.type(textbox, "Foo{esc}");
+
+    expect(onChangeSpy).toHaveBeenCalledTimes(0);
+    expect(focusChangedSpy).not.toHaveBeenCalledWith(false);
   });
 });
