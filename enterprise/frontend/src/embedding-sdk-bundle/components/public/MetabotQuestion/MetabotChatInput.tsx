@@ -80,7 +80,11 @@ export function MetabotChatInput() {
             return;
           }
 
-          if (e.key === "Enter") {
+          const isModifiedKeyPress =
+            e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
+
+          // Prevent event from inserting new line and interacting with other content
+          if (e.key === "Enter" && !isModifiedKeyPress) {
             e.preventDefault();
             e.stopPropagation();
             handleSubmitInput(metabot.prompt);
