@@ -144,7 +144,6 @@ type DashboardGridContext = {
   | "isEditing"
   | "isEditingParameter"
   | "isFullscreen"
-  | "isNightMode"
   | "clickBehaviorSidebarDashcard"
   | "getClickActionMode"
   | "navigateToNewCardFromDashboard"
@@ -715,7 +714,6 @@ const DashboardGrid = forwardRef<
     slowCards,
     isEditing = false,
     isEditingParameter = false,
-    isNightMode = false,
     isFullscreen,
     clickBehaviorSidebarDashcard,
     getClickActionMode,
@@ -740,7 +738,6 @@ const DashboardGrid = forwardRef<
       slowCards={slowCards}
       isEditing={isEditing}
       isEditingParameter={isEditingParameter}
-      isNightMode={isNightMode}
       isFullscreen={isFullscreen}
       clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
       getClickActionMode={getClickActionMode}

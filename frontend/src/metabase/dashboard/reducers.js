@@ -40,7 +40,6 @@ import {
   parameterValues,
   sidebar,
   slowCards,
-  theme,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -204,7 +203,6 @@ export const dashboardReducers = reduceReducers(
     dashboardId,
     missingActionParameters,
     autoApplyFilters,
-    theme,
     slowCards,
     isNavigatingBackToDashboard,
     isAddParameterPopoverOpen,

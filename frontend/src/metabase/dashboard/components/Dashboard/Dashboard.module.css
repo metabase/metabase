@@ -31,12 +31,6 @@
     background-color: transparent;
     border-color: transparent;
   }
-
-  &.isNightMode {
-    color: var(--mb-color-text-white);
-
-    --mb-color-border: var(--mb-color-text-medium);
-  }
 }
 
 .DashboardLoadingAndErrorWrapper {

@@ -21,7 +21,6 @@ import { duration } from "metabase/lib/formatting";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -128,16 +127,11 @@ const DashCardLoadingView = ({
           <Box style={styles} className={CS.absolute} left={12} bottom={12}>
             <HoverCard width={288} offset={4} position="bottom-start">
               <HoverCard.Target>
-                <Button
-                  w={24}
-                  h={24}
-                  p={0}
-                  classNames={{ root: S.invertInNightMode, label: cx(CS.flex) }}
-                >
+                <Button w={24} h={24} p={0} classNames={{ label: cx(CS.flex) }}>
                   <Icon name="snail" size={12} d="flex" />
                 </Button>
               </HoverCard.Target>
-              <HoverCard.Dropdown ml={-8} className={EmbedFrameS.dropdown}>
+              <HoverCard.Dropdown ml={-8}>
                 <div className={cx(CS.p2, CS.textCentered)}>
                   <Text fw="bold">{t`Waiting for your data`}</Text>
                   <Text lh="1.5" mt={4}>
@@ -238,7 +232,6 @@ export function DashCardVisualization({
     dashcardMenu,
     getClickActionMode,
     isEditing = false,
-    shouldRenderAsNightMode,
     isFullscreen = false,
     isEditingParameter,
     onChangeLocation,
@@ -573,7 +566,6 @@ export function DashCardVisualization({
     >
       <Visualization
         className={cx(CS.flexFull, {
-          [S.isNightMode]: shouldRenderAsNightMode,
           [CS.overflowAuto]: visualizationOverlay,
           [CS.overflowHidden]: !visualizationOverlay,
         })}
@@ -598,7 +590,6 @@ export function DashCardVisualization({
         isDashboard
         isSlow={isSlow}
         isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
         isEditing={isEditing}
         isPreviewing={isPreviewing}
         isEditingParameter={isEditingParameter}

@@ -36,7 +36,6 @@ function withMockDate(StoryFn: StoryFn) {
 }
 
 type CustomStoryProps = {
-  theme?: "light" | "dark";
   snapshotSize?: {
     width: number;
     height: number;
@@ -45,16 +44,6 @@ type CustomStoryProps = {
 const Template: StoryFn<
   ComponentProps<typeof DatePicker> & CustomStoryProps
 > = (args) => {
-  const isDarkTheme = args.theme === "dark";
-
-  useEffect(() => {
-    if (isDarkTheme) {
-      document.documentElement.setAttribute("data-metabase-theme", "night");
-    } else {
-      document.documentElement.setAttribute("data-metabase-theme", "light");
-    }
-  }, [isDarkTheme]);
-
   return (
     <>
       <Popover opened position="bottom-start" withinPortal={false}>

@@ -112,8 +112,6 @@ const setup = ({
   isFullscreen = false,
   isPublic,
   isAnalyticsDashboard,
-  hasNightModeToggle = true,
-  isNightMode = false,
   isAdmin = false,
 }: Partial<{
   isEditing: boolean;
@@ -121,8 +119,6 @@ const setup = ({
   isFullscreen: boolean;
   isPublic: boolean;
   isAnalyticsDashboard: boolean;
-  hasNightModeToggle: boolean;
-  isNightMode: boolean;
   isAdmin: boolean;
 }>) => {
   setupBookmarksEndpoints([]);
@@ -165,9 +161,6 @@ const setup = ({
           setRefreshElapsedHook={jest.fn()}
           isFullscreen={isFullscreen}
           onFullscreenChange={jest.fn()}
-          hasNightModeToggle={hasNightModeToggle}
-          onNightModeChange={jest.fn()}
-          isNightMode={isNightMode}
           downloadsEnabled={{ pdf: false }}
           dashboardActions={DASHBOARD_APP_ACTIONS}
         >
@@ -303,9 +296,7 @@ describe("DashboardHeaderButtonRow", () => {
     it("should show view-related buttons", async () => {
       setup({
         isEditing: false,
-        isNightMode: false,
         isAnalyticsDashboard: false,
-        hasNightModeToggle: true,
         isAdmin: true,
       });
       await expectButtonsToStrictMatchHeader({
@@ -352,8 +343,6 @@ describe("DashboardHeaderButtonRow", () => {
       setup({
         isEditing: false,
         isFullscreen: true,
-        hasNightModeToggle: true,
-        isNightMode: true,
       });
 
       await expectButtonsToExistInHeader({
