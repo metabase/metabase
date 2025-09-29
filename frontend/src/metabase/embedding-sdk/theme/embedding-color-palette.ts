@@ -58,6 +58,11 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
+  "text-white": ["text-white"],
+  "tooltip-background": ["tooltip-background"],
+  "tooltip-text": ["tooltip-text"],
+  "tooltip-background-focused": ["tooltip-background-focused"],
+  "tooltip-text-secondary": ["tooltip-text-secondary"],
 };
 
 const originalColors = { ...colors };

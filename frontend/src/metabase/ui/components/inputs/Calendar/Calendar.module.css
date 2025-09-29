@@ -44,10 +44,10 @@
 
   &[data-selected] {
     color: var(--mb-color-text-white);
-    background-color: var(--mb-color-background-brand);
+    background-color: var(--mb-color-brand);
 
     &:hover {
-      background-color: var(--mb-color-background-brand);
+      background-color: var(--mb-color-brand);
     }
   }
 }

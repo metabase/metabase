@@ -66,8 +66,8 @@
   }
 
   &:checked {
-    border-color: var(--mb-color-background-brand);
-    background-color: var(--mb-color-background-brand);
+    border-color: var(--mb-color-brand);
+    background-color: var(--mb-color-brand);
   }
 
   &:disabled {
