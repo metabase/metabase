@@ -181,8 +181,7 @@
       (into (map name) search.scoring/bookmarked-models-and-sub-models)))
 
 (comment
-  (require '[clojure.set :as set]
-           '[metabase.search.spec :as search.spec])
+  (require '[metabase.search.spec :as search.spec])
   ;; #{"segment" "database" "action" "indexed-entity"}
   (set/difference (set search.spec/search-models) appdb-scorer-models))
 
