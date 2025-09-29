@@ -25,7 +25,7 @@ You can use the command palette to:
 
 So anytime you want to do or find anything in Metabase, just hit `cmd/ctrl + k` and start typing what you want to do.
 
-> The command palette is currently unavailable in [interactive embedding](../embedding/interactive-embedding.md) contexts.
+> The command palette is currently unavailable in [Embedded analytics JS](../embedding/embedded-analytics-js.md) and [interactive embedding](../embedding/interactive-embedding.md) contexts.
 
 ## Advanced search
 
