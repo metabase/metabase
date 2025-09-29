@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {io.trino/trino-jdbc {:mvn/version "476"}}}
+ {io.trino/trino-jdbc {:mvn/version "477"}}}
