@@ -79,7 +79,7 @@ export const ParameterWidget = ({
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
   const wasEditingParameter = usePrevious(isEditingParameter);
-  const fieldHasValueOrFocus = parameter.value != null || isFocused;
+  const fieldHasValueOrFocus = !!parameter.value || isFocused;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
