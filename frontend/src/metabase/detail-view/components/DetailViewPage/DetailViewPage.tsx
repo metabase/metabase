@@ -14,6 +14,7 @@ import {
 } from "metabase/detail-view/utils";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { Box, Group, Stack, rem } from "metabase/ui";
+import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   ForeignKey,
@@ -52,6 +53,7 @@ export function DetailViewPage({
   const isMediumBreakpoint = width <= BREAKPOINT_MEDIUM;
   const isSmallBreakpoint = width <= BREAKPOINT_SMALL;
   const paddingLeft = isSmallBreakpoint ? 32 : DETAIL_VIEW_PADDING_LEFT;
+  const hasPk = columns.some(isPK);
 
   return (
     <Stack
@@ -105,7 +107,7 @@ export function DetailViewPage({
           </Stack>
         </Group>
 
-        {tableForeignKeys && tableForeignKeys.length > 0 && (
+        {hasPk && tableForeignKeys && tableForeignKeys.length > 0 && (
           <Box
             flex={isMediumBreakpoint ? undefined : "0 0 auto"}
             pl={rem(isMediumBreakpoint ? paddingLeft : 40)}

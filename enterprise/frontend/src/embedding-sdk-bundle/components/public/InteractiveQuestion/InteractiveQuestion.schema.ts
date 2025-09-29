@@ -38,6 +38,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   withChartTypeSelector: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withResetButton: Yup.mixed().optional(),
+  onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 
 export const interactiveQuestionSchema: FunctionSchema = {

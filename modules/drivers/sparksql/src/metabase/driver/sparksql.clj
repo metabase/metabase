@@ -1,4 +1,5 @@
 (ns metabase.driver.sparksql
+  (:refer-clojure :exclude [select-keys every?])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -16,7 +17,8 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.performance :refer [select-keys every?]])
   (:import
    (java.sql Connection ResultSet Types)))
 

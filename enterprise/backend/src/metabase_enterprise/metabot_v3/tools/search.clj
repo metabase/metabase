@@ -61,7 +61,7 @@
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
   [search-result]
-  (juxt :id :model) search-result)
+  ((juxt :id :model) search-result))
 
 (defn- reciprocal-rank-fusion
   "Combine multiple ranked search result lists using Reciprocal Rank Fusion (RRF).

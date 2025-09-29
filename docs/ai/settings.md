@@ -1,9 +1,9 @@
 ---
-title: Metabot settings
+title: Metabot AI settings
 summary: Configure Metabot settings, including which collections Metabot can access, and learn tips for improving Metabot's performance through data modeling and metadata.
 ---
 
-# Metabot settings
+# Metabot AI settings
 
 {% include beta-blockquote.html
    message="For now, <a href='https://www.metabase.com/features/metabot-ai'>Metabot</a> is only available as an add-on for Pro and Enterprise plans on Metabase Cloud."
@@ -13,21 +13,26 @@ _Settings > Admin settings > AI_
 
 This page covers admin settings for Metabase's AI assistant, [Metabot](./metabot.md).
 
-## Configure Metabot
-
-To help Metabot focus on the data you care about most, select the collection containing the models and metrics you'd like it to work with.
-
-## Pick a collection for Metabot to have access to
-
 ![Admin settings for AI Metabot](./images/ai-settings.png)
 
-To select a collection for Metabot:
+## Verified content
+
+Admins on Pro and Enterprise plans can tell Metabot to only work with [models](../data-modeling/models.md) and [metrics](../data-modeling/metrics.md) that have been [verified](../exploration-and-organization/content-verification.md).
+
+Restricting Metabot to verified models and metrics (and only models and metrics) can help Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
+
+## When embedding Metabot, you can pick a collection for Metabot to have access to
+
+When embedding Metabot in your app, you can select a collection for Metabot:
 
 1. Go to **Settings** > **Admin settings** > **AI**.
-2. Click the **Collection** dropdown.
+2. Click **Embedded Metabot**.
+3. In the **Collection Embedded Metabot can use** section, click **Pick a collection**.
 3. Select the collection that contains the models and metrics you want Metabot to use.
 
-Metabot will use the models and metrics in that collection to help answer questions and generate queries. You can change this collection at any time.
+Metabot will use the models and metrics in that collection to help answer questions and generate queries. You can change this collection at any time. To give Metabot access to all collections, you can set the collection to the root collection, called "Our Analytics" (the default).
+
+Alternatively (or additionally), you can restrict Metabot to [verified content](#verified-content).
 
 ## Tips for making the most of Metabot
 
@@ -66,7 +71,7 @@ Metabase will try to set semantic types automatically, but you should confirm th
 
 ### Curate prompt suggestions
 
-When you select a collection for Metabot to "learn", Metabot will suggest a series of prompts based on the content it finds in that collection. These give people a feel for the kinds of things people can ask Metabot to do.
+When you select a collection for Metabot to "learn", Metabot will suggest a series of prompts based on the content it finds in that collection. These prompts just give people a feel for the kinds of things people can ask Metabot to do.
 
 Admins can run these generated prompts to test the answers, or trash the individual prompts if they're not useful or misleading. You can also regenerate all the prompts with a click.
 

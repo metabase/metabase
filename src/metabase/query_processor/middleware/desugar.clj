@@ -1,11 +1,13 @@
 (ns metabase.query-processor.middleware.desugar
+  (:refer-clojure :exclude [select-keys])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (defn- desugar*
   [stage-or-join]

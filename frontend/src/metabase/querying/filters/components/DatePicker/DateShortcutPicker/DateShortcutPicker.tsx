@@ -5,6 +5,7 @@ import type {
   DatePickerShortcut,
   DatePickerValueType,
   RelativeDatePickerValue,
+  RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
 import { Box, Button, Divider } from "metabase/ui";
 
@@ -16,6 +17,7 @@ import { getShortcutOptionGroups, getTypeOptions } from "./utils";
 interface DateShortcutPickerProps {
   availableOperators: DatePickerOperator[];
   availableShortcuts: DatePickerShortcut[];
+  availableDirections: RelativeIntervalDirection[];
   renderBackButton?: () => ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSelectType: (type: DatePickerValueType) => void;
@@ -24,13 +26,14 @@ interface DateShortcutPickerProps {
 export function DateShortcutPicker({
   availableOperators,
   availableShortcuts,
+  availableDirections,
   renderBackButton,
   onChange,
   onSelectType,
 }: DateShortcutPickerProps) {
   const shortcutGroups = useMemo(() => {
-    return getShortcutOptionGroups(availableShortcuts);
-  }, [availableShortcuts]);
+    return getShortcutOptionGroups(availableShortcuts, availableDirections);
+  }, [availableShortcuts, availableDirections]);
 
   const typeOptions = useMemo(() => {
     return getTypeOptions(availableOperators);

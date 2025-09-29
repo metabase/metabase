@@ -19,11 +19,16 @@ import type { DocumentsStoreState } from "metabase-enterprise/documents/types";
 import { isMetabotBlock } from "metabase-enterprise/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase-enterprise/documents/utils/mentionsUtils";
 import { EditorBubbleMenu } from "metabase-enterprise/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
-import { CardEmbed } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
+import {
+  CardEmbed,
+  DROP_ZONE_COLOR,
+} from "metabase-enterprise/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandExtension";
 import { CommandSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Command/CommandSuggestion";
 import { CustomStarterKit } from "metabase-enterprise/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
 import { DisableMetabotSidebar } from "metabase-enterprise/rich_text_editing/tiptap/extensions/DisableMetabotSidebar";
+import { FlexContainer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/FlexContainer/FlexContainer";
+import { HandleEditorDrop } from "metabase-enterprise/rich_text_editing/tiptap/extensions/HandleEditorDrop/HandleEditorDrop";
 import { MentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionExtension";
 import { MentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
@@ -32,6 +37,7 @@ import {
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotEmbed";
 import { MetabotMentionExtension } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { MetabotMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotSuggestion";
+import { ResizeNode } from "metabase-enterprise/rich_text_editing/tiptap/extensions/ResizeNode/ResizeNode";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
@@ -44,6 +50,7 @@ const BUBBLE_MENU_DISALLOWED_NODES: string[] = [
   MetabotNode.name,
   SmartLink.name,
   Image.name,
+  FlexContainer.name,
   "codeBlock",
 ];
 
@@ -96,7 +103,12 @@ export const Editor: React.FC<EditorProps> = ({
 
   const extensions = useMemo(
     () => [
-      CustomStarterKit,
+      CustomStarterKit.configure({
+        dropcursor: {
+          color: DROP_ZONE_COLOR,
+          width: 2,
+        },
+      }),
       Image.configure({
         inline: false,
         HTMLAttributes: {
@@ -118,6 +130,7 @@ export const Editor: React.FC<EditorProps> = ({
         placeholder: t`Start writing, type "/" to list commands, or "@" to mention an item...`,
       }),
       CardEmbed,
+      FlexContainer,
       MentionExtension.configure({
         suggestion: {
           allow: ({ state }) => !isMetabotBlock(state),
@@ -140,6 +153,8 @@ export const Editor: React.FC<EditorProps> = ({
           render: createSuggestionRenderer(MetabotMentionSuggestion),
         },
       }),
+      ResizeNode,
+      HandleEditorDrop,
     ],
     [siteUrl, getState],
   );

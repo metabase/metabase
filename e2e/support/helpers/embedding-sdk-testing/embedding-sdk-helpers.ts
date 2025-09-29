@@ -11,6 +11,19 @@ import {
 } from "e2e/support/helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
+export const getSignedJwtForUser = async (user = USERS.admin) => {
+  const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
+
+  return new jose.SignJWT({
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .sign(secret);
+};
+
 export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
   cy.intercept("GET", `${AUTH_PROVIDER_URL}**`, async (req) => {
     try {
@@ -26,15 +39,7 @@ export const mockAuthProviderAndJwtSignIn = (user = USERS.admin) => {
         return;
       }
 
-      const secret = new TextEncoder().encode(JWT_SHARED_SECRET);
-      const jwt = await new jose.SignJWT({
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .sign(secret);
+      const jwt = await getSignedJwtForUser(user);
 
       req.reply({
         statusCode: 200,

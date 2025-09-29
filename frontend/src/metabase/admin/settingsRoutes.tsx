@@ -2,7 +2,10 @@ import { IndexRedirect, Route } from "react-router";
 
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { NotFound } from "metabase/common/components/ErrorPages";
-import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
+import {
+  PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
 import { SettingsLdapForm } from "./settings/components/SettingsLdapForm";
@@ -58,6 +61,10 @@ export const getSettingsRoutes = () => (
     <Route path="maps" component={MapsSettingsPage} />
     <Route path="localization" component={LocalizationSettingsPage} />
     <Route path="uploads" component={UploadSettingsPage} />
+    <Route
+      path="python-runner"
+      component={PLUGIN_TRANSFORMS_PYTHON.PythonRunnerSettingsPage}
+    />
     <Route path="public-sharing" component={PublicSharingSettingsPage} />
     <Route path="license" component={LicenseSettingsPage} />
     <Route path="appearance" component={() => <AppearanceSettingsPage />} />
