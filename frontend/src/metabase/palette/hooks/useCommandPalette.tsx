@@ -337,6 +337,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
     return jt`a record in ${(
       <Icon
+        flex="0 0 auto"
         key="icon"
         name="model"
         style={{
@@ -356,6 +357,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     return (
       <>
         <Icon
+          flex="0 0 auto"
           name="dashboard"
           style={{
             verticalAlign: "bottom",
@@ -378,21 +380,36 @@ export const getRecentItemSubtext = (item: RecentItem) => {
   } else if (item.dashboard) {
     return (
       <>
-        <Icon name="dashboard" size={12} style={{ marginInline: "0.25rem" }} />
+        <Icon
+          flex="0 0 auto"
+          name="dashboard"
+          size={12}
+          style={{ marginInline: "0.25rem" }}
+        />
         {item.dashboard.name}
       </>
     );
   } else if (item.parent_collection.id === null) {
     return (
       <>
-        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        <Icon
+          flex="0 0 auto"
+          name="collection"
+          size={12}
+          style={{ marginInline: "0.25rem" }}
+        />
         {ROOT_COLLECTION.name}
       </>
     );
   } else {
     return (
       <>
-        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+        <Icon
+          flex="0 0 auto"
+          name="collection"
+          size={12}
+          style={{ marginInline: "0.25rem" }}
+        />
         {item.parent_collection.name}
       </>
     );
