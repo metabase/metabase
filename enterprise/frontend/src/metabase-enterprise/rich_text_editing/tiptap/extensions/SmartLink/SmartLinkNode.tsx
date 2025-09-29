@@ -42,6 +42,7 @@ import type {
   Document,
   MentionableUser,
   Table,
+  Transform,
 } from "metabase-types/api";
 
 import {
@@ -51,11 +52,12 @@ import {
 
 import styles from "./SmartLinkNode.module.css";
 
-type SmartLinkEntity =
+export type SmartLinkEntity =
   | Card
   | Dashboard
   | Collection
   | Table
+  | Transform
   | Database
   | Document
   | MentionableUser;
@@ -417,8 +419,6 @@ export const SmartLinkComponent = memo(
     // TODO: fix type cast...
     const iconData = getIcon(entityToObjectWithModel(entity as any, model));
 
-    const name = "display_name" in entity ? entity.display_name : entity?.name;
-
     return (
       <NodeViewWrapper as="span">
         <a
@@ -433,7 +433,7 @@ export const SmartLinkComponent = memo(
         >
           <span className={styles.smartLinkInner}>
             <Icon name={iconData.name} className={styles.icon} />
-            {name}
+            {getName(entity)}
           </span>
         </a>
       </NodeViewWrapper>
@@ -461,4 +461,14 @@ function entityToObjectWithModel(
     display: (entity as Card).display as CardDisplayType,
     is_personal: (entity as Collection).is_personal,
   };
+}
+
+function getName(entity: SmartLinkEntity) {
+  if ("display_name" in entity && entity.display_name !== "") {
+    return entity.display_name;
+  }
+  if ("name" in entity && entity.name !== "") {
+    return entity.name;
+  }
+  return "";
 }
