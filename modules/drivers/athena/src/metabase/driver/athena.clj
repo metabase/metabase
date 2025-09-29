@@ -281,12 +281,10 @@
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
   [_driver _precision expr]
   (-> [:from_unixtime expr]
-      (h2x/at-time-zone "UTC")
       (h2x/with-database-type-info "timestamp")))
 
 (defn- from-unixtime-nanos [expr]
   (-> [:from_unixtime_nanos expr]
-      (h2x/at-time-zone "UTC")
       (h2x/with-database-type-info "timestamp")))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :milliseconds]

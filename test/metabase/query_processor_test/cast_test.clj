@@ -1024,6 +1024,10 @@
   [_driver _mode]
   "2025-07-02 18:33:35.000")
 
+(defmethod datetime-number-cast-expected [:sqlite :unix-microseconds]
+  [_driver _mode]
+  "2025-07-02 18:33:35.000000")
+
 (defmethod datetime-number-cast-expected [:sqlite :unix-nanoseconds]
   [_driver _mode]
   "2025-07-02 18:33:35.000000000")
