@@ -15,8 +15,7 @@
    (java.net ConnectException)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)
-   (software.amazon.awssdk.services.s3 S3Client)
-   (software.amazon.awssdk.services.s3.model NoSuchKeyException)))
+   (software.amazon.awssdk.services.s3 S3Client)))
 
 (set! *warn-on-reflection* true)
 

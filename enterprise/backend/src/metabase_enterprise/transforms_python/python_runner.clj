@@ -219,7 +219,7 @@
 
 (defn open-output
   "Return an InputStream with the output jsonl contents. Close with .close. Returns nil if the object does not exist."
-  [{:keys [s3-client bucket-name objects]}]
+  ^InputStream [{:keys [s3-client bucket-name objects]}]
   (s3/open-object s3-client bucket-name (:path (:output objects))))
 
 (defn cancel-python-code-http-call!

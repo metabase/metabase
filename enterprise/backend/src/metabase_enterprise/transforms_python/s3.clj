@@ -4,7 +4,7 @@
    [metabase.util.log :as log])
   (:import
    (clojure.lang IDeref)
-   (java.io Closeable File ByteArrayInputStream InputStream)
+   (java.io Closeable File InputStream)
    (java.net URI)
    (java.time Duration)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
