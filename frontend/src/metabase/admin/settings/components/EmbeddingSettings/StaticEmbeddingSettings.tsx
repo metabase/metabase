@@ -24,7 +24,6 @@ export function StaticEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Static embedding`}>
-      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
@@ -42,6 +41,7 @@ export function StaticEmbeddingSettings() {
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
 
       <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />
+      <UpsellDevInstances location="embedding-page" />
     </SettingsPageWrapper>
   );
 }

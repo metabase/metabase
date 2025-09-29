@@ -1423,8 +1423,12 @@
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
-     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
-     [:not= (maybe-alias :type) [:inline trash-collection-type]]
+     [:or [:= (maybe-alias :type) nil]
+      [:and
+       [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+       [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
+     [:or [:= (maybe-alias :namespace) nil]
+      [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
@@ -1799,7 +1803,7 @@
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}
-   :where        [:= :namespace nil]
+   :where        [:or [:= :namespace nil] [:= :namespace "analytics"]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and

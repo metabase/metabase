@@ -139,8 +139,6 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
-      <UpsellDevInstances location="embedding-page" />
-
       <SdkSettingsCard
         title={t`Embedded Analytics JS`}
         description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
@@ -268,6 +266,8 @@ export function EmbeddingSdkSettings() {
       <RelatedSettingsSection
         items={getModularEmbeddingRelatedSettingItems()}
       />
+
+      <UpsellDevInstances location="embedding-page" />
     </SettingsPageWrapper>
   );
 }

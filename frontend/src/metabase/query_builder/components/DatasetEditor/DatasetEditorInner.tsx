@@ -745,7 +745,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
                 noHeader
                 queryBuilderMode="dataset"
                 onHeaderColumnReorder={handleHeaderColumnReorder}
-                isShowingDetailsOnlyColumns={datasetEditorTab === "columns"}
+                isShowingDetailsOnlyColumns={datasetEditorTab !== "metadata"}
                 hasMetadataPopovers={false}
                 handleVisualizationClick={handleTableElementClick}
                 tableHeaderHeight={isEditingColumns && TABLE_HEADER_HEIGHT}

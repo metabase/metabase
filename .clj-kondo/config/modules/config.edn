@@ -1252,6 +1252,7 @@
            events
            lib
            models
+           premium-features
            query-processor
            settings
            task
@@ -1865,6 +1866,7 @@
            search
            server
            settings
+           store-api
            sync
            system
            task
