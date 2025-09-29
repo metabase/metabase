@@ -12,11 +12,22 @@ import { Link } from "react-router";
 import { t } from "ttag";
 import type { ReactNode } from "react";
 
+interface CreateNewOption {
+  label: string;
+  path: string;
+}
+
+interface CreateNewSegmented {
+  defaultPath: string;
+  options: CreateNewOption[];
+}
+
 interface BenchPanelProps {
   title: string;
   children: ReactNode;
   height?: string | number;
   createNewPath?: string;
+  createNewSegmented?: CreateNewSegmented;
 }
 
 export function BenchPanel({
@@ -24,6 +35,7 @@ export function BenchPanel({
   children,
   height = "100%",
   createNewPath,
+  createNewSegmented,
 }: BenchPanelProps) {
   return (
     <Box
@@ -78,16 +90,65 @@ export function BenchPanel({
                 </Menu.Dropdown>
               </Menu>
 
-              {createNewPath && (
+              {createNewSegmented ? (
+                <Group gap={0}>
+                  <Button
+                    component={Link}
+                    to={createNewSegmented.defaultPath}
+                    variant="light"
+                    size="xs"
+                    style={{
+                      borderTopRightRadius: 0,
+                      borderBottomRightRadius: 0,
+                      borderRight: "1px solid var(--mb-color-border)",
+                      paddingLeft: "8px",
+                      paddingRight: "8px",
+                    }}
+                  >
+                    <Icon name="add" size={12} />
+                  </Button>
+                  <Menu position="bottom-end" shadow="md">
+                    <Menu.Target>
+                      <Button
+                        variant="light"
+                        size="xs"
+                        style={{
+                          borderTopLeftRadius: 0,
+                          borderBottomLeftRadius: 0,
+                          paddingLeft: "8px",
+                          paddingRight: "8px",
+                        }}
+                      >
+                        <Icon name="chevrondown" size={12} />
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      {createNewSegmented.options.map((option) => (
+                        <Menu.Item
+                          key={option.path}
+                          component={Link}
+                          to={option.path}
+                        >
+                          {option.label}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
+              ) : createNewPath ? (
                 <Button
                   component={Link}
                   to={createNewPath}
                   variant="light"
                   size="xs"
+                  style={{
+                    paddingLeft: "6px",
+                    paddingRight: "6px",
+                  }}
                 >
                   <Icon name="add" size={12} />
                 </Button>
-              )}
+              ) : null}
             </Group>
           </Group>
         </Flex>

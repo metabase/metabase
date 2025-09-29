@@ -36,9 +36,12 @@ export function BenchApp({ params }: BenchAppProps) {
     ? parseInt(params.transformId, 10)
     : undefined;
 
-  const { data: selectedTransform } = useGetTransformQuery(transformId ?? skipToken);
+  const { data: selectedTransform } = useGetTransformQuery(
+    transformId ?? skipToken,
+  );
 
-  const [code, setCode] = useState(`-- ${t`Welcome to the Metabase Bench`} // eslint-disable-line no-literal-metabase-strings -- This string only shows for admins.
+  const [code, setCode] =
+    useState(`-- ${t`Welcome to the Metabase Bench`} // eslint-disable-line no-literal-metabase-strings -- This string only shows for admins.
 -- ${t`This is your SQL editor for transform development`}
 
 SELECT
@@ -52,10 +55,12 @@ ORDER BY total_spent DESC;`);
 
   // Update editor content when transform is loaded
   useEffect(() => {
-    if (selectedTransform?.source?.query &&
-        selectedTransform.source.query.type === 'native' &&
-        'native' in selectedTransform.source.query &&
-        selectedTransform.source.query.native?.query) {
+    if (
+      selectedTransform?.source?.query &&
+      selectedTransform.source.query.type === "native" &&
+      "native" in selectedTransform.source.query &&
+      selectedTransform.source.query.native?.query
+    ) {
       setCode(selectedTransform.source.query.native.query);
     } else if (!transformId) {
       // Reset to welcome message when no transform is selected
@@ -85,8 +90,22 @@ ORDER BY total_spent DESC;`);
     <Box h="100vh" style={{ overflow: "hidden" }}>
       <PanelGroup direction="horizontal">
         {/* Left Panel - Transform Entities */}
-        <Panel defaultSize={20} minSize={15} maxSize={35}>
-          <BenchPanel title="Transforms" height="100%">
+        <Panel defaultSize={33} minSize={25} maxSize={45}>
+          <BenchPanel
+            title="Transforms"
+            height="100%"
+            createNewSegmented={{
+              defaultPath: "/bench/transforms/new/notebook",
+              options: [
+                { label: "Notebook", path: "/bench/transforms/new/notebook" },
+                { label: "Python", path: "/bench/transforms/new/python" },
+                {
+                  label: "A saved question",
+                  path: "/bench/transforms/new/saved-question",
+                },
+              ],
+            }}
+          >
             <TransformEntitiesList
               selectedTransformId={transformId}
               onTransformClick={handleTransformClick}
@@ -118,20 +137,18 @@ ORDER BY total_spent DESC;`);
               }}
             >
               <Box mb="md">
-                    <Text fw={500}>
-                      {selectedTransform
-                        ? selectedTransform.name
-                        : t`SQL Editor`}
-                    </Text>
-                    {selectedTransform && (
-                      <Text size="sm">
-                        {t`Target`}:{" "}
-                        {selectedTransform.target.schema
-                          ? `${selectedTransform.target.schema}.`
-                          : ""}
-                        {selectedTransform.target.name}
-                      </Text>
-                    )}
+                <Text fw={500}>
+                  {selectedTransform ? selectedTransform.name : t`SQL Editor`}
+                </Text>
+                {selectedTransform && (
+                  <Text size="sm">
+                    {t`Target`}:{" "}
+                    {selectedTransform.target.schema
+                      ? `${selectedTransform.target.schema}.`
+                      : ""}
+                    {selectedTransform.target.name}
+                  </Text>
+                )}
               </Box>
               <Box
                 style={{ flex: 1, position: "relative" }}
@@ -223,8 +240,12 @@ ORDER BY total_spent DESC;`);
                   borderRadius: "4px",
                 }}
               >
-                <Text size="xs">{t`Lines`}: {code.split("\n").length}</Text>
-                <Text size="xs">{t`Characters`}: {code.length}</Text>
+                <Text size="xs">
+                  {t`Lines`}: {code.split("\n").length}
+                </Text>
+                <Text size="xs">
+                  {t`Characters`}: {code.length}
+                </Text>
               </Box>
             </Box>
           </Box>
