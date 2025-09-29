@@ -182,8 +182,8 @@
                             (keep (fn [clause]
                                     (lib.util.match/match-lite-recursive clause
                                       [(op :guard (= op target-op))
-                                       (_ :guard #(or (empty? target-opts)
-                                                      (set/subset? (set target-opts) (set %))))
+                                       (opts :guard (or (empty? target-opts)
+                                                        (set/subset? (set target-opts) (set opts))))
                                        (id :guard (= id target-ref-id))] [location clause]))))))
                    (stage-paths query stage-number))
         dead-joins (volatile! (transient []))]
@@ -196,7 +196,7 @@
                 (catch #?(:clj Exception :cljs js/Error) e
                   (let [{:keys [error join]} (ex-data e)]
                     (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                        ;; Return the stage unchanged, but keep track of the dead joins.
+                      ;; Return the stage unchanged, but keep track of the dead joins.
                       (do (vswap! dead-joins conj! join)
                           %1)
                       (throw e)))))))

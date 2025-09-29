@@ -14,6 +14,7 @@
    ;; TODO check that querying team are ok with us accessing this directly, otherwise make another plan
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -246,7 +247,7 @@
            table-name->id
            cancel-chan]}]
   ;; TODO there's scope for some parallelism here, in particular across different databases
-  (doseq [table-id (vals table-name->id)
+  (doseq [[table-name table-id] table-name->id
           :let [{:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])
                 {manifest-path :path}                   (get objects [:table table-id :manifest])]]
@@ -278,6 +279,13 @@
               (s3/upload-file s3-client bucket-name manifest-path tmp-meta-file))
 
             (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ data-size meta-size) nil)))
+        (catch InterruptedException ie (throw ie))
+        (catch Throwable t
+          (throw (ex-info "An error occurred while copying table data to S3"
+                          {:table-id table-id
+                           :transform-message (or (:transform-message (ex-data t))
+                                                  (i18n/tru "Failed to copy table contents to shared storage {0} ({1})" table-name table-id))}
+                          t)))
         (finally
           (safe-delete tmp-data-file)
           (safe-delete tmp-meta-file))))))
