@@ -123,9 +123,9 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
-export type MetabotTransformInfo = (Transform | SuggestedTransform) & {
-  type: "transform";
-};
+export type MetabotTransformInfo =
+  | ({ type: "transform" } & Transform)
+  | ({ type: "transform" } & SuggestedTransform);
 
 export type MetabotEntityInfo =
   | MetabotCardInfo

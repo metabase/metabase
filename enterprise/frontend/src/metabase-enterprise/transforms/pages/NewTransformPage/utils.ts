@@ -1,21 +1,14 @@
+import type { PythonTransformSourceDraft } from "metabase-enterprise/transforms-python/components/PythonTransformEditor";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DatasetQuery,
-  PythonTransformSource,
   QueryTransformSource,
 } from "metabase-types/api";
 
-export type InitialPythonTransformSource = Omit<
-  PythonTransformSource,
-  "source-database"
-> & {
-  "source-database": PythonTransformSource["source-database"] | undefined;
-};
-
 export type InitialTransformSource =
   | QueryTransformSource
-  | InitialPythonTransformSource;
+  | PythonTransformSourceDraft;
 
 export function getInitialTransformSource(
   card: Card | undefined,
@@ -40,7 +33,7 @@ export function getInitialQueryTransformSource(
   return { type: "query" as const, query };
 }
 
-export function getInitialPythonTransformSource(): InitialPythonTransformSource {
+export function getInitialPythonTransformSource(): PythonTransformSourceDraft {
   return {
     type: "python" as const,
     "source-database": undefined,

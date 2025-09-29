@@ -20,6 +20,7 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
 import { useMetabotAgent, useMetabotChatHandlers } from "../../hooks";
+import type { MetabotConfig } from "../Metabot";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -27,11 +28,7 @@ import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
-export const MetabotChat = ({
-  emptyConvoText,
-}: {
-  emptyConvoText?: string;
-}) => {
+export const MetabotChat = ({ config = {} }: { config?: MetabotConfig }) => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
     useMetabotChatHandlers();
@@ -92,9 +89,14 @@ export const MetabotChat = ({
                 <Icon c="text-primary" name="revert" />
               </ActionIcon>
             </Tooltip>
-            <ActionIcon onClick={handleClose} data-testid="metabot-close-chat">
-              <Icon c="text-primary" name="close" />
-            </ActionIcon>
+            {!config.preventClose && (
+              <ActionIcon
+                onClick={handleClose}
+                data-testid="metabot-close-chat"
+              >
+                <Icon c="text-primary" name="close" />
+              </ActionIcon>
+            )}
           </Flex>
         </Box>
 
@@ -117,12 +119,11 @@ export const MetabotChat = ({
               >
                 <Box component={EmptyDashboardBot} w="6rem" />
                 <Text c="text-light" maw="12rem" ta="center">
-                  {emptyConvoText ??
+                  {config.emptyText ??
                     t`I can help you explore your metrics and models.`}
                 </Text>
               </Flex>
-              {/* empty state with suggested prompts - TODO: temporarily disabled */}
-              {!!false && (
+              {!config.hideSuggestedPrompts && (
                 <Stack
                   gap="sm"
                   className={Styles.promptSuggestionsContainer}

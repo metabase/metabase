@@ -58,12 +58,9 @@ export const getUserPromptForMessageId = createSelector(
     if (message.role === "user") {
       return message;
     } else {
-      // TODO: avoid type cast
       return messages
         .slice(0, messageIndex)
-        .findLast((m) => m.role === "user") as
-        | MetabotUserChatMessage
-        | undefined;
+        .findLast<MetabotUserChatMessage>((m) => m.role === "user");
     }
   },
 );
@@ -97,8 +94,7 @@ export const getIsLongMetabotConversation = createSelector(
   getMessages,
   (messages) => {
     const totalMessageLength = messages.reduce((sum, msg) => {
-      // TODO: fix this to be any message w/ a message property
-      return sum + (msg.type === "text" ? msg.message.length : 0);
+      return sum + ("message" in msg ? msg.message.length : 0);
     }, 0);
     return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
   },

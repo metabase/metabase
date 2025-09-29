@@ -48,7 +48,11 @@ export const AdminSettingsLayout = ({
 
         <PLUGIN_METABOT.Metabot
           hide={!isMetabotEnabledForRoute}
-          emptyConvoText={t`Let's transform your data together!`}
+          config={{
+            preventClose: true,
+            hideSuggestedPrompts: true,
+            emptyText: t`Let's transform your data together!`,
+          }}
         />
       </Box>
     </Box>

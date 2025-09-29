@@ -37,16 +37,15 @@ export const AgentTodoListMessage = ({
         py="sm"
         px="md"
       >
-        {/* eslint-disable-next-line no-color-literals */}
         <Flex align="center" justify="center">
-          <Icon name="list" size=".75rem" mr="xs" className={S.primaryColor} />
-          <Text size="sm" fw="bold" className={S.primaryColor}>{t`Todos`}</Text>
+          <Icon name="list" size=".75rem" mr="xs" c="brand" />
+          <Text size="sm" fw="bold" c="brand">{t`Todos`}</Text>
         </Flex>
         <Flex align="center" justify="center" h="md">
           <Icon
             name={opened ? "chevrondown" : "chevronup"}
             size=".75rem"
-            className={S.primaryColor}
+            c="brand"
           />
         </Flex>
       </Group>
@@ -62,7 +61,7 @@ export const AgentTodoListMessage = ({
             const config = todoStatusConfig[todo.status];
 
             return (
-              <Flex key={todo.id} className={S.todoItem} align="flex-start">
+              <Flex key={todo.id} bdrs="sm" align="flex-start">
                 {match(todo.status)
                   .with("pending", () => (
                     <Flex
@@ -74,7 +73,7 @@ export const AgentTodoListMessage = ({
                   ))
                   .with("completed", () => (
                     <Flex
-                      className={cx(S.statusIndicator, S.completedIndicator)}
+                      className={S.statusIndicator}
                       align="center"
                       justify="center"
                       mr="sm"
@@ -84,22 +83,18 @@ export const AgentTodoListMessage = ({
                   ))
                   .with("in_progress", () => (
                     <Flex
-                      className={cx(S.statusIndicator, S.inProgressIndicator)}
+                      className={S.statusIndicator}
                       align="center"
                       justify="center"
                       mr="sm"
                     >
-                      <Icon
-                        name="arrow_right"
-                        size=".6rem"
-                        c="white"
-                        className={S.rotateIcon}
-                      />
+                      <Icon name="arrow_right" size=".6rem" c="white" />
                     </Flex>
                   ))
                   .with("cancelled", () => (
                     <Flex
-                      className={cx(S.statusIndicator, S.cancelledIndicator)}
+                      className={S.statusIndicator}
+                      bg="brand"
                       align="center"
                       justify="center"
                       mr="sm"

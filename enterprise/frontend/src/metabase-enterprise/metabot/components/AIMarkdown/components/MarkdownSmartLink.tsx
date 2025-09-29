@@ -24,7 +24,7 @@ export const MarkdownSmartLink = ({
   const entityUrl =
     !isLoading && !error && entity
       ? (modelToUrl(entityToUrlableModel(entity, model)) ?? "")
-      : "#";
+      : ""; // fallback to linking to nothing
 
   return (
     <InternalLink

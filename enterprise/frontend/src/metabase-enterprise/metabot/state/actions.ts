@@ -258,8 +258,14 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with(
                 { type: "transform_suggestion" },
-                ({ value: transform }) => {
-                  dispatch(setSuggestedTransform(transform));
+                ({ value: suggestedTransform }) => {
+                  dispatch(setSuggestedTransform(suggestedTransform));
+
+                  const transform = req.context.user_is_viewing
+                    .filter(
+                      (t): t is MetabotTransformInfo => t.type === "transform",
+                    )
+                    .find((t) => t.id === suggestedTransform.id);
                   const message: Omit<
                     MetabotAgentEditSuggestionChatMessage,
                     "id" | "role"
@@ -267,14 +273,10 @@ export const sendAgentRequest = createAsyncThunk<
                     type: "edit_suggestion",
                     model: "transform",
                     payload: {
-                      editorTransform: req.context.user_is_viewing.find(
-                        (x) => x.type === "transform" && x.id === transform.id,
-                        // TODO: BLEH - find a better way
-                      ) as MetabotTransformInfo | undefined,
-                      suggestedTransform: transform,
+                      editorTransform: transform,
+                      suggestedTransform,
                     },
                   };
-
                   dispatch(addAgentMessage(message));
                 },
               )
@@ -345,7 +347,6 @@ export const retryPrompt = createAsyncThunk<
     dispatch(metabot.actions.rewindStateToMessageId(messageId));
 
     return await dispatch(
-      // TODO: fix with new action type
       submitInput({
         type: "text",
         message: prompt.message,

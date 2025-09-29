@@ -139,7 +139,7 @@ export const metabot = createSlice({
       action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
       state.toolCalls = [];
-      // @ts-expect-error - TODO: figure out why this type causes issues
+      // @ts-expect-error -- transform definition causes possibly inifinite type definition
       state.messages.push({
         id: createMessageId(),
         role: "agent",

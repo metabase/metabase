@@ -4,6 +4,7 @@ import { dashboard } from "./dashboards";
 import { document } from "./documents";
 import { metric, model } from "./models";
 import { question, tableRowsQuery } from "./questions";
+import { transform } from "./transforms";
 
 export type UrlableModel = {
   id: number;
@@ -40,6 +41,8 @@ export function modelToUrl(item: UrlableModel) {
       return document(item);
     case "user":
       return null;
+    case "transform":
+      return transform(item);
     default:
       return null;
   }

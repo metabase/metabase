@@ -6,18 +6,16 @@ export const METABSE_PROTOCOL_MD_LINK =
 
 export type MetabaseProtocolEntityModel = "dataset" | "database" | "table";
 
+// TODO: parse don't validate?
+// TODO: only parse models that are known
+// TODO: fix models/dataset issue
+// TODO: add all possible entities
+
 export interface MetabaseProtocolEntity {
   model: MetabaseProtocolEntityModel;
   id: number;
   name: string;
 }
-
-// TOOD: make use of this in parsing function... avoid parsing models we don't know
-export const isMetabaseProtocolEntityModel = (
-  model: string,
-): model is MetabaseProtocolEntityModel => {
-  return model === "dataset" || model === "database" || model === "table";
-};
 
 export const parseMetabaseProtocolLink = (
   href: string,

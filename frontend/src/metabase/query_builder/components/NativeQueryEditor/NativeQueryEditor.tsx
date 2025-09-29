@@ -370,7 +370,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                         px="0"
                         w="2.5rem"
                         onClick={() => {
-                          // TODO: clean this up so the condition is not needed
                           const proposedQuery =
                             proposedQuestion.legacyNativeQuery();
                           if (proposedQuery) {
