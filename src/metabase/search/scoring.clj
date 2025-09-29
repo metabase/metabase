@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.search.config :as search.config]))
 
 (def ^:private seconds-in-a-day 86400)
@@ -66,23 +65,22 @@
 (defn user-recency-expr
   "Expression to select the `:user-recency` timestamp for the `current-user-id`."
   [{:keys [current-user-id]}]
-  (let [fifteen-days-ago (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -15 :day)]
-    {:select [[[:case
-                ;; Transforms get a hardcoded 15-day last_viewed_at because we don't track views on them
-                [:= :search_index.model [:inline "transform"]]
-                fifteen-days-ago
-                :else
-                [:max :recent_views.timestamp]]
-               :last_viewed_at]]
-     :from   [:recent_views]
-     :where  [:and
-              [:= :recent_views.user_id current-user-id]
-              [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
-              [:= :recent_views.model
-               [:case
-                [:= :search_index.model [:inline "dataset"]] [:inline "card"]
-                [:= :search_index.model [:inline "metric"]] [:inline "card"]
-                :else :search_index.model]]]}))
+  {:select [[[:case
+              ;; Transforms get a hardcoded 15-day last_viewed_at because we don't track views on them
+              [:= :search_index.model [:inline "transform"]]
+              [:- [:now] [:interval "15 days"]]
+              :else
+              [:max :recent_views.timestamp]]
+             :last_viewed_at]]
+   :from   [:recent_views]
+   :where  [:and
+            [:= :recent_views.user_id current-user-id]
+            [:= (cast-to-text :recent_views.model_id) :search_index.model_id]
+            [:= :recent_views.model
+             [:case
+              [:= :search_index.model [:inline "dataset"]] [:inline "card"]
+              [:= :search_index.model [:inline "metric"]] [:inline "card"]
+              :else :search_index.model]]]})
 
 (defn model-rank-expr
   "Score an item based on its :model type."
