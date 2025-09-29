@@ -227,9 +227,11 @@ export default class PinMap extends Component {
             binHeight={binHeight}
             onFiltering={(filtering) => this.setState({ filtering })}
             zoomControl={!isEditing}
-            onHoverChange={isEditing ? null : mapProps.onHoverChange}
+            onHoverChange={
+              isDashboard && isEditing ? null : mapProps.onHoverChange
+            }
             onVisualizationClick={
-              isEditing ? null : mapProps.onVisualizationClick
+              isDashboard && isEditing ? null : mapProps.onVisualizationClick
             }
           />
         ) : null}
