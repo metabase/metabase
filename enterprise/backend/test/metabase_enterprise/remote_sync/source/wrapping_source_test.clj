@@ -5,7 +5,7 @@
    [metabase-enterprise.remote-sync.source.protocol :as source.p]))
 
 (defrecord MockSource [files]
-  source.p/LibrarySource
+  source.p/Source
   (create-branch [_ _branch _base]
     nil)
 
@@ -84,7 +84,7 @@
 (deftest wrapping-source-write-files-single-filter-test
   (testing "WrappingSource filters write-files! based on path-filters"
     (let [written-files (atom [])
-          mock-source (reify source.p/LibrarySource
+          mock-source (reify source.p/Source
                         (create-branch [_ _branch _base]
                           nil)
                         (branches [_]
@@ -109,7 +109,7 @@
 (deftest wrapping-source-write-files-multiple-filters-test
   (testing "WrappingSource write-files! with multiple filters"
     (let [written-files (atom [])
-          mock-source (reify source.p/LibrarySource
+          mock-source (reify source.p/Source
                         (create-branch [_ _branch _base]
                           nil)
                         (branches [_]
@@ -134,7 +134,7 @@
 (deftest wrapping-source-write-files-no-match-test
   (testing "WrappingSource write-files! with no matching files"
     (let [written-files (atom [])
-          mock-source (reify source.p/LibrarySource
+          mock-source (reify source.p/Source
                         (create-branch [_ _branch _base]
                           nil)
                         (branches [_]

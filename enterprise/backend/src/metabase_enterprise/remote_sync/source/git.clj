@@ -249,7 +249,7 @@
     branch-name))
 
 (defrecord GitSource [git remote-url commit-ish token]
-  source.p/LibrarySource
+  source.p/Source
   (branches [source] (branches source))
 
   (create-branch [source branch-name base-branch]

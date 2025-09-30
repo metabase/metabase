@@ -19,7 +19,7 @@
   "Create a mock git source for testing"
   [& {:keys [branches error-on-branches?]
       :or {branches ["main" "develop"]}}]
-  (reify source.p/LibrarySource
+  (reify source.p/Source
     (create-branch [_ _branch _base]
       nil)
     (branches [_]

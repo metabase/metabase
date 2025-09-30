@@ -2,7 +2,7 @@
   (:require
    [methodical.core :as methodical]))
 
-(defprotocol LibrarySource
+(defprotocol Source
   (branches [source]
     "Returns a map of branch names available in the source")
 

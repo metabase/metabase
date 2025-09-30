@@ -14,7 +14,7 @@
 (use-fixtures :each th/clean-remote-sync-state)
 
 (defrecord MockSource [written-files]
-  source.p/LibrarySource
+  source.p/Source
   (create-branch [_ _branch _base]
     nil)
 

@@ -1,5 +1,5 @@
 (ns metabase-enterprise.remote-sync.test-helpers
-  "Test helpers for remote sync functionality, including MockLibrarySource implementation."
+  "Test helpers for remote sync functionality, including MockSource implementation."
   (:require
    [clojure.string :as str]
    [clojure.test :as t]
@@ -155,8 +155,8 @@ width: fixed
 "
             name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
-(defrecord MockLibrarySource [source-id base-url branch fail-mode files-atom]
-  source.p/LibrarySource
+(defrecord MockSource [source-id base-url branch fail-mode files-atom]
+  source.p/Source
   (create-branch [_this _branch _base]
     nil)
 
@@ -197,7 +197,7 @@ width: fixed
       (swap! files-atom assoc branch (into {} (map (juxt :path :content) files))))))
 
 (defn create-mock-source
-  "Create a mock LibrarySource for testing"
+  "Create a mock Source for testing"
   [& {:keys [branch fail-mode initial-files]
       :or {branch "main"
            fail-mode nil
@@ -219,7 +219,7 @@ width: fixed
                                   (generate-card-yaml "test-dev-cardxxxxxxxx" "Dev Card" "test-dev-collectionxx")}}
 
         files-atom (atom (or initial-files default-files))]
-    (->MockLibrarySource "test-source" "https://test.example.com" branch fail-mode files-atom)))
+    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom)))
 
 (defn clean-change-log
   "Reset the change-log table before running tests to prevent existing extries from affecting dirty state checks"

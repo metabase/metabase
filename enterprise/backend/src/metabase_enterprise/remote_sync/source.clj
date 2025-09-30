@@ -20,7 +20,7 @@
 ;; Wrapping source accepts a list of path regexes to apply to paths in the source returning
 ;; nil when they do no match
 (defrecord WrappingSource [original-source path-filters]
-  source.p/LibrarySource
+  source.p/Source
   (create-branch [_ branch base]
     (source.p/create-branch original-source branch base))
 
