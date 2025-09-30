@@ -395,7 +395,7 @@ describe("command palette", () => {
 
     it("should show the 'Create a new embed' command palette item", () => {
       cy.visit("/");
-      cy.findByRole("button", { name: /search/ }).click();
+      cy.findByRole("button", { name: /search/i }).click();
 
       H.commandPalette().within(() => {
         H.commandPaletteInput().should("exist").type("new embed");
@@ -405,7 +405,7 @@ describe("command palette", () => {
 
     it("should have a 'New document' item", () => {
       cy.visit("/");
-      cy.findByRole("button", { name: /search/ }).click();
+      cy.findByRole("button", { name: /search/i }).click();
       H.commandPalette().within(() => {
         cy.findByText("New document").should("be.visible").click();
         cy.location("pathname").should("eq", "/document/new");
