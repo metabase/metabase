@@ -615,14 +615,14 @@ H.describeWithSnowplowEE("document comments", () => {
       getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
 
       cy.findByLabelText("Comments")
-        .should("be.disabled")
+        .should("not.be.disabled")
         .click({ force: true });
-      Comments.getSidebar().should("not.exist");
+      Comments.getSidebar().should("be.visible");
 
       cy.findByLabelText("Show all comments")
-        .should("be.disabled")
+        .should("not.be.disabled")
         .click({ force: true });
-      Comments.getSidebar().should("not.exist");
+      Comments.getSidebar().should("be.visible");
     });
   });
 
