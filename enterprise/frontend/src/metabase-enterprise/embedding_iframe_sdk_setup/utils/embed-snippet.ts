@@ -84,9 +84,15 @@ const toDashCase = (str: string): string =>
   str.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 
 // Convert values to string attributes
-const formatAttributeValue = (value: unknown): string => {
-  if (Array.isArray(value) || typeof value === "object") {
-    return `'${JSON.stringify(value)}'`;
+export const formatAttributeValue = (value: unknown): string => {
+  if (
+    value === null ||
+    Array.isArray(value) ||
+    (typeof value === "object" && value !== null)
+  ) {
+    const jsonString = JSON.stringify(value);
+    const escapedString = jsonString.replace(/'/g, "&39;");
+    return `'${escapedString}'`;
   }
 
   return `"${value}"`;
