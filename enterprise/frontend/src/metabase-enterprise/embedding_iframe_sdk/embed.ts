@@ -412,7 +412,24 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     data: Message["data"],
   ) {
     if (this._iframe?.contentWindow) {
-      this._iframe.contentWindow.postMessage({ type, data }, "*");
+      const normalizedData = Object.entries(data).reduce(
+        (acc, [key, value]) => {
+          // Functions are not serializable, so we ignore them.
+          if (typeof value === "function") {
+            return acc;
+          }
+
+          acc[key as keyof typeof acc] = value;
+
+          return acc;
+        },
+        {} as Message["data"],
+      );
+
+      this._iframe.contentWindow.postMessage(
+        { type, data: normalizedData },
+        "*",
+      );
     }
   }
 
@@ -446,7 +463,8 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
    * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
    */
   private async _getMetabaseSessionToken() {
-    const { instanceUrl, preferredAuthMethod } = this.properties;
+    const { instanceUrl, preferredAuthMethod, fetchRequestToken } =
+      this.properties;
 
     const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
       headers: this._getAuthRequestHeader(),
@@ -466,6 +484,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
         responseUrl,
         instanceUrl,
         this._getAuthRequestHeader(hash),
+        fetchRequestToken,
       );
 
       return { method, sessionToken };

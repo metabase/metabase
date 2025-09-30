@@ -496,56 +496,59 @@ export const getTitleForColumn = (column, series, settings) => {
   }
 };
 
-export const tableColumnSettings = {
-  // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
-  //   { name: "COLUMN_NAME", enabled: true }
-  //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
-  "table.columns": {
-    get section() {
-      return t`Columns`;
-    },
-    // title: t`Columns`,
-    widget: ChartSettingTableColumns,
-    getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-    getValue: ([{ data }], vizSettings) => {
-      const { cols } = data;
-      const settings = vizSettings["table.columns"] ?? [];
-      const uniqColumnSettings = getDeduplicatedTableColumnSettings(settings);
+export function tableColumnSettings({
+  isShowingDetailsOnlyColumns = false,
+} = {}) {
+  return {
+    "table.columns": {
+      get section() {
+        return t`Columns`;
+      },
+      // title: t`Columns`,
+      widget: ChartSettingTableColumns,
+      getHidden: (series, vizSettings) => vizSettings["table.pivot"],
+      getValue: ([{ data }], vizSettings) => {
+        const { cols } = data;
+        const settings = vizSettings["table.columns"] ?? [];
+        const uniqColumnSettings = getDeduplicatedTableColumnSettings(settings);
 
-      const columnIndexes = findColumnIndexesForColumnSettings(
-        cols,
-        uniqColumnSettings,
-      );
-      const settingIndexes = findColumnSettingIndexesForColumns(
-        cols,
-        uniqColumnSettings,
-      );
+        const columnIndexes = findColumnIndexesForColumnSettings(
+          cols,
+          uniqColumnSettings,
+        );
+        const settingIndexes = findColumnSettingIndexesForColumns(
+          cols,
+          uniqColumnSettings,
+        );
 
-      return [
-        // retain settings with matching columns only
-        ...uniqColumnSettings.filter(
-          (_, settingIndex) => columnIndexes[settingIndex] >= 0,
-        ),
-        // add columns that do not have matching settings to the end
-        ...cols
-          .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-          .map((column) => ({
-            name: column.name,
-            enabled: true,
-          })),
-      ];
-    },
-    getProps: (series, settings) => {
-      const [
-        {
-          data: { cols },
-        },
-      ] = series;
+        return [
+          // retain settings with matching columns only
+          ...uniqColumnSettings.filter(
+            (_, settingIndex) => columnIndexes[settingIndex] >= 0,
+          ),
+          // add columns that do not have matching settings to the end
+          ...cols
+            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
+            .map((column) => ({
+              name: column.name,
+              enabled: true,
+            })),
+        ];
+      },
+      getProps: (series, settings) => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = series;
 
-      return {
-        columns: cols,
-        getColumnName: (column) => getTitleForColumn(column, series, settings),
-      };
+        return {
+          columns: cols,
+          isShowingDetailsOnlyColumns,
+          getColumnName: (column) =>
+            getTitleForColumn(column, series, settings),
+        };
+      },
     },
-  },
-};
+  };
+}
