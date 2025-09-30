@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { Panel, PanelGroup } from "react-resizable-panels";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
@@ -11,6 +13,7 @@ import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
+import { TransformQueryPage } from "../TransformQueryPage";
 
 import { DependenciesSection } from "./DependenciesSection";
 import { HeaderSection } from "./HeaderSection";
@@ -66,17 +69,23 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <Stack gap="3.5rem" data-testid="transform-page">
-      <Stack gap="lg">
-        <HeaderSection transform={transform} />
-        <NameSection transform={transform} />
-      </Stack>
-      <RunSection transform={transform} />
-      <PLUGIN_TRANSFORMS_PYTHON.SourceSection transform={transform} />
-      <TargetSection transform={transform} />
-      <ManageSection transform={transform} />
-      <DependenciesSection transform={transform} />
-    </Stack>
+    <PanelGroup direction="horizontal">
+      <Panel>
+        <TransformQueryPage transform={transform} />
+      </Panel>
+      <ResizeHandle />
+      <Panel>
+        <Stack gap="md" data-testid="transform-page">
+          <Stack gap="sm">
+            <HeaderSection transform={transform} />
+            <NameSection transform={transform} />
+          </Stack>
+          <RunSection transform={transform} />
+          <TargetSection transform={transform} />
+          <DependenciesSection transform={transform} />
+        </Stack>
+      </Panel>
+    </PanelGroup>
   );
 }
 
