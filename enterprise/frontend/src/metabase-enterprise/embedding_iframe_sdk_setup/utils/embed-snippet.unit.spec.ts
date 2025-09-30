@@ -59,7 +59,7 @@ describe("formatAttributeValue", () => {
   });
 
   it("should handle null and undefined values", () => {
-    expect(formatAttributeValue(null)).toBe("'null'");
+    expect(formatAttributeValue(null)).toBe('"null"');
     expect(formatAttributeValue(undefined)).toBe('"undefined"');
   });
 });
