@@ -13,13 +13,22 @@ const setup = (props: CommonSetupProps = {}) => {
 };
 
 describe("PaletteResults", () => {
-  it("should show default actions", async () => {
+  it("should not show actions when there is no search query", () => {
     setup();
+    expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
+    expect(screen.queryByText("New collection")).not.toBeInTheDocument();
+    expect(screen.queryByText("New model")).not.toBeInTheDocument();
+
+    expect(screen.queryByText("Results")).not.toBeInTheDocument();
+  });
+
+  it("should show actions when there is a search query", async () => {
+    setup({ query: "new" });
     expect(await screen.findByText("New dashboard")).toBeInTheDocument();
     expect(await screen.findByText("New collection")).toBeInTheDocument();
     expect(await screen.findByText("New model")).toBeInTheDocument();
 
-    expect(screen.queryByText("Results")).not.toBeInTheDocument();
+    expect(screen.getByText("Results")).toBeInTheDocument();
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness

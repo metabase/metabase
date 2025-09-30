@@ -95,7 +95,7 @@ export function getSearchTabText(
   searchQuery: string,
 ): string {
   if (!searchResults || !searchResults.length) {
-    return emptySearchResultTranslationContext.t`Results`;
+    return emptySearchResultTranslationContext.t`Search results`;
   }
 
   return searchResultTranslationContext.ngettext(
