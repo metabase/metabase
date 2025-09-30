@@ -15,6 +15,7 @@ import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import type { DisplayTheme } from "metabase/public/lib/types";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -366,6 +367,7 @@ type ParameterType =
 
 type DefaultArgs = MockDashboardContextProps & {
   parameterType?: ParameterType;
+  theme?: DisplayTheme;
 };
 const createDefaultArgs = ({
   parameterType = "text",
