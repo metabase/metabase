@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { useId, useMemo } from "react";
 import { match } from "ts-pattern";
 
@@ -6,7 +7,6 @@ import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/priv
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
-import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { Stack } from "metabase/ui";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
@@ -22,6 +22,12 @@ import { QuestionTitle } from "./QuestionTitle";
 import { SidebarHeader } from "./SidebarHeader";
 import type { MetabotQuestionProps } from "./types";
 
+/**
+ * If the Metabot component's container size is smaller
+ * than this, use the stacked layout.
+ **/
+const MAX_MOBILE_CONTAINER_WIDTH = 700;
+
 const MetabotQuestionInner = ({
   height,
   width,
@@ -31,16 +37,17 @@ const MetabotQuestionInner = ({
 }: MetabotQuestionProps) => {
   const { isLocaleLoading } = useLocale();
   const { navigateToPath } = useMetabotReactions();
-  const isSmallScreen = useIsSmallScreen();
+  const { ref: containerRef, width: containerWidth } = useElementSize();
 
   const hasQuestion = !!navigateToPath;
 
   const derivedLayout = useMemo(() => {
-    return match([layout, isSmallScreen])
-      .with(["auto", true], () => "stacked")
-      .with(["auto", false], () => "sidebar")
-      .otherwise(([layout]) => layout);
-  }, [layout, isSmallScreen]);
+    return match(layout)
+      .with("auto", () =>
+        containerWidth <= MAX_MOBILE_CONTAINER_WIDTH ? "stacked" : "sidebar",
+      )
+      .otherwise((layout) => layout);
+  }, [layout, containerWidth]);
 
   function renderQuestion() {
     if (!hasQuestion || isLocaleLoading) {
@@ -75,6 +82,7 @@ const MetabotQuestionInner = ({
       style={style}
     >
       <div
+        ref={containerRef}
         className={S.container}
         data-layout={derivedLayout}
         data-testid="metabot-question-container"
