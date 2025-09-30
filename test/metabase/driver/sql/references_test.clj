@@ -557,6 +557,33 @@
              [{:type :all-columns, :table {:table "orders"}}]]}]}
          (->references "select (select (select category) from products where products.id = orders.product_id) from orders"))))
 
+(deftest nested-select-subquery-with-direct-match-in-outer-query
+  (is (= {:used-fields
+          #{{:column "a",
+             :alias nil,
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}
+            {:column "a",
+             :alias nil,
+             :type :single-column,
+             :source-columns
+             [[{:type :all-columns, :table {:table "t1"}}]
+              [{:column "a",
+                :alias nil,
+                :type :single-column,
+                :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}]]}},
+          :returned-fields
+          [{:column "a",
+            :alias nil,
+            :type :single-column,
+            :source-columns
+            [[{:type :all-columns, :table {:table "t1"}}]
+             [{:column "a",
+               :alias nil,
+               :type :single-column,
+               :source-columns [[{:type :all-columns, :table {:table "t2"}}]]}]]}]}
+         (->references "select (select a from t1) from (select a from t2)"))))
+
 (deftest basic-exists-test
   (is (= {:used-fields
           #{{:column "name",
@@ -696,6 +723,65 @@ SELECT * FROM active_users"))))
                              :table {:table "products"}}]}
          (->references "WITH active_users AS (SELECT id, name FROM users WHERE active = true)
 SELECT * FROM products"))))
+
+(deftest shadowed-cte-test
+  (is (= {:used-fields
+          #{{:column "y",
+             :alias "x",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "y",
+             :alias "a",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "z",
+             :alias "y",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "x",
+             :alias "z",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "z",
+             :alias "b",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+            {:column "x",
+             :alias "c",
+             :type :single-column,
+             :source-columns [[{:type :all-columns, :table {:table "a"}}]]}},
+          :returned-fields
+          [{:column "y",
+            :alias "a",
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+           {:column "z",
+            :alias "b",
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}
+           {:column "x",
+            :alias "c",
+            :type :single-column,
+            :source-columns [[{:type :all-columns, :table {:table "a"}}]]}]}
+         (->references "WITH c AS (
+    WITH b AS (
+        SELECT
+           x as z,
+           y as x,
+           z as y
+        FROM a
+    )
+    SELECT
+       x as a,
+       y as b,
+       z as c
+    FROM b
+)
+SELECT
+    a,
+    b,
+    c
+FROM c;"))))
 
 (deftest recursive-cte-test
   (is (= {:used-fields

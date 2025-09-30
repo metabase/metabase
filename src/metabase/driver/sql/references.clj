@@ -97,11 +97,9 @@
                                            (mapcat :returned-fields)
                                            %))
                                valid-sources)
-          source-column (some (fn [columns]
-                                (some #(when (= column (or (:alias %) (:column %)))
-                                         %)
-                                      columns))
-                              source-columns)]
+          source-column (some #(when (= column (or (:alias %) (:column %)))
+                                 %)
+                              (first source-columns))]
       [(if source-column
          (cond-> source-column
            alias (assoc :alias alias))
