@@ -34,8 +34,7 @@ export function useSdkIframeEmbedNavigation() {
       })
       .with("select-embed-options", () => {
         trackEmbedWizardOptionsCompleted(settings);
-      })
-      .otherwise(() => {});
+      });
 
     if (nextStep) {
       setCurrentStep(nextStep.id);
