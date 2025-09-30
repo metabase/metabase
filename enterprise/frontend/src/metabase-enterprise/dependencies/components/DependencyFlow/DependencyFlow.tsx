@@ -37,6 +37,8 @@ export function DependencyFlow() {
       nodeTypes={NODE_TYPES}
       defaultEdgeOptions={{ type: "smoothstep" }}
       fitView
+      minZoom={0.001}
+      maxZoom={1000}
       onNodesChange={handleNodeChange}
       onEdgesChange={handleEdgeChange}
     >
