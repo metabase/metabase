@@ -68,8 +68,6 @@ describe("scenarios > embedding-sdk > requests", () => {
         cy.intercept("POST", "/api/dataset").as("dataset");
         // We ensure that both `dataset` requests are made after the token refresh request
         cy.get("@dataset.all").should("have.length", 2);
-
-        cy.clock().then((clock) => clock.restore());
       });
     });
   });
