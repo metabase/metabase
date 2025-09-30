@@ -45,8 +45,8 @@ export const PaletteResults = ({
   const { results } = useMatches();
 
   const processedResults = useMemo(
-    () => processResults(results as (PaletteActionImpl | string)[]),
-    [results],
+    () => processResults(results as (PaletteActionImpl | string)[], searchTerm),
+    [results, searchTerm],
   );
 
   useEffect(() => {

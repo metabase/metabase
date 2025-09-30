@@ -274,10 +274,7 @@ export const useCommandPaletteBasicActions = ({
     hasEmbedJsFeature,
   ]);
 
-  useRegisterShortcut(hasQuery ? initialActions : [], [
-    initialActions,
-    hasQuery,
-  ]);
+  useRegisterShortcut(initialActions, [initialActions, hasQuery]);
 
   const openActionModal = [];
 
@@ -292,10 +289,9 @@ export const useCommandPaletteBasicActions = ({
       },
     });
   }
-  useRegisterActions(hasQuery ? openActionModal : [], [
+  useRegisterActions(openActionModal, [
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,
-    hasQuery,
   ]);
 };
