@@ -117,10 +117,10 @@ const subComponents: InteractiveQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
         ?.VisualizationButton,
   ),
-  ParametersList: createComponent(
+  SqlParametersList: createComponent(
     () =>
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.InteractiveQuestion
-        ?.ParametersList,
+        ?.SqlParametersList,
   ),
 };
 

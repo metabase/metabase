@@ -5,7 +5,7 @@ import { ResponsiveParametersList } from "metabase/query_builder/components/Resp
 import * as Lib from "metabase-lib";
 import type { ParameterId } from "metabase-types/api";
 
-import ParametersListS from "./ParametersList.module.css";
+import SqlParametersListS from "./SqlParametersList.module.css";
 
 /**
  * Parameters list for SQL questions
@@ -13,7 +13,7 @@ import ParametersListS from "./ParametersList.module.css";
  * @function
  * @category InteractiveQuestion
  */
-export const QuestionParametersList = () => {
+export const SqlParametersList = () => {
   const { question, originalQuestion, updateQuestion, hiddenParameters } =
     useSdkQuestionContext();
 
@@ -70,7 +70,7 @@ export const QuestionParametersList = () => {
 
   return (
     <ResponsiveParametersList
-      className={ParametersListS.ParametersList}
+      className={SqlParametersListS.SqlParametersList}
       cardId={question.id()}
       dashboardId={question.dashboardId() ?? undefined}
       parameters={parameters}

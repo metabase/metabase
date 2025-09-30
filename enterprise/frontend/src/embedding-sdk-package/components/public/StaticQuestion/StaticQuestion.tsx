@@ -73,10 +73,10 @@ const subComponents: StaticQuestionComponents = {
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion
         ?.DownloadWidgetDropdown,
   ),
-  ParametersList: createComponent(
+  SqlParametersList: createComponent(
     () =>
       getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.StaticQuestion
-        ?.ParametersList,
+        ?.SqlParametersList,
   ),
 };
 

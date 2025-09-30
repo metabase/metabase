@@ -13,13 +13,13 @@ import {
   EditorButton,
   Filter,
   FilterDropdown,
-  QuestionParametersList,
   QuestionResetButton,
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
   SaveButton,
   SdkSaveQuestionForm,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -111,7 +111,7 @@ export type SdkQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
-  ParametersList: typeof QuestionParametersList;
+  SqlParametersList: typeof SqlParametersList;
 };
 
 export const _SdkQuestion = ({
@@ -203,7 +203,7 @@ const subComponents: SdkQuestionComponents = {
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
   VisualizationButton: VisualizationButton,
-  ParametersList: QuestionParametersList,
+  SqlParametersList: SqlParametersList,
 };
 
 export const SdkQuestion = Object.assign(

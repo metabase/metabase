@@ -216,7 +216,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
       });
     });
 
-    it("does not show editable parameters controls for the default view", () => {
+    it("does not show editable sql parameters controls for the default view", () => {
       mountInteractiveQuestion({
         initialSqlParameters: { State: "NY" },
         hiddenParameters: ["Source"],
@@ -230,14 +230,14 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
       cy.findByPlaceholderText("Source").should("not.exist");
     });
 
-    it("shows editable parameters controls when `withParametersListWidget` is set to `true`", () => {
+    it("shows editable sql parameters controls when `SqlParametersList` is defined in a custom layout", () => {
       mountInteractiveQuestion({
         initialSqlParameters: { State: "NY" },
         hiddenParameters: ["Source"],
         children: (
           <>
             <InteractiveQuestion.Title />
-            <InteractiveQuestion.ParametersList />
+            <InteractiveQuestion.SqlParametersList />
             <InteractiveQuestion.QuestionVisualization />
           </>
         ),

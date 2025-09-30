@@ -10,11 +10,11 @@ import {
   DownloadWidgetDropdown,
   Filter,
   FilterDropdown,
-  QuestionParametersList,
   QuestionResetButton,
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -72,7 +72,7 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
-  ParametersList: typeof QuestionParametersList;
+  SqlParametersList: typeof SqlParametersList;
 };
 
 const _StaticQuestion = ({
@@ -157,7 +157,7 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
-  ParametersList: QuestionParametersList,
+  SqlParametersList: SqlParametersList,
 };
 
 export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {
