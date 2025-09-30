@@ -1,4 +1,4 @@
-{:min-bb-version "1.12.197"
+{:min-bb-version "1.12.208"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test" "bin/lint-migrations-file/src"]
@@ -161,7 +161,7 @@
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
   notify
-  {:doc      "Send notification for a comment (that already exists"
+  {:doc      "Send notification for a comment (that already exists)"
    :requires [[mage.be-dev :refer [nrepl-eval]]]
    :options  [["-c" "--comment-id ID" "Notify about this comment id"]
               ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
@@ -171,6 +171,23 @@
                (if (:port opts)
                  (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
                  (nrepl-eval "metabase-enterprise.comments.core" code)))}
+
+  run-tests
+  {:doc        "Run a tests (or a single test) against nrepl server"
+   :requires   [[clojure.string :as str]
+                [mage.be-dev :refer [nrepl-eval]]]
+   :arg-schema [:tuple [:string {:name "NS/TEST" :desc "or just NS"}]]
+   :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task       (let [{:keys [options
+                             arguments]} (cli/parse! (current-task))
+                     test                (first arguments)
+                     code                (format "(find-and-run-tests-repl {:only %s})"
+                                                 (if (or (str/starts-with? test "test/"))
+                                                   ;; paths should come in as strings
+                                                   (format "\"%s\"" test)
+                                                   ;; ns or var should be a symbol
+                                                   (str "'" test)))]
+                 (nrepl-eval "mb.hawk.core" code (:port options)))}
 
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]
