@@ -62,7 +62,7 @@ describe("command palette", () => {
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.visit("/");
 
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/ }).click();
     H.commandPalette().should("be.visible");
     cy.findByRole("option", { name: "Orders in a dashboard" }).should(
       "have.attr",
@@ -77,12 +77,12 @@ describe("command palette", () => {
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist");
 
-      cy.log("limit to 5 basic actions");
-      cy.findByText("New question");
-      cy.findByText("New SQL query");
-      cy.findByText("New dashboard");
-      cy.findByText("New collection");
-      cy.findByText("New model");
+      cy.log("does not show actions if there is no search query");
+      cy.findByText("New question").should("not.exist");
+      cy.findByText("New SQL query").should("not.exist");
+      cy.findByText("New dashboard").should("not.exist");
+      cy.findByText("New collection").should("not.exist");
+      cy.findByText("New model").should("not.exist");
       cy.findByText("New metric").should("not.exist");
 
       cy.log("Should show recent items");
