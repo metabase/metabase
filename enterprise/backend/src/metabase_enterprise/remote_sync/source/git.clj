@@ -79,7 +79,7 @@
         (throw (ex-info (format "Failed to clone git repository: %s" (.getMessage e))
                         {:url   url
                          :dir   dir
-                         :error (.getMessage #p e)}))))))
+                         :error (.getMessage e)}))))))
 
 (defn ->commit-id
   "Returns the full commit ref for a branch or commit-ish string, or nil if not found."
