@@ -310,6 +310,11 @@
    :display_name
    :description])
 
+(defmethod searchable-columns "transform"
+  [_ _]
+  [:name
+   :description])
+
 (defmethod searchable-columns "indexed-entity"
   [_ _]
   [:name])
@@ -429,6 +434,10 @@
    [:table.description :table_description]
    [:metabase_database.name :database_name]])
 
+(defmethod columns-for-model "transform"
+  [_]
+  [:id :name :description :created_at :updated_at])
+
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
@@ -529,6 +538,10 @@
   [model search-ctx]
   (-> (base-query-for-model model search-ctx)
       (sql.helpers/where [:= :router_database_id nil])))
+
+(defmethod search-query-for-model "transform"
+  [model search-ctx]
+  (base-query-for-model model search-ctx))
 
 (defmethod search-query-for-model "dashboard"
   [model search-ctx]

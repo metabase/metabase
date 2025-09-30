@@ -32,6 +32,7 @@
   (list-native-query-snippets (boolean archived)))
 
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
+  "Fetch native query snippet with ID and hydrate creator."
   [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
       (t2/hydrate :creator)))

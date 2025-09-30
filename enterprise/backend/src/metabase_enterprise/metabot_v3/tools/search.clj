@@ -25,18 +25,18 @@
   [search-model]
   (get (set/map-invert search-model-mappings) search-model search-model))
 
-(defn- transform-search-result
+(defn- postprocess-search-result
   "Transform a single search result to match the appropriate entity-specific schema."
   [{:keys [verified moderated_status collection] :as result}]
   (let [model (:model result)
         verified? (or (boolean verified) (= moderated_status "verified"))
         collection-info (select-keys collection [:name :authority_level])
-        common-fields {:id           (:id result)
-                       :type         (search-model->result-type model)
-                       :name         (:name result)
-                       :description  (:description result)
-                       :updated_at   (:updated_at result)
-                       :created_at   (:created_at result)}]
+        common-fields {:id          (:id result)
+                       :type        (search-model->result-type model)
+                       :name        (:name result)
+                       :description (:description result)
+                       :updated_at  (:updated_at result)
+                       :created_at  (:created_at result)}]
     (case model
       "database"
       common-fields
@@ -50,14 +50,18 @@
 
       "dashboard"
       (merge common-fields
-             {:verified        verified?
-              :collection      collection-info})
+             {:verified    verified?
+              :collection  collection-info})
+
+      "transform"
+      (merge common-fields
+             {:database_id (:database_id result)})
 
       ;; Questions, metrics, and datasets
       (merge common-fields
-             {:database_id     (:database_id result)
-              :verified        verified?
-              :collection      collection-info}))))
+             {:database_id (:database_id result)
+              :verified    verified?
+              :collection  collection-info}))))
 
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
@@ -99,7 +103,7 @@
   "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot-id] :as params}]
+           entity-types limit metabot-id search-native-query]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-queries term-queries
               :semantic-queries semantic-queries
@@ -108,7 +112,8 @@
               :last-edited-at last-edited-at
               :entity-types entity-types
               :limit limit
-              :metabot-id metabot-id})
+              :metabot-id metabot-id
+              :search-native-query search-native-query})
   (let [search-models (if (seq entity-types)
                         (set (distinct (keep entity-type->search-model entity-types)))
                         metabot-search-models)
@@ -134,7 +139,8 @@
                                             :context :metabot
                                             :archived false
                                             :limit (or limit 50)
-                                            :offset 0}
+                                            :offset 0
+                                            :search-native-query (boolean search-native-query)}
                                            (when use-verified-content?
                                              {:verified true})))
                           _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"
@@ -149,8 +155,8 @@
         result-lists (mapv deref futures)
         fused-results (reciprocal-rank-fusion result-lists)
         entity-type-counts (frequencies (map :model fused-results))
-        transformed-results (map transform-search-result fused-results)]
+        postprocessed-results (map postprocess-search-result fused-results)]
     (log/infof "[METABOT-SEARCH] Entity type distribution: %s" entity-type-counts)
     (log/infof "[METABOT-SEARCH] Fused results sample (first 3): %s"
                (take 3 (map #(select-keys % [:id :model :name :table_name]) fused-results)))
-    transformed-results))
+    postprocessed-results))

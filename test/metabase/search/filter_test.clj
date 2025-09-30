@@ -48,8 +48,8 @@
                 active-filters)))
 
 (deftest search-context->applicable-models-test
-  (testing "All models are relevant if we're not looking in the trash"
-    (is (= search.config/all-models
+  (testing "All models except transforms are relevant if we're not looking in the trash"
+    (is (= (disj search.config/all-models "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? false})))))
 
   (testing "We only search for certain models in the trash"
@@ -58,7 +58,7 @@
            (search.filter/search-context->applicable-models (with-all-models-and-regular-user {:archived? true})))))
 
   (testing "Indexed entities are not visible for sandboxed users"
-    (is (= (disj search.config/all-models "indexed-entity")
+    (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
 
   (doseq [active-filters (active-filter-combinations)]
@@ -107,7 +107,7 @@
             ;; This :where clause is a set to avoid flakes, since the clause order will be non-deterministic.
             :where  #{:and
                       [:in :search_index.model (cond-> #{"dashboard" "table" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"}
-                                                 config/ee-available? (conj "document"))]
+                                                 config/ee-available? (conj "document" "transform"))]
                       [:in :search_index.model_id ["1" "2" "3" "4"]]
                       [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
                       [:= :search_index.archived true]
