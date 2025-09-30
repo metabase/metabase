@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
+  getError,
   getIsStaticEmbedding,
   getPlugins,
 } from "embedding-sdk-bundle/store/selectors";
@@ -56,6 +58,7 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+  const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
@@ -184,6 +187,10 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (error) {
+    return <SdkError message={error.message} />;
+  }
 
   return (
     <SdkQuestionContext.Provider value={questionContext}>

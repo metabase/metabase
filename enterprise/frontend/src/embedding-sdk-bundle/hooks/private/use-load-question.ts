@@ -1,6 +1,7 @@
 import { useReducer, useRef, useState } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
+import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import {
   loadQuestionSdk,
   runQuestionOnNavigateSdk,
@@ -8,6 +9,7 @@ import {
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { setError } from "embedding-sdk-bundle/store/reducer";
 import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type {
   LoadSdkQuestionParams,
@@ -148,6 +150,15 @@ export function useLoadQuestion({
       // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
       if (isCancelledRequestError(err)) {
         return {};
+      }
+
+      if (isStaticEntityLoadingError(err)) {
+        dispatch(
+          setError({
+            status: err.status,
+            message: err.data,
+          }),
+        );
       }
 
       mergeQuestionState({
