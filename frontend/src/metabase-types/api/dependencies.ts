@@ -1,4 +1,4 @@
-import type { Card, CardId } from "./card";
+import type { Card, CardId, CardType } from "./card";
 import type { NativeQuerySnippet } from "./snippets";
 import type { ConcreteTableId } from "./table";
 import type { Transform } from "./transform";
@@ -27,6 +27,7 @@ export type CardDependencyNode = {
 
 export type CardDependencyEntity = {
   id: CardId;
+  type: CardType;
   name: string;
 };
 
