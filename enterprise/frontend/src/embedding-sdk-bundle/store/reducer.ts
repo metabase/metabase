@@ -1,8 +1,13 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import {
+  type AsyncThunkAction,
+  createAction,
+  createReducer,
+} from "@reduxjs/toolkit";
 
 import { samlTokenStorage } from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
+  MetabaseEmbeddingSessionToken,
   MetabaseFetchRequestTokenFn,
   SdkErrorComponent,
 } from "embedding-sdk-bundle";
@@ -34,6 +39,10 @@ export const setFetchRefreshTokenFn =
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
+let refreshTokenPromise: ReturnType<
+  AsyncThunkAction<MetabaseEmbeddingSessionToken | null, unknown, any>
+> | null = null;
+
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
@@ -51,11 +60,20 @@ export const getOrRefreshSession = createAsyncThunk(
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
 
-    if (state.loading || isTokenValid) {
+    if (isTokenValid) {
       return token;
     }
 
-    return dispatch(refreshTokenAsync(authConfig)).unwrap();
+    if (refreshTokenPromise) {
+      return refreshTokenPromise.unwrap();
+    }
+
+    refreshTokenPromise = dispatch(refreshTokenAsync(authConfig));
+    refreshTokenPromise.finally(() => {
+      refreshTokenPromise = null;
+    });
+
+    return refreshTokenPromise.unwrap();
   },
 );
 
