@@ -3,6 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Icon, Text, type TextProps } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
@@ -11,7 +12,7 @@ export const ItemTitle = styled(Text)<TextProps>`
   word-break: break-word;
 ` as unknown as typeof Text;
 
-export const ItemIcon = styled(Icon)<{ color?: string | null }>`
+export const ItemIcon = styled(Icon)<{ color?: ColorName | null }>`
   color: ${(props) => color(props.color ?? "text-light")};
   justify-self: end;
 `;
