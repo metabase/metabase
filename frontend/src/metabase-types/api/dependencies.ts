@@ -42,11 +42,6 @@ export type DependencyGraph = {
   edges: DependencyEdge[];
 };
 
-export type GetDependencyGraphRequest = {
-  id: DependencyEntityId;
-  type: DependencyEntityType;
-};
-
 export type CheckDependenciesResponse = {
   success: boolean;
   bad_cards?: Card[];

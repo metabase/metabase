@@ -114,6 +114,25 @@
         breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
     (broken-cards-response breakages)))
 
+(api.macros/defendpoint :get "/graph"
+  "TODO"
+  []
+  {:nodes (concat
+           (map (fn [{:keys [id name display_name]}]
+                  {:id id
+                   :type :table
+                   :entity {:id id
+                            :name name
+                            :display_name display_name}})
+                (t2/select :model/Table :active true))
+           (map (fn [{:keys [id name]}]
+                  {:id id
+                   :type :card
+                   :entity {:id id
+                            :name name}})
+                (t2/select :model/Card :archived false)))
+   :edges (t2/select :model/Dependency)})
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
   (handlers/routes

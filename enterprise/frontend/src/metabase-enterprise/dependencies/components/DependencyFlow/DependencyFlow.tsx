@@ -1,46 +1,21 @@
 import { Background, Controls, ReactFlow } from "@xyflow/react";
 
-import type { DependencyGraph } from "metabase-types/api";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
 import { CustomNode } from "./CustomNode";
 import { getGraphData } from "./utils";
-
-const GRAPH: DependencyGraph = {
-  nodes: [
-    {
-      id: 1,
-      type: "table",
-      entity: {
-        id: 1,
-        name: "PRODUCTS",
-        display_name: "Products",
-      },
-    },
-    {
-      id: 1,
-      type: "card",
-      entity: {
-        id: 1,
-        name: "Count of Products",
-      },
-    },
-  ],
-  edges: [
-    {
-      from_entity_id: 1,
-      from_entity_type: "table",
-      to_entity_id: 1,
-      to_entity_type: "card",
-    },
-  ],
-};
 
 const NODE_TYPES = {
   custom: CustomNode,
 };
 
 export function DependencyFlow() {
-  const { nodes, edges } = getGraphData(GRAPH);
+  const { data: graph } = useGetDependencyGraphQuery();
+  if (!graph) {
+    return null;
+  }
+
+  const { nodes, edges } = getGraphData(graph);
 
   return (
     <ReactFlow nodes={nodes} edges={edges} nodeTypes={NODE_TYPES} fitView>

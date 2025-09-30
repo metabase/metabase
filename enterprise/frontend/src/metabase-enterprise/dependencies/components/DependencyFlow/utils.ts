@@ -40,7 +40,7 @@ function getEdges(edges: DependencyEdge[]): Edge[] {
 
 function getNodesWithPosition(nodes: Node[], edges: Edge[]): Node[] {
   const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: "LR" });
+  dagreGraph.setGraph({ rankdir: "RL" });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });

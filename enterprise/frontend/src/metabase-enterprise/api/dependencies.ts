@@ -3,12 +3,19 @@ import type {
   CheckDependenciesResponse,
   CheckSnippetDependenciesRequest,
   CheckTransformDependenciesRequest,
+  DependencyGraph,
 } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
 export const dependencyApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getDependencyGraph: builder.query<DependencyGraph, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/dependencies/graph",
+      }),
+    }),
     checkCardDependencies: builder.query<
       CheckDependenciesResponse,
       CheckCardDependenciesRequest
@@ -43,6 +50,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetDependencyGraphQuery,
   useLazyCheckCardDependenciesQuery,
   useLazyCheckSnippetDependenciesQuery,
   useLazyCheckTransformDependenciesQuery,
