@@ -304,6 +304,34 @@
                   ["dataset" c3 "card unseen"]]
                  (search-results :user-recency "card" {:current-user-id user-id}))))))))
 
+(deftest ^:parallel transforms-user-recency-test
+  (mt/with-premium-features #{:transforms}
+    (let [user-id     (mt/user->id :crowberto)
+          right-now   (Instant/now)
+          recent-view (fn [model-id timestamp]
+                        {:model     "card"
+                         :model_id  model-id
+                         :user_id   user-id
+                         :timestamp timestamp})]
+      (mt/with-temp [:model/Card        {c1 :id} {}
+                     :model/Card        {c2 :id} {}
+                     :model/Transform   {t1 :id} {:name "test transform"
+                                                  :source {:type "query"
+                                                           :query (mt/native-query {:query "SELECT 1"})}
+                                                  :target {:type "table"
+                                                           :name "test_table"}}
+                     :model/RecentViews _ (recent-view c1 right-now)]
+        (with-index-contents
+          [{:model "card"      :id c1 :name "test card recent"}
+           {:model "card"      :id c2 :name "test card unseen"}
+           {:model "transform" :id t1 :name "test transform"}]
+          (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
+            (is (= [["card"      c1 "test card recent"]
+                    ["transform" t1 "test transform"]
+                    ["card"      c2 "test card unseen"]]
+                   (search-results :user-recency "test" {:current-user-id user-id
+                                                         :context :metabot})))))))))
+
 (deftest ^:parallel mine-test
   (let [crowberto (mt/user->id :crowberto)
         rasta     (mt/user->id :rasta)]
