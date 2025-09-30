@@ -31,7 +31,7 @@ export const commandPaletteSearch = (query, viewAll = true) => {
 
   if (viewAll) {
     commandPalette()
-      .findByRole("option", { name: /View and filter/ })
+      .findByRole("link", { name: /View and filter/ })
       .click();
   }
 };
