@@ -28,7 +28,6 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       ${createColorVars(colorScheme)}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
-      color-scheme: ${colorScheme};
     }
   `;
 }
