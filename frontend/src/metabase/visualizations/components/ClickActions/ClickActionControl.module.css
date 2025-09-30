@@ -7,7 +7,8 @@
       color: var(--mb-color-text-white);
     }
 
-    .ClickActionButtonIcon {
+    .ClickActionButtonIcon,
+    .ClickActionButtonTextIcon {
       color: white;
     }
   }
@@ -25,4 +26,12 @@
 
 .ClickActionButtonIcon {
   margin-right: 0.2rem;
+}
+
+.ClickActionButtonTextIcon {
+  margin-right: 0.25rem;
+  width: 0.875rem;
+  height: 100%;
+  font-weight: 700;
+  font-size: 1.25rem;
 }

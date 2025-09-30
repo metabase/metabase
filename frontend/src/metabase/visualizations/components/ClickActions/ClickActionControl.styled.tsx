@@ -3,15 +3,6 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/common/components/Button";
 import { alpha } from "metabase/lib/colors";
-import { rem } from "metabase/ui";
-
-export const ClickActionButtonTextIcon = styled.span`
-  margin-right: ${rem(4)};
-  width: 0.875rem;
-  text-align: center;
-  font-weight: 700;
-  font-size: 1.25rem;
-`;
 
 export const Subtitle = styled.div`
   color: var(--mb-color-text-light);

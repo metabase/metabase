@@ -1,5 +1,5 @@
 import { useDispatch } from "metabase/lib/redux";
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import {
   type ClickAction,
   isCustomClickAction,
@@ -9,7 +9,6 @@ import { isRegularClickAction } from "metabase/visualizations/types";
 
 import S from "./ClickActionControl.module.css";
 import {
-  ClickActionButtonTextIcon,
   FormattingControl,
   InfoControl,
   SortControl,
@@ -117,9 +116,9 @@ export const ClickActionControl = ({
           }}
           leftSection={
             action.iconText ? (
-              <ClickActionButtonTextIcon className={S.ClickActionButtonIcon}>
+              <Box className={S.ClickActionButtonTextIcon}>
                 {action.iconText}
-              </ClickActionButtonTextIcon>
+              </Box>
             ) : action.icon ? (
               <Icon className={S.ClickActionButtonIcon} name={action.icon} />
             ) : null
