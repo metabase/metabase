@@ -43,8 +43,6 @@ export function MetabotChatInput() {
     <Flex
       gap="xs"
       px="md"
-      pt="0.6rem"
-      pb="0.2rem"
       align="center"
       justify="center"
       style={{ borderTop: "1px solid var(--mb-color-border)" }}
@@ -61,6 +59,8 @@ export function MetabotChatInput() {
         id="metabot-chat-input"
         data-testid="metabot-chat-input"
         w="100%"
+        pb="0.2rem"
+        pt="0.6rem"
         autosize
         minRows={1}
         maxRows={4}

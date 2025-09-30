@@ -96,3 +96,8 @@
     border-color: transparent;
   }
 }
+
+/* Remove the default padding to align the scrollbars */
+.question :global(.sdk-question-main) {
+  padding: 0 !important;
+}
