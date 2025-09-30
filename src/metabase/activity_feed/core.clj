@@ -9,4 +9,5 @@
 (p/import-vars
  [metabase.activity-feed.models.recent-views
   fill-recent-view-info
+  rv-models
   update-users-recent-views!])

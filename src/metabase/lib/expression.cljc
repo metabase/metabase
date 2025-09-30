@@ -1,5 +1,5 @@
 (ns metabase.lib.expression
-  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float])
+  (:refer-clojure :exclude [+ - * / case coalesce abs time concat replace float mapv some select-keys])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -26,7 +26,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.number :as u.number]))
+   [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [mapv some select-keys]]))
 
 (mu/defn column-metadata->expression-ref :- :mbql.clause/expression
   "Given `:metadata/column` column metadata for an expression, construct an `:expression` reference."
@@ -392,8 +393,14 @@
    [:relative-datetime {:lib/uuid (str (random-uuid))} t])
 
   ([t    :- ::lib.schema.expression.temporal/relative-datetime.amount
-    unit :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
+    unit :- ::lib.schema.expression.temporal/relative-datetime.unit]
    [:relative-datetime {:lib/uuid (str (random-uuid))} t unit]))
+
+(doseq [tag [:relative-datetime
+             :absolute-datetime]]
+  (defmethod lib.temporal-bucket/temporal-bucket-method tag
+    [[_tag _opts _t unit]]
+    unit))
 
 (mu/defn value :- ::lib.schema.expression/expression
   "Creates a `:value` clause for the `literal`. Converts bigint literals to strings for serialization purposes."

@@ -1192,9 +1192,7 @@
                           :table_id                 (str "card__" (u/the-id card))
                           :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
                           :semantic_type            nil
-                          :base_type                "type/Integer"
-                          :default_dimension_option nil
-                          :dimension_options        []}]))))))
+                          :base_type                "type/Integer"}]))))))
 
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
@@ -2379,8 +2377,8 @@
   :type :boolean
   :database-local :only
   :enabled-for-db? (fn [_]
-                     (setting/custom-disabled-reasons! [{:key :custom/one, :message "Because..."}
-                                                        {:key :custom/two, :message "Also..."}])))
+                     (setting/custom-disabled-reasons! [{:key :custom/one, :type :warning, :message "Because..."}
+                                                        {:key :custom/two, :type :warning, :message "Also..."}])))
 
 (setting/defsetting api-test-disabled-for-multiple-reasons
   "A feature used for testing /settings-available (5)"
@@ -2389,7 +2387,7 @@
   ;; Something h2 will never support
   :driver-feature :test/jvm-timezone-setting
   :enabled-for-db? (fn [_]
-                     (setting/custom-disabled-reasons! [{:key :custom/three, :message "Never"}])))
+                     (setting/custom-disabled-reasons! [{:key :custom/three, :type :error, :message "Never"}])))
 
 (deftest settings-available-test
   (testing "GET /api/database/:id/settings-available"
@@ -2403,23 +2401,27 @@
                     :api-test-missing-driver-feature
                     {:enabled false
                      :reasons [{:key     "driver-feature-missing"
+                                :type    "error"
                                 :message "The H2 driver does not support the `jvm-timezone-setting` feature"}]}
 
                     :api-test-disabled-for-database
                     {:enabled false
                      :reasons [{:key     "disabled-for-db"
+                                :type    "error"
                                 :message "This database does not support this setting"}]}
 
                     :api-test-disabled-for-custom-reasons
-                    {:enabled false
-                     :reasons [{:key "custom/one", :message "Because..."}
-                               {:key "custom/two", :message "Also..."}]}
+                    {:enabled true
+                     :reasons [{:key "custom/one", :type "warning", :message "Because..."}
+                               {:key "custom/two", :type "warning", :message "Also..."}]}
 
                     :api-test-disabled-for-multiple-reasons
                     {:enabled false
                      :reasons [{:key     "driver-feature-missing"
+                                :type    "error"
                                 :message "The H2 driver does not support the `jvm-timezone-setting` feature"}
                                {:key     "custom/three"
+                                :type    "error"
                                 :message "Never"}]}}
 
                    (select-keys settings [:unaggregated-query-row-limit

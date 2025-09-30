@@ -1,4 +1,5 @@
 (ns metabase.lib.card
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -21,7 +22,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf :refer [mapv select-keys]]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -55,8 +56,8 @@
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable                 :- ::lib.schema.metadata/metadata-providerable
-   {card-query :dataset-query :as _card} :- :map]
-  (when (some? card-query)
+   {card-query :dataset-query :as _card} :- ::lib.schema.metadata/card]
+  (when (seq card-query)
     (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
 
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
@@ -125,8 +126,9 @@
                                 (sequential? cols) cols))]
      (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
            card-id           (when card-or-id-or-nil (u/the-id card-or-id-or-nil))
-           field-ids         (keep :id cols)
-           fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
+           field-ids         (not-empty (into #{} (keep :id) cols))
+           fields            (when field-ids
+                               (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id field-ids}))
            field-id->field   (m/index-by :id fields)]
        (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
 
@@ -144,19 +146,32 @@
   references between one another."
   #{})
 
+(defn- updated-result-metadata
+  "Get `:result-metadata` from Card, but merge in updated values of `:active`."
+  [metadata-providerable card]
+  (when-let [saved-metadata-cols (not-empty (:result-metadata card))]
+    (let [ids                       (into #{} (keep :id) saved-metadata-cols)
+          id->metadata-provider-col (u/index-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/column ids))]
+      (mapv (fn [saved-metadata-col]
+              (merge
+               saved-metadata-col
+               (when-let [metadata-provider-col (id->metadata-provider-col (:id saved-metadata-col))]
+                 (select-keys metadata-provider-col [:active]))))
+            saved-metadata-cols))))
+
 (mu/defn- card-cols* :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
-  (when-let [cols (or (:fields card)
-                      (:result-metadata card)
-                      (infer-returned-columns metadata-providerable card))]
+  (when-let [cols (or (not-empty (:fields card))
+                      (not-empty (updated-result-metadata metadata-providerable card))
+                      (not-empty (infer-returned-columns metadata-providerable card)))]
     (->card-metadata-columns metadata-providerable card cols)))
 
 (mu/defn- source-model-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "If `card` itself has a source card that is a Model, return that Model's columns."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
-  (when-let [card-query (some->> (:dataset-query card) (lib.query/query metadata-providerable))]
+  (when-let [card-query (some->> (:dataset-query card) not-empty (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
@@ -204,7 +219,7 @@
                        binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
             result-cols))))
 
-(mu/defn card-metadata-columns :- [:maybe ::maybe-columns]
+(mu/defn card-returned-columns :- [:maybe ::maybe-columns]
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
@@ -230,7 +245,7 @@
   ;; it seems like in some cases (unit tests) the FE is renaming `:result-metadata` to `:fields`, not 100% sure why
   ;; but handle that case anyway. (#29739)
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
-    (card-metadata-columns metadata-providerable card)))
+    (card-returned-columns metadata-providerable card)))
 
 (mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/card :- ::lib.metadata.calculation/returned-columns
   [query         :- ::lib.schema/query
@@ -247,7 +262,7 @@
              -1
              (lib.util/query-stage metric-query -1)
              options))
-          (card-metadata-columns query card))))
+          (card-returned-columns query card))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."
@@ -260,3 +275,22 @@
   "Is the query's source-card a model?"
   [query :- ::lib.schema/query]
   (= (source-card-type query) :model))
+
+(mu/defn card->underlying-query :- ::lib.schema/query
+  "Given a `card` return the underlying query that would be run if executing the Card directly. This is different from
+
+    (lib/query mp (lib.metadata/card mp card-id))
+
+  in that this creates a query based on the Card's `:dataset-query` (attaching `:result-metadata` to the last stage)
+  rather than a query that has an empty stage with a `:source-card`.
+
+  This is useful in cases where we want to splice in a Card's query directly (e.g., sanboxing) or for parameter
+  calculation purposes."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   card                  :- ::lib.schema.metadata/card]
+  (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
+        {card-query :dataset-query, result-metadata :result-metadata} card]
+    (cond-> (lib.query/query mp card-query)
+      result-metadata (lib.util/update-query-stage -1 (fn [stage]
+                                                        (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
+                                                             (lib.normalize/normalize ::lib.schema/stage)))))))

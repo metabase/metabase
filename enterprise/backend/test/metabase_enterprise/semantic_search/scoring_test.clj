@@ -5,7 +5,6 @@
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.scoring :as semantic.scoring]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.search.appdb.scoring-test :refer [with-weights]]
    [metabase.search.config :as search.config]
    [metabase.test :as mt])
   (:import
@@ -33,7 +32,7 @@
   "Populate the index with the given documents."
   {:style/indent :defn}
   [documents & body]
-  `(with-open [_# (semantic.tu/open-temp-index!)]
+  `(semantic.tu/with-test-db! {:mode :mock-initialized}
      (semantic.tu/upsert-index! (map add-doc-defaults ~documents))
      ~@body))
 
@@ -55,12 +54,16 @@
 (defn search-results
   "Like search-results* but with a sanity check that search without weights returns a different result."
   [ranker-key search-string & {:as raw-ctx}]
-  (let [result   (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
-        inverted (with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
+  (let [result   (semantic.tu/with-weights {ranker-key  1} (search-results* search-string raw-ctx))
+        inverted (semantic.tu/with-weights {ranker-key -1} (search-results* search-string raw-ctx))]
     ;; note that this may not be a strict reversal, due to ties.
     (is (not= inverted result)
         "sanity check: search-no-weights should be different")
     result))
+
+;;
+;; index-based scorers
+;;
 
 (deftest rrf-test
   (mt/with-premium-features #{:semantic-search}
@@ -142,7 +145,7 @@
         (is (= [["dataset" 1 "card ancient"]
                 ["metric"  3 "card old"]
                 ["card"    2 "card recent"]]
-               (with-weights {:model 1.0 :model/dataset 1.0}
+               (semantic.tu/with-weights {:model 1.0 :model/dataset 1.0}
                  (search-results* "card"))))))))
 
 (deftest recency-test
@@ -180,9 +183,9 @@
          {:model "dashboard" :id 2 :name "view dashboard" :view_count 0}
          {:model "dataset"   :id 3 :name "view dataset"   :view_count 0}]
         ;; fix some test flakes where dataset 3 exists and has some sort of recent views
-        (with-weights (assoc (search.config/weights :default)
-                             :user-recency 0
-                             :rrf 0)
+        (semantic.tu/with-weights (assoc (search.config/weights :default)
+                                         :user-recency 0
+                                         :rrf 0)
           (is (=? [{:model "dashboard", :id 2, :name "view dashboard"}
                    {:model "card",      :id 1, :name "view card"}
                    {:model "dataset",   :id 3, :name "view dataset"}]
@@ -201,8 +204,8 @@
 (defn indifferent?
   "Check that the results and their order do not depend on the given ranker."
   [ranker-key search-string & {:as raw-ctx}]
-  (= (with-weights {ranker-key 1} (search-results* search-string raw-ctx))
-     (with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
+  (= (semantic.tu/with-weights {ranker-key  1} (search-results* search-string raw-ctx))
+     (semantic.tu/with-weights {ranker-key -1} (search-results* search-string raw-ctx))))
 
 (deftest dashboard-count-test-2
   (mt/with-premium-features #{:semantic-search}
@@ -211,3 +214,113 @@
         [{:model "card" :id 1 :name "card popular" :dashboardcard_count 200}
          {:model "card" :id 2 :name "card" :dashboardcard_count 201}]
         (is (indifferent? :dashboard "card"))))))
+
+;;;
+;;; "premium" index-based scorers
+;;;
+
+(deftest official-collection-test
+  (with-index-contents!
+    [{:model "collection" :id 1 :name "collection normal" :official_collection false}
+     {:model "collection" :id 2 :name "collection official" :official_collection true}]
+    (testing "official collections has higher rank"
+      (mt/with-premium-features #{:semantic-search :official-collections}
+        (is (= [["collection" 2 "collection official"]
+                ["collection" 1 "collection normal"]]
+               (search-results :official-collection "collection")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{:semantic-search}
+        (is (= [["collection" 1 "collection normal"]
+                ["collection" 2 "collection official"]]
+               (search-results* "collection")))))))
+
+(deftest verified-test
+  (with-index-contents!
+    [{:model "card" :id 1 :name "card normal" :verified false}
+     {:model "card" :id 2 :name "card verified" :verified true}]
+    (testing "verified items have higher rank"
+      (mt/with-premium-features #{:semantic-search :content-verification}
+        (is (= [["card" 2 "card verified"]
+                ["card" 1 "card normal"]]
+               (search-results :verified "card")))))
+    (testing "only if feature is enabled"
+      (mt/with-premium-features #{:semantic-search}
+        (is (= [["card" 1 "card normal"]
+                ["card" 2 "card verified"]]
+               (search-results* "card")))))))
+
+;;
+;; appdb-based scorers
+;;
+
+(deftest bookmark-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [crowberto (mt/user->id :crowberto)
+          rasta     (mt/user->id :rasta)]
+      (mt/with-temp [:model/Card {c1 :id} {}
+                     :model/Card {c2 :id} {}]
+        (testing "bookmarked items are ranker higher"
+          (with-index-contents!
+            [{:model "card" :id c1 :name "card normal"}
+             {:model "card" :id c2 :name "card crowberto loved"}]
+            (mt/with-temp [:model/CardBookmark _ {:card_id c2 :user_id crowberto}
+                           :model/CardBookmark _ {:card_id c1 :user_id rasta}]
+              (is (= [["card" c2 "card crowberto loved"]
+                      ["card" c1 "card normal"]]
+                     (search-results :bookmarked "card" {:current-user-id crowberto})))))))
+
+      (mt/with-temp [:model/Dashboard {d1 :id} {}
+                     :model/Dashboard {d2 :id} {}]
+        (testing "bookmarked dashboard"
+          (with-index-contents!
+            [{:model "dashboard" :id d1 :name "dashboard normal"}
+             {:model "dashboard" :id d2 :name "dashboard crowberto loved"}]
+            (mt/with-temp [:model/DashboardBookmark _ {:dashboard_id d2 :user_id crowberto}
+                           :model/DashboardBookmark _ {:dashboard_id d1 :user_id rasta}]
+              (is (= [["dashboard" d2 "dashboard crowberto loved"]
+                      ["dashboard" d1 "dashboard normal"]]
+                     (search-results :bookmarked "dashboard" {:current-user-id crowberto})))))))
+
+      (mt/with-temp [:model/Collection {c1 :id} {}
+                     :model/Collection {c2 :id} {}]
+        (testing "bookmarked collection"
+          (with-index-contents!
+            [{:model "collection" :id c1 :name "collection normal"}
+             {:model "collection" :id c2 :name "collection crowberto loved"}]
+            (mt/with-temp [:model/CollectionBookmark _ {:collection_id c2 :user_id crowberto}
+                           :model/CollectionBookmark _ {:collection_id c1 :user_id rasta}]
+              (is (= [["collection" c2 "collection crowberto loved"]
+                      ["collection" c1 "collection normal"]]
+                     (search-results :bookmarked "collection" {:current-user-id crowberto}))))))))))
+
+(deftest user-recency-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [user-id     (mt/user->id :crowberto)
+          right-now   (Instant/now)
+          long-ago    (.minus right-now 10 ChronoUnit/DAYS)
+          forever-ago (.minus right-now 30 ChronoUnit/DAYS)
+          recent-view (fn [model-id timestamp]
+                        {:model     "card"
+                         :model_id  model-id
+                         :user_id   user-id
+                         :timestamp timestamp})]
+      (mt/with-temp [:model/Card        {c1 :id} {}
+                     :model/Card        {c2 :id} {}
+                     :model/Card        {c3 :id} {}
+                     :model/Card        {c4 :id} {}
+                     :model/RecentViews _ (recent-view c1 forever-ago)
+                     :model/RecentViews _ (recent-view c2 right-now)
+                     :model/RecentViews _ (recent-view c2 forever-ago)
+                     :model/RecentViews _ (recent-view c4 forever-ago)
+                     :model/RecentViews _ (recent-view c4 long-ago)]
+        (with-index-contents!
+          [{:model "card"    :id c1 :name "card ancient"}
+           {:model "metric"  :id c2 :name "card recent"}
+           {:model "dataset" :id c3 :name "card unseen"}
+           {:model "dataset" :id c4 :name "card old"}]
+          (testing "We prefer results more recently viewed by the current user"
+            (is (= [["metric"  c2 "card recent"]
+                    ["dataset" c4 "card old"]
+                    ["card"    c1 "card ancient"]
+                    ["dataset" c3 "card unseen"]]
+                   (search-results :user-recency "card" {:current-user-id user-id})))))))))

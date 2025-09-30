@@ -18,7 +18,7 @@ To use a Community driver on a self-hosted Metabase:
 1. Download the latest JAR file from the driver's repository (see the repo's Releases section for the JAR files).
 2. Copy the JAR file into the plugins directory in your Metabase directory (the directory where you run the Metabase JAR).
 
-You can change the location of the plugins directory by setting the environment variable [`MB_PLUGINS_DIR`](../configuring-metabase/environment-variables#mb_plugins_dir).
+You can change the location of the plugins directory by setting the environment variable [`MB_PLUGINS_DIR`](../configuring-metabase/environment-variables.md#mb_plugins_dir).
 
 ## Community drivers
 
@@ -43,6 +43,7 @@ Anyone can build a community driver. These are the currently known third-party d
 | [Neo4j](https://github.com/StronkMan/metabase-neo4j-driver)                           | ![GitHub stars](https://img.shields.io/github/stars/StronkMan/metabase-neo4j-driver)               | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/StronkMan/metabase-neo4j-driver)               |
 | [Netsuite SuiteAnalytics Connect](https://github.com/ericcj/metabase-netsuite-driver) | ![GitHub stars](https://img.shields.io/github/stars/ericcj/metabase-netsuite-driver)               | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ericcj/metabase-netsuite-driver)               |
 | [Peaka](https://github.com/peakacom/metabase-driver)                                  | ![GitHub stars](https://img.shields.io/github/stars/peakacom/metabase-driver)                      | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/peakacom/metabase-driver)                      |
+| [SPARQL](https://github.com/jhisse/metabase-sparql-driver)                            | ![GitHub stars](https://img.shields.io/github/stars/jhisse/metabase-sparql-driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/jhisse/metabase-sparql-driver)                 |
 | [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver)              | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver)     | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver)     |
 
 If you don't see a driver for your database, try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more drivers by searching on GitHub for "Metabase driver".

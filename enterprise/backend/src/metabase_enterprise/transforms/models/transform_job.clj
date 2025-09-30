@@ -4,10 +4,11 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/TransformJob [_model] :transform_job)
 
@@ -15,6 +16,9 @@
   (derive :metabase/model)
   (derive :hook/entity-id)
   (derive :hook/timestamped?))
+
+(t2/deftransforms :model/TransformJob
+  {:ui_display_type mi/transform-keyword})
 
 (mi/define-batched-hydration-method tag-ids
   :tag_ids
@@ -90,3 +94,75 @@
                         {:job_id   job-id
                          :tag_id   tag-id
                          :position (get new-positions tag-id)})))))))
+
+(defn- translated-name-and-description [job]
+  (let [values {"hourly"
+                [(i18n/deferred-trs "Hourly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''hourly'' every hour")]
+
+                "daily"
+                [(i18n/deferred-trs "Daily job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''daily'' once per day")]
+
+                "weekly"
+                [(i18n/deferred-trs "Weekly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''weekly'' once per week")]
+
+                "monthly"
+                [(i18n/deferred-trs "Monthly job")
+                 (i18n/deferred-trs "Executes transforms tagged with ''monthly'' once per month")]}
+        [name description] (get values (:built_in_type job))]
+    {:name name :description description}))
+
+(t2/define-after-select :model/TransformJob [job]
+  (if (nil? (:built_in_type job))
+    job
+    (merge job (translated-name-and-description job))))
+
+(t2/define-before-update :model/TransformJob [job]
+  (if (or mi/*deserializing?* (nil? (:built_in_type job)))
+    job
+    (-> (merge (translated-name-and-description job) ;; default translations
+               {:built_in_type nil}                  ;; never translate again
+               (t2/changes job))                     ;; user edits
+        (update :name        str) ;; convert deferred to strings
+        (update :description str))))
+
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(mi/define-batched-hydration-method job-tags
+  :job_tags
+  "Fetch tags for job"
+  [jobs]
+  (when (seq jobs)
+    (let [job-ids      (into #{} (map u/the-id) jobs)
+          tag-mappings (group-by :job_id
+                                 (t2/select :model/TransformJobTransformTag
+                                            :job_id [:in job-ids]
+                                            {:order-by [[:position :asc]]}))]
+      (for [job jobs]
+        (assoc job :job_tags (get tag-mappings (u/the-id job) []))))))
+
+(defmethod serdes/hash-fields :model/TransformJob
+  [_job]
+  [:name :built_in_type])
+
+(defmethod serdes/make-spec "TransformJob"
+  [_model-name opts]
+  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
+   :skip []
+   :transform {:name {:export str :import identity}
+               :description {:export str :import identity}
+               :created_at (serdes/date)
+               :updated_at (serdes/date)
+               :job_tags (serdes/nested :model/TransformJobTransformTag :job_id opts)}})
+
+(defmethod serdes/dependencies "TransformJob"
+  [{:keys [job_tags]}]
+  (set
+   (for [{tag-id :tag_id} job_tags]
+     [{:model "TransformTag" :id tag-id}])))
+
+(defmethod serdes/storage-path "TransformJob" [job _ctx]
+  (let [{:keys [id label]} (-> job serdes/path last)]
+    ["transforms" "transform_jobs" (serdes/storage-leaf-file-name id label)]))

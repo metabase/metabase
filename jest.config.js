@@ -62,6 +62,7 @@ const baseConfig = {
      * As we use SDK components in new iframe embedding, we need to import them here.
      **/
     "sdk-specific-imports": "<rootDir>/frontend/src/metabase/lib/noop.js",
+    "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
     `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
@@ -127,18 +128,18 @@ const config = {
       displayName: "sdk",
 
       testMatch: [
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/**/*.unit.spec.{js,jsx,ts,tsx}",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-{package,bundle,shared}/**/*.unit.spec.{js,jsx,ts,tsx}",
       ],
 
       setupFiles: [
         ...baseConfig.setupFiles,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-env.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/jest/setup-env.js",
       ],
 
       setupFilesAfterEnv: [
         ...baseConfig.setupFilesAfterEnv,
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/setup-after-env.js",
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/jest/console-restrictions.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/jest/setup-after-env.js",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/jest/console-restrictions.js",
       ],
     },
     {
@@ -146,7 +147,9 @@ const config = {
       displayName: "core",
       testPathIgnorePatterns: [
         ...(baseConfig.testPathIgnorePatterns || []),
-        "<rootDir>/enterprise/frontend/src/embedding-sdk/",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-package/",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-bundle/",
+        "<rootDir>/enterprise/frontend/src/embedding-sdk-shared/",
       ],
     },
   ],

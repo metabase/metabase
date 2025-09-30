@@ -71,13 +71,6 @@ Maximum number of rows to return for aggregated queries via the API.
 
 Must be less than 1048575. See also MB_UNAGGREGATED_QUERY_ROW_LIMIT.
 
-### `MB_AI_SERVICE_BASE_URL`
-
-- Type: string
-- Default: `http://localhost:8000`
-
-URL for the a AI Service.
-
 ### `MB_ALLOWED_IFRAME_HOSTS`
 
 - Type: string
@@ -400,6 +393,15 @@ Timeout in minutes for databases query execution, both Metabase application data
 
 Whether or not the default GeoJSON maps are enabled.
 
+### `MB_DISABLE_CORS_ON_LOCALHOST`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `disable-cors-on-localhost`.
+- [Configuration file name](./config-file.md): `disable-cors-on-localhost`
+
+Prevents the server from sending CORS headers for requests originating from localhost.
+
 ### `MB_DOWNLOAD_ROW_LIMIT`
 
 - Type: positive-integer
@@ -407,118 +409,6 @@ Whether or not the default GeoJSON maps are enabled.
 - [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
 
 Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.
-
-### `MB_EE_AI_FEATURES_ENABLED`
-
-- Type: boolean
-- Default: `false`
-- [Configuration file name](./config-file.md): `ee-ai-features-enabled`
-
-Enable AI features.
-
-This feature is experimental.
-
-### `MB_EE_EMBEDDING_MODEL`
-
-- Type: string
-- Default: `Snowflake/snowflake-arctic-embed-l-v2.0`
-- [Configuration file name](./config-file.md): `ee-embedding-model`
-
-Set the embedding model for the selected provider.
-
-This feature is experimental.
-
-### `MB_EE_EMBEDDING_MODEL_DIMENSIONS`
-
-- Type: positive-integer
-- Default: `1024`
-- [Configuration file name](./config-file.md): `ee-embedding-model-dimensions`
-
-Set the dimension size for the selected embedding model.
-
-This feature is experimental.
-
-### `MB_EE_EMBEDDING_PROVIDER`
-
-- Type: string
-- Default: `ai-service`
-- [Configuration file name](./config-file.md): `ee-embedding-provider`
-
-The embedding provider to use (:openai, :ollama, or :ai-service).
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_API_BASE_URL`
-
-- Type: string
-- Default: `https://api.openai.com`
-- [Configuration file name](./config-file.md): `ee-openai-api-base-url`
-
-The OpenAI embeddings base URL used in Metabase Enterprise.
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_API_KEY`
-
-- Type: string
-- Default: `null`
-- [Configuration file name](./config-file.md): `ee-openai-api-key`
-
-The OpenAI API Key used in Metabase Enterprise.
-
-This feature is experimental.
-
-### `MB_EE_OPENAI_MODEL`
-
-- Type: string
-- Default: `gpt-4-turbo-preview`
-- [Configuration file name](./config-file.md): `ee-openai-model`
-
-The OpenAI Model (e.g. 'gpt-4', 'gpt-3.5-turbo').
-
-This feature is experimental.
-
-### `MB_EE_SEARCH_GATE_MAX_BATCH_SIZE`
-
-- Type: integer
-- Default: `512`
-
-The maximum number of documents that can be sent to `gate-documents!` without causing an error.
-
-### `MB_EE_SEARCH_GATE_WRITE_TIMEOUT`
-
-- Type: integer
-- Default: `5`
-
-Timeout of gate write statements in seconds. Used to determine lag tolerance of the indexer (see the metabase-enterprise.semantic-search.gate/poll) in conjunction with `ee-search-indexer-lag-tolerance-multiplier`.
-
-### `MB_EE_SEARCH_INDEXER_EXIT_EARLY_COLD_DURATION`
-
-- Type: integer
-- Default: `30`
-
-Number of seconds indexer should wait to see new data before yielding back to quartz.
-
-### `MB_EE_SEARCH_INDEXER_LAG_TOLERANCE_MULTIPLIER`
-
-- Type: integer
-- Default: `2`
-
-Multiplier for computation of metabase-enterprise.semantic-search.indexer/lag-tolerance. The formula is `ee-search-gate-write-timeout * ee-search-indexer-lag-tolerance-multiplier`.
-
-### `MB_EE_SEARCH_INDEXER_MAX_RUN_DURATION`
-
-- Type: integer
-- Default: `60`
-
-Number of minutes we expect to run the indexer loop for before yielding to quartz.
-
-### `MB_EE_SEARCH_INDEXER_POLL_LIMIT`
-
-- Type: integer
-- Default: `1000`
-
-Indexer poll limit.
 
 ### `MB_EMAIL_FROM_ADDRESS`
 
@@ -681,7 +571,7 @@ Allow these space delimited origins to embed Metabase interactive.
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
 
 - Type: string
-- Default: `localhost:*`
+- Default: ``
 - [Configuration file name](./config-file.md): `embedding-app-origins-sdk`
 
 Allow Metabase SDK access to these space delimited origins.
@@ -1168,6 +1058,14 @@ Should we sync user attributes when someone logs in via LDAP?
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
 
+### `MB_LDAP_TIMEOUT_SECONDS`
+
+- Type: double
+- Default: `15.0`
+- [Configuration file name](./config-file.md): `ldap-timeout-seconds`
+
+Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
+
 ### `MB_LDAP_USER_BASE`
 
 - Type: string
@@ -1358,15 +1256,6 @@ The size of the thread pool used to send notifications.
 If Metabase stops sending notifications like alerts, it may be because long-running
   queries are clogging the notification queue. You may be able to unclog the queue by
   increasing the size of the thread pool dedicated to notifications.
-
-### `MB_OPENAI_MAX_TOKENS_PER_BATCH`
-
-- Type: integer
-- Default: `4000`
-
-The maximum number of tokens sent in a single embedding API call.
-
-The maximum number of tokens sent in a single embedding API call.
 
 ### `MB_PERSISTED_MODEL_REFRESH_CRON_SCHEDULE`
 
@@ -1680,31 +1569,6 @@ When using the appdb engine against postgresql, override the language used for s
 
 Enable typeahead search in the Metabase navbar?
 
-### `MB_SEMANTIC_SEARCH_ENABLED`
-
-- Type: boolean
-- Default: `true`
-
-Enable the semantic search engine? Intended as a kill switch for the semantic search feature while dogfooding.
-
-### `MB_SEMANTIC_SEARCH_MIN_RESULTS_THRESHOLD`
-
-- Type: integer
-- Default: `100`
-
-Minimum number of semantic search results required before falling back to other engines.
-
-Minimum number of semantic search results required before falling back to other engines.
-
-### `MB_SEMANTIC_SEARCH_RESULTS_LIMIT`
-
-- Type: integer
-- Default: `1000`
-
-Maximum number of results to return from a single semantic search query.
-
-Maximum number of results to return from a single semantic search query.
-
 ### `MB_SEND_EMAIL_ON_FIRST_LOGIN_FROM_NEW_DEVICE`
 
 - Type: boolean
@@ -1822,17 +1686,6 @@ Whether or not to display x-ray suggestions on the homepage. They will also be h
 - [Configuration file name](./config-file.md): `show-metabase-links`
 
 Whether or not to display Metabase links outside admin settings.
-
-### `MB_SHOW_METABOT`
-
-> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
-
-- Type: boolean
-- Default: `true`
-- [Exported as](../installation-and-operation/serialization.md): `show-metabot`.
-- [Configuration file name](./config-file.md): `show-metabot`
-
-Enables Metabot character on the home page.
 
 ### `MB_SHOW_STATIC_EMBED_TERMS`
 

@@ -12,8 +12,11 @@ import type {
   ColumnSettings,
 } from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
-import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
-import * as Lib from "metabase-lib";
+import {
+  formatChange,
+  formatPreviousPeriodOptionName,
+} from "metabase/visualizations/visualizations/SmartScalar/utils";
+import type { ClickObject } from "metabase-lib";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -53,7 +56,7 @@ interface DateUnitSettings {
 }
 
 interface MetricData {
-  clicked: Lib.ClickObject;
+  clicked: ClickObject;
   date: string;
   dateUnitSettings: DateUnitSettings;
   formatOptions: ColumnSettings;
@@ -287,7 +290,7 @@ function getCurrentMetricData({
     compact: settings["scalar.compact_primary_number"],
   };
 
-  const clicked: Lib.ClickObject = {
+  const clicked: ClickObject = {
     value,
     column: cols[metricColIndex],
     dimensions: [
@@ -502,10 +505,6 @@ function computeComparisonPeriodsAgo({
   dateUnitSettings: DateUnitSettings;
   dateUnitsAgo: number;
 }) {
-  const dateUnitDisplay = Lib.describeTemporalUnit(
-    dateUnitSettings.dateUnit,
-  ).toLowerCase();
-
   const computedPrevDate = dayjs
     .parseZone(nextDate)
     .subtract(dateUnitsAgo, dateUnitSettings.dateUnit)
@@ -521,12 +520,19 @@ function computeComparisonPeriodsAgo({
     rows,
   });
 
+  const getPreviousPeriodStr = () => {
+    const { dateUnit } = dateUnitSettings;
+    const previousPeriodStr =
+      dateUnit && formatPreviousPeriodOptionName(dateUnit);
+    return (previousPeriodStr || t`Previous`).toLocaleLowerCase();
+  };
+
   const prevDate = !isEmpty(rowPeriodsAgo)
     ? (rowPeriodsAgo?.[dimensionColIndex] as string)
     : computedPrevDate;
   const comparisonDescStr =
     dateUnitsAgo === 1
-      ? t`vs. previous ${dateUnitDisplay}`
+      ? t`vs. ${getPreviousPeriodStr()}`
       : computeComparisonStrPreviousValue({
           dateUnitSettings,
           nextDate,

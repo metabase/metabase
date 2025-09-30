@@ -5,11 +5,15 @@
 
    (This namespace is here rather than in the shared MBQL lib because it relies on other QP-land utils like the QP
   refs stuff.)"
+  (:refer-clojure :exclude [mapv select-keys some])
   (:require
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib only soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -20,13 +24,16 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [mapv select-keys some]]))
 
 (defn- all-fields-for-table [table-id]
   (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
        ;; The remove line is taken from the add-implicit-clauses middleware. It shouldn't be necessary, because any
        ;; unused fields should be dropped from the inner query. It also shouldn't hurt anything, because the outer
        ;; query shouldn't use these fields in the first place.
+       ;;
+       ;; TODO (Cam 9/12/25) -- this shouldn't be necessary anymore
        (remove #(#{:sensitive :retired} (:visibility-type %)))
        (map (fn [field]
               [:field (u/the-id field) nil]))))
@@ -92,7 +99,7 @@
 (defn- joined-fields [inner-query]
   (m/distinct-by
    normalize-clause
-   (lib.util.match/match (walk/prewalk (fn [x]
+   (lib.util.match/match (perf/prewalk (fn [x]
                                          (if (map? x)
                                            (dissoc x :source-query :source-metadata :temporal-unit)
                                            x))
@@ -149,7 +156,15 @@
                   (log/debugf "Keeping used ref:\n%s" (u/pprint-to-str a-ref))
                   (log/debugf "Removing unused ref:\n%s" (u/pprint-to-str (keep-source+alias-props a-ref))))))
             (remove-unused [refs]
-              (filterv used?* refs))]
+              (into []
+                    (comp (filter used?*)
+                          (m/distinct-by (fn [[_tag _id-or-name opts, :as _a-ref]]
+                                           (or (::add/desired-alias opts)
+                                               ;; if the field ref doesn't have a desired alias (probably because we
+                                               ;; added it in this namespace and haven't generated yet, then always
+                                               ;; keep it... just use a random UUID that should always be distinct
+                                               (random-uuid)))))
+                    refs))]
       (update source :fields remove-unused))))
 
 (defn- append-join-fields
@@ -182,28 +197,31 @@
   (cond-> inner-query
     (seq join-fields) (update :fields append-join-fields join-fields)))
 
-(defn- nest-source [inner-query]
+(mu/defn- nest-source :- ::mbql.s/SourceQuery
+  [inner-query :- ::mbql.s/SourceQuery]
   (let [filter-clause (:filter inner-query)
         keep-filter? (and filter-clause
                           (nil? (lib.util.match/match-one filter-clause :expression)))
-        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
-                 ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
-                 ;; first place we already had to do perms checks to make sure the query we're transforming is itself
-                 ;; ok, so we don't need to run another check.
-                 ;; (Not using mw.session/as-admin due to cyclic dependency.)
-                 (binding [api/*is-superuser?* true]
-                   ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                    {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
-                     :type     :query
-                     :query    source}))
-                 (add-all-fields source)
-                 (add/add-alias-info source)
-                 (:query source)
-                 (dissoc source :limit)
-                 (append-join-fields-to-fields source (joined-fields inner-query))
-                 (remove-unused-fields inner-query source)
-                 (cond-> source
-                   keep-filter? (assoc :filter filter-clause)))]
+        source (-> inner-query
+                   (select-keys [:source-table :source-query :source-metadata :joins :expressions])
+                   ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in
+                   ;; the first place we already had to do perms checks to make sure the query we're transforming is
+                   ;; itself ok, so we don't need to run another check.
+                   ;; (Not using mw.session/as-admin due to cyclic dependency.)
+                   (as-> $source (binding [api/*is-superuser?* true]
+                                   ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
+                                    {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
+                                     :type     :query
+                                     :query    $source})))
+                   lib/->legacy-MBQL
+                   add-all-fields
+                   add/add-alias-info
+                   :query
+                   (dissoc :limit)
+                   (append-join-fields-to-fields (joined-fields inner-query))
+                   (->> (remove-unused-fields inner-query))
+                   (cond-> keep-filter?
+                     (assoc :filter filter-clause)))]
     (-> inner-query
         (dissoc :source-table :source-metadata :joins)
         (assoc :source-query source)

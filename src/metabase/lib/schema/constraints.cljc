@@ -24,7 +24,7 @@
   `:max-results`."}
      ::lib.schema.common/int-greater-than-or-equal-to-zero]]
    [:fn
-    {:error/message "max-results-bare-rows must be less than or equal to than max-results"}
+    {:error/message "max-results-bare-rows must be less than or equal to max-results"}
     (fn [{:keys [max-results max-results-bare-rows]}]
       (if-not (and max-results max-results-bare-rows)
         true

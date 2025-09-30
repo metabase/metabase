@@ -3,10 +3,10 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -141,7 +141,7 @@
 
 (deftest ^:parallel binning-nested-questions-test
   (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                                    (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                    (mt/metadata-provider)
                                     [(mt/mbql-query venues)])
     (is (= [[1 22]
             [2 59]
@@ -176,7 +176,7 @@
   (testing "Make sure we can auto-bin a Table that only has a single row (#13914)"
     (mt/dataset single-row
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:fields [{:id          (mt/id :t :lat)
                                                    :fingerprint (single-row-fingerprints :lat)}
                                                   {:id          (mt/id :t :lon)
@@ -247,3 +247,43 @@
                 (update-binning-strategy mp (-> (lib/filter query (lib/between expr-col 20 40))
                                                 lib.convert/->legacy-MBQL
                                                 (assoc-in [:query :source-metadata] card-cols)))))))))
+
+(deftest ^:parallel update-original-binning-e2e-test
+  (testing "#63662"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (-> (meta/field-metadata :orders :total)
+                                      (lib/with-binning {:strategy :default})))
+                    lib/append-stage
+                    qp.preprocess/preprocess)]
+      (is (=? {:stages [{:aggregation [[:count {}]]
+                         :breakout    [[:field {:binning {:bin-width 20.0, :max-value 160.0, :min-value 0.0, :num-bins 8, :strategy :num-bins}}
+                                        any?]]
+                         :order-by    [[:asc
+                                        {}
+                                        [:field {:binning {:bin-width 20.0, :max-value 160.0, :min-value 0.0, :num-bins 8, :strategy :num-bins}}
+                                         any?]]]}
+                        {:fields [[:field {:lib/original-binning {:bin-width 20.0, :max-value 160.0, :min-value 0.0, :num-bins 8, :strategy :num-bins}} "TOTAL"]
+                                  [:field {} "count"]]}]}
+              query))
+      (testing `lib/returned-columns
+        (letfn [(returned-columns [stage-number]
+                  (map #(select-keys % [:lib/desired-column-alias :metabase.lib.field/binning :lib/original-binning])
+                       (lib/returned-columns query stage-number)))]
+          (testing "first stage"
+            (is (= [{:lib/desired-column-alias   "TOTAL"
+                     :metabase.lib.field/binning {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}
+                     :lib/original-binning       {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
+                    {:lib/desired-column-alias "count"}]
+                   (returned-columns 0))))
+          (testing "second stage"
+            (is (= [{:lib/desired-column-alias "TOTAL"
+                     :lib/original-binning     {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
+                    {:lib/desired-column-alias "count"}]
+                   (returned-columns 1))))))
+      (testing `lib.metadata.result-metadata/returned-columns
+        (is (=? [{:lib/desired-column-alias "TOTAL"
+                  :binning-info             {:strategy :num-bins, :min-value 0.0, :max-value 160.0, :num-bins 8, :bin-width 20.0}}
+                 {:lib/desired-column-alias "count"}]
+                (map #(select-keys % [:lib/desired-column-alias :binning-info])
+                     (lib.metadata.result-metadata/returned-columns query))))))))

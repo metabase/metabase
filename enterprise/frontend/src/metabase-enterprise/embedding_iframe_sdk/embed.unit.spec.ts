@@ -11,7 +11,6 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   beforeEach(() => {
     jest.resetModules();
-    // @ts-expect-error -- test cleanup
     delete window.metabaseConfig;
     require("./embed"); // we do things when the script is loaded
 
@@ -173,4 +172,20 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       expect(consoleErrorSpy).not.toHaveBeenCalled();
     },
   );
+
+  it("should throw for multiple invalid keys and report the first one", () => {
+    expect(() => {
+      defineMetabaseConfig({
+        invalidKey1: "value1",
+        invalidKey2: "value2",
+      } as any);
+    }).toThrow("invalidKey1 is not a valid configuration name");
+  });
+
+  it("should not throw for valid config", () => {
+    expect(() => {
+      defineMetabaseConfig({ instanceUrl: "https://example.com" });
+      defineMetabaseConfig({});
+    }).not.toThrow();
+  });
 });

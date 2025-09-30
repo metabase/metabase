@@ -224,7 +224,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().button("Save").should("be.disabled");
   });
 
-  it("should allow clicking on the title", () => {
+  it("should allow clicking on the title", { tags: "@flaky" }, () => {
     createDashboardWithVisualizerDashcards();
 
     // Click on both series of the first chart

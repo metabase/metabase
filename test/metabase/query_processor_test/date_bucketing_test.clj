@@ -24,7 +24,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -100,9 +99,23 @@
         [id s cnt]))))
 
 (defmethod sanity-check-test-expected-rows :sqlite
-  [_driver _timezone]
-  (for [[id s cnt] sanity-check-test-utc-results]
-    [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt]))
+  [_driver timezone]
+  (case timezone
+    :pacific [[1 "2015-06-06 10:40:00.000" 4]
+              [2 "2015-06-10 19:51:00.000" 0]
+              [3 "2015-06-09 15:42:00.000" 5]
+              [4 "2015-06-22 23:49:00.000" 3]
+              [5 "2015-06-20 01:45:00.000" 3]]
+    :utc     [[1 "2015-06-06 10:40:00.000" 4]
+              [2 "2015-06-10 19:51:00.000" 0]
+              [3 "2015-06-09 15:42:00.000" 5]
+              [4 "2015-06-22 23:49:00.000" 3]
+              [5 "2015-06-20 01:45:00.000" 3]]
+    :eastern [[1 "2015-06-06 10:40:00.000" 4]
+              [2 "2015-06-10 19:51:00.000" 0]
+              [3 "2015-06-09 15:42:00.000" 5]
+              [4 "2015-06-22 23:49:00.000" 3]
+              [5 "2015-06-20 01:45:00.000" 3]]))
 
 (deftest sanity-check-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::sanity-check-test)
@@ -241,16 +254,16 @@
 ;;; return them directly. This is less than ideal. TIMEZONE FIXME
 (defmethod group-by-default-test-expected-rows :sqlite
   [_driver]
-  [["2015-06-01 10:31:00" 1]
-   ["2015-06-01 16:06:00" 1]
-   ["2015-06-01 17:23:00" 1]
-   ["2015-06-01 18:55:00" 1]
-   ["2015-06-01 21:04:00" 1]
-   ["2015-06-01 21:19:00" 1]
-   ["2015-06-02 02:13:00" 1]
-   ["2015-06-02 05:37:00" 1]
-   ["2015-06-02 08:20:00" 1]
-   ["2015-06-02 11:11:00" 1]])
+  [["2015-06-01 10:31:00.000" 1]
+   ["2015-06-01 16:06:00.000" 1]
+   ["2015-06-01 17:23:00.000" 1]
+   ["2015-06-01 18:55:00.000" 1]
+   ["2015-06-01 21:04:00.000" 1]
+   ["2015-06-01 21:19:00.000" 1]
+   ["2015-06-02 02:13:00.000" 1]
+   ["2015-06-02 05:37:00.000" 1]
+   ["2015-06-02 08:20:00.000" 1]
+   ["2015-06-02 11:11:00.000" 1]])
 
 (deftest group-by-default-test
   (mt/test-drivers (mt/normal-drivers)
@@ -308,16 +321,16 @@
 ;;; Always in UTC so isn't impacted by changes in report-timezone
 (defmethod group-by-default-test-2-expected-rows :sqlite
   [_driver]
-  [["2015-06-01 10:31:00" 1]
-   ["2015-06-01 16:06:00" 1]
-   ["2015-06-01 17:23:00" 1]
-   ["2015-06-01 18:55:00" 1]
-   ["2015-06-01 21:04:00" 1]
-   ["2015-06-01 21:19:00" 1]
-   ["2015-06-02 02:13:00" 1]
-   ["2015-06-02 05:37:00" 1]
-   ["2015-06-02 08:20:00" 1]
-   ["2015-06-02 11:11:00" 1]])
+  [["2015-06-01 10:31:00.000" 1]
+   ["2015-06-01 16:06:00.000" 1]
+   ["2015-06-01 17:23:00.000" 1]
+   ["2015-06-01 18:55:00.000" 1]
+   ["2015-06-01 21:04:00.000" 1]
+   ["2015-06-01 21:19:00.000" 1]
+   ["2015-06-02 02:13:00.000" 1]
+   ["2015-06-02 05:37:00.000" 1]
+   ["2015-06-02 08:20:00.000" 1]
+   ["2015-06-02 11:11:00.000" 1]])
 
 (deftest group-by-default-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -346,7 +359,16 @@
 
 (defmethod group-by-default-test-3-expected-rows :sqlite
   [_driver]
-  (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time)))
+  [["2015-06-01 10:31:00.000" 1]
+   ["2015-06-01 16:06:00.000" 1]
+   ["2015-06-01 17:23:00.000" 1]
+   ["2015-06-01 18:55:00.000" 1]
+   ["2015-06-01 21:04:00.000" 1]
+   ["2015-06-01 21:19:00.000" 1]
+   ["2015-06-02 02:13:00.000" 1]
+   ["2015-06-02 05:37:00.000" 1]
+   ["2015-06-02 08:20:00.000" 1]
+   ["2015-06-02 11:11:00.000" 1]])
 
 (deftest group-by-default-test-3
   ;; Changes the JVM timezone from UTC to Pacific, this test isn't run on H2 as the database stores it's timezones in
@@ -1328,7 +1350,7 @@
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders (lib.metadata/table metadata-provider (mt/id :checkins))
             query (lib/query metadata-provider orders)
             timestamp-col (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns query))
@@ -1726,7 +1748,7 @@
   (testing "Datetime expressions can filter to a date range (#33528)"
     (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id) (lib/visible-columns $q)))
                       (lib/filter $q (lib/time-interval (lib/expression-ref $q "customdate") :current :week)))
@@ -1748,7 +1770,7 @@
     (mt/test-drivers
       (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
       (mt/dataset checkins:1-per-day:60
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                       (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
                                                                     (lib/visible-columns $q)))

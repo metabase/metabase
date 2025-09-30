@@ -31,13 +31,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
-        icon={
-          <Icon
-            name="info_filled"
-            size={16}
-            color="var(--mb-color-text-dark)"
-          />
-        }
+        icon={<Icon name="info" size={16} color="var(--mb-color-text-dark)" />}
         variant="light"
         p="1rem"
         styles={{

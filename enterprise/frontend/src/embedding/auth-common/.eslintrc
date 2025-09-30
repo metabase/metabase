@@ -6,10 +6,10 @@
         "patterns": [
           {
             "group": [
-              "embedding-sdk/*",
+              "embedding-sdk-bundle/*",
               "metabase/*",
-              "!embedding-sdk/errors",
-              "!embedding-sdk/types"
+              "!embedding-sdk-bundle/errors",
+              "!embedding-sdk-bundle/types"
             ],
             "message": "Keep imports in auth-common to a minimum as it is used in embed.js for iframe embedding."
           }

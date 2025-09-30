@@ -401,3 +401,56 @@ export const getNextPatchVersion = async ({
 
   return nextPatch;
 };
+
+export const getNextSdkVersion = (
+  branch: string,
+  currentVersion: string,
+): {
+  version: string;
+  preReleaseLabel: string;
+  majorVersion: string;
+} => {
+  const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
+  const versionParts = currentVersionWithoutSuffix.split(".");
+  const [_, majorVersion] = versionParts;
+
+  if (branch === "master") {
+    if (!suffix) {
+      throw new Error(
+        "Expected pre-release suffix on master branch, got: " + currentVersion,
+      );
+    }
+
+    // When the `currentVersion` is `0.57.0-alpha.1`
+    // The `suffix` is `alpha.1`
+    // The `preReleaseLabel is `alpha`
+    // The `preReleaseVersion` is `1`
+    const suffixParts = suffix ? suffix.split(".") : [];
+
+    const preReleaseLabel = suffixParts[0] ?? "";
+    const preReleaseVersion = suffixParts[1] ? parseInt(suffixParts[1]) : null;
+    const nextPreReleaseVersion =
+      preReleaseVersion !== null ? preReleaseVersion + 1 : 0;
+
+    return {
+      version: `${currentVersionWithoutSuffix}-${preReleaseLabel}.${nextPreReleaseVersion}`,
+      preReleaseLabel,
+      majorVersion,
+    };
+  }
+
+  // 0.57.0 => 0.57.1
+  // 0.57.0-alpha -> 0.57.1-alpha
+  const minorVersion = versionParts.at(-1) ?? 0;
+  versionParts[versionParts.length - 1] = String(
+    minorVersion ? parseInt(minorVersion) + 1 : 0,
+  );
+
+  const newVersion = versionParts.join(".");
+
+  return {
+    version: suffix ? `${newVersion}-${suffix}` : newVersion,
+    preReleaseLabel: "",
+    majorVersion,
+  };
+};

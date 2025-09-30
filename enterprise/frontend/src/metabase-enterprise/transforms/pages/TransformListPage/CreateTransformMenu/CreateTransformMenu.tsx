@@ -10,6 +10,7 @@ import {
   type QuestionPickerValueItem,
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Button, Center, Icon, Loader, Menu } from "metabase/ui";
 import { trackTransformCreate } from "metabase-enterprise/transforms/analytics";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
@@ -85,11 +86,12 @@ export function CreateTransformMenu() {
               >
                 {t`SQL query`}
               </Menu.Item>
+              {PLUGIN_TRANSFORMS_PYTHON.getCreateTransformsMenuItems()}
               <Menu.Item
                 leftSection={<Icon name="folder" />}
                 onClick={handleSavedQuestionClick}
               >
-                {t`A saved question`}
+                {t`A copy of a saved question`}
               </Menu.Item>
             </>
           )}

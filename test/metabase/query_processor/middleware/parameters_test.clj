@@ -402,9 +402,7 @@
                                     {}
                                     [:field {:temporal-unit :default} "DATE"]
                                     [:absolute-datetime {} #t "2014-01-06" :default]]]}]}
-              (-> query
-                  qp.preprocess/preprocess
-                  lib/->pMBQL))))))
+              (qp.preprocess/preprocess query))))))
 
 (deftest ^:parallel nil-values-test
   (let [mp    meta/metadata-provider
@@ -459,9 +457,7 @@
                        :native   (str "select PRODUCTS.TITLE, PRODUCTS.RATING"
                                       " from PRODUCTS"
                                       " where true AND (\"PUBLIC\".\"PRODUCTS\".\"RATING\" = 3.8)")}]}
-            (-> query
-                qp.preprocess/preprocess
-                lib/->pMBQL)))))
+            (qp.preprocess/preprocess query)))))
 
 (deftest ^:parallel ignore-template-tag-parameters-in-mbql-stages-test
   (let [query {:lib/type     :mbql/query

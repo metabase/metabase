@@ -1141,7 +1141,7 @@ describe("issue 39448", () => {
 });
 
 // See TODO inside this test when unskipping
-describe("issue 27521", { tags: "@skip" }, () => {
+describe("issue 27521", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
@@ -1204,26 +1204,29 @@ describe("issue 27521", { tags: "@skip" }, () => {
     H.popover().findByText("Orders → ID").should("be.visible").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
-      .findByText("Orders → ID")
+      .findByText("Q1 → ID")
       .should("be.visible")
       .click();
-    H.popover().findByText("ID").should("be.visible").click();
+    H.popover()
+      .findAllByText("Q1 → ID")
+      .should("have.length", 2)
+      .first()
+      .click();
 
     H.visualize();
 
     assertTableHeader(0, "ID");
     assertTableHeader(1, "Q1 → ID");
-    assertTableHeader(2, "Q1 → Orders → ID");
+    assertTableHeader(2, "Q1 → ID");
 
     H.openVizSettingsSidebar();
     cy.findByTestId("chartsettings-sidebar").within(() => {
       cy.findAllByText("ID").should("have.length", 1);
-      cy.findAllByText("Q1 → ID").should("have.length", 1);
-      cy.findAllByText("Q1 → Orders → ID").should("have.length", 1);
+      cy.findAllByText("Q1 → ID").should("have.length", 2);
 
       cy.findByRole("button", { name: "Add or remove columns" }).click();
-      cy.findAllByText("ID").should("have.length", 2);
-      cy.findAllByText("Orders → ID").should("have.length", 1);
+      cy.findAllByText("ID").should("have.length", 1);
+      cy.findAllByText("Q1 → ID").should("have.length", 2);
 
       // TODO: add assertions for what happens when toggling all the columns here
       // See https://github.com/metabase/metabase/issues/27521#issuecomment-1948658757

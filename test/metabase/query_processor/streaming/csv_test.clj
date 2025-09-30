@@ -50,6 +50,8 @@
 
 (deftest errors-not-include-visualization-settings
   (testing "Queries that error should not include visualization settings"
+    ;; allowing `with-temp` here since it tests against the REST API
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query orders
                                                                         {:order-by [[:asc $id]], :limit 5})
                                               :visualization_settings {:column_settings {}

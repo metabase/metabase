@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
@@ -432,10 +431,10 @@
                   ;; that use them as keys
                   (is (= [[:field (mt/id :people :id) nil]
                           [:field (mt/id :people :id) {:join-alias "peeps"}]
-                          [:field "USER_ID"   {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "count"     {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "USER_ID_2" {:base-type :type/Integer, :join-alias "peeps"}]
-                          [:field "count_2"   {:base-type :type/Integer, :join-alias "peeps"}]]
+                          [:field "USER_ID"     {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "ord1__count" {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "USER_ID_2"   {:base-type :type/Integer, :join-alias "peeps"}]
+                          [:field "ord2__count" {:base-type :type/Integer, :join-alias "peeps"}]]
                          (map :field_ref (qp.preprocess/query->expected-cols query))))))
               (testing "the query runs and returns correct data"
                 (is (= {:columns [cid cid2 cuser-id ccount cuser-id2 ccount2]
@@ -1143,7 +1142,7 @@
 (deftest ^:parallel test-31769
   (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
     (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider
-                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             (mt/metadata-provider)
                              mt/id)]
       (qp.store/with-metadata-provider metadata-provider
         (let [legacy-query (lib.convert/->legacy-MBQL
@@ -1162,7 +1161,7 @@
 (deftest ^:parallel test-13000
   (testing "Should join MBQL Saved Questions (#13000, #13649, #13744)"
     (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                             (mt/metadata-provider)
                              [(mt/mbql-query orders
                                 {:breakout    [$product_id]
                                  :aggregation [[:sum $total]]
@@ -1523,3 +1522,52 @@
                  :order-by    [[:asc $id]
                                [:asc &o.orders.id]]
                  :limit       3})))))))
+
+(deftest ^:parallel self-join-in-source-card-test
+  (testing "When query uses a source card with a self-join, query should work (#27521)"
+    (let [mp (mt/metadata-provider)
+          q1 (-> (lib/query
+                  mp
+                  (lib.metadata/table mp (mt/id :orders)))
+                 (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :orders)))
+                               (lib/with-join-alias "O")
+                               (lib/with-join-conditions
+                                [(lib/= (lib.metadata/field mp (mt/id  :orders :id))
+                                        (-> (lib.metadata/field mp (mt/id  :orders :id))
+                                            (lib/with-join-alias "O")))])
+                               (lib/with-join-fields :all))))
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id            1
+                        :dataset-query q1}]})]
+      (doseq [[message field-ref-fn] {"first ORDERS.ID from Card 1"
+                                      (fn [query]
+                                        (first (filter #(= (:id %) (mt/id :orders :id))
+                                                       (lib/returned-columns query (lib.metadata/card query 1)))))
+
+                                      "second ORDERS.ID from Card 1"
+                                      (fn [query]
+                                        (second (filter #(= (:id %) (mt/id :orders :id))
+                                                        (lib/returned-columns query (lib.metadata/card query 1)))))
+
+                                      "raw ORDERS.ID ref straight from the Metadata Provider"
+                                      (fn [query]
+                                        (lib.metadata/field query (mt/id :orders :id)))}]
+        (testing (str "with join condition RHS field ref = " message)
+          (let [q2 (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                       (as-> $query (lib/join $query (-> (lib/join-clause (lib.metadata/card mp 1))
+                                                         (lib/with-join-alias "Q1")
+                                                         (lib/with-join-conditions
+                                                          [(lib/= (lib.metadata/field mp (mt/id :people :id))
+                                                                  (-> (field-ref-fn $query)
+                                                                      (lib/with-join-alias "Q1")))])
+                                                         (lib/with-join-fields :all))))
+                       (lib/order-by (lib.metadata/field mp (mt/id  :people :id)) :asc)
+                       (lib/limit 2))]
+            (is (= [[1 "9611-9809 West Rosedale Road" "borer-hudson@yahoo.com" "ccca881f-3e4b-4e5c-8336-354103604af6" "Hudson Borer" "Wood River" -98.5259864 "NE" "Twitter" "1986-12-12T00:00:00Z" "68883" 40.71314890000001 "2017-10-07T01:34:35.462Z"
+                     1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
+                     1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2]
+                    [2 "101 4th Street" "williamson-domenica@yahoo.com" "eafc45bf-cf8e-4c96-ab35-ce44d0021597" "Domenica Williamson" "Searsboro" -92.6991321 "IA" "Affiliate" "1967-06-10T00:00:00Z" "50242" 41.5813224 "2018-04-09T12:10:05.167Z"
+                     2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
+                     2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3]]
+                   (mt/rows (qp/process-query q2))))))))))

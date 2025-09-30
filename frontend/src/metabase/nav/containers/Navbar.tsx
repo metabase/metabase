@@ -40,7 +40,7 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
   }
 
   return isAdminApp ? (
-    <AdminNavbar user={user} path={location.pathname} adminPaths={adminPaths} />
+    <AdminNavbar path={location.pathname} adminPaths={adminPaths} />
   ) : (
     <MainNavbar isOpen={isOpen} location={location} params={params} />
   );

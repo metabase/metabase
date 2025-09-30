@@ -3,14 +3,22 @@
    [clojure.core.memoize :as memoize]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
+   [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
+   [metabase.activity-feed.core :as activity-feed]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.config :as search.config]
    [metabase.search.scoring :as search.scoring]
    [metabase.util :as u]
    [next.jdbc :as jdbc]
-   [next.jdbc.result-set :as jdbc.rs]))
+   [next.jdbc.result-set :as jdbc.rs]
+   [toucan2.core :as t2]))
+
+;;
+;; index-based scorers: these scorers only rely on columns in the search index in the pgvector db
+;;
 
 (defn- view-count-percentile-query
   [index-table p-value]
@@ -50,18 +58,6 @@
                                        (into [:case] cat cases)
                                        1))))
 
-(defn- model-rank-exp [{:keys [context]}]
-  (let [search-order search.config/models-search-order
-        n (double (count search-order))
-        cases (map-indexed (fn [i sm]
-                             [[:= :model sm]
-                              (or (search.config/scorer-param context :model sm)
-                                  [:inline (/ (- n i) n)])])
-                           search-order)]
-    (-> (into [:case] cat (concat cases))
-        ;; if you're not listed, get a very poor score
-        (into [:else [:inline 0.01]]))))
-
 (def ^:private rrf-rank-exp
   (let [k 60
         keyword-weight 0.51
@@ -79,14 +75,16 @@
     {:model [:inline 1]}
     ;; NOTE: we calculate scores even if the weight is zero, so that it's easy to consider how we could affect any
     ;; given set of results. At some point, we should optimize away the irrelevant scores for any given context.
-    {:rrf       rrf-rank-exp
+    {:rrf        rrf-rank-exp
      :view-count (view-count-expr index-table search.config/view-count-scaling-percentile)
      :pinned     (search.scoring/truthy :pinned)
-     :recency    (search.scoring/inverse-duration [:coalesce :last_viewed_at :model_updated_at]
-                                                  [:now]
-                                                  search.config/stale-time-in-days)
+     :recency    (search.scoring/inverse-duration
+                  :postgres
+                  [:coalesce :last_viewed_at :model_updated_at]
+                  [:now]
+                  search.config/stale-time-in-days)
      :dashboard  (search.scoring/size :dashboardcard_count search.config/dashboard-count-ceiling)
-     :model      (model-rank-exp search-ctx)
+     :model      (search.scoring/model-rank-expr search-ctx)
      :mine       (search.scoring/equal :creator_id (:current-user-id search-ctx))
      :exact      (if search-string
                    ;; perform the lower casing within the database, in case it behaves differently to our helper
@@ -133,3 +131,103 @@
   (def embedding-model ((requiring-resolve 'metabase-enterprise.semantic-search.embedding/get-configured-model)))
   (def index ((requiring-resolve 'metabase-enterprise.semantic-search.index/default-index) embedding-model))
   (def index-table (:table-name index)))
+
+;;
+;; appdb-based scorers: these scorers rely on tables in the appdb
+;;
+
+(defn- search-doc->select
+  [{:keys [id model]}]
+  {:select [[[:inline (str id)]] [[:inline model]]]})
+
+(defn- search-index-query
+  [search-results]
+  {:with     [[[:search_index {:columns [:model_id :model]}]
+               ;; We could use :values here, except MySQL uses a slightly different syntax and I can't seem to get
+               ;; honeysql to generate a valid WITH ... VALUES statement for MySQL, so fallback to UNION + SELECT
+               ;; which works with all supported appdbs. https://dev.mysql.com/doc/refman/8.4/en/values.html
+               {:union (map search-doc->select search-results)}]]
+   :select   [[[:cast :search_index.model_id (if (= :mysql (mdb/db-type))
+                                               :unsigned
+                                               :int)]
+               :id]
+              [:search_index.model :model]]
+   :from     [:search_index]})
+
+(defn- update-with-appdb-score
+  [weights scorers grouped-appdb-results search-result]
+  (let [id-model-key ((juxt :id :model) search-result)
+        appdb-row (get grouped-appdb-results id-model-key)
+        appdb-score (:total_score appdb-row 0)]
+    (-> search-result
+        (update :score + appdb-score)
+        (update :all-scores concat (all-scores weights scorers appdb-row)))))
+
+(defn- update-with-appdb-scores
+  [weights scorers search-results appdb-scorer-results]
+  (if-not (seq appdb-scorer-results)
+    search-results
+    (map (let [grouped-recency-results (m/index-by (juxt :id :model) appdb-scorer-results)]
+           (partial update-with-appdb-score weights scorers grouped-recency-results))
+         search-results)))
+
+(def ^:private recent-views-models
+  (into #{} (map name activity-feed/rv-models)))
+
+(def ^:private appdb-scorer-models
+  (into recent-views-models (map name search.scoring/bookmarked-models-and-sub-models)))
+
+(comment
+  (require '[clojure.set :as set]
+           '[metabase.search.spec :as search.spec])
+  ;; #{"segment" "database" "action" "indexed-entity"}
+  (set/difference (set search.spec/search-models) appdb-scorer-models))
+
+(defn appdb-scorers
+  "The appdb-based scorers for search ranking results. Like `base-scorers`, but for scorers that need to query the appdb."
+  [{:keys [limit-int] :as search-ctx}]
+  (when-not (and limit-int (zero? limit-int))
+    {:bookmarked search.scoring/bookmark-score-expr
+     :user-recency (search.scoring/inverse-duration
+                    (search.scoring/user-recency-expr search-ctx) [:now] search.config/stale-time-in-days)}))
+
+(defn with-appdb-scores
+  "Add appdb-based scores to `search-results` and re-sort the results based on the new combined scores.
+
+  Supported appdb based scorers: `:user-recency` (postgres and H2)
+
+  This will extract required info from `search-results`, make an appdb query to select additional scorers, combine
+  those with the existing `:score` and `:all-scores` in the `search-results`, then re-sort the results by the new
+  combined `:score`."
+  [search-ctx appdb-scorers weights search-results]
+  ;; search-results-to-score are the search-results that have models that are relevant to the appdb-scorers.
+  (let [{:keys [current-user-id]} search-ctx
+        search-results-to-score (filter (comp appdb-scorer-models :model) search-results)
+        maybe-join-bookmarks #(cond-> % (:bookmarked appdb-scorers) (search.scoring/join-bookmarks current-user-id))]
+    (if-not (and (seq search-results-to-score)
+                 (seq appdb-scorers))
+      search-results
+      (->> (search-index-query search-results-to-score)
+           (search.scoring/with-scores search-ctx appdb-scorers)
+           maybe-join-bookmarks
+           t2/query
+           (update-with-appdb-scores weights (keys appdb-scorers) search-results)
+           (sort-by :score >)
+           vec))))
+
+(comment
+  (def search-ctx {:current-user-id 3
+                   :context :default})
+  (def search-docs (-> (map-indexed
+                        (fn [idx doc]
+                          (assoc doc :score idx :all-scores []))
+                        [{:id 1 :model "dataset"}
+                         {:id 1 :model "dashboard"}
+                         {:id 2 :model "table"}
+                         {:id 2 :model "card"}
+                         {:id 4 :model "indexed-entity"}
+                         {:id 7 :model "card"}])
+                       vec))
+  (def weights (search.config/weights (:context search-ctx)))
+  (def app-db-scorers (appdb-scorers search-ctx))
+  (with-appdb-scores search-ctx (appdb-scorers search-ctx) weights search-docs))

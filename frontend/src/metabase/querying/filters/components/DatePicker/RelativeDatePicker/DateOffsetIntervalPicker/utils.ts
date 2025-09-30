@@ -12,7 +12,7 @@ import { getAvailableTruncationUnits, getDirection } from "../utils";
 
 export function getDirectionText(value: RelativeDatePickerValue): string {
   const direction = getDirection(value);
-  return direction === "last" ? t`Previous` : t`Next`;
+  return direction === "past" ? t`Previous` : t`Next`;
 }
 
 export function setUnit(
@@ -73,5 +73,5 @@ function getOffsetUnitText(
   interval: number,
 ) {
   const unitText = Lib.describeTemporalUnit(unit, interval).toLowerCase();
-  return direction === "last" ? t`${unitText} ago` : t`${unitText} from now`;
+  return direction === "past" ? t`${unitText} ago` : t`${unitText} from now`;
 }

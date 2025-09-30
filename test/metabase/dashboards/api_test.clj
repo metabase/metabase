@@ -4597,7 +4597,7 @@
 (deftest run-mlv2-dashcard-query-test
   (testing "POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id"
     (testing "Should be able to run a query for a DashCard with an MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -4735,9 +4735,8 @@
                                     {:id (mt/id :products)
                                      :fields sequential?}
                                     {:id (mt/id :venues)}])
-                          (sort-by :id
-                                   [{:id (str "card__" card-id-2)
-                                     :fields sequential?}]))
+                          [{:id (str "card__" card-id-2)
+                            :fields sequential?}])
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
@@ -4748,6 +4747,7 @@
     (mt/with-temp
       [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
        :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
+                                                                :database (mt/id)
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2

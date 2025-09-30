@@ -1,4 +1,11 @@
-import { createElement, useCallback, useEffect, useMemo } from "react";
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useSearchParam } from "react-use";
 import { match } from "ts-pattern";
 
@@ -6,38 +13,53 @@ import { useSetting } from "metabase/common/hooks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embedding_iframe_sdk/constants";
+// we import the equivalent of embed.js so that we don't add extra loading time
+// by appending the script
+import { setupConfigWatcher } from "metabase-enterprise/embedding_iframe_sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
 import { getConfigurableThemeColors } from "../utils/theme-colors";
 
+import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
 import S from "./SdkIframeEmbedPreview.module.css";
-
-// we import the equivalent of embed.js so that we don't add extra loading time
-// by appending the script
-import "metabase-enterprise/embedding_iframe_sdk/embed";
 
 declare global {
   interface Window {
-    metabaseConfig: Partial<SdkIframeEmbedBaseSettings>;
+    metabaseConfig?: Partial<SdkIframeEmbedBaseSettings> & {
+      [METABASE_CONFIG_IS_PROXY_FIELD_NAME]?: boolean;
+    };
   }
 }
 
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
+  const [isLoading, setIsLoading] = useState(true);
 
   const localeOverride = useSearchParam("locale");
 
   const instanceUrl = useSetting("site-url");
   const applicationColors = useSetting("application-colors");
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const defineMetabaseConfig = useCallback(
     (metabaseConfig: SdkIframeEmbedBaseSettings) => {
       window.metabaseConfig = metabaseConfig;
+
+      if (!window.metabaseConfig[METABASE_CONFIG_IS_PROXY_FIELD_NAME]) {
+        setupConfigWatcher();
+      }
     },
     [],
   );
+  const cleanupMetabaseConfig = useCallback(() => {
+    if (window.metabaseConfig) {
+      delete window.metabaseConfig;
+    }
+  }, []);
 
   const derivedTheme = useMemo(() => {
     // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
@@ -70,7 +92,7 @@ export const SdkIframeEmbedPreview = () => {
   );
 
   // initial configuration, needed so that the element finds the config on first render
-  if (!window.metabaseConfig.instanceUrl) {
+  if (!window.metabaseConfig?.instanceUrl) {
     defineMetabaseConfig(metabaseConfig);
   }
 
@@ -78,12 +100,39 @@ export const SdkIframeEmbedPreview = () => {
     defineMetabaseConfig(metabaseConfig);
   }, [metabaseConfig, defineMetabaseConfig]);
 
+  useEffect(
+    () => () => {
+      cleanupMetabaseConfig();
+    },
+    [cleanupMetabaseConfig],
+  );
+
+  // Show a "fake" loading indicator when componentName changes.
+  // Embed JS has its own loading indicator, but it shows up after the iframe loads.
+  useEffect(() => {
+    if (containerRef.current) {
+      const embed = containerRef.current.querySelector(settings.componentName);
+      const handleReady = () => setIsLoading(false);
+
+      if (embed) {
+        setIsLoading(true);
+        embed.addEventListener("ready", handleReady);
+
+        return () => {
+          embed.removeEventListener("ready", handleReady);
+        };
+      }
+    }
+  }, [settings.componentName]);
+
   return (
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
       bg={settings.theme?.colors?.background}
       h="100%"
+      ref={containerRef}
+      pos="relative"
     >
       {match(settings)
         .with(
@@ -138,6 +187,8 @@ export const SdkIframeEmbedPreview = () => {
           }),
         )
         .exhaustive()}
+
+      <EmbedPreviewLoadingOverlay isVisible={isLoading} />
     </Card>
   );
 };

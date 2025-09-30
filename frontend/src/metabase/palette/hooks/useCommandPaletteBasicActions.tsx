@@ -6,11 +6,13 @@ import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
+  useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DOCUMENTS } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
@@ -53,6 +55,7 @@ export const useCommandPaletteBasicActions = ({
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
+  const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
     (modalId: string) => {
@@ -117,6 +120,17 @@ export const useCommandPaletteBasicActions = ({
         openNewModal("dashboard");
       },
     });
+    if (PLUGIN_DOCUMENTS.shouldShowDocumentInNewItemMenu()) {
+      actions.push({
+        id: "create-new-document",
+        name: t`New document`,
+        section: "basic",
+        icon: "document",
+        perform: () => {
+          dispatch(push(Urls.newDocument()));
+        },
+      });
+    }
     actions.push({
       id: "create-new-collection",
       name: t`New collection`,
@@ -211,6 +225,16 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
+    if (isAdmin && hasEmbedJsFeature) {
+      actions.push({
+        id: "navigate-embed-js",
+        section: "basic",
+        icon: "embed",
+        keywords: "embed flow, new embed, embed js",
+        perform: () => dispatch(push("/embed-js")),
+      });
+    }
+
     if (personalCollectionId) {
       actions.push({
         id: "navigate-personal-collection",
@@ -242,6 +266,7 @@ export const useCommandPaletteBasicActions = ({
     openNewModal,
     isAdmin,
     personalCollectionId,
+    hasEmbedJsFeature,
   ]);
 
   useRegisterShortcut(initialActions, [initialActions]);

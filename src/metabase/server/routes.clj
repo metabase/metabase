@@ -10,7 +10,7 @@
    [metabase.core.initialization-status :as init-status]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.server.auth-wrapper :as auth-wrapper]
-   [metabase.server.middleware.etag-cache :as mw.etag-cache]
+   [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
    [metabase.server.routes.index :as index]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -63,7 +63,7 @@
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
-    ((mw.etag-cache/js-etag-handler "frontend_client/app/embedding-sdk.js") request))
+    ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
 
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})

@@ -12,10 +12,11 @@
 .content {
   line-height: 17px;
   overflow: visible;
+  white-space: pre-wrap;
 }
 
 .noWrap {
-  white-space: nowrap;
+  white-space: pre;
   overflow: hidden;
   text-overflow: ellipsis;
 }

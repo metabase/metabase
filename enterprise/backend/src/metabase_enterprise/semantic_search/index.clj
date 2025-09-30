@@ -1,5 +1,7 @@
 (ns metabase-enterprise.semantic-search.index
   (:require
+   [buddy.core.codecs :as buddy-codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
    [honey.sql :as sql]
@@ -103,6 +105,17 @@
 
     :else (Instant/ofEpochMilli (inst-ms document-timestamp))))
 
+(defn- to-boolean
+  "MySQL booleans are represented as 0/1, so we must ensure we're casting them to
+   real booleans when inserting them into our postgres db"
+  [b]
+  {:pre [(some? b)]}
+  (cond
+    (boolean? b) b
+    (= 0 b) false
+    (= 1 b) true
+    :else (throw (ex-info "Unexpected boolean value" {:v b}))))
+
 (defn- doc->db-record
   "Convert a document to a database record with a provided embedding."
   [embedding-vec {:keys [model id searchable_text created_at creator_id updated_at
@@ -114,13 +127,13 @@
    :creator_id          creator_id
    :database_id         database_id
    :last_editor_id      last_editor_id
-   :name                (:name doc)
+   :name                (or (:name doc) "")
    :content             searchable_text
    :display_type        display_type
-   :archived            archived
-   :official_collection official_collection
-   :pinned              pinned
-   :verified            verified
+   :archived            (some-> archived to-boolean)
+   :official_collection (some-> official_collection to-boolean)
+   :pinned              (some-> pinned to-boolean)
+   :verified            (some-> verified to-boolean)
    :dashboardcard_count dashboardcard_count
    :view_count          view_count
    :model_created_at    (some-> created_at to-instant)
@@ -132,18 +145,18 @@
    :text_search_vector  (if (:name doc)
                           [:||
                            (search/weighted-tsvector "A" (:name doc))
-                           (search/weighted-tsvector "B" (:searchable_text doc ""))]
-                          (search/weighted-tsvector "A" (:searchable_text doc "")))
+                           (search/weighted-tsvector "B" (or (:searchable_text doc) ""))]
+                          (search/weighted-tsvector "A" (or (:searchable_text doc) "")))
    :text_search_with_native_query_vector
    (if (:name doc)
      [:||
       (search/weighted-tsvector "A" (:name doc))
       (search/weighted-tsvector "B"
-                                (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                  (:native_query doc "")])))]
+                                (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
+                                                                  (or (:native_query doc) "")])))]
      (search/weighted-tsvector "A"
-                               (str/join " " (remove str/blank? [(:searchable_text doc "")
-                                                                 (:native_query doc "")]))))})
+                               (str/join " " (remove str/blank? [(or (:searchable_text doc) "")
+                                                                 (or (:native_query doc) "")]))))})
 
 (defn index-size
   "Fetches the number of documents in the index table."
@@ -202,13 +215,18 @@
         excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
     (zipmap update-keys (map excluded-kw update-keys))))
 
-(defn- throw-if-max-pg-len
-  [resource-name msg]
-  (when (> (count resource-name) 63)
-    (throw (ex-info msg
-                    {:table-name resource-name
-                     :length (count resource-name)
-                     :limit 63}))))
+(defn hash-identifier-if-exceeds-pg-limit
+  "Sometimes we need to generate new table/index names, such as when forcing a new index despite no change in index parameters.
+  When we do so we need to be sure any index names do not exceed the postgres limit for names. This function will hash the identifier
+  if it exceeds the length, and will get a name like index_${sha1} instead.
+
+  Note: The index parameters will still be available in index_metadata"
+  [identifier]
+  (if (<= (count identifier) 63)
+    identifier
+    (let [hashed-name (str "index_" (buddy-codecs/bytes->hex (buddy-hash/sha1 identifier)))]
+      (log/warnf "Using hashed name for index table %s as original table name %s exceeded the maximum table name length" hashed-name identifier)
+      hashed-name)))
 
 (defn model-table-suffix
   "Returns a new suffix for a table name, based on current timestamp"
@@ -216,19 +234,18 @@
   (mod (.toEpochSecond (t/offset-date-time)) 10000000))
 
 (defn model-table-name
-  "Returns the table name for a model."
+  "Returns a default table name for a model. If the table name would exceed the 63 byte postgres limit, a hashed name is preferred."
   [embedding-model]
   (let [{:keys [model-name provider vector-dimensions]} embedding-model
         provider-name (embedding/abbrev-provider-name provider)
         abbrev-model-name (embedding/abbrev-model-name model-name)
-        result (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions "_" (model-table-suffix))]
-    (throw-if-max-pg-len result "Table name exceeds PostgreSQL limit")
-    result))
+        ideal-table-name (str "index_" provider-name "_" abbrev-model-name "_" vector-dimensions)]
+    (hash-identifier-if-exceeds-pg-limit ideal-table-name)))
 
 (defn default-index
   "Returns the default index spec for a model."
-  [embedding-model]
-  (let [table-name (model-table-name embedding-model)]
+  [embedding-model & {:keys [table-name]}]
+  (let [table-name (or table-name (model-table-name embedding-model))]
     {:embedding-model embedding-model
      :table-name table-name
      :version 1}))
@@ -280,7 +297,7 @@
     [(remove found-embeddings texts) found-embeddings]))
 
 (defn- upsert-index-batch!
-  [connectable index documents]
+  [connectable index documents & {:as opts}]
   (when (seq documents)
     (let [text->docs        (group-by :searchable_text documents)
           searchable-texts  (keys text->docs)
@@ -298,7 +315,8 @@
            (embedding/process-embeddings-streaming
             (:embedding-model index)
             new-texts
-            upsert-embedding!)))
+            upsert-embedding!
+            opts)))
        (merge-with + stats)))))
 
 (def ^:private ^:dynamic *retrying* false)
@@ -334,8 +352,8 @@
 
 (defn upsert-index-pooled!
   "Returns a future which upserts the provided documents into the index table, executed using the provided thread pool."
-  [pool connectable index documents]
-  (cp/future pool (upsert-index-batch! connectable index documents)))
+  [pool connectable index documents & {:as opts}]
+  (cp/future pool (upsert-index-batch! connectable index documents opts)))
 
 (defn upsert-index!
   "Inserts or updates documents in the index table. If a document with the same
@@ -347,8 +365,8 @@
           results (transduce
                    (comp (partition-all *batch-size*)
                          (map (if serial?
-                                #(upsert-index-batch! connectable index %)
-                                #(upsert-index-pooled! pool connectable index %))))
+                                #(upsert-index-batch! connectable index % {:type :index})
+                                #(upsert-index-pooled! pool connectable index % {:type :index}))))
                    conj
                    documents-reducible)]
       (reduce (fn [update-counts result]
@@ -372,9 +390,8 @@
 (defn- index-name
   "Returns the name for an index for the given index configuration, column, and index type."
   [index suffix]
-  (let [result (str (:table-name index) suffix)]
-    (throw-if-max-pg-len result "Index name exceeds PostgreSQL limit")
-    result))
+  (let [index-name (str (:table-name index) suffix)]
+    (hash-identifier-if-exceeds-pg-limit index-name)))
 
 (defn hnsw-index-name
   "Returns the name for a HNSW database index for the given semantic search index configuration."
@@ -582,11 +599,12 @@
   "Build a hybrid search query with additional `scorers`"
   [index embedding search-context scorers]
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
-  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]).
+  ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
+  ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
   (let [hybrid-query (hybrid-search-query index embedding search-context)
         full-query {:with [[:hybrid_results hybrid-query]]
                     :select [:id :model_id :model :content :verified :metadata :semantic_rank :keyword_rank]
-                    :from [:hybrid_results]
+                    :from [[:hybrid_results :search_index]]
                     :limit (semantic-settings/semantic-search-results-limit)}]
     (scoring/with-scores search-context scorers full-query)))
 
@@ -648,7 +666,7 @@
                                        :regular-docs-count (count regular-docs)
                                        :time-ms time-ms})
 
-    (analytics/inc! :metabase-search/permission-filtering-ms time-ms)
+    (analytics/inc! :metabase-search/semantic-permission-filter-ms time-ms)
 
     result))
 
@@ -743,13 +761,20 @@
     (if (or (nil? filter-type) (= filter-type "all"))
       docs
       (let [timer (u/start-timer)
-            filtered-docs (filter-by-collection docs search-context)]
+            filtered-docs (filter-by-collection docs search-context)
+            time-ms (u/since-ms timer)]
         (log/debug "Collection filter" {:filter  filter-type
                                         :before  (count docs)
                                         :after   (count filtered-docs)
                                         :dropped (- (count docs) (count filtered-docs))
-                                        :time_ms (u/since-ms timer)})
+                                        :time_ms time-ms})
+        (analytics/inc! :metabase-search/semantic-collection-filter-ms time-ms)
         filtered-docs))))
+
+(defn- reducible-search-query
+  "Extracted so can be redefd in tests."
+  [db query]
+  (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
 
 (defn query-index
   "Query the index for documents similar to the search string.
@@ -761,7 +786,7 @@
       {:results [] :raw-count 0}
       (let [timer (u/start-timer)
 
-            embedding (embedding/get-embedding embedding-model search-string)
+            embedding (embedding/get-embedding embedding-model search-string {:type :query})
             embedding-time-ms (u/since-ms timer)
 
             db-timer (u/start-timer)
@@ -770,39 +795,50 @@
             query (scored-search-query index embedding search-context scorers)
             xform (comp (map decode-metadata)
                         (map (partial legacy-input-with-score weights (keys scorers))))
-            reducible (jdbc/plan db (sql-format-quoted query) {:builder-fn jdbc.rs/as-unqualified-lower-maps})
+            reducible (reducible-search-query db query)
             raw-results (into [] xform reducible)
             db-query-time-ms (u/since-ms db-timer)
 
+            filter-timer (u/start-timer)
             filtered-results (->> raw-results
                                   filter-read-permitted
                                   (apply-collection-filter search-context)
                                   (mapv search/collapse-id))
+            filter-time-ms (u/since-ms filter-timer)
 
+            appdb-scorers (scoring/appdb-scorers search-context)
+            appdb-scores-timer (u/start-timer)
+            final-results (->> filtered-results
+                               (scoring/with-appdb-scores search-context appdb-scorers weights))
+            appdb-scores-time-ms (u/since-ms appdb-scores-timer)
             total-time-ms (u/since-ms timer)]
 
         (log/debug "Semantic search"
                    {:search-string-length (count search-string)
+                    :raw-results-count (count raw-results)
+                    :final-results-count (count final-results)
                     :embedding-time-ms embedding-time-ms
                     :db-query-time-ms db-query-time-ms
-                    :raw-results-count (count raw-results)
-                    :final-results-count (count filtered-results)
+                    :filter-time-ms filter-time-ms
+                    :appdb-scores-time-ms appdb-scores-time-ms
                     :total-time-ms total-time-ms})
 
-        (analytics/inc! :metabase-search/semantic-search-ms
-                        {:embedding-model (:name embedding-model)}
-                        total-time-ms)
         (analytics/inc! :metabase-search/semantic-embedding-ms
                         {:embedding-model (:name embedding-model)}
                         embedding-time-ms)
         (analytics/inc! :metabase-search/semantic-db-query-ms
                         {:embedding-model (:name embedding-model)}
                         db-query-time-ms)
+        (analytics/inc! :metabase-search/semantic-appdb-scores-ms
+                        appdb-scores-time-ms)
+        (analytics/inc! :metabase-search/semantic-search-ms
+                        {:embedding-model (:name embedding-model)}
+                        total-time-ms)
 
         (comment
           (jdbc/execute! db (sql-format-quoted query)))
 
-        {:results filtered-results
+        {:results final-results
          :raw-count (count raw-results)}))))
 
 (comment

@@ -21,17 +21,17 @@
    [toucan2.core :as t2]))
 
 (mu/defn- query-type :- [:enum :query :native :internal :mbql/query]
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (or (some-> ((some-fn :lib/type :type) query) keyword)
       (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
                       {:query query, :type qp.error-type/invalid-query}))))
 
 (mu/defn- source-card-id-for-pmbql-query :- [:maybe ::lib.schema.id/card]
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (-> query :stages first :source-card))
 
 (mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
                               (let [source-query (:source-query inner-query)]
@@ -41,8 +41,8 @@
         source-table        (:source-table deepest-inner-query)]
     (lib.util/legacy-string-table-id->card-id source-table)))
 
-(defn- bootstrap-metadatas [metadata-type ids]
-  (when (and (seq ids)
+(defn- bootstrap-metadatas [{metadata-type :lib/type, id-set :id, :as _metadata-spec}]
+  (when (and (seq id-set)
              (= metadata-type :metadata/card))
     (t2/select-fn-vec
      (fn [card]
@@ -51,20 +51,14 @@
         :name        (format "Card #%d" (:id card))
         :database-id (:database_id card)})
      [:model/Card :id :database_id :card_schema]
-     :id [:in (set ids)])))
+     :id [:in (set id-set)])))
 
 (deftype ^:private BootstrapMetadataProvider []
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     nil)
-  (metadatas [_this metadata-type ids]
-    (bootstrap-metadatas metadata-type ids))
-  (tables [_this]
-    nil)
-  (metadatas-for-table [_this _metadata-type _table-id]
-    nil)
-  (metadatas-for-card [_this _metadata-type _card-id]
-    nil)
+  (metadatas [_this metadata-spec]
+    (bootstrap-metadatas metadata-spec))
   (setting [_this _setting-key]
     nil))
 
@@ -90,7 +84,7 @@
     (:database-id card)))
 
 (mu/defn- source-card-id :- ::lib.schema.id/card
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (case (query-type query)
     :mbql/query
     (source-card-id-for-pmbql-query query)
@@ -103,7 +97,7 @@
                     {:query query, :type qp.error-type/invalid-query}))))
 
 (mu/defn- resolve-database-id :- [:maybe ::lib.schema.id/database]
-  [query :- ::qp.schema/query]
+  [query :- ::qp.schema/any-query]
   (when-not (= (query-type query) :internal)
     (let [database-id (:database query)]
       (cond
@@ -118,22 +112,22 @@
                         {:query query, :type qp.error-type/invalid-query}))))))
 
 (mu/defn- do-with-resolved-database :- fn?
-  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (mu/fn
-    [query :- ::qp.schema/query]
+    [query :- ::qp.schema/any-query]
     (let [query       (set/rename-keys query {"database" :database})
           database-id (resolve-database-id query)
           query       (cond-> query
                         database-id (assoc :database database-id))]
       (f query))))
 
-(mu/defn- maybe-attach-metadata-provider-to-query :- ::qp.schema/query
-  [query :- ::qp.schema/query]
+(mu/defn- maybe-attach-metadata-provider-to-query :- ::qp.schema/any-query
+  [query :- ::qp.schema/any-query]
   (cond-> query
     (= (:lib/type query) :mbql/query) (assoc :lib/metadata (qp.store/metadata-provider))))
 
 (mu/defn- do-with-metadata-provider :- fn?
-  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
     (cond
       (qp.store/initialized?)
@@ -151,7 +145,7 @@
         (f (maybe-attach-metadata-provider-to-query query))))))
 
 (mu/defn- do-with-driver :- fn?
-  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
     (cond
       driver/*driver*
@@ -166,7 +160,7 @@
           (f query))))))
 
 (mu/defn- do-with-database-local-settings :- fn?
-  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
     (cond
       (setting/database-local-values)
@@ -181,7 +175,7 @@
           (f query))))))
 
 (mu/defn- do-with-canceled-chan :- fn?
-  [f :- [:=> [:cat ::qp.schema/query] :any]]
+  [f :- [:=> [:cat ::qp.schema/any-query] :any]]
   (fn [query]
     (if qp.pipeline/*canceled-chan*
       (f query)
@@ -215,8 +209,8 @@
 
 (mu/defn do-with-qp-setup
   "Impl for [[with-qp-setup]]."
-  [query :- ::qp.schema/query
-   f     :- [:=> [:cat ::qp.schema/query] :any]]
+  [query :- ::qp.schema/any-query
+   f     :- [:=> [:cat ::qp.schema/any-query] :any]]
   ;; TODO -- think about whether we should pre-compile this middleware
   (when (a.impl.dispatch/in-dispatch-thread?)
     (throw (ex-info "QP calls are not allowed inside core.async dispatch pool threads."

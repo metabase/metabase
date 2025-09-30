@@ -2,24 +2,29 @@ import { memo, useMemo } from "react";
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
+import { isFieldHidden } from "metabase/metadata/pages/DataModel/components/PreviewSection/utils";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import * as Lib from "metabase-lib";
 import type {
   DatabaseId,
+  Field,
   FieldId,
   FieldReference,
   Table,
 } from "metabase-types/api";
 
+import { HiddenFieldEmptyStateBlock } from "./EmptyStateBlock";
+
 interface Props {
   databaseId: DatabaseId;
+  field: Field;
   fieldId: FieldId;
   table: Table;
 }
 
 const STAGE_INDEX = 0;
 
-const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
+const FilteringPreviewBase = ({ databaseId, field, fieldId, table }: Props) => {
   const query = useMemo(
     () => getPreviewQuery(table, databaseId),
     [databaseId, table],
@@ -28,6 +33,10 @@ const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
     () => getPreviewColumn(query, fieldId),
     [fieldId, query],
   );
+
+  if (isFieldHidden(field)) {
+    return <HiddenFieldEmptyStateBlock />;
+  }
 
   return (
     <FilterPickerBody

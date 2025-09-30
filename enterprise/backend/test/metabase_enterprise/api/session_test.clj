@@ -25,6 +25,7 @@
                               :embedding
                               :embedding-sdk
                               :embedding-simple
+                              :embedding-hub
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -32,6 +33,7 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
+                              :offer-metabase-ai
                               :official-collections
                               :query-reference-validation
                               :sandboxes
@@ -45,6 +47,7 @@
                               :sso-ldap
                               :sso-saml
                               :transforms
+                              :transforms-python
                               :upload-management
                               :whitelabel
                               :collection-cleanup
@@ -74,6 +77,7 @@
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
+            :offer_metabase_ai              true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
@@ -88,6 +92,7 @@
             :sso_saml                       true
             :table_data_editing             false
             :transforms                     true
+            :transforms-python              true
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

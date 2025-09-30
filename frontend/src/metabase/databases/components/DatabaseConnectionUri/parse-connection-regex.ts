@@ -30,7 +30,10 @@ const druidRegex = new RegExp(
   "i",
 );
 
-const connectionStringRegexes: Record<EngineKey, RegExp | RegExp[]> = {
+const connectionStringRegexes: Record<
+  EngineKey,
+  RegExp | RegExp[] | undefined
+> = {
   athena: new RegExp(
     "^" +
       jdbcPrefix +
@@ -83,6 +86,7 @@ const connectionStringRegexes: Record<EngineKey, RegExp | RegExp[]> = {
   ),
   druid: druidRegex,
   "druid-jdbc": druidRegex,
+  mongo: undefined,
   mysql: new RegExp(
     "^" +
       jdbcPrefix +

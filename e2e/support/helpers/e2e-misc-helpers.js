@@ -112,12 +112,15 @@ export function visitQuestion(questionIdOrAlias) {
 function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
+  const metadataAlias = `${alias}-queryMetadata`;
 
   // We need to use the wildcard because endpoint for pivot tables has the following format: `/api/card/pivot/${id}/query`
   cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  cy.intercept("GET", `/api/card/**/${id}/query_metadata`).as(metadataAlias);
 
   cy.visit(`/question/${id}`);
 
+  cy.wait("@" + metadataAlias);
   cy.wait("@" + alias);
 }
 
@@ -278,6 +281,7 @@ export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
  * @param {boolean=} [options.addToDashboard]
  * @param {boolean=} [options.wrapId]
  * @param {string=} [options.idAlias]
+ * @param {Object=} [pickEntityOptions]
  */
 export function saveQuestion(
   name,
@@ -416,8 +420,6 @@ export function visitPublicDashboard(
 
 export const goToAuthOverviewPage = () => {
   cy.findByTestId("admin-layout-sidebar")
-    .findAllByText("Overview") // auth overview page
-    .should("have.length", 2)
-    .first()
+    .findByText("Overview") // auth overview page
     .click();
 };

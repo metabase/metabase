@@ -3,16 +3,20 @@ import { t } from "ttag";
 
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
-import { Card, Group, Stack } from "metabase/ui";
-import type { TransformRun } from "metabase-types/api";
+import { Card, Flex, Group, Stack } from "metabase/ui";
+import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
+import type { TransformRun, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
 import { RunStatusInfo } from "../../../components/RunStatusInfo";
+import { TagList } from "../../../components/TagList";
 import type { RunListParams } from "../../../types";
 import { getRunListUrl, getTransformUrl } from "../../../urls";
-import { formatRunMethod, parseLocalTimestamp } from "../../../utils";
+import { formatRunMethod, parseTimestampWithTimezone } from "../../../utils";
 import { PAGE_SIZE } from "../constants";
+import { hasFilterParams } from "../utils";
 
 import S from "./RunList.module.css";
 
@@ -20,19 +24,23 @@ type RunListProps = {
   runs: TransformRun[];
   totalCount: number;
   params: RunListParams;
+  tags: TransformTag[];
 };
 
-export function RunList({ runs, totalCount, params }: RunListProps) {
+export function RunList({ runs, totalCount, params, tags }: RunListProps) {
   const { page = 0 } = params;
   const hasPagination = totalCount > PAGE_SIZE;
 
   if (runs.length === 0) {
-    return <ListEmptyState label={t`No runs yet`} />;
+    const hasFilters = hasFilterParams(params);
+    return (
+      <ListEmptyState label={hasFilters ? t`No runs found` : t`No runs yet`} />
+    );
   }
 
   return (
     <Stack gap="lg">
-      <RunTable runs={runs} />
+      <RunTable runs={runs} tags={tags} />
       {hasPagination && (
         <Group justify="end">
           <RunTablePaginationControls
@@ -49,9 +57,11 @@ export function RunList({ runs, totalCount, params }: RunListProps) {
 
 type RunTableProps = {
   runs: TransformRun[];
+  tags: TransformTag[];
 };
 
-function RunTable({ runs }: RunTableProps) {
+function RunTable({ runs, tags }: RunTableProps) {
+  const systemTimezone = useSetting("system-timezone");
   const dispatch = useDispatch();
 
   const handleRowClick = (run: TransformRun) => {
@@ -65,10 +75,17 @@ function RunTable({ runs }: RunTableProps) {
       <AdminContentTable
         columnTitles={[
           t`Transform`,
-          t`Started at`,
-          t`End at`,
+          <Flex key="started-at" align="center" gap="xs">
+            <span className={S.nowrap}>{t`Started at`}</span>{" "}
+            <TimezoneIndicator />
+          </Flex>,
+          <Flex key="end-at" align="center" gap="xs">
+            <span className={S.nowrap}>{t`Ended at`}</span>{" "}
+            <TimezoneIndicator />
+          </Flex>,
           t`Status`,
           t`Trigger`,
+          t`Tags`,
         ]}
       >
         {runs.map((run) => (
@@ -77,25 +94,40 @@ function RunTable({ runs }: RunTableProps) {
             className={S.row}
             onClick={() => handleRowClick(run)}
           >
-            <td>{run.transform?.name}</td>
-            <td>{parseLocalTimestamp(run.start_time).format("lll")}</td>
-            <td>
+            <td className={S.wrap}>{run.transform?.name}</td>
+            <td className={S.nowrap}>
+              {parseTimestampWithTimezone(
+                run.start_time,
+                systemTimezone,
+              ).format("lll")}
+            </td>
+            <td className={S.nowrap}>
               {run.end_time
-                ? parseLocalTimestamp(run.end_time).format("lll")
+                ? parseTimestampWithTimezone(
+                    run.end_time,
+                    systemTimezone,
+                  ).format("lll")
                 : null}
             </td>
-            <td>
+            <td className={S.wrap}>
               <RunStatusInfo
+                transform={run.transform}
                 status={run.status}
                 message={run.message}
                 endTime={
                   run.end_time != null
-                    ? parseLocalTimestamp(run.end_time).toDate()
+                    ? parseTimestampWithTimezone(
+                        run.end_time,
+                        systemTimezone,
+                      ).toDate()
                     : null
                 }
               />
             </td>
-            <td>{formatRunMethod(run.run_method)}</td>
+            <td className={S.wrap}>{formatRunMethod(run.run_method)}</td>
+            <td className={S.wrap}>
+              <TagList tags={tags} tagIds={run.transform?.tag_ids ?? []} />
+            </td>
           </tr>
         ))}
       </AdminContentTable>

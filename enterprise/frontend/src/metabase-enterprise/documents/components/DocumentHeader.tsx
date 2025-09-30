@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { Link } from "react-router";
 import { t } from "ttag";
 
 import DateTime, {
@@ -19,6 +20,7 @@ import {
 } from "metabase/ui";
 import type { Document } from "metabase-types/api";
 
+import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
 
 import S from "./DocumentHeader.module.css";
@@ -41,6 +43,7 @@ interface DocumentHeaderProps {
   onMove: () => void;
   onToggleBookmark: () => void;
   onArchive: () => void;
+  hasComments?: boolean;
 }
 
 export const DocumentHeader = ({
@@ -55,10 +58,12 @@ export const DocumentHeader = ({
   onMove,
   onToggleBookmark,
   onArchive,
+  hasComments = false,
 }: DocumentHeaderProps) => {
   const handlePrint = useCallback(() => {
     window.print();
-  }, []);
+    trackDocumentPrint(document);
+  }, [document]);
 
   return (
     <Flex
@@ -126,6 +131,37 @@ export const DocumentHeader = ({
             </Box>
           )}
         </Transition>
+        {!isNewDocument && hasComments && (
+          <Tooltip label={t`Show all comments`}>
+            <Box>
+              {showSaveButton && (
+                <ActionIcon
+                  className={S.commentsIcon}
+                  disabled
+                  variant="subtle"
+                  size="md"
+                  aria-label={t`Show all comments`}
+                  data-hide-on-print
+                >
+                  <Icon name="comment" />
+                </ActionIcon>
+              )}
+
+              {!showSaveButton && document && (
+                <ActionIcon
+                  className={S.commentsIcon}
+                  component={Link}
+                  to={`/document/${document.id}/comments/all`}
+                  size="md"
+                  aria-label={t`Show all comments`}
+                  data-hide-on-print
+                >
+                  <Icon name="comment" />
+                </ActionIcon>
+              )}
+            </Box>
+          </Tooltip>
+        )}
         {!document?.archived && (
           <Menu position="bottom-end">
             <Menu.Target>

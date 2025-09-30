@@ -24,20 +24,13 @@ export interface BaseEmbedTestPageOptions {
     instanceUrl?: string;
     apiKey?: string;
     useExistingUserSession?: boolean;
+    fetchRequestToken?: () => Promise<{ jwt: string }>;
     theme?: MetabaseTheme;
     preferredAuthMethod?: "jwt" | "saml";
     locale?: string;
   };
 
-  // The element to embed
-  element: "metabase-dashboard" | "metabase-question";
-
-  // Attributes passed serialized to the element
-  attributes: {
-    dashboardId?: number | string;
-    questionId?: number | string;
-    [key: string]: any;
-  };
+  elements: MetabaseElement[];
 
   // Options for the test page
   origin?: string;
@@ -47,9 +40,20 @@ export interface BaseEmbedTestPageOptions {
     afterEmbed?: string;
   };
 
-  onVisitPage?(): void;
+  onVisitPage?(win: Cypress.AUTWindow): void;
 }
 
+export interface MetabaseElement {
+  // The component to embed
+  component: "metabase-dashboard" | "metabase-question" | "metabase-browser";
+
+  // Attributes passed serialized to the element
+  attributes: {
+    dashboardId?: number | string;
+    questionId?: number | string;
+    [key: string]: any;
+  };
+}
 export const waitForSimpleEmbedIframesToLoad = (n: number = 1) => {
   cy.get("iframe[data-metabase-embed]").should("have.length", n);
   cy.get("iframe[data-iframe-loaded]").should("have.length", n, {
@@ -113,8 +117,7 @@ export function loadSdkIframeEmbedTestPage({
 function getSdkIframeEmbedHtml({
   insertHtml,
   metabaseConfig,
-  element,
-  attributes,
+  elements,
 }: BaseEmbedTestPageOptions) {
   return `
     <!DOCTYPE html>
@@ -138,8 +141,13 @@ function getSdkIframeEmbedHtml({
       ${getNewEmbedConfigurationScript(metabaseConfig)}
 
       ${insertHtml?.beforeEmbed ?? ""}
-
-      <${element} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+      ${elements
+        .map(
+          ({ component, attributes }) => `
+        <${component} ${convertPropertiesToEmbedTagAttributes(attributes)} />
+      `,
+        )
+        .join("\n")}
 
       ${insertHtml?.afterEmbed ?? ""}
     </body>
@@ -148,7 +156,7 @@ function getSdkIframeEmbedHtml({
 }
 
 const convertPropertiesToEmbedTagAttributes = (
-  attributes: BaseEmbedTestPageOptions["attributes"],
+  attributes: MetabaseElement["attributes"],
 ) => {
   return Object.entries(attributes)
     .map(([key, value]) => {
@@ -260,14 +268,7 @@ export const getNewEmbedConfigurationScript = ({
   useExistingUserSession,
   preferredAuthMethod,
   locale,
-}: {
-  instanceUrl?: string;
-  theme?: MetabaseTheme;
-  apiKey?: string;
-  useExistingUserSession?: boolean;
-  preferredAuthMethod?: "jwt" | "saml";
-  locale?: string;
-} = {}) => {
+}: BaseEmbedTestPageOptions["metabaseConfig"] = {}) => {
   const config = {
     instanceUrl,
     apiKey,

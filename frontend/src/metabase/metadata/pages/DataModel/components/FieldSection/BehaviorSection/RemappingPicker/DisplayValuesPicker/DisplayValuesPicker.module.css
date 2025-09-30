@@ -22,5 +22,6 @@
 }
 
 .infoIcon {
+  display: block;
   pointer-events: all;
 }

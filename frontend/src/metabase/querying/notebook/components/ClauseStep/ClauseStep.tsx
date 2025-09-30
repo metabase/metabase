@@ -22,6 +22,7 @@ type RenderItemOpts<T> = {
   item: T;
   index: number;
   onOpen?: () => void;
+  hasPopover?: boolean;
 };
 
 type RenderPopoverOpts<T> = {
@@ -61,9 +62,19 @@ export const ClauseStep = <T,>({
   onReorder,
   ...props
 }: ClauseStepProps<T>): JSX.Element => {
-  const renderItem = ({ item, index, onOpen }: RenderItemOpts<T>) => (
+  const renderItem = ({
+    item,
+    index,
+    onOpen,
+    hasPopover,
+  }: RenderItemOpts<T>) => (
     <ClauseStepDndItem index={index} readOnly={readOnly}>
-      <NotebookCellItem color={color} readOnly={readOnly} onClick={onOpen}>
+      <NotebookCellItem
+        color={color}
+        readOnly={readOnly}
+        onClick={onOpen}
+        hasPopover={hasPopover}
+      >
         {renderName(item, index)}
         {hasRemoveButton && (
           <Icon
@@ -94,7 +105,9 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
-            renderItem={(onOpen) => renderItem({ item, index, onOpen })}
+            renderItem={(onOpen, hasPopover) =>
+              renderItem({ item, index, onOpen, hasPopover })
+            }
             renderPopover={(onClose) => renderPopover({ item, index, onClose })}
           />
         ))}

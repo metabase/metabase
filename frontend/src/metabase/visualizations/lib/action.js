@@ -76,5 +76,24 @@ export function performDefaultAction(actions, props) {
     return performAction(action, props);
   }
 
+  // TODO: Consider refactoring (@kulyk)
+  if (actions.length <= 2) {
+    const sortAsc = actions.find((action) => action.name === "sort.ascending");
+    const sortDesc = actions.find(
+      (action) => action.name === "sort.descending",
+    );
+    if (sortAsc && sortDesc) {
+      performAction(sortAsc, props);
+    }
+  }
+
+  if (
+    actions.length === 1 &&
+    (actions[0].name === "sort.ascending" ||
+      actions[0].name === "sort.descending")
+  ) {
+    performAction(actions[0], props);
+  }
+
   return false;
 }

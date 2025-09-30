@@ -6,6 +6,7 @@
    [flatland.ordered.set :refer [ordered-set]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; legacy usage -- don't do things like this going forward
@@ -15,20 +16,29 @@
 (set! *warn-on-reflection* true)
 
 (defn- transform-deps [transform]
-  (let [query (-> (get-in transform [:source :query])
-                  transforms.util/massage-sql-query
-                  qp.preprocess/preprocess)]
-    (case (:type query)
-      :native (driver/native-query-deps (-> (qp.store/metadata-provider)
-                                            lib.metadata/database
-                                            :engine)
-                                        (get-in query [:native :query]))
-      :query (into #{}
-                   (keep #(clojure.core.match/match %
-                            [:source-table source] (when (int? source)
-                                                     source)
-                            _ nil))
-                   (tree-seq coll? seq query)))))
+  (if (transforms.util/python-transform? transform)
+    ;; Python transforms have dependencies via source-tables mapping
+    (into #{}
+          (map #(hash-map :table %))
+          (vals (get-in transform [:source :source-tables])))
+    ;; Query transforms have dependencies via SQL query analysis
+    (let [query (-> (get-in transform [:source :query])
+                    transforms.util/massage-sql-query
+                    qp.preprocess/preprocess
+                    ;; legacy usage -- don't do things like this going forward
+                    #_{:clj-kondo/ignore [:discouraged-var]}
+                    lib/->legacy-MBQL)]
+      (case (:type query)
+        :native (driver/native-query-deps (-> (qp.store/metadata-provider)
+                                              lib.metadata/database
+                                              :engine)
+                                          (get-in query [:native :query]))
+        :query (into #{}
+                     (keep #(clojure.core.match/match %
+                              [:source-table source] (when (int? source)
+                                                       {:table source})
+                              _ nil))
+                     (tree-seq coll? seq query))))))
 
 (defn- dependency-map [transforms]
   (into {}
@@ -52,20 +62,27 @@
 
   The result is a map of transform id -> #{transform ids the transform depends on}. Dependencies are limited to just
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
-  dependency is ignored."
+  dependency is ignored. Both query and Python transforms can have dependencies on tables produced by other transforms."
   [transforms]
-  (let [transforms-by-db (->> transforms
+  (let [;; Group all transforms by their database
+        transforms-by-db (->> transforms
                               (map (fn [transform]
-                                     {(get-in transform [:source :query :database]) [transform]}))
+                                     (let [db-id (transforms.util/target-database-id transform)]
+                                       {db-id [transform]})))
                               (apply merge-with into))
 
+        transform-ids (into #{} (map :id) transforms)
         {:keys [output-tables dependencies]} (->> transforms-by-db
                                                   (map (fn [[db-id db-transforms]]
                                                          (qp.store/with-metadata-provider db-id
                                                            {:output-tables (output-table-map db-transforms)
                                                             :dependencies (dependency-map db-transforms)})))
                                                   (apply merge-with merge))]
-    (update-vals dependencies #(into #{} (keep output-tables) %))))
+    (update-vals dependencies #(into #{}
+                                     (keep (fn [{:keys [table transform]}]
+                                             (or (output-tables table)
+                                                 (transform-ids transform))))
+                                     %))))
 
 (defn find-cycle
   "Finds a path containing a cycle in the directed graph `node->children`.
@@ -111,9 +128,12 @@
                                transforms)
         db-id (get-in to-check [:source :query :database])]
     (qp.store/with-metadata-provider db-id
-      (let [output-tables (output-table-map (filter #(= (get-in % [:source :query :database]) db-id)
-                                                    transforms))
-            node->children #(->> % transforms-by-id transform-deps (keep output-tables))
+      (let [db-transforms (filter #(= (get-in % [:source :query :database]) db-id) transforms)
+            output-tables (output-table-map db-transforms)
+            transform-ids (into #{} (map :id) db-transforms)
+            node->children #(->> % transforms-by-id transform-deps (keep (fn [{:keys [table transform]}]
+                                                                           (or (output-tables table)
+                                                                               (transform-ids transform)))))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]
         (when cycle
@@ -122,7 +142,8 @@
 
 (defn available-transforms
   "Given an ordering (see transform-ordering), a set of running transform ids, and a set of completed transform ids,
-  computes which transforms are currently able to be run."
+  computes which transforms are currently able to be run.  Returns transform ids in the order that they appear in the
+  ordering map.  If you want them returned in a specific order, use a map with ordered keys, e.g., a sorted-map."
   [ordering running complete]
   (for [[transform-id deps] ordering
         :when (and (not (or (running transform-id)

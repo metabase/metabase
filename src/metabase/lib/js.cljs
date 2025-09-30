@@ -57,7 +57,6 @@
    [filter])
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.legacy-mbql.js :as mbql.js]
@@ -1002,7 +1001,7 @@
   [x]
   (as-> x parts
     (js->clj parts :keywordize-keys true)
-    (walk/postwalk
+    (perf/postwalk
      #(cond-> %
         (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
      parts)))
@@ -1038,7 +1037,7 @@
   > **Code health:** Healthy"
   [a-query stage-number an-expression-clause]
   (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
-    (walk/postwalk
+    (perf/postwalk
      (fn [node]
        (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
          (let [{:keys [operator options args]} node]
@@ -2126,7 +2125,7 @@
   Typically this is straightforward: queries generally specify the database ID they are querying.
 
   However, in some cases where the source is a saved question, a magic value is used,
-  [[metabase.legacy-mbql.schema/saved-questions-virtual-database-id]]:
+  [[metabase.lib.schema.id/saved-questions-virtual-database-id]]:
 
       {:database -1337}
 

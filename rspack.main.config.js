@@ -22,13 +22,19 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const DOCS_PATH = __dirname + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
 const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_PACKAGE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-package";
+const SDK_BUNDLE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
+const SDK_SHARED_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -36,7 +42,7 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
@@ -173,6 +179,10 @@ const config = {
         use: ["source-map-loader"],
       },
       {
+        test: /\.md/,
+        type: "asset/source",
+      },
+      {
         test: /\.svg/,
         type: "asset/source",
         resourceQuery: /source/, // *.svg?source
@@ -207,6 +217,7 @@ const config = {
       "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
+      docs: DOCS_PATH,
       metabase: SRC_PATH,
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
@@ -224,7 +235,9 @@ const config = {
       "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
       "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
+      "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
+      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
+      "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
       "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
         "/sdk-iframe-embedding-plugins",
       ),

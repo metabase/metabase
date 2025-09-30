@@ -38,8 +38,12 @@ const {
 const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
+const {
+  getSdkBundleVersionFromVersionProperties,
+} = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_BUNDLE_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const TMP_BUILD_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
@@ -54,9 +58,9 @@ const config = {
 
   name: "embedding_sdk_bundle",
 
-  context: SDK_SRC_PATH,
+  context: SDK_BUNDLE_SRC_PATH,
 
-  entry: "./bundle.ts",
+  entry: "./index.ts",
 
   output: {
     // we must use a different directory than the main rspack config,
@@ -64,9 +68,6 @@ const config = {
     path: TMP_BUILD_PATH,
     publicPath: "",
     filename: SDK_BUNDLE_FILENAME,
-
-    // We assign exports from SDK bundle into window.METABASE_EMBEDDING_SDK_BUNDLE manually in the SDK bundle entry point.
-    library: false,
   },
 
   devtool: IS_DEV_MODE ? mainConfig.devtool : false,
@@ -174,8 +175,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       ...getBuildInfoValues({
-        // Version of the SDK bundle is equal to Metabase Instance version and received from it via API call
-        version: null,
+        version: getSdkBundleVersionFromVersionProperties(),
       }),
     }),
     shouldAnalyzeBundles &&
@@ -201,7 +201,7 @@ config.resolve.alias = {
   "ee-overrides": ENTERPRISE_SRC_PATH + "/overrides",
 
   // Allows importing side effects that applies only to the SDK.
-  "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
+  "sdk-specific-imports": SDK_BUNDLE_SRC_PATH + "/lib/sdk-specific-imports.ts",
 };
 
 if (config.cache) {

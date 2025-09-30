@@ -103,7 +103,7 @@ describe("issue 61013", () => {
     H.getDashboardCards().should("have.length", 1);
     H.getDashboardCard(0).within(() => {
       cy.findByText("Orders question").should("be.visible");
-      cy.findByText("2,000 rows").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
     });
 
     cy.findByTestId("edit-bar")
@@ -115,7 +115,7 @@ describe("issue 61013", () => {
     H.getDashboardCards().should("have.length", 1);
     H.getDashboardCard(0).within(() => {
       cy.findByText("Orders question").should("be.visible");
-      cy.findByText("2,000 rows").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
     });
   });
 
@@ -656,8 +656,7 @@ describe("issue 28756", () => {
 
   const TOAST_TIMEOUT_SAFETY_MARGIN = 1000;
   const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + TOAST_TIMEOUT_SAFETY_MARGIN;
-  const TOAST_MESSAGE =
-    "Would you like to be notified when this dashboard is done loading?";
+  const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
 
   function restrictCollectionForNonAdmins(collectionId) {
     cy.request("GET", "/api/collection/graph").then(
@@ -2032,3 +2031,233 @@ function slowDownCardQuery() {
     });
   });
 }
+
+describe("issue 62170", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should only refresh card data, not reload entire dashboard when auto-refresh is enabled", () => {
+    const REFRESH_PERIOD = 3;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders Count",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.visit(`/dashboard/${dashboard_id}#refresh=${REFRESH_PERIOD}`);
+
+      cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
+        "dashboardLoad",
+      );
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "cardDataRefresh",
+      );
+    });
+
+    // Wait for initial dashboard load
+    cy.wait("@dashboardLoad");
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard is loaded
+    H.getDashboardCard().within(() => {
+      cy.findByText("Orders Count").should("be.visible");
+    });
+
+    cy.wait(REFRESH_PERIOD * 1000);
+
+    // Verify card data was refreshed
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard itself was NOT reloaded
+    cy.get("@dashboardLoad.all").should("have.length", 1);
+  });
+});
+
+describe("issue 52674", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be possible to open a parameter widget using the keyboard shortcut (metabase#52674)", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        {
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        },
+      ],
+      dashboardDetails: {
+        parameters: [
+          createMockParameter({
+            id: "param-1",
+            name: "Number",
+            slug: "number",
+            type: "number/between",
+          }),
+        ],
+      },
+    }).then(({ dashboard }) => {
+      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
+        ({ body: dashboard }) => {
+          const [dashcard] = dashboard.dashcards;
+          const [parameter] = dashboard.parameters;
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            dashcards: [
+              {
+                ...dashcard,
+                parameter_mappings: [
+                  {
+                    card_id: dashcard.card_id,
+                    parameter_id: parameter.id,
+                    target: [
+                      "dimension",
+                      [
+                        "field",
+                        ORDERS.TOTAL,
+                        {
+                          "base-type": "type/Number",
+                        },
+                      ],
+                    ],
+                  },
+                ],
+              },
+            ],
+          }).then(() => {
+            cy.wrap(dashboard.id).as("dashboardId");
+          });
+        },
+      );
+    });
+    H.visitDashboard("@dashboardId");
+
+    cy.log("Opening with Enter should work");
+    H.main().button("Number").focus();
+    cy.realPress("Enter");
+    H.popover().should("be.visible");
+
+    cy.log("Close the popover");
+    H.main().button("Number").click();
+
+    cy.log("Opening with Space should work");
+    H.main().button("Number").focus();
+    cy.realPress("Space");
+    H.popover().should("be.visible");
+  });
+});
+
+describe("issue 53370", () => {
+  const LONG_NAME = "a".repeat(254);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createDashboard({
+      name: LONG_NAME,
+    }).then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("should wrap long dashboard named (metabase#53370)", () => {
+    cy.findByDisplayValue(LONG_NAME)
+      .should("be.visible")
+      .then(($el) => {
+        cy.window().then((win) => {
+          cy.wrap($el[0].offsetWidth).should("be.lt", win.innerWidth);
+        });
+      });
+    //
+  });
+});
+
+describe("issue 63176", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not be possible to save a dashboard with an empty name and the correct error should be displayed (metabase#63176)", () => {
+    cy.visit("/");
+    H.newButton().click();
+    H.popover().findByText("Dashboard").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(" ");
+      cy.button("Create").click();
+
+      cy.findByText("value must be a non-blank string.").should("be.visible");
+      cy.findByPlaceholderText("What is the name of your dashboard?").should(
+        "have.attr",
+        "aria-invalid",
+        "true",
+      );
+      cy.button("Failed").should("be.visible");
+    });
+  });
+});
+
+describe("issue 64138", () => {
+  const MAP_QUESTION = {
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+
+    display: "map",
+    displayIsLocked: true,
+    visualization_settings: {
+      "map.type": "pin",
+      "map.pin_type": "markers",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestionAndDashboard({
+      questionDetails: MAP_QUESTION,
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+  });
+
+  it("should hide map controls when editing dashboard (metabase#64138)", () => {
+    H.editDashboard();
+
+    cy.log("hovering the map should not show the zoom controls");
+    H.getDashboardCard(0)
+      .realHover({
+        position: "center",
+      })
+      .within(() => {
+        cy.findByLabelText("Zoom in").should("not.exist");
+        cy.findByText("Set as default view").should("be.visible").click();
+      });
+
+    cy.log("hovering marker icons should not open their tooltips");
+    getMarkerIcon(0).realHover();
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log("clicking marker icons should not navigate to the question");
+    getMarkerIcon(0).click({ force: true });
+    cy.location("pathname").should("match", /^\/dashboard\/[0-9]+$/);
+    H.modal().should("not.exist");
+  });
+
+  function getMarkerIcon(index) {
+    // pick the last one so it will be on top
+    return H.getDashboardCard(index)
+      .get(".leaflet-marker-icon")
+      .should("have.length.gt", 0)
+      .last();
+  }
+});

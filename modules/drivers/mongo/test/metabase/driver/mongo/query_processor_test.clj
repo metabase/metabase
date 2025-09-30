@@ -687,7 +687,7 @@
 #_(deftest ^:parallel filter-uuids-with-string-patterns-test
     (mt/test-driver :mongo
       (mt/dataset uuid-dogs
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               dogs (lib.metadata/table mp (mt/id :dogs))
               person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
           (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))

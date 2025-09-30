@@ -41,7 +41,7 @@ const PeopleNavItem = (props: AdminNavItemProps) => {
 
   // we want to highlight the groups nav item if it's showing a details subpage
   const isActive =
-    (props.path.includes("groups") && subpath.includes(props.path)) ||
+    (props.path?.includes("groups") && subpath.includes(props.path)) ||
     props.path === subpath;
 
   return <AdminNavItem {...props} active={isActive} />;

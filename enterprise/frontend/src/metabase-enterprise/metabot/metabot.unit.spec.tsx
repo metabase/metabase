@@ -5,6 +5,7 @@ import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   act,
@@ -15,7 +16,6 @@ import {
 } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
   type MockStreamedEndpointParams,
@@ -25,6 +25,7 @@ import {
 } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
+  createMockDatabase,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -50,12 +51,8 @@ import {
   setVisible,
 } from "./state";
 
-jest.mock("metabase/lib/download", () => ({
-  downloadObjectAsJson: jest.fn(),
-}));
-
 const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/v2/agent-streaming", params);
+  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
 
 function setup(
   options: {
@@ -88,6 +85,7 @@ function setup(
     `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
   );
+  setupDatabaseListEndpoint([]);
 
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
     storeInitialState: createMockState({
@@ -279,7 +277,10 @@ describe("metabot-streaming", () => {
     });
 
     it("should present the user an option to provide feedback", async () => {
+      const feedbackPath = "path:/api/ee/metabot-v3/feedback";
+
       setup();
+      fetchMock.post(feedbackPath, 204);
       mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       await enterChatMessage("Who is your favorite?");
@@ -291,10 +292,6 @@ describe("metabot-streaming", () => {
         within(lastMessage!).findByTestId("metabot-chat-message-thumbs-up");
       const thumbsDown = () =>
         within(lastMessage!).findByTestId("metabot-chat-message-thumbs-down");
-      const mockDownloadObjectAsJson =
-        downloadObjectAsJson as jest.MockedFunction<
-          typeof downloadObjectAsJson
-        >;
 
       expect(await thumbsUp()).toBeInTheDocument();
       expect(await thumbsDown()).toBeInTheDocument();
@@ -303,11 +300,11 @@ describe("metabot-streaming", () => {
       expect(await feedbackModal()).toBeInTheDocument();
       await userEvent.click(
         await within(await feedbackModal()).findByRole("button", {
-          name: /Download/,
+          name: /Submit/,
         }),
       );
 
-      expect(mockDownloadObjectAsJson).toHaveBeenCalledTimes(1);
+      expect(fetchMock.callHistory.calls(feedbackPath)).toHaveLength(1);
 
       expect(await thumbsUp()).toBeDisabled();
       expect(await thumbsDown()).toBeDisabled();
@@ -362,7 +359,7 @@ describe("metabot-streaming", () => {
 
     it("should not show retry option for error messages", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -677,7 +674,7 @@ describe("metabot-streaming", () => {
   describe("errors", () => {
     it("should handle service error response", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -690,7 +687,7 @@ describe("metabot-streaming", () => {
 
     it("should handle non-successful responses", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 400);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 400);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -733,7 +730,7 @@ describe("metabot-streaming", () => {
 
     it("should remove previous error messages and prompt when submiting next prompt", async () => {
       setup();
-      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+      fetchMock.post(`path:/api/ee/metabot-v3/agent-streaming`, 500);
 
       await enterChatMessage("Who is your favorite?");
 
@@ -769,6 +766,32 @@ describe("metabot-streaming", () => {
           (await lastReqBody(agentSpy))?.context,
         ),
       ).toEqual(true);
+    });
+
+    it("should send along available actions in context", async () => {
+      setup();
+      fetchMock.removeRoutes({ names: ["database-list"] });
+      setupDatabaseListEndpoint([
+        createMockDatabase({
+          is_saved_questions: false,
+          native_permissions: "none",
+        }),
+      ]);
+
+      const agentSpy = mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(
+        _.pick((await lastReqBody(agentSpy))?.context, "capabilities"),
+      ).toEqual({
+        capabilities: [
+          "frontend:navigate_user_v1",
+          "permission:save_questions",
+        ],
+      });
     });
 
     it("should allow components to register additional context", async () => {

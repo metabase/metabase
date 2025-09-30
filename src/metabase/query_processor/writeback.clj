@@ -60,7 +60,9 @@
   "Execute an writeback query (which currently has to be an MBQL 4 native query) from an action."
   [query :- ::native-mbql-4-query]
   (qp.setup/with-qp-setup [query query]
-    (let [{query-type :type, :as query} (qp.preprocess/preprocess query)]
+    (let [{query-type :type, :as query} (-> (qp.preprocess/preprocess query)
+                                            ;; TODO (Cam 8/19/25) -- update this code to use MBQL 5 / Lib
+                                            lib/->legacy-MBQL)]
       ;; make sure this is a native query.
       (when-not (= query-type :native)
         (throw (ex-info (tru "Only native queries can be executed as write queries.")

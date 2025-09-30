@@ -7,15 +7,40 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
-import type { RunListParams } from "./types";
+import type {
+  JobListParams,
+  RunListParams,
+  TransformListParams,
+} from "./types";
 
 export const ROOT_URL = "/admin/transforms";
 
-export function getTransformListUrl() {
-  return ROOT_URL;
+export function getTransformListUrl({
+  lastRunStartTime,
+  lastRunStatuses,
+  tagIds,
+}: TransformListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (lastRunStartTime != null) {
+    searchParams.set("lastRunStartTime", lastRunStartTime);
+  }
+  lastRunStatuses?.forEach((status) => {
+    searchParams.append("lastRunStatuses", status);
+  });
+  tagIds?.forEach((tagId) => {
+    searchParams.append("tagIds", String(tagId));
+  });
+  const queryString = searchParams.toString();
+  if (queryString.length > 0) {
+    return `${ROOT_URL}?${queryString}`;
+  } else {
+    return ROOT_URL;
+  }
 }
 
-export function getNewTransformFromTypeUrl(type: DatasetQuery["type"]) {
+export function getNewTransformFromTypeUrl(
+  type: DatasetQuery["type"] | "python",
+) {
   return `${ROOT_URL}/new/${type}`;
 }
 
@@ -31,8 +56,31 @@ export function getTransformQueryUrl(transformId: TransformId) {
   return `${ROOT_URL}/${transformId}/query`;
 }
 
-export function getJobListUrl() {
-  return `${ROOT_URL}/jobs`;
+export function getJobListUrl({
+  lastRunStartTime,
+  lastRunStatuses,
+  nextRunStartTime,
+  tagIds,
+}: JobListParams = {}) {
+  const searchParams = new URLSearchParams();
+  if (lastRunStartTime != null) {
+    searchParams.set("lastRunStartTime", lastRunStartTime);
+  }
+  lastRunStatuses?.forEach((status) => {
+    searchParams.append("lastRunStatuses", status);
+  });
+  if (nextRunStartTime != null) {
+    searchParams.set("nextRunStartTime", nextRunStartTime);
+  }
+  tagIds?.forEach((tagId) => {
+    searchParams.append("tagIds", String(tagId));
+  });
+  const queryString = searchParams.toString();
+  if (queryString.length > 0) {
+    return `${ROOT_URL}/jobs?${queryString}`;
+  } else {
+    return `${ROOT_URL}/jobs`;
+  }
 }
 
 export function getNewJobUrl() {
@@ -48,6 +96,9 @@ export function getRunListUrl({
   transformIds,
   statuses,
   transformTagIds,
+  startTime,
+  endTime,
+  runMethods,
 }: RunListParams = {}) {
   const searchParams = new URLSearchParams();
   if (page != null) {
@@ -61,6 +112,15 @@ export function getRunListUrl({
   });
   transformTagIds?.forEach((tagId) => {
     searchParams.append("transformTagIds", String(tagId));
+  });
+  if (startTime != null) {
+    searchParams.set("startTime", startTime);
+  }
+  if (endTime != null) {
+    searchParams.set("endTime", endTime);
+  }
+  runMethods?.forEach((runMethod) => {
+    searchParams.append("runMethods", runMethod);
   });
 
   const queryString = searchParams.toString();

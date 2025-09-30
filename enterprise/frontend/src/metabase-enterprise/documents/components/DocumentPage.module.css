@@ -28,7 +28,8 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 0 2rem;
+  padding: 0 3rem 0 2rem;
+  scroll-padding-top: 32px;
 }
 
 .documentContainer {
@@ -57,12 +58,21 @@
       padding: 0;
     }
 
+    :global(.node-metabot),
     :global(.node-cardEmbed) {
       break-inside: avoid;
     }
 
     [data-hide-on-print] {
       visibility: hidden;
+    }
+  }
+}
+
+@media not print {
+  .documentContainer {
+    [data-show-on-print] {
+      display: none;
     }
   }
 }

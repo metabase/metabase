@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.jobs :as transforms.jobs]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -17,15 +18,20 @@
 
 (comment transform-job/keep-me)
 
+(def ^:private ui-display-types [:cron/raw :cron/builder])
+
 (api.macros/defendpoint :post "/"
   "Create a new transform job."
   [_route-params
    _query-params
-   {:keys [name description schedule tag_ids]} :- [:map
-                                                   [:name ms/NonBlankString]
-                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
-                                                   [:schedule ms/NonBlankString]
-                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+   {:keys [name description schedule ui_display_type tag_ids]} :- [:map
+                                                                   [:name ms/NonBlankString]
+                                                                   [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                                   [:schedule ms/NonBlankString]
+                                                                   [:ui_display_type
+                                                                    {:default :cron/raw}
+                                                                    (ms/enum-decode-keyword ui-display-types)]
+                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Creating transform job:" name "with schedule:" schedule)
   (api/check-superuser)
   ;; Validate cron expression
@@ -39,7 +45,8 @@
   (let [job (t2/insert-returning-instance! :model/TransformJob
                                            {:name name
                                             :description description
-                                            :schedule schedule})]
+                                            :schedule schedule
+                                            :ui_display_type ui_display_type})]
     (transforms.schedule/initialize-job! job)
     ;; Add tag associations if provided
     (when (seq tag_ids)
@@ -58,11 +65,14 @@
                         [:job-id ms/PositiveInt]]
    _query-params
    {tag-ids :tag_ids
-    :keys [name description schedule]} :- [:map
-                                           [:name {:optional true} ms/NonBlankString]
-                                           [:description {:optional true} [:maybe ms/NonBlankString]]
-                                           [:schedule {:optional true} ms/NonBlankString]
-                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+    :keys [name description schedule ui_display_type]} :- [:map
+                                                           [:name {:optional true} ms/NonBlankString]
+                                                           [:description {:optional true} [:maybe ms/NonBlankString]]
+                                                           [:schedule {:optional true} ms/NonBlankString]
+                                                           [:ui_display_type
+                                                            {:optional true}
+                                                            (ms/enum-decode-keyword ui-display-types)]
+                                                           [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
   (api/check-superuser)
   (api/check-404 (t2/select-one :model/TransformJob :id job-id))
@@ -71,7 +81,7 @@
     (api/check-400 (transforms.schedule/validate-cron-expression schedule)
                    (deferred-tru "Invalid cron expression: {0}" schedule)))
   ;; Validate tag IDs if provided
-  (when tag-ids
+  (when (seq tag-ids)
     (let [existing-tags (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids]))]
       (api/check-400 (= (set tag-ids) existing-tags)
                      (deferred-tru "Some tag IDs do not exist"))))
@@ -79,7 +89,8 @@
     (when-let [updates (m/assoc-some nil
                                      :name name
                                      :description description
-                                     :schedule schedule)]
+                                     :schedule schedule
+                                     :ui_display_type ui_display_type)]
       (t2/update! :model/TransformJob job-id updates))
     (when schedule
       (transforms.schedule/update-job! job-id schedule))
@@ -124,14 +135,42 @@
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (t2/hydrate job :tag_ids :last_run)))
 
+(defn- add-next-run
+  [{id :id :as job}]
+  (if-let [start-time (-> id transforms.schedule/existing-trigger :next-fire-time)]
+    (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
+    job))
+
+(api.macros/defendpoint :get "/:job-id/transforms"
+  "Get the transforms of job specified by the job's ID."
+  [{:keys [job-id]} :- [:map
+                        [:job-id ms/PositiveInt]]]
+  (log/info "Getting the transforms of transform job" job-id)
+  (api/check-superuser)
+  (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
+  (transforms.jobs/job-transforms job-id))
+
 (api.macros/defendpoint :get "/"
   "Get all transform jobs."
   [_route-params
-   _query-params]
+   {:keys [last_run_start_time next_run_start_time last_run_statuses tag_ids]} :-
+   [:map
+    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:next_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
   (api/check-superuser)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
-    (t2/hydrate jobs :tag_ids :last_run)))
+    (into []
+          (comp (map add-next-run)
+                (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (transforms.util/->date-field-filter-xf [:next_run :start_time] next_run_start_time)
+                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (map #(update % :last_run transforms.util/localize-run-timestamps))
+                (map #(update % :next_run transforms.util/localize-run-timestamps)))
+          (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-job` routes."

@@ -45,21 +45,19 @@
              (map :display-name vis-columns)
              (map :display-name ret-columns)
              (map :display-name marked-columns)))
-      ;; all columns should be selected, none should be unselected
-      (let [{selected true, unselected false} (group-by :selected? marked-columns)]
-        (is (= ["ID"
-                "Total"
-                "Product ID"
-                "Mock products card - Product → Rating"
-                "Mock products card - Product → Category"
-                "Mock products card - Product → Price"
-                "Mock products card - Product → Title"
-                "Mock products card - Product → Created At"
-                "Mock products card - Product → Vendor"
-                "Mock products card - Product → Ean"]
-               (map :display-name selected)))
-        (is (= ["Mock products card - Product → ID"]
-               (map :display-name unselected)))))))
+      (testing "all columns should be selected, none should be unselected"
+        (is (= [{:display-name "ID",                                        :selected? true}
+                {:display-name "Total",                                     :selected? true}
+                {:display-name "Product ID",                                :selected? true}
+                {:display-name "Mock products card - Product → ID",         :selected? true}
+                {:display-name "Mock products card - Product → Rating",     :selected? true}
+                {:display-name "Mock products card - Product → Category",   :selected? true}
+                {:display-name "Mock products card - Product → Price",      :selected? true}
+                {:display-name "Mock products card - Product → Title",      :selected? true}
+                {:display-name "Mock products card - Product → Created At", :selected? true}
+                {:display-name "Mock products card - Product → Vendor",     :selected? true}
+                {:display-name "Mock products card - Product → Ean",        :selected? true}]
+               (map #(select-keys % [:display-name :selected?]) marked-columns)))))))
 
 (deftest ^:parallel find-matching-column-expression-with-field-name-test
   ;; query returns both PRODUCTS.CATEGORY and an expression named CATEGORY

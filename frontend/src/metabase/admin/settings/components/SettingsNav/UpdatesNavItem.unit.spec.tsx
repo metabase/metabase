@@ -29,7 +29,7 @@ const setup = async (props: { versionTag: string }) => {
     settingKey: "version-info",
     settingValue: {
       latest: {
-        version: "v1.53.9",
+        version: "v1.60.0",
         released: "2025-03-25",
         patch: true,
         highlights: [],
@@ -54,7 +54,7 @@ const setup = async (props: { versionTag: string }) => {
 
 describe("UpdatesNavItem", () => {
   it("should not show badge if there are no updates available", async () => {
-    await setup({ versionTag: "v1.53.8" });
+    await setup({ versionTag: "v1.60.0" });
 
     await waitFor(() => {
       const indicatorDot = document.querySelector(
@@ -65,7 +65,7 @@ describe("UpdatesNavItem", () => {
   });
 
   it("should show badge when updates are available", async () => {
-    await setup({ versionTag: "v1.53.8" });
+    await setup({ versionTag: "v1.40.8" });
     await waitFor(() => {
       const indicatorDot = document.querySelector(
         '[class*="Indicator-indicator"]',

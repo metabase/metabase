@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.ref :as lib.ref]
@@ -46,7 +45,7 @@
 (deftest ^:parallel distribution-drill-on-longitude-from-sql-source-card-test
   (testing "#16672"
     (mt/dataset test-data
-      (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider  (mt/metadata-provider)
             card-query         (lib/native-query metadata-provider "SELECT * FROM PEOPLE ORDER BY ID DESC LIMIT 100;")
             results            (qp/process-query card-query)
             results-metadata   (get-in results [:data :results_metadata :columns])

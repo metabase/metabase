@@ -1,4 +1,5 @@
 (ns metabase.lib.field
+  (:refer-clojure :exclude [every? select-keys mapv])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -31,6 +32,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? select-keys mapv]]
    [metabase.util.time :as u.time]))
 
 (defn- column-metadata-effective-type
@@ -361,8 +363,7 @@
                         (isa? semantic-type :type/Coordinate)        (lib.binning/coordinate-binning-strategies)
                         (and (isa? effective-type :type/Number)
                              (not (isa? semantic-type :Relation/*))) (lib.binning/numeric-binning-strategies))]
-      ;; TODO: Include the time and date binning strategies too;
-      ;; see [[metabase.warehouse-schema.api.table/assoc-field-dimension-options]].
+      ;; TODO: Include the time and date binning strategies too
       (for [strat strategies]
         (cond-> strat
           (or (:lib/original-binning field-metadata) existing) (dissoc :default)
@@ -436,7 +437,7 @@
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-columns)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
+                              ((some-fn :id :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) metadata))]
     [:field options id-or-name]))
 
 (mu/defmethod lib.ref/ref-method :metadata/column :- ::lib.schema.ref/ref

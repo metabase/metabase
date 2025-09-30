@@ -1,12 +1,12 @@
 (ns metabase.legacy-mbql.schema
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
-  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs float])
+  (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace
+                            abs float every? select-keys])
   (:require
    [clojure.core :as core]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
-   [malli.error :as me]
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -22,11 +22,13 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? select-keys]]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -44,6 +46,48 @@
 ;; *  Clauses marked `^{:requires-features #{feature+}}` require a certain set of features to be used. At some date in
 ;;    the future we will likely add middleware that uses this metadata to automatically validate that a driver has the
 ;;    features needed to run the query in question.
+
+(mr/def ::options-style
+  "For convenience of converting back and forth between MBQL 5, from now on we can record info about the options style
+  of a given clause you can do:
+
+    (defmethod options-style-method :field [_tag] ::options-style.last-always)"
+  [:enum
+   {:default ::options-style.none}
+   ;;
+   ;; this is the default style (options is unsupported)
+   ::options-style.none
+   ;;
+   ;; same style as MBQL 5; options map is always the first arg after the tag and we should use `{}` instead of `nil`
+   ;; for empty options. `:lib/uuid` should be preserved here I think.
+   ::options-style.mbql5
+   ;;
+   ;; like a `:field` ref, options are ALWAYS the last arg, but should be `nil` if the options map is empty.
+   ::options-style.last-always
+   ;;
+   ;; The same as but keys should be `snake_case` (`:value` uses this)
+   ::options-style.last-always.snake_case
+   ;;
+   ;; like a `:expression` ref, options is optional but should only be present if non-nil.
+   ::options-style.last-unless-empty
+   ;;
+   ;; for `:contains` and other string filters: style is `::options-style.last-unless-empty` if the clause has two
+   ;; args, otherwise it's basically the same as `::options-style.mbql-5` if it has > 3 args, altho `:lib/uuid`
+   ;; should not be kept on conversion to legacy
+   ::options-style.𝕨𝕚𝕝𝕕])
+
+(defmulti ^:private options-style-method
+  {:arglists '([tag])}
+  keyword)
+
+(defmethod options-style-method :default
+  [_tag]
+  ::options-style.none)
+
+(mu/defn options-style :- ::options-style
+  "The style of options a legacy MBQL clause supports."
+  [tag :- simple-keyword?]
+  (options-style-method tag))
 
 ;; `:day-of-week` depends on the [[metabase.lib-be.core/start-of-week]] Setting, by default Sunday.
 ;; 1 = first day of the week (e.g. Sunday)
@@ -213,6 +257,8 @@
   value    :any
   type-info [:maybe ::ValueTypeInfo])
 
+(defmethod options-style-method :value [_tag] ::options-style.last-always.snake_case)
+
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
 ;; Expression *references* refer to a something in the `:expressions` clause, e.g. something like
@@ -223,6 +269,8 @@
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name ::lib.schema.common/non-blank-string
   options         (optional :map))
+
+(defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
 (defn valid-temporal-unit-for-base-type?
   "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
@@ -251,6 +299,8 @@
   (lib.schema.common/disallowed-keys
    {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}))
 
+;;; TODO (Cam 9/12/25) -- aren't these basically the same as MBQL 5, except Lib UUID isn't required? Maybe we should
+;;; unify these schemas.
 (mr/def ::FieldOptions
   [:and
    [:map
@@ -329,6 +379,8 @@
        base-type
        true))])
 
+(defmethod options-style-method :field [_tag] ::options-style.last-always)
+
 (mr/def ::field
   [:and
    {:doc/title [:span [:code ":field"] " clause"]}
@@ -342,18 +394,7 @@
 
 (def ^{:added "0.39.0"} field
   "Schema for a `:field` clause."
-  (with-meta [:ref ::field] {:clause-name :field}))
-
-(def ^{:added "0.39.0"} field:id
-  "Schema for a `:field` clause, with the added constraint that it must use an integer Field ID."
-  (with-meta
-   [:and
-    field
-    [:fn
-     {:error/message "Must be a :field with an integer Field ID."}
-     (fn [[_ id-or-name]]
-       (integer? id-or-name))]]
-   {:clause-name :field}))
+  ^{:clause-name :field} [:ref ::field])
 
 (mr/def ::field-or-expression-ref
   [:schema
@@ -384,6 +425,8 @@
   aggregation-clause-index :int
   options                  (optional :map))
 
+(defmethod options-style-method :aggregation [_tag] ::options-style.last-unless-empty)
+
 (mr/def ::Reference
   [:schema
    ;; this is provided for the convenience of Lib which uses this schema for `:field-ref` in results metadata
@@ -399,6 +442,8 @@
   opts [:ref ::lib.schema.common/options]
   expr [:or [:ref ::FieldOrExpressionDef] [:ref ::Aggregation]]
   n    ::lib.schema.expression.window/offset.n)
+
+(defmethod options-style-method :offset [_tag] ::options-style.mbql5)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
@@ -738,6 +783,8 @@
   value  :any ;; normally a string, number, or bytes
   options (optional [:map [:mode {:optional true} LiteralDatetimeModeString]]))
 
+(defmethod options-style-method :datetime [_tag] ::options-style.last-unless-empty)
+
 (mr/def ::DatetimeExpression
   (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
 
@@ -846,9 +893,12 @@
 (defclause ^:sugar is-null,  field Field)
 (defclause ^:sugar not-null, field Field)
 
+(mr/def ::Emptyable
+  [:or StringExpressionArg Field])
+
 (def Emptyable
   "Schema for a valid is-empty or not-empty argument."
-  [:or StringExpressionArg Field])
+  [:ref ::Emptyable])
 
 ;; These are rewritten as `[:or [:= <field> nil] [:= <field> ""]]` and
 ;; `[:and [:not= <field> nil] [:not= <field> ""]]`
@@ -861,6 +911,7 @@
    [:case-sensitive {:optional true} :boolean]])
 
 (doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+  (defmethod options-style-method (keyword (name clause-keyword)) [_tag] ::options-style.𝕨𝕚𝕝𝕕)
   (mr/def clause-keyword
     [:or
      ;; Binary form
@@ -879,9 +930,11 @@
 (def starts-with
   "Schema for a valid :starts-with clause."
   (with-meta [:ref ::starts-with] {:clause-name :starts-with}))
+
 (def ends-with
   "Schema for a valid :ends-with clause."
   (with-meta [:ref ::ends-with] {:clause-name :ends-with}))
+
 (def contains
   "Schema for a valid :contains clause."
   (with-meta [:ref ::contains] {:clause-name :contains}))
@@ -917,6 +970,8 @@
            [:enum :current :last :next]]
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
+
+(defmethod options-style-method :time-interval [_tag] ::options-style.last-unless-empty)
 
 (defclause ^:sugar during
   field   Field
@@ -982,8 +1037,12 @@
 (defclause ^{:requires-features #{:basic-aggregations}} case
   clauses CaseClauses, options (optional CaseOptions))
 
+(defmethod options-style-method :case [_tag] ::options-style.last-unless-empty)
+
 (defclause ^:sugar ^{:requires-features #{:basic-aggregations}} [case:if if]
   clauses CaseClauses, options (optional CaseOptions))
+
+(defmethod options-style-method :if [_tag] ::options-style.last-unless-empty)
 
 (mr/def ::NumericExpression
   (one-of + - / * coalesce length floor ceil round abs power sqrt exp log case case:if datetime-diff integer float
@@ -1105,6 +1164,8 @@
   aggregation UnnamedAggregation
   options     AggregationOptions)
 
+(defmethod options-style-method :aggregation-options [_tag] ::options-style.last-always)
+
 (mr/def ::Aggregation
   [:multi
    {:error/message "aggregation clause or numeric expression"
@@ -1148,7 +1209,7 @@
    [:display-name ::lib.schema.common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} ::lib.schema.common/non-blank-string]])
+   [:id {:optional true} [:ref ::lib.schema.template-tag/id]]])
 
 ;; Example:
 ;;
@@ -1619,35 +1680,10 @@
   "Schema for a valid dimension clause."
   (with-meta [:ref ::dimension] {:clause-name :dimension}))
 
+(defmethod options-style-method :dimension [_tag] ::options-style.last-unless-empty)
+
 (defclause variable
   target template-tag)
-
-(mr/def ::parameter.target
-  "Schema for the value of `:target` in a [[Parameter]]."
-  ;; not 100% sure about this but `field` on its own comes from a Dashboard parameter and when it's wrapped in
-  ;; `dimension` it comes from a Field filter template tag parameter (don't quote me on this -- working theory)
-  [:or
-   Field
-   (one-of dimension variable)])
-
-(mr/def ::Parameter
-  "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
-  part of the `:parameters` list in a query."
-  [:merge
-   [:ref :metabase.lib.schema.parameter/parameter]
-   [:map
-    [:target {:optional true} [:ref ::parameter.target]]]])
-
-(def Parameter
-  "Alias for ::Parameter. Prefer using that directly going forward."
-  [:ref ::Parameter])
-
-(mr/def ::ParameterList
-  [:maybe [:sequential Parameter]])
-
-(def ParameterList
-  "Schema for a list of `:parameters` as passed in to a query."
-  [:ref ::ParameterList])
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
@@ -1709,7 +1745,7 @@
 
     [:native     {:optional true} NativeQuery]
     [:query      {:optional true} MBQLQuery]
-    [:parameters {:optional true} ParameterList]
+    [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     ;;
     ;; OPTIONS
     ;;
@@ -1739,19 +1775,3 @@
    (lib.schema.common/disallowed-keys
     {:source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
      :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])
-
-(def ^{:arglists '([query])} valid-query?
-  "Is this a valid outer query? (Pre-compling a validator is more efficient.)"
-  (mr/validator Query))
-
-(defn validate-query
-  "Validator for an outer query; throw an Exception explaining why the query is invalid if it is. Returns query if
-  valid."
-  [query]
-  (if (valid-query? query)
-    query
-    (let [error     (mr/explain Query query)
-          humanized (me/humanize error)]
-      (throw (ex-info (i18n/tru "Invalid query: {0}" (pr-str humanized))
-                      {:error    humanized
-                       :original error})))))

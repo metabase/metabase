@@ -4,39 +4,53 @@ on:
   pull_request:
     branches:
       - master
-    paths:
-      - enterprise/frontend/src/embedding-sdk/**
 
 jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_embedding_sources: ${{ steps.changes.outputs.frontend_embedding_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
   pr-title-reminder:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
       pull-requests: write
+    needs: [ files-changed ]
+    if: |
+      !cancelled() &&
+      needs.files-changed.outputs.frontend_embedding_sources == 'true'
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
       - name: Check if the PR title is already following Conventional Commits style
         uses: actions/github-script@v7
         id: is-conventional-commit
         with:
           result-encoding: string
           script: | # js
+            const { isConventionalTitle } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
             const pullRequestTitle = context.payload.pull_request.title
-            const conventionalCommitRegex = /^(?<type>\w+)\((?<scope>\w+)\):/
-            const match = pullRequestTitle.match(conventionalCommitRegex)
-            if (match) {
-              const { type, scope } = match.groups
-              return ['feat', 'fix', 'perf', 'docs', 'style', 'refactor', 'test', 'build', 'ci'].includes(type) && scope === 'sdk'
-            }
 
-      - name: Checkout repository so `gh` CLI works
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
+            return isConventionalTitle(pullRequestTitle)
 
       - name: Remind PR authors to use conventional commit in the title
         if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
         uses: actions/github-script@v7
         with:
-          script: |
-            const { updateComment } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
-            await updateComment({github, context})
+          script: | #js
+            const { updateCommentForEmbedding } = require(".github/scripts/conventional-commit-pr-title-reminder/utils.js")
+
+            await updateCommentForEmbedding({github, context})

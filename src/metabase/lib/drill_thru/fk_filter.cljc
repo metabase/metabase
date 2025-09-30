@@ -20,6 +20,7 @@
 
   Question transformation:
   - None"
+  (:refer-clojure :exclude [select-keys])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
@@ -32,7 +33,8 @@
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys]]))
 
 (mu/defn fk-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.fk-filter]
   "When clicking on a foreign key value, filter this query by that column.
@@ -46,15 +48,17 @@
    {:keys [column column-ref value], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and column
              (some? value)
-             (not= value :null)         ; If the FK is null, don't show this option.
              (lib.drill-thru.common/mbql-stage? query stage-number)
              (not (lib.types.isa/primary-key? column))
              (lib.types.isa/foreign-key? column))
     (let [source (or (some->> query lib.util/source-table-id (lib.metadata/table query))
-                     (some->> query lib.util/source-card-id (lib.metadata/card query)))]
+                     (some->> query lib.util/source-card-id (lib.metadata/card query)))
+          filter-expr (if (= value :null)
+                        (lib.options/ensure-uuid (lib.filter/is-null column-ref))
+                        (lib.options/ensure-uuid (lib.filter/= column-ref value)))]
       {:lib/type :metabase.lib.drill-thru/drill-thru
        :type     :drill-thru/fk-filter
-       :filter   (lib.options/ensure-uuid [:= {} column-ref value])
+       :filter   filter-expr
        :column-name (lib.metadata.calculation/display-name query stage-number column :long)
        :table-name (lib.metadata.calculation/display-name query 0 source)})))
 

@@ -11,6 +11,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
@@ -65,7 +66,6 @@
     #"^router.*"
     #"^semaphore$"
     #"^sequences$"
-    #"^sessions$"
     #"^watchdog$"
     ;; Rails / Active Record
     #"^schema_migrations$"
@@ -81,6 +81,12 @@
     #"^lobos_migrations$"
     ;; MSSQL
     #"^syncobj_0x.*"})
+
+(defenterprise is-temp-transform-table?
+  "Return true if `table` references a temporary transform table created during transforms execution."
+  metabase-enterprise.transforms.util
+  [_table]
+  false)
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
@@ -135,7 +141,9 @@
            :display_name            (or (:display_name table)
                                         (humanization/name->human-readable-name (:name table)))
            :name                    (:name table)
-           :is_writable             (:is_writable table)})))
+           :is_writable             (:is_writable table)}
+          (when (:is_sample database)
+            {:data_authority :ingested}))))
 
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
@@ -154,7 +162,10 @@
                                              (dissoc :visibility_type)
 
                                              true
-                                             (assoc :active true))))
+                                             (assoc :active true)
+
+                                             (:is_sample database)
+                                             (assoc :data_authority :ingested))))
     ;; otherwise create a new Table
     (create-table! database table)))
 
@@ -239,7 +250,9 @@
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
   (into #{}
-        (remove metabase-metadata/is-metabase-metadata-table?)
+        (remove (fn [table]
+                  (or (metabase-metadata/is-metabase-metadata-table? table)
+                      (is-temp-transform-table? table))))
         (:tables db-metadata)))
 
 (mu/defn- select-tables :- [:set (ms/InstanceOf :model/Table)]

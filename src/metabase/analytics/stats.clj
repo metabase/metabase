@@ -142,8 +142,11 @@
    :embedding_app_origin_set             (boolean
                                           #_{:clj-kondo/ignore [:deprecated-var]}
                                           (setting/get :embedding-app-origin))
+   ;; We no longer add "localhost:*" as a default origin as of Metabase 56, as it is always allowed,
+   ;; but we still filter it out in stats for compatibility with migrated instances.
    :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
-                                                    (and sdk-origins (not= "localhost:*" sdk-origins))))
+                                                    (and (not (str/blank? sdk-origins))
+                                                         (not= "localhost:*" sdk-origins))))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
    :appearance_site_name                 (not= (appearance/site-name) "Metabase")
    :appearance_help_link                 (appearance/help-link)
@@ -297,9 +300,10 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:collections              (count collections)
+  (let [collections (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where
+                                                                          [:and (mi/exclude-internal-content-hsql :model/Card)]})]
+    {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
      :num_cards_per_collection (medium-histogram cards :collection_id)}))
@@ -346,6 +350,11 @@
   "Get metrics based on Segments."
   []
   {:segments (t2/count :model/Segment)})
+
+(defn- metric-metrics
+  "Get metrics based on Metrics."
+  []
+  {:metrics (t2/count :model/Card :type :metric :archived false)})
 
 ;;; Execution Metrics
 
@@ -474,6 +483,7 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
+                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -874,7 +884,10 @@
     :enabled   (premium-features/table-data-editing?)}
    {:name      :transforms
     :available (premium-features/enable-transforms?)
-    :enabled   (premium-features/enable-transforms?)}])
+    :enabled   (premium-features/enable-transforms?)}
+   {:name      :transforms-python
+    :available (premium-features/enable-python-transforms?)
+    :enabled   (premium-features/enable-python-transforms?)}])
 
 (defn- snowplow-features
   []

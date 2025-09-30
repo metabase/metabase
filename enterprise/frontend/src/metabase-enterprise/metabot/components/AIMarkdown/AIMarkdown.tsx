@@ -1,7 +1,7 @@
 // TODO: consolidate this component w/ AIAnalysisContent
 
 import cx from "classnames";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 
 import Link from "metabase/common/components/Link/Link";
 import Markdown, {
@@ -10,7 +10,13 @@ import Markdown, {
 
 import S from "./AIMarkdown.module.css";
 
-const components = {
+type AIMarkdownProps = MarkdownProps & {
+  onInternalLinkClick?: (link: string) => void;
+};
+
+const getComponents = ({
+  onInternalLinkClick,
+}: Pick<AIMarkdownProps, "onInternalLinkClick">) => ({
   a: ({
     href,
     children,
@@ -23,6 +29,15 @@ const components = {
     [key: string]: any;
   }) => {
     if (href && href.startsWith("/")) {
+      // A custom handler for internal links (use by Embedding SDK)
+      if (onInternalLinkClick) {
+        return (
+          <a {...rest} onClick={() => onInternalLinkClick(href)}>
+            {children}
+          </a>
+        );
+      }
+
       return (
         <Link to={href} variant="brand">
           {children}
@@ -37,13 +52,23 @@ const components = {
       </a>
     );
   },
-};
+});
 
-export const AIMarkdown = memo(({ className, ...props }: MarkdownProps) => (
-  <Markdown
-    className={cx(S.aiMarkdown, className)}
-    components={components}
-    {...props}
-  />
-));
+export const AIMarkdown = memo(
+  ({ className, onInternalLinkClick, ...props }: AIMarkdownProps) => {
+    const components = useMemo(
+      () => getComponents({ onInternalLinkClick }),
+      [onInternalLinkClick],
+    );
+
+    return (
+      <Markdown
+        className={cx(S.aiMarkdown, className)}
+        components={components}
+        {...props}
+      />
+    );
+  },
+);
+
 AIMarkdown.displayName = "AIMarkdown";

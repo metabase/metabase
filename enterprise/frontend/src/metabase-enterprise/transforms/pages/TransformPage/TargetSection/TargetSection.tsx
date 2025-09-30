@@ -1,7 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -14,6 +18,7 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
@@ -23,6 +28,7 @@ import {
   getQueryBuilderUrl,
   getTableMetadataUrl,
 } from "../../../urls";
+import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -54,15 +60,33 @@ type TargetInfoProps = {
 
 function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
-  const { data, isLoading } = useGetDatabaseQuery(
-    table == null && databaseId != null ? { id: databaseId } : skipToken,
-  );
-  const database = table?.db ?? data;
+  const databaseId = sourceDatabaseId(source);
+
+  const { data: databaseFromApi, isLoading: isDatabaseLoading } =
+    useGetDatabaseQuery(
+      table == null && databaseId != null ? { id: databaseId } : skipToken,
+    );
+
+  const { data: schemas, isLoading: isSchemasLoading } =
+    useListDatabaseSchemasQuery(
+      databaseId != null
+        ? {
+            id: databaseId,
+            include_hidden: true,
+          }
+        : skipToken,
+    );
+
+  const database = table?.db ?? databaseFromApi;
+  const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
     return <Loader size="sm" />;
   }
+
+  const targetSchemaExists = schemas?.some(
+    (schemaFromApi) => schemaFromApi === target.schema,
+  );
 
   return (
     <Group gap="sm">
@@ -82,7 +106,16 @@ function TargetInfo({ transform }: TargetInfoProps) {
           <TargetItemLink
             label={target.schema}
             icon="folder"
-            to={getBrowseSchemaUrl(database.id, target.schema)}
+            to={
+              table || targetSchemaExists
+                ? getBrowseSchemaUrl(database.id, target.schema)
+                : undefined
+            }
+            tooltip={
+              table?.schema != null || targetSchemaExists
+                ? undefined
+                : t`This schema will be created when the transform runs`
+            }
             data-testid="schema-link"
           />
           <TargetItemDivider />
@@ -104,6 +137,7 @@ type TargetItemLinkProps = {
   label: string;
   icon: IconName;
   to?: string;
+  tooltip?: string;
   "data-testid"?: string;
 };
 
@@ -111,6 +145,7 @@ function TargetItemLink({
   label,
   icon,
   to,
+  tooltip,
   "data-testid": dataTestId,
 }: TargetItemLinkProps) {
   return (
@@ -119,6 +154,7 @@ function TargetItemLink({
       to={to ?? ""}
       disabled={to == null}
       data-testid={dataTestId}
+      tooltip={tooltip}
     >
       <Group gap="xs">
         <Icon name={icon} />
@@ -150,6 +186,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Change target`}

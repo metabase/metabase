@@ -25,7 +25,6 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -43,7 +42,9 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.warehouses.provider-detection :as provider-detection]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -520,7 +521,7 @@
                        :type     :query
                        :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
-                  "  \"json_alias_test\" AS \"json_alias_test\","
+                  "  \"source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
                   "FROM"
                   "  ("
@@ -1039,7 +1040,7 @@
                (mt/with-temp
                  [:model/Card {id :id} (mt/card-with-metadata {:dataset_query query
                                                                :type          card-type})]
-                 (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                 (let [mp (mt/metadata-provider)
                        query (as-> (lib/query mp (lib.metadata/card mp id)) $
                                (lib/filter $ (lib/= (m/find-first (comp #{"status"} :name)
                                                                   (lib/filterable-columns $))
@@ -1094,18 +1095,18 @@
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test
   (testing "violate fk constraints"
-    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Unable to create a new record.",
-             :errors {"group-id" "This Group-id does not exist."}}
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Unable to create a new record."
+             :errors  {"group-id" "This value does not exist in table \"group\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :postgres actions.error/violate-foreign-key-constraint nil :model.row/create
              "ERROR: insert or update on table \"user\" violates foreign key constraint \"user_group-id_group_-159406530\"\n  Detail: Key (group-id)=(999) is not present in table \"group\".")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-2
   (testing "violate fk constraints"
-    (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Unable to update the record.",
-             :errors {"id" "This Id does not exist."}}
+    (is (=? {:type    :metabase.actions.error/violate-foreign-key-constraint,
+             :message "Other rows refer to this value so it cannot be changed."
+             :errors  {"id" "Referenced in table \"user\"."}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :postgres actions.error/violate-foreign-key-constraint nil :model.row/update
              "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
@@ -1113,7 +1114,7 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-violate-fk-constraints-test-3
   (testing "violate fk constraints"
     (is (=? {:type :metabase.actions.error/violate-foreign-key-constraint,
-             :message "Other tables rely on this row so it cannot be deleted.",
+             :message "Other rows refer to this row so it cannot be deleted.",
              :errors {}}
             (sql-jdbc.actions/maybe-parse-sql-error
              :postgres actions.error/violate-foreign-key-constraint nil :model.row/delete
@@ -1807,3 +1808,91 @@
             (finally
               (jdbc/execute! conn "DROP SCHEMA IF EXISTS sync_test_schema CASCADE")
               (jdbc/execute! conn "DROP USER IF EXISTS sync_writable_test_user"))))))))
+
+(deftest ^:parallel null-array-query-test
+  (testing "queries with nulls in arrays should be returned in a readable format"
+    (mt/test-driver :postgres
+      (is (= [[[nil]
+               [nil nil]
+               [1 nil 3]
+               [[nil]]
+               [[nil] [nil]]
+               [[1 nil] [nil 2]]]]
+             (->> (mt/native-query {:query "select array[null], array[null, null],
+                                            array[1, null, 3], array[array[null]],
+                                            array[array[null], array[null]],
+                                            array[array[1, null], array[null, 2]]"})
+                  mt/process-query
+                  mt/rows))))))
+
+(deftest ^:parallel arrays-have-base-type
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (is (=? [{:name "id"
+                :database_type "int4"
+                :base_type :type/Integer}
+               {:name "urls"
+                :database_type "_text"
+                :base_type :type/*}]
+              (->> (mt/native-query {:query "SELECT *
+                                             FROM (
+                                               VALUES
+                                                 (1, ARRAY['https://example.com', 'https://example.org']),
+                                                 (2, ARRAY['https://test.com']),
+                                                 (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                                             ) AS adhoc_table (id, urls);"})
+                   mt/process-query
+                   mt/cols))))))
+
+(deftest can-edit-model-metadata
+  (testing "queries with pg arrays have a base type on column metadata (#63909)"
+    (mt/test-driver :postgres
+      (let [query "SELECT *
+                   FROM (
+                     VALUES
+                       (1, ARRAY['https://example.com', 'https://example.org']),
+                       (2, ARRAY['https://test.com']),
+                       (3, ARRAY['https://foo.com', 'https://bar.com', 'https://baz.com'])
+                   ) AS adhoc_table (id, urls);"]
+        (mt/with-temp [:model/Card model (mt/card-with-metadata
+                                          {:name "model"
+                                           :type :model
+                                           :dataset_query (mt/native-query {:query query})
+                                           :database_id (mt/id)})]
+          ;; update cards such that base_type is missing, similuating existing data
+          (t2/query ["update report_card set result_metadata = ? where id = ?"
+                     (json/encode [(first (:result_metadata model))
+                                   (assoc (second (:result_metadata model))
+                                          :base_type nil)])
+                     (:id model)])
+          (let [response (mt/user-http-request :crowberto :put 200
+                                               (format "card/%d" (:id model))
+                                               {:dataset_query
+                                                (mt/native-query {:query (str "-- comment at top\n " query)})})]
+            (is (=? [{:name "id"
+                      :database_type "int4"
+                      :base_type "type/Integer"}
+                     {:name "urls"
+                      :database_type "_text"
+                      :base_type "type/*"}]
+                    (:result_metadata response)))))))))
+
+(deftest ^:parallel detect-provider-from-database-test
+  (let [tests [["Aiven" "mydb-project.aivencloud.com"]
+               ["Amazon RDS" "czrs8kj4isg7.us-east-1.rds.amazonaws.com"]
+               ["Azure" "production-flexible-server.postgres.database.azure.com"]
+               ["Crunchy Data" "p.vbjrfujv5beutaoelw725gvi3i.db.postgresbridge.com"]
+               ["DigitalOcean" "cluster-do-user-1234567-0.db.ondigitalocean.com"]
+               ["Fly.io" "db.fly.dev"]
+               ["Neon" "ep-autumn-frost-alwlmval-pooler.ap-southeast-1.aws.neon.tech"]
+               ["PlanetScale" "my-db.horizon.psdb.cloud"]
+               ["Railway" "nodejs-copy-production-7aa4.up.railway.app"]
+               ["Render" "your_host_name.your_region-postgres.render.com"]
+               ["Scaleway" "my-db.region-1.scw.cloud"]
+               ["Supabase" "db.apbkobhfnmcqqzqeeqss.supabase.co"]
+               ["Supabase" "aws-0-us-west-1.pooler.supabase.com"]
+               ["Timescale" "service.project.tsdb.cloud.timescale.com"]]]
+    (testing "full database entity detection with postgres engine"
+      (doseq [[provider host] tests]
+        (let [database {:details {:host host} :engine :postgres}]
+          (is (= provider (provider-detection/detect-provider-from-database database))))))))

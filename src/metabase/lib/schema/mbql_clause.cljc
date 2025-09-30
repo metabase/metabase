@@ -1,16 +1,18 @@
 (ns metabase.lib.schema.mbql-clause
+  (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.types.core]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 (comment metabase.types.core/keep-me)
 
 (defonce ^:private ^{:doc "Set of all registered MBQL clause tags e.g. #{:starts-with}"} tag-registry
-  (atom #{}))
+  (atom (sorted-set)))
 
 (defn tag->registered-schema-name
   "Given an MBQL clause tag like `:starts-with`, return the name of the schema we'll register for it, e.g.

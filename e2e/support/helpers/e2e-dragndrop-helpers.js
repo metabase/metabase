@@ -47,3 +47,16 @@ export function dragAndDrop(subjectAlias, targetAlias) {
   cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
   cy.get("@" + subjectAlias).trigger("dragend");
 }
+
+export function dragAndDropByElement(
+  subjectEl,
+  targetEl,
+  options = { dragend: true },
+) {
+  const dataTransfer = new DataTransfer();
+  subjectEl.trigger("dragstart", { dataTransfer });
+  targetEl.trigger("drop", { dataTransfer });
+  if (options.dragend) {
+    subjectEl.trigger("dragend");
+  }
+}

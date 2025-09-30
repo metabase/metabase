@@ -101,7 +101,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var]}
+#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -290,6 +290,7 @@
   with-all-users-data-perms-graph!
   with-anaphora
   with-prometheus-system!
+  with-random-premium-token!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file

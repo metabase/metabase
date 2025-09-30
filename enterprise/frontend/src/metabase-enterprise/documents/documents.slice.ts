@@ -5,7 +5,6 @@ import {
 } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { CLOSE_QB } from "metabase/query_builder/actions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
   Card,
@@ -37,18 +36,24 @@ export interface DocumentsState {
   selectedEmbedIndex: number | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
-  showNavigateBackToDocumentButton: boolean;
   draftCards: Record<number, Card>;
   mentionsCache: Record<string, MentionCacheItem>;
+  isCommentSidebarOpen: boolean;
+  childTargetId: string | undefined;
+  hoveredChildTargetId: string | undefined;
+  hasUnsavedChanges: boolean;
 }
 
 export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   cardEmbeds: [],
   currentDocument: null,
-  showNavigateBackToDocumentButton: false,
   draftCards: {},
   mentionsCache: {},
+  isCommentSidebarOpen: false,
+  childTargetId: undefined,
+  hoveredChildTargetId: undefined,
+  hasUnsavedChanges: false,
 };
 
 const documentsSlice = createSlice({
@@ -94,12 +99,6 @@ const documentsSlice = createSlice({
     setCurrentDocument: (state, action: PayloadAction<Document | null>) => {
       state.currentDocument = action.payload;
     },
-    setShowNavigateBackToDocumentButton: (
-      state,
-      action: PayloadAction<boolean>,
-    ) => {
-      state.showNavigateBackToDocumentButton = action.payload;
-    },
     resetDocuments: () => {
       return initialState;
     },
@@ -127,11 +126,21 @@ const documentsSlice = createSlice({
     ) => {
       state.mentionsCache[getMentionsCacheKey(payload)] = payload;
     },
-  },
-  extraReducers: (builder) => {
-    builder.addCase(CLOSE_QB, (state) => {
-      state.showNavigateBackToDocumentButton = false;
-    });
+    setIsCommentSidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.isCommentSidebarOpen = action.payload;
+    },
+    setChildTargetId: (state, action: PayloadAction<string | undefined>) => {
+      state.childTargetId = action.payload;
+    },
+    setHoveredChildTargetId: (
+      state,
+      action: PayloadAction<string | undefined>,
+    ) => {
+      state.hoveredChildTargetId = action.payload;
+    },
+    setHasUnsavedChanges: (state, action: PayloadAction<boolean>) => {
+      state.hasUnsavedChanges = action.payload;
+    },
   },
 });
 
@@ -142,11 +151,14 @@ export const {
   closeSidebar,
   setCardEmbeds,
   setCurrentDocument,
-  setShowNavigateBackToDocumentButton,
   resetDocuments,
   createDraftCard,
   clearDraftCards,
   updateMentionsCache,
+  setIsCommentSidebarOpen,
+  setChildTargetId,
+  setHoveredChildTargetId,
+  setHasUnsavedChanges,
 } = documentsSlice.actions;
 
 export const generateDraftCardId = (): number => {

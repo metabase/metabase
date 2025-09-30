@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 2px solid color-mix(in srgb, var(--mb-color-border), black 5%);
+  border: 1px solid var(--mb-color-border);
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
@@ -20,17 +20,13 @@
 
 .Button:hover {
   color: var(--mb-color-text-brand);
-  border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
+  border-color: var(--mb-color-border);
   background: var(--mb-color-bg-light);
 }
 
-.Button:focus {
-  border: 2px solid var(--mb-color-background);
-  outline: 2px solid var(--mb-color-brand);
-}
-
-.Button:focus:not(:focus-visible) {
-  outline: none;
+.Button:focus-visible {
+  border-color: var(--mb-color-background);
+  outline: 1px solid var(--mb-color-brand);
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -64,7 +60,7 @@
 .ButtonPrimary {
   color: var(--mb-color-text-white);
   background: var(--mb-color-brand);
-  border: 2px solid var(--mb-color-brand);
+  border-color: var(--mb-color-brand);
 }
 
 .ButtonPrimary:hover {
@@ -73,7 +69,7 @@
   background-color: var(--mb-color-brand-alpha-88);
 }
 
-.ButtonPrimary:focus {
+.ButtonPrimary:focus-visible {
   border-color: var(--mb-color-background);
   outline-color: var(--mb-color-brand);
 }
@@ -81,7 +77,7 @@
 .ButtonWarning {
   color: var(--mb-color-text-white);
   background: var(--mb-color-error);
-  border: 2px solid var(--mb-color-error);
+  border-color: var(--mb-color-error);
 }
 
 .ButtonWarning:hover {
@@ -90,7 +86,7 @@
   background-color: var(--mb-color-error);
 }
 
-.ButtonWarning:focus {
+.ButtonWarning:focus-visible {
   border-color: var(--mb-color-background);
   outline-color: var(--mb-color-error);
 }
@@ -116,7 +112,7 @@
   color: var(--mb-color-text-medium);
 }
 
-.ButtonBorderless:focus {
+.ButtonBorderless:focus-visible {
   border-color: var(--mb-color-background);
   outline-color: var(--mb-color-brand);
 }
@@ -128,7 +124,7 @@
   padding: 0;
 }
 
-.ButtonOnlyIcon:focus {
+.ButtonOnlyIcon:focus-visible {
   border: none;
   outline-color: var(--mb-color-brand);
 }
@@ -192,7 +188,7 @@
   border-color: var(--mb-color-error);
 }
 
-.ButtonDanger:focus {
+.ButtonDanger:focus-visible {
   border-color: var(--mb-color-background);
   outline-color: var(--mb-color-error);
 }
@@ -209,7 +205,7 @@
   color: var(--mb-color-text-white);
 }
 
-.ButtonSuccess:focus {
+.ButtonSuccess:focus-visible {
   border-color: var(--mb-color-background);
   outline-color: var(--mb-color-success);
 }

@@ -378,7 +378,7 @@ function createComparisonMenuOption(
   return COMPARISON_SELECTOR_OPTIONS.PREVIOUS_VALUE;
 }
 
-function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
+export function formatPreviousPeriodOptionName(dateUnit: DateTimeAbsoluteUnit) {
   switch (dateUnit) {
     case "minute":
       return t`Previous minute`;

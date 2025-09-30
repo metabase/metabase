@@ -1,6 +1,7 @@
 import { Stack } from "metabase/ui";
-import type { TransformTagId } from "metabase-types/api";
+import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
+import { DependenciesSection } from "./DependenciesSection";
 import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
@@ -13,7 +14,10 @@ type JobPageProps = {
   job: TransformJobInfo;
   onNameChange: (name: string) => void;
   onDescriptionChange: (description: string | null) => void;
-  onScheduleChange: (schedule: string) => void;
+  onScheduleChange: (
+    schedule: string,
+    uiDisplayType: ScheduleDisplayType,
+  ) => void;
   onTagListChange: (tagIds: TransformTagId[]) => void;
 };
 
@@ -38,6 +42,7 @@ export function JobView({
       <TagSection job={job} onTagsChange={onTagListChange} />
       {job.id != null && <ManageSection job={job} />}
       {job.id == null && <SaveSection job={job} />}
+      {job.id != null && <DependenciesSection jobId={job.id} />}
     </Stack>
   );
 }

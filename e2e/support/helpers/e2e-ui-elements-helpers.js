@@ -56,7 +56,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
@@ -625,4 +625,8 @@ export function mapPinIcon() {
 
 export function waitForLoaderToBeRemoved() {
   cy.findByTestId("loading-indicator").should("not.exist");
+}
+
+export function leaveConfirmationModal() {
+  return cy.findByTestId("leave-confirmation");
 }

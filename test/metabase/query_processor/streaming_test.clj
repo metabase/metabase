@@ -327,6 +327,8 @@
       (mt/with-temporary-setting-values [enable-public-sharing true
                                          enable-embedding-static true]
         (embed-test/with-new-secret-key!
+          ;; allowing `with-temp` here since it's needed to create Dashboards
+          #_{:clj-kondo/ignore [:discouraged-var]}
           (mt/with-temp [:model/Card          card      (if viz-settings
                                                           (assoc card-defaults :visualization_settings viz-settings)
                                                           card-defaults)
@@ -477,12 +479,12 @@
                                              [1.0 "Red Medicine" "Asian" "10.06460000° N" "165.37400000° W" 3.0]]
                                             (xlsx-test/parse-xlsx-results results))))}})))]
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mt/id :categories :name))
       (testfn :external))
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mapv first (mt/rows (qp/process-query
                                                             (mt/mbql-query categories

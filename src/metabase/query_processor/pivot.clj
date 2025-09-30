@@ -3,6 +3,7 @@
   warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
+  (:refer-clojure :exclude [every? mapv some select-keys update-keys])
   (:require
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -30,7 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys]]))
 
 (set! *warn-on-reflection* true)
 
@@ -423,10 +424,10 @@
                                  (lib/returned-columns query))]
     (-> (or (:column_settings viz-settings)
             (::mb.viz/column-settings viz-settings))
-        (perf/update-keys (fn [k]
-                            (if (string? k)
-                              (-> k json/decode last index-in-breakouts)
-                              (->> k ::mb.viz/column-name index-in-breakouts))))
+        (update-keys (fn [k]
+                       (if (string? k)
+                         (-> k json/decode last index-in-breakouts)
+                         (->> k ::mb.viz/column-name index-in-breakouts))))
         (update-vals (comp keyword :pivot_table.column_sort_order)))))
 
 (mu/defn- field-ref-pivot-options :- ::pivot-opts
@@ -623,7 +624,7 @@
   ([query]
    (run-pivot-query query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]

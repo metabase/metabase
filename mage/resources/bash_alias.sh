@@ -3,7 +3,7 @@
 export MB_DIR="{{mb-dir}}"
 # alias:
 mage() {
-    cd $MB_DIR && exec ./bin/mage "$@"
+    cd $MB_DIR && ./bin/mage "$@"
 }
 # autocomplete:
 _bb_tasks() {

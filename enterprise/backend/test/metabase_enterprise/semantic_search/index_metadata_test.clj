@@ -1,9 +1,11 @@
 (ns metabase-enterprise.semantic-search.index-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
+   [metabase.test :as mt]
    [metabase.util :as u]))
 
 (use-fixtures :once #'semantic.tu/once-fixture)
@@ -22,7 +24,7 @@
                                             semantic.index/hnsw-index-name)))))))
 
 (deftest create-tables-if-not-exists!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         ;; could use open-tables here but I chose to be explicit
         sut            #(semantic.tu/closeable
@@ -45,7 +47,7 @@
    (fn [_] (semantic.tu/cleanup-index-metadata! pgvector index-metadata))))
 
 (deftest drop-tables-if-exists!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         sut            semantic.index-metadata/drop-tables-if-exists!]
     (with-open [_ (open-tables! pgvector index-metadata)]
@@ -58,7 +60,7 @@
         (is (= now-expected (semantic.tu/get-table-names pgvector)))))))
 
 (deftest ensure-control-row-exists!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         sut            semantic.index-metadata/ensure-control-row-exists!]
     (with-open [_ (open-tables! pgvector index-metadata)]
@@ -73,7 +75,7 @@
           (is (= control-snap (semantic.tu/get-control-rows pgvector index-metadata))))))))
 
 (deftest activate-index!-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         un-index       (semantic.index/default-index semantic.tu/mock-embedding-model)
         index1         (semantic.index-metadata/qualify-index (assoc un-index :table-name "i1") index-metadata)
@@ -97,7 +99,7 @@
             (is (=? [{:active_id index-id2}] (semantic.tu/get-control-rows pgvector index-metadata)))))))))
 
 (deftest get-active-index-state-test
-  (let [pgvector       semantic.tu/db
+  (let [pgvector       (semantic.env/get-pgvector-datasource!)
         index-metadata (semantic.tu/unique-index-metadata)
         un-index       (semantic.index/default-index semantic.tu/mock-embedding-model)
         index          (semantic.index-metadata/qualify-index un-index index-metadata)
@@ -115,8 +117,9 @@
                   (sut pgvector index-metadata))))))))
 
 (defn- default-index [embedding-model index-metadata]
-  (-> (semantic.index/default-index embedding-model)
-      (semantic.index-metadata/qualify-index index-metadata)))
+  (mt/with-dynamic-fn-redefs [semantic.index/model-table-suffix semantic.tu/mock-table-suffix]
+    (-> (semantic.index/default-index embedding-model)
+        (semantic.index-metadata/qualify-index index-metadata))))
 
 (defn- add-index! [pgvector index-metadata embedding-model]
   (let [index (default-index embedding-model index-metadata)]
@@ -132,7 +135,7 @@
   (run! #(add-index! pgvector index-metadata %) inactive))
 
 (deftest find-compatible-index!-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         embedding-model1 semantic.tu/mock-embedding-model
         embedding-model2 (assoc semantic.tu/mock-embedding-model
                                 :model-name "mock2")
@@ -188,7 +191,7 @@
                   (is (nil? (sut' model))))))))))))
 
 (deftest create-new-index-spec-test
-  (let [pgvector         semantic.tu/db
+  (let [pgvector         (semantic.env/get-pgvector-datasource!)
         index-metadata   (semantic.tu/unique-index-metadata)
         embedding-model  semantic.tu/mock-embedding-model
         sut              semantic.index-metadata/create-new-index-spec]
@@ -200,7 +203,7 @@
                 result))))))
 
 (deftest record-new-index-table!-test
-  (let [pgvector        semantic.tu/db
+  (let [pgvector        (semantic.env/get-pgvector-datasource!)
         index-metadata  (semantic.tu/unique-index-metadata)
         embedding-model semantic.tu/mock-embedding-model
         index           (default-index embedding-model index-metadata)

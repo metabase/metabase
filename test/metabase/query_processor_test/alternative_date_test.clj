@@ -6,6 +6,8 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -38,16 +40,22 @@
 
 (deftest double-coercion-through-model
   (testing "Ensure that coerced values only get coerced once. #33861"
-    (mt/dataset
-      toucan-ms-incidents
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query {:database (mt/id)
-                                                                :type     :query
-                                                                :query    {:source-table (mt/id :incidents)}}}]
+    (mt/dataset toucan-ms-incidents
+      (let [mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:cards [{:id            1
+                          :dataset-query {:database (mt/id)
+                                          :type     :query
+                                          :query    {:source-table (mt/id :incidents)}}}]})]
         (is (= [[1 4 "2015-06-06T10:40:00Z"]
                 [2 0 "2015-06-10T19:51:00Z"]]
-               (mt/rows (qp/process-query {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table (str "card__" card-id)}}))))))))
+               (mt/rows
+                (qp/process-query
+                 (lib/query
+                  mp
+                  {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table "card__1"}})))))))))
 
 (defmulti microseconds-test-expected-rows
   {:arglists '([driver])}
@@ -61,8 +69,8 @@
 
 (defmethod microseconds-test-expected-rows :sqlite
   [_driver]
-  [[1 4 "2015-06-06 10:40:00"]
-   [2 0 "2015-06-10 19:51:00"]])
+  [[1 4 "2015-06-06 10:40:00.000000"]
+   [2 0 "2015-06-10 19:51:00.000000"]])
 
 (deftest ^:parallel microseconds-test
   (mt/test-drivers (mt/normal-drivers)

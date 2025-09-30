@@ -12,7 +12,8 @@
       (testing "simple table name"
         (let [result (driver/compile-transform driver/*driver*
                                                {:query "SELECT * FROM products"
-                                                :output-table :my_table})]
+                                                :output-table :my_table
+                                                :primary-key "id"})]
           (testing "returns a vector"
             (is (vector? result)))
           (testing "first element is SQL string"
@@ -28,7 +29,8 @@
       (testing "schema-qualified table name"
         (let [result (driver/compile-transform driver/*driver*
                                                {:query "SELECT * FROM products"
-                                                :output-table :my_schema/my_table})]
+                                                :output-table :my_schema/my_table
+                                                :primary-key "id"})]
           (testing "returns a vector"
             (is (vector? result)))
           (testing "first element is SQL string"
@@ -81,7 +83,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (let [compile-result (driver/compile-transform driver/*driver*
                                                      {:query "SELECT * FROM products"
-                                                      :output-table :my_table})
+                                                      :output-table :my_table
+                                                      :primary-key "id"})
             drop-result (driver/compile-drop-table driver/*driver* :my_table)]
         (testing "compile methods return consistent vector format"
           (is (vector? compile-result))

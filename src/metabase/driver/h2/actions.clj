@@ -85,22 +85,23 @@
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-foreign-key-constraint]
   [_driver error-type _database action-type error-message]
-  (when-let [[_match column]
-             (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
-    (let [column (db-identifier->name column)]
+  (when-let [[_match column table]
+             (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\) REFERENCES ([^(]+)" error-message)]
+    (let [column (db-identifier->name column)
+          table  (-> table (str/replace #"^PUBLIC\." "") (str/replace "\"\"" "") u/lower-case-en)]
       (merge {:type error-type}
              (case action-type
                (:table.row/create :model.row/create)
                {:message (tru "Unable to create a new record.")
-                :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
+                :errors {column (tru "This value does not exist in table \"{0}\"." table)}}
 
                (:table.row/delete :model.row/delete)
-               {:message (tru "Other tables rely on this row so it cannot be deleted.")
+               {:message (tru "Other rows refer to this row so it cannot be deleted.")
                 :errors  {}}
 
                (:table.row/update :model.row/update)
                {:message (tru "Unable to update the record.")
-                :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
+                :errors  {column (tru "This value does not exist in table \"{0}\"." table)}})))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]

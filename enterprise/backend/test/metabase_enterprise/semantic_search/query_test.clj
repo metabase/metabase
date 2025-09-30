@@ -1,7 +1,6 @@
 (ns metabase-enterprise.semantic-search.query-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -12,22 +11,21 @@
 
 (use-fixtures :once #'semantic.tu/once-fixture)
 
-(deftest database-initialised-test
-  (is (some? @semantic.db.datasource/data-source))
-  (is (= {:test 1} (semantic.db.datasource/test-connection!))))
-
 (deftest basic-query-test
   (testing "Simple queries with no filters"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
-          (testing "Dog-related query finds dog content"
-            (let [results (semantic.tu/query-index {:search-string "puppy"})]
-              (is (= "Dog Training Guide" (-> results first :name)))))
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
+          (semantic.tu/with-only-semantic-weights
+            (testing "Dog-related query finds dog content"
+              (let [results (-> (semantic.tu/query-index {:search-string "puppy"})
+                                semantic.tu/filter-for-mock-embeddings)]
+                (is (= "Dog Training Guide" (-> results first :name)))))
 
-          (testing "Bird-related query finds bird content"
-            (let [results (semantic.tu/query-index {:search-string "avian"})]
-              (is (= "Bird Watching Tips" (-> results first :name))))))))))
+            (testing "Bird-related query finds bird content"
+              (let [results (-> (semantic.tu/query-index {:search-string "avian"})
+                                semantic.tu/filter-for-mock-embeddings)]
+                (is (= "Bird Watching Tips" (-> results first :name)))))))))))
 
 (defn- index-of-name
   "Return the index of the item with :name `name` in `coll`"
@@ -41,75 +39,76 @@
   (testing "Tests for :search-native-query"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
-          (let [not-top-10? #(or (nil? %) (< 10 %))]
-            (doseq [{:keys [name desc search-string search-native-query? expected-index?]}
-                    [{:name "Dog Training Guide"
-                      :desc "contains"
-                      :search-string "AVG(tricks)"
-                      :search-native-query? false
-                      :expected-index? not-top-10?}
-                     {:name "Dog Training Guide"
-                      :desc "contains"
-                      :search-string "AVG(tricks)"
-                      :search-native-query? true
-                      :expected-index? zero?}
-                     {:name "Dog Training Guide"
-                      :desc "contains"
-                      :search-string "GROUP BY breed"
-                      :search-native-query? false
-                      :expected-index? not-top-10?}
-                     {:name "Dog Training Guide"
-                      :desc "contains"
-                      :search-string "GROUP BY breed"
-                      :search-native-query? true
-                      :expected-index? zero?}
-                     {:name "Dog Training Guide"
-                      :desc "does not contain"
-                      :search-string "SUM(tricks)"
-                      :search-native-query? false
-                      :expected-index? not-top-10?}
-                     {:name "Dog Training Guide"
-                      :desc "does not contain"
-                      :search-string "SUM(tricks)"
-                      :search-native-query? true
-                      :expected-index? not-top-10?}
-                     {:name "Bird Watching Tips"
-                      :desc "does not contain (no native query)"
-                      :search-string "AVG(tricks)"
-                      :search-native-query? true
-                      :expected-index? not-top-10?}
-                     {:name "Dog Training Guide"
-                      :desc "semantic search"
-                      :search-string "puppy"
-                      :search-native-query? true
-                      :expected-index? zero?}
-                     {:name "Bird Watching Tips"
-                      :desc "semantic search"
-                      :search-string "avian"
-                      :search-native-query? true
-                      :expected-index? zero?}
-                     {:name "Dog Training Guide"
-                      :desc "non-native keyword query"
-                      :search-string "Training"
-                      :search-native-query? true
-                      :expected-index? zero?}
-                     {:name "Bird Watching Tips"
-                      :desc "non-native keyword query"
-                      :search-string "Watching"
-                      :search-native-query? true
-                      :expected-index? zero?}]]
-              (testing (format "\n%s %s %s %s" name desc search-string search-native-query?)
-                (is (-> (semantic.tu/query-index {:search-string search-string
-                                                  :search-native-query search-native-query?})
-                        (index-of-name name)
-                        expected-index?))))))))))
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
+          (semantic.tu/with-only-semantic-weights
+            (let [not-top-10? #(or (nil? %) (< 10 %))]
+              (doseq [{:keys [name desc search-string search-native-query? expected-index?]}
+                      [{:name "Dog Training Guide"
+                        :desc "contains"
+                        :search-string "AVG(tricks)"
+                        :search-native-query? false
+                        :expected-index? not-top-10?}
+                       {:name "Dog Training Guide"
+                        :desc "contains"
+                        :search-string "AVG(tricks)"
+                        :search-native-query? true
+                        :expected-index? zero?}
+                       {:name "Dog Training Guide"
+                        :desc "contains"
+                        :search-string "GROUP BY breed"
+                        :search-native-query? false
+                        :expected-index? not-top-10?}
+                       {:name "Dog Training Guide"
+                        :desc "contains"
+                        :search-string "GROUP BY breed"
+                        :search-native-query? true
+                        :expected-index? zero?}
+                       {:name "Dog Training Guide"
+                        :desc "does not contain"
+                        :search-string "SUM(tricks)"
+                        :search-native-query? false
+                        :expected-index? not-top-10?}
+                       {:name "Dog Training Guide"
+                        :desc "does not contain"
+                        :search-string "SUM(tricks)"
+                        :search-native-query? true
+                        :expected-index? not-top-10?}
+                       {:name "Bird Watching Tips"
+                        :desc "does not contain (no native query)"
+                        :search-string "AVG(tricks)"
+                        :search-native-query? true
+                        :expected-index? not-top-10?}
+                       {:name "Dog Training Guide"
+                        :desc "semantic search"
+                        :search-string "puppy"
+                        :search-native-query? true
+                        :expected-index? zero?}
+                       {:name "Bird Watching Tips"
+                        :desc "semantic search"
+                        :search-string "avian"
+                        :search-native-query? true
+                        :expected-index? zero?}
+                       {:name "Dog Training Guide"
+                        :desc "non-native keyword query"
+                        :search-string "Training"
+                        :search-native-query? true
+                        :expected-index? zero?}
+                       {:name "Bird Watching Tips"
+                        :desc "non-native keyword query"
+                        :search-string "Watching"
+                        :search-native-query? true
+                        :expected-index? zero?}]]
+                (testing (format "\n%s %s %s %s" name desc search-string search-native-query?)
+                  (is (-> (semantic.tu/query-index {:search-string search-string
+                                                    :search-native-query search-native-query?})
+                          (index-of-name name)
+                          expected-index?)))))))))))
 
 (deftest model-filtering-test
   (testing "Filter results by model type"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Filter for cards only"
             (let [card-results (semantic.tu/query-index {:search-string "avian" :models ["card"]})
                   filtered-results (semantic.tu/filter-for-mock-embeddings card-results)]
@@ -132,7 +131,7 @@
   (testing "Filter results by archived status"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Include only non-archived items"
             (let [active-results (semantic.tu/query-index {:search-string "feline" :archived? false})]
               (is (every? #(not (:archived %)) active-results))))
@@ -152,7 +151,7 @@
   (testing "Filter results by creator"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Filter by single creator"
             (let [crowberto-results (semantic.tu/query-index {:search-string "aquatic" :created-by [(mt/user->id :crowberto)]})
                   filtered-results (semantic.tu/filter-for-mock-embeddings crowberto-results)]
@@ -169,7 +168,7 @@
   (testing "Filter results by verified status"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Include only verified items"
             (let [verified-results (semantic.tu/query-index {:search-string "puppy" :verified true})
                   filtered-results (semantic.tu/filter-for-mock-embeddings verified-results)]
@@ -185,7 +184,7 @@
   (testing "Complex filters with multiple criteria"
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
-        (semantic.tu/with-index!
+        (semantic.tu/with-test-db! {:mode :mock-indexed}
           (testing "Non-archived cards by specific creator"
             (let [results (semantic.tu/query-index {:search-string "equine"
                                                     :models ["card"]
@@ -219,7 +218,7 @@
 
 (deftest permissions-test
   (mt/with-premium-features #{:semantic-search}
-    (semantic.tu/with-index!
+    (semantic.tu/with-test-db! {:mode :mock-indexed}
       (let [monsters-table (t2/select-one-pk :model/Table :name "Monsters Table")
             q (fn [model s] (map :name (semantic.tu/query-index {:search-string s, :models [model]})))
             all-users (perms-group/all-users)
@@ -255,11 +254,14 @@
     (mt/with-premium-features #{:semantic-search}
       (mt/as-admin
         (binding [semantic.index/*batch-size* 1]
-          (semantic.tu/with-index!
-            (testing "Horse-related query finds horse content"
-              (let [results (semantic.tu/query-index {:search-string "marine mammal"})]
-                (is (= "Whale Communication" (-> results first :name)))))
+          (semantic.tu/with-test-db! {:mode :mock-indexed}
+            (semantic.tu/with-only-semantic-weights
+              (testing "Horse-related query finds horse content"
+                (let [results (-> (semantic.tu/query-index {:search-string "marine mammal"})
+                                  semantic.tu/filter-for-mock-embeddings)]
+                  (is (= "Whale Communication" (-> results first :name)))))
 
-            (testing "Tiger-related query finds tiger content"
-              (let [results (semantic.tu/query-index {:search-string "endangered species"})]
-                (is (= "Tiger Conservation" (-> results first :name)))))))))))
+              (testing "Tiger-related query finds tiger content"
+                (let [results (-> (semantic.tu/query-index {:search-string "endangered species"})
+                                  semantic.tu/filter-for-mock-embeddings)]
+                  (is (= "Tiger Conservation" (-> results first :name))))))))))))

@@ -138,7 +138,7 @@
                                                  {:base-type base_type})
                                                (when-not (= this-field-table-id source-table-id)
                                                  {:join-alias (joined-table-alias this-field-table-id)}))])]
-    (if (and (types/temporal-field? field-metadata)
+    (if (and #_{:clj-kondo/ignore [:deprecated-var]} (types/temporal-field? field-metadata) ; legacy usage -- do not use going forward
              (string? value))
       (u/ignore-exceptions
         (params.dates/date-string->filter value field-id))
@@ -182,6 +182,7 @@
                        (name-for-logging :model/Table field-table-id)
                        (name-for-logging :model/Field field-id)
                        clause)
+           #_{:clj-kondo/ignore [:deprecated-var]}
            (update query :filter mbql.u/combine-filter-clauses clause))
          (do
            (log/tracef "Not adding filter clause for %s %s because we did not join against its Table"

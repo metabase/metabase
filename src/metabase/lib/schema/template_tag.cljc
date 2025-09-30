@@ -1,10 +1,12 @@
 (ns metabase.lib.schema.template-tag
+  (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 ;; Schema for valid values of `:widget-type` for a [[TemplateTag:FieldFilter]].
 (mr/def ::widget-type
@@ -17,8 +19,8 @@
    ;; TODO -- move this stuff into `metabase.lib`
    (keys lib.schema.parameter/types)))
 
-;; Schema for valid values of template tag `:type`.
 (mr/def ::type
+  "Schema for valid values of template tag `:type`."
   [:enum
    {:decode/normalize common/normalize-keyword}
    :snippet :card :dimension :number :text :date :boolean :temporal-unit])
@@ -28,6 +30,11 @@
    {:decode/normalize common/normalize-string-key}
    ::common/non-blank-string])
 
+(mr/def ::id
+  [:multi {:dispatch uuid?}
+   [true  :uuid]
+   [false ::common/non-blank-string]])
+
 ;;; Things required by all template tag types.
 (mr/def ::common
   [:map
@@ -35,9 +42,7 @@
    [:display-name ::common/non-blank-string]
    ;; TODO -- `:id` is actually 100% required but we have a lot of tests that don't specify it because this constraint
    ;; wasn't previously enforced; we need to go in and fix those tests and make this non-optional
-   [:id {:optional true} [:multi {:dispatch uuid?}
-                          [true  :uuid]
-                          [false ::common/non-blank-string]]]])
+   [:id {:optional true} [:ref ::id]]])
 
 ;;; Stuff shared between the Field filter and raw value template tag schemas.
 (mr/def ::value.common

@@ -132,11 +132,14 @@ export const createMockTokenFeatures = (
   ai_entity_analysis: false,
   ai_sql_fixer: false,
   ai_sql_generation: false,
+  offer_metabase_ai: false,
   database_routing: false,
   development_mode: false,
+  table_data_editing: false,
   documents: false,
   semantic_search: false,
   transforms: false,
+  "transforms-python": false,
   ...opts,
 });
 
@@ -154,6 +157,7 @@ export const createMockSettingDefinition = <
 export const createMockSettings = (
   opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
+  "analytics-uuid": "eefb3320-1d3f-4686-a22a-1d30ae729525",
   "admin-email": "admin@metabase.test",
   "airgap-enabled": false,
   "allowed-iframe-hosts": "*",
@@ -217,6 +221,7 @@ export const createMockSettings = (
   "help-link-custom-destination": "",
   "deprecation-notice-version": undefined,
   "development-mode?": false,
+  "disable-cors-on-localhost": false,
   "ee-ai-features-enabled": false,
   "ee-openai-model": "",
   "ee-openai-api-key": "",
@@ -377,6 +382,8 @@ export const createMockSettings = (
   "last-used-native-database-id": 1,
   "embedding-homepage": "hidden",
   "setup-license-active-at-setup": false,
+  "embedding-hub-test-embed-snippet-created": false,
+  "embedding-hub-production-embed-snippet-created": false,
   "notebook-native-preview-shown": false,
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,

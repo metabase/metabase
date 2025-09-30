@@ -1141,6 +1141,52 @@
                                                      routed-database
                                                      (constantly true))))))))
 
+(defsetting ^:private test-warn-vs-error-setting
+  (deferred-tru "test Setting for warnings vs errors")
+  :database-local   :only
+  :enabled-for-db?  (fn [db]
+                      (setting/custom-disabled-reasons!
+                       [(when (:has-error db)    {:key :test/error,   :type :error,   :message "Error reason"})
+                        (when (:has-warning db)  {:key :test/warning, :type :warning, :message "Warning reason"})]))
+  :default "default-value"
+  :encryption :when-encryption-key-set)
+
+(defmacro ^:private with-database [db & body]
+  `(binding [setting/*database*              ~db
+             setting/*database-local-values* (:settings ~db)]
+     ~@body))
+
+(deftest warning-vs-error-disabled-reasons-test
+  (let [settings        {:test-warn-vs-error-setting "custom-value"}
+        db-with-warning {:id 1                 :has-warning true :settings settings}
+        db-with-error   {:id 2 :has-error true                   :settings settings}
+        db-with-both    {:id 3 :has-error true :has-warning true :settings settings}
+        every-feature   (constantly true)]
+
+    (testing "Settings with only warning reasons should not be disabled"
+      (with-database db-with-warning
+        (testing "configured value is still returned"
+          (is (= "custom-value" (test-warn-vs-error-setting))))))
+
+    (testing "Settings with error reasons should be disabled"
+      (with-database db-with-error
+        (testing "configured value is not returned"
+          (is (= "default-value" (test-warn-vs-error-setting))))))
+
+    (testing "Settings with both warning and error reasons should be disabled"
+      (with-database db-with-both
+        (testing "configured value is not returned"
+          (is (= "default-value" (test-warn-vs-error-setting))))))
+
+    (testing "validate-settable-for-db! should only throw for error reasons"
+      (testing "should not throw for warnings"
+        (is (nil? (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-warning every-feature))))
+      (testing "should throw for errors"
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Setting test-warn-vs-error-setting is not enabled for this database"
+             (setting/validate-settable-for-db! :test-warn-vs-error-setting db-with-error every-feature)))))))
+
 (deftest identity-hash-test
   (testing "Settings are hashed based on the key"
     (mt/with-temporary-setting-values [test-setting-1 "123"
