@@ -24,18 +24,7 @@ interface BenchSidebarProps {
 }
 
 function _BenchNav({ location }: BenchSidebarProps) {
-  const currentPath = location?.pathname || "";
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const isActive = (path: string) => {
-    if (path === "/bench/overview") {
-      return currentPath === "/bench" || currentPath === "/bench/overview";
-    }
-    if (path === "/bench/transforms") {
-      return currentPath.startsWith("/bench/transform");
-    }
-    return currentPath.startsWith(path);
-  };
 
   const handleMenuToggle = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -161,7 +150,7 @@ function _BenchNav({ location }: BenchSidebarProps) {
           />
           <Divider />
           <BenchNavItem
-            url="/bench/models"
+            url="/bench/model"
             icon="model"
             label={t`Models`}
           />

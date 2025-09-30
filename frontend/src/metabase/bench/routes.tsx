@@ -13,10 +13,9 @@ import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
-import { Box } from "metabase/ui";
 
 import { BenchApp } from "./components/BenchApp";
-import { ModelsBenchSection } from "./components/models/ModelsBenchSection";
+import { ModelsList } from "./components/models/ModelsList";
 
 export const getBenchRoutes = (
   store: AppStore,
@@ -29,8 +28,8 @@ export const getBenchRoutes = (
       <Route path="overview" component={() => <div>{t`Overview`}</div>} />
       {PLUGIN_TRANSFORMS.getAdminRoutes()}
       <Route path="segments" component={SegmentListApp} />
-      <Route path="model" component={ModelsBenchSection} />
-      <Route path="model/:slug" component={ModelsBenchSection} />
+      <Route path="model" component={ModelsList} />
+      <Route path="model/:slug" component={() => <div>{t`Model`}</div>} />
       <Route path="metrics" component={BrowseMetrics} />
       <Route path="metadata" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>

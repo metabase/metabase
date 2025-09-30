@@ -19,7 +19,7 @@ export function ModelsList({
   }
   return (
     <Box
-      w="auto"
+      w="100%"
       my="lg"
       role="grid"
       mah={skeleton ? "11rem" : undefined}
