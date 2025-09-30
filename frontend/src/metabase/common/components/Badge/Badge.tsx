@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { PropsWithChildren } from "react";
 
 import CS from "metabase/css/core/index.css";
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, IconProps } from "metabase/ui";
 
 import { BadgeIcon, BadgeText, MaybeLink } from "./Badge.styled";
@@ -22,8 +21,8 @@ type BadgeProps = PropsWithChildren<{
   to?: string;
   onClick?: () => void;
   icon?: IconName | IconProps;
-  inactiveColor?: ColorName;
-  activeColor?: ColorName;
+  inactiveColor?: string; // Color values may already be resolved by parent components
+  activeColor?: string; // Color values may already be resolved by parent components
   isSingleLine?: boolean;
   className?: string;
   classNames?: {

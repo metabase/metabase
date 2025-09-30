@@ -107,8 +107,6 @@ export function ColorSchemeProvider({
               case "light":
                 return "dark";
               case "dark":
-                return "auto";
-              case "auto":
               default:
                 return "light";
             }
