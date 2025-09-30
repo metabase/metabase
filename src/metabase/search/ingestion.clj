@@ -64,8 +64,12 @@
   "Execute a single function attribute and return the result"
   [attr-key attr-def record]
   (try
-    (let [f (:fn attr-def)]
-      (f record))
+    (let [f (:fn attr-def)
+          fields (:fields attr-def)
+          input (if fields
+                  (select-keys record fields)
+                  record)]
+      (f input))
     (catch Exception e
       (log/warn e "Function execution failed for attribute" attr-key)
       false)))
