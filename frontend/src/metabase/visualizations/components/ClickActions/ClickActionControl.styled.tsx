@@ -11,7 +11,6 @@ export const ClickActionButtonTextIcon = styled.span`
   text-align: center;
   font-weight: 700;
   font-size: 1.25rem;
-  transition: all 200ms linear;
 `;
 
 export const Subtitle = styled.div`
