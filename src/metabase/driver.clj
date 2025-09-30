@@ -1585,7 +1585,6 @@
 (defmethod table-exists? ::driver
   [driver database table]
   (try
-    (constantly true)
     (let [table-info (describe-table driver database table)]
       ;; Some drivers (e.g., BigQuery) return nil for non-existent tables. Others return a map with fields.
       (boolean (seq (:fields table-info))))

@@ -1265,6 +1265,7 @@
 
 (defmethod driver/extra-info :postgres
   [_driver]
+  (println "REMOVE ME")
   {:providers [{:name "Aiven" :pattern "\\.aivencloud\\.com$"}
                {:name "Amazon RDS" :pattern "\\.rds\\.amazonaws\\.com$"}
                {:name "Azure" :pattern "\\.postgres\\.database\\.azure\\.com$"}
