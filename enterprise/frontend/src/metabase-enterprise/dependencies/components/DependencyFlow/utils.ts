@@ -1,5 +1,5 @@
 import dagre from "@dagrejs/dagre";
-import { type Edge, type Node, Position } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type {
   DependencyEdge,
@@ -18,20 +18,10 @@ function getNodeId(id: DependencyEntityId, type: DependencyEntityType): string {
 function getNodes(nodes: DependencyNode[]): Node[] {
   return nodes.map((node) => ({
     id: getNodeId(node.id, node.type),
-    data: { label: getNodeLabel(node) },
+    type: "custom",
+    data: node,
     position: { x: 0, y: 0 },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
   }));
-}
-
-function getNodeLabel(node: DependencyNode) {
-  switch (node.type) {
-    case "table":
-      return node.entity.display_name;
-    case "card":
-      return node.entity.name;
-  }
 }
 
 function getEdges(edges: DependencyEdge[]): Edge[] {

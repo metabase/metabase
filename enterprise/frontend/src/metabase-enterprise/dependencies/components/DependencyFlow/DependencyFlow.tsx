@@ -2,6 +2,7 @@ import { Background, Controls, ReactFlow } from "@xyflow/react";
 
 import type { DependencyGraph } from "metabase-types/api";
 
+import { CustomNode } from "./CustomNode";
 import { getGraphData } from "./utils";
 
 const GRAPH: DependencyGraph = {
@@ -34,11 +35,15 @@ const GRAPH: DependencyGraph = {
   ],
 };
 
+const NODE_TYPES = {
+  custom: CustomNode,
+};
+
 export function DependencyFlow() {
   const { nodes, edges } = getGraphData(GRAPH);
 
   return (
-    <ReactFlow nodes={nodes} edges={edges} fitView>
+    <ReactFlow nodes={nodes} edges={edges} nodeTypes={NODE_TYPES} fitView>
       <Background />
       <Controls />
     </ReactFlow>
