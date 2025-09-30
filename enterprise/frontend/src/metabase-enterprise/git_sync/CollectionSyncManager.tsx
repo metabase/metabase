@@ -26,12 +26,10 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
-
-type SyncMode = "development" | "production";
+import type { Collection, EnterpriseSettings } from "metabase-types/api";
 
 interface CollectionSyncManagerProps {
-  mode: SyncMode;
+  mode: EnterpriseSettings["remote-sync-type"];
 }
 
 interface CollectionSelectProps {
@@ -99,7 +97,7 @@ const CollectionSelect = ({
 
 interface SyncedCollectionItemProps {
   collection: Collection;
-  mode: SyncMode;
+  mode: EnterpriseSettings["remote-sync-type"];
   onRemove: (collectionId: number | string) => void;
 }
 
@@ -128,7 +126,7 @@ const SyncedCollectionItem = ({
           {collection.name}
         </Anchor>
       </Flex>
-      {mode === "export" && (
+      {mode === "development" && (
         <ActionIcon
           variant="subtle"
           color="error"
@@ -143,16 +141,16 @@ const SyncedCollectionItem = ({
 );
 
 interface EmptyStateProps {
-  mode: SyncMode;
+  mode: EnterpriseSettings["remote-sync-type"];
   hasAvailableCollections: boolean;
 }
 
 const EmptyState = ({ mode, hasAvailableCollections }: EmptyStateProps) => {
   const getEmptyMessage = () => {
-    if (mode === "export" && !hasAvailableCollections) {
+    if (mode === "development" && !hasAvailableCollections) {
       return t`No collections available to sync`;
     }
-    return mode === "export"
+    return mode === "development"
       ? t`No collections selected for Git sync`
       : t`No collections synced from Git yet`;
   };
