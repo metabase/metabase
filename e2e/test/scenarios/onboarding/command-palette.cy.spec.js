@@ -151,13 +151,13 @@ describe("command palette", () => {
     H.commandPalette().findByText("No results for “New”").should("be.visible");
 
     H.commandPalette()
-      .findByRole("option", { name: "Create a new embed" })
+      .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
 
     cy.wait(100); // pressing page down too fast does nothing
     H.pressPageDown();
     H.commandPalette()
-      .findByRole("option", { name: "New collection" })
+      .findByRole("option", { name: "New metric" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
@@ -167,12 +167,12 @@ describe("command palette", () => {
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "New collection" })
+      .findByRole("option", { name: "New metric" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
     H.commandPalette()
-      .findByRole("option", { name: "Create a new embed" })
+      .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressEnd();
@@ -182,7 +182,7 @@ describe("command palette", () => {
 
     H.pressHome();
     H.commandPalette()
-      .findByRole("option", { name: "Create a new embed" })
+      .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
   });
 
