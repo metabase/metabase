@@ -49,11 +49,7 @@ export function MetabotChatInput() {
       justify="center"
       style={{ borderTop: "1px solid var(--mb-color-border)" }}
     >
-      <Flex
-        justify="center"
-        align="center"
-        style={{ flexShrink: 0, marginBottom: "8px" }}
-      >
+      <Flex justify="center" align="center" style={{ flexShrink: 0 }}>
         {metabot.isDoingScience ? (
           <Loader size="sm" />
         ) : (
@@ -92,50 +88,50 @@ export function MetabotChatInput() {
         }}
       />
 
-      {metabot.isDoingScience && (
-        <UnstyledButton
-          h="1rem"
-          data-testid="metabot-cancel-request"
-          onClick={cancelRequest}
-          style={{ marginBottom: "8px" }}
-        >
-          <Tooltip label={t`Stop generation`}>
-            <Icon name="stop" c="var(--mb-color-text-secondary)" size="1rem" />
-          </Tooltip>
-        </UnstyledButton>
-      )}
-
-      {!metabot.isDoingScience && metabot.prompt.length > 0 && (
-        <UnstyledButton
-          h="1rem"
-          onClick={resetInput}
-          data-testid="metabot-close-chat"
-          style={{ marginBottom: "8px" }}
-        >
-          <Icon name="close" c="var(--mb-color-text-secondary)" size="1rem" />
-        </UnstyledButton>
-      )}
-
-      {/* Overflow menu - only shown in stacked layout and auto layout mobile */}
-      <Menu position="top-end" withinPortal>
-        <Menu.Target>
+      <Flex align="center" justify="center" gap="xs">
+        {metabot.isDoingScience && (
           <UnstyledButton
-            data-testid="metabot-overflow-button"
-            className={S.stackedOverflowButton}
+            data-testid="metabot-cancel-request"
+            onClick={cancelRequest}
+            className={S.chatButton}
           >
-            <Icon name="ellipsis" c="var(--mb-color-text-secondary)" />
+            <Tooltip label={t`Stop generation`}>
+              <Icon name="stop" c="var(--mb-color-text-secondary)" />
+            </Tooltip>
           </UnstyledButton>
-        </Menu.Target>
+        )}
 
-        <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="edit_document_outlined" size="1rem" />}
-            onClick={startNewConversation}
+        {!metabot.isDoingScience && metabot.prompt.length > 0 && (
+          <UnstyledButton
+            onClick={resetInput}
+            data-testid="metabot-close-chat"
+            className={S.chatButton}
           >
-            {t`Start new chat`}
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
+            <Icon name="close" c="var(--mb-color-text-secondary)" />
+          </UnstyledButton>
+        )}
+
+        {/* Overflow menu - only shown in stacked layout and auto layout mobile */}
+        <Menu position="top-end" withinPortal>
+          <Menu.Target>
+            <UnstyledButton
+              data-testid="metabot-overflow-button"
+              className={S.stackedOverflowButton}
+            >
+              <Icon name="ellipsis" c="var(--mb-color-text-secondary)" />
+            </UnstyledButton>
+          </Menu.Target>
+
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={<Icon name="edit_document_outlined" size="1rem" />}
+              onClick={startNewConversation}
+            >
+              {t`Start new chat`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </Flex>
     </Flex>
   );
 }

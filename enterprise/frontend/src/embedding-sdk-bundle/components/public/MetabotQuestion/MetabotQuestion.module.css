@@ -46,7 +46,8 @@
     }
 
     /* Overflow menu is only visible in stacked layout. */
-    .stackedOverflowButton {
+    .stackedOverflowButton,
+    .chatButton {
       display: flex;
       padding: 0.25rem;
       border-radius: 4px;
