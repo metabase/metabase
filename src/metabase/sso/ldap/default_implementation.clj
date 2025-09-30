@@ -138,6 +138,7 @@
    (-> new-user
        ;; We should not store LDAP passwords
        (dissoc :password)
+       (assoc :is_active true)
        (assoc :sso_source "ldap"))))
 
 (mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
@@ -177,10 +178,9 @@
                          (t2/update! :model/User (:id user) user-changes)
                          (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
-                   (-> (create-new-ldap-auth-user! {:first_name first-name
-                                                    :last_name  last-name
-                                                    :email      email})
-                       (assoc :is_active true)))]
+                   (create-new-ldap-auth-user! {:first_name first-name
+                                                :last_name  last-name
+                                                :email      email}))]
     (u/prog1 new-user
       (when sync-groups?
         (let [group-ids            (ldap-groups->mb-group-ids groups settings)
