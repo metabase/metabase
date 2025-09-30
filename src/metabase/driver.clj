@@ -1582,6 +1582,7 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+
 (defmethod table-exists? ::driver
   [driver database table]
   (try
