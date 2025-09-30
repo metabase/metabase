@@ -117,7 +117,7 @@ export const ClickActionControl = ({
           }}
           leftSection={
             action.iconText ? (
-              <ClickActionButtonTextIcon>
+              <ClickActionButtonTextIcon className={S.ClickActionButtonIcon}>
                 {action.iconText}
               </ClickActionButtonTextIcon>
             ) : action.icon ? (
