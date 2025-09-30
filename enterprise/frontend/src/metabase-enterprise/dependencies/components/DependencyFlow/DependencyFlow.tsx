@@ -2,6 +2,7 @@ import {
   Background,
   Controls,
   type Edge,
+  type Node,
   ReactFlow,
   useEdgesState,
   useNodesState,
@@ -12,8 +13,8 @@ import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
 import { EntityGroupNode } from "./EntityGroupNode";
 import { EntityNode } from "./EntityNode";
-import type { GraphNode, NodeId } from "./types";
-import { getGraphInfo } from "./utils";
+import type { DependencyGroup, GraphNode, NodeId } from "./types";
+import { getGraphInfo, getNodeId } from "./utils";
 
 const NODE_TYPES = {
   entity: EntityNode,
@@ -25,7 +26,7 @@ export function DependencyFlow() {
     useGetDependencyGraphQuery();
   const [nodes, setNodes, handleNodeChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, handleEdgeChange] = useEdgesState<Edge>([]);
-  const [visibleNodeIds, _setVisibleNodeIds] = useState(
+  const [visibleNodeIds, setVisibleNodeIds] = useState(
     new Set<NodeId>(["table-11"]),
   );
 
@@ -34,6 +35,16 @@ export function DependencyFlow() {
     setNodes(nodes);
     setEdges(edges);
   }, [graph, visibleNodeIds, setNodes, setEdges]);
+
+  const handleNodeClick = (_event: unknown, node: Node) => {
+    const group = (node.data as DependencyGroup)?.nodes ?? [];
+    setVisibleNodeIds(
+      new Set([
+        ...visibleNodeIds,
+        ...group.map((node) => getNodeId(node.id, node.type)),
+      ]),
+    );
+  };
 
   return (
     <ReactFlow
@@ -46,6 +57,7 @@ export function DependencyFlow() {
       maxZoom={1000}
       onNodesChange={handleNodeChange}
       onEdgesChange={handleEdgeChange}
+      onNodeClick={handleNodeClick}
     >
       <Background />
       <Controls />

@@ -20,7 +20,10 @@ import type {
   NodeId,
 } from "./types";
 
-function getNodeId(id: DependencyEntityId, type: DependencyEntityType): NodeId {
+export function getNodeId(
+  id: DependencyEntityId,
+  type: DependencyEntityType,
+): NodeId {
   return `${type}-${id}`;
 }
 

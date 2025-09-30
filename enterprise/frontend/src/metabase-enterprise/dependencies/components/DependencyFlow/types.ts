@@ -25,3 +25,7 @@ export type GraphInfo = {
   nodes: GraphNode[];
   edges: Edge[];
 };
+
+export type DependencyFlowContextType = {
+  onGroupClick: (group: DependencyGroup) => void;
+};
