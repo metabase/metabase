@@ -18,6 +18,7 @@ describe("getInitialStateForCardDataSource", () => {
     card: createMockCard({
       display: "smartscalar",
       name: "ScalarMcSmartface",
+      description: null,
       visualization_settings: {
         "scalar.compact_primary_number": true,
       },
@@ -72,6 +73,7 @@ describe("getInitialStateForCardDataSource", () => {
     const card = createMockCard({
       display: "table",
       name: "TablyMcTableface",
+      description: null,
       visualization_settings: {},
     });
 
@@ -99,6 +101,20 @@ describe("getInitialStateForCardDataSource", () => {
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
     });
+  });
+
+  it("should include card description in settings (metabase#63863)", () => {
+    const card = createMockCard({
+      display: "table",
+      name: "Test Card",
+      description: "This is a test description",
+    });
+
+    const state = getInitialStateForCardDataSource(card, dataset);
+
+    expect(state.settings["card.description"]).toEqual(
+      "This is a test description",
+    );
   });
 
   it("should ignore superfluous columns when the original card is a combo chart", () => {
@@ -137,6 +153,7 @@ describe("getInitialStateForCardDataSource", () => {
     const card = createMockCard({
       display: "combo",
       name: "ComboMcComboface",
+      description: null,
       visualization_settings: {
         "graph.metrics": ["sum", "sum_2"],
         "graph.dimensions": ["CREATED_AT"],
@@ -230,6 +247,7 @@ describe("getInitialStateForCardDataSource", () => {
       const card = createMockCard({
         name: `${vizType} card`,
         display: vizType,
+        description: null,
       });
       const initialState = getInitialStateForCardDataSource(card, dataset);
 
