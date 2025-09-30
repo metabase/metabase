@@ -41,7 +41,7 @@ export const Centered = {
             borderRadius: "16px",
           }}
         >
-          <MetabotQuestion height="calc(100vh - 80px)" />
+          <MetabotQuestion height="calc(100vh - 90px)" />
         </Flex>
       </Stack>
     );
