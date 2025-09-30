@@ -28,7 +28,7 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
         <Flex display="flex" align="baseline" gap="0.25rem">
           {c('in the sentence "Save this question to drill-through"').jt`${(
             <Button
-              key=""
+              key="save-button"
               variant="subtle"
               p={0}
               onClick={() =>
