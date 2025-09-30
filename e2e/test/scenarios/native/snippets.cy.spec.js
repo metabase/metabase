@@ -185,6 +185,7 @@ describe("scenarios > question > snippets", () => {
       .click();
     H.modal().findByText("select 'foo'").should("be.visible");
   });
+
   it("should handle snippet tags with trailing spaces correctly", () => {
     cy.log("create a snippet");
     H.createSnippet({
