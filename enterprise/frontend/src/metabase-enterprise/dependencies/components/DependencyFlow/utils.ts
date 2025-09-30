@@ -1,10 +1,11 @@
 import dagre from "@dagrejs/dagre";
-import type { Edge, Node } from "@xyflow/react";
+import { type Edge, type Node, Position } from "@xyflow/react";
 
 import type {
   DependencyEdge,
   DependencyEntityId,
   DependencyEntityType,
+  DependencyGraph,
   DependencyNode,
 } from "metabase-types/api";
 
@@ -14,29 +15,42 @@ function getNodeId(id: DependencyEntityId, type: DependencyEntityType): string {
   return `${type}-${id}`;
 }
 
-export function getNodes(nodes: DependencyNode[]): Node[] {
+function getNodes(nodes: DependencyNode[]): Node[] {
   return nodes.map((node) => ({
     id: getNodeId(node.id, node.type),
-    data: node,
+    data: { label: getNodeLabel(node) },
     position: { x: 0, y: 0 },
+    sourcePosition: Position.Right,
+    targetPosition: Position.Left,
   }));
 }
 
-export function getEdges(edges: DependencyEdge[]): Edge[] {
+function getNodeLabel(node: DependencyNode) {
+  switch (node.type) {
+    case "table":
+      return node.entity.display_name;
+    case "card":
+      return node.entity.name;
+  }
+}
+
+function getEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
     const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
     const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
 
     return {
       id: `${sourceId}-${targetId}`,
+      data: edge,
       source: sourceId,
       target: targetId,
     };
   });
 }
 
-export function getNodesWithPosition(nodes: Node[], edges: Edge[]): Node[] {
+function getNodesWithPosition(nodes: Node[], edges: Edge[]): Node[] {
   const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+  dagreGraph.setGraph({ rankdir: "LR" });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
@@ -58,4 +72,14 @@ export function getNodesWithPosition(nodes: Node[], edges: Edge[]): Node[] {
       },
     };
   });
+}
+
+export function getGraphData(graph: DependencyGraph) {
+  const nodes = getNodes(graph.nodes);
+  const edges = getEdges(graph.edges);
+
+  return {
+    nodes: getNodesWithPosition(nodes, edges),
+    edges,
+  };
 }
