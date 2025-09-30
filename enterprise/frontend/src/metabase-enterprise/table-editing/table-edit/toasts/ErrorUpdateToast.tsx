@@ -69,7 +69,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
 
       <Button
         size="compact-lg"
-        color="var(--mb-base-color-orion-80)"
+        color="bg-darker"
         variant="filled"
         autoContrast
         radius="0.5rem"
