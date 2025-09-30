@@ -158,7 +158,7 @@ export const getRoutes = (store) => {
           <Route
             path="dependencies"
             title={t`Dependencies`}
-            component={PLUGIN_DEPENDENCIES.DependencyGraph}
+            component={PLUGIN_DEPENDENCIES.DependencyFlow}
           />
 
           <Route path="search" title={t`Search`} component={SearchApp} />
