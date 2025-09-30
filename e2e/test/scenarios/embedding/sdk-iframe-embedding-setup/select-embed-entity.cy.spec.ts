@@ -50,8 +50,6 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.log("first dashboard should be selected by default");
       getRecentItemCards().first().should("have.attr", "data-selected", "true");
-
-      cy.log("proceed with default selection");
       cy.findByText("Next").click();
     });
 

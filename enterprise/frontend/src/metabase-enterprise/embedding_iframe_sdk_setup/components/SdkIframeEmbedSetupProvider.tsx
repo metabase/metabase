@@ -23,7 +23,6 @@ import {
 } from "../context";
 import { useParameterList, useRecentItems } from "../hooks";
 import type {
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "../types";
@@ -127,15 +126,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // Which embed experience are we setting up?
   const experience = useMemo(
-    () =>
-      match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(
-        settings,
-      )
-        .with({ template: "exploration" }, () => "exploration")
-        .with({ componentName: "metabase-question" }, () => "chart")
-        .with({ componentName: "metabase-browser" }, () => "browser")
-        .with({ componentName: "metabase-dashboard" }, () => "dashboard")
-        .exhaustive(),
+    () => getExperienceFromSettings(settings),
     [settings],
   );
 
