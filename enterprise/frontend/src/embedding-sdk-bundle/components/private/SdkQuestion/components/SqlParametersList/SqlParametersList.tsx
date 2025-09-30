@@ -27,8 +27,6 @@ export const SqlParametersList = () => {
     return isNative;
   }, [question]);
 
-  const query = useMemo(() => question?.legacyNativeQuery(), [question]);
-
   const parameters = useMemo(() => {
     if (!question || !originalQuestion) {
       return [];
@@ -46,7 +44,7 @@ export const SqlParametersList = () => {
       );
   }, [originalQuestion, question, hiddenParameters]);
 
-  if (!question || !query || !isNativeQuestion) {
+  if (!question || !isNativeQuestion) {
     return null;
   }
 
@@ -59,15 +57,6 @@ export const SqlParametersList = () => {
     updateQuestion(questionWithParams, { run: true });
   };
 
-  const setParameterIndex = (
-    parameterId: ParameterId,
-    parameterIndex: number,
-  ) => {
-    const newQuery = query.setParameterIndex(parameterId, parameterIndex);
-
-    updateQuestion(question.setDatasetQuery(newQuery.datasetQuery()));
-  };
-
   return (
     <ResponsiveParametersList
       className={SqlParametersListS.SqlParametersList}
@@ -75,7 +64,6 @@ export const SqlParametersList = () => {
       dashboardId={question.dashboardId() ?? undefined}
       parameters={parameters}
       setParameterValue={setParameterValue}
-      setParameterIndex={setParameterIndex}
       enableParameterRequiredBehavior
       commitImmediately={false}
       isSortable={false}

@@ -16,7 +16,7 @@ interface ResponsiveParametersListProps {
   dashboardId?: DashboardId;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
-  setParameterIndex: (parameterId: string, parameterIndex: number) => void;
+  setParameterIndex?: (parameterId: string, parameterIndex: number) => void;
   enableParameterRequiredBehavior: boolean;
   commitImmediately?: boolean;
   isSortable?: boolean;
