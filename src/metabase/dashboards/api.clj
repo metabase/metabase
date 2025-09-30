@@ -442,6 +442,10 @@
               (:action_id dashboard-card)
               nil
 
+              ;; iframe cards need no manipulation
+              (some-> dashboard-card :visualization_settings :iframe)
+              dashboard-card
+
               ;; text cards need no manipulation
               (some-> dashboard-card :visualization_settings :virtual_card :display #{"text" "heading"})
               dashboard-card
