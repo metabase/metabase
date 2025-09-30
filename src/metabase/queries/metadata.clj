@@ -16,11 +16,8 @@
 ;; This is similar to the function in src/metabase/warehouses/api.clj, but we want to
 ;; allow filtering the DBs in case of audit database, we don't want to allow users to modify
 ;; its queries.
-(mu/defn- add-native-perms-info :- [:maybe
-                                    [:sequential
-                                     [:map
-                                      [:native_permissions [:enum :write :none]]]]]
-  "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
+(mu/defn- get-native-perms-info :- [:enum :write :none]
+  "Calculate `:native_permissions` field for the passed database describing the current user's permissions for running
   native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
   and save new Cards with native queries; `:none` means you can do neither.
 
@@ -28,26 +25,23 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [predicate dbs :- [:maybe [:sequential :map]]]
-  (perms/prime-db-cache (map :id dbs))
-  (for [db (filter predicate dbs)]
-    (assoc db
-           :native_permissions
-           (if (= :query-builder-and-native
-                  (perms/full-db-permission-for-user
-                   api/*current-user-id*
-                   :perms/create-queries
-                   (u/the-id db)))
-             :write
-             :none))))
+  [db :- [:map]]
+  (if (and (not (:is_audit db))
+           (= :query-builder-and-native
+              (perms/full-db-permission-for-user
+               api/*current-user-id*
+               :perms/create-queries
+               (u/the-id db))))
+    :write
+    :none))
 
 (defn- get-databases
   [ids]
   (when (seq ids)
-    (add-native-perms-info
-     #(false? (:is_audit %))
-     (into [] (filter mi/can-read?)
-           (t2/select :model/Database :id [:in ids])))))
+    (perms/prime-db-cache ids)
+    (into [] (comp (map #(assoc % :native_permissions (get-native-perms-info %)))
+                   (filter mi/can-read?))
+          (t2/select :model/Database :id [:in ids]))))
 
 (defn- field-ids->table-ids
   [field-ids]
