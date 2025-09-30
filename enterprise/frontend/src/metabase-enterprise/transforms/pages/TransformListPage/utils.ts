@@ -10,6 +10,9 @@ import {
 } from "../../utils";
 
 export function getParsedParams(location: Location): TransformListParams {
+  if (!location.query) {
+    return {};
+  }
   const { lastRunStartTime, lastRunStatuses, tagIds } = location.query;
 
   return {

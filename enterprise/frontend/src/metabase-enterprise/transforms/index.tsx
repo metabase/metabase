@@ -11,9 +11,8 @@ import { JobPage } from "./pages/JobPage";
 import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
-import { TransformListPage } from "./pages/TransformListPage";
 import { TransformPage } from "./pages/TransformPage";
-import { DetailsPageLayout, ListPageLayout } from "./pages/TransformPageLayout";
+import { DetailsPageLayout, ListPageLayout, TransformPageLayout } from "./pages/TransformPageLayout";
 import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 if (hasPremiumFeature("transforms")) {
@@ -22,23 +21,25 @@ if (hasPremiumFeature("transforms")) {
   ];
 
   PLUGIN_TRANSFORMS.getAdminRoutes = () => (
-    <Route path="transforms" component={createAdminRouteGuard("transforms")}>
-      <Route title={t`Transforms`}>
-        <Route component={ListPageLayout}>
-          <IndexRoute component={TransformListPage} />
-          <Route path="jobs" component={JobListPage} />
-          <Route path="runs" component={RunListPage} />
-        </Route>
-        <Route component={DetailsPageLayout}>
-          <Route path="jobs/new" component={NewJobPage} />
-          <Route path="jobs/:jobId" component={JobPage} />
-          <Route path=":transformId" component={TransformPage} />
-        </Route>
-        {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
-        <Route path="new/:type" component={NewTransformPage} />
-        <Route path="new/card/:cardId" component={NewTransformPage} />
-        <Route path=":transformId/query" component={TransformQueryPage} />
+    <>
+      <Route component={ListPageLayout}>
+        <Route path="jobs" component={JobListPage} />
+        <Route path="runs" component={RunListPage} />
       </Route>
-    </Route>
+      <Route component={DetailsPageLayout}>
+        <Route path="jobs/new" component={NewJobPage} />
+        <Route path="jobs/:jobId" component={JobPage} />
+      </Route>
+      <Route path="transforms" component={createAdminRouteGuard("transforms")}>
+        <Route title={t`Transforms`} component={TransformPageLayout}>
+          <IndexRoute component={() => <div>pick a transform</div>} />
+          <Route path=":transformId" component={TransformPage} />
+          <Route path="new/:type" component={NewTransformPage} />
+          <Route path="new/card/:cardId" component={NewTransformPage} />
+          <Route path=":transformId/query" component={TransformQueryPage} />
+        </Route>
+      </Route>
+      {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}
+    </>
   );
 }

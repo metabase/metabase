@@ -13,7 +13,7 @@ import type {
   TransformListParams,
 } from "./types";
 
-export const ROOT_URL = "/admin/transforms";
+export const ROOT_URL = "/bench/transforms";
 
 export function getTransformListUrl({
   lastRunStartTime,
