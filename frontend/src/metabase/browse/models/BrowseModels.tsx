@@ -169,7 +169,7 @@ export const BrowseModels = () => {
   );
 };
 
-function useModelFilterSettings() {
+export function useModelFilterSettings() {
   const defaultModelFilters = useSelector(getDefaultModelFilters);
   return useState(defaultModelFilters);
 }
@@ -203,7 +203,7 @@ function useHasVerifiedModels() {
   };
 }
 
-function useFilteredModels(modelFilters: ModelFilterSettings) {
+export function useFilteredModels(modelFilters: ModelFilterSettings) {
   const hasVerifiedModels = useHasVerifiedModels();
 
   const filters = cleanModelFilters(modelFilters, hasVerifiedModels.result);

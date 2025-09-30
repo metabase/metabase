@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link , withRouter } from "react-router";
+import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -184,10 +184,10 @@ function _BenchNav({ location }: BenchSidebarProps) {
         <Box>
           <NavLink
             component={Link}
-            to="/bench/models"
+            to="/bench/model"
             label={t`Models`}
             leftSection={<Icon name="model" size={16} />}
-            active={isActive("/bench/models")}
+            active={isActive("/bench/model")}
             px="lg"
             py="md"
           />
