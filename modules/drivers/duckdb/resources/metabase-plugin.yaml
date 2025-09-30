@@ -1,0 +1,51 @@
+info:
+  name: Metabase DuckDB Driver
+  version: 1.2.1
+  description: Allows Metabase to connect to DuckDB databases.
+contact-info:
+  name: MotherDuck
+  address: support@motherduck.com
+driver:
+  name: duckdb
+  display-name: DuckDB
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - name: database_file
+      display-name: Database file
+      placeholder: /home/to/the.duckdb (or ':memory:' for 'in memory' mode)
+      required: false
+    - name: read_only
+      display-name: Establish a read-only connection
+      default: false
+      type: boolean
+    - name: old_implicit_casting
+      display-name: Use DuckDB old_implicit_casting option
+      default: true
+      type: boolean
+    - name: allow_unsigned_extensions
+      display-name: Allow loading unsigned extensions
+      default: false
+      type: boolean
+    - name: memory_limit
+      display-name: Limit on the amount of memory that DuckDB can use (e.g., 1GB), defaults to 80% of RAM
+      required: false
+    - name: azure_transport_option_type
+      display-name: Azure transport option type
+      required: false
+    - name: motherduck_token
+      display-name: Motherduck Token
+      type: secret
+      secret-kind: password
+      required: false
+    - advanced-options-start
+    - merge:
+        - additional-options
+        - display-name: Additional DuckDB connection string options
+          placeholder: 'http_keep_alive=false'
+
+init:
+  - step: load-namespace
+    namespace: metabase.driver.duckdb
+  - step: register-jdbc-driver
+    class: org.duckdb.DuckDBDriver
