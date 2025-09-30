@@ -5,14 +5,14 @@ import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "./utils";
 
-type CustomNodeProps = NodeProps<Node<DependencyNode>>;
+type EntityNodeProps = NodeProps<Node<DependencyNode>>;
 
-export function CustomNode({
+export function EntityNode({
   data,
   sourcePosition = Position.Left,
   targetPosition = Position.Right,
   isConnectable,
-}: CustomNodeProps) {
+}: EntityNodeProps) {
   return (
     <>
       <FixedSizeIcon name={getNodeIcon(data)} c="brand" />

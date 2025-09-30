@@ -11,11 +11,11 @@ import { useEffect } from "react";
 
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
-import { CustomNode } from "./CustomNode";
+import { EntityNode } from "./EntityNode";
 import { getGraphData } from "./utils";
 
 const NODE_TYPES = {
-  custom: CustomNode,
+  entity: EntityNode,
 };
 
 export function DependencyFlow() {

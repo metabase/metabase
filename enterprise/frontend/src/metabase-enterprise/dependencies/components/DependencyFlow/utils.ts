@@ -12,24 +12,27 @@ import type {
 import S from "./DependencyFlow.module.css";
 import { NODE_HEIGHT, NODE_WIDTH } from "./constants";
 
-function getNodeId(id: DependencyEntityId, type: DependencyEntityType): string {
+function getEntityNodeId(id: DependencyEntityId, type: DependencyEntityType) {
   return `${type}-${id}`;
 }
 
-function getNodes(nodes: DependencyNode[]): Node[] {
+function getEntityNodes(nodes: DependencyNode[]): Node[] {
   return nodes.map((node) => ({
-    id: getNodeId(node.id, node.type),
+    id: getEntityNodeId(node.id, node.type),
     className: S.node,
-    type: "custom",
+    type: "entity",
     data: node,
     position: { x: 0, y: 0 },
   }));
 }
 
-function getEdges(edges: DependencyEdge[]): Edge[] {
+function getEntityEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
-    const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
-    const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
+    const sourceId = getEntityNodeId(
+      edge.from_entity_id,
+      edge.from_entity_type,
+    );
+    const targetId = getEntityNodeId(edge.to_entity_id, edge.to_entity_type);
 
     return {
       id: `${sourceId}-${targetId}`,
@@ -68,8 +71,8 @@ function getNodesWithPosition(nodes: Node[], edges: Edge[]): Node[] {
 }
 
 export function getGraphData(graph: DependencyGraph) {
-  const nodes = getNodes(graph.nodes);
-  const edges = getEdges(graph.edges);
+  const nodes = getEntityNodes(graph.nodes);
+  const edges = getEntityEdges(graph.edges);
 
   return {
     nodes: getNodesWithPosition(nodes, edges),
