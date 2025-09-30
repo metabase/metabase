@@ -125,11 +125,12 @@
                             :name name
                             :display_name display_name}})
                 (t2/select :model/Table :active true))
-           (map (fn [{:keys [id name]}]
+           (map (fn [{:keys [id name type]}]
                   {:id id
                    :type :card
                    :entity {:id id
-                            :name name}})
+                            :name name
+                            :type type}})
                 (t2/select :model/Card :archived false)))
    :edges (t2/select :model/Dependency)})
 
