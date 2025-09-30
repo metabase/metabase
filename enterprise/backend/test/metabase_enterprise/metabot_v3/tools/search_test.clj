@@ -147,6 +147,23 @@
                     :created_at "2024-01-02"}]
       (is (= expected (#'search/postprocess-search-result result)))))
 
+  (testing "transform result postprocessing"
+    (let [result {:model "transform"
+                  :id 3
+                  :name "User Transform"
+                  :description "Transform for users"
+                  :database_id 44
+                  :updated_at "2024-01-03"
+                  :created_at "2024-01-03"}
+          expected {:id 3
+                    :type "transform"
+                    :name "User Transform"
+                    :description "Transform for users"
+                    :database_id 44
+                    :updated_at "2024-01-03"
+                    :created_at "2024-01-03"}]
+      (is (= expected (#'search/postprocess-search-result result)))))
+
   (testing "dashboard result postprocessing"
     (let [result {:model "dashboard"
                   :id 3

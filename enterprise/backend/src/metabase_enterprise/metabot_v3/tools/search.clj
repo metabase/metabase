@@ -155,7 +155,6 @@
         result-lists (mapv deref futures)
         fused-results (reciprocal-rank-fusion result-lists)
         entity-type-counts (frequencies (map :model fused-results))
-        _ (def fused-results fused-results) ;; For debugging
         postprocessed-results (map postprocess-search-result fused-results)]
     (log/infof "[METABOT-SEARCH] Entity type distribution: %s" entity-type-counts)
     (log/infof "[METABOT-SEARCH] Fused results sample (first 3): %s"
