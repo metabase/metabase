@@ -1,9 +1,12 @@
+import type React from "react";
 import { t } from "ttag";
 
 import { Button, type ButtonProps, Icon } from "metabase/ui";
 
 interface Props extends ButtonProps {
   unresolvedCommentsCount: number;
+  component?: React.ElementType<any, any>;
+  to: string;
 }
 
 export const CommentsButton = ({

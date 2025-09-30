@@ -30,7 +30,7 @@ export const getUnresolvedComments = (
 
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
   function CommentsMenu(
-    { active, disabled, href, show, style, threads }: Props,
+    { active, href, show, style, threads }: Props,
     ref,
   ) {
     const unresolvedCommentsCount = useMemo(
@@ -42,9 +42,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
     return createPortal(
       <Box
         className={cx(S.commentsMenu, {
-          [S.visible]: disabled
-            ? hasUnresolvedComments
-            : show || hasUnresolvedComments,
+          [S.visible]: show || hasUnresolvedComments,
         })}
         contentEditable={false}
         draggable={false}
@@ -54,16 +52,10 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         style={style}
       >
         <CommentsButton
-          disabled={disabled}
           variant={active ? "filled" : "default"}
           unresolvedCommentsCount={unresolvedCommentsCount}
-          {...(disabled
-            ? undefined
-            : {
-                component: ForwardRefLink,
-                // If no existing unresolved comments comments, add query param to auto-open new comment form
-                to: unresolvedCommentsCount > 0 ? href : `${href}?new=true`,
-              })}
+          component={ForwardRefLink}
+          to={unresolvedCommentsCount > 0 ? href : `${href}?new=true`}
         />
       </Box>,
       document.body,

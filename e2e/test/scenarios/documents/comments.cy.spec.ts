@@ -616,12 +616,12 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.findByLabelText("Comments")
         .should("not.be.disabled")
-        .click({ force: true });
+        .click();
       Comments.getSidebar().should("be.visible");
 
       cy.findByLabelText("Show all comments")
         .should("not.be.disabled")
-        .click({ force: true });
+        .click();
       Comments.getSidebar().should("be.visible");
     });
   });
