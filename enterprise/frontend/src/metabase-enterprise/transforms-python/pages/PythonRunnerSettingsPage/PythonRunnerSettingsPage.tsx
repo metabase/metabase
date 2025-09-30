@@ -5,8 +5,16 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useSetting } from "metabase/common/hooks";
 
 export function PythonRunnerSettingsPage() {
+  const isHosted = useSetting("is-hosted?");
+
+  // Python Runner settings are managed by Metabase Cloud for hosted instances
+  if (isHosted) {
+    return null;
+  }
+
   return (
     <SettingsPageWrapper title={t`Python Runner`}>
       <SettingsSection title={t`Service Configuration`}>
