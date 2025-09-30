@@ -602,3 +602,9 @@ export const colors: Record<keyof typeof colorConfig, string> = {
   ),
   ...whitelabelColors, // TODO: Figure out where/how to define this
 };
+
+export const staticVizOverrides = {
+  "text-dark": baseColors.orion[80],
+  "text-medium": baseColors.orion[60],
+  "text-light": baseColors.orion[40],
+};
