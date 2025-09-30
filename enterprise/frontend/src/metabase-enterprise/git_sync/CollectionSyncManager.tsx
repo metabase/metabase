@@ -28,7 +28,7 @@ import {
 } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
-type SyncMode = "import" | "export";
+type SyncMode = "development" | "production";
 
 interface CollectionSyncManagerProps {
   mode: SyncMode;
@@ -243,7 +243,7 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
 
   return (
     <Stack gap="lg">
-      {mode === "export" && (
+      {mode === "development" && (
         <CollectionSelect
           availableCollections={availableCollections}
           onAddCollection={handleAddCollection}
