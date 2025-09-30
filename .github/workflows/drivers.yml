@@ -452,7 +452,7 @@ jobs:
           - name: Driver Tests
             test-args: >-
               :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+            exclude-tag: ':mb/transforms-python-test'
           - name: Transforms Python Tests
             test-args: >-
               :only-tags [:mb/transforms-python-test]
@@ -805,7 +805,7 @@ jobs:
           - name: Driver Tests
             test-args: >-
               :only-tags [:mb/driver-tests]
-              :exclude-tags [:mb/transforms-python-test]
+            exclude-tag: ':mb/transforms-python-test'
           - name: Transforms Python Tests
             test-args: >-
               :only-tags [:mb/transforms-python-test]
