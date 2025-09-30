@@ -170,10 +170,6 @@ export const getDashboard = createSelector(
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
-export const getDashcardList = createSelector([getDashcards], (dashcards) =>
-  Object.values(dashcards),
-);
-
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
@@ -221,6 +217,11 @@ export const getDashboardComplete = createSelector(
       }
     );
   },
+);
+
+export const getCurrentDashcards = createSelector(
+  [getDashboardComplete],
+  (dashboard) => dashboard?.dashcards || [],
 );
 
 export const getDashcardHref = createSelector(
@@ -443,9 +444,8 @@ export const getParameters = createSelector(
 );
 
 export const getDashboardHeaderParameters = createSelector(
-  [getDashcards, getParameters],
-  (dashcards, parameters) => {
-    const dashcardList = Object.values(dashcards);
+  [getCurrentDashcards, getParameters],
+  (dashcardList, parameters) => {
     return parameters.filter(
       (parameter) => !isDashcardInlineParameter(parameter.id, dashcardList),
     );
