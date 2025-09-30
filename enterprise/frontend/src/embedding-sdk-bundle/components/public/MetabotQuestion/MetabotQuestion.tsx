@@ -54,6 +54,7 @@ const MetabotQuestionInner = ({
         isSaveEnabled={false}
       >
         <SdkQuestionDefaultView
+          height="100%"
           withChartTypeSelector
           title={
             <Stack gap="sm" mb="1rem">
