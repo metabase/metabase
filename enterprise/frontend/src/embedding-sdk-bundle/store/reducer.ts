@@ -61,7 +61,8 @@ export const getOrRefreshSession = createAsyncThunk(
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = storedAuthToken ?? state?.token;
 
-    const isTokenValid = token && token.exp * 1000 >= Date.now();
+    const isTokenValid =
+      typeof token?.exp === "number" && token.exp * 1000 >= Date.now();
 
     if (isTokenValid) {
       return token;

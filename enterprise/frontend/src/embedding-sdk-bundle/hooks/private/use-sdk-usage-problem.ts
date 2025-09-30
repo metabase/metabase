@@ -5,6 +5,7 @@ import { getSdkUsageProblem } from "embedding-sdk-bundle/lib/usage-problem";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-package";
 import { useSetting } from "metabase/common/hooks";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -12,9 +13,11 @@ import { getTokenFeature } from "metabase/setup/selectors";
 export function useSdkUsageProblem({
   authConfig,
   allowConsoleLog = true,
+  tokenExpiration,
 }: {
   authConfig: MetabaseAuthConfig;
   allowConsoleLog?: boolean;
+  tokenExpiration: MetabaseEmbeddingSessionToken["exp"];
 }) {
   const hasLoggedRef = useRef(false);
 
@@ -51,8 +54,15 @@ export function useSdkUsageProblem({
       hasTokenFeature,
       isEnabled,
       isDevelopmentMode,
+      tokenExpiration,
     });
-  }, [authConfig, hasTokenFeature, isEnabled, isDevelopmentMode]);
+  }, [
+    authConfig,
+    hasTokenFeature,
+    isEnabled,
+    isDevelopmentMode,
+    tokenExpiration,
+  ]);
 
   useEffect(() => {
     // SDK components will stop rendering if a license error is detected.
