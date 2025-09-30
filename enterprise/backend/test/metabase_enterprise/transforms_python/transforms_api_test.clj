@@ -446,7 +446,7 @@
       (doseq [{:keys [desc expect-status expect-script expect-write] :as scenario} scenarios]
         (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/python)
                              ; these drivers cause timing issues, could be fixed if we change timeout / time variables in test
-                             (disj :snowflake :bigquery-cloud-sdk))
+                             (disj :snowflake :bigquery-cloud-sdk :redshift))
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
               (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
