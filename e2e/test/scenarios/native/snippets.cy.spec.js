@@ -167,6 +167,37 @@ describe("scenarios > question > snippets", () => {
     H.rightSidebar().icon("close").click();
     H.rightSidebar().findByText("snippet 2").should("be.visible");
   });
+
+  it("should be possible to preview a query that has a snippet in it (metabase#60534)", () => {
+    cy.request("POST", "/api/native-query-snippet", {
+      content: "'foo'",
+      name: "Foo",
+      collection_id: null,
+    });
+
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+    H.NativeEditor.type("select {{snippet: Foo}}");
+    cy.findByTestId("native-query-top-bar")
+      .findByLabelText("Preview the query")
+      .click();
+    H.modal().findByText("select 'foo'").should("be.visible");
+  });
+  it("should handle snippet tags with trailing spaces correctly", () => {
+    cy.log("create a snippet");
+    H.createSnippet({
+      name: "category filter",
+      content: "category = 'Widget'",
+    });
+      H.startNewNativeQuestion();
+      cy.log("type a query with snippet tags containing trailing spaces");
+    H.NativeEditor.type(
+      "select id from products where {{snippet: category filter }}",
+    );
+    cy.log("verify the query can be run");
+    cy.findByTestId("native-query-editor-container").icon("play").click();
+    H.assertQueryBuilderRowCount(54);
+  });
 });
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
