@@ -13,9 +13,9 @@ import { useSetting } from "metabase/common/hooks";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import { Card } from "metabase/ui";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embedding_iframe_sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
 // by appending the script
-import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embedding_iframe_sdk/constants";
 import { setupConfigWatcher } from "metabase-enterprise/embedding_iframe_sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
