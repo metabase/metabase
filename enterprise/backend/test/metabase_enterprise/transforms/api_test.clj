@@ -810,4 +810,3 @@
                                      :schema (get-test-schema)
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
-
