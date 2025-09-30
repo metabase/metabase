@@ -352,7 +352,7 @@ export function DetailViewSidesheet({
 
           <Group pb={rem(48)} pt="xl" px={rem(56)}>
             <Stack gap={rem(64)} h="100%" maw={rem(900)} w="100%">
-              {columns.length - headerColumns.length > 0 && (
+              {columns.length > 0 && (
                 <DetailsGroup
                   columns={columns}
                   columnsSettings={columnsSettings}

@@ -689,7 +689,7 @@ describe("issue 23421", () => {
     type: "model",
   };
 
-  const hiddenColumnsQuestionDetails = {
+  const hiddenColumnsModelDetails = {
     native: {
       query,
     },
@@ -734,16 +734,17 @@ describe("issue 23421", () => {
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
-    H.createNativeQuestion(hiddenColumnsQuestionDetails, {
+    H.createNativeQuestion(hiddenColumnsModelDetails, {
       visitQuestion: true,
     });
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
     H.NativeEditor.get().should("be.visible").and("contain", query);
-    cy.findByTestId("visualization-root")
-      .findByText("Every field is hidden right now")
-      .should("be.visible");
+    H.tableInteractiveHeader().within(() => {
+      cy.findByText("id").should("be.visible");
+      cy.findByText("created_at").should("be.visible");
+    });
     cy.button("Save changes").should("be.disabled");
   });
 });
