@@ -1,5 +1,8 @@
 (ns metabase.lib.schema.metadata
+  (:refer-clojure :exclude [every?])
   (:require
+   #?@(:clj
+       ([metabase.util.regex :as u.regex]))
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
@@ -8,7 +11,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
@@ -501,7 +505,18 @@
     ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
     ;; provider doesn't add these keys.
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
-    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
+    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
+    ;;
+    ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds
+    ;; `:qp/added-implicit-fields?` to stages where it adds implicit fields,
+    ;; then [[metabase.lib.stage/fields-columns]] adds this key to any col from such a
+    ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
+    ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
+    ;; settings that use it as a key.
+    [:qp/implicit-field? {:optional true} [:maybe :boolean]]]
+   ;;
+   ;; Additional constraints
+   ;;
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
    ::kebab-cased-map
    [:ref ::column.validate-for-source]])
@@ -525,11 +540,26 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(def card-types
+  "Valid Card `:type`s."
+  #{:question :model :metric})
+
 (mr/def ::card.type
-  [:enum
-   :question
-   :model
-   :metric])
+  "All acceptable card types.
+
+  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean
+  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
+  to differentiate between all types. So we've added a new `type` column for this purpose.
+
+  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
+  gradually."
+  (into [:enum
+         (merge
+          {:decode/json      lib.schema.common/normalize-keyword
+           :decode/normalize lib.schema.common/normalize-keyword}
+          #?(:clj
+             {:api/regex (u.regex/re-or (map name card-types))}))]
+        card-types))
 
 (mr/def ::type
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a

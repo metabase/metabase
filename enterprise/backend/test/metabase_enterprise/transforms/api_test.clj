@@ -8,7 +8,7 @@
    [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [with-transform-cleanup!]]
+   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp get-test-schema]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -43,25 +43,14 @@
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
   [category]
-  (mt/dataset transforms-dataset/transforms-test
-    (let [query (query-test-util/make-query
-                 {:source-table  "products"
-                  :source-column "category"
-                  :filter-fn     lib/=
-                  :filter-values [category]})]
+  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
+        query (query-test-util/make-query
+               {:source-table  table-name
+                :source-column "category"
+                :filter-fn     lib/=
+                :filter-values [category]})]
       ;; Convert to legacy MBQL which the transform API expects
-      (lib.convert/->legacy-MBQL query))))
-
-(defn- get-test-schema
-  "Get the schema from the products table in the test dataset.
-   This is needed for databases like BigQuery that require a schema/dataset."
-  []
-  (t2/select-one-fn :schema :model/Table (mt/id :products)))
-
-(comment
-  (binding [driver/*driver* :clickhouse]
-    (make-query "Gadget"))
-  -)
+    (lib.convert/->legacy-MBQL query)))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -77,6 +66,80 @@
                                    :target {:type   "table"
                                             :schema schema
                                             :name   table-name}})))))))
+
+(deftest create-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Creating a query transform without :transforms feature returns 403"
+      (mt/with-premium-features #{}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [query  (make-query "Gadget")
+                schema (get-test-schema)
+                response (mt/user-http-request :crowberto :post 402 "ee/transform"
+                                               {:name   "Test Transform"
+                                                :source {:type  "query"
+                                                         :query query}
+                                                :target {:type   "table"
+                                                         :schema schema
+                                                         :name   "test_transform"}})]
+            (is (= "error-premium-feature-not-available" (:status response)))))))
+
+    (testing "Creating a query transform with :transforms feature succeeds"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_query_transform"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name   "Test Transform"
+                                                  :source {:type  "query"
+                                                           :query query}
+                                                  :target {:type   "table"
+                                                           :schema schema
+                                                           :name   table-name}})]
+              (is (some? (:id response))))))))))
+
+(deftest update-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Updating a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_update"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  transform-payload {:name   "Original Transform"
+                                     :source {:type  "query"
+                                              :query query}
+                                     :target {:type   "table"
+                                              :schema schema
+                                              :name   table-name}}
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              ;; Now test update without feature flag
+              (mt/with-premium-features #{}
+                (let [response (mt/user-http-request :crowberto :put
+                                                     (format "ee/transform/%d" (:id created))
+                                                     (assoc transform-payload :name "Updated Transform"))]
+                  (is (= "error-premium-feature-not-available" (:status response))))))))))))
+
+(deftest run-transform-feature-flag-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Running a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_run"]
+            (let [query  (make-query "Gadget")
+                  schema (get-test-schema)
+                  transform-payload {:name   "Test Run Transform"
+                                     :source {:type  "query"
+                                              :query query}
+                                     :target {:type   "table"
+                                              :schema schema
+                                              :name   table-name}}
+                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              ;; Now test run without feature flag
+              (mt/with-premium-features #{}
+                (let [response (mt/user-http-request :crowberto :post
+                                                     (format "ee/transform/%d/run" (:id created)))]
+                  (is (= "error-premium-feature-not-available" (:status response))))))))))))
 
 (deftest list-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -98,6 +161,35 @@
                   list-resp (mt/user-http-request :crowberto :get 200 "ee/transform")]
               (is (seq list-resp)))))))))
 
+(deftest filter-transforms-test
+  (testing "should be able to filter transforms"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Transform               {t1-id :id} {}
+                       :model/Transform               {t2-id :id} {}
+                       :model/TransformTag            {tag1-id :id} {:name "tag1"}
+                       :model/TransformTag            {tag2-id :id} {:name "tag2"}
+                       :model/TransformTransformTag _ {:transform_id t1-id :tag_id tag1-id :position 1}
+                       :model/TransformTransformTag _ {:transform_id t2-id :tag_id tag2-id :position 1}
+                       :model/TransformRun _          {:transform_id t1-id :status "started" :run_method "manual"
+                                                       :start_time (parse-instant "2025-08-26T10:12:11")
+                                                       :end_time nil
+                                                       :is_active true}]
+          (testing "no filters"
+            (is (=? [{:id t1-id} {:id t2-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform"))))
+          (testing "last_run_start_time filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :last_run_start_time "2025-08-26T10:12:11"))))
+          (testing "last_run_statuses filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :last_run_statuses ["started" "succeeded"]))))
+          (testing "tag_ids filter"
+            (is (=? [{:id t1-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag1-id])))
+            (is (=? [{:id t2-id}]
+                    (mt/user-http-request :crowberto :get 200 "ee/transform" :tag_ids [tag2-id])))))))))
+
 (deftest get-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms}
@@ -111,11 +203,29 @@
                                     :schema (get-test-schema)
                                     :name   table-name}}
                 resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
-            (is (=? (assoc body
-                           :last_run nil)
+            (is (=? body
                     (->
                      (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
                      (update-in [:source :query] mbql.normalize/normalize))))))))))
+
+(defn- ->transform [transform-name query]
+  {:source {:type "query",
+            :query query}
+   :name transform-name
+   :target {:schema "public"
+            :name "orders_2"
+            :type "table"}})
+
+(deftest get-transform-dependencies-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-temp [:model/Table {table :id} {:schema "public", :name "orders_2"}
+                   :model/Field _           {:table_id table, :name "foo"}
+                   :model/Transform parent  (->transform "transform1" (mt/mbql-query orders))
+                   :model/Transform child   (-> (->transform "transform2" (mt/mbql-query nil {:source-table table}))
+                                                (assoc-in [:target :name] "orders_3"))]
+      (mt/with-premium-features #{:transforms}
+        (is (= [parent]
+               (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -250,7 +360,7 @@
                             base-query)
           count-query     (lib/aggregate filtered-query (lib/count))
           result          (qp/process-query count-query)
-          actual-count    (-> result :data :rows first first)]
+          actual-count   (-> (mt/formatted-rows [int] result) first first)]
       ;; Verify we got the expected number of rows
       (is (= (count ids) actual-count)
           (str "Expected " (count ids) " rows with category " category
@@ -274,7 +384,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :products))]
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
                                                                        :name   "gadget_products"}
@@ -365,27 +475,108 @@
                             (= (:id transform) (:transform_id %)))
                       (:data response)))))))))
 
+(defn- transform-runs
+  [our-pred & filters]
+  (let [response (apply mt/user-http-request :crowberto :get 200 "ee/transform/run" filters)]
+    (filter our-pred (:data response))))
+
 (deftest get-runs-filter-by-multiple-statuses-test
   (testing "GET /api/ee/transform/run - filter by multiple statuses"
     (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform {:name   "Transform with multiple runs"
-                                                 :source {:type  "query"
-                                                          :query {:database (mt/id)
-                                                                  :type     "native"
-                                                                  :native   {:query         "SELECT 1"
-                                                                             :template-tags {}}}}
-                                                 :target {:type "table"
-                                                          :name (str "test_table_" (u/generate-nano-id))}}
-                     :model/TransformRun _run1 {:transform_id (:id transform) :status "succeeded"}
-                     :model/TransformRun _run2 {:transform_id (:id transform) :status "succeeded"}
-                     :model/TransformRun _run3 {:transform_id (:id transform) :status "failed"}
-                     :model/TransformRun _run4 {:transform_id (:id transform) :status "timeout"}]
-        (testing "Filter by 'succeeded' and 'failed' returns both types"
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/transform/run"
-                                               :statuses ["succeeded" "failed"])
-                our-runs (filter #(= (:id transform) (:transform_id %)) (:data response))]
-            (is (>= (count our-runs) 3))
-            (is (every? #(contains? #{"succeeded" "failed"} (:status %)) our-runs))))))))
+      (mt/with-temp [:model/Transform {t0-id :id} {}
+                     :model/Transform {t1-id :id} {}
+                     :model/TransformRun {r0-id  :id} {:transform_id t0-id :status "timeout" :run_method "cron"
+                                                       :start_time (parse-instant "2025-08-25T10:12:11")
+                                                       :end_time (parse-instant "2025-08-26T10:52:17")}
+                     :model/TransformRun {r1-id  :id} {:transform_id t0-id :status "succeeded" :run_method "manual"
+                                                       :start_time (parse-instant "2025-08-26T10:12:11")
+                                                       :end_time (parse-instant "2025-08-27T10:52:17")}
+                     :model/TransformRun {r2-id :id} {:transform_id t1-id :status "succeeded" :run_method "cron"
+                                                      :start_time (parse-instant "2025-08-22T10:12:11")
+                                                      :end_time (parse-instant "2025-08-22T10:12:17")}
+                     :model/TransformRun {r3-id :id} {:transform_id t1-id :status "succeeded" :run_method "manual"
+                                                      :start_time (parse-instant "2025-08-22T23:57:34")
+                                                      :end_time (parse-instant "2025-08-23T00:17:41")}
+                     :model/TransformRun {_r4-id :id} {:transform_id t1-id :status "failed" :run_method "cron"
+                                                       :start_time (parse-instant "2025-08-25T15:22:18")
+                                                       :end_time (parse-instant "2025-08-25T19:12:17")}
+                     :model/TransformRun {_r5-id :id} {:transform_id t1-id :status "timeout" :run_method "manual"
+                                                       :start_time (parse-instant "2025-08-25T20:29:58")
+                                                       :end_time (parse-instant "2025-08-25T22:12:17")}
+                     :model/TransformRun {_r6-id :id} {:transform_id t1-id :status "started" :run_method "cron"
+                                                       :start_time (parse-instant "2025-08-25T23:56:04")
+                                                       :end_time nil :is_active true}]
+        (let [our-run-pred (comp #{t0-id t1-id} :transform_id)
+              t0-runs [{:id r1-id
+                        :start_time (utc-timestamp "2025-08-26T10:12:11")
+                        :end_time (utc-timestamp "2025-08-27T10:52:17")
+                        :run_method "manual"
+                        :status "succeeded"
+                        :transform {:id t0-id}
+                        :transform_id t0-id}
+                       {:id r0-id
+                        :start_time (utc-timestamp "2025-08-25T10:12:11")
+                        :end_time (utc-timestamp "2025-08-26T10:52:17")
+                        :run_method "cron"
+                        :status "timeout"
+                        :transform {:id t0-id}
+                        :transform_id t0-id}]]
+          (testing "Filter by 'succeeded' and 'failed' returns both types"
+            (let [statuses #{"succeeded" "failed" "started"}
+                  our-runs (transform-runs our-run-pred :statuses (vec statuses))]
+              (is (= 5 (count our-runs)))
+              (is (every? #(contains? statuses (:status %)) our-runs))))
+          (testing "Filter by 'start_time'"
+            (is (=? [{:id r1-id
+                      :start_time (utc-timestamp "2025-08-26T10:12:11")
+                      :end_time (utc-timestamp "2025-08-27T10:52:17")
+                      :run_method "manual"
+                      :status "succeeded"
+                      :transform {:id t0-id}
+                      :transform_id t0-id}]
+                    (transform-runs our-run-pred :start_time "2025-08-26~")))
+            (let [our-runs (transform-runs our-run-pred :start_time "~2025-08-25")]
+              (is (= 6 (count our-runs))))
+            (let [our-runs (transform-runs our-run-pred :start_time "2025-08-22~2025-08-23")]
+              (is (=? [{:transform {:id t1-id}
+                        :run_method "manual"
+                        :is_active nil
+                        :start_time (utc-timestamp "2025-08-22T23:57:34")
+                        :end_time (utc-timestamp "2025-08-23T00:17:41")
+                        :transform_id t1-id
+                        :status "succeeded"
+                        :id r3-id}
+                       {:transform {:id t1-id}
+                        :run_method "cron"
+                        :is_active nil
+                        :start_time (utc-timestamp "2025-08-22T10:12:11")
+                        :end_time (utc-timestamp "2025-08-22T10:12:17")
+                        :transform_id t1-id
+                        :status "succeeded"
+                        :id r2-id}]
+                      our-runs))))
+          (testing "Filter by 'end_time'"
+            (is (=? t0-runs
+                    (transform-runs our-run-pred :end_time "2025-08-26~")))
+            (is (empty? (transform-runs our-run-pred :end_time "~2025-08-21"))))
+          (testing "Filter by 'run_methods'"
+            (let [our-runs (transform-runs our-run-pred :run_methods ["manual"])]
+              (is (= 3 (count our-runs)))
+              (is (every? (comp #{"manual"} :run_method) our-runs)))
+            (let [our-runs (transform-runs our-run-pred :run_methods ["cron"])]
+              (is (= 4 (count our-runs)))
+              (is (every? (comp #{"cron"} :run_method) our-runs)))
+            (let [our-runs (transform-runs our-run-pred :run_methods ["cron" "manual"])]
+              (is (= 7 (count our-runs)))))
+          (testing "Filter by a combination"
+            (is (=? [{:id r3-id
+                      :status "succeeded"
+                      :run_method "manual"
+                      :start_time (utc-timestamp "2025-08-22T23:57:34")
+                      :end_time (utc-timestamp "2025-08-23T00:17:41")
+                      :transform {:id t1-id}
+                      :transform_id t1-id}]
+                    (transform-runs our-run-pred :run_methods ["manual"] :start_time "~2025-08-25" :end_time "~2025-08-23")))))))))
 
 (deftest get-runs-filter-by-single-tag-test
   (testing "GET /api/ee/transform/run - filter by single tag"
@@ -549,3 +740,40 @@
                                                :transform_tag_ids [(:id tag1)])]
             (assert-run-count response 1)
             (assert-transform-ids response #{(:id transform1)})))))))
+
+(deftest create-transform-with-routing-fails-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms :database-routing}
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "gadget_products"]
+          (let [query  (make-query "Gadget")
+                schema (get-test-schema)]
+            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                         :router_database_id (mt/id)
+                                                         :details {:destination_database true}}
+                           :model/DatabaseRouter _ {:database_id (mt/id)
+                                                    :user_attribute "db_name"}]
+              (is (= "Transforms are not supported on databases with DB routing enabled."
+                     (mt/user-http-request :crowberto :post 400 "ee/transform"
+                                           {:name   "Gadget Products"
+                                            :source {:type "query" :query query}
+                                            :target {:type "table" :schema schema :name table-name}}))))))))))
+
+(deftest update-transform-with-routing-fails-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms :database-routing}
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "gadget_products"]
+          (let [query  (make-query "Gadget")
+                schema (get-test-schema)]
+            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                         :router_database_id (mt/id)
+                                                         :details {:destination_database true}}
+                           :model/DatabaseRouter _ {:database_id (mt/id)
+                                                    :user_attribute "db_name"}
+                           :model/Transform transform {:name   "Gadget Products"
+                                                       :source {:type "query" :query query}
+                                                       :target {:type "table" :schema schema :name table-name}}]
+              (is (= "Transforms are not supported on databases with DB routing enabled."
+                     (mt/user-http-request :crowberto :put 400 (format "ee/transform/%s" (:id transform))
+                                           (assoc transform :name "Gadget Products 2")))))))))))

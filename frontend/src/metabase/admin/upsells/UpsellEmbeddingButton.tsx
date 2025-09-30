@@ -1,21 +1,20 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 
-import S from "./components/UpsellCta.module.css";
+import { UpsellCta } from "./components/UpsellCta";
 import { useUpsellLink } from "./components/use-upsell-link";
 
 export const UpsellEmbeddingButton = ({
   url,
   campaign,
   location,
-  large = false,
+  size = "default",
 }: {
   url: string;
   campaign: string;
   location: string;
-  large?: boolean;
+  size?: "default" | "large";
 }) => {
   const upsellLink = useUpsellLink({
     url,
@@ -23,12 +22,19 @@ export const UpsellEmbeddingButton = ({
     location,
   });
 
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
+
   return (
-    <ExternalLink
-      href={upsellLink}
-      className={cx(S.UpsellCTALink, large && S.Large)}
-    >
-      {t`Try for free`}
-    </ExternalLink>
+    <UpsellCta
+      onClick={triggerUpsellFlow}
+      buttonText={t`Try for free`}
+      url={upsellLink}
+      internalLink={undefined}
+      onClickCapture={() => {}}
+      size={size}
+    />
   );
 };

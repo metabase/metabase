@@ -393,6 +393,16 @@ describe("command palette", () => {
       H.activateToken("bleeding-edge");
     });
 
+    it("should show the 'Create a new embed' command palette item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/ }).click();
+
+      H.commandPalette().within(() => {
+        H.commandPaletteInput().should("exist").type("new embed");
+        cy.findByText("Create a new embed").should("be.visible");
+      });
+    });
+
     it("should have a 'New document' item", () => {
       cy.visit("/");
       cy.findByRole("button", { name: /search/ }).click();
@@ -544,9 +554,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("3");
+    cy.realPress("4");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("7");
+    cy.realPress("8");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

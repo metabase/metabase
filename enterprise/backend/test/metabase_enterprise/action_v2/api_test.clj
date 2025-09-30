@@ -605,7 +605,7 @@
                   scope               {:table-id table-id}]
 
               (testing "create"
-                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "dropdown" :optional false :readonly false}
+                (is (=? {:parameters [{:id "id"        :display_name "ID"         :input_type "integer"  :optional false :readonly false}
                                       {:id "text"      :display_name "Text"       :input_type "text"     :optional true  :readonly false}
                                       {:id "int"       :display_name "Int"        :input_type "integer"  :optional true  :readonly false}
                                       {:id "bool"      :display_name "Bool"       :input_type "boolean"  :optional true  :readonly false}

@@ -7,8 +7,7 @@ import type {
   Dashboard,
   DashboardParameterMapping,
   Parameter,
-  ParameterId,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,7 +31,7 @@ interface Options {
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
   settings?: VisualizationSettings;
   dashboard?: Dashboard;
-  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues?: ParameterValuesMap;
 }
 
 const defaultProps = {
@@ -337,8 +336,8 @@ function mapParameterToVariable({
     },
   ];
   const parameters: Parameter[] = [parameter];
-  const parameterValues: Record<ParameterId, ParameterValueOrArray> = {
-    [parameter.id]: parameter.value,
+  const parameterValues = {
+    [parameter.id]: parameter.value ?? null,
   };
 
   return { parameters, parameterValues, parameter_mappings };

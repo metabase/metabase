@@ -28,6 +28,10 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
+export type MetabotReactionsState = {
+  navigateToPath: string | null;
+};
+
 export interface MetabotState {
   isProcessing: boolean;
   conversationId: string;
@@ -36,7 +40,12 @@ export interface MetabotState {
   visible: boolean;
   history: MetabotHistory;
   state: any;
+  reactions: MetabotReactionsState;
   toolCalls: MetabotToolCall[];
+  experimental: {
+    metabotReqIdOverride: string | undefined;
+    profileOverride: string | undefined;
+  };
 }
 
 export const getMetabotInitialState = (): MetabotState => ({
@@ -47,7 +56,14 @@ export const getMetabotInitialState = (): MetabotState => ({
   visible: false,
   history: [],
   state: {},
+  reactions: {
+    navigateToPath: null,
+  },
   toolCalls: [],
+  experimental: {
+    metabotReqIdOverride: undefined,
+    profileOverride: undefined,
+  },
 });
 
 export const metabot = createSlice({
@@ -140,6 +156,7 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
+      state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
       state.conversationId = uuid();
@@ -147,8 +164,20 @@ export const metabot = createSlice({
     setIsProcessing: (state, action: PayloadAction<boolean>) => {
       state.isProcessing = action.payload;
     },
+    setNavigateToPath: (state, action: PayloadAction<string>) => {
+      state.reactions.navigateToPath = action.payload;
+    },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
+    },
+    setMetabotReqIdOverride: (
+      state,
+      action: PayloadAction<string | undefined>,
+    ) => {
+      state.experimental.metabotReqIdOverride = action.payload;
+    },
+    setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
+      state.experimental.profileOverride = action.payload;
     },
   },
   extraReducers: (builder) => {

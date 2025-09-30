@@ -925,18 +925,8 @@ describe("scenarios > admin > permissions > view data > blocked (enforcement)", 
   });
 });
 
-function lackPermissionsView(isQbQuestion, shouldExist) {
-  if (isQbQuestion) {
-    cy.findByText("There was a problem with your question").should(
-      shouldExist ? "exist" : "not.exist",
-    );
-
-    if (shouldExist) {
-      cy.findByText("Show error details").click();
-    }
-  }
-
-  cy.findByText(/You do not have permissions to run this query/).should(
+function lackPermissionsView(shouldExist) {
+  cy.findByText("Sorry, you don't have permission to run this query.").should(
     shouldExist ? "exist" : "not.exist",
   );
 }
@@ -949,7 +939,7 @@ function assertCollectionGroupUserHasAccess(questionId, isQbQuestion) {
   cy.signIn("sandboxed");
 
   H.visitQuestion(questionId);
-  lackPermissionsView(isQbQuestion, false);
+  lackPermissionsView(false);
 
   cy.signOut();
   cy.signInAsAdmin();
@@ -961,7 +951,7 @@ function assertCollectionGroupHasNoAccess(questionId, isQbQuestion) {
 
   H.visitQuestion(questionId);
 
-  lackPermissionsView(isQbQuestion, true);
+  lackPermissionsView(true);
 }
 
 function removeCollectionGroupPermissions() {

@@ -108,7 +108,8 @@
   [table-id input-rows]
   (let [input-keys  (into #{} (mapcat keys) input-rows)
         field-names (map name input-keys)
-        fields      (t2/select :model/Field :table_id table-id :name [:in field-names])
+        fields      (when (seq field-names)
+                      (t2/select :model/Field :table_id table-id :name [:in field-names]))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
                            [(keyword field-name)

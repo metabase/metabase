@@ -151,30 +151,6 @@
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- status-clause
-  "Figure out what `where` clause to add to the user query when
-  we get a fiddly status and include_deactivated query.
-
-  This is to keep backwards compatibility with `include_deactivated` while adding `status."
-  [status include_deactivated]
-  (if include_deactivated
-    nil
-    (case status
-      "all"         nil
-      "deactivated" [:= :is_active false]
-      "active"      [:= :is_active true]
-      [:= :is_active true])))
-
-(defn- wildcard-query [query] (str "%" (u/lower-case-en query) "%"))
-
-(defn- query-clause
-  "Honeysql clause to shove into user query if there's a query"
-  [query]
-  [:or
-   [:like :%lower.first_name (wildcard-query query)]
-   [:like :%lower.last_name  (wildcard-query query)]
-   [:like :%lower.email      (wildcard-query query)]])
-
 (defn- user-visible-columns
   "Columns of user table visible to current caller of API."
   []
@@ -188,28 +164,7 @@
     :else
     user/non-admin-or-self-visible-columns))
 
-(defn- user-clauses
-  "Honeysql clauses for filtering on users
-  - with a status,
-  - with a query,
-  - with a group_id,
-  - with include_deactivated"
-  [status query group_ids include_deactivated]
-  (cond-> {}
-    true                                    (sql.helpers/where [:= :core_user.type "personal"])
-    true                                    (sql.helpers/where (status-clause status include_deactivated))
-    ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
-    (some? query)                           (sql.helpers/where (query-clause query))
-    (some? group_ids)                       (sql.helpers/right-join
-                                             :permissions_group_membership
-                                             [:= :core_user.id :permissions_group_membership.user_id])
-    (some? group_ids)                       (sql.helpers/where
-                                             [:in :permissions_group_membership.group_id group_ids])
-    (some? (request/limit))                 (sql.helpers/limit (request/limit))
-    (some? (request/offset))                (sql.helpers/offset (request/offset))))
-
-(defn- filter-clauses-without-paging
+(defn filter-clauses-without-paging
   "Given a where clause, return a clause that can be used to count."
   [clauses]
   (dissoc clauses :order-by :limit :offset))
@@ -237,14 +192,15 @@
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
        [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
-  (or
-   api/*is-superuser?*
-   (if group_id
-     (perms/check-manager-of-group group_id)
-     (perms/check-group-manager)))
+  (or api/*is-superuser?*
+      (if group_id
+        (perms/check-manager-of-group group_id)
+        (perms/check-group-manager)))
   (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
-        clauses             (user-clauses status query group-id-clause include_deactivated)]
+        clauses             (user/filter-clauses status query group-id-clause include_deactivated
+                                                 {:limit  (request/limit)
+                                                  :offset (request/offset)})]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
@@ -292,14 +248,14 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (-> (user-clauses nil nil nil nil)
+  (letfn [(all [] (let [clauses (-> (user/filter-clauses nil nil nil nil)
                                     (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user-clauses nil nil nil nil)
+                                 clauses  (cond-> (user/filter-clauses nil nil nil nil)
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
@@ -417,8 +373,10 @@
                                  (u/select-keys-when body
                                                      :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
-                                 false))]
+                                 (= source "setup")))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
+      (when (= source "setup")
+        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
@@ -489,7 +447,8 @@
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-    (api/check-403 (valid-email-update? user-before-update email))
+    (when (contains? body :email)
+      (api/check-403 (valid-email-update? user-before-update email)))
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
     (when (contains? body :first_name)
       (api/checkp (valid-name-update? user-before-update :first_name first_name)

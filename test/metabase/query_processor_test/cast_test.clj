@@ -1,4 +1,13 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
+  {:clj-kondo/config '{:linters
+                       ;; this is actually ok here since this is a drivers namespace
+                       {:discouraged-namespace {metabase.query-processor.store {:level :off}}
+                        ;; there are several legacy usages of `field-is-type?` here, and I don't really want to add
+                        ;; clj-kondo/ignores to all of them... so this will take care of it. We do still want to remove
+                        ;; them soon.
+                        :deprecated-var {:exclude {metabase.types.core/field-is-type? {:namespaces ["metabase\\.query-processor-test\\.cast-test"]}}}
+                        ;; this is also ok here since this is a drivers namespace
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -994,22 +1003,42 @@
 
 (defmulti datetime-number-cast-expected
   "Expected datetime string for [[datetime-number-cast]] test."
-  {:arglists '([driver])}
-  tx/dispatch-on-driver-with-test-extensions
+  {:arglists '([driver] [driver mode])}
+  (fn
+    ([driver]
+     (tx/dispatch-on-driver-with-test-extensions driver))
+    ([driver mode]
+     [(tx/dispatch-on-driver-with-test-extensions driver)
+      mode]))
   :hierarchy #'driver/hierarchy)
 
 (defmethod datetime-number-cast-expected :default
-  [_]
+  [_driver]
   "2025-07-02T18:33:35Z")
 
-(defmethod datetime-number-cast-expected :sqlite
-  [_]
+(defmethod datetime-number-cast-expected [:sqlite :unix-seconds]
+  [_driver _mode]
   "2025-07-02 18:33:35")
 
-;; sqlserver's sql.qp/unix-timestamp->honeysql truncates to minutes
-(defmethod datetime-number-cast-expected :sqlserver
-  [_]
-  "2025-07-02T18:33:00Z")
+(defmethod datetime-number-cast-expected [:sqlite :unix-milliseconds]
+  [_driver _mode]
+  "2025-07-02 18:33:35.000")
+
+(defmethod datetime-number-cast-expected [:sqlite :unix-microseconds]
+  [_driver _mode]
+  "2025-07-02 18:33:35.000000")
+
+(defmethod datetime-number-cast-expected [:sqlite :unix-nanoseconds]
+  [_driver _mode]
+  "2025-07-02 18:33:35.000000000")
+
+(defn- datetime-number-cast-expected*
+  [driver mode]
+  (let [default-method (get-method datetime-number-cast-expected :default)
+        driver         (tx/dispatch-on-driver-with-test-extensions driver)]
+    (if (= (get-method datetime-number-cast-expected [driver mode]) default-method)
+      (datetime-number-cast-expected driver)
+      (datetime-number-cast-expected driver mode))))
 
 (deftest ^:parallel datetime-number-cast
   (let [seconds-timestamp 1751481215]
@@ -1034,8 +1063,9 @@
                           (lib/limit 1))
                 result (-> query qp/process-query)
                 rows (mt/rows result)]
-            (is (= (datetime-number-cast-expected driver/*driver*)
-                   (-> rows first (get 2))))))))))
+            (mt/with-native-query-testing-context query
+              (is (= (datetime-number-cast-expected* driver/*driver* mode)
+                     (-> rows first (get 2)))))))))))
 ;; today()
 
 (deftest ^:parallel today-test

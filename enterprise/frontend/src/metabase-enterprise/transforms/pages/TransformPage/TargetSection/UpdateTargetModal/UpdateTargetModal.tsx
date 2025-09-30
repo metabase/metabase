@@ -2,13 +2,17 @@ import { useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
-import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { hasFeature } from "metabase/admin/databases/utils";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
-  FormSelect,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
@@ -26,6 +30,8 @@ import {
   useDeleteTransformTargetMutation,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
+import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
@@ -78,29 +84,44 @@ function UpdateTargetForm({
   onClose,
 }: UpdateTargetFormProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId = sourceDatabaseId(source);
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
   const [shouldDeleteTarget, setShouldDeleteTarget] = useState(false);
 
   const {
+    data: database,
+    isLoading: isDatabaseLoading,
+    error: databaseError,
+  } = useGetDatabaseQuery(databaseId ? { id: databaseId } : skipToken);
+
+  const {
     data: schemas = [],
-    isLoading,
-    error,
+    isLoading: isSchemasLoading,
+    error: schemasError,
   } = useListDatabaseSchemasQuery(
     databaseId ? { id: databaseId, include_hidden: true } : skipToken,
   );
+
+  const isLoading = isDatabaseLoading || isSchemasLoading;
+  const error = databaseError ?? schemasError;
+  const supportsSchemas = database && hasFeature(database, "schemas");
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
+    if (!databaseId) {
+      throw new Error("Database ID is required");
+    }
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
-    await updateTransform(getUpdateRequest(transform, values)).unwrap();
+    await updateTransform(
+      getUpdateRequest(transform, values, databaseId),
+    ).unwrap();
     onUpdate();
   };
 
@@ -113,28 +134,32 @@ function UpdateTargetForm({
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
-            {schemas.length > 1 && (
-              <FormSelect name="schema" label={t`Schema`} data={schemas} />
+            {supportsSchemas && (
+              <SchemaFormSelect
+                name="schema"
+                label={t`Schema`}
+                data={schemas}
+              />
             )}
-            <FormTextInput name="name" label={t`Table name`} />
+            <FormTextInput name="name" label={t`New table name`} />
             {table != null && (
               <Radio.Group
                 value={shouldDeleteTarget.toString()}
                 label={t`Keep the old target table, or delete it?`}
-                description={jt`You can keep or delete ${(
-                  <strong>{target.name}</strong>
-                )}. Deleting it can’t be undone, and will break queries that used it. Please be careful!`}
+                description={jt`If you keep ${(
+                  <strong key="table">{target.name}</strong>
+                )}, this transform will no longer update it. If you delete the table, you will break any queries that use it. Deletion can't be undone.`}
                 onChange={(value) => setShouldDeleteTarget(value === "true")}
               >
                 <Stack gap="sm">
                   <Radio
                     value="false"
-                    label={t`Keep ${target.name}`}
+                    label={jt`Keep ${(<strong key="table">{target.name}</strong>)}`}
                     data-testid="keep-target-radio"
                   />
                   <Radio
                     value="true"
-                    label={t`Delete ${target.name}`}
+                    label={jt`Delete ${(<strong key="table">{target.name}</strong>)}`}
                     data-testid="delete-target-radio"
                   />
                 </Stack>
@@ -168,7 +193,7 @@ function getInitialValues({ target }: Transform): EditTransformValues {
 
 function getSubmitButtonLabel(shouldDeleteTarget: boolean) {
   return shouldDeleteTarget
-    ? t`Change target and delete the old one`
+    ? t`Change target and delete old table`
     : t`Change target`;
 }
 
@@ -179,6 +204,7 @@ function getSubmitButtonColor(shouldDeleteTarget: boolean) {
 function getUpdateRequest(
   { id }: Transform,
   { name, schema }: EditTransformValues,
+  databaseId: number,
 ): UpdateTransformRequest {
   return {
     id,
@@ -186,6 +212,7 @@ function getUpdateRequest(
       type: "table",
       name,
       schema,
+      database: databaseId,
     },
   };
 }

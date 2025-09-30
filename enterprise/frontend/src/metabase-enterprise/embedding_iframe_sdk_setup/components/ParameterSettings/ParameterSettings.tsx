@@ -1,15 +1,36 @@
 import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
-import { c, t } from "ttag";
+import { P, match } from "ts-pattern";
+import { t } from "ttag";
 
-import { Stack, Text, TextInput } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import { ParameterWidget } from "metabase/parameters/components/ParameterWidget";
+import { Group, Stack, Text } from "metabase/ui";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { ParameterValueOrArray } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../../context";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useHideParameter } from "./hooks/use-hide-parameter";
-import { getParameterPlaceholder } from "./utils/parameter-placeholder";
+
+function mapValuesBySlugToById(
+  valuesBySlug: Record<string, any> | undefined,
+  params: { id: string; slug: string }[],
+) {
+  if (!valuesBySlug) {
+    return {};
+  }
+
+  return params.reduce<Record<string, any>>((byId, param) => {
+    if (param.slug in valuesBySlug) {
+      byId[param.id] = valuesBySlug[param.slug];
+    }
+    return byId;
+  }, {});
+}
 
 export const ParameterSettings = () => {
   const {
@@ -27,7 +48,7 @@ export const ParameterSettings = () => {
 
   const updateInitialParameterValue = useDebouncedCallback(
     useCallback(
-      (paramId: string, value: string) => {
+      (paramId: string, value: ParameterValueOrArray | null | undefined) => {
         if (settings.dashboardId) {
           updateSettings({
             initialParameters: {
@@ -49,15 +70,31 @@ export const ParameterSettings = () => {
     SET_INITIAL_PARAMETER_DEBOUNCE_MS,
   );
 
-  const parameterValues = useMemo(() => {
-    if (settings.dashboardId) {
-      return settings.initialParameters;
-    } else if (settings.questionId) {
-      return settings.initialSqlParameters;
-    }
+  /**
+   * Widgets (and most of metabase logic) expect parameter values keyed by
+   * **parameter.id**, but in the embed flow settings we store them by
+   * **parameter.slug**, as the public API of embeds wants them by slug
+   *
+   * Here we convert them to "by-id" to make widgets work properly.
+   */
+  const parameterValuesById = useMemo(() => {
+    const valuesBySlug = match(settings)
+      .with({ dashboardId: P.nonNullable }, (s) => s.initialParameters)
+      .with({ questionId: P.nonNullable }, (s) => s.initialSqlParameters)
+      .otherwise(() => ({}));
 
-    return {};
-  }, [settings]);
+    return mapValuesBySlugToById(valuesBySlug, availableParameters);
+  }, [settings, availableParameters]);
+
+  const uiParameters = useMemo(
+    () =>
+      getValuePopulatedParameters({
+        parameters: availableParameters,
+        values: parameterValuesById,
+        defaultRequired: true,
+      }),
+    [availableParameters, parameterValuesById],
+  );
 
   // Only show parameters for dashboards and questions
   if (!isQuestionOrDashboardEmbed) {
@@ -75,35 +112,28 @@ export const ParameterSettings = () => {
   if (availableParameters.length > 0) {
     return (
       <Stack>
-        {availableParameters.map((param) => {
-          const defaultValue = parameterValues?.[param.slug] ?? undefined;
-
-          const placeholderValue = getParameterPlaceholder(param);
-
-          const placeholderText = c(
-            `the placeholder text containing examples of how a parameter string looks like. {0} contains the placeholder (e.g. "2025-11-05")`,
-          ).t`e.g. ${placeholderValue}`;
-
-          return (
-            <TextInput
-              key={param.id}
-              label={param.name}
-              placeholder={placeholderValue ? placeholderText : undefined}
-              defaultValue={defaultValue}
-              onChange={(e) =>
-                updateInitialParameterValue(param.slug, e.target.value)
+        {uiParameters.map((parameter: UiParameter) => (
+          <Group justify="space-between" align="center" key={parameter.id}>
+            <ParameterWidget
+              className={CS.m0}
+              parameter={parameter}
+              parameters={uiParameters}
+              setValue={(value: string) =>
+                updateInitialParameterValue(parameter.slug, value)
               }
-              rightSection={
-                <ParameterVisibilityToggle
-                  parameterName={param.slug}
-                  experience={experience}
-                  isHidden={isParameterHidden(param.slug)}
-                  onToggle={toggleParameterVisibility}
-                />
-              }
+              setParameterValueToDefault={() => {
+                updateInitialParameterValue(parameter.slug, parameter.default);
+              }}
+              enableParameterRequiredBehavior
             />
-          );
-        })}
+            <ParameterVisibilityToggle
+              parameterName={parameter.slug}
+              experience={experience}
+              isHidden={isParameterHidden(parameter.slug)}
+              onToggle={toggleParameterVisibility}
+            />
+          </Group>
+        ))}
       </Stack>
     );
   }

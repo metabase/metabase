@@ -264,7 +264,7 @@ function ParameterHelpInfo() {
   return (
     <HoverCard>
       <HoverCard.Target>
-        <Icon c="text-secondary" name="info_filled" />
+        <Icon c="text-secondary" name="info" />
       </HoverCard.Target>
       <HoverCard.Dropdown>
         <Stack p="md" maw="20rem">
@@ -307,7 +307,7 @@ const ParameterItem = ({
         <Button
           c={isCompatible ? "text-primary" : undefined}
           variant="subtle"
-          rightSection={isCompatible && <Icon name="chevrondown" />}
+          rightSection={isCompatible && <Icon name="chevrondown" aria-hidden />}
           disabled={!isCompatible}
           onClick={() => setIsExpanded(!isExpanded)}
         >

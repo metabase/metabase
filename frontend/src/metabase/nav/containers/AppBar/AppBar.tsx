@@ -4,10 +4,11 @@ import _ from "underscore";
 import { logout } from "metabase/auth/actions";
 import Collections from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_DOCUMENTS, PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
+  getDetailViewState,
   getIsCollectionPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
@@ -29,6 +30,8 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state),
+  isDocumentSidebarOpen: PLUGIN_DOCUMENTS.getSidebarOpen(state),
+  isCommentSidebarOpen: PLUGIN_DOCUMENTS.getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),
   isSearchVisible: getIsSearchVisible(state),
   isEmbeddingIframe: getIsEmbeddingIframe(state),
@@ -36,6 +39,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
+  detailView: getDetailViewState(state),
 });
 
 const mapDispatchToProps = {

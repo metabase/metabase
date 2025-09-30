@@ -1,12 +1,12 @@
 import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache } from "metabase/api";
+import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
 import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -29,6 +29,7 @@ import type {
   Database,
   DatasetQuery,
   ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
@@ -43,7 +44,11 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import { clearQueryResult, runQuestionQuery } from "../querying";
+import {
+  clearQueryResult,
+  runDirtyQuestionQuery,
+  runQuestionQuery,
+} from "../querying";
 import { onCloseSidebars } from "../ui";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
@@ -120,7 +125,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runDirtyQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -217,7 +222,15 @@ export const apiCreateQuestion = (
   options?: OnCreateOptions,
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    // Saving models with list view setting as a question in not allowed for now,
+    // so we change it back to table.
+    if (
+      question.type() === "question" &&
+      submittableQuestion.display() === "list"
+    ) {
+      submittableQuestion = submittableQuestion.setDisplay("table");
+    }
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,
@@ -249,8 +262,13 @@ export const apiCreateQuestion = (
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
     if (isModel || isMetric) {
+      // composeQuestionAdhoc() returns a question with a 'table' display by default
       const composedQuestion =
-        createdQuestionWithMetadata.composeQuestionAdhoc();
+        isModel && question.display() === "list"
+          ? createdQuestionWithMetadata.composeQuestionAdhoc({
+              display: "list",
+            })
+          : createdQuestionWithMetadata.composeQuestionAdhoc();
       dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
     }
 
@@ -320,7 +338,7 @@ export const apiUpdateQuestion = (
 export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
 export const setParameterValue = createAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: string | string[]) => {
+  (parameterId: ParameterId, value: ParameterValueOrArray | null) => {
     return { id: parameterId, value: normalizeValue(value) };
   },
 );
@@ -341,7 +359,9 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-function normalizeValue(value: string | string[]) {
+function normalizeValue(
+  value: ParameterValueOrArray | null,
+): ParameterValueOrArray | null {
   if (value === "") {
     return null;
   }
@@ -356,11 +376,20 @@ function normalizeValue(value: string | string[]) {
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  (revision) => {
+  (cardId, revision) => {
     return async (dispatch) => {
-      await dispatch(Revisions.objectActions.revert(revision));
+      await entityCompatibleQuery(
+        {
+          id: cardId,
+          entity: "card",
+          revision_id: revision.id,
+        },
+        dispatch,
+        revisionApi.endpoints.revertRevision,
+      );
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+      return { id: cardId };
     };
   },
 );

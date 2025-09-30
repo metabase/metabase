@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.settings :as premium-features.settings]
+   [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -51,14 +52,8 @@
                 :features ["test" "fixture"]
                 :trial    false}))
 
-(defn random-token
-  "A random token-like string"
-  []
-  (let [alphabet (into [] (concat (range 0 10) (map char (range (int \a) (int \g)))))]
-    (apply str (repeatedly 64 #(rand-nth alphabet)))))
-
 (deftest ^:parallel fetch-token-status-test
-  (let [token (random-token)
+  (let [token (tu/random-token)
         print-token (apply str (concat (take 4 token) "..." (take-last 4 token)))]
     (testing "Do not log the token (#18249)"
       (mt/with-log-messages-for-level [messages :info]
@@ -69,7 +64,7 @@
 
 (deftest ^:parallel fetch-token-status-test-2
   (testing "With the backend unavailable"
-    (let [result (#'token-status-response (random-token) {:status 500})]
+    (let [result (token-status-response (tu/random-token) {:status 500})]
       (is (false? (:valid result))))))
 
 (deftest ^:parallel fetch-token-status-test-3
@@ -86,7 +81,7 @@
 (deftest fetch-token-caches-successful-responses
   (testing "For successful responses, the result is cached"
     (let [call-count (atom 0)
-          token      (random-token)]
+          token      (tu/random-token)]
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 200 :body "{\"valid\": true, \"status\": \"fake\"}"})]
@@ -96,7 +91,7 @@
 (deftest fetch-token-caches-invalid-responses
   (testing "For 4XX responses, the result is cached"
     (let [call-count (atom 0)
-          token      (random-token)]
+          token      (tu/random-token)]
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                {:status 400 :body "{\"valid\": false, \"status\": \"fake\"}"})]
@@ -106,7 +101,7 @@
 (deftest fetch-token-does-not-cache-exceptions
   (testing "For timeouts, 5XX errors, etc. we don't cache the result"
     (let [call-count (atom 0)
-          token      (random-token)]
+          token      (tu/random-token)]
       (binding [http/request (fn [& _]
                                (swap! call-count inc)
                                (throw (ex-info "oh, fiddlesticks" {})))]
@@ -117,7 +112,7 @@
 
 (deftest fetch-token-does-not-cache-5XX-responses
   (let [call-count (atom 0)
-        token      (random-token)]
+        token      (tu/random-token)]
     (binding [http/request (fn [& _]
                              (swap! call-count inc)
                              {:status 500})]
@@ -133,13 +128,13 @@
         (is (= {:valid false
                 :status "Unable to validate token"
                 :error-details "Token validation is currently unavailable."}
-               (#'token-check/fetch-token-status (random-token))))
+               (#'token-check/fetch-token-status (tu/random-token))))
         (is (= 0 @call-count))))))
 
 (deftest ^:parallel fetch-token-status-test-4
   (testing "With a valid token"
-    (let [result (#'token-status-response (random-token) {:status 200
-                                                          :body   token-response-fixture})]
+    (let [result (token-status-response (tu/random-token) {:status 200
+                                                           :body   token-response-fixture})]
       (is (:valid result))
       (is (contains? (set (:features result)) "test")))))
 
@@ -149,11 +144,11 @@
     ;; upstream in Cloud could break this. We probably want to catch that stuff anyway tho in tests rather than waiting
     ;; for bug reports to come in
     (is (partial= {:valid false, :status "Token does not exist."}
-                  (#'token-check/fetch-token-status* (random-token))))))
+                  (#'token-check/fetch-token-status* (tu/random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
   (testing "No DB calls are made when checking token status if the status is cached"
-    (let [token (random-token)
+    (let [token (tu/random-token)
           _ (#'token-check/fetch-token-status token)
           ;; Sigh. This is really quite horrific. But we need some wiggle room here: any endpoint that gets some setting
           ;; inside it is going to check to see whether it's time for an update check. If it is, it'll hit the DB to see
@@ -168,7 +163,7 @@
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."
-    (mt/with-temporary-raw-setting-values [premium-embedding-token (random-token)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
       (is (= {:valid false, :status "Token does not exist."}
              (premium-features/token-status)))))
   (testing "If premium-embedding-token is nil, the token-status setting should also be nil."

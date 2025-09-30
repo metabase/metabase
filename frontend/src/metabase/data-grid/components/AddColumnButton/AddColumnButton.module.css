@@ -19,9 +19,9 @@
 
 .button {
   transition: background-color 200ms;
-  background-color: var(--mb-base-color-brand-10);
+  background-color: var(--mb-color-brand-lighter);
 }
 
 .button:hover {
-  background: var(--mb-base-color-brand-20) !important;
+  background: var(--mb-color-brand-light) !important;
 }

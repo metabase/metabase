@@ -26,6 +26,17 @@ export const documentApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
+      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
+        await queryFulfilled.then(async ({ data }) => {
+          await dispatch(
+            documentApi.util.upsertQueryData(
+              "getDocument",
+              { id: data.id },
+              data,
+            ),
+          );
+        });
+      },
     }),
     updateDocument: builder.mutation<Document, UpdateDocumentRequest>({
       query: (document) => ({

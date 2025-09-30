@@ -6,9 +6,13 @@ import { Mode } from "../Mode";
 import { ArchivedMode } from "../modes/ArchivedMode";
 import { DefaultMode } from "../modes/DefaultMode";
 import { EmbeddingSdkMode } from "../modes/EmbeddingSdkMode";
+import { ListMode } from "../modes/ListMode";
 
 export function getMode(question: Question): Mode | null {
-  const queryMode = question.isArchived() ? ArchivedMode : DefaultMode;
+  if (question.isArchived()) {
+    return new Mode(question, ArchivedMode);
+  }
+  const queryMode = question.display() === "list" ? ListMode : DefaultMode;
   return new Mode(question, queryMode);
 }
 

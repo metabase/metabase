@@ -1,26 +1,21 @@
 (ns ^:mb/driver-tests metabase.warehouse-schema.api.table-test
   "Tests for /api/table endpoints."
   (:require
-   #_[metabase.sync.core :as sync]
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.api.response :as api.response]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema.api.table :as api.table]
-   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -75,10 +70,8 @@
 (defn- field-defaults []
   (merge
    (mt/object-defaults :model/Field)
-   {:default_dimension_option nil
-    ;; Index sync is turned off across the application as it is not used ATM.
+   {;; Index sync is turned off across the application as it is not used ATM.
     #_#_:database_indexed         false
-    :dimension_options        []
     :dimensions               []
     :position                 0
     :target                   nil
@@ -91,10 +84,6 @@
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
      :database_required :database_is_auto_increment :entity_id])))
-
-(defn- fk-field-details [field]
-  (-> (field-details field)
-      (dissoc :dimension_options :default_dimension_option)))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"
@@ -242,22 +231,8 @@
         (testing "returns 404 for tables that don't exist"
           (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
 
-(defn- default-dimension-options []
-  (as-> @#'schema.table/dimension-options-for-response options
-    (m/map-vals #(-> %
-                     (update :name str)
-                     (update :type
-                             (fn [t]
-                               (apply str
-                                      ((juxt namespace (constantly "/") name) t)))))
-                options)
-    (m/map-keys parse-long options)
-    ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
-    (lib.util.match/replace options :field (mt/obj->json->obj &match))))
-
 (defn- query-metadata-defaults []
-  (-> (table-defaults)
-      (assoc :dimension_options (default-dimension-options))))
+  (table-defaults))
 
 (deftest ^:parallel sensitive-fields-included-test
   (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
@@ -301,8 +276,6 @@
                                      :base_type                  "type/Text"
                                      :effective_type             "type/Text"
                                      :visibility_type            "normal"
-                                     :dimension_options          []
-                                     :default_dimension_option   nil
                                      :has_field_values           "list"
                                      :position                   1
                                      :database_position          1
@@ -317,8 +290,6 @@
                                      :base_type                  "type/DateTime"
                                      :effective_type             "type/DateTime"
                                      :visibility_type            "normal"
-                                     :dimension_options          @#'schema.table/datetime-dimension-indexes
-                                     :default_dimension_option   @#'schema.table/datetime-default-index
                                      :has_field_values           "none"
                                      :position                   2
                                      :database_position          2
@@ -397,8 +368,6 @@
                                      :database_type            "TIMESTAMP"
                                      :base_type                "type/DateTime"
                                      :effective_type           "type/DateTime"
-                                     :dimension_options        @#'schema.table/datetime-dimension-indexes
-                                     :default_dimension_option @#'schema.table/datetime-default-index
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
@@ -609,7 +578,7 @@
         (is (= [{:origin_id      (:id checkins-user-field)
                  :destination_id (:id users-id-field)
                  :relationship   "Mt1"
-                 :origin         (-> (fk-field-details checkins-user-field)
+                 :origin         (-> (field-details checkins-user-field)
                                      (dissoc :target :dimensions :values)
                                      (assoc :table_id          (mt/id :checkins)
                                             :name              "USER_ID"
@@ -632,7 +601,7 @@
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
                                                              :entity_type  "entity/EventTable"})))
-                 :destination    (-> (fk-field-details users-id-field)
+                 :destination    (-> (field-details users-id-field)
                                      (dissoc :target :dimensions :values)
                                      (assoc :table_id         (mt/id :users)
                                             :name             "ID"
@@ -697,8 +666,6 @@
                               :database_type              "CHARACTER VARYING"
                               :base_type                  "type/Text"
                               :effective_type             "type/Text"
-                              :dimension_options          []
-                              :default_dimension_option   nil
                               :has_field_values           "list"
                               :database_position          1
                               :position                   1
@@ -734,20 +701,8 @@
   (assoc field :id ["field" field-name {:base-type base-type}]))
 
 (defn- default-card-field-for-venues [table-id]
-  {:table_id                 table-id
-   :semantic_type            nil
-   :default_dimension_option nil
-   :dimension_options        []})
-
-(defn- with-numeric-dimension-options [field]
-  (assoc field
-         :default_dimension_option @#'schema.table/numeric-default-index
-         :dimension_options @#'schema.table/numeric-dimension-indexes))
-
-(defn- with-coordinate-dimension-options [field]
-  (assoc field
-         :default_dimension_option @#'schema.table/coordinate-default-index
-         :dimension_options @#'schema.table/coordinate-dimension-indexes))
+  {:table_id      table-id
+   :semantic_type nil})
 
 ;; Make sure metadata for 'virtual' tables comes back as expected
 (deftest ^:parallel virtual-table-metadata-test
@@ -772,7 +727,6 @@
                    :moderated_status  nil
                    :metrics           nil
                    :description       nil
-                   :dimension_options (default-dimension-options)
                    :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                                  with-field-literal-id)
                                            (let [id->fingerprint   (t2/select-pk->fn :fingerprint :model/Field :table_id (mt/id :venues))
@@ -793,24 +747,22 @@
                                                :semantic_type  nil
                                                :fingerprint    (name->fingerprint :id)
                                                :field_ref      ["field" "ID" {:base-type "type/BigInteger"}]}
-                                              (with-numeric-dimension-options
-                                                {:name           "PRICE"
-                                                 :display_name   "PRICE"
-                                                 :base_type      "type/Integer"
-                                                 :effective_type "type/Integer"
-                                                 :database_type  "INTEGER"
-                                                 :semantic_type  nil
-                                                 :fingerprint    (name->fingerprint :price)
-                                                 :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]})
-                                              (with-coordinate-dimension-options
-                                                {:name           "LATITUDE"
-                                                 :display_name   "LATITUDE"
-                                                 :base_type      "type/Float"
-                                                 :effective_type "type/Float"
-                                                 :database_type  "DOUBLE PRECISION"
-                                                 :semantic_type  "type/Latitude"
-                                                 :fingerprint    (name->fingerprint :latitude)
-                                                 :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]})]))})
+                                              {:name           "PRICE"
+                                               :display_name   "PRICE"
+                                               :base_type      "type/Integer"
+                                               :effective_type "type/Integer"
+                                               :database_type  "INTEGER"
+                                               :semantic_type  nil
+                                               :fingerprint    (name->fingerprint :price)
+                                               :field_ref      ["field" "PRICE" {:base-type "type/Integer"}]}
+                                              {:name           "LATITUDE"
+                                               :display_name   "LATITUDE"
+                                               :base_type      "type/Float"
+                                               :effective_type "type/Float"
+                                               :database_type  "DOUBLE PRECISION"
+                                               :semantic_type  "type/Latitude"
+                                               :fingerprint    (name->fingerprint :latitude)
+                                               :field_ref      ["field" "LATITUDE" {:base-type "type/Float"}]}]))})
                 (->> card
                      u/the-id
                      (format "table/card__%d/query_metadata")
@@ -846,7 +798,8 @@
   (testing "GET /api/table/card__:id/query_metadata for deleted cards (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type     :query
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
                                                     :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (->> (format "table/card__%d/query_metadata" card-id)
@@ -885,7 +838,6 @@
                      :description       nil
                      :moderated_status  nil
                      :metrics           nil
-                     :dimension_options (default-dimension-options)
                      :fields            [{:name                     "NAME"
                                           :display_name             "NAME"
                                           :base_type                "type/Text"
@@ -894,8 +846,6 @@
                                           :table_id                 card-virtual-table-id
                                           :id                       ["field" "NAME" {:base-type "type/Text"}]
                                           :semantic_type            "type/Name"
-                                          :default_dimension_option nil
-                                          :dimension_options        []
                                           :fingerprint              (:fingerprint name-metadata)
                                           :field_ref                ["field" "NAME" {:base-type "type/Text"}]}
                                          {:name                     "LAST_LOGIN"
@@ -906,8 +856,6 @@
                                           :table_id                 card-virtual-table-id
                                           :id                       ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]
                                           :semantic_type            nil
-                                          :default_dimension_option @#'schema.table/datetime-default-index
-                                          :dimension_options        @#'schema.table/datetime-dimension-indexes
                                           :fingerprint              (:fingerprint last-login-metadata)
                                           :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
                     (mt/user-http-request :crowberto :get 200
@@ -920,7 +868,7 @@
                                       :type          :model
                                       :dataset_query (mt/mbql-query venues)}]
       (let [card-virtual-table-id (str "card__" (:id model))
-            metric-query          {:database 2
+            metric-query          {:database (mt/id)
                                    :type     "query"
                                    :query    {:source-table card-virtual-table-id
                                               :aggregation  [["count"]]}}]
@@ -1032,143 +980,6 @@
                 (fn []
                   (narrow-fields ["PRICE" "CATEGORY_ID"]
                                  (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))))
-
-(defn field-from-response [response, ^String field-name]
-  (->> response
-       :fields
-       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))))
-
-(defn- dimension-options-for-field [response, ^String field-name]
-  (:dimension_options (field-from-response response field-name)))
-
-(defn- extract-dimension-options
-  "For the given `field-name` find it's dimension_options following the indexes given in the field"
-  [response field-name]
-  (set
-   (for [dim-index (dimension-options-for-field response field-name)
-         :let [{clause :mbql} (get-in response [:dimension_options (Long/parseLong dim-index)])]]
-     clause)))
-
-(deftest ^:parallel numeric-binning-options-test
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for numeric fields"
-      (testing "Lat/Long fields should use bin-width rather than num-bins"
-        (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-          (is (= #{nil
-                   ["field" nil {:binning {:strategy "bin-width", :bin-width 10.0}}]
-                   ["field" nil {:binning {:strategy "bin-width", :bin-width 0.1}}]
-                   ["field" nil {:binning {:strategy "bin-width", :bin-width 1.0}}]
-                   ["field" nil {:binning {:strategy "bin-width", :bin-width 20.0}}]
-                   ["field" nil {:binning {:strategy "default"}}]}
-                 (extract-dimension-options response "latitude"))))))))
-
-(deftest numeric-binning-options-test-2
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for numeric fields"
-      (testing "Number columns without a semantic type should use \"num-bins\""
-        (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:semantic_type nil}
-          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-            (is (= #{nil
-                     ["field" nil {:binning {:strategy "num-bins", :num-bins 50}}]
-                     ["field" nil {:binning {:strategy "default"}}]
-                     ["field" nil {:binning {:strategy "num-bins", :num-bins 100}}]
-                     ["field" nil {:binning {:strategy "num-bins", :num-bins 10}}]}
-                   (extract-dimension-options response "price")))))))))
-
-(deftest numeric-binning-options-test-3
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for numeric fields"
-      (testing "Number columns with a relationship semantic type should not have binning options"
-        (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:semantic_type "type/PK"}
-          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
-            (is (= #{}
-                   (extract-dimension-options response "price")))))))))
-
-(deftest numeric-binning-options-test-4
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for numeric fields"
-      (testing "Numeric fields without min/max values should not have binning options"
-        (let [fingerprint      (t2/select-one-fn :fingerprint :model/Field :id (mt/id :venues :latitude))
-              temp-fingerprint (-> fingerprint
-                                   (assoc-in [:type :type/Number :max] nil)
-                                   (assoc-in [:type :type/Number :min] nil))]
-          (mt/with-temp-vals-in-db :model/Field (mt/id :venues :latitude) {:fingerprint temp-fingerprint}
-            (is (= []
-                   (-> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
-                       (get :fields)
-                       first
-                       :dimension_options)))))))))
-
-(deftest ^:parallel datetime-binning-options-test
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for datetime fields"
-      (testing "should show up whether the backend supports binning of numeric values or not"
-        (mt/test-drivers #{:druid}
-          (tqpt/with-flattened-dbdef
-            (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
-              (is (= @#'schema.table/datetime-dimension-indexes
-                     (dimension-options-for-field response "timestamp"))))))))))
-
-(deftest ^:parallel datetime-binning-options-test-2
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for datetime fields"
-      (testing "dates"
-        (mt/test-drivers (mt/normal-drivers)
-          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))
-                field    (field-from-response response "date")]
-            ;; some dbs don't have a date type and return a datetime
-            (is (= (case (:effective_type field)
-                     ("type/DateTime" "type/Instant") @#'schema.table/datetime-dimension-indexes
-                     "type/Date"                      @#'schema.table/date-dimension-indexes
-                     (throw (ex-info "Invalid type for date field or field not found"
-                                     {:expected-types #{"type/DateTime" "type/Date"}
-                                      :found          (:effective_type field)
-                                      :field          field
-                                      :driver         driver/*driver*})))
-                   (:dimension_options field)))))))))
-
-(deftest ^:parallel datetime-binning-options-test-3
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for datetime fields"
-      (testing "unix timestamps"
-        (mt/dataset sad-toucan-incidents
-          (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :incidents)))]
-            (is (= @#'schema.table/datetime-dimension-indexes
-                   (dimension-options-for-field response "timestamp")))))))))
-
-(deftest ^:parallel datetime-binning-options-test-4
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for datetime fields"
-      (testing "time columns"
-        (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
-          (mt/dataset time-test-data
-            (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
-              (is (= @#'schema.table/time-dimension-indexes
-                     (dimension-options-for-field response "last_login_time"))))))))))
-
-(deftest nested-queries-binning-options-test
-  (testing "GET /api/table/:id/query_metadata"
-    (testing "binning options for nested queries"
-      (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
-        (mt/with-temp [:model/Card card {:database_id   (mt/id)
-                                         :dataset_query {:database (mt/id)
-                                                         :type    :query
-                                                         :query    {:source-query {:source-table (mt/id :venues)}}}}]
-          (letfn [(dimension-options []
-                    (let [response (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))]
-                      (map #(dimension-options-for-field response %) ["latitude" "longitude"])))]
-            (testing "Nested queries missing a fingerprint/results metadata should not show binning-options"
-              (mt/with-temp-vals-in-db :model/Card (:id card) {:result_metadata nil}
-                ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the
-                ;; card was created but before it was ran should not allow binning
-                (is (= [nil nil]
-                       (dimension-options)))))
-            (testing "Nested queries with a fingerprint should have dimension options for binning"
-              ;; run the Card which will populate its result_metadata column
-              (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card)))
-              (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" (u/the-id card)))
-              (is (= (repeat 2 @#'schema.table/coordinate-dimension-indexes)
-                     (dimension-options))))))))))
 
 (deftest ^:parallel card-type-and-dataset-query-are-returned-with-metadata
   (testing "GET /api/table/card__:id/query_metadata returns card type"

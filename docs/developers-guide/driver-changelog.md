@@ -14,8 +14,33 @@ title: Driver interface changelog
 
 - Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
   metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
-  metabase.driver/connection-details, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
-  metabase.driver.sql/default-schema, and metabase.driver.sql/find-table to implement sql transforms.
+  metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
+  and metabase.driver.sql/default-schema to implement sql transforms.
+
+- Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
+  pairs that has been topologically sorted.
+
+- Added `metabase.driver/rename-table!` multimethod for table renaming operations. Takes a single from-table to-table pair.
+  Fallbacks to singleton call to `rename-tables!*` if available.
+
+- Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!`
+  which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+
+- Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase
+  type (from the type hierarchy) as a HoneySQL spec. This method handles general Metabase base types.
+
+- Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources
+  into existing tables. This multimethod dispatches on both the driver and the data source type
+  (`:rows` or `:jsonl-file`). It allows drivers to optimize based on the data source type and returns the number
+  of rows inserted. Default implementations are provided for both `:rows` and `:jsonl-file` source types.
+
+- Added `metabase.driver/insert-col->val` multimethod to parse values for insertion based on driver, data source type
+  and column definition. Drivers should implement this when their insertion mechanism needs values converted to proper types.
+
+- `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
+  instead of just the top-level message as a string.
+
+- Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
 
 ## Metabase 0.56.3
 

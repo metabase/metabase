@@ -1,6 +1,7 @@
 (ns metabase.lib.temporal-bucket
   "TODO (Cam 6/13/25) -- decide whether things are `unit` or `bucket` and rename functions and args for consistency.
   Confusing to use both as synonyms."
+  (:refer-clojure :exclude [mapv select-keys some])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -14,6 +15,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv select-keys some]]
    [metabase.util.time :as u.time]))
 
 (mu/defn describe-temporal-unit :- :string
@@ -510,3 +512,25 @@
   (if-some [temporal-unit (:unit column-metadata)]
     (update column-metadata :display_name ensure-ends-with-temporal-unit temporal-unit)
     column-metadata))
+
+(def ^:private valid-units-for-date     (conj lib.schema.temporal-bucketing/date-bucketing-units :default))
+(def ^:private valid-units-for-time     (conj lib.schema.temporal-bucketing/time-bucketing-units :default))
+(def ^:private valid-units-for-datetime lib.schema.temporal-bucketing/temporal-bucketing-units)
+
+(defmulti valid-units-for-type
+  "Returns valid temporal units for `a-type`."
+  {:arglists '([a-type])}
+  keyword)
+
+(defmethod valid-units-for-type :type/*        [_] valid-units-for-datetime)
+(defmethod valid-units-for-type :type/Date     [_] valid-units-for-date)
+(defmethod valid-units-for-type :type/Time     [_] valid-units-for-time)
+(defmethod valid-units-for-type :type/DateTime [_] valid-units-for-datetime)
+
+(mu/defn compatible-temporal-unit?
+  "Check whether some column of `a-type` can be bucketted by the`temporal-unit`. Any column can be bucketed by `nil`
+  temporal unit."
+  [a-type        :- ::lib.schema.common/base-type
+   temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]]
+  (or (nil? temporal-unit)
+      (contains? (valid-units-for-type a-type) temporal-unit)))

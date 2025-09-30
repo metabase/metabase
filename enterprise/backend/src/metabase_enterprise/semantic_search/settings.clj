@@ -12,7 +12,7 @@
   :default "ai-service"
   :type :string
   :export? false
-  :doc "This feature is experimental.")
+  :doc false)
 
 (defsetting ee-embedding-model
   (deferred-tru "Set the embedding model for the selected provider")
@@ -20,7 +20,7 @@
   :visibility :settings-manager
   :default "Snowflake/snowflake-arctic-embed-l-v2.0"
   :export? false
-  :doc "This feature is experimental.")
+  :doc false)
 
 (defsetting ee-embedding-model-dimensions
   (deferred-tru "Set the dimension size for the selected embedding model")
@@ -29,7 +29,7 @@
   :default 1024
   :type :positive-integer
   :export? false
-  :doc "This feature is experimental.")
+  :doc false)
 
 (defn openai-api-base-url
   "Get the OpenAI API base url from the existing LLM settings."
@@ -50,7 +50,8 @@
   :getter     (fn []
                 (and (setting/get-value-of-type :boolean :semantic-search-enabled)
                      (premium-features/enable-semantic-search?)))
-  :type       :boolean)
+  :type       :boolean
+  :doc        false)
 
 (defsetting openai-max-tokens-per-batch
   (deferred-tru "The maximum number of tokens sent in a single embedding API call.")
@@ -59,7 +60,7 @@
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "The maximum number of tokens sent in a single embedding API call.")
+  :doc false)
 
 (defsetting semantic-search-results-limit
   (deferred-tru "Maximum number of results to return from a single semantic search query.")
@@ -68,7 +69,7 @@
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "Maximum number of results to return from a single semantic search query.")
+  :doc false)
 
 (defsetting semantic-search-min-results-threshold
   (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")
@@ -77,7 +78,7 @@
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "Minimum number of semantic search results required before falling back to other engines.")
+  :doc false)
 
 (defsetting index-update-thread-count
   (deferred-tru "Number of threads to use for batched index updates, including embedding requests")
@@ -95,35 +96,40 @@
   :type :integer
   :default 5
   :export? false
-  :visibility :internal)
+  :visibility :internal
+  :doc false)
 
 (defsetting ee-search-gate-max-batch-size
   "The maximum number of documents that can be sent to `gate-documents!` without causing an error."
   :type :integer
   :default 512
   :export? false
-  :visibility :internal)
+  :visibility :internal
+  :doc false)
 
 (defsetting ee-search-indexer-poll-limit
   "Indexer poll limit."
   :type :integer
   :default 1000
   :export? false
-  :visibility :internal)
+  :visibility :internal
+  :doc false)
 
 (defsetting ee-search-indexer-exit-early-cold-duration
   "Number of seconds indexer should wait to see new data before yielding back to quartz."
   :type :integer
   :default 30
   :export? false
-  :visibility :internal)
+  :visibility :internal
+  :doc false)
 
 (defsetting ee-search-indexer-max-run-duration
   "Number of minutes we expect to run the indexer loop for before yielding to quartz."
   :type :integer
   :default 60
   :export? false
-  :visibility :internal)
+  :visibility :internal
+  :doc false)
 
 (defsetting ee-search-indexer-lag-tolerance-multiplier
   (str "Multiplier for computation of [[metabase-enterprise.semantic-search.indexer/lag-tolerance]]. The formula "
@@ -131,7 +137,8 @@
   :type :integer
   :default 2
   :export? false
-  :visibility :internal)
+  :visibility :internal
+  :doc false)
 
 (defsetting stale-index-retention-hours
   (deferred-tru "Number of hours to retain stale semantic search indexes before cleanup.")
@@ -140,4 +147,23 @@
   :encryption :no
   :export? false
   :visibility :internal
-  :doc "Number of hours to retain stale semantic search indexes before cleanup.")
+  :doc false)
+
+(defsetting tombstone-retention-hours
+  (deferred-tru "Number of hours to retain tombstone records in the gate table before cleanup.")
+  :type :integer
+  :default 24
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc false)
+
+(defsetting repair-table-retention-hours
+  (deferred-tru "Number of hours until repair tables are considered stale and eligible for cleanup, if they were not
+    cleaned up successfully after use.")
+  :type :integer
+  :default 2
+  :encryption :no
+  :export? false
+  :visibility :internal
+  :doc false)

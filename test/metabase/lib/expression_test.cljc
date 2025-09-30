@@ -758,3 +758,16 @@
   (testing "Should be able to create a :relative-datetime clause with one arg (:current)"
     (is (=? [:relative-datetime {:lib/uuid string?} :current]
             (lib.expression/relative-datetime :current)))))
+
+(deftest ^:parallel relative-datetime-raw-temporal-bucket-test
+  (are [clause expected] (= expected
+                            (lib/raw-temporal-bucket clause))
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} 0 :month]
+    :month
+
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} :current]
+    nil))
+
+(deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
+  (is (= :day
+         (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))

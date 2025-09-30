@@ -23,7 +23,11 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
 import Table from "metabase/visualizations/visualizations/Table/Table";
 import TABLE_RAW_SERIES from "metabase/visualizations/visualizations/Table/stories-data/orders-with-people.json";
-import type { Dashboard, DashboardCard } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardCard,
+  DashboardTab,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -120,13 +124,19 @@ const PARAMETER_ID = "param-hex";
 interface CreateDashboardOpts {
   hasScroll?: boolean;
   dashcards?: DashboardCard[];
+  tabs?: DashboardTab[];
 }
-function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
+function createDashboard({
+  hasScroll,
+  dashcards,
+  tabs,
+}: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
     parameters: [createMockParameter({ id: PARAMETER_ID })],
+    tabs,
     dashcards: dashcards ?? [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
@@ -181,6 +191,38 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
   slowCards: {},
   selectedTabId: TAB_ID,
   withFooter: true,
+};
+
+export const NarrowWithManyTabs = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    titled: false,
+    dashboard: createDashboard({
+      dashcards: [],
+      tabs: [
+        { id: 0, dashboard_id: DASHBOARD_ID, name: "Tab 1" },
+        { id: 1, dashboard_id: DASHBOARD_ID, name: "Tab 2" },
+        { id: 2, dashboard_id: DASHBOARD_ID, name: "Tab 3" },
+        { id: 3, dashboard_id: DASHBOARD_ID, name: "Tab 4" },
+        { id: 4, dashboard_id: DASHBOARD_ID, name: "Tab 5" },
+        { id: 5, dashboard_id: DASHBOARD_ID, name: "Tab 6" },
+        { id: 6, dashboard_id: DASHBOARD_ID, name: "Tab 7" },
+        { id: 7, dashboard_id: DASHBOARD_ID, name: "Tab 8" },
+        { id: 8, dashboard_id: DASHBOARD_ID, name: "Tab 9" },
+        { id: 9, dashboard_id: DASHBOARD_ID, name: "Tab 10" },
+        { id: 10, dashboard_id: DASHBOARD_ID, name: "Tab 11" },
+        { id: 11, dashboard_id: DASHBOARD_ID, name: "Tab 12" },
+        { id: 12, dashboard_id: DASHBOARD_ID, name: "Tab 13" },
+        { id: 13, dashboard_id: DASHBOARD_ID, name: "Tab 14" },
+        { id: 14, dashboard_id: DASHBOARD_ID, name: "Tab 15" },
+        { id: 15, dashboard_id: DASHBOARD_ID, name: "Tab 16" },
+        { id: 16, dashboard_id: DASHBOARD_ID, name: "Tab 17" },
+        { id: 17, dashboard_id: DASHBOARD_ID, name: "Tab 18" },
+      ],
+    }),
+  },
+  decorators: [NarrowDecorator],
 };
 
 export const LightThemeDefault = {
@@ -428,6 +470,14 @@ function DarkBackgroundDecorator(Story: StoryFn) {
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
     <Box bg="#ddd" mih="100vh">
+      <Story />
+    </Box>
+  );
+}
+
+function NarrowDecorator(Story: StoryFn) {
+  return (
+    <Box w={800} h={600} style={{ position: "relative" }}>
       <Story />
     </Box>
   );

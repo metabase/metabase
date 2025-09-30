@@ -19,25 +19,37 @@
   (str "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) "
        "SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s"))
 
-(def ^:private ^{:arglists '([db-details])} get-clickhouse-version
+(def ^:private ^{:arglists '([database])} get-clickhouse-version
   (memoize/ttl
-   (fn [db-details]
+   ^{:clojure.core.memoize/args-fn (fn [[database]] (:details database))}
+   (fn [database]
      (sql-jdbc.execute/do-with-connection-with-options
       :clickhouse
-      (sql-jdbc.conn/connection-details->spec :clickhouse db-details)
+      (sql-jdbc.conn/db->pooled-connection-spec database)
       nil
       (fn [^java.sql.Connection conn]
-        (with-open [stmt (.createStatement conn)
-                    rset (.executeQuery stmt clickhouse-version-query)]
-          (when (.next rset)
-            {:version          (.getString rset 1)
-             :semantic-version {:major (.getInt rset 2)
-                                :minor (.getInt rset 3)}})))))
+        (with-open [ver-stmt (.createStatement conn)
+                    ver-rset (.executeQuery ver-stmt clickhouse-version-query)
+                    cloud-stmt (.createStatement conn)
+                    cloud-rset (.executeQuery cloud-stmt "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")]
+          (cond-> nil
+            (.next ver-rset)
+            (assoc :version          (.getString ver-rset 1)
+                   :semantic-version {:major (.getInt ver-rset 2)
+                                      :minor (.getInt ver-rset 3)})
+
+            (.next cloud-rset)
+            (assoc :cloud (.getBoolean cloud-rset 1)))))))
    :ttl/threshold default-cache-ttl))
 
 (defmethod driver/dbms-version :clickhouse
   [_driver db]
-  (get-clickhouse-version (:details db)))
+  (get-clickhouse-version db))
+
+(defn dbms-version
+  "Returns dbms version from a db that may be a snake-hating-map"
+  [db]
+  ((some-fn :dbms-version :dbms_version) db))
 
 (defn is-at-least?
   "Is ClickHouse version at least `major.minor` (e.g., 24.4)?"
@@ -46,8 +58,7 @@
    (is-at-least? major minor (driver-api/database (driver-api/metadata-provider))))
   ([major minor db]
    ;; used from the Driver overrides; we have access to the DB object
-   (let [version  (driver/dbms-version :clickhouse db)
-         semantic (:semantic-version version)]
+   (let [semantic (-> db dbms-version :semantic-version)]
      (driver.u/semantic-version-gte [(:major semantic) (:minor semantic)] [major minor]))))
 
 (defn with-min

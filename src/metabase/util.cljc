@@ -1,7 +1,7 @@
 #_{:clj-kondo/ignore [:metabase/namespace-name]}
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
-  (:refer-clojure :exclude [group-by])
+  (:refer-clojure :exclude [group-by last])
   (:require
    #?@(:clj ([clojure.core.protocols]
              [clojure.math.numeric-tower :as math]
@@ -60,6 +60,7 @@
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
+                        all-ex-messages
                         auto-retry
                         string-to-bytes
                         bytes-to-string
@@ -120,6 +121,14 @@
                                    not-empty)]
                  (str " " (pr-str data)))))
         (str/join "\n"))))
+
+(defn last
+  "Like `clojure.core/last`, but tries to be O(1)."
+  [v]
+  (cond
+    (or (list? v) (map? v)) (clojure.core/last v)
+    (zero? (count v))       nil
+    :else                   (nth v (dec (count v)))))
 
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
@@ -282,15 +291,36 @@
     (str (upper-case-en (subs s 0 1))
          (subs s 1))))
 
+(defn kebab->snake
+  "Simple conversion from kebab-case to snake_case by replacing hyphens with underscores.
+  Does not detect or convert camelCase, preserving mixed-case identifiers."
+  [x]
+  (cond
+    (keyword? x) (keyword (namespace x) (str/replace (name x) #"-" "_"))
+    (string? x)  (str/replace x #"-" "_")
+    :else        x))
+
 (defn snake-keys
   "Convert the top-level keys in a map to `snake_case`."
   [m]
   (perf/update-keys m ->snake_case_en))
 
+(defn kebab->snake-keys
+  "Convert the top-level kebab-case keys in a map to snake_case by replacing hyphens.
+  Preserves camelCase and other formatting."
+  [m]
+  (perf/update-keys m kebab->snake))
+
 (defn deep-snake-keys
   "Recursively convert the keys in a map to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
+
+(defn deep-kebab->snake-keys
+  "Recursively convert kebab-case keys in a map to snake_case by replacing hyphens.
+  Preserves camelCase and other formatting."
+  [m]
+  (recursive-map-keys kebab->snake m))
 
 (defn normalize-map
   "Given any map-like object, return it as a Clojure map with :kebab-case keyword keys.
@@ -720,7 +750,7 @@
                2 :magenta
                3 :yellow) "%s%s took %s"
              (if (pos? *profile-level*)
-               (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
+               (str "┌" (str/join (repeat (dec *profile-level*) "─")) "─> ")
                "")
              (message-thunk)
              (u.format/format-nanoseconds (- #?(:cljs (* 1000000 (js/performance.now))
@@ -940,8 +970,11 @@
     (let [item        (first to-traverse)
           found       (traverse-fn (key item))
           traversed   (conj traversed item)
-          to-traverse (into (dissoc to-traverse (key item))
-                            (apply dissoc found (keys traversed)))]
+          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+          ;; locations
+          to-traverse (merge-with into
+                                  (dissoc to-traverse (key item))
+                                  (apply dissoc found (keys traversed)))]
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))
@@ -1161,8 +1194,7 @@
 (defn index-by
   "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
   ([kf]
-   (map (fn [x]
-          [(kf x) x])))
+   (map (juxt kf identity)))
   ([kf coll]
    (into {} (index-by kf) coll))
   ([kf vf coll]

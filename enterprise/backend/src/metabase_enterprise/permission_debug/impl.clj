@@ -178,7 +178,7 @@
   [user-id card permissions-blocking permissions-granting]
   ;; legacy usage -- don't do things like this going forward
   (let [query (-> card :dataset_query qp.preprocess/preprocess #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL)
-        query-tables (-> query :query lib.util/collect-source-tables)
+        query-tables (-> query :query #_{:clj-kondo/ignore [:deprecated-var]} lib.util/collect-source-tables)
         native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
     (->>
      (cond

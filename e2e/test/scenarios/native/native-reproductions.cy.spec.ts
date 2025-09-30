@@ -400,6 +400,7 @@ describe("issue 52806", () => {
     cy.visit("/");
     H.newButton("SQL query").click();
     H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
     cy.findByTestId("main-logo-link").click();
     H.modal().button("Discard changes").click();
     cy.findByTestId("home-page");
@@ -815,5 +816,40 @@ describe("issue 59356", () => {
     getLoader().should("not.exist");
     getEmptyStateMessage().should("be.visible");
     cy.get("@dataset.all").should("have.length", 2);
+  });
+});
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
   });
 });

@@ -1192,9 +1192,7 @@
                           :table_id                 (str "card__" (u/the-id card))
                           :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
                           :semantic_type            nil
-                          :base_type                "type/Integer"
-                          :default_dimension_option nil
-                          :dimension_options        []}]))))))
+                          :base_type                "type/Integer"}]))))))
 
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"

@@ -11,6 +11,7 @@ import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type { DatabaseId, Field, Table } from "metabase-types/api";
 
+import { trackMetadataChange } from "../../analytics";
 import { TitledSection } from "../TitledSection";
 
 import { getSemanticTypeError } from "./utils";
@@ -46,6 +47,8 @@ const MetadataSectionBase = ({ databaseId, field, table }: Props) => {
         t`Failed to update semantic type of ${field.display_name}`,
       );
     } else {
+      trackMetadataChange("semantic_type_change");
+
       sendSuccessToast(
         t`Semantic type of ${field.display_name} updated`,
         async () => {

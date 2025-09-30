@@ -1,4 +1,5 @@
 (ns metabase.lib.filter.simplify-compound
+  (:refer-clojure :exclude [some])
   (:require
    [medley.core :as m]
    [metabase.lib.filter :as lib.filter]
@@ -8,7 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (mr/def ::mbql-clause
   "An MBQL clause that may not be well-formed, e.g. an `:and` clause with only one arg."
@@ -85,3 +87,22 @@
 
     [:or opts & args]
     (simplify-and-or-filter :or opts args)))
+
+(defn simplify-filters
+  "Simplify multiple filters, combining them into fewer if possible and deduplicating them."
+  [clauses]
+  ;; combine into one `:and` clause, simplify with [[simplify-compound-filter]], then pull out the simplified
+  ;; subclauses
+  (case (count clauses)
+    0
+    clauses
+
+    1
+    [(simplify-compound-filter (first clauses))]
+
+    #_else
+    (let [[tag _opts & args, :as simplified] (simplify-compound-filter (apply lib.filter/and clauses))]
+      (if (= tag :and)
+        (vec args)
+        ;; simplified to a single clause
+        [simplified]))))

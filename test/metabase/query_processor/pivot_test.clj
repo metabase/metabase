@@ -1,15 +1,16 @@
 (ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
   (:require
-   [clj-time.core :as time]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -19,6 +20,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -130,7 +132,7 @@
               :filter       [:and
                              [:= $user_id->people.source "Facebook" "Google"]
                              [:= $product_id->products.category "Doohickey" "Gizmo"]
-                             [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]})
+                             [:time-interval $created_at (- 2019 (t/as (t/local-date) :year)) :year {}]]})
            {:pivot-rows [0 1 2]
             :pivot-cols []})))
 
@@ -346,7 +348,7 @@
 (deftest ^:parallel nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :type          :model
                                                 :name          "Model A"
@@ -498,30 +500,24 @@
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (mt/dataset test-data
-    (let [query (assoc (mt/mbql-query orders
-                         {:aggregation [[:count]]
-                          :breakout    [$user_id->people.source $product_id->products.category]})
-                       :pivot-rows [0]
-                       :pivot-cols [1])]
-      (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
-        ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
-        ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
-        ;; `:fields` at all, which was a clear bug -- while returning expressions that are referenced in `:fields` is
-        ;; how the QP normally works in non-pivot-mode.
-        ;;
-        ;; I do not think there are any situations where the frontend actually explicitly specifies `:fields` in a
-        ;; pivot query, so we can revisit this behavior at a later date if needed.
-        (let [results (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))]
+    (let [query (->> (assoc (mt/mbql-query orders
+                              {:aggregation [[:count]]
+                               :breakout    [$user_id->people.source $product_id->products.category]})
+                            :pivot-rows [0]
+                            :pivot-cols [1])
+                     (lib/query (mt/metadata-provider)))]
+      (testing "If the expression is *explicitly* included in `:fields`, we still shouldn't see it"
+        ;; In general, if an aggregation has :fields set, those are "if we ever remove this aggregation, we should use
+        ;; these fields again", not "these fields should be added to the aggregation query".  As a result, if fields
+        ;; are set here, we shouldn't see them.
+        (let [results (qp.pivot/run-pivot-query (lib/expression query "test-expr" (lib/ltrim "wheeee")))]
           (is (= ["User → Source"
                   "Product → Category"
                   "pivot-grouping"
-                  "Count"
-                  "test-expr"]
+                  "Count"]
                  (map :display_name (mt/cols results))))
           (testing "expression value should get returned"
-            (is (= ["Affiliate" "Doohickey" 0 783 "wheeee"]
+            (is (= ["Affiliate" "Doohickey" 0 783]
                    (mt/first-row results)))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-3
@@ -712,8 +708,8 @@
                        {:pivot_rows [0 1]
                         :pivot_cols []})]
       (is (= (mt/$ids orders
-               [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
-                [:field %people.source {:source-field %user_id, :base-type :type/Text}]
+               [[:field %products.category {:source-field %product_id}]
+                [:field %people.source {:source-field %user_id}]
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
@@ -768,3 +764,39 @@
       (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2],
               :show-row-totals true, :show-column-totals true}
              (#'qp.pivot/column-name-pivot-options query viz-settings))))))
+
+(deftest ^:parallel horrible-pivot-test
+  (testing "#63261"
+    ;; this pivot is so horrible, it takes like 12 seconds to preprocess with all the Malli schema checks. We don't have
+    ;; all day, just disable the checks for this one test.
+    (mu/disable-enforcement
+      (let [mp    (-> (mt/metadata-provider)
+                      (as-> $mp (lib.tu/mock-metadata-provider
+                                 $mp
+                                 {:cards [{:id            1
+                                           :name          "Q1: Orders + People"
+                                           :dataset-query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))
+                                                              (lib/join (lib.metadata/table $mp (mt/id :people)))
+                                                              (lib/order-by (lib.metadata/field $mp (mt/id :orders :id)))
+                                                              (lib/limit 3))}]}))
+                      (as-> $mp (lib.tu/mock-metadata-provider
+                                 $mp
+                                 (let [query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :products)))
+                                                 (lib/join (lib.metadata/card $mp 1))
+                                                 (lib/limit 3))]
+                                   {:cards [{:id            2
+                                             :name          "Nested: Products + Q1: Orders + People"
+                                             :dataset-query query}]}))))
+            query (-> (lib/query mp (lib.metadata/card mp 2))
+                      (lib/aggregate (lib/count))
+                      (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                         $query
+                                                         (lib/breakoutable-columns $query)
+                                                         {:display-name "Nested: Products + Q1: Orders + People"}
+                                                         ;; not sure this is the right column?
+                                                         {:display-name "Q1: Orders + People → Name"})))
+                      (lib/limit 3))]
+        (is (= [[nil 0 3]
+                [nil 1 3]]
+               (mt/rows
+                (qp.pivot/run-pivot-query query))))))))

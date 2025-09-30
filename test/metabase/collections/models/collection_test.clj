@@ -1772,3 +1772,32 @@
             ;; The count should be the same since personal collections don't get permission entries
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
+
+(deftest exclude-internal-content-hsql-test
+  (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
+    (testing "filters exclude internal collections in practice"
+      (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection"}
+                     :model/Collection trash-collection {:name "Trash Collection" :type "trash"}
+                     :model/Collection analytics-collection {:name "Analytics Collection" :type "instance-analytics"}
+                     :model/Collection sample-collection {:name "Sample Collection" :is_sample true}]
+        (testing "regular collection is included"
+          (is (some #(= (:id regular-collection) (:id %))
+                    (t2/select :model/Collection :id (:id regular-collection)))))
+
+        (testing "trash collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id trash-collection)] hsql-clause]})]
+            (is (empty? query))))
+
+        (testing "analytics collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id analytics-collection)] hsql-clause]})]
+            (is (empty? query))))
+
+        (testing "sample collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id sample-collection)] hsql-clause]})]
+            (is (empty? query))))))))

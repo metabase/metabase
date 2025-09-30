@@ -1,5 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,7 +15,10 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [potemkin :as p]))
+   [metabase.util.performance :refer [some]]
+   [potemkin :as p]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
 
@@ -115,16 +119,11 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO Although these methods are implemented here, in fact they only work for sql-jdbc drivers, because
-;; execute-raw-queries! is not in implemented for plain sql drivers.
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
-                                                    {:query query
-                                                     :output-table output-table})]
+  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
+  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -139,23 +138,20 @@
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
   (driver/drop-table! driver (:id database) (qualified-name target)))
 
-(defmulti normalize-name
+(defn normalize-name
   "Normalizes the (primarily table/column) name passed in.
-
-  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
-  features must implement this method."
-  {:added "0.57.0" :arglists '([driver name-str])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod normalize-name :sql
-  [_driver name-str]
-  (if (and (= (first name-str) \")
-           (= (last name-str) \"))
-    (-> name-str
-        (subs 1 (dec (count name-str)))
-        (str/replace #"\"\"" "\""))
-    (u/lower-case-en name-str)))
+  Should return a value that matches the name listed in the appdb."
+  [driver name-str]
+  (let [quote-style (sql.qp/quote-style driver)
+        quote-char (if (= quote-style :mysql) \` \")]
+    (if (and (= (first name-str) quote-char)
+             (= (last name-str) quote-char))
+      (let [quote-quote (str quote-char quote-char)
+            quote (str quote-char)]
+        (-> name-str
+            (subs 1 (dec (count name-str)))
+            (str/replace quote-quote quote)))
+      (u/lower-case-en name-str))))
 
 (defmulti default-schema
   "Returns the default schema for a given database driver.
@@ -169,35 +165,35 @@
   [_]
   "public")
 
-(defmulti find-table
-  "Finds the table matching a given name and schema.
-
-  Names and schemas are potentially taken from a raw sql query and will be normalized accordingly. Drivers that
-  support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver {:keys [table schema]}])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod find-table :sql
-  [driver {:keys [table schema]}]
+(defn find-table-or-transform
+  "Given a table and schema that has been parsed out of a native query, finds either a matching table or a matching transform.
+   It will return either {:table table-id} or {:transform transform-id}, or nil if neither is found."
+  [driver tables transforms {:keys [table schema]}]
   (let [normalized-table (normalize-name driver table)
-        normalized-schema (if (seq schema)
-                            (normalize-name driver schema)
-                            (default-schema driver))]
-    (->> (driver-api/metadata-provider)
-         driver-api/tables
-         (some (fn [{db-table :name db-schema :schema id :id}]
-                 (and (= normalized-table db-table)
-                      (= normalized-schema db-schema)
-                      id))))))
+        normalized-schema (or (some->> schema (normalize-name driver))
+                              (default-schema driver))
+        matches? (fn [db-table db-schema]
+                   (and (= normalized-table db-table)
+                        (= normalized-schema db-schema)))]
+    (or (some (fn [{:keys [name schema id]}]
+                (when (matches? name schema)
+                  {:table id}))
+              tables)
+        (some (fn [{:keys [id] {:keys [name schema]} :target}]
+                (when (matches? name schema)
+                  {:transform id}))
+              transforms))))
 
 (defmethod driver/native-query-deps :sql
   [driver query]
-  (->> query
-       macaw/parsed-query
-       macaw/query->components
-       :tables
-       (into #{} (keep #(->> % :component (find-table driver))))))
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (->> query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (into #{} (keep #(find-table-or-transform driver db-tables transforms %))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

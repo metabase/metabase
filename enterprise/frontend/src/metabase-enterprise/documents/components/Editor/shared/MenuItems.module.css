@@ -12,7 +12,6 @@
   border-radius: 6px;
 }
 
-.menuItem:hover,
 .menuItem[aria-selected="true"] {
   color: var(--mb-color-brand);
   background-color: var(--mb-color-background-hover);

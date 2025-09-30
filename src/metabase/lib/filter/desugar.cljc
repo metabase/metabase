@@ -1,4 +1,5 @@
 (ns metabase.lib.filter.desugar
+  (:refer-clojure :exclude [some mapv])
   (:require
    #?@(:clj ([metabase.lib.filter.desugar.jvm :as lib.filter.desugar.jvm]
              [metabase.util.i18n :as i18n])
@@ -15,11 +16,12 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some mapv]]
    [metabase.util.time :as u.time]))
 
 (mr/def ::clause
   [:and
-   [:ref ::lib.schema.mbql-clause/clause]
+   [:ref ::lib.schema.mbql-clause/clause] ; TODO -- should we use `:metabase.lib.schema.expression/boolean` here?
    [:ref ::lib.schema.util/unique-uuids]])
 
 (defn- merge-options [clause opts]

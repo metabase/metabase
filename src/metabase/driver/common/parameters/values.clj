@@ -8,6 +8,7 @@
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
+  (:refer-clojure :exclude [every? some mapv])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
@@ -18,6 +19,7 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -27,7 +29,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some mapv]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -111,7 +114,7 @@
 (mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [tag-target? (tag-target-pred tag)]
     (seq (for [param params
                :when (tag-target? (:target param))]
@@ -132,7 +135,7 @@
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]
@@ -196,7 +199,7 @@
 
 (mu/defmethod parse-tag :dimension :- [:maybe FieldFilter]
   [{:keys [dimension alias], :as tag} :- mbql.s/TemplateTag
-   params                             :- [:maybe [:sequential mbql.s/Parameter]]]
+   params                             :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (params/map->FieldFilter
    {:field (let [field-id (dimension->field-id dimension)]
              (or (lib.metadata/field (qp.store/metadata-provider) field-id)
@@ -291,7 +294,7 @@
 (mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
                          ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
                          (when (> (count matching-params) 1)
@@ -431,7 +434,7 @@
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag    :- mbql.s/TemplateTag
-   params :- [:maybe [:sequential mbql.s/Parameter]]]
+   params :- [:maybe [:sequential ::lib.schema.parameter/parameter]]]
   (try
     (parse-value-for-type (:type tag) (parse-tag tag params))
     (catch Throwable e

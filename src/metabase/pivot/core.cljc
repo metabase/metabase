@@ -51,7 +51,7 @@
 (defn columns-without-pivot-group
   "Removes the pivot-grouping column from a list of columns, identifying it by name."
   [columns]
-  (filter #(not (pivot-group-column? %)) columns))
+  (remove pivot-group-column? columns))
 
 (def ^:private get-active-breakout-indexes
   "For a given pivot group value (k), returns the indexes of active breakouts.
@@ -109,7 +109,7 @@
               (persistent!
                (reduce
                 (fn [acc row]
-                  (let [grouping-key (ensure-consistent-type (perf/mapv #(nth row %) column-indexes))
+                  (let [grouping-key (perf/mapv #(ensure-consistent-type (nth row %)) column-indexes)
                         values (perf/mapv #(nth row %) val-indexes)]
                     (assoc! acc grouping-key values)))
                 (transient {})
@@ -194,7 +194,7 @@
   (let [col-and-row-indexes (into (vec col-indexes) row-indexes)]
     (reduce
      (fn [acc row]
-       (let [value-key  (ensure-consistent-type (select-indexes row col-and-row-indexes))
+       (let [value-key  (perf/mapv ensure-consistent-type (select-indexes row col-and-row-indexes))
              values     (select-indexes row val-indexes)
              data       (into []
                               (map-indexed

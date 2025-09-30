@@ -1,23 +1,32 @@
 import { useEffect } from "react";
 
-import { getEmbeddingSdkPackageBuildData } from "embedding-sdk-bundle/lib/get-embedding-sdk-package-build-data";
-import { isSdkPackageCompatibleWithSdkBundle } from "embedding-sdk-bundle/lib/version-utils";
-import { getMetabaseInstanceVersion } from "embedding-sdk-bundle/store/selectors";
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
+import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import {
+  isInvalidMetabaseVersion,
+  isSdkPackageCompatibleWithSdkBundle,
+} from "embedding-sdk-shared/lib/version-utils";
 
 export const useLogVersionInfo = () => {
   const {
     state: { props },
   } = useMetabaseProviderPropsStore();
 
-  const sdkPackageVersion = getEmbeddingSdkPackageBuildData()?.version;
-  const sdkBundleVersion = useLazySelector(getMetabaseInstanceVersion);
+  const sdkPackageVersion = getBuildInfo(
+    "METABASE_EMBEDDING_SDK_PACKAGE_BUILD_INFO",
+  )?.version;
+  const sdkBundleVersion = getBuildInfo(
+    "METABASE_EMBEDDING_SDK_BUNDLE_BUILD_INFO",
+  )?.version;
 
   const allowConsoleLog = props?.allowConsoleLog;
 
   useEffect(() => {
     if (!sdkPackageVersion || !sdkBundleVersion) {
+      return;
+    }
+
+    if (isInvalidMetabaseVersion(sdkBundleVersion)) {
       return;
     }
 

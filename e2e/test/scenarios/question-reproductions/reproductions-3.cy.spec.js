@@ -1955,7 +1955,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       });
     });
 
-    it("should work with models", () => {
+    it("should work with models", { tags: "@flaky" }, () => {
       createGuiModel({ sourceTableId: ORDERS_ID });
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),

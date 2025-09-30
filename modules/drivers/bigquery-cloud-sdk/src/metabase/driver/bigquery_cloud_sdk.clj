@@ -1,8 +1,10 @@
 (ns metabase.driver.bigquery-cloud-sdk
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [macaw.core :as macaw]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -10,14 +12,18 @@
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
+   [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv some]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -36,6 +42,8 @@
     Field$Mode
     FieldValue
     FieldValueList
+    InsertAllRequest
+    InsertAllRequest$RowToInsert
     QueryJobConfiguration
     Schema
     Table
@@ -43,6 +51,7 @@
     TableId
     TableResult)
    (com.google.common.collect ImmutableMap)
+   (com.google.gson JsonParser)
    (java.util Iterator)))
 
 (set! *warn-on-reflection* true)
@@ -133,6 +142,12 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
+(defn- get-table*
+  [^BigQuery client project-id dataset-id table-id]
+  (if project-id
+    (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
+    (.getTable client dataset-id table-id empty-table-options)))
+
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
@@ -141,9 +156,14 @@
            project-id       :- [:maybe driver-api/schema.common.non-blank-string]
            dataset-id       :- driver-api/schema.common.non-blank-string
            table-id         :- driver-api/schema.common.non-blank-string]
-   (if project-id
-     (.getTable client (TableId/of project-id dataset-id table-id) empty-table-options)
-     (.getTable client dataset-id table-id empty-table-options))))
+   (get-table* client project-id dataset-id table-id)))
+
+(defmethod driver/table-exists? :bigquery-cloud-sdk
+  [_ {:keys [details] :as _database} {table-id :name, dataset-id :schema :as _table}]
+  (let [client     (database-details->client details)
+        project-id (get-project-id details)]
+    (boolean
+     (get-table* client project-id dataset-id table-id))))
 
 (declare ^:dynamic *process-native*)
 
@@ -216,6 +236,33 @@
     "NUMERIC"    :type/Decimal
     "BIGNUMERIC" :type/Decimal
     :type/*))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for BigQuery that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+;; we can't recover the parameterized types
+(defmethod type->database-type :type/Array [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/Dictionary [_] [[:raw "JSON"]])
+
+(defmethod type->database-type :type/Boolean [_] [[:raw "BOOL"]])
+(defmethod type->database-type :type/Float [_] [[:raw "FLOAT64"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "INT"]])
+(defmethod type->database-type :type/Number [_] [[:raw "INT"]])
+(defmethod type->database-type :type/Text [_] [[:raw "STRING"]])
+(defmethod type->database-type :type/TextLike [_] [[:raw "STRING"]])
+(defmethod type->database-type :type/Date [_] [[:raw "DATE"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "DATETIME"]])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "TIMESTAMP"]])
+(defmethod type->database-type :type/Time [_] [[:raw "TIME"]])
+(defmethod type->database-type :type/JSON [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/SerializedJSON [_] [[:raw "JSON"]])
+(defmethod type->database-type :type/Decimal [_] [[:raw "BIGDECIMAL"]])
+
+(defmethod driver/type->database-type :bigquery-cloud-sdk
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
@@ -715,27 +762,33 @@
 ;;; |                                           Other Driver Method Impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:convert-timezone         true
-                              :describe-fields          true
-                              :nested-fields            true
-                              :datetime-diff            true
-                              :expressions              true
-                              :now                      true
-                              :percentile-aggregations  true
-                              :metadata/key-constraints false
-                              :identifiers-with-spaces  true
-                              :expressions/integer      true
-                              :expressions/float        true
-                              :expressions/date         true
-                              :expressions/text         true
-                              :split-part               true
+(doseq [[feature supported?] {:convert-timezone                 true
+                              :describe-fields                  true
+                              :nested-fields                    true
+                              :datetime-diff                    true
+                              :expressions                      true
+                              :now                              true
+                              :percentile-aggregations          true
+                              ;; we can't support `alter table .. rename ..`  in general
+                              ;; since it won't work for streaming tables
+                              :rename                           false
+                              :metadata/key-constraints         false
+                              :identifiers-with-spaces          true
+                              :expressions/integer              true
+                              :expressions/float                true
+                              :expressions/date                 true
+                              :expressions/text                 true
+                              :split-part                       true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
-                              :set-timezone             true
-                              :expression-literals      true
-                              :database-routing         true}]
+                              :set-timezone                     true
+                              :expression-literals              true
+                              :database-routing                 true
+                              :metadata/table-existence-check   true
+                              :transforms/python                true
+                              :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -800,3 +853,175 @@
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Transforms Support                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- get-table-str [table]
+  (let [table-str (if (namespace table)
+                    (format "%s.%s" (namespace table) (name table))
+                    (name table))]
+    (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
+
+(defmethod driver/compile-transform :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  (let [table-str (get-table-str output-table)]
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+
+(defmethod driver/compile-drop-table :bigquery-cloud-sdk
+  [_driver table]
+  (let [table-str (get-table-str table)]
+    [(str "DROP TABLE IF EXISTS " table-str)]))
+
+(defmethod driver/create-table! :bigquery-cloud-sdk
+  [driver database-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+
+(defmethod driver/drop-table! :bigquery-cloud-sdk
+  [driver database-id table-name]
+  (let [sql (driver/compile-drop-table driver table-name)]
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+
+(defn- convert-value-for-insertion
+  [base-type value]
+  (condp #(isa? %2 %1) base-type
+    :type/JSON
+    (.toString (JsonParser/parseString value))
+
+    :type/Dictionary
+    (JsonParser/parseString value)
+
+    :type/Array
+    (JsonParser/parseString value)
+
+    :type/Integer
+    (parse-long value)
+
+    :type/Float
+    (parse-double value)
+
+    :type/Boolean
+    (parse-boolean value)
+
+    :type/Numeric
+    (bigdec value)
+
+    :type/Decimal
+    (bigdec value)
+
+    :type/Date
+    (u.date/format (u.date/parse value))
+
+    :type/DateTime
+    (u.date/format (u.date/parse value))
+
+    :type/DateTimeWithLocalTZ
+    (u.date/format (u.date/parse value))
+
+    value))
+
+(defmethod driver/insert-col->val [:bigquery-cloud-sdk :jsonl-file]
+  [_driver _ column-def v]
+  (if (string? v)
+    (convert-value-for-insertion (:type column-def) v)
+    v))
+
+(defmethod driver/insert-from-source! [:bigquery-cloud-sdk :rows]
+  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (let [col-names (map :name columns)
+        {:keys [details]} (t2/select-one :model/Database db-id)
+
+        client (database-details->client details)
+        project-id (get-project-id details)
+
+        dataset-id (namespace table-name)
+        table-name (name table-name)
+
+        table-id (.getTableId (get-table client project-id dataset-id table-name))
+
+        prepared-rows (map #(into {} (map vector col-names %)) data)]
+    (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) prepared-rows)]
+      (let [insert-request-builder (InsertAllRequest/newBuilder table-id)]
+        (doseq [^java.util.Map row chunk]
+          (.addRow insert-request-builder (InsertAllRequest$RowToInsert/of row)))
+        (let [insert-request (.build insert-request-builder)
+              response (.insertAll client insert-request)]
+          (when (.hasErrors response)
+            (let [errors (.getInsertErrors response)]
+              (throw (ex-info "BigQuery insert failed"
+                              {:errors (into [] (map str errors))})))))))))
+
+(defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
+  [_driver connection-details queries]
+  ;; connection-details is either database details directly (from transforms)
+  ;; or a database map with :details key (from other contexts)
+  (let [details (get connection-details :details connection-details)
+        client (database-details->client details)]
+    (try
+      (doall
+       (for [query queries]
+         (let [sql (if (string? query) query (first query))
+               _ (log/debugf "Executing BigQuery DDL: %s" sql)
+               job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (.setUseLegacySql false)
+                              (.build))
+               table-result (.query client job-config (into-array BigQuery$JobOption []))]
+           (or (and table-result (.getTotalRows table-result))
+               0))))
+      (catch Exception e
+        (log/error e "Error executing BigQuery DDL")
+        (throw e)))))
+
+(defmethod driver/drop-transform-target! [:bigquery-cloud-sdk :table]
+  [driver database {:keys [name schema] :as _target}]
+  (let [qualified-name (if schema
+                         (keyword schema name)
+                         (keyword name))
+        drop-sql (first (driver/compile-drop-table driver qualified-name))]
+    (driver/execute-raw-queries! driver database [drop-sql])
+    nil))
+
+(defmethod driver/connection-spec :bigquery-cloud-sdk
+  [_driver database]
+  ;; Return the database details directly since we don't use a JDBC spec for bigquery
+  (:details database))
+
+(defmethod driver.sql/default-schema :bigquery-cloud-sdk
+  [_]
+  nil)
+
+(defmethod driver/native-query-deps :bigquery-cloud-sdk
+  [driver query]
+  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+        transforms (t2/select [:model/Transform :id :target])]
+    (into #{} (comp
+               (map :component)
+               (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+               (map #(let [parts (str/split (:table %) #"\.")]
+                       {:schema (first parts) :table (second parts)}))
+               (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
+          (-> query
+              macaw/parsed-query
+              macaw/query->components
+              :tables))))
+
+(defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS `%s`;" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/schema-exists? :bigquery-cloud-sdk
+  [_driver db-id schema]
+  (driver-api/with-metadata-provider db-id
+    (->> (driver-api/metadata-provider)
+         driver-api/database
+         :details
+         list-datasets
+         (some #{schema}))))
+
+(defmethod driver/table-name-length-limit :bigquery-cloud-sdk
+  [_driver]
+  ;; https://cloud.google.com/bigquery/docs/tables
+  1024)

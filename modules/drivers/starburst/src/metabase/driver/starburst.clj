@@ -1,5 +1,6 @@
 (ns metabase.driver.starburst
   "starburst driver."
+  (:refer-clojure :exclude [select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -22,7 +23,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [select-keys]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (io.trino.jdbc TrinoConnection)
@@ -31,6 +33,7 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    SQLException
     SQLType
     Time
     Types)
@@ -431,16 +434,30 @@
     base-type))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :starburst
-  [_driver ^Connection conn table-schema table-name]
+  [driver ^Connection conn table-schema table-name]
   (try
-    (let [sql (str "SHOW TABLES FROM \"" table-schema "\" LIKE '" table-name "'")]
-      ;; if the query completes without throwing an Exception, we can SELECT from this table
+    ;; Both Hive and Iceberg plugins for Trino expose one another's tables
+    ;; at the metadata level, even though they are not queryable through that catalog.
+    ;; So rather than using SHOW TABLES, we will DESCRIBE the table to check for
+    ;; queryability. If the table is not queryable for this reason, we will return
+    ;; false. It's a slight stretch of the concept of "permissions," but it is true
+    ;; that we cannot query these tables...
+    (let [catalog (some-> conn .getCatalog)
+          sql (describe-table-sql driver catalog table-schema table-name)]
       (with-open [stmt (.prepareStatement conn sql)
                   rs (.executeQuery stmt)]
         (.next rs)))
-    (catch Throwable e
-      (log/fatal e "ERROR WITH QUERY ")
-      false)))
+    (catch SQLException e
+      ;; The actual exception thrown is TrinoException with error code UNSUPPORTED_TABLE_TYPE (133001),
+      ;; but we can't check the type directly since the relevant io.trino.spi.* classes are not
+      ;; included in trino-jdbc. We check the vendor-specific error code instead.
+      ;; See HiveMetadata.java and UnknownTableTypeException.java in trinodb/trino
+      (if (= 133001 (.getErrorCode e))
+        (do
+          (log/debugf e "Table %s.%s is not accessible through this catalog (mixed catalog table type)"
+                      table-schema table-name)
+          false)
+        (throw e)))))
 
 (defn- describe-schema
   "Gets a set of maps for all tables in the given `catalog` and `schema`."
@@ -711,7 +728,8 @@
              (setFloat [index val] (.setFloat stmt index val))
              (setDouble [index val] (.setDouble stmt index val))
              (cancel [] (.cancel stmt))
-             (close [] (.close stmt)))]
+             (close [] (.close stmt))
+             (isClosed [] (.isClosed stmt)))]
     (sql-jdbc.execute/set-parameters! driver ps params)
     ps))
 
@@ -734,7 +752,8 @@
         (catch Throwable e (handle-execution-error e))))
     (setMaxRows [nb] (.setMaxRows stmt nb))
     (cancel [] (.cancel stmt))
-    (close [] (.close stmt))))
+    (close [] (.close stmt))
+    (isClosed [] (.isClosed stmt))))
 
 (defmethod sql-jdbc.execute/prepared-statement :starburst
   [driver ^Connection conn ^String sql params]
@@ -750,8 +769,7 @@
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
           (log/debug e "Error setting prepared statement fetch direction to FETCH_FORWARD")))
-      (if
-       (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
+      (if (.useExplicitPrepare ^TrinoConnection (.unwrap conn TrinoConnection))
         (proxy-prepared-statement driver conn stmt params)
         (proxy-optimized-prepared-statement driver conn stmt params))
       (catch Throwable e
@@ -780,7 +798,8 @@
       (getResultSet [] (.getResultSet stmt))
       (setMaxRows [nb] (.setMaxRows stmt nb))
       (cancel [] (.cancel stmt))
-      (close [] (.close stmt)))))
+      (close [] (.close stmt))
+      (isClosed [] (.isClosed stmt)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Prepared Statement Substitutions                                      |

@@ -39,7 +39,7 @@
   [metadata-provider]
   (loop []
     (let [id (swap! counter inc)]
-      (if (seq (lib.metadata.protocols/metadatas metadata-provider :metadata/card #{id}))
+      (if (seq (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/card, :id #{id}}))
         (recur)
         id))))
 
@@ -621,7 +621,7 @@
 (deftest ^:parallel default-metric-names-test
   (let [[source-metric mp] (mock-metric)]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name complement :name "avg"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name (symbol "nil #_\"key is not present.\""), :name "avg"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
@@ -911,7 +911,7 @@
              (ffirst (mt/rows (qp/process-query query))))))))
 
 (deftest ^:parallel fetch-referenced-metrics-test
-  (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
+  (testing "Metric's Card `:name` is NOT set in aggregation options (#48625)"
     (let [mp           (mt/metadata-provider)
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
@@ -925,9 +925,9 @@
           query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib.metadata/metric mp 1)))
           stage        (get-in query [:stages 0])]
-      (is (=  "sum"
+      (is (=? [:sum {:name (symbol "nil #_\"key is not present.\"")} [:field {} pos-int?]]
               (get-in (#'metrics/fetch-referenced-metrics query stage)
-                      [1 :aggregation 1 :name]))))))
+                      [1 :aggregation]))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;

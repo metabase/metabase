@@ -27,6 +27,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.provider-detection :as provider-detection]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -212,8 +213,19 @@
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
+           ;; Detect and update provider name
+           (let [provider (provider-detection/detect-provider-from-database database)]
+             (when (not= provider (:provider_name database))
+               (try
+                 (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
+                                           (:name database) (:id database)
+                                           (:provider_name database) provider))
+                 (t2/update! :model/Database (:id database) {:provider_name provider})
+                 (catch Throwable provider-e
+                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database))))))
+
            (catch Throwable e
-             (let [humanized-message (some->> (.getMessage e)
+             (let [humanized-message (some->> (u/all-ex-messages e)
                                               (driver/humanize-connection-error-message driver))
                    reason (if (keyword? humanized-message) "user-input" "exception")]
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
@@ -324,6 +336,9 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  ;; This is a temporary hack to hide these cards from most searches.
+  ;; Once search supports deletion, we should revisit this.
+  (t2/update! :model/Card :database_id id {:archived true})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -566,7 +581,8 @@
                   :database-id   false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description]
+   :search-terms {:name        search.spec/explode-camel-case
+                  :description true}
    :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 

@@ -14,6 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
@@ -64,9 +65,11 @@
   [form]
   (lib.util.match/match form :field &match))
 
-(mu/defn ->field :- [:maybe (ms/InstanceOf :model/Field)]
+(mu/defn ->field :- [:maybe [:and
+                             (ms/InstanceOf :model/Field)
+                             ::ads/field]]
   "Return `Field` instance for a given ID or name in the context of root."
-  [{{result-metadata :result_metadata} :source, :as root}
+  [{{result-metadata :result_metadata} :source, :as root} :- ::ads/root
    field-id-or-name-or-clause :- [:or ms/PositiveInt ms/NonBlankString [:fn mbql.preds/Field?]]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
@@ -81,11 +84,12 @@
          (log/warn "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."))
        (when-let [field (m/find-first #(= (:name %) id-or-name)
                                       result-metadata)]
-         (as-> field field
-           (update field :base_type keyword)
-           (update field :semantic_type keyword)
-           (mi/instance :model/Field field)
-           (analyze/run-classifiers field {}))))
+         (-> field
+             (update :base_type keyword)
+             (update :semantic_type keyword)
+             (->> (mi/instance :model/Field))
+             (assoc :xrays/database-id (:database root))
+             (analyze/run-classifiers {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
 

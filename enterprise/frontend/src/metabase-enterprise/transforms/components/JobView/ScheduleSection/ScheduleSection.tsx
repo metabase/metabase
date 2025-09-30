@@ -1,83 +1,108 @@
-import { useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import { CronExpressionInput } from "metabase/common/components/CronExpressioInput";
-import {
-  formatCronExpressionForUI,
-  getScheduleExplanation,
-} from "metabase/lib/cron";
+import { Schedule } from "metabase/common/components/Schedule";
+import { useSetting } from "metabase/common/hooks";
+import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Box, Divider, Group, Icon, Tooltip } from "metabase/ui";
-import {
-  useLazyGetTransformJobQuery,
-  useRunTransformJobMutation,
-} from "metabase-enterprise/api";
-import { trackTranformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import { Box, Divider, Group, Tooltip } from "metabase/ui";
+import { useRunTransformJobMutation } from "metabase-enterprise/api";
+import { trackTransformJobTriggerManualRun } from "metabase-enterprise/transforms/analytics";
+import type {
+  ScheduleDisplayType,
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api";
 
 import { RunButton } from "../../../components/RunButton";
+import { RunStatus } from "../../../components/RunStatus";
 import { SplitSection } from "../../../components/SplitSection";
 import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
-  onScheduleChange: (schedule: string) => void;
+  onScheduleChange: (
+    schedule: string,
+    uiDisplayType: ScheduleDisplayType,
+  ) => void;
 };
 
 export function ScheduleSection({
   job,
   onScheduleChange,
 }: ScheduleSectionProps) {
-  const [schedule, setSchedule] = useState(() =>
-    formatCronExpressionForUI(job.schedule),
-  );
-  const scheduleExplanation = getScheduleExplanation(schedule);
-
   return (
     <SplitSection
       label={t`Schedule`}
-      description={t`Use cron syntax to set this job’s schedule.`}
+      description={t`Configure when this job should run.`}
     >
       <Box px="xl" py="lg">
-        <CronSection
-          schedule={schedule}
-          onChangeSchedule={setSchedule}
-          onChangeSubmit={onScheduleChange}
-        />
+        <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
       </Box>
       <Divider />
-      <Group
-        px="xl"
-        py="md"
-        justify={scheduleExplanation ? "space-between" : "end"}
-      >
-        {scheduleExplanation != null && (
-          <Group gap="sm" c="text-secondary">
-            <Icon name="calendar" />
-            {t`This job will run ${scheduleExplanation}`}
-          </Group>
-        )}
+      <Group px="xl" py="md" justify="space-between">
+        <RunStatus
+          run={job?.last_run ?? null}
+          neverRunMessage={t`This job hasn’t been run before.`}
+        />
         <RunButtonSection job={job} />
       </Group>
     </SplitSection>
   );
 }
 
-type CronSectionProps = {
-  schedule: string;
-  onChangeSchedule: (schedule: string) => void;
-  onChangeSubmit: (schedule: string) => void;
+type ScheduleWidgetProps = {
+  job: TransformJobInfo;
+  onChangeSchedule: (
+    schedule: string,
+    uiDisplayType: ScheduleDisplayType,
+  ) => void;
 };
 
-function CronSection({
-  schedule,
-  onChangeSchedule,
-  onChangeSubmit,
-}: CronSectionProps) {
+const SCHEDULE_OPTIONS: ScheduleType[] = [
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "cron",
+];
+
+function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
+  const verb = c("A verb in the imperative mood").t`Run`;
+  const systemTimezone = useSetting("system-timezone") ?? "UTC";
+
+  const renderScheduleDescription = (
+    settings: ScheduleSettings,
+    schedule: string,
+  ) => {
+    if (settings.schedule_type !== "cron") {
+      return null;
+    }
+
+    const scheduleExplanation = getScheduleExplanation(schedule);
+    if (scheduleExplanation == null) {
+      return null;
+    }
+
+    return t`This job will run ${scheduleExplanation}, ${systemTimezone}`;
+  };
+
+  const handleChange = (schedule: string, settings: ScheduleSettings) => {
+    onChangeSchedule(
+      schedule,
+      settings.schedule_type === "cron" ? "cron/raw" : "cron/builder",
+    );
+  };
+
   return (
-    <CronExpressionInput
-      value={schedule}
-      onChange={onChangeSchedule}
-      onBlurChange={onChangeSubmit}
+    <Schedule
+      cronString={job.schedule}
+      scheduleOptions={SCHEDULE_OPTIONS}
+      verb={verb}
+      timezone={systemTimezone}
+      isCustomSchedule={job.ui_display_type === "cron/raw"}
+      renderScheduleDescription={renderScheduleDescription}
+      data-testid="schedule-picker"
+      onScheduleChange={handleChange}
     />
   );
 }
@@ -87,8 +112,7 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ job }: RunButtonSectionProps) {
-  const [fetchJob, { isFetching }] = useLazyGetTransformJobQuery();
-  const [runJob, { isLoading: isRunning }] = useRunTransformJobMutation();
+  const [runJob] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
@@ -98,7 +122,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       return;
     }
 
-    trackTranformJobTriggerManualRun({
+    trackTransformJobTriggerManualRun({
       jobId: job.id,
       triggeredFrom: "job-page",
     });
@@ -107,9 +131,6 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
 
     if (error) {
       sendErrorToast(t`Failed to run job`);
-    } else {
-      // fetch the job to get the correct `last_run` info
-      fetchJob(job.id);
     }
   };
 
@@ -117,7 +138,6 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
       <RunButton
         run={job.last_run}
-        isLoading={isFetching || isRunning}
         isDisabled={!isSaved || !hasTags}
         onRun={handleRun}
       />

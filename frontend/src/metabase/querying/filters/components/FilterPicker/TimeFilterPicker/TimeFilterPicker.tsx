@@ -26,6 +26,7 @@ export function TimeFilterPicker({
   withSubmitButton,
   onChange,
   onBack,
+  readOnly,
 }: FilterPickerWidgetProps) {
   const columnInfo = useMemo(
     () => Lib.displayInfo(query, stageIndex, column),
@@ -79,6 +80,7 @@ export function TimeFilterPicker({
       <FilterPickerHeader
         columnName={columnInfo.longDisplayName}
         onBack={onBack}
+        readOnly={readOnly}
       >
         <FilterOperatorPicker
           value={operator}

@@ -74,6 +74,8 @@
 (mu/defn- format-scalar-value
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
+    ;; legacy usage -- do not use going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (types/temporal-field? col)
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
@@ -195,17 +197,18 @@
 (defn- order-data [data viz-settings]
   (if (some? (::mb.viz/table-columns viz-settings))
     (let [;; Deduplicate table-columns by name to handle duplicated viz settings
-          deduped-table-columns     (->> (::mb.viz/table-columns viz-settings)
-                                         (m/index-by ::mb.viz/table-column-name)
-                                         vals)
-          deduped-viz-settings      (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
+          deduped-table-columns       (->> (::mb.viz/table-columns viz-settings)
+                                           (m/distinct-by ::mb.viz/table-column-name))
+          deduped-viz-settings        (assoc viz-settings ::mb.viz/table-columns deduped-table-columns)
           [ordered-cols output-order] (qp.streaming/order-cols (:cols data) deduped-viz-settings)
+          ;; table-columns from viz-settings only includes remapped columns, not the source columns
+          santized-ordered-cols       (map #(dissoc % :remapped_from :remapped_to) ordered-cols)
           keep-filtered-idx           (fn [row] (if output-order
                                                   (let [row-v (into [] row)]
                                                     (for [i output-order] (row-v i)))
                                                   row))
           ordered-rows                (map keep-filtered-idx (:rows data))]
-      [ordered-cols ordered-rows])
+      [santized-ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
 (defn- minibar-columns
@@ -326,33 +329,6 @@
                                       (cond-> grouping (.setGroupingSeparator grouping))))
                (DecimalFormat. base))]
      (.format fmt value))))
-
-(mu/defmethod render :progress :- ::RenderedPartCard
-  [_chart-type
-   render-type
-   _timezone-id
-   _card
-   _dashcard
-   {:keys [cols rows viz-settings] :as _data}]
-  (let [value        (ffirst rows)
-        goal         (:progress.goal viz-settings)
-        color        (:progress.color viz-settings)
-        settings     (assoc
-                      (->js-viz (first cols) (first cols) viz-settings)
-                      :color color)
-        ;; ->js-viz fills in our :x but we actually want that under :format key
-        settings     (assoc settings :format (:x settings))
-        image-bundle (image-bundle/make-image-bundle
-                      render-type
-                      (js.svg/progress value goal settings))]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]]}))
 
 (defn- add-dashcard-timeline-events
   "If there's a timeline associated with this card, add its events in."
