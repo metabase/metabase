@@ -41,6 +41,7 @@ export type ShortcutGroup = keyof typeof GROUP_LABELS;
 
 export type ShortcutAction = Action & {
   shortcut: string[];
+  hide?: boolean;
   shortcutGroup: ShortcutGroup;
   shortcutContext?: string;
   shortcutDisplay?: string[];
@@ -51,6 +52,7 @@ export type ShortcutDef = Pick<
   ShortcutAction,
   | "id"
   | "name"
+  | "hide"
   | "shortcut"
   | "shortcutGroup"
   | "shortcutContext"
