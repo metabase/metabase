@@ -172,6 +172,15 @@
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [{:keys [source]}]
+  (let [parsed-source ((:out mi/transform-json) source)]
+    (case (:type parsed-source)
+      "query" (get-in parsed-source [:query :database])
+      "python" (parsed-source :source-database)
+      nil)))
+
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 
 (search.spec/define-spec "transform"
@@ -181,6 +190,8 @@
                   :created-at    true
                   :updated-at    true
                   :native-query  {:fn maybe-extract-transform-query-text
+                                  :fields [:source]}
+                  :database-id   {:fn extract-transform-db-id
                                   :fields [:source]}}
    :search-terms [:name :description]
    :render-terms {:description true}})

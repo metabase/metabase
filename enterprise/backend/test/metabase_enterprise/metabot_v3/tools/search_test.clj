@@ -104,8 +104,8 @@
       ;; Item 99 appears in all 5 lists at position 2, so should rank very high
       (is (= 99 (:id (first result)))))))
 
-(deftest transform-search-result-test
-  (testing "table result transformation"
+(deftest postprocess-search-result-test
+  (testing "table result postprocessing"
     (let [result {:model "table"
                   :id 1
                   :table_name "orders"
@@ -124,9 +124,9 @@
                     :database_schema "public"
                     :updated_at "2024-01-01"
                     :created_at "2024-01-01"}]
-      (is (= expected (#'search/transform-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result)))))
 
-  (testing "model (dataset) result transformation"
+  (testing "model (dataset) result postprocessing"
     (let [result {:model "dataset"
                   :id 2
                   :name "Sales Model"
@@ -145,9 +145,9 @@
                     :collection {}
                     :updated_at "2024-01-02"
                     :created_at "2024-01-02"}]
-      (is (= expected (#'search/transform-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result)))))
 
-  (testing "dashboard result transformation"
+  (testing "dashboard result postprocessing"
     (let [result {:model "dashboard"
                   :id 3
                   :name "Main Dashboard"
@@ -164,9 +164,9 @@
                     :collection {:name "Finance" :authority_level "official"}
                     :updated_at "2024-01-03"
                     :created_at "2024-01-03"}]
-      (is (= expected (#'search/transform-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result)))))
 
-  (testing "question (card) result transformation with moderated_status"
+  (testing "question (card) result postprocessing with moderated_status"
     (let [result {:model "card"
                   :id 4
                   :name "Q1"
@@ -184,9 +184,9 @@
                     :collection {:name "Analytics" :authority_level nil}
                     :updated_at "2024-01-04"
                     :created_at "2024-01-04"}]
-      (is (= expected (#'search/transform-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result)))))
 
-  (testing "metric result transformation"
+  (testing "metric result postprocessing"
     (let [result {:model "metric"
                   :id 5
                   :name "Revenue"
@@ -203,9 +203,9 @@
                     :collection {}
                     :updated_at "2024-01-05"
                     :created_at "2024-01-05"}]
-      (is (= expected (#'search/transform-search-result result)))))
+      (is (= expected (#'search/postprocess-search-result result)))))
 
-  (testing "database result transformation"
+  (testing "database result postprocessing"
     (let [result {:model "database"
                   :id 6
                   :name "Production DB"
@@ -218,7 +218,7 @@
                     :description "Main database"
                     :updated_at "2024-01-06"
                     :created_at "2024-01-06"}]
-      (is (= expected (#'search/transform-search-result result))))))
+      (is (= expected (#'search/postprocess-search-result result))))))
 
 (deftest search-test
   (mt/with-premium-features #{:content-verification}
@@ -240,20 +240,20 @@
                       perms/sandboxed-user? (fn [] false)
                       api/*current-user-id* 1]
 
-          (testing "search returns transformed results for term queries"
+          (testing "search returns postprocessed results for term queries"
             (with-redefs [search-core/search (fn [_] {:data [order-table]})]
               (let [args {:term-queries ["orders"]
                           :entity-types ["table"]}
                     results (search/search args)
-                    expected [(#'search/transform-search-result order-table)]]
+                    expected [(#'search/postprocess-search-result order-table)]]
                 (is (= expected results)))))
 
-          (testing "search returns transformed results for semantic queries"
+          (testing "search returns postprocessed results for semantic queries"
             (with-redefs [search-core/search (fn [_] {:data [dashboard]})]
               (let [args {:semantic-queries ["sales metrics"]
                           :entity-types ["dashboard"]}
                     results (search/search args)
-                    expected [(#'search/transform-search-result dashboard)]]
+                    expected [(#'search/postprocess-search-result dashboard)]]
                 (is (= expected results)))))
 
           (testing "search combines term and semantic queries using RRF"
