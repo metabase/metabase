@@ -18,11 +18,13 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
+import { isStaticEntityLoadingError } from "embedding-sdk-bundle/lib/is-static-entity-loading-error";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
@@ -46,7 +48,6 @@ import {
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
@@ -240,6 +241,14 @@ const SdkDashboardInner = ({
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
         <SdkLoader />
+      </SdkDashboardStyledWrapper>
+    );
+  }
+
+  if (isStaticEntityLoadingError(errorPage)) {
+    return (
+      <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkError message={errorPage.data ?? t`Something's gone wrong`} />
       </SdkDashboardStyledWrapper>
     );
   }
