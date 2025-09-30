@@ -23,29 +23,25 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (embed-test/with-temp-card [card]
         (testing "it should be possible to use this endpoint successfully if all the conditions are met"
-          (is (= embed-test/successful-card-info
-                 (embed-test/dissoc-id-and-name
-                  (mt/user-http-request :crowberto :get 200 (card-url card))))))
-
+          (is (=? embed-test/successful-card-info
+                  (mt/user-http-request :crowberto :get 200 (card-url card)))))
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (card-url card)))))
-
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (embed-test/with-temp-card [card]
                      (mt/user-http-request :crowberto :get 400 (card-url card)))))))
-
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (card-url card))))))
-
         (testing "Check that only ENABLED params that ARE NOT PRESENT IN THE JWT come back"
           (embed-test/with-temp-card [card {:dataset_query
                                             {:database (mt/id)
                                              :type     :native
-                                             :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                             :native   {:query         "SELECT 1;"
+                                                        :template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
                                                                         :b {:type "date", :name "b", :display_name "b" :id "b"}
                                                                         :c {:type "date", :name "c", :display_name "c" :id "c"}
                                                                         :d {:type "date", :name "d", :display_name "d" :id "d"}}}}}]
@@ -226,19 +222,15 @@
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Dashboard dash]
         (testing "it should be possible to call this endpoint successfully..."
-          (is (= embed-test/successful-dashboard-info
-                 (embed-test/dissoc-id-and-name
-                  (mt/user-http-request :crowberto :get 200 (dashboard-url dash))))))
-
+          (is (=? embed-test/successful-dashboard-info
+                  (mt/user-http-request :crowberto :get 200 (dashboard-url dash)))))
         (testing "...but if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (dashboard-url dash)))))
-
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding-static false]
             (is (= "Embedding is not enabled."
                    (mt/user-http-request :crowberto :get 400 (dashboard-url dash))))))
-
         (testing "check that if embedding is enabled globally requests fail if they are signed with the wrong key"
           (is (= "Message seems corrupt or manipulated"
                  (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key! (dashboard-url dash))))))))))
@@ -681,19 +673,19 @@
                        [:field (mt/id :people :longitude) nil]]}})
 
 (deftest card-tile-query-test
-  (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/preview_embed/tiles/card/:uuid/:zoom/:x/:y"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
                                                 :enable_embedding true}]
         (let [token (embed-test/card-token card-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "preview_embed/tiles/card/%s/1/1/1/%s/%s"
-                                                 token
-                                                 (tiles.api-test/encoded-lat-field-ref)
-                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
+                     :crowberto :get 200 (format "preview_embed/tiles/card/%s/1/1/1"
+                                                 token)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
 (deftest dashcard-tile-query-test
-  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/preview_embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
 
@@ -702,9 +694,9 @@
                                                               :dashboard_id dashboard-id}]
         (let [token (embed-test/dash-token dashboard-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
+                     :crowberto :get 200 (format "preview_embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
                                                  token
                                                  dashcard-id
-                                                 card-id
-                                                 (tiles.api-test/encoded-lat-field-ref)
-                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
+                                                 card-id)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))

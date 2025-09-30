@@ -1425,8 +1425,12 @@
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
-     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
-     [:not= (maybe-alias :type) [:inline trash-collection-type]]
+     [:or [:= (maybe-alias :type) nil]
+      [:and
+       [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+       [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
+     [:or [:= (maybe-alias :namespace) nil]
+      [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
@@ -1471,12 +1475,13 @@
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
-(defmethod serdes/ascendants "Collection" [_ id]
+(defmethod serdes/required "Collection" [_ id]
   (when id
-    (let [{:keys [location]} (t2/select-one :model/Collection :id id)]
-      ;; it would work returning just one, but why not return all if it's cheap
-      (into {} (for [parent-id (location-path->ids location)]
-                 {["Collection" parent-id] {"Collection" id}})))))
+    (let [{:keys [location]} (t2/select-one :model/Collection :id id)
+          path               (location-path->ids location)]
+      ;; we'll recurse anyway, so just return immediate parent
+      (when (seq path)
+        {["Collection" (u/last path)] {"Collection" id}}))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (when id (t2/select-one-fn :location :model/Collection :id id))
@@ -1800,7 +1805,7 @@
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}
-   :where        [:= :namespace nil]
+   :where        [:or [:= :namespace nil] [:= :namespace "analytics"]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and

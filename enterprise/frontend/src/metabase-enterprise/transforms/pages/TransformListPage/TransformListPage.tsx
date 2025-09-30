@@ -1,13 +1,29 @@
+import type { Location } from "history";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Group, Stack, Title } from "metabase/ui";
+import { useListTransformTagsQuery } from "metabase-enterprise/api";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
+import { TransformFilterList } from "./TransformFilterList";
 import { TransformList } from "./TransformList";
 import { TransformRepresentationExport } from "./TransformRepresentationExport";
 import { TransformRepresentationImport } from "./TransformRepresentationImport";
+import { getParsedParams } from "./utils";
 
-export function TransformListPage() {
+type TransformListPageProps = {
+  location: Location;
+};
+
+export function TransformListPage({ location }: TransformListPageProps) {
+  const params = getParsedParams(location);
+  const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
+
+  if (!tags || isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
   return (
     <Stack gap="xl" data-testid="transform-list-page">
       <Group justify="space-between" align="start">
@@ -19,7 +35,8 @@ export function TransformListPage() {
         <TransformRepresentationImport />
         <CreateTransformMenu />
       </Group>
-      <TransformList />
+      <TransformFilterList params={params} tags={tags} />
+      <TransformList params={params} />
     </Stack>
   );
 }

@@ -16,9 +16,7 @@
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response]
-   [toucan2.core :as t2])
-  (:import
-   (java.net URLEncoder)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -99,7 +97,7 @@
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
-  (let [redirect-url (or redirect (URLEncoder/encode "/"))]
+  (let [redirect-url (or redirect "/")]
     (sso-utils/check-sso-redirect redirect-url)
     (let [jwt-data     (try
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)

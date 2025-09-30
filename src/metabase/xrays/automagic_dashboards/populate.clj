@@ -5,9 +5,12 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
@@ -129,9 +132,14 @@
    :dashboard_tab_id       nil
    :visualization_settings {}})
 
-(defn- add-card
+(mu/defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
+  [dashboard
+   {:keys [title description dataset_query width height id] :as card} :- [:map
+                                                                          [:dataset_query
+                                                                           [:map
+                                                                            [:database ::lib.schema.id/database]]]]
+   [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
@@ -139,7 +147,8 @@
                   :collection_id nil
                   :id            (or id (gensym))}
                  (merge (visualization-settings card))
-                 queries/populate-card-query-fields)]
+                 (as-> $card (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+                               (queries/populate-card-query-fields $card))))]
     (update dashboard :dashcards conj
             (merge (card-defaults)
                    {:col                    y
@@ -226,8 +235,12 @@
 
 (def ^:private ^Long ^:const group-heading-height 2)
 
-(defn- add-group
-  [dashboard grid group cards]
+(mu/defn- add-group
+  [dashboard grid group cards :- [:sequential
+                                  [:map
+                                   [:dataset_query
+                                    [:map
+                                     [:database ::lib.schema.id/database]]]]]]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
                     group (+ group-heading-height))]
@@ -286,10 +299,17 @@
     (let [g (group-by f coll)]
       (access key-order g))))
 
-(defn create-dashboard
+(mu/defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards]} n]
+  ([{:keys [title transient_title description groups filters cards]} :- [:map
+                                                                         [:cards
+                                                                          [:sequential
+                                                                           [:map
+                                                                            [:dataset_query
+                                                                             [:map
+                                                                              [:database ::lib.schema.id/database]]]]]]]
+    n]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
@@ -318,7 +338,8 @@
                                                      (fn [dashcard card]
                                                        (m/assoc-some dashcard :card card))
                                                      dashcards
-                                                     (queries/with-can-run-adhoc-query cards)))))]
+                                                     (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+                                                       (queries/with-can-run-adhoc-query cards))))))]
 
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)

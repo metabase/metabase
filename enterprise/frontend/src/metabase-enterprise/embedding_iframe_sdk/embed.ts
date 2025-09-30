@@ -13,6 +13,7 @@ import { debouncedReportAnalytics } from "./analytics";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   DISABLE_UPDATE_FOR_KEYS,
+  METABASE_CONFIG_IS_PROXY_FIELD_NAME,
 } from "./constants";
 import type {
   SdkIframeEmbedElementSettings,
@@ -34,9 +35,17 @@ const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 // window.metabaseConfig to re-create the proxy if the whole object is replaced,
 // for example if this script is loaded before the customer calls
 // `defineMetabaseConfig` in their code, which replaces the entire object.
-const setupConfigWatcher = () => {
+export const setupConfigWatcher = () => {
   const createProxy = (target: Record<string, unknown>) =>
     new Proxy(target, {
+      get(target, prop, receiver) {
+        // Needed for EmbedJS Wizard to call setupConfigWatcher on the Wizard reinitialization
+        if (prop === METABASE_CONFIG_IS_PROXY_FIELD_NAME) {
+          return true;
+        }
+
+        return Reflect.get(target, prop, receiver);
+      },
       set(metabaseConfig, prop, newValue) {
         metabaseConfig[prop as string] = newValue;
         updateAllEmbeds({ [prop]: newValue });
@@ -412,7 +421,24 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
     data: Message["data"],
   ) {
     if (this._iframe?.contentWindow) {
-      this._iframe.contentWindow.postMessage({ type, data }, "*");
+      const normalizedData = Object.entries(data).reduce(
+        (acc, [key, value]) => {
+          // Functions are not serializable, so we ignore them.
+          if (typeof value === "function") {
+            return acc;
+          }
+
+          acc[key as keyof typeof acc] = value;
+
+          return acc;
+        },
+        {} as Message["data"],
+      );
+
+      this._iframe.contentWindow.postMessage(
+        { type, data: normalizedData },
+        "*",
+      );
     }
   }
 
@@ -446,7 +472,8 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
    * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
    */
   private async _getMetabaseSessionToken() {
-    const { instanceUrl, preferredAuthMethod } = this.properties;
+    const { instanceUrl, preferredAuthMethod, fetchRequestToken } =
+      this.properties;
 
     const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
       headers: this._getAuthRequestHeader(),
@@ -466,6 +493,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
         responseUrl,
         instanceUrl,
         this._getAuthRequestHeader(hash),
+        fetchRequestToken,
       );
 
       return { method, sessionToken };

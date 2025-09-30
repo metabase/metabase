@@ -336,6 +336,9 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  ;; This is a temporary hack to hide these cards from most searches.
+  ;; Once search supports deletion, we should revisit this.
+  (t2/update! :model/Card :database_id id {:archived true})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -578,7 +581,8 @@
                   :database-id   false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description]
+   :search-terms {:name        search.spec/explode-camel-case
+                  :description true}
    :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 

@@ -5,8 +5,7 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.semantic-search.core :as semantic-search.core]
-   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
-   [metabase.premium-features.core :as premium-features]
+   [metabase-enterprise.semantic-search.util :as semantic.u]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
@@ -21,17 +20,17 @@
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Runs repair-index! to maintain semantic search consistency"}
   SemanticIndexRepair [_ctx]
-  (log/with-context {:quartz-job-type 'SemanticIndexRepair}
-    (try
-      (log/info "Starting semantic search index repair")
-      (semantic-search.core/repair-index! (search.ingestion/searchable-documents))
-      (log/info "Completed semantic search index repair")
-      (catch Exception e
-        (log/error e "Failed to complete semantic search index repair")))))
+  (when (semantic.u/semantic-search-available?)
+    (log/with-context {:quartz-job-type 'SemanticIndexRepair}
+      (try
+        (log/info "Starting semantic search index repair")
+        (semantic-search.core/repair-index! (search.ingestion/searchable-documents))
+        (log/info "Completed semantic search index repair")
+        (catch Exception e
+          (log/error e "Failed to complete semantic search index repair"))))))
 
 (defmethod task/init! ::SemanticIndexRepair [_]
-  (when (and (string? (not-empty semantic.db.datasource/db-url))
-             (premium-features/has-feature? :semantic-search))
+  (when (semantic.u/semantic-search-available?)
     (let [job (jobs/build
                (jobs/of-type SemanticIndexRepair)
                (jobs/with-identity repair-job-key))

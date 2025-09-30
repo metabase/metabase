@@ -19,7 +19,7 @@ function setup({ params = {}, transforms = [], tags = [] }: SetupOpts = {}) {
 }
 
 describe("RunFilterList", () => {
-  it.each(["Start at", "End at"])(
+  it.each(["Started at", "Ended at"])(
     "should allow only past or current date options for start and end date filters",
     async (label) => {
       setup();

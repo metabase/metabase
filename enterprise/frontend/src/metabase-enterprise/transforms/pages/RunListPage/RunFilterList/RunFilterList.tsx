@@ -14,16 +14,16 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
+import { StatusFilterWidget } from "../../../components/StatusFilterWidget";
 import { TagFilterWidget } from "../../../components/TagFilterWidget";
 import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
 import type { RunListParams } from "../../../types";
 
 import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
-import { StatusFilterWidget } from "./StatusFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [
-  "last",
+  "past",
   "current",
 ];
 
@@ -71,30 +71,32 @@ export function RunFilterList({
         transforms={transforms}
         onChange={handleTransformsChange}
       />
-      <StatusFilterWidget
-        statuses={params.statuses ?? []}
-        onChange={handleStatusesChange}
-      />
-      <TagFilterWidget
-        tagIds={params.transformTagIds ?? []}
-        tags={tags}
-        onChange={handleTagsChange}
-      />
       <TimeFilterWidget
-        label={t`Start at`}
+        label={t`Started at`}
         value={params.startTime}
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleStartTimeChange}
       />
       <TimeFilterWidget
-        label={t`End at`}
+        label={t`Ended at`}
         value={params.endTime}
         availableDirections={PAST_INTERVAL_DIRECTIONS}
         onChange={handleEndTimeChange}
       />
+      <StatusFilterWidget
+        label={t`Status`}
+        statuses={params.statuses ?? []}
+        onChange={handleStatusesChange}
+      />
       <RunMethodFilterWidget
         runMethods={params.runMethods ?? []}
         onChange={handleRunMethodsChange}
+      />
+      <TagFilterWidget
+        label={t`Tags`}
+        tagIds={params.transformTagIds ?? []}
+        tags={tags}
+        onChange={handleTagsChange}
       />
     </Group>
   );

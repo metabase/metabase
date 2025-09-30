@@ -5,11 +5,14 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
    [metabase-enterprise.transforms.settings :as transforms.settings]
+   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -64,18 +67,22 @@
         (map transforms-by-id complete)))))
 
 (defn- run-transform! [run-id run-method {transform-id :id :as transform}]
-  (when
-   (transform-run/running-run-for-transform-id transform-id)
-    (log/warn "Transform" (pr-str transform-id) "already running, waiting")
-    (loop []
-      (Thread/sleep 2000)
+  (if-not (transforms.util/check-feature-enabled transform)
+    (log/warnf "Skip running transform %d due to lacking premium features" transform-id)
+    (do
       (when (transform-run/running-run-for-transform-id transform-id)
-        (recur))))
-
-  (log/info "Executing job transform" (pr-str transform-id))
-  (transforms.execute/run-mbql-transform! transform {:run-method run-method})
-
-  (transforms.job-run/add-run-activity! run-id))
+        (log/warn "Transform" (pr-str transform-id) "already running, waiting")
+        (loop []
+          (Thread/sleep 2000)
+          (when (transform-run/running-run-for-transform-id transform-id)
+            (recur))))
+      (log/info "Executing job transform" (pr-str transform-id))
+      (if (transforms.util/python-transform? transform)
+        (transforms.instrumentation/with-stage-timing [run-id :python-execution]
+          (transforms-python.execute/execute-python-transform! transform {:run-method run-method}))
+        (transforms.instrumentation/with-stage-timing [run-id :mbql-query]
+          (transforms.execute/run-mbql-transform! transform {:run-method run-method})))
+      (transforms.job-run/add-run-activity! run-id))))
 
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
@@ -113,12 +120,13 @@
     (let [transforms (job-transform-ids job-id)]
       (log/info "Executing transform job" (pr-str job-id) "with transforms" (pr-str transforms))
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
-        (try
-          (run-transforms! run-id transforms opts)
-          (transforms.job-run/succeed-started-run! run-id)
-          (catch Throwable t
-            (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-            (throw t)))))))
+        (transforms.instrumentation/with-job-timing [job-id run-method]
+          (try
+            (run-transforms! run-id transforms opts)
+            (transforms.job-run/succeed-started-run! run-id)
+            (catch Throwable t
+              (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
+              (throw t))))))))
 
 (def ^:private job-key "metabase-enterprise.transforms.jobs.timeout-job")
 

@@ -31,6 +31,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { SchemaFormSelect } from "metabase-enterprise/transforms/components/SchemaFormSelect";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform, UpdateTransformRequest } from "metabase-types/api";
 
 type UpdateTargetModalProps = {
@@ -83,7 +84,7 @@ function UpdateTargetForm({
   onClose,
 }: UpdateTargetFormProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId = sourceDatabaseId(source);
   const [updateTransform] = useUpdateTransformMutation();
   const [deleteTransformTarget] = useDeleteTransformTargetMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
@@ -112,10 +113,15 @@ function UpdateTargetForm({
   }
 
   const handleSubmit = async (values: EditTransformValues) => {
+    if (!databaseId) {
+      throw new Error("Database ID is required");
+    }
     if (shouldDeleteTarget) {
       await deleteTransformTarget(transform.id).unwrap();
     }
-    await updateTransform(getUpdateRequest(transform, values)).unwrap();
+    await updateTransform(
+      getUpdateRequest(transform, values, databaseId),
+    ).unwrap();
     onUpdate();
   };
 
@@ -198,6 +204,7 @@ function getSubmitButtonColor(shouldDeleteTarget: boolean) {
 function getUpdateRequest(
   { id }: Transform,
   { name, schema }: EditTransformValues,
+  databaseId: number,
 ): UpdateTransformRequest {
   return {
     id,
@@ -205,6 +212,7 @@ function getUpdateRequest(
       type: "table",
       name,
       schema,
+      database: databaseId,
     },
   };
 }

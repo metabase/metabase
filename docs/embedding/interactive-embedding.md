@@ -13,6 +13,8 @@ redirect_from:
 
 **Interactive embedding** is what you want if you want to offer [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
+> If you are just starting out with Metabase embedding, consider using [Embedded Analytics JS](./embedded-analytics-js.md) instead of interactive embedding - it's an improved, more customizable option for embedding interactive Metabase elements. Interactive embedding remains fully supported.
+
 Interactive embedding is the only type of embedding that integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query-builder) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 
 ## Interactive embedding demo
@@ -38,10 +40,9 @@ If you have your app running locally, and you're using the Pro Cloud version, or
 
 ## Enabling interactive embedding in Metabase
 
-1. Go to **Settings** > **Admin settings** > **Embedding**.
-2. Click **Enable**.
-3. Click **Interactive embedding**.
-4. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
+1. Go to **Admin > Embedding > Interactive**.
+2. Click **Enable interactive embedding**.
+3. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase (such as `https://*.example.com`).
 
 ## Setting up embedding on your website
 
@@ -129,7 +130,7 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive embedding** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive** > **SameSite cookie setting**.
 
 SameSite values include:
 
