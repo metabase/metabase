@@ -114,28 +114,20 @@
                                  :value      "2022-12-01T00:00:00+02:00"}]}}))
 
 (def ^:private last-month
-  #?(:cljs (let [now    (js/Date.)
-                 year   (.getFullYear now)
-                 month  (.getMonth now)]
-             (-> (js/Date.UTC year (dec month))
-                 (js/Date.)
-                 (.toISOString)))
+  ;; The JS date libraries suck. Rather than working hard to get this right in both environments for a unit test,
+  ;; here's a hard-coded value. This can be any month, provided it is in the range of the Sample Database, which is
+  ;; roughly +/- 2 years. I've picked June 2026 in October 2025, so this value should be good for a few years.
+  #?(:cljs "2026-06-01"
      :clj  (let [last-month (-> (t/zoned-date-time (t/year) (t/month))
                                 (t/minus (t/months 1)))]
              (t/format :iso-offset-date-time last-month))))
 
-(let [[start end] #?(:cljs (let [now    (js/Date.)
-                                 year   (.getFullYear now)
-                                 month  (.getMonth now)]
-                             [(-> (js/Date.UTC year (dec month))
-                                  (js/Date.))
-                              (-> (js/Date.UTC year month 0) ; Sep 0 == Aug 31
-                                  (js/Date.))])
+;; See the note above under [[last-month]] about the hard-coded values in CLJS.
+(let [[start end] #?(:cljs ["2026-06-01" "2026-06-30"]
                      :clj  (let [this-month (t/local-date (t/year) (t/month))]
                              [(t/minus this-month (t/months 1))
-                              (t/minus this-month (t/days 1))]
-                             #_(t/format :iso-date last-month-end)))
-      ->str       #?(:cljs (fn [d] (str (.getYear d) "-" (inc (.getMonth d)) "-" (.getDay d)))
+                              (t/minus this-month (t/days 1))]))
+      ->str       #?(:cljs identity ; They're already just strings.
                      :clj  #(t/format :iso-date %))]
   (def ^:private last-month-start (->str start))
   (def ^:private last-month-end   (->str end)))
