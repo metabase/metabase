@@ -22,6 +22,8 @@ interface ThemeProviderProps {
    * to allow SDK users to customize the theme.
    */
   theme?: MantineThemeOverride;
+
+  forceColorScheme?: "light" | "dark";
 }
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
@@ -96,7 +98,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
 
 export const ThemeProvider = (props: ThemeProviderProps) => {
   return (
-    <ColorSchemeProvider>
+    <ColorSchemeProvider forceColorScheme={props.forceColorScheme}>
       <ThemeProviderInner {...props} />
     </ColorSchemeProvider>
   );

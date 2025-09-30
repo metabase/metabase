@@ -39,6 +39,7 @@ const ColorSchemeContext = createContext<ColorSchemeContextType>(defaultValue);
 interface ColorSchemeProviderProps {
   children: ReactNode;
   defaultColorScheme?: ColorScheme;
+  forceColorScheme?: ResolvedColorScheme;
 }
 
 function getSystemColorScheme(): ResolvedColorScheme {
@@ -57,6 +58,7 @@ function resolveColorScheme(scheme: ColorScheme): ResolvedColorScheme {
 export function ColorSchemeProvider({
   children,
   defaultColorScheme = "light",
+  forceColorScheme,
 }: ColorSchemeProviderProps) {
   const [colorSchemeOverride, setColorSchemeOverride] =
     useState<ResolvedColorScheme | null>(null);
@@ -71,11 +73,14 @@ export function ColorSchemeProvider({
     return defaultColorScheme;
   });
   const resolvedColorScheme = useMemo(() => {
+    if (forceColorScheme) {
+      return forceColorScheme;
+    }
     if (getIsEmbeddingIframe()) {
       return colorSchemeOverride || "light";
     }
     return resolveColorScheme(colorSchemeOverride || colorScheme);
-  }, [colorScheme, colorSchemeOverride]);
+  }, [colorScheme, colorSchemeOverride, forceColorScheme]);
 
   useEffect(() => {
     localStorage.setItem("metabase-color-scheme", colorScheme);
