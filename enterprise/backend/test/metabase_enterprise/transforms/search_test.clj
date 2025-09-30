@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase.app-db.core :as mdb]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.engine :as search.engine]
@@ -138,14 +137,14 @@
                                          :name "Test python transform"}]
         (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")]
           (is (= "'import':7B 'panda':8B 'pd':10B 'python':2A,5B 'test':1A,4B 'transform':3A,6B"
-                 (.getValue ^PGobject (:with_native_query_vector ingested-transform)))))))
+                 (.getValue ^PGobject (:with_native_query_vector ingested-transform))))))
 
-    (testing "MBQL queries are not indexed in with_native_query_vector"
-      (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
-                                                  :table "test_mbql_table"}
-                                         :name "Test MBQL transform"
-                                         :source {:type "query"
-                                                  :query (mt/mbql-query venues {:limit 10})}}]
-        (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")]
-          (is (= "'mbql':2A,5B 'test':1A,4B 'transform':3A,6B"
-                 (.getValue ^PGobject (:with_native_query_vector ingested-transform)))))))))
+      (testing "MBQL queries are not indexed in with_native_query_vector"
+        (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
+                                                    :table "test_mbql_table"}
+                                           :name "Test MBQL transform"
+                                           :source {:type "query"
+                                                    :query (mt/mbql-query venues {:limit 10})}}]
+          (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")]
+            (is (= "'mbql':2A,5B 'test':1A,4B 'transform':3A,6B"
+                   (.getValue ^PGobject (:with_native_query_vector ingested-transform))))))))))
