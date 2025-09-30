@@ -2,33 +2,38 @@ import {
   Background,
   Controls,
   type Edge,
-  type Node,
   ReactFlow,
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
+import { EntityGroupNode } from "./EntityGroupNode";
 import { EntityNode } from "./EntityNode";
-import { getGraphData } from "./utils";
+import type { GraphNode, NodeId } from "./types";
+import { getGraphInfo } from "./utils";
 
 const NODE_TYPES = {
   entity: EntityNode,
+  "entity-group": EntityGroupNode,
 };
 
 export function DependencyFlow() {
   const { data: graph = { nodes: [], edges: [] } } =
     useGetDependencyGraphQuery();
-  const [nodes, setNodes, handleNodeChange] = useNodesState<Node>([]);
+  const [nodes, setNodes, handleNodeChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, handleEdgeChange] = useEdgesState<Edge>([]);
+  const [visibleNodeIds, _setVisibleNodeIds] = useState(
+    new Set<NodeId>(["table-11"]),
+  );
 
   useEffect(() => {
-    const { nodes, edges } = getGraphData(graph);
+    const { nodes, edges } = getGraphInfo(graph, visibleNodeIds);
     setNodes(nodes);
     setEdges(edges);
-  }, [graph, setNodes, setEdges]);
+  }, [graph, visibleNodeIds, setNodes, setEdges]);
 
   return (
     <ReactFlow

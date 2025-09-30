@@ -1,5 +1,5 @@
 import dagre from "@dagrejs/dagre";
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge } from "@xyflow/react";
 
 import type {
   DependencyEdge,
@@ -11,25 +11,26 @@ import type {
 
 import S from "./DependencyFlow.module.css";
 import { NODE_HEIGHT, NODE_WIDTH } from "./constants";
-import {
+import type {
   DependencyGroupType,
   EntityGroupNode,
   EntityNode,
   GraphInfo,
+  GraphNode,
   NodeId,
 } from "./types";
 
-function getId(id: DependencyEntityId, type: DependencyEntityType): NodeId {
+function getNodeId(id: DependencyEntityId, type: DependencyEntityType): NodeId {
   return `${type}-${id}`;
 }
 
-function getNodeId(node: DependencyNode): NodeId {
-  return getId(node.id, node.type);
+function getGroupId(parentId: NodeId, groupType: DependencyGroupType) {
+  return `${parentId}-${groupType}`;
 }
 
-function getEntityNodes(nodes: DependencyNode[]): Node[] {
+function getEntityNodes(nodes: DependencyNode[]): EntityNode[] {
   return nodes.map((node) => ({
-    id: getNodeId(node),
+    id: getNodeId(node.id, node.type),
     className: S.node,
     type: "entity",
     data: node,
@@ -39,8 +40,8 @@ function getEntityNodes(nodes: DependencyNode[]): Node[] {
 
 function getEntityEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
-    const sourceId = getId(edge.from_entity_id, edge.from_entity_type);
-    const targetId = getId(edge.to_entity_id, edge.to_entity_type);
+    const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
+    const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
 
     return {
       id: `${sourceId}-${targetId}`,
@@ -51,25 +52,29 @@ function getEntityEdges(edges: DependencyEdge[]): Edge[] {
   });
 }
 
-function addEntityNodes(graph: DependencyGraph): GraphInfo {
-  const nodes = getEntityNodes(graph.nodes);
-  const edges = getEntityEdges(graph.edges);
+function getVisibleNodes(
+  nodes: EntityNode[],
+  visibleNodeIds: Set<NodeId>,
+): EntityNode[] {
+  return nodes.filter((node) => visibleNodeIds.has(node.id));
+}
 
-  return {
-    nodes,
-    edges,
-  };
+function getVisibleEdges(edges: Edge[], visibleNodeIds: Set<NodeId>): Edge[] {
+  return edges.filter(
+    (edge) =>
+      visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target),
+  );
 }
 
 function getGroupNodeType(node: DependencyNode) {
   return node.type === "card" ? node.entity.type : node.type;
 }
 
-function addGroupNodes(
+function getGroupMapping(
   nodes: EntityNode[],
   edges: Edge[],
   visibleNodeIds: Set<NodeId>,
-) {
+): Map<NodeId, Map<DependencyGroupType, DependencyNode[]>> {
   const nodeBydId = new Map<NodeId, EntityNode>();
   nodes.forEach((node) => {
     nodeBydId.set(node.id, node);
@@ -80,47 +85,67 @@ function addGroupNodes(
     Map<DependencyGroupType, DependencyNode[]>
   >();
   edges.forEach((edge) => {
-    if (visibleNodeIds.has(edge.source) && !visibleNodeIds.has(edge.target)) {
-      const target = nodeBydId.get(edge.target);
-      if (target == null) {
+    if (!visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)) {
+      const source = nodeBydId.get(edge.source);
+      if (source == null) {
         return;
       }
 
-      let groupByType = groupById.get(edge.source);
+      let groupByType = groupById.get(edge.target);
       if (groupByType == null) {
         groupByType = new Map<DependencyGroupType, DependencyNode[]>();
-        groupById.set(edge.source, groupByType);
+        groupById.set(edge.target, groupByType);
       }
 
-      const groupType = getGroupNodeType(target.data);
+      const groupType = getGroupNodeType(source.data);
       let group = groupByType.get(groupType);
       if (group == null) {
         group = [];
         groupByType.set(groupType, group);
       }
-      group.push(target.data);
+      group.push(source.data);
     }
   });
 
+  return groupById;
+}
+
+function getGroupNodes(
+  groupMapping: Map<NodeId, Map<DependencyGroupType, DependencyNode[]>>,
+): EntityGroupNode[] {
   const groupNodes: EntityGroupNode[] = [];
-  groupById.forEach((groupByType) => {
+  groupMapping.forEach((groupByType, parentId) => {
     groupByType.forEach((nodes, type) => {
       groupNodes.push({
-        id: "",
+        id: getGroupId(parentId, type),
         type: "entity-group",
+        className: S.node,
         position: { x: 0, y: 0 },
         data: { type, nodes },
       });
     });
   });
-
-  return {
-    nodes: [...nodes, ...groupNodes],
-    edges,
-  };
+  return groupNodes;
 }
 
-function addNodePositions({ nodes, edges }: GraphInfo): GraphInfo {
+function getGroupEdges(
+  groupMapping: Map<NodeId, Map<DependencyGroupType, DependencyNode[]>>,
+): Edge[] {
+  const groupEdges: Edge[] = [];
+  groupMapping.forEach((groupByType, parentId) => {
+    groupByType.forEach((nodes, type) => {
+      const groupId = getGroupId(parentId, type);
+      groupEdges.push({
+        id: `${parentId}-${groupId}`,
+        source: groupId,
+        target: parentId,
+      });
+    });
+  });
+  return groupEdges;
+}
+
+function getNodesWithPositions(nodes: GraphNode[], edges: Edge[]): GraphNode[] {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({ rankdir: "RL" });
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -135,17 +160,44 @@ function addNodePositions({ nodes, edges }: GraphInfo): GraphInfo {
 
   dagre.layout(dagreGraph);
 
+  return nodes.map((node) => {
+    const { x, y, width, height } = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: x - width / 2,
+        y: y - height / 2,
+      },
+    };
+  });
+}
+
+export function getGraphInfo(
+  graph: DependencyGraph,
+  visibleNodeIds: Set<NodeId>,
+): GraphInfo {
+  const entityNodes = getEntityNodes(graph.nodes);
+  const entityEdges = getEntityEdges(graph.edges);
+
+  const groupMapping = getGroupMapping(
+    entityNodes,
+    entityEdges,
+    visibleNodeIds,
+  );
+  const groupNodes = getGroupNodes(groupMapping);
+  const groupEdges = getGroupEdges(groupMapping);
+
+  const visibleNodes = [
+    ...getVisibleNodes(entityNodes, visibleNodeIds),
+    ...groupNodes,
+  ];
+  const visibleEdges = [
+    ...getVisibleEdges(entityEdges, visibleNodeIds),
+    ...groupEdges,
+  ];
+
   return {
-    nodes: nodes.map((node) => {
-      const { x, y, width, height } = dagreGraph.node(node.id);
-      return {
-        ...node,
-        position: {
-          x: x - width / 2,
-          y: y - height / 2,
-        },
-      };
-    }),
-    edges,
+    nodes: getNodesWithPositions(visibleNodes, visibleEdges),
+    edges: visibleEdges,
   };
 }
