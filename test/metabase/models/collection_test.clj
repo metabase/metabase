@@ -1754,3 +1754,56 @@
                 "Admin isn't able to read custom reports card when audit app isn't enabled")
             (is (not (mi/can-read? cr-dashboard))
                 "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))
+
+(deftest collection-insert-updates-permission-graph-revision-test
+  (testing "Creating a new collection should increment the CollectionPermissionGraphRevision"
+    (let [initial-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection _ {:name "Test Collection"}]
+          (let [final-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+            (is (= (inc initial-revision-count) final-revision-count)
+                "A new CollectionPermissionGraphRevision should be created when inserting a collection")))))))
+
+(deftest collection-insert-skips-permissions-for-personal-collections-test
+  (testing "Creating a collection inside a personal collection should not copy permissions"
+    (let [user-id (mt/user->id :rasta)
+          personal-collection (collection/user->personal-collection user-id)
+          initial-perms-count (t2/count :model/Permissions)]
+      ;; Create a collection inside the personal collection
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection _ {:name "Personal Child Collection"
+                                            :location (collection/children-location personal-collection)}]
+          ;; Verify no new permissions were created (beyond any that might exist for the personal collection itself)
+          (let [final-perms-count (t2/count :model/Permissions)]
+            ;; The count should be the same since personal collections don't get permission entries
+            (is (= initial-perms-count final-perms-count)
+                "No new permissions should be created for collections inside personal collections")))))))
+
+(deftest exclude-internal-content-hsql-test
+  (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
+    (testing "filters exclude internal collections in practice"
+      (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection"}
+                     :model/Collection trash-collection {:name "Trash Collection" :type "trash"}
+                     :model/Collection analytics-collection {:name "Analytics Collection" :type "instance-analytics"}
+                     :model/Collection sample-collection {:name "Sample Collection" :is_sample true}]
+        (testing "regular collection is included"
+          (is (some #(= (:id regular-collection) (:id %))
+                    (t2/select :model/Collection :id (:id regular-collection)))))
+
+        (testing "trash collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id trash-collection)] hsql-clause]})]
+            (is (empty? query))))
+
+        (testing "analytics collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id analytics-collection)] hsql-clause]})]
+            (is (empty? query))))
+
+        (testing "sample collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id sample-collection)] hsql-clause]})]
+            (is (empty? query))))))))
