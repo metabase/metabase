@@ -163,3 +163,11 @@ CLAUDE.local.md
 
 /logs
 /.clojure-mcp
+
+# DuckDB files and testing artifacts
+*.db
+*.db.*
+duckdb
+duckdb_cli-*.zip*
+test_*.csv
+
