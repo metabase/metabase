@@ -1,3 +1,4 @@
 .SqlParametersList {
-  margin: 0 0.5rem;
+  /* Reset ResponsiveList margins */
+  margin: 0;
 }
