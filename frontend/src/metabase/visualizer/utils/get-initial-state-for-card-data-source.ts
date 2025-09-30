@@ -113,6 +113,10 @@ export function getInitialStateForCardDataSource(
     datasetFallbacks: { [card.id]: dataset },
   };
 
+  if (card.description != null) {
+    state.settings["card.description"] = card.description;
+  }
+
   const dataSource = createDataSource("card", card.id, card.name);
 
   if (card.display === "scalar" || card.display === "gauge") {
@@ -224,6 +228,10 @@ export function getInitialStateForCardDataSource(
     ...Object.fromEntries(entries),
     "card.title": card.name,
   };
+
+  if (card.description != null) {
+    state.settings["card.description"] = card.description;
+  }
 
   return state;
 }

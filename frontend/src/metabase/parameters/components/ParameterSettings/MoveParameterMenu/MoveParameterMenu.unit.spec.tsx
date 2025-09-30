@@ -50,6 +50,9 @@ async function setup({ tabs = [], dashcards }: SetupOpts) {
     dashcards,
     parameters: [TEST_PARAMETER],
   });
+  const otherDashboardDashcards: DashboardCard[] = [
+    { ...TEST_DASHCARD, id: 1001, dashboard_id: 1001 },
+  ];
 
   renderWithProviders(<MoveParameterMenu parameterId={TEST_PARAMETER.id} />, {
     storeInitialState: createMockState({
@@ -61,7 +64,10 @@ async function setup({ tabs = [], dashcards }: SetupOpts) {
             dashcards: dashcards.map((dc) => dc.id),
           },
         },
-        dashcards: _.indexBy(dashcards, "id"),
+        dashcards: {
+          ..._.indexBy(dashcards, "id"),
+          ..._.indexBy(otherDashboardDashcards, "id"),
+        },
       }),
     }),
   });

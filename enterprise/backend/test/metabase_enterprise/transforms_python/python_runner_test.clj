@@ -69,10 +69,11 @@
                                                                         :run-id         test-id
                                                                         :table-name->id table-name->id
                                                                         :shared-storage @shared-storage-ref})
-          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+          events (python-runner/read-events @shared-storage-ref)
+          output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
       ;; not sure about munging this all together but its what tests expect for now
       (merge (:body response)
-             {:output          output
+             {:output          (when-some [in (python-runner/open-output @shared-storage-ref)] (with-open [in in] (slurp in)))
               :output-manifest output-manifest
               :stdout          (->> events (filter #(= "stdout" (:stream %))) (map :message) (str/join "\n"))
               :stderr          (->> events (filter #(= "stderr" (:stream %))) (map :message) (str/join "\n"))}))))
