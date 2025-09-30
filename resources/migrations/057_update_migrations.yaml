@@ -1477,6 +1477,12 @@ databaseChangeLog:
                   defaultValue: false
                   constraints:
                     nullable: false
+              - column:
+                  name: version
+                  type: ${text.type}
+                  remarks: Version that was imported or exported (ex the Git SHA)
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v57.2025-09-11T16:01:00

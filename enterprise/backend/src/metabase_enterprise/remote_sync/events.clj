@@ -31,8 +31,9 @@
            source-branch (str, optional): Source branch name.
            target-branch (str, optional): Target branch name.
            collection-id (str, optional): Entity id of the collection
+           version (str): The verison that was synced
            message (str, optional): Optional message or error details."
-  [{:keys [sync-type status source-branch target-branch message collection-id]}]
+  [{:keys [sync-type status source-branch target-branch message collection-id version]}]
   (t2/insert! :model/RemoteSyncChangeLog
               {:sync_type sync-type
                :source_branch source-branch
@@ -41,6 +42,7 @@
                :model_entity_id collection-id
                :most_recent true
                :status status
+               :version version
                :message message}))
 
 (defn publish-remote-sync!

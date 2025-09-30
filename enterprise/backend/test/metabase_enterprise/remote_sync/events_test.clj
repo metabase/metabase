@@ -59,6 +59,7 @@
           (lib.events/publish-remote-sync! :full 456 789
                                            {:branch "main"
                                             :status "success"
+                                            :version "the version"
                                             :message "Test sync"})
           (is (= 1 (count @published-events)))
           (let [{:keys [topic event]} (first @published-events)]
@@ -68,6 +69,7 @@
                      :user-id 789
                      :branch "main"
                      :status "success"
+                     :version "the version"
                      :message "Test sync"}
                     event))
             (is (instance? java.time.Instant (:timestamp event)))))))))

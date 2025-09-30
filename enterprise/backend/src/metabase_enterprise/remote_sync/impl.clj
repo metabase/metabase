@@ -51,7 +51,7 @@
                                  :entity_id))))))
 
 (defn- handle-import-exception
-  [e collections sync-timestamp branch]
+  [e source collections sync-timestamp branch]
   (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
   (analytics/inc! :metabase-remote-sync/imports-failed)
   (let [error-msg (cond
@@ -75,11 +75,13 @@
         (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
                                          {:source-branch branch
                                           :collection-id collection
+                                          :version (source.p/version source)
                                           :timestamp sync-timestamp
                                           :status  "error"
                                           :message (ex-message e)}))
       (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
                                        {:source-branch branch
+                                        :version (source.p/version source)
                                         :timestamp sync-timestamp
                                         :status  "error"
                                         :message (ex-message e)}))
@@ -122,13 +124,14 @@
                                                {:source-branch branch
                                                 :collection-id entity_id
                                                 :timestamp sync-timestamp
+                                                :version (source.p/version source)
                                                 :status "success"}))))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
          :message "Successfully reloaded from git repository"}
 
         (catch Exception e
-          (handle-import-exception e collections sync-timestamp branch))
+          (handle-import-exception e source collections sync-timestamp branch))
         (finally
           (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))
       {:status  :error
@@ -159,6 +162,7 @@
              (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
                                               {:target-branch branch
                                                :collection-id collection
+                                               :version (source.p/version source)
                                                :status  "success"
                                                :message message})))
          {:status :success}
@@ -170,6 +174,7 @@
              (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
                                               {:target-branch  branch
                                                :collection-id collection
+                                               :version (source.p/version source)
                                                :status  "error"
                                                :message (ex-message e)}))
            {:status  :error

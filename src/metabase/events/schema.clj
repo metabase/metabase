@@ -172,4 +172,5 @@
    [:timestamp [:maybe :any]]
    [:branch {:optional true} [:maybe :string]]
    [:status {:optional true} [:maybe [:enum "success" "error"]]]
+   [:version {:optional true} :string]
    [:message {:optional true} [:maybe :string]]])

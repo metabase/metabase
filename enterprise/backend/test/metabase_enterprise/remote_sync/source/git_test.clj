@@ -152,7 +152,7 @@
 (deftest list-files
   (mt/with-temp-dir [remote-dir nil]
     (let [[master remote] (init-source! "master" remote-dir
-                                        :files {"master.txt"      "File in master"
+                                        :files {"master.txt" "File in master"
                                                 "subdir/path.txt" "File in subdir"}
                                         :branches ["branch-1" "branch-2"])
           branch-1 (->source! "branch-1" remote)
@@ -164,7 +164,7 @@
 (deftest read-file
   (mt/with-temp-dir [remote-dir nil]
     (let [[master _remote] (init-source! "master" remote-dir
-                                         :files {"master.txt"      "File in master"
+                                         :files {"master.txt" "File in master"
                                                  "subdir/path.txt" "File in subdir"}
                                          :branches ["branch-1" "branch-2"])
           branch-1 (->source! "branch-1" _remote)
@@ -189,13 +189,13 @@
         branched-path (str "collections/" "b" (subs (u/generate-nano-id "d") 1) "_branched/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[master remote] (init-source! "master" remote-dir
-                                          :files {"master.txt"                    "File in master"
-                                                  "master2.txt"                   "File 2 in master"
-                                                  (str subdir-path "path.txt")    "File in subdir"
-                                                  (str subdir-path "path2.txt")   "File 2 in subdir"
-                                                  (str otherdir-path "path.txt")  "File in otherdir"
+                                          :files {"master.txt" "File in master"
+                                                  "master2.txt" "File 2 in master"
+                                                  (str subdir-path "path.txt") "File in subdir"
+                                                  (str subdir-path "path2.txt") "File 2 in subdir"
+                                                  (str otherdir-path "path.txt") "File in otherdir"
                                                   (str otherdir-path "path2.txt") "File 2 in otherdir"
-                                                  (str thirddir-path "path.txt")  "File in third dir"
+                                                  (str thirddir-path "path.txt") "File in third dir"
                                                   (str thirddir-path "path2.txt") "File 2 in third dir"}
                                           :branches ["branch-1" "branch-2"])
             new-branch (->source! "new-branch" remote)]
@@ -301,7 +301,7 @@
         transformjobs-path "collections/transformjobs/"]
     (mt/with-temp-dir [remote-dir nil]
       (let [[_master _remote] (init-source! "master" remote-dir
-                                            :files {"master.txt"                 "File in master"
+                                            :files {"master.txt" "File in master"
                                                     (str subdir-path "path.txt") "File in subdir"})
             transform-branch (->source! "transform-branch" _remote)]
         (testing "Special collections"
@@ -342,7 +342,7 @@
   (let [subdir-path (str "collections/" (u/generate-nano-id "a") "_subdir")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[master remote] (init-source! "master" remote-dir
-                                          :files {"master.txt"                 "File in master"
+                                          :files {"master.txt" "File in master"
                                                   (str subdir-path "path.txt") "File in subdir"}
                                           :branches ["branch-1" "branch-2"])
             new-branch (->source! "new-branch" remote)]
@@ -399,7 +399,7 @@
 (deftest git-source-using-commit-ref
   (mt/with-temp-dir [remote-dir nil]
     (let [[master remote] (init-source! "master" remote-dir
-                                        :files {"master.txt"      "File in master"
+                                        :files {"master.txt" "File in master"
                                                 "subdir/path.txt" "File in subdir"})
           original-ref (git/->commit-id master "master")]
 
@@ -409,3 +409,41 @@
         (is (= "File in master" (source.p/read-file old-master "master.txt")))
         (is (= "Updated file in master" (source.p/read-file master "master.txt")))
         (is (= ["master.txt" "subdir/path.txt"] (source.p/list-files old-master)))))))
+
+(deftest version-test
+  (testing "version returns the commit id for the current state"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master remote] (init-source! "master" remote-dir
+                                          :files {"master.txt" "File in master"})
+            initial-version (source.p/version master)]
+        (is (string? initial-version) "version should return a string")
+        (is (= 40 (count initial-version)) "version should be a full SHA-1 hash (40 characters)")
+        (is (= (git/->commit-id master "master") initial-version)
+            "version should match the commit id for the branch")
+
+        (testing "version changes after writing files"
+          (source.p/write-files! master "Update file" [{:path "master.txt" :content "Updated content"}])
+          (let [new-version (source.p/version master)]
+            (is (not= initial-version new-version) "version should change after commit")
+            (is (= 40 (count new-version)) "new version should also be a full SHA-1 hash")
+            (is (= (git/->commit-id master "master") new-version)
+                "new version should match the new commit id")))
+
+        (testing "version is consistent across multiple calls"
+          (let [version-1 (source.p/version master)
+                version-2 (source.p/version master)]
+            (is (= version-1 version-2) "version should be consistent without changes")))
+
+        (testing "version differs for different branches"
+          (git-working-create-branch! remote "branch-1")
+          (let [branch-1 (->source! "branch-1" remote)
+                master-version (source.p/version master)
+                branch-version (source.p/version branch-1)]
+            (is (not= master-version branch-version)
+                "different branches should have different versions")))
+
+        (testing "version matches specific commit ref"
+          (let [commit-ref (git/->commit-id master "master")
+                source-with-ref (->source! commit-ref remote)]
+            (is (= commit-ref (source.p/version source-with-ref))
+                "version should work with explicit commit refs")))))))
