@@ -10,8 +10,7 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.types.core :as types]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.string :as string]))
+   [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
 
