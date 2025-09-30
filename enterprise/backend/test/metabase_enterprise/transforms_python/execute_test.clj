@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
-   [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
@@ -104,7 +103,7 @@
             (with-transform-cleanup! [target {:type   "table"
                                               :schema schema
                                               :name   "timeout_test"}]
-              (test.util/with-temporary-setting-values [transforms-python.settings/python-runner-timeout-seconds 5]
+              (test.util/with-temporary-setting-values [python-runner-timeout-seconds 5]
                 (let [long-running-code (str "import time\n"
                                              "import pandas as pd\n"
                                              "\n"

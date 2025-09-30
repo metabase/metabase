@@ -498,7 +498,7 @@
 
 (deftest python-runner-timeout-test
   (testing "Python script execution respects timeout setting"
-    (tu/with-temporary-setting-values [transforms-python.settings/python-runner-timeout-seconds 5]
+    (tu/with-temporary-setting-values [python-runner-timeout-seconds 5]
       (let [long-running-code (str "import time\n"
                                    "import pandas as pd\n"
                                    "\n"
