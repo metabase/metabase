@@ -4,8 +4,14 @@ import type {
   SdkIframeEmbedSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import type { SdkIframeEmbedSetupExperience } from "./types";
-import { getDefaultSdkIframeEmbedSettings } from "./utils/default-embed-setting";
+import type {
+  SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
+} from "./types";
+import {
+  getDefaultSdkIframeEmbedSettings,
+  getResourceIdFromSettings,
+} from "./utils/default-embed-setting";
 
 /**
  * Tracking every embed options would bloat Snowplow, so we only track
@@ -34,19 +40,26 @@ export const trackEmbedWizardOpened = () =>
 
 export const trackEmbedWizardExperienceCompleted = (
   experience: SdkIframeEmbedSetupExperience,
+  defaultExperience: SdkIframeEmbedSetupExperience,
 ) =>
   trackSimpleEvent({
     event: "embed_wizard_experience_completed",
-    event_detail: experience,
+    event_detail:
+      experience === defaultExperience ? "default" : `custom=${experience}`,
   });
 
 export const trackEmbedWizardResourceSelectionCompleted = (
-  experience: SdkIframeEmbedSetupExperience,
-) =>
+  currentSettings: SdkIframeEmbedSetupSettings,
+  defaultResourceId: string | number,
+) => {
+  const currentResourceId = getResourceIdFromSettings(currentSettings);
+  const isDefault = currentResourceId === defaultResourceId;
+
   trackSimpleEvent({
     event: "embed_wizard_resource_selection_completed",
-    event_detail: experience,
+    event_detail: isDefault ? "default" : "custom",
   });
+};
 
 export const trackEmbedWizardOptionsCompleted = (
   settings: Partial<SdkIframeEmbedSettings>,

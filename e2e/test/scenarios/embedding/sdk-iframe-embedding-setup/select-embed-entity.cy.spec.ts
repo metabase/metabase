@@ -41,7 +41,27 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("can select a recent dashboard to embed", () => {
+  it("tracks 'default' when keeping the default dashboard selection", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click();
+      cy.findByText("Select a dashboard to embed").should("be.visible");
+
+      cy.log("first dashboard should be selected by default");
+      getRecentItemCards().first().should("have.attr", "data-selected", "true");
+
+      cy.log("proceed with default selection");
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_resource_selection_completed",
+      event_detail: "default",
+    });
+  });
+
+  it("tracks 'custom' when selecting a different dashboard", () => {
     cy.log("add two dashboards to activity log");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
@@ -88,7 +108,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "dashboard",
+      event_detail: "custom",
     });
   });
 
@@ -123,7 +143,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_resource_selection_completed",
-        event_detail: "chart",
+        event_detail: "custom",
       });
     });
 
@@ -196,7 +216,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
-      event_detail: "chart",
+      event_detail: "custom",
     });
 
     cy.wait("@cardQuery");

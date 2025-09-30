@@ -27,7 +27,11 @@ import type {
   SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "../types";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
+import {
+  getDefaultSdkIframeEmbedSettings,
+  getExperienceFromSettings,
+  getResourceIdFromSettings,
+} from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -178,6 +182,10 @@ export const SdkIframeEmbedSetupProvider = ({
     setCurrentStep,
     experience,
     settings,
+    defaultSettings: {
+      resourceId: getResourceIdFromSettings(defaultSettings),
+      experience: getExperienceFromSettings(defaultSettings),
+    },
     replaceSettings,
     updateSettings,
     recentDashboards,

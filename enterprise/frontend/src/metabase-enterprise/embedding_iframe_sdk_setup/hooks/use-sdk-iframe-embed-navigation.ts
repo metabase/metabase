@@ -10,7 +10,7 @@ import { EMBED_STEPS } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
-  const { experience, currentStep, setCurrentStep, settings } =
+  const { experience, currentStep, setCurrentStep, settings, defaultSettings } =
     useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
@@ -27,10 +27,16 @@ export function useSdkIframeEmbedNavigation() {
 
     match(currentStep)
       .with("select-embed-experience", () => {
-        trackEmbedWizardExperienceCompleted(experience);
+        trackEmbedWizardExperienceCompleted(
+          experience,
+          defaultSettings.experience,
+        );
       })
       .with("select-embed-resource", () => {
-        trackEmbedWizardResourceSelectionCompleted(experience);
+        trackEmbedWizardResourceSelectionCompleted(
+          settings,
+          defaultSettings.resourceId,
+        );
       })
       .with("select-embed-options", () => {
         trackEmbedWizardOptionsCompleted(settings, experience);

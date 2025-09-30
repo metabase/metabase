@@ -48,7 +48,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "dashboard",
+        event_detail: "default",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -78,7 +78,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "chart",
+        event_detail: "custom=chart",
       });
 
       cy.wait("@cardQuery");
@@ -99,7 +99,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "exploration",
+        event_detail: "custom=exploration",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -120,7 +120,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "browser",
+        event_detail: "custom=browser",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -173,7 +173,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
         H.expectUnstructuredSnowplowEvent({
           event: "embed_wizard_experience_completed",
-          event_detail: "chart",
+          event_detail: "custom=chart",
         });
 
         H.waitForSimpleEmbedIframesToLoad();

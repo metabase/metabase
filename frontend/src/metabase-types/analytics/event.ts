@@ -232,12 +232,12 @@ export type EmbedWizardOpenedEvent = ValidateEvent<{
 
 export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
   event: "embed_wizard_experience_completed";
-  event_detail: SdkIframeEmbedSetupExperience;
+  event_detail: "default" | `custom=${SdkIframeEmbedSetupExperience}`;
 }>;
 
 export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
   event: "embed_wizard_resource_selection_completed";
-  event_detail: SdkIframeEmbedSetupExperience;
+  event_detail: "default" | "custom";
 }>;
 
 export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
