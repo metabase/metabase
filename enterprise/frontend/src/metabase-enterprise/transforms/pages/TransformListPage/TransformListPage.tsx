@@ -4,6 +4,8 @@ import { Box, Group, Stack, Title } from "metabase/ui";
 
 import { CreateTransformMenu } from "./CreateTransformMenu";
 import { TransformList } from "./TransformList";
+import { TransformRepresentationExport } from "./TransformRepresentationExport";
+import { TransformRepresentationImport } from "./TransformRepresentationImport";
 
 export function TransformListPage() {
   return (
@@ -13,6 +15,8 @@ export function TransformListPage() {
           <Title order={1}>{t`Transforms`}</Title>
           <Box>{t`Create custom tables with transforms, and run them on a schedule.`}</Box>
         </Stack>
+        <TransformRepresentationExport />
+        <TransformRepresentationImport />
         <CreateTransformMenu />
       </Group>
       <TransformList />

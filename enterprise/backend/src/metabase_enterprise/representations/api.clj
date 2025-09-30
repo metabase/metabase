@@ -179,6 +179,24 @@
   (rep/import-collection-representations (Long/parseLong collection-id))
   "Ok")
 
+(api.macros/defendpoint :post "/transform/export"
+  "Export all transform representations to the local filesystem"
+  [_path-params
+   _query-params
+   _body-params
+   _request]
+  (rep/export-transform-representations)
+  "Ok")
+
+(api.macros/defendpoint :post "/transform/import"
+  "Import all transform representations from the local filesystemto Metabase"
+  [_path-params
+   _query-params
+   _body-params
+   _request]
+  (rep/import-transform-representations)
+  "Ok")
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."
   (handlers/routes

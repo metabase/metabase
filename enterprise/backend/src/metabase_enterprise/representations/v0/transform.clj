@@ -6,6 +6,7 @@
    [malli.core :as m]
    [malli.error :as me]
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -92,14 +93,17 @@
     [:name {:optional true} ::name]
     [:description {:optional true} ::description]
     [:database ::database]
-    [:source ::source]
-    [:target ::target]
+    [:source {:optional true} ::source]
+    [:target {:optional true} ::target]
+    [:target_table {:optional true} ::target]
     [:query {:optional true} ::query]
     [:mbql_query {:optional true} ::mbql-query]
     [:tags {:optional true} ::tags]]
    [:fn {:error/message "Source must have exactly one of :query or :mbql_query"}
-    (fn [{:keys [source]}]
-      (= 1 (count (filter some? [(:query source) (:mbql_query source)]))))]])
+    (fn [{:keys [source] :as transform}]
+      (or (when source
+            (= 1 (count (filter some? [(:query source) (:mbql_query source)]))))
+          (= 1 (count (filter some? [(:query transform) (:mbql_query transform)])))))]])
 
 ;;; ------------------------------------ Ingestion Functions ------------------------------------
 
@@ -107,7 +111,11 @@
   "Convert a validated v0 transform representation into data suitable for creating/updating a Transform."
   [{:keys [ref name description database source target] :as representation}
    ref-index]
-  (let [database-id (v0-common/ref->id database ref-index)
+  (let [database-id (try
+                      (v0-common/ref->id database ref-index)
+                      (catch Exception e
+                        (log/errorf e "Error resolving database ref: %s" database)
+                        (t2/select-one-fn :id :model/Database :name database)))
         ;; TODO: better method for persistent entity IDs
         entity-id (v0-common/generate-entity-id (assoc representation :collection "transforms"))]
     (when-not database-id
@@ -125,8 +133,16 @@
                          :native {:query (:query source)
                                   :template-tags {}}}
 
+                        (:query representation)
+                        {:type "native"
+                         :native {:query (:query representation)
+                                  :template-tags {}}}
+
                         (:mbql_query source)
                         (assoc (:mbql_query source) :database database-id)
+
+                        (:mbql_query representation)
+                        (assoc (:mbql_query representation) :database database-id)
 
                         :else
                         (throw (ex-info "Source must have either 'query' or 'mbql_query'"
@@ -134,6 +150,10 @@
      :target {:type "table"
               :schema (:schema target)
               :name (:table target)}}))
+
+(defmethod import/yaml->toucan :v0/transform
+  [representation ref-index]
+  (yaml->toucan representation ref-index))
 
 (defn persist!
   "Ingest a v0 transform representation and create or update a Transform in the database.

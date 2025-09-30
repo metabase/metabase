@@ -424,3 +424,41 @@
 
 (comment
   (export-set (export (t2/select-one :model/Card :id 97))))
+
+(defn export-transform-representations
+  ([] (export-transform-representations representations-export-dir))
+  ([path]
+   (let [trans-dir "transforms/"
+         transforms (t2/select :model/Transform)]
+     (.mkdirs (File. (str path trans-dir)))
+     (doseq [transform transforms]
+       (let [transform-id (:id transform)]
+         (try
+           (let [entity-yaml (->> (t2/select-one :model/Transform :id transform-id)
+                                  (export)
+                                  (yaml/generate-string))
+                 file-name (file-sys-name transform-id (:name transform) ".yaml")]
+             (spit (str path trans-dir file-name) entity-yaml))
+           (catch Exception e
+             (log/errorf e "Unable to export representation of type transform with id %s" transform-id))))))))
+
+(defn import-transform-representations []
+  (let [trans-dir "transforms/"
+        trans-path (str representations-export-dir trans-dir)]
+    (doseq [file (file-seq (io/file trans-path))]
+      (when (.isFile file)
+        (try
+          (let [valid-repr (-> (slurp file)
+                               (yaml/parse-string)
+                               (validate))
+                id (-> (:ref valid-repr)
+                       (str/split #"-")
+                       (last)
+                       (Long/parseLong))
+                toucan-model (import/yaml->toucan valid-repr nil)
+                update-transform (assoc toucan-model
+                                        :id id
+                                        :updated_at (java.time.OffsetDateTime/now))]
+            (t2/update! :model/Transform id update-transform))
+          (catch Exception e
+            (log/errorf e "Failed to ingest representation file %s" (.getName file))))))))

@@ -12,7 +12,7 @@ curl -X POST http://localhost:3000/api/ee/representation/collection/${COLLECTION
   -H 'Connection: keep-alive' \
   -H 'Content-Type: application/json' \
   # add -b argument here
-  -b '' \
+  -b 'metabase.DEVICE=2e82b500-91ae-4158-8dc1-eca0f3c06195; metabase.TIMEOUT=alive; ajs_anonymous_id=%2275917aa9-8b1f-4f6a-9244-1479115803f4%22; metabase.SESSION=bf8925f1-8ce5-44ce-835e-8d696a5ebfa5' \
   -H 'If-Modified-Since: Thu, 4 Sep 2025 15:06:21 GMT' \
   -H 'Sec-Fetch-Dest: empty' \
   -H 'Sec-Fetch-Mode: cors' \
