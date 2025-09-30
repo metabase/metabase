@@ -6,7 +6,8 @@
 // frontend/src/metabase/styled-components/theme/css-variables.ts
 // NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
-const whitelabelColors = window.MetabaseBootstrap?.["application-colors"] ?? {};
+const win = typeof window !== "undefined" ? window : ({} as Window);
+const whitelabelColors = win.MetabaseBootstrap?.["application-colors"] ?? {};
 const baseBrand = whitelabelColors.brand || "hsla(208, 72%, 60%, 1.00)"; // default Metabase brand color
 
 // Do not export this or you will be fired
@@ -406,7 +407,7 @@ export const colorConfig = {
   },
   shadow: {
     light: baseColors.orionAlpha[20],
-    dark: `color-mix(in srgb, var(--mb-color-black) 20%, transparent)`,
+    dark: `color-mix(in srgb, ${baseColors.black} 20%, transparent)`,
   },
   "success-darker": {
     //should be success-primary?
