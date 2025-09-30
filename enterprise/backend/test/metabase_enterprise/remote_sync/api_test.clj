@@ -28,7 +28,8 @@
         branches))
     (list-files [_] [])
     (read-file [_ _] "")
-    (write-files! [_ _ _] nil)))
+    (write-files! [_ _ _] nil)
+    (version [_] "mock-version")))
 
 (defn delete-existing-remote-sync-tasks-fixture
   [f]

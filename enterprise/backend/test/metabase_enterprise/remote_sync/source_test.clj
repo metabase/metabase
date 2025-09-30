@@ -29,7 +29,10 @@
 
   (write-files! [_ message files]
     (let [realized-files (vec files)]
-      (reset! written-files {:message message :files realized-files}))))
+      (reset! written-files {:message message :files realized-files})))
+
+  (version [_]
+    "mock-version"))
 
 (defn- create-test-entity
   "Creates a test entity with serdes/meta for testing"

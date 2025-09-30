@@ -40,7 +40,10 @@
     (source.p/write-files! original-source message
                            (filter (fn [file-spec]
                                      (some (fn [path-filter] (re-matches path-filter (:path file-spec))) path-filters))
-                                   files))))
+                                   files)))
+
+  (version [_]
+    (source.p/version original-source)))
 
 (methodical/defmethod source.p/->ingestable :default
   [source {:keys [path-filters root-dependencies task-id]}]

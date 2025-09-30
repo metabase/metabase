@@ -19,7 +19,10 @@
     (get files path))
 
   (write-files! [_ _message new-files]
-    (into {} (map (juxt :path :content) new-files))))
+    (into {} (map (juxt :path :content) new-files)))
+
+  (version [_]
+    "mock-version"))
 
 (deftest wrapping-source-list-files-single-filter-test
   (testing "WrappingSource filters list-files based on path-filters"
@@ -95,7 +98,9 @@
                           nil)
                         (write-files! [_ _message files]
                           (reset! written-files files)
-                          nil))
+                          nil)
+                        (version [_]
+                          "mock-version"))
           wrapped-source (source/->WrappingSource mock-source [#"collections/.*"])
           files-to-write [{:path "collections/foo.yaml" :content "foo-content"}
                           {:path "collections/bar.yaml" :content "bar-content"}
@@ -120,7 +125,9 @@
                           nil)
                         (write-files! [_ _message files]
                           (reset! written-files files)
-                          nil))
+                          nil)
+                        (version [_]
+                          "mock-version"))
           wrapped-source (source/->WrappingSource mock-source [#"collections/.*" #"dashboards/.*"])
           files-to-write [{:path "collections/foo.yaml" :content "foo-content"}
                           {:path "databases/db1.yaml" :content "db1-content"}
@@ -145,7 +152,9 @@
                           nil)
                         (write-files! [_ _message files]
                           (reset! written-files files)
-                          nil))
+                          nil)
+                        (version [_]
+                          "mock-version"))
           wrapped-source (source/->WrappingSource mock-source [#"collections/.*"])
           files-to-write [{:path "databases/db1.yaml" :content "db1-content"}
                           {:path "dashboards/dash1.yaml" :content "dash1-content"}]]

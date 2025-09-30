@@ -64,6 +64,7 @@
   [^String dir & {:keys [files branches]}]
   (let [git (-> (Git/init)
                 (.setDirectory (File. dir))
+                (.setInitialBranch "master")
                 (.call))
         remote {:git git}]
     (doseq [[path content] files]

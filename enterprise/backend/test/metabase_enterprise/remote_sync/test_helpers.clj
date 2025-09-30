@@ -194,7 +194,10 @@ width: fixed
       :store-error (throw (Exception. "Store failed"))
       :network-error (throw (java.net.UnknownHostException. "Remote host not found"))
       ;; Default success case - write files to atom
-      (swap! files-atom assoc branch (into {} (map (juxt :path :content) files))))))
+      (swap! files-atom assoc branch (into {} (map (juxt :path :content) files)))))
+
+  (version [_this]
+    "mock-version"))
 
 (defn create-mock-source
   "Create a mock Source for testing"

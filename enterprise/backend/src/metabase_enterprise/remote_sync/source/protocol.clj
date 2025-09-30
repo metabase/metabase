@@ -16,7 +16,10 @@
     "Reads the contents of the file at `path` in `branch`")
 
   (write-files! [source message files]
-    "Writes `content` to `path` in `branch` with commit `message` for all files in `files`"))
+    "Writes `content` to `path` in `branch` with commit `message` for all files in `files`")
+
+  (version [source]
+    "Returns a version identifier for the current state of the source (eg a git sha)"))
 
 (methodical/defmulti ->ingestable
   "Creates an ingestable source for remote sync operations.

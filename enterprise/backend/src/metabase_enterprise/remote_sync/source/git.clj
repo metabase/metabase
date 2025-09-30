@@ -262,7 +262,10 @@
     (read-file this path))
 
   (write-files! [this message files]
-    (write-files! this message files)))
+    (write-files! this message files))
+
+  (version [this]
+    (->commit-id this)))
 
 (def git-source
   "Create a new git source"
