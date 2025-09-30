@@ -42,7 +42,7 @@
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (ex-info (format "Git %s failed: %s" (-> command .getClass .getName) (.getMessage e))
-                        analytics-labels #p e))))))
+                        analytics-labels e))))))
 
 (defn- qualify-branch [branch]
   (if (str/starts-with? branch "refs/heads/")
@@ -77,7 +77,7 @@
             (log/info "Successfully cloned repository" {:dir dir}))))
       (catch Exception e
         (throw (ex-info (format "Failed to clone git repository: %s" (.getMessage e))
-                        {:url   #p url
+                        {:url   url
                          :dir   dir
                          :error (.getMessage #p e)}))))))
 

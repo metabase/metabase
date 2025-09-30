@@ -1825,6 +1825,81 @@ databaseChangeLog:
             constraintName: fk_remote_sync_task_initiated_by
             onDelete: SET NULL
 
+  - changeSet:
+      id: v57.2025-09-30T10:00:00
+      author: edpaget
+      comment: Add composite index on remote_sync_change_log for dirty detection queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_change_log
+            indexName: idx_remote_sync_change_log_model_lookup
+            columns:
+              - column:
+                  name: model_type
+              - column:
+                  name: model_entity_id
+              - column:
+                  name: most_recent
+
+  - changeSet:
+      id: v57.2025-09-30T10:01:00
+      author: edpaget
+      comment: Add composite index on remote_sync_change_log for last sync queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_change_log
+            indexName: idx_remote_sync_change_log_last_sync
+            columns:
+              - column:
+                  name: status
+              - column:
+                  name: sync_type
+              - column:
+                  name: created_at
+                  descending: true
+
+  - changeSet:
+      id: v57.2025-09-30T10:02:00
+      author: edpaget
+      comment: Add index on remote_sync_change_log for after-insert updates
+      changes:
+        - createIndex:
+            tableName: remote_sync_change_log
+            indexName: idx_remote_sync_change_log_entity_lookup
+            columns:
+              - column:
+                  name: model_entity_id
+              - column:
+                  name: model_type
+
+  - changeSet:
+      id: v57.2025-09-30T10:03:00
+      author: edpaget
+      comment: Add composite index on remote_sync_task for current task queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_current
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+              - column:
+                  name: id
+                  descending: true
+
+  - changeSet:
+      id: v57.2025-09-30T10:04:00
+      author: edpaget
+      comment: Add index on remote_sync_task for timeout detection
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_progress_report
+            columns:
+              - column:
+                  name: last_progress_report_at
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
