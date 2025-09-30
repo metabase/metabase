@@ -4,6 +4,8 @@ import { colorConfig } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 type ColorShades = MantineTheme["colors"]["dark"];
 
+const allColorNames = Object.keys(colorConfig);
+
 const ORIGINAL_COLORS = [
   "dark",
   "gray",
@@ -58,6 +60,9 @@ export function getThemeColors(
  * @param colorName
  * @returns string referencing a css variable
  */
-export function color(colorName: ColorName): string {
-  return `var(--mb-color-${colorName})`;
+export function color(colorName: ColorName | string): string {
+  if (allColorNames.includes(colorName)) {
+    return `var(--mb-color-${colorName})`;
+  }
+  return colorName;
 }
