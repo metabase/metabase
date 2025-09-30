@@ -33,7 +33,7 @@ export function useSdkIframeEmbedNavigation() {
         trackEmbedWizardResourceSelectionCompleted(experience);
       })
       .with("select-embed-options", () => {
-        trackEmbedWizardOptionsCompleted(settings);
+        trackEmbedWizardOptionsCompleted(settings, experience);
       });
 
     if (nextStep) {

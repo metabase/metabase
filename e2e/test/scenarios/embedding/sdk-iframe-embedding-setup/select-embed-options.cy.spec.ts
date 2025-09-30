@@ -67,7 +67,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "theme=default,auth=user_session,drills=false,withTitle=true,withDownloads=false",
+        "settings=custom,theme=default,auth=user_session,drills=false,withDownloads=false,withTitle=true",
     });
 
     codeBlock().should("contain", 'drills="false"');
@@ -103,7 +103,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "theme=default,auth=user_session,drills=true,withTitle=true,withDownloads=true",
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -139,7 +139,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "theme=default,auth=user_session,drills=true,withTitle=false,withDownloads=false",
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=false",
     });
 
     codeBlock().should("contain", 'with-title="false"');
@@ -211,7 +211,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "theme=default,auth=user_session,drills=true,withTitle=true,withDownloads=true,isSaveEnabled=false",
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true,isSaveEnabled=false",
     });
 
     codeBlock().should("contain", 'with-downloads="true"');
@@ -325,8 +325,8 @@ H.describeWithSnowplow(suiteTitle, () => {
         event: "embed_wizard_options_completed",
         event_detail:
           experience === "chart"
-            ? "theme=default,auth=user_session,drills=true,withTitle=true,withDownloads=false,isSaveEnabled=true"
-            : "theme=default,auth=user_session,isSaveEnabled=true",
+            ? "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true"
+            : "settings=custom,theme=default,auth=user_session,isSaveEnabled=true",
       });
 
       codeBlock().should("contain", 'is-save-enabled="true"');
@@ -362,7 +362,8 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
-      event_detail: "theme=default,auth=user_session,readOnly=false",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,readOnly=false",
     });
 
     codeBlock().should("contain", 'read-only="false"');
@@ -408,7 +409,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "theme=custom,auth=user_session,drills=true,withTitle=true,withDownloads=false",
+        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
     });
 
     codeBlock().should("contain", '"theme": {');
@@ -433,6 +434,11 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.log("snippet should not contain theme colors");
     getEmbedSidebar().findByText("Get Code").click();
     codeBlock().should("not.contain", '"theme": {');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
   });
 
   it("derives colors for dark theme palette", () => {
@@ -470,7 +476,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail:
-        "theme=custom,auth=user_session,drills=true,withTitle=true,withDownloads=false",
+        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
     });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.

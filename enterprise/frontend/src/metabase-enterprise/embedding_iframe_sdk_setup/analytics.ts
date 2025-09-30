@@ -5,18 +5,29 @@ import type {
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type { SdkIframeEmbedSetupExperience } from "./types";
+import { getDefaultSdkIframeEmbedSettings } from "./utils/default-embed-setting";
 
 /**
- * Tracking every embed options would be too much, so we only track
+ * Tracking every embed options would bloat Snowplow, so we only track
  * the most relevant options that reveal usage patterns.
  */
-const EMBED_OPTIONS_TO_TRACK = [
+const EMBED_OPTIONS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
   "drills",
   "withTitle",
   "withDownloads",
   "isSaveEnabled",
   "readOnly",
-] as const satisfies SdkIframeEmbedSettingKey[];
+];
+
+/**
+ * When comparing settings to defaults, we ignore these options as they are already tracked in another step.
+ */
+const EMBED_OPTIONS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
+  "componentName",
+  "dashboardId",
+  "questionId",
+  "targetCollection",
+];
 
 export const trackEmbedWizardOpened = () =>
   trackSimpleEvent({ event: "embed_wizard_opened" });
@@ -39,34 +50,74 @@ export const trackEmbedWizardResourceSelectionCompleted = (
 
 export const trackEmbedWizardOptionsCompleted = (
   settings: Partial<SdkIframeEmbedSettings>,
+  experience: SdkIframeEmbedSetupExperience,
 ) => {
-  const options: Record<string, string> = {
-    theme: settings.theme?.colors ? "custom" : "default",
-    auth: settings.useExistingUserSession ? "user_session" : "sso",
-  };
+  // Get defaults for this experience type (with a dummy resource ID)
+  const defaultSettings = getDefaultSdkIframeEmbedSettings(experience, 0);
 
-  for (const optionKey of EMBED_OPTIONS_TO_TRACK) {
-    if (!(optionKey in settings)) {
-      continue;
+  const hasCustomOptions = hasEmbedOptionsChanged(settings, defaultSettings);
+
+  let options: string[] = [
+    `settings=${hasCustomOptions ? "custom" : "default"}`,
+  ];
+
+  if (hasCustomOptions) {
+    const hasCustomTheme = settings.theme?.colors !== undefined;
+
+    options = [
+      ...options,
+      `theme=${hasCustomTheme ? "custom" : "default"}`,
+      `auth=${settings.useExistingUserSession ? "user_session" : "sso"}`,
+    ];
+
+    for (const _optionKey in settings) {
+      const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
+
+      if (!EMBED_OPTIONS_TO_TRACK.includes(optionKey)) {
+        continue;
+      }
+
+      const value = settings[optionKey];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      options.push(`${optionKey}=${value.toString()}`);
     }
-
-    const value = (settings as any)[optionKey];
-
-    if (value === null || value === undefined) {
-      continue;
-    }
-
-    options[optionKey] = value.toString();
   }
-
-  const eventDetail = Object.entries(options)
-    .map(([key, value]) => `${key}=${value}`)
-    .join(",");
 
   trackSimpleEvent({
     event: "embed_wizard_options_completed",
-    event_detail: eventDetail,
+    event_detail: options.join(","),
   });
+};
+
+/**
+ * Check if the embed options have changed from the defaults.
+ */
+const hasEmbedOptionsChanged = (
+  settings: Partial<SdkIframeEmbedSettings>,
+  defaultSettings: Partial<SdkIframeEmbedSettings>,
+): boolean => {
+  for (const _optionKey in settings) {
+    const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
+
+    if (
+      EMBED_OPTIONS_TO_IGNORE.includes(optionKey as SdkIframeEmbedSettingKey)
+    ) {
+      continue;
+    }
+
+    const settingsValue = settings[optionKey];
+    const defaultValue = defaultSettings[optionKey];
+
+    if (settingsValue !== defaultValue) {
+      return true;
+    }
+  }
+
+  return false;
 };
 
 export const trackEmbedWizardCodeCopied = (
