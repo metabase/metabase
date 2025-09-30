@@ -29,7 +29,7 @@ const setup = ({ question }: { question: NativeQuestionDetails }) => {
   mockAuthProviderAndJwtSignIn();
 };
 
-const ensureColumnValueAfterParameterEditing = ({
+const ensureParameterColumnValue = ({
   columnName,
   columnValue,
 }: {
@@ -249,7 +249,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
       cy.findByPlaceholderText("City").should("exist");
       cy.findByPlaceholderText("Source").should("not.exist");
 
-      ensureColumnValueAfterParameterEditing({
+      ensureParameterColumnValue({
         columnName: "STATE",
         columnValue: "NY",
       });
@@ -258,7 +258,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         cy.findByPlaceholderText("State").clear().type("AR{enter}");
       });
 
-      ensureColumnValueAfterParameterEditing({
+      ensureParameterColumnValue({
         columnName: "STATE",
         columnValue: "AR",
       });
@@ -267,7 +267,7 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
         cy.findByPlaceholderText("City").type("El Paso{enter}");
       });
 
-      ensureColumnValueAfterParameterEditing({
+      ensureParameterColumnValue({
         columnName: "CITY",
         columnValue: "El Paso",
       });
