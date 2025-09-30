@@ -10,6 +10,8 @@ import type { State } from "metabase-types/store";
 
 import { MetabaseReduxContext } from "./custom-context";
 
+export type AppStore = Store<State, AnyAction>;
+
 export const useStore: () => Store<State, AnyAction> =
   createStoreHook(MetabaseReduxContext);
 export const useDispatch: () => ThunkDispatch<State, void, AnyAction> =
