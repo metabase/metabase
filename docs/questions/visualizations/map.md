@@ -44,20 +44,16 @@ To create a pin map:
 
 ### Choose pin type
 
-Metabase can display data points on a map as markers or tiles (small squares).  If your query returns 1000 or more data points, the pin type will default to tile.
+Metabase can display data points on a map as markers or tiles (small squares).
 
 To change the pin type:
 
 1. While viewing the map, click the **gear** icon in the bottom left.
 2. In the visualization settings, choose the pin type in the **Pin type** dropdown.
+    - **Markers**. Maps display up to 1,000 markers. Maps default to markers for results fewer then 1,000 rows.
+    - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows.
 
-If your data has more than 1000 rows, and you switch the pin type to "Markers", Metabase will still only display 1000 markers. If you want to visualize more than 1000 data points, use the tile pin type. 
-
-### Pin maps display 2000 data points by default
-
-By default, pin maps will display 2000 data points even if there are more rows in your query results. This limit is the same for every chart displaying unaggregated data in Metabase. You can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit) to increase the number of data points rendered on charts based on unaggregated queries, but keep in mind that this setting will affect all charts—not just the pin maps—and it might significantly slow down your Metabase and your browser.
-
-If you want display 1000 or more (but less than 2000) individual data points, you'll need to select [tile marker shape](#choose-pin-type) for the map.
+To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browswer.
 
 If you need to display a large number of geographical data points, consider using a grid map to display the distribution instead.
 
