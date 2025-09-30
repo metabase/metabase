@@ -1,7 +1,8 @@
+import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
-import type { Table } from "./table";
+import type { ConcreteTableId, Table } from "./table";
 
 export type TransformId = number;
 export type TransformTagId = number;
@@ -23,10 +24,20 @@ export type Transform = {
   last_run?: TransformRun | null;
 };
 
-export type TransformSource = {
+export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
+
+export type PythonTransformSource = {
+  type: "python";
+  body: string;
+  "source-database": DatabaseId;
+  "source-tables": PythonTransformTableAliases;
+};
+export type QueryTransformSource = {
   type: "query";
   query: DatasetQuery;
 };
+
+export type TransformSource = QueryTransformSource | PythonTransformSource;
 
 export type TransformTargetType = "table";
 
@@ -34,6 +45,7 @@ export type TransformTarget = {
   type: TransformTargetType;
   name: string;
   schema: string | null;
+  database: number;
 };
 
 export type TransformRun = {
@@ -128,10 +140,17 @@ export type RunTransformResponse = {
   message?: string;
 };
 
+export type ListTransformsRequest = {
+  last_run_start_time?: string;
+  last_run_statuses?: TransformRunStatus[];
+  tag_ids?: TransformTagId[];
+};
+
 export type ListTransformJobsRequest = {
   last_run_start_time?: string;
+  last_run_statuses?: TransformRunStatus[];
   next_run_start_time?: string;
-  transform_tag_ids?: TransformTagId[];
+  tag_ids?: TransformTagId[];
 };
 
 export type ListTransformRunsRequest = {
@@ -146,3 +165,31 @@ export type ListTransformRunsRequest = {
 export type ListTransformRunsResponse = {
   data: TransformRun[];
 } & PaginationResponse;
+
+export type ExecutePythonTransformRequest = {
+  code: string;
+  tables: PythonTransformTableAliases;
+};
+
+export type ExecutePythonTransformResponse = {
+  output?: string;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+  exit_code?: number;
+  timeout?: boolean;
+};
+
+export type PythonLibrary = {
+  path: string;
+  source: string;
+};
+
+export type GetPythonLibraryRequest = {
+  path: string;
+};
+
+export type UpdatePythonLibraryRequest = {
+  path: string;
+  source: string;
+};

@@ -429,28 +429,30 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     H.openObjectDetail(0);
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Link to review 1")
-        .should("be.visible")
-        .should("have.attr", "href")
+      cy.findAllByText("Link to review 1")
+        .should("have.length", 2)
+        .and("be.visible")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?review=1");
 
       cy.findByText("Rating: 5")
         .should("be.visible")
-        .should("have.attr", "href")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?rating=5");
     });
 
     cy.findByLabelText("Next row").click();
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Link to review 2")
-        .should("be.visible")
-        .should("have.attr", "href")
+      cy.findAllByText("Link to review 2")
+        .should("have.length", 2)
+        .and("be.visible")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?review=2");
 
       cy.findByText("Rating: 4")
         .should("be.visible")
-        .should("have.attr", "href")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?rating=4");
     });
   });
@@ -574,7 +576,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - questions", () => {
-    it("no primary keys", () => {
+    it("no primary keys (WRK-900)", () => {
       H.visitQuestionAdhoc({
         display: "table",
         dataset_query: {
@@ -596,6 +598,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+
+        cy.log("should not show relationships when there is no PK (WRK-900)");
+        cy.findByText(/is connected to/).should("not.exist");
+        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
     });
 
@@ -673,7 +679,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - models", () => {
-    it("no primary keys", () => {
+    it("no primary keys (WRK-900)", () => {
       H.createQuestion(
         {
           type: "model",
@@ -694,6 +700,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+
+        cy.log("should not show relationships when there is no PK (WRK-900)");
+        cy.findByText(/is connected to/).should("not.exist");
+        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
     });
 

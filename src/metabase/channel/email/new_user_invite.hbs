@@ -1,4 +1,5 @@
 {{> metabase/channel/email/_header.hbs }}
+{{#with payload.event_info.details.invitor as |invitor|}}
   <div style="padding-top: 40px; padding-left: 16px; padding-bottom: 96px; padding-right: 16px; box-sizing: border-box; width: 100%; max-width: 600px; background-color: #FFFFFF; border-radius: 24px; border: 1px solid #dcdfe0; margin-top: 32px; margin-left: auto; margin-right: auto;">
     <div style="margin-bottom: 32px; text-align: center; width: 56px; height: 56px; padding-top: 5px; box-sizing: border-box; padding-bottom: 5px; margin-left: auto; margin-right: auto;">
       <img height="46" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo" />
@@ -7,7 +8,11 @@
       {{#if payload.event_info.object.is_from_setup}}
         <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
           <h2 style="font-weight: 400; color: #2F3C45; line-height: 36px; margin-top: 0; font-size: 27px;">
-            {{payload.event_info.details.invitor.first_name}} could use your help setting up {{context.application_name}}
+            {{#if invitor.first_name}}
+              {{invitor.first_name}} could use your help setting up {{context.application_name}}
+            {{else}}
+              You are invited to help setting up {{context.application_name}}
+            {{/if}}
           </h2>
         </div>
         <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
@@ -15,7 +20,11 @@
             {{context.application_name}} is a simple and powerful analytics tool that lets you easily ask questions and get answers about your company’s data.
           </p>
           <p style="margin-bottom: 0; line-height: 24px; color: #656F76; font-size: 15px;">
-            Your {{context.application_name}} is up and running, but {{payload.event_info.details.invitor.first_name}} needs you to connect your data. You'll probably need:
+            {{#if invitor.first_name}}
+              Your {{context.application_name}} is up and running, but {{invitor.first_name}} needs you to connect your data. You'll probably need:
+            {{else}}
+              Your {{context.application_name}} is up and running, but your help is needed to connect data. You'll probably need:
+            {{/if}}
           </p>
           <ul style="text-align: left; margin-bottom: 32px; font-size: 15px; margin-top: 20px; padding-left: 30px;">
             <li>Database type (Redshift, Snowflake, etc...)</li>
@@ -23,11 +32,14 @@
             <li>Username and password</li>
           </ul>
         </div>
-      {{/if}}
-      {{#unless payload.event_info.object.is_from_setup}}
+      {{else}}
         <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
           <h2 style="font-weight: 400; color: #2F3C45; line-height: 36px; margin-top: 0; font-size: 27px;">
-            {{payload.event_info.details.invitor.first_name}} wants you to join them on {{context.application_name}}
+            {{#if invitor.first_name}}
+              {{invitor.first_name}} wants you to join them on {{context.application_name}}
+            {{else}}
+              You are invited to join {{context.application_name}}
+            {{/if}}
           </h2>
         </div>
         <div style="max-width: 504px; text-align: center; margin-left: auto; margin-right: auto;">
@@ -35,7 +47,7 @@
             {{context.application_name}} is a simple and powerful analytics tool that lets you easily ask questions and get answers about your company’s data.
           </p>
         </div>
-      {{/unless}}
+      {{/if}}
       <div style="padding-right: 0; padding-left: 0; text-align: center; width: 100%;">
         <a
           style="font-size: 15px; padding-top: 16px; padding-bottom: 16px; cursor: pointer; text-decoration: none; font-weight: 700; border-radius: 12px; background-color: #358CD9; color: #fff; line-height: 16px; display: inline-block; margin-left: auto; margin-right: auto; min-width: 200px;"
@@ -51,6 +63,7 @@
       {{/if}}
     </div>
   </div>
+{{/with}}
 </div>
 </body>
 </html>

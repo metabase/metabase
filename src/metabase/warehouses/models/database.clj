@@ -336,6 +336,9 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  ;; This is a temporary hack to hide these cards from most searches.
+  ;; Once search supports deletion, we should revisit this.
+  (t2/update! :model/Card :database_id id {:archived true})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e

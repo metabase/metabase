@@ -49,6 +49,7 @@ import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmb
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getErrorPage } from "metabase/selectors/app";
+import type { CardDisplayType } from "metabase-types/api";
 
 import type {
   DrillThroughQuestionProps,
@@ -141,11 +142,12 @@ const SdkDashboardInner = ({
   dashboardActions,
   dashcardMenu,
   getClickActionMode,
-  navigateToNewCardFromDashboard = undefined,
+  navigateToNewCardFromDashboard,
   className,
   style,
   children,
   dataPickerProps,
+  onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -319,6 +321,7 @@ const SdkDashboardInner = ({
               questionPath={adhocQuestionUrl!}
               onNavigateBack={onNavigateBackToDashboard}
               {...drillThroughQuestionProps}
+              onVisualizationChange={onVisualizationChange}
             >
               {AdHocQuestionView && <AdHocQuestionView />}
             </SdkAdHocQuestion>
@@ -350,6 +353,7 @@ const SdkDashboardInner = ({
               setRenderMode("dashboard");
             }}
             dataPickerProps={dataPickerProps}
+            onVisualizationChange={onVisualizationChange}
           />
         ))
         .exhaustive()}
@@ -390,6 +394,7 @@ type DashboardQueryBuilderProps = {
   onCreate: (question: MetabaseQuestion) => void;
   onNavigateBack: () => void;
   dataPickerProps: EditableDashboardOwnProps["dataPickerProps"];
+  onVisualizationChange?: (display: CardDisplayType) => void;
 };
 
 /**
@@ -399,6 +404,7 @@ function DashboardQueryBuilder({
   onCreate,
   onNavigateBack,
   dataPickerProps,
+  onVisualizationChange,
 }: DashboardQueryBuilderProps) {
   const { dashboard, selectTab, setEditingDashboard } = useDashboardContext();
 
@@ -436,6 +442,7 @@ function DashboardQueryBuilder({
       withChartTypeSelector
       // The default value is 600px and it cuts off the "Visualize" button.
       height="700px"
+      onVisualizationChange={onVisualizationChange}
     />
   );
 }
