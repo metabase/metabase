@@ -18,7 +18,13 @@ export function DependencyFlow() {
   const { nodes, edges } = getGraphData(graph);
 
   return (
-    <ReactFlow nodes={nodes} edges={edges} nodeTypes={NODE_TYPES} fitView>
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={NODE_TYPES}
+      defaultEdgeOptions={{ type: "smoothstep" }}
+      fitView
+    >
       <Background />
       <Controls />
     </ReactFlow>

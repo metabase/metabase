@@ -1,4 +1,4 @@
-import { Handle, Position } from "@xyflow/react";
+import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 
 import { Box, Card, FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
@@ -8,11 +8,14 @@ import { NODE_HEIGHT, NODE_WIDTH } from "../constants";
 import S from "./CustomNode.module.css";
 import { getNodeIcon, getNodeLabel } from "./utils";
 
-type CustomNodeProps = {
-  data: DependencyNode;
-};
+type CustomNodeProps = NodeProps<Node<DependencyNode>>;
 
-export function CustomNode({ data }: CustomNodeProps) {
+export function CustomNode({
+  data,
+  sourcePosition = Position.Left,
+  targetPosition = Position.Right,
+  isConnectable,
+}: CustomNodeProps) {
   return (
     <>
       <Card w={NODE_WIDTH} h={NODE_HEIGHT} withBorder>
@@ -21,8 +24,16 @@ export function CustomNode({ data }: CustomNodeProps) {
           <Box className={S.label}>{getNodeLabel(data)}</Box>
         </Flex>
       </Card>
-      <Handle type="source" position={Position.Left} />
-      <Handle type="target" position={Position.Right} />
+      <Handle
+        type="source"
+        position={sourcePosition}
+        isConnectable={isConnectable}
+      />
+      <Handle
+        type="target"
+        position={targetPosition}
+        isConnectable={isConnectable}
+      />
     </>
   );
 }

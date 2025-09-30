@@ -21,6 +21,7 @@ function getNodes(nodes: DependencyNode[]): Node[] {
     type: "custom",
     data: node,
     position: { x: 0, y: 0 },
+    selectable: true,
   }));
 }
 
@@ -39,8 +40,9 @@ function getEdges(edges: DependencyEdge[]): Edge[] {
 }
 
 function getNodesWithPosition(nodes: Node[], edges: Edge[]): Node[] {
-  const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: "RL" });
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setGraph({ rankdir: "RL", ranksep: 200 });
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
