@@ -120,7 +120,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "auth=user_session",
+        event_detail: "user_session",
       });
     });
   });
@@ -140,7 +140,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
-        event_detail: "auth=sso",
+        event_detail: "sso",
       });
     });
   });

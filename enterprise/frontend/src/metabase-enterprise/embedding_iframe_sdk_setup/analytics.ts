@@ -74,5 +74,5 @@ export const trackEmbedWizardCodeCopied = (
 ) =>
   trackSimpleEvent({
     event: "embed_wizard_code_copied",
-    event_detail: `auth=${authMethod}`,
+    event_detail: authMethod,
   });
