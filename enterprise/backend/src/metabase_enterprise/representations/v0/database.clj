@@ -122,7 +122,7 @@
   [representation _ref-index]
   (-> representation
       (set/rename-keys {:connection_details :details})
-      (select-keys [:name :engine :description :details :schemas])
+      (select-keys [:name :engine :description :details :schemas :ref])
       (hydrate-env-vars)))
 
 (defmethod import/persist! :v0/database

@@ -17,7 +17,7 @@
 (defn resolve-source-table
   "Resolves refs in the raw MBQL map, replacing them with IDs for import."
   [mbql-query ref-index]
-  (let [table-ref (:source_table mbql-query)
+  (let [table-ref (:source-table mbql-query)
         table-id (cond
                    ;; ref to another card/question:
                    (v0-common/ref? table-ref)
@@ -33,7 +33,7 @@
                    ;; Not a ref -- leave it be
                    :else
                    table-ref)]
-    (assoc mbql-query :source_table table-id)))
+    (assoc mbql-query :source-table table-id)))
 
 (defn resolve-fields
   "Resolves field refs in MBQL, converting maps to [:field id] vectors for import."

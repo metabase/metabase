@@ -282,6 +282,12 @@
 (defn- file-sys-name [id name suffix]
   (str id "_" (str/replace (u/lower-case-en name) " " "_") suffix))
 
+(defn- child->database-ids
+  "Extract database IDs from a child entity"
+  [child]
+  (when-let [db-id (:database_id child)]
+    [db-id]))
+
 (defn export-collection-representations
   ([id] (export-collection-representations id representations-export-dir))
   ([id path]
@@ -289,8 +295,17 @@
          coll-dir (file-sys-name id (:name collection) "/")
          children (-> collection
                       (coll.api/collection-children {:show-dashboard-questions? true :archived? false})
-                      :data)]
+                      :data)
+         database-ids (into #{} (mapcat child->database-ids) children)]
      (.mkdirs (File. (str path coll-dir)))
+     (doseq [db-id database-ids]
+       (try
+         (let [database (t2/select-one :model/Database :id db-id)
+               db-yaml (-> database export yaml/generate-string)
+               file-name (file-sys-name db-id (:name database) ".database.yml")]
+           (spit (str path coll-dir file-name) db-yaml))
+         (catch Exception e
+           (log/errorf e "Unable to export database with id %s" db-id))))
      (doseq [child children]
        (let [child-id (:id child)
              model-type (v0-coll/model->card-type child)]
@@ -301,40 +316,10 @@
                                     (t2/select-one :model/Card :id child-id :type)
                                     (export)
                                     (yaml/generate-string))
-                   file-name (file-sys-name child-id (:name child) ".yaml")]
+                   file-name (file-sys-name child-id (:entity_id child) ".yaml")]
                (spit (str path coll-dir file-name) entity-yaml))
              (catch Exception e
                (log/errorf e "Unable to export representation of type %s with id %s" model-type child-id)))))))))
-
-(defn import-collection-representations [id]
-  (let [collection (t2/select-one :model/Collection :id id)
-        coll-dir (file-sys-name id (:name collection) "/")
-        coll-path (str representations-export-dir coll-dir)]
-    (doseq [file (file-seq (io/file coll-path))]
-      (when (.isFile file)
-        (let [coll-id (-> (.getParent file)
-                          (str/split #"/")
-                          last
-                          (str/split #"_")
-                          first
-                          (Long/parseLong))
-              valid-repr (-> (slurp file)
-                             (yaml/parse-string)
-                             (validate))
-              id (-> (:ref valid-repr)
-                     (str/split #"-")
-                     (last)
-                     (Long/parseLong))]
-          (try
-            (let [toucan-model (import/yaml->toucan valid-repr nil)
-                  updated-card (assoc toucan-model
-                                      :id id
-                                      :collection_id coll-id
-                                      :updated_at (java.time.OffsetDateTime/now)
-                                      :creator_id config/internal-mb-user-id)]
-              (t2/update! :model/Card id updated-card))
-            (catch Exception e
-              (log/errorf e "Failed to ingest representation file %s" (.getName file)))))))))
 
 (comment
   (pst)
@@ -380,20 +365,46 @@
       (if (empty? remaining)
         acc
         (let [ready (filter #(set/subset? (v0-common/refs %) done)
-                            remaining)]
-          (recur (into acc ready) (set/difference remaining (set acc))))))))
+                            remaining)
+              acc' (into acc ready)]
+          #_#_(println "-----")
+            (clojure.pprint/pprint
+             {:done done
+              :ready ready})
+          (recur acc' (set/difference remaining (set acc'))))))))
 
-(defn yaml-files
+(comment
+  (let [db-path "local/representations/8_test_collection_2/1_sample_database.database.yml"
+        db-ref (-> (import-yaml db-path)
+                   validate)]
+    (v0-common/refs db-ref)))
+
+(defn- file->collection-id
+  [file]
+  (let [id
+        (-> (.getParent file)
+            (str/split #"/")
+            last
+            (str/split #"_")
+            first
+            (Long/parseLong))]
+    id))
+
+(defn- prepare-yaml
+  [file]
+  (when (or (str/ends-with? (.getName file) ".yml")
+            (str/ends-with? (.getName file) ".yaml"))
+    (-> (import-yaml file)
+        validate
+        (assoc :collection (file->collection-id file)))))
+
+(defn- yaml-files
   "Returns imported reference models from the yaml files in dir, in safe persistence order."
   [dir]
-  (->> (java.io.File. dir)
+  (->> (io/file dir)
        file-seq
-       (filter #(str/ends-with? (.getName %) ".yml"))
-       (map import-yaml)
-       (map validate)
+       (keep prepare-yaml)
        (order-representations)))
-
-;;;;;;;;
 
 (defn persist-dir!
   "Given a dir containing yaml representations, sorts them topologically, then persists them in order."
@@ -412,6 +423,12 @@
                   (dissoc index (:ref entity)))))
             {}
             representations)))
+
+(defn import-collection-representations [id]
+  (let [collection (t2/select-one :model/Collection :id id)
+        coll-dir (file-sys-name id (:name collection) "/")
+        coll-path (str representations-export-dir coll-dir)]
+    (persist-dir! coll-path)))
 
 (comment
   (let [ordered (order-representations other-entities)]

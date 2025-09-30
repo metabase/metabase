@@ -78,16 +78,16 @@
 
 (defmethod import/yaml->toucan :v0/question
   [{question-name :name
-    :keys [type ref description database collection] :as representation}
+    :keys [type ref entity-id description database collection] :as representation}
    ref-index]
   (let [database-id (v0-common/ref->id database ref-index)
-        entity-id (v0-common/generate-entity-id representation)
         query (v0-mbql/import-dataset-query representation ref-index)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
     (merge
-     {:entity_id entity-id
+     {:entity_id (or entity-id
+                     (v0-common/generate-entity-id representation))
       :creator_id (or api/*current-user-id*
                       config/internal-mb-user-id)
       :name question-name
@@ -97,9 +97,8 @@
       :visualization_settings {}
       :database_id database-id
       :query_type (if (= (:type query) "native") :native :query)
-      :type :question}
-     (when-let [coll-id (v0-common/find-collection-id collection)]
-       {:collection_id coll-id}))))
+      :type :question
+      :collection_id (v0-common/find-collection-id collection)})))
 
 (defmethod import/persist! :v0/question
   [representation ref-index]
@@ -130,6 +129,7 @@
              ;;:version "question-v0"
              :type (:type card)
              :ref (v0-common/unref (v0-common/->ref (:id card) :question))
+             :entity-id (:entity_id card)
              :description (:description card)}
 
       (= :native (:type query))
