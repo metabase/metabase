@@ -19,7 +19,7 @@ describe("PaletteResults", () => {
     expect(await screen.findByText("New collection")).toBeInTheDocument();
     expect(await screen.findByText("New model")).toBeInTheDocument();
 
-    expect(screen.queryByText("Search results")).not.toBeInTheDocument();
+    expect(screen.queryByText("Results")).not.toBeInTheDocument();
   });
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness
@@ -76,7 +76,7 @@ describe("PaletteResults", () => {
     setup({ query: "Bar" });
 
     await waitFor(async () => {
-      expect(await screen.findByText("Search results")).toBeInTheDocument();
+      expect(await screen.findByText("Results")).toBeInTheDocument();
     });
 
     expect(
