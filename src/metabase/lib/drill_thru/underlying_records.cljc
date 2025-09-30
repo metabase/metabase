@@ -34,6 +34,7 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
@@ -43,6 +44,7 @@
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
@@ -140,13 +142,18 @@
                            ;; instead of
                            ;;
                            ;;    month(col) = March 2023
-                           (let [column (if-let [temporal-unit (or (::lib.underlying/temporal-unit column)
-                                                                   (lib.temporal-bucket/temporal-bucket column))]
-                                          (lib.temporal-bucket/with-temporal-bucket filter-column temporal-unit)
+                           (let [bucket (or (::lib.underlying/temporal-unit column)
+                                            (lib.temporal-bucket/temporal-bucket column))
+                                 unit   (cond-> bucket
+                                          (map? bucket) :unit)
+                                 column (if unit
+                                          (lib.temporal-bucket/with-temporal-bucket filter-column unit)
                                           filter-column)]
-                             (if (some? value)
-                               [(lib.filter/= column value)]
-                               [(lib.filter/is-null column)])))]
+                             (if (nil? value)
+                               [(lib.filter/is-null column)]
+                               [(cond-> (lib.filter/= column value)
+                                  (and unit (lib.schema.temporal-bucketing/datetime-truncation-units unit))
+                                  lib.fe-util/expand-temporal-expression)])))]
     (reduce
      (fn [query filter-clause]
        (lib.filter/filter query stage-number filter-clause))

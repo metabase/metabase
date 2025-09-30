@@ -124,6 +124,22 @@
                                 (t/minus (t/months 1)))]
              (t/format :iso-offset-date-time last-month))))
 
+(let [[start end] #?(:cljs (let [now    (js/Date.)
+                                 year   (.getFullYear now)
+                                 month  (.getMonth now)]
+                             [(-> (js/Date.UTC year (dec month))
+                                  (js/Date.))
+                              (-> (js/Date.UTC year month 0) ; Sep 0 == Aug 31
+                                  (js/Date.))])
+                     :clj  (let [this-month (t/local-date (t/year) (t/month))]
+                             [(t/minus this-month (t/months 1))
+                              (t/minus this-month (t/days 1))]
+                             #_(t/format :iso-date last-month-end)))
+      ->str       #?(:cljs (fn [d] (str (.getYear d) "-" (inc (.getMonth d)) "-" (.getDay d)))
+                     :clj  #(t/format :iso-date %))]
+  (def ^:private last-month-start (->str start))
+  (def ^:private last-month-end   (->str end)))
+
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
   (let [columns    (lib/returned-columns query)
         aggs       (filter #(= (:lib/source %) :source/aggregations)
@@ -166,10 +182,11 @@
                       42295.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]]))))
+                          last-month-start
+                          last-month-end]]))))
 
 (deftest ^:parallel underlying-records-apply-test-2
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
@@ -185,10 +202,11 @@
                       6572.12
                       [last-month]
                       (fn [_agg-dim [breakout-dim]]
-                        [[:= {}
+                        [[:between {}
                           (-> (:column-ref breakout-dim)
                               (lib.options/with-options {:temporal-unit :month}))
-                          last-month]
+                          last-month-start
+                          last-month-end]
                          [:= {} (-> (meta/field-metadata :products :category)
                                     lib/ref
                                     (lib.options/with-options {}))
@@ -219,7 +237,7 @@
                         (fn [_agg-dim [breakout-dim]]
                           (let [monthly-breakout (-> (:column-ref breakout-dim)
                                                      (lib.options/with-options {:temporal-unit :month}))]
-                            [[:=  {} monthly-breakout last-month]]))))))
+                            [[:between {} monthly-breakout last-month-start last-month-end]]))))))
 
 (deftest ^:parallel multiple-aggregations-multiple-breakouts-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -238,10 +256,11 @@
                             (-> (:column-ref product-id-dim)
                                 (lib.options/update-options dissoc :lib/uuid))
                             120]
-                           [:= {}
+                           [:between {}
                             (-> (:column-ref created-at-dim)
                                 (lib.options/with-options {:temporal-unit :month}))
-                            last-month]])))))
+                            last-month-start
+                            last-month-end]])))))
 
 (deftest ^:parallel temporal-unit-breakouts-test
   (let [column (-> (meta/field-metadata :orders :created-at)
@@ -367,9 +386,10 @@
       (is (=? {:stages [{:filters [[:> {}
                                     [:field {} (meta/id :orders :total)]
                                     50]
-                                   [:= {}
+                                   [:between {}
                                     [:field {:temporal-unit :month} (meta/id :orders :created-at)]
-                                    "2023-03-01T00:00:00Z"]]}]}
+                                    "2023-03-01"
+                                    "2023-03-31"]]}]}
               (lib/drill-thru query drill))))))
 
 (deftest ^:parallel negative-aggregation-values-display-info-test
@@ -511,11 +531,12 @@
                :column-ref [:aggregation {:lib/source-name "sum_where_SUBTOTAL"} string?]}
               drill))
       (is (=? {:lib/type :mbql/query
-               :stages   [{:filters     [[:= {}
+               :stages   [{:filters     [[:between {}
                                           (-> (meta/field-metadata :orders :created-at)
                                               lib/ref
                                               (lib.options/with-options {}))
-                                          "2023-12-01"]
+                                          "2023-12-01"
+                                          "2023-12-31"]
                                          [:= {} (-> (meta/field-metadata :products :category)
                                                     lib/ref
                                                     (lib.options/with-options {}))
@@ -687,12 +708,14 @@
                                        (lib/available-drill-thrus query context))]
     (is (some? drill))
     (is (=? [{:source-card 1
-              :filters     [[:=
+              :filters     [[:between
                              {}
                              [:field {:temporal-unit :month} "CREATED_AT"]
-                             "2023-07-01T00:00:00Z"]
-                            [:=
+                             "2023-07-01"
+                             "2023-07-31"]
+                            [:between
                              {}
                              [:field {:temporal-unit :year} "CREATED_AT"]
-                             "2023-01-01T00:00:00Z"]]}]
+                             "2023-01-01"
+                             "2023-12-31"]]}]
             (:stages (lib/drill-thru query drill))))))
