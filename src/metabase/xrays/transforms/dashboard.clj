@@ -15,9 +15,9 @@
 (def ^:private ^:const ^Long total-width 18)
 (def ^:private ^:const ^Long height 4)
 
-(defn- cards->section
+(mu/defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
-  [group cards]
+  [group :- :string cards]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group
@@ -62,10 +62,12 @@
 (defn dashboard
   "Create a (transient) dashboard for transform named `transform-name`."
   [transform-name]
-  (let [transform-spec              (m/find-first (comp #{transform-name} :name) @*transform-specs*)
+  (let [transform-spec              (or (m/find-first (comp #{transform-name} :name) @*transform-specs*)
+                                        (throw (ex-info (format "Failed to find transform with name %s" (pr-str transform-name))
+                                                        {:status-code 404})))
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
-                                         (t2/select 'Card :collection_id)
+                                         (t2/select :model/Card :collection_id)
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

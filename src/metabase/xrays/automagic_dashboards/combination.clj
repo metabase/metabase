@@ -248,6 +248,7 @@
        card
        (-> grounded-metric
            (assoc
+            :id (gensym)
             :affinity-name card-name
             :card-score card-score
             :total-score (long (/ (apply + score-components) (count score-components)))

@@ -7,7 +7,8 @@
    [metabase.api.response :as api.response]
    [metabase.api.settings :as api.settings]
    [metabase.util.i18n :refer [deferred-trs deferred-tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 ;;; these use vars rather than plain functions so changes to the underlying functions get propagated during REPL usage.
 
@@ -83,9 +84,9 @@
           :else
           (respond api.response/response-forbidden))))
 
-(defn- enforce-authentication
+(mu/defn- enforce-authentication :- ifn?
   "Middleware that returns a 401 response if `request` has no associated `:metabase-user-id`."
-  [handler]
+  [handler :- ifn?]
   (fn [{:keys [metabase-user-id] :as request} respond raise]
     (if metabase-user-id
       (handler request respond raise)

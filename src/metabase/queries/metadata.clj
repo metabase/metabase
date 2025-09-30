@@ -192,9 +192,15 @@
     {:cards      (sort-by :id link-cards)
      :dashboards (sort-by :id dashboards)}))
 
-(defn batch-fetch-dashboard-metadata
+(mu/defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
-  [dashboards]
+  [dashboards :- [:sequential
+                  [:map {:optional true} [:dashcards
+                                          [:sequential
+                                           [:map
+                                            [:card   {:optional true} [:maybe ::queries.schema/card]]
+                                            [:series {:optional true} [:maybe [:sequential [:map
+                                                                                            [:dataset_query ::queries.schema/query]]]]]]]]]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]
@@ -205,6 +211,7 @@
     (merge
      (->> (remove (comp card-ids :id) (:cards links))
           (concat cards)
+          (filter some?)
           batch-fetch-card-metadata)
      {:cards      (or (:cards links)      [])
       :dashboards (or (:dashboards links) [])})))

@@ -606,7 +606,7 @@
                       (for [dashcard (:dashcards dashboard)
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
-                            :let     [breakouts (lib/breakouts query)]
+                            :let     [breakouts (magic.util/do-with-mbql5-query query lib/breakouts)]
                             id       (lib.util.match/match breakouts
                                        [:field (_opts :guard :binning) (id :guard pos-int?)]
                                        id)]
@@ -640,7 +640,7 @@
                   temporal-field-ids (for [dashcard (:dashcards dashboard)
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
-                                           :let     [breakouts (lib/breakouts query)]
+                                           :let     [breakouts (magic.util/do-with-mbql5-query query lib/breakouts)]
                                            id       (lib.util.match/match breakouts
                                                       [:field (_opts :guard :temporal-unit) (id :guard pos-int?)]
                                                       id)]

@@ -481,7 +481,7 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(mu/defn- generate-base-dashboard
+(mu/defn- generate-base-dashboard :- ::ads/dashboard-template
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using

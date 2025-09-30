@@ -6,7 +6,10 @@
    [metabase.util.date-2 :as u.date]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
+   [metabase.xrays.automagic-dashboards.schema :as ads]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
@@ -75,7 +78,7 @@
 (defn- add-filter
   [dashcard filter-id field]
   (let [mappings (->> (conj (:series dashcard) (:card dashcard))
-                      (keep (fn [card]
+                      (keep (mu/fn [card :- [:maybe ::ads/card]]
                               (when-let [target (filter-for-card card field)]
                                 {:parameter_id filter-id
                                  :target       target
@@ -113,10 +116,11 @@
   (partial remove (fn [{:keys [fingerprint]}]
                     (some-> fingerprint :global :distinct-count (< 2)))))
 
-(defn add-filters
+(mu/defn add-filters
   "Add up to `max-filters` filters to dashboard `dashboard`. The `dimensions` argument is a list of fields for which to
   create filters."
-  [dashboard dimensions max-filters]
+  [dashboard :- ::ads/dashboard
+   dimensions max-filters]
   (let [fks (when-let [table-ids (not-empty (set (keep (comp :table_id :card)
                                                        (:dashcards dashboard))))]
               (field/with-targets (t2/select :model/Field

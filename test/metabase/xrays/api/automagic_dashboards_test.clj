@@ -20,7 +20,9 @@
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :as tf.specs]
    [toucan2.core :as t2]
-   [metabase.models.interface :as mi]))
+   [metabase.models.interface :as mi]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
+   [metabase.util.malli :as mu]))
 
 (use-fixtures :once
   (fixtures/initialize :db :web-server :test-users :test-users-personal-collections)
@@ -34,7 +36,7 @@
   (testing "check if all cards in dashcards contain the required fields"
     (doseq [dashcard dashcards]
       (is (malli= [:map
-                   [:id                     {:optional true} ::lib.schema.id/dashcard]
+                   [:id                     [:or :string :int]]
                    [:dashboard_tab_id       [:maybe :int]]
                    [:row                    :int]
                    [:col                    :int]
@@ -42,7 +44,7 @@
                    [:size_y                 :int]
                    [:parameter_mappings     {:optional true} [:maybe [:sequential [:map
                                                                                    [:parameter_id :string]
-                                                                                   [:card_id {:optional true} [:maybe ::lib.schema.id/card]]
+                                                                                   [:card_id :string]
                                                                                    [:target [:cat :string [:sequential :any] :map]]]]]]
                    [:visualization_settings [:maybe :map]]]
                   dashcard)))))
@@ -281,7 +283,7 @@
 ;;; ------------------- Transforms -------------------
 
 (deftest transforms-test
-  (testing "GET /api/automagic-dashboards/transform/:id"
+  (testing "GET /api/automagic-dashboards/transform/:transform-name"
     (mt/with-test-user :crowberto
       (transforms.test/with-test-transform-specs
         (test.de/with-test-domain-entity-specs
@@ -295,7 +297,15 @@
                     (api-call! "transform/%s" ["Test transform"]
                                #(revoke-collection-permissions!
                                  (tf.materialize/get-collection "Test transform"))
-                               (fn [dashboard]
+                               (mu/fn [dashboard :- [:map
+                                                     [:dashcards
+                                                      [:sequential
+                                                       {:min 1}
+                                                       [:map
+                                                        [:card
+                                                         {:optional true}
+                                                         [:map
+                                                          [:dataset_query :map]]]]]]]]
                                  (->> dashboard
                                       :dashcards
                                       (sort-by (juxt :row :col))

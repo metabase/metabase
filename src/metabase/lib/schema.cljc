@@ -247,7 +247,7 @@
     (let [stage (common/normalize-map stage)]
       ;; infer stage type
       (cond
-        (:lib/type stage)
+        ((some-fn :lib/type #(get % "lib/type")) stage)
         stage
 
         ((some-fn :source-table :source-card) stage)
@@ -359,7 +359,7 @@
 
 (defn- normalize-stages [stages]
   (when (sequential? stages)
-    (if (every? :lib/type stages)
+    (if (every? (some-fn :lib/type #(get % "lib/type")) stages)
       stages
       (into [(first stages)]
             (comp

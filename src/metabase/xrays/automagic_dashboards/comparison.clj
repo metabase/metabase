@@ -19,10 +19,8 @@
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))
 
-(mu/defn- dashboard->cards :- [:sequential
-                               [:map
-                                [:dataset_query {:optional true} ::ads/query]]]
-  [dashboard]
+(mu/defn- dashboard->cards :- [:sequential ::ads/card]
+  [dashboard :- ::ads/dashboard]
   (->> dashboard
        :dashcards
        (map (fn [{:keys [size_y card col row series] :as dashcard}]
@@ -42,7 +40,8 @@
       (select-keys [:dataset_query :description :display :name :result_metadata
                     :visualization_settings])
       (assoc :creator_id    api/*current-user-id*
-             :collection_id nil)))
+             :collection_id nil
+             :id            (gensym))))
 
 (mu/defn- display-type :- [:maybe :keyword]
   [card :- :map]
@@ -106,7 +105,7 @@
               series (-> card-right
                          (update :name #(format "%s (%s)" % (comparison-name right)))
                          vector)]
-          (update dashboard :dashcards conj (merge (populate/card-defaults)
+          (update dashboard :dashcards conj (merge (populate/dashcard-defaults)
                                                    {:col                    0
                                                     :row                    row
                                                     :size_x                 populate/grid-width
@@ -126,7 +125,7 @@
                              (not (multiseries? card-right))
                              (assoc-in [:visualization_settings :graph.colors] [color-right]))]
           (-> dashboard
-              (update :dashcards conj (merge (populate/card-defaults)
+              (update :dashcards conj (merge (populate/dashcard-defaults)
                                              {:col                    0
                                               :row                    row
                                               :size_x                 width
@@ -135,7 +134,7 @@
                                               :card_id                (:id card-left)
                                               :series                 series-left
                                               :visualization_settings {}}))
-              (update :dashcards conj (merge (populate/card-defaults)
+              (update :dashcards conj (merge (populate/dashcard-defaults)
                                              {:col                    width
                                               :row                    row
                                               :size_x                 width

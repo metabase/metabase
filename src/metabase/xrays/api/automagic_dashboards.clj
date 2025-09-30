@@ -20,7 +20,9 @@
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [medley.core :as m]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -147,10 +149,19 @@
         entities))
 
 (mr/def ::entity-id-or-query
-  "A non-empty string with an Entity ID or a form-encoded base-64-encoded JSON-encoded MBQL query."
+  "One of these:
+
+  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)
+
+  * a form-encoded base-64-encoded JSON-encoded MBQL query
+
+  * The name of a transform
+
+  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded
+  string.)"
   [:string
    {:min       1
-    :api/regex #"(?:[A-Za-z0-9]|(?:%2B)|(?:%2F))+(?:%3D){0,2}"}])
+    :api/regex #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+"}])
 
 (def ^:private ComparisonEntity
   (let [entity-types [:adhoc :segment :table]]
@@ -165,10 +176,10 @@
   [show]
   (cond-> show (= "all" show) keyword))
 
-(defn get-automagic-dashboard
+(mu/defn get-automagic-dashboard
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity entity-id-or-query show]
-  (if (= entity "transform")
+  [entity :- Entity entity-id-or-query show]
+  (if (= entity :transform)
     (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
         (automagic-dashboards.core/automagic-analysis {:show (coerce-show show)}))))
@@ -182,13 +193,29 @@
                       [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
   (get-automagic-dashboard entity entity-id-or-query show))
 
+(defn- dashboard-metadata [dashboard]
+  (letfn [(normalize-card [card]
+            (-> card
+                (m/update-existing :dataset_query lib-be/normalize-query)
+                (dissoc :id)))
+          (normalize-series [series]
+            (map normalize-card series))
+          (normalize-dashcard [{:keys [card], :as dashcard}]
+            (-> dashcard
+                (u/assoc-dissoc :card (some-> card not-empty normalize-card))
+                (m/update-existing :series normalize-series)))
+          (normalize-dashcards [dashcards]
+            (mapv normalize-dashcard dashcards))
+          (normalize-dashboard [dashboard]
+            (update dashboard :dashcards normalize-dashcards))]
+    (queries/batch-fetch-dashboard-metadata [(normalize-dashboard dashboard)])))
+
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
                                            [:entity             Entity]
                                            [:entity-id-or-query ::entity-id-or-query]]]
-  (queries/batch-fetch-dashboard-metadata
-   [(get-automagic-dashboard entity entity-id-or-query nil)]))
+  (dashboard-metadata (get-automagic-dashboard entity entity-id-or-query nil)))
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
@@ -198,7 +225,7 @@
      (fn [{:keys [table_id id]}]
        {:linked-table-id table_id
         :linked-field-id id})
-     (t2/select 'Field :fk_target_field_id field-id))))
+     (t2/select :model/Field :fk_target_field_id field-id))))
 
 (defn- add-source-model-link
   "Insert a source model link card into the sequence of passed in cards."
@@ -207,7 +234,8 @@
                        (into [4])
                        (apply max))]
     (cons
-     {:size_x                 max-width
+     {:id                     (gensym)
+      :size_x                 max-width
       :size_y                 1
       :row                    0
       :col                    0

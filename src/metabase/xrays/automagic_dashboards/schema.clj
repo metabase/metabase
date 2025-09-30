@@ -320,3 +320,35 @@
    [:fn
     {:error/message "Should be a field with snake_case keys"}
     (complement :base-type)]])
+
+(mr/def ::card
+  [:map
+   [:id            {:optional true} [:or symbol? ::lib.schema.id/card]]
+   [:dataset_query {:optional true} ::query]])
+
+(mr/def ::dashcard
+  [:map
+   [:id                     {:optional true} [:or symbol? ::lib.schema.id/dashcard]]
+   [:card                   {:optional true} ::card]
+   [:card_id                {:optional true} [:or symbol? ::lib.schema.id/card]]
+   [:col                    {:optional true} nat-int?]
+   [:row                    {:optional true} nat-int?]
+   [:size_x                 {:optional true} pos-int?]
+   [:size_y                 {:optional true} pos-int?]
+   [:visualization_settings {:optional true} map?]
+   [:title                  {:optional true} string?]
+   [:card-score             {:optional true} number?]])
+
+(mr/def ::dashboard
+  [:map
+   [:dashcards {:optional true} [:sequential ::dashcard]]
+   [:filters   {:optional true} [:sequential :any]]])
+
+(mr/def ::card-template
+  :map)
+
+(mr/def ::dashboard-template
+  "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked
+  out what the schema is supposed to be yet."
+  [:map
+   [:cards {:optional true} [:maybe [:sequential ::card-template]]]])

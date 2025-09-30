@@ -6,7 +6,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.xrays.automagic-dashboards.schema :as ads]))
 
 (defmacro with-rollback-only-transaction
   "Execute body and cleanup all dashboard elements created."
@@ -40,9 +41,8 @@
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
         (is (map? query))
-        (is (malli= ::lib.schema/query
-                    query
-                    #_(mbql.normalize/normalize query)))))))
+        (is (malli= ::ads/query
+                    query))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?

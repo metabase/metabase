@@ -73,8 +73,8 @@
   "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
   [x]
   (when (and (vector? x)
-             ((some-fn keyword? string?) (first x)))
-    (keyword (first x))))
+             (keyword? (first x)))
+    (first x)))
 
 ;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
 (mu/defn is-clause?
