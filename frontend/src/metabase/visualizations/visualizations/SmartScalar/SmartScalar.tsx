@@ -9,11 +9,11 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { isEmpty } from "metabase/lib/validate";
 import { Box, Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -76,14 +76,12 @@ export function SmartScalar({
   onRenderError,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
+  const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
   const { trend, error } = useMemo(
-    () =>
-      computeTrend(series, insights, settings, {
-        getColor: color,
-      }),
-    [series, insights, settings],
+    () => computeTrend(series, insights, settings, { getColor }),
+    [series, insights, settings, getColor],
   );
 
   useEffect(() => {
