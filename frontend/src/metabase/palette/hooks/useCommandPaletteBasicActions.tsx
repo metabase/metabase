@@ -298,5 +298,9 @@ export const useCommandPaletteBasicActions = ({
       id: "toggle-dark-mode",
       perform: toggleColorScheme,
     },
+    {
+      id: "toggle-dark-mode-2",
+      perform: toggleColorScheme,
+    },
   ]);
 };
