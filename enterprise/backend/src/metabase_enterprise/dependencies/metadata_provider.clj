@@ -169,7 +169,8 @@
                                              {:name     (:lib/desired-column-alias col)
                                               :lib/type :metadata/column
                                               :id       (or (:id old-col) (fake-id))
-                                              :table-id (:id output-table)})))))
+                                              :table-id (:id output-table)
+                                              :active   true})))))
         outputs-by-id   (delay (m/index-by :id @output-cols))]
     ;; NOTE: Any newly added output columns can't be looked up directly by ID, with this version.
     ;; The `output-cols` code above can be adapted to add them to the `*overrides` atom, but YAGNI for now.
