@@ -230,9 +230,9 @@ describe("scenarios > metrics > collection", () => {
       H.visitCollection(FIRST_COLLECTION_ID);
     });
     H.getPinnedSection()
-      .findByTestId("scalar-value")
-      .should("not.be.empty")
-      .and("be.visible");
+      .findByTestId("scalar-container")
+      .findByText("18,760")
+      .should("be.visible");
   });
 });
 
