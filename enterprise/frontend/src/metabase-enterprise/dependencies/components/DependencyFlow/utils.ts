@@ -9,6 +9,7 @@ import type {
   DependencyNode,
 } from "metabase-types/api";
 
+import S from "./DependencyFlow.module.css";
 import { NODE_HEIGHT, NODE_WIDTH } from "./constants";
 
 function getNodeId(id: DependencyEntityId, type: DependencyEntityType): string {
@@ -18,10 +19,10 @@ function getNodeId(id: DependencyEntityId, type: DependencyEntityType): string {
 function getNodes(nodes: DependencyNode[]): Node[] {
   return nodes.map((node) => ({
     id: getNodeId(node.id, node.type),
+    className: S.node,
     type: "custom",
     data: node,
     position: { x: 0, y: 0 },
-    selectable: true,
   }));
 }
 

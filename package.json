@@ -57,7 +57,7 @@
     "@visx/shape": "^3.5.0",
     "@visx/text": "^3.3.0",
     "@xiechao/codemirror-lang-handlebars": "^1.0.4",
-    "@xyflow/react": "^12.8.6",
+    "@xyflow/react": "^12.8.5",
     "bowser": "^2.11.0",
     "buffer": "^6.0.3",
     "classnames": "^2.1.3",

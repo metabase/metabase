@@ -6215,7 +6215,7 @@
   resolved "https://registry.yarnpkg.com/@xtuc/long/-/long-4.2.2.tgz#d291c6a4e97989b5c61d9acf396ae4fe133a718d"
   integrity sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==
 
-"@xyflow/react@^12.8.6":
+"@xyflow/react@^12.8.5":
   version "12.8.6"
   resolved "https://registry.yarnpkg.com/@xyflow/react/-/react-12.8.6.tgz#4cb80abe1bf7123dd989f2c8554bff679980bd8b"
   integrity sha512-SksAm2m4ySupjChphMmzvm55djtgMDPr+eovPDdTnyGvShf73cvydfoBfWDFllooIQ4IaiUL5yfxHRwU0c37EA==

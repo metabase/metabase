@@ -1,4 +1,13 @@
-import { Background, Controls, ReactFlow } from "@xyflow/react";
+import {
+  Background,
+  Controls,
+  type Edge,
+  type Node,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+} from "@xyflow/react";
+import { useEffect } from "react";
 
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 
@@ -10,12 +19,16 @@ const NODE_TYPES = {
 };
 
 export function DependencyFlow() {
-  const { data: graph } = useGetDependencyGraphQuery();
-  if (!graph) {
-    return null;
-  }
+  const { data: graph = { nodes: [], edges: [] } } =
+    useGetDependencyGraphQuery();
+  const [nodes, setNodes, handleNodeChange] = useNodesState<Node>([]);
+  const [edges, setEdges, handleEdgeChange] = useEdgesState<Edge>([]);
 
-  const { nodes, edges } = getGraphData(graph);
+  useEffect(() => {
+    const { nodes, edges } = getGraphData(graph);
+    setNodes(nodes);
+    setEdges(edges);
+  }, [graph, setNodes, setEdges]);
 
   return (
     <ReactFlow
@@ -24,6 +37,8 @@ export function DependencyFlow() {
       nodeTypes={NODE_TYPES}
       defaultEdgeOptions={{ type: "smoothstep" }}
       fitView
+      onNodesChange={handleNodeChange}
+      onEdgesChange={handleEdgeChange}
     >
       <Background />
       <Controls />
