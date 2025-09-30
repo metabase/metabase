@@ -1502,6 +1502,146 @@ databaseChangeLog:
                   value: 'cron/raw'
             where: built_in_type IS NOT NULL
 
+  - changeSet:
+      id: v57.2025-09-23T14:32:02
+      author: johnswanson
+      comment: Fix MySQL alerts view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v5/mysql-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:08
+      author: johnswanson
+      comment: Fix MySQL audit_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/audit_log/v3/mysql-audit_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/audit_log/v2/mysql-audit_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:11
+      author: johnswanson
+      comment: Fix MySQL content view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/content/v3/mysql-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:13
+      author: johnswanson
+      comment: Fix MySQL fields view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/fields/v2/mysql-fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/fields/v1/mysql-fields.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:16
+      author: johnswanson
+      comment: Fix MySQL query_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v3/mysql-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v2/mysql-query_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:19
+      author: johnswanson
+      comment: Fix MySQL subscriptions view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/subscriptions/v2/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/subscriptions/v1/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:22
+      author: johnswanson
+      comment: Fix MySQL tables view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tables/v2/mysql-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/tables/v1/mysql-tables.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:25
+      author: johnswanson
+      comment: Fix MySQL tasks view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tasks/v3/mysql-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/tasks/v2/mysql-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:28
+      author: johnswanson
+      comment: Fix MySQL users view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/users/v4/mysql-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/users/v3/mysql-users.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:31
+      author: johnswanson
+      comment: Fix MySQL view_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v3/mysql-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v2/mysql-view_log.sql
+            relativeToChangelogFile: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
