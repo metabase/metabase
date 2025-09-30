@@ -7,6 +7,7 @@ import {
   questionIdArgType,
   questionIds,
 } from "embedding-sdk-bundle/test/storybook-id-args";
+import { InteractiveQuestion } from "embedding-sdk-package";
 import { Box } from "metabase/ui";
 import {
   createMockNativeCard,
@@ -93,11 +94,15 @@ export const Default = {
   },
 };
 
-export const WithEditableParameters = {
+export const WithEditableSqlParametersCustomLayout = {
   render(args: SdkQuestionComponentProps) {
     return (
       <Box bg="var(--mb-color-background)" mih="100vh">
-        <SdkQuestion {...args} />
+        <SdkQuestion {...args}>
+          <InteractiveQuestion.Title />
+          <InteractiveQuestion.SqlParametersList />
+          <InteractiveQuestion.QuestionVisualization />
+        </SdkQuestion>
       </Box>
     );
   },
