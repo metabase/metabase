@@ -82,7 +82,7 @@ const PaletteContainer = withRouter(
               align="center"
               left={36} // align this icon with results icons
               pos="absolute"
-              bottom={10}
+              top={26}
             >
               <Icon c="text-dark" name="search" />
             </Stack>

@@ -1,10 +1,10 @@
 .input {
-  padding: var(--mantine-spacing-xl);
+  padding: var(--mantine-spacing-lg);
   padding-left: 60px;
-  padding-bottom: var(--mantine-spacing-sm);
   font-size: 17px;
   width: 100%;
   border: none;
+  border-bottom: 1px solid var(--border-color);
   border-top-left-radius: 0.5rem;
   border-top-right-radius: 0.5rem;
   color: var(--mb-color-text-dark);
