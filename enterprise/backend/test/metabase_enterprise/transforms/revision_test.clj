@@ -1,4 +1,4 @@
-(ns metabase.revisions.impl.transform-test
+(ns metabase-enterprise.transforms.revision-test
   (:require
    [clojure.test :refer :all]
    [metabase.revisions.models.revision :as revision]))
