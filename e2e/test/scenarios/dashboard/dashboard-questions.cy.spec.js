@@ -456,6 +456,7 @@ describe("Dashboard > Dashboard Questions", () => {
       H.commandPalette()
         .findByText("Total Orders Dashboard Question")
         .parent()
+        .parent()
         .findByText(/Orders in a dashboard/)
         .should("be.visible");
       H.closeCommandPalette();
