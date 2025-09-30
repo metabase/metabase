@@ -483,6 +483,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           ) ?? tableTheme?.cell?.backgroundColor,
       );
 
+      const getCellStyle = memoize((value: RowValue, rowIndex: number) =>
+        settings["table._cell_style_getter"]?.(value, rowIndex, col.name),
+      );
+
       const formatter = columnFormatters[columnIndex];
       const columnName = getColumnTitle(columnIndex);
 
@@ -557,6 +561,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection,
         enableResizing: true,
         getBackgroundColor,
+        getCellStyle,
         formatter: formatter.rich,
         clipboardFormatter: formatter.plain,
       };

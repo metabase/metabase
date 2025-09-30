@@ -12,6 +12,7 @@ export interface SQLPivotSettings {
   "sqlpivot.show_row_aggregation"?: boolean;
   "sqlpivot.show_column_aggregation"?: boolean;
   "sqlpivot.hidden_column_labels"?: string[];
+  "sqlpivot.enable_color_coding"?: boolean;
 }
 
 export function isSQLPivotSensible(data: DatasetData): boolean {

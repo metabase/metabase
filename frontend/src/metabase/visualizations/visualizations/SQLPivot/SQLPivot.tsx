@@ -219,9 +219,61 @@ export class SQLPivot extends Component<SQLPivotProps, SQLPivotState> {
       },
     ];
 
+    // Check if color coding is enabled
+    const enableColorCoding = (this.props.settings as any)[
+      "sqlpivot.enable_color_coding"
+    ];
+
+    // Provide a background color getter compatible with TableInteractive.
+    // Applies discrete colors based on score thresholds only if enabled.
+    /* eslint-disable no-color-literals */
+    const styleGetter = enableColorCoding
+      ? (value: unknown, _rowIndex?: number, _colName?: string) => {
+          if (!_colName) {
+            return undefined;
+          }
+          const colIndex = data.cols.findIndex((c: any) => c.name === _colName);
+          if (colIndex <= 0) {
+            // Do not style the first column (row labels)
+            return undefined;
+          }
+
+          const numericValue =
+            typeof value === "number"
+              ? value
+              : typeof value === "string" && value.trim() !== ""
+                ? Number(value)
+                : NaN;
+
+          if (!Number.isFinite(numericValue)) {
+            return undefined;
+          }
+
+          let textColor: string | undefined;
+          if (numericValue >= 92.9) {
+            textColor = "#5D86DE"; // Blue
+          } else if (numericValue > 78.6) {
+            textColor = "#66B26B"; // Green
+          } else {
+            textColor = "#FAC849"; // Yellow
+          }
+          return { color: textColor } as React.CSSProperties;
+        }
+      : undefined;
+    /* eslint-enable no-color-literals */
+
+    const settingsWithBackground = {
+      ...this.props.settings,
+      // only colorize the number text (not cell background) if color coding is enabled
+      ...(enableColorCoding && { "table._cell_style_getter": styleGetter }),
+    } as typeof this.props.settings & {
+      [key: string]: unknown;
+    };
+
     return (
       <TableInteractive
         {...this.props}
+        settings={settingsWithBackground}
         series={transformedSeries}
         question={this.state.question}
         data={data}

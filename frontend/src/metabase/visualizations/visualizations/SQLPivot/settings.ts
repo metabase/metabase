@@ -196,4 +196,19 @@ export const SQL_PIVOT_SETTINGS = {
     },
     useRawSeries: true,
   },
+
+  "sqlpivot.enable_color_coding": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Enable WOVO color coding`;
+    },
+    get description() {
+      return t`Apply color coding to numeric values based on score thresholds (blue for ≥92.9, green for >78.6, yellow for others)`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: false,
+  },
 };
