@@ -1,5 +1,6 @@
 import type {
   DeleteSuggestedMetabotPromptRequest,
+  MetabotFeedback,
   MetabotId,
   MetabotInfo,
   SuggestedMetabotPromptsRequest,
@@ -75,6 +76,13 @@ export const metabotApi = EnterpriseApi.injectEndpoints({
           idTag("metabot-prompt-suggestions", metabot_id),
         ]),
     }),
+    submitMetabotFeedback: builder.mutation<void, MetabotFeedback>({
+      query: (params) => ({
+        method: "POST",
+        url: "/api/ee/metabot-v3/feedback",
+        body: params,
+      }),
+    }),
   }),
 });
 
@@ -84,4 +92,5 @@ export const {
   useGetSuggestedMetabotPromptsQuery,
   useDeleteSuggestedMetabotPromptMutation,
   useRegenerateSuggestedMetabotPromptsMutation,
+  useSubmitMetabotFeedbackMutation,
 } = metabotApi;

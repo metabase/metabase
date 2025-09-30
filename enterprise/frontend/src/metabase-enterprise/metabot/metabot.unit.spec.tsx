@@ -16,7 +16,6 @@ import {
 } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
   type MockStreamedEndpointParams,
@@ -51,10 +50,6 @@ import {
   metabotReducer,
   setVisible,
 } from "./state";
-
-jest.mock("metabase/lib/download", () => ({
-  downloadObjectAsJson: jest.fn(),
-}));
 
 const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
   mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
@@ -282,7 +277,10 @@ describe("metabot-streaming", () => {
     });
 
     it("should present the user an option to provide feedback", async () => {
+      const feedbackPath = "path:/api/ee/metabot-v3/feedback";
+
       setup();
+      fetchMock.post(feedbackPath, 204);
       mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       await enterChatMessage("Who is your favorite?");
@@ -294,10 +292,6 @@ describe("metabot-streaming", () => {
         within(lastMessage!).findByTestId("metabot-chat-message-thumbs-up");
       const thumbsDown = () =>
         within(lastMessage!).findByTestId("metabot-chat-message-thumbs-down");
-      const mockDownloadObjectAsJson =
-        downloadObjectAsJson as jest.MockedFunction<
-          typeof downloadObjectAsJson
-        >;
 
       expect(await thumbsUp()).toBeInTheDocument();
       expect(await thumbsDown()).toBeInTheDocument();
@@ -306,11 +300,11 @@ describe("metabot-streaming", () => {
       expect(await feedbackModal()).toBeInTheDocument();
       await userEvent.click(
         await within(await feedbackModal()).findByRole("button", {
-          name: /Download/,
+          name: /Submit/,
         }),
       );
 
-      expect(mockDownloadObjectAsJson).toHaveBeenCalledTimes(1);
+      expect(fetchMock.callHistory.calls(feedbackPath)).toHaveLength(1);
 
       expect(await thumbsUp()).toBeDisabled();
       expect(await thumbsDown()).toBeDisabled();
