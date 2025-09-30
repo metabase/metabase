@@ -26,7 +26,8 @@ export const getBenchRoutes = (
       <Route path="overview" component={() => <div>{t`Overview`}</div>} />
       {PLUGIN_TRANSFORMS.getAdminRoutes()}
       <Route path="segments" component={SegmentListApp} />
-      <Route path="models" component={ModelsBenchSection} />
+      <Route path="model" component={ModelsBenchSection} />
+      <Route path="model/:slug" component={ModelsBenchSection} />
       <Route path="metrics" component={BrowseMetrics} />
 
       <Route path="metadata" component={createAdminRouteGuard("data-model")}>
