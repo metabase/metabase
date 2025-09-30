@@ -10,7 +10,10 @@ import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPag
 import { Route } from "metabase/hoc/Title";
 import type { AppStore } from "metabase/lib/redux";
 import { DataModel } from "metabase/metadata/pages/DataModel";
-import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import {
+  PLUGIN_TRANSFORMS,
+} from "metabase/plugins";
+import { Box } from "metabase/ui";
 
 import { BenchApp } from "./components/BenchApp";
 import { ModelsBenchSection } from "./components/models/ModelsBenchSection";
@@ -29,7 +32,6 @@ export const getBenchRoutes = (
       <Route path="model" component={ModelsBenchSection} />
       <Route path="model/:slug" component={ModelsBenchSection} />
       <Route path="metrics" component={BrowseMetrics} />
-
       <Route path="metadata" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
