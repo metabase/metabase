@@ -1,6 +1,6 @@
 # Metabase
 
-[Metabase](https://www.metabase.com) is the easy, open-source Business Intelligence and Embedded Analytics platform that lets everyone in your company ask questions and learn from data.
+[Metabase](https://www.metabase.com) is the easy, open-source way for your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](TBC)
 
