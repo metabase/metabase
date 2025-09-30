@@ -27,6 +27,8 @@ export const defaultContext = {
 
 export const MetabotContext = createContext<MetabotCtx>(defaultContext);
 
+export type MetabotPromptInputRef = { focus: () => void };
+
 export const MetabotProvider = ({
   children,
 }: {

@@ -4,9 +4,9 @@ import type { MetabotConfig } from "../components/Metabot";
 
 import { useMetabotAgent } from "./use-metabot-agent";
 
-export const useMetabotChatHandlers = ({
-  preventRetryMessage,
-}: Pick<MetabotConfig, "preventRetryMessage">) => {
+export const useMetabotChatHandlers = (
+  config?: Partial<Pick<MetabotConfig, "preventRetryMessage">>,
+) => {
   const {
     isDoingScience,
     setPrompt,
@@ -33,7 +33,7 @@ export const useMetabotChatHandlers = ({
   );
 
   const handleRetryMessage = useMemo(() => {
-    if (preventRetryMessage) {
+    if (config?.preventRetryMessage) {
       return undefined;
     }
 
@@ -47,7 +47,7 @@ export const useMetabotChatHandlers = ({
       retryMessage(messageId).catch((err) => console.error(err));
     };
   }, [
-    preventRetryMessage,
+    config?.preventRetryMessage,
     isDoingScience,
     promptInputRef,
     retryMessage,

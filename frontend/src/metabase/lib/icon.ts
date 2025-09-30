@@ -13,7 +13,8 @@ export type IconModel =
   | SearchModel
   | CollectionItemModel
   | "schema"
-  | "transform";
+  | "transform"
+  | "user";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -41,6 +42,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   snippet: "unknown",
   document: "document",
   transform: "refresh_downstream",
+  user: "person",
 };
 
 export type IconData = {

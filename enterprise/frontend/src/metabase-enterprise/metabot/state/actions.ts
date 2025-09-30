@@ -234,7 +234,7 @@ export const sendAgentRequest = createAsyncThunk<
           signal,
         },
         {
-          onDataPart: (part) => {
+          onDataPart: function handleDataPart(part) {
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
@@ -282,10 +282,18 @@ export const sendAgentRequest = createAsyncThunk<
               )
               .exhaustive();
           },
-          onTextPart: (part) => dispatch(addAgentTextDelta(String(part))),
-          onToolCallPart: (part) => dispatch(toolCallStart(part)),
-          onToolResultPart: (part) => dispatch(toolCallEnd(part)),
-          onError: (part) => (error = part),
+          onTextPart: function handleTextPart(part) {
+            dispatch(addAgentTextDelta(String(part)));
+          },
+          onToolCallPart: function handleToolCallPart(part) {
+            dispatch(toolCallStart(part));
+          },
+          onToolResultPart: function handleToolResultPart(part) {
+            dispatch(toolCallEnd(part));
+          },
+          onError: function handleError(part) {
+            error = part;
+          },
         },
       );
 

@@ -39,7 +39,7 @@ export const AgentTodoListMessage = ({
       >
         <Flex align="center" justify="center">
           <Icon name="list" size=".75rem" mr="xs" c="brand" />
-          <Text size="sm" fw="bold" c="brand">{t`Todos`}</Text>
+          <Text size="sm" fw="bold" c="brand">{t`Todo List`}</Text>
         </Flex>
         <Flex align="center" justify="center" h="md">
           <Icon

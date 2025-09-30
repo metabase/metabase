@@ -9,9 +9,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
+import type { MetabotChatInputRef } from "metabase/metabot";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Icon } from "metabase/ui";
-import type { MetabotPromptInputRef } from "metabase-enterprise/metabot/context";
 import { createMentionSuggestion } from "metabase-enterprise/rich_text_editing/tiptap/extensions/Mention/MentionSuggestion";
 import {
   MetabotMentionExtension,
@@ -35,10 +35,7 @@ interface Props {
   onSubmit: () => void;
 }
 
-export const MetabotChatEditor = forwardRef<
-  MetabotPromptInputRef | null,
-  Props
->(
+export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
   (
     {
       value,
@@ -75,13 +72,7 @@ export const MetabotChatEditor = forwardRef<
         suggestion: {
           render: createSuggestionRenderer(
             createMentionSuggestion({
-              searchModels: [
-                "question",
-                "dataset",
-                "transform",
-                "table",
-                "database",
-              ],
+              searchModels: ["dataset", "transform", "table", "database"],
               canBrowseAll: false,
             }),
           ),
@@ -165,9 +156,14 @@ export const MetabotChatEditor = forwardRef<
         return null;
       }
 
-      // Return the editor with a focus method that matches the expected API
       return Object.assign(editor, {
         focus: () => editor.commands.focus("end"),
+        get scrollHeight() {
+          return editor.view.dom.scrollHeight;
+        },
+        get scrollTop() {
+          return editor.view.dom.scrollTop;
+        },
       });
     }, [editor]);
 

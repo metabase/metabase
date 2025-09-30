@@ -27,6 +27,7 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   table: "Table",
   "indexed-entity": "Indexed record",
   document: "Document",
+  transform: "Transform",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [

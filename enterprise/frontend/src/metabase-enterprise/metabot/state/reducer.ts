@@ -139,12 +139,14 @@ export const metabot = createSlice({
       action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
       state.toolCalls = [];
-      // @ts-expect-error -- transform definition causes possibly inifinite type definition
       state.messages.push({
         id: createMessageId(),
         role: "agent",
         ...action.payload,
-      } as MetabotAgentChatMessage);
+        // transforms in message is making this flakily produce possibly infinite
+        // typescript errors. since unused ts-expect-error directives produces
+        // errors, casting this as any to avoid having to add / remove constantly.
+      } as any);
     },
     addAgentErrorMessage: (
       state,
@@ -231,7 +233,10 @@ export const metabot = createSlice({
       state,
       action: PayloadAction<SuggestedTransform | undefined>,
     ) => {
-      state.reactions.suggestedTransform = action.payload;
+      // transform type makes this flakily produce possibly infinite
+      // typescript errors. since unused ts-expect-error directives produces
+      // errors, casting this as any to avoid having to add / remove constantly.
+      state.reactions.suggestedTransform = action.payload as any;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;

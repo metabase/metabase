@@ -122,7 +122,6 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
   onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
-  preventRetryMessage?: boolean;
   showFeedbackButtons: boolean;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
@@ -274,7 +273,6 @@ export const Messages = ({
   onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
   showFeedbackButtons: boolean;
-  preventRetryMessage: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const clipboard = useClipboard();

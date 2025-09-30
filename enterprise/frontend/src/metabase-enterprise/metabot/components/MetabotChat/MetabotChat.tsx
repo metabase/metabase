@@ -1,7 +1,6 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -159,17 +158,11 @@ export const MetabotChat = ({ config = {} }: { config?: MetabotConfig }) => {
                 errorMessages={metabot.errorMessages}
                 onRetryMessage={handleRetryMessage}
                 isDoingScience={metabot.isDoingScience}
-                preventRetryMessage={!!config.preventRetryMessage}
                 showFeedbackButtons
               />
               {/* loading */}
               {metabot.isDoingScience && (
-                <MetabotThinking
-                  toolCalls={metabot.toolCalls}
-                  hasStartedResponse={
-                    _.last(metabot.messages)?.role === "agent"
-                  }
-                />
+                <MetabotThinking toolCalls={metabot.toolCalls} />
               )}
               {/* filler - height gets set via ref mutation */}
               <div ref={fillerRef} data-testid="metabot-message-filler" />

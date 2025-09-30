@@ -40,6 +40,9 @@ const TRANSLATED_NAME_BY_MODEL_TYPE: Record<string, string> = {
   get transform() {
     return t`Transform`;
   },
+  get user() {
+    return t`User`;
+  },
 };
 
 export const getTranslatedEntityName = (type: string) =>

@@ -79,6 +79,7 @@ function MetabotMessages() {
           onRetryMessage={handleRetryMessage}
           isDoingScience={metabot.isDoingScience}
           showFeedbackButtons={false}
+          preventRetryMessage={false}
           onInternalLinkClick={setNavigateToPath}
         />
       </Flex>

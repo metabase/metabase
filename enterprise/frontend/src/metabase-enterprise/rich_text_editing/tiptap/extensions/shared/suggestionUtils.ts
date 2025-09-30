@@ -86,11 +86,9 @@ export function buildSearchModelMenuItems(
   onSelect: (model: SuggestionModel) => void,
 ): MenuItem[] {
   return searchModels.map((model) => {
-    const iconData = getIcon({ model });
-    const modelName = getTranslatedEntityName(model);
     return {
-      icon: iconData.name,
-      label: modelName || model,
+      icon: getIcon({ model }).name,
+      label: getTranslatedEntityName(model) || model,
       model,
       action: () => onSelect(model),
       hasSubmenu: true,
