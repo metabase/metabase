@@ -15,7 +15,7 @@ Documents let you tell a story with your data by combining text, charts, and oth
 
 1. Click the **+ New** button in the top right.
 2. Select **Document**.
-3. Add a title and then do stuff.
+3. Do stuff.
 4. Click the **Save** button.
 
 ## List commands with `/`
