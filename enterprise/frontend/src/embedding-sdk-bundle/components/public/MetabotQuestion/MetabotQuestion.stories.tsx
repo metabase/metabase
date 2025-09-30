@@ -98,7 +98,7 @@ export const SidebarLayout = {
             borderRadius: "16px",
           }}
         >
-          <MetabotQuestion height="calc(100vh - 80px)" layout="sidebar" />
+          <MetabotQuestion height="calc(100vh - 90px)" layout="sidebar" />
         </Flex>
       </Stack>
     );
@@ -116,7 +116,7 @@ export const StackedLayout = {
             borderRadius: "16px",
           }}
         >
-          <MetabotQuestion height="calc(100vh - 80px)" layout="stacked" />
+          <MetabotQuestion height="calc(100vh - 90px)" layout="stacked" />
         </Flex>
       </Stack>
     );
