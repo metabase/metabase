@@ -210,31 +210,31 @@
 (def ^:private base64-decoder "
 function(bin) {
           if (!bin) return null;
-          
+
           try {
             var base64 = bin.base64();
-            
+
             // Manual base64 decode implementation
             var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
             var result = '';
             var i = 0;
-            
+
             // Remove any padding
             base64 = base64.replace(/=+$/, '');
-            
+
             while (i < base64.length) {
               var a = chars.indexOf(base64.charAt(i++));
               var b = chars.indexOf(base64.charAt(i++));
               var c = chars.indexOf(base64.charAt(i++));
               var d = chars.indexOf(base64.charAt(i++));
-              
+
               var bitmap = (a << 18) | (b << 12) | (c << 6) | d;
-              
+
               result += String.fromCharCode((bitmap >> 16) & 255);
               if (c !== -1) result += String.fromCharCode((bitmap >> 8) & 255);
               if (d !== -1) result += String.fromCharCode(bitmap & 255);
             }
-            
+
             return result;
           } catch(e) {
             return null;
@@ -243,8 +243,10 @@ function(bin) {
 ")
 
 (defmethod ->rvalue :metadata/column
-  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
+  [{coercion :coercion-strategy, ::keys [source-alias join-field inherited?] :as field}]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))
+        coercion   (when-not inherited?
+                     coercion)]
     (cond
       (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
@@ -440,14 +442,15 @@ function(bin) {
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
-  (let [join-field (get-join-alias join-alias)
-        source-alias (get opts driver-api/qp.add.source-alias)]
+  (let [join-field   (get-join-alias join-alias)
+        source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
-                                 ::join-field join-field)))
+                                 ::join-field   join-field
+                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))

@@ -1426,7 +1426,7 @@
                     mt/rows)))))))
 
 (deftest ^:parallel no-double-coercion-when-joining-coerced-fields-test
-  (testing "Should generate correct SQL when joining a field that has coercion applied"
+  (testing "Should generate correct SQL when joining a field that has coercion applied (#62099)"
     (let [mp    (lib.tu/merged-mock-metadata-provider
                  meta/metadata-provider
                  {:fields [(merge (meta/field-metadata :products :id)
