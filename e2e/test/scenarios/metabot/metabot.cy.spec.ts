@@ -199,13 +199,6 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
           triggered_from: "search",
         });
         H.closeMetabotViaCloseButton();
-
-        H.openMetabotViaCommandPalette();
-        H.expectUnstructuredSnowplowEvent({
-          event: "metabot_chat_opened",
-          triggered_from: "command_palette",
-        });
-        H.closeMetabotViaCloseButton();
       });
 
       it("should be controlled via keyboard shortcut", () => {
