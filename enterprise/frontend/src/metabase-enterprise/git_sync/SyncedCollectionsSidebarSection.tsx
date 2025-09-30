@@ -138,7 +138,12 @@ export const SyncedCollectionsSidebarSection = ({
                   px={0}
                   ml="auto"
                 >
-                  <Icon name="upload" c="brand" size={20} />
+                  <Icon
+                    name="upload"
+                    c="brand"
+                    size={20}
+                    tooltip={t`Push to Git`}
+                  />
                 </Button>
               </Group>
               {isLoading && (

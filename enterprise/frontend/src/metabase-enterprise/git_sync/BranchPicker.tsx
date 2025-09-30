@@ -105,8 +105,9 @@ export const BranchPicker = ({
         <Button
           size="compact-sm"
           disabled={disabled || isLoading}
+          bdrs="4px"
           onClick={() => combobox.toggleDropdown()}
-          leftSection={<Icon name="schema" c="brand" size={16} />}
+          leftSection={<Icon name="git_branch" c="brand" size={14} />}
           rightSection={
             isLoading ? (
               <Loader size="xs" />
@@ -114,6 +115,7 @@ export const BranchPicker = ({
               <Icon
                 name="chevrondown"
                 size={12}
+                color="var(--mb-base-color-blue-30)"
                 style={{
                   transform: combobox.dropdownOpened
                     ? "rotate(180deg)"
@@ -125,7 +127,7 @@ export const BranchPicker = ({
           }
           data-testid="branch-picker-button"
         >
-          <Text fw="bold" c="brand" size="sm" truncate>
+          <Text fw="bold" c="brand" size="sm" lh="md" truncate>
             {value}
           </Text>
         </Button>

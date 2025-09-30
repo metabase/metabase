@@ -32,9 +32,11 @@ import {
   useGetChangedEntitiesQuery,
 } from "../api/git-sync";
 
+import S from "./PushChangesModal.module.css";
 import {
   buildCollectionMap,
   getCollectionFullPath,
+  getSyncStatusBackgroundColor,
   getSyncStatusColor,
   getSyncStatusIcon,
   getSyncStatusLabel,
@@ -55,17 +57,6 @@ const SYNC_STATUS_ORDER: DirtyEntity["sync_status"][] = [
   "delete",
 ];
 
-interface ModalTitleProps {
-  children: React.ReactNode;
-}
-
-const ModalTitle = ({ children }: ModalTitleProps) => (
-  <Group gap="xs">
-    <Icon name="upload" size={20} />
-    <Text fw={600}>{children}</Text>
-  </Group>
-);
-
 interface EntityLinkProps {
   entity: DirtyEntity;
 }
@@ -77,23 +68,28 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
     display: entity.display,
   });
 
+  const url = useMemo(() => modelToUrl(entity), [entity]);
+
+  if (url == null) {
+    return null;
+  }
+
   return (
-    <Group gap="xs" wrap="nowrap">
-      <Icon name={entityIcon.name} size={14} c="text-light" />
+    <Group gap="xs" wrap="nowrap" px="sm" className={S.entityLink}>
+      <Icon
+        name={entityIcon.name}
+        size={16}
+        c="text-primary"
+        className={S.icon}
+      />
       <Anchor
-        href={modelToUrl(entity) || "#"}
+        href={url}
         target="_blank"
         size="sm"
-        c="text-dark"
-        fw={500}
+        c="text-primary"
+        fw="bold"
         td="none"
-        styles={{
-          root: {
-            "&:hover": {
-              textDecoration: "underline",
-            },
-          },
-        }}
+        classNames={{ root: S.anchor }}
       >
         {entity.name}
       </Anchor>
@@ -166,10 +162,15 @@ const AllChangesView = ({ entities, collections }: AllChangesViewProps) => {
   return (
     <Box>
       <Group gap="xs" mb="md" align="end">
-        <Title order={3} mr="sm">
+        <Title order={4} mr="sm" c="text-dark">
           {t`Changes to push`}
         </Title>
-        <Badge size="sm" variant="light">
+        <Badge
+          size="md"
+          px="sm"
+          variant="light"
+          style={{ textTransform: "none" }}
+        >
           {ngettext(
             msgid`${totalChanges} item`,
             `${totalChanges} items`,
@@ -192,37 +193,57 @@ const AllChangesView = ({ entities, collections }: AllChangesViewProps) => {
           {groupedData.map(({ status, groups }, statusIndex) => (
             <Fragment key={status}>
               {statusIndex > 0 && <Divider />}
-              <Box pb="sm">
-                <Box p="md" pb="sm">
-                  <Group gap="sm">
+              <Box pb="md">
+                <Box p="md" pb="md">
+                  <Group
+                    gap="xs"
+                    p="sm"
+                    bdrs="md"
+                    bg={getSyncStatusBackgroundColor(status)}
+                  >
                     <Icon
                       name={getSyncStatusIcon(status)}
-                      size={16}
+                      size={14}
                       c={getSyncStatusColor(status)}
                     />
-                    <Text fw={600} size="sm">
+                    <Text
+                      fw={600}
+                      size="sm"
+                      c={getSyncStatusColor(status)}
+                      lh="md"
+                    >
                       {getSyncStatusLabel(status)}
                     </Text>
-                    <Badge
+                    <Text
                       size="xs"
-                      variant="light"
-                      color={getSyncStatusColor(status)}
+                      c={getSyncStatusColor(status)}
+                      ml="auto"
+                      lh="md"
+                      px="sm"
+                      fw="bold"
                     >
                       {groups.reduce((sum, g) => sum + g.items.length, 0)}
-                    </Badge>
+                    </Text>
                   </Group>
                 </Box>
 
                 {groups.map((group) => (
                   <Box key={`${status}-${group.collectionId}`}>
                     <Box px="md" pb="sm">
-                      <Group gap="xs" mb="xs">
-                        <Icon name="folder" size={14} c="text-light" />
-                        <Text size="xs" c="text-medium" fw={500}>
+                      <Group px="sm" gap="xs" mb="sm">
+                        <Icon name="folder" size={16} c="text-medium" />
+                        <Text size="sm" c="text-medium" lh="md">
                           {group.path}
                         </Text>
                       </Group>
-                      <Stack gap="xs" ml="lg">
+                      <Stack
+                        gap="sm"
+                        ml="md"
+                        pl="sm"
+                        style={{
+                          borderLeft: "2px solid var(--mb-color-border)",
+                        }}
+                      >
                         {group.items.map((entity) => (
                           <EntityLink
                             key={`${entity.model}-${entity.id}`}
@@ -288,7 +309,7 @@ const CommitMessageSection = ({
   <Box>
     <Textarea
       value={value}
-      label={t`Describe your changes`}
+      label={<Text mb="xs">{t`Describe your changes`}</Text>}
       onChange={(e) => onChange(e.target.value)}
       placeholder={t`What did you change and why?`}
       minRows={3}
@@ -299,7 +320,7 @@ const CommitMessageSection = ({
         },
       }}
     />
-    <Text size="xs" c="text-light" mt="xs">
+    <Text size="xs" c="text-medium" mt="sm">
       {t`This message will be visible in your Git history`}
     </Text>
   </Box>
@@ -356,7 +377,7 @@ export const PushChangesModal = ({
   return (
     <Modal
       opened={isOpen}
-      title={<ModalTitle>{t`Push to Git`}</ModalTitle>}
+      title={<Title fw={600} order={3} pl="sm">{t`Push to Git`}</Title>}
       onClose={onClose}
       size="lg"
       styles={{

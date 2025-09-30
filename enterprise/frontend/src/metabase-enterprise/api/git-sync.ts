@@ -1,4 +1,8 @@
-import type { EnterpriseSettings, UserId } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  EnterpriseSettings,
+  UserId,
+} from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 import { invalidateTags, tag } from "./tags";
@@ -18,7 +22,7 @@ export type DirtyEntity = {
     | "document"
     | "snippet";
   collection_id?: number;
-  display?: string;
+  display?: CardDisplayType;
   query_type?: string;
   sync_status: "create" | "update" | "delete" | "touch";
   authority_level?: string | null;

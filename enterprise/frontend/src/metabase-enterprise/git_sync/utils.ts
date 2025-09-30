@@ -55,14 +55,28 @@ export const getSyncStatusIcon = (status: SyncStatus): IconName => {
 export const getSyncStatusColor = (status: SyncStatus): string => {
   switch (status) {
     case "create":
-      return "success";
+      return "var(--mb-base-color-palm-50)";
     case "delete":
-      return "error";
+      return "var(--mb-base-color-lobster-50)";
     case "update":
     case "touch":
-      return "brand";
+      return "var(--mb-base-color-blue-50)";
     default:
-      return "text-medium";
+      return "var(--mb-base-color-orion-50)";
+  }
+};
+
+export const getSyncStatusBackgroundColor = (status: SyncStatus): string => {
+  switch (status) {
+    case "create":
+      return "var(--mb-base-color-palm-10)";
+    case "delete":
+      return "var(--mb-base-color-lobster-10)";
+    case "update":
+    case "touch":
+      return "var(--mb-base-color-blue-10)";
+    default:
+      return "var(--mb-base-color-orion-10)";
   }
 };
 
