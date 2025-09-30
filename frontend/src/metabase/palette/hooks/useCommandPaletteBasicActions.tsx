@@ -1,4 +1,4 @@
-import { useKBar, useRegisterActions } from "kbar";
+import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -38,11 +38,6 @@ export const useCommandPaletteBasicActions = ({
   const collectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, props),
   );
-
-  const { searchQuery } = useKBar((state) => ({
-    searchQuery: state.searchQuery,
-  }));
-  const hasQuery = searchQuery.length > 0;
 
   const { data: databases = [] } = useDatabaseListQuery({
     enabled: isLoggedIn,
@@ -274,7 +269,7 @@ export const useCommandPaletteBasicActions = ({
     hasEmbedJsFeature,
   ]);
 
-  useRegisterShortcut(initialActions, [initialActions, hasQuery]);
+  useRegisterShortcut(initialActions, [initialActions]);
 
   const openActionModal = [];
 
