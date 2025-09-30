@@ -191,21 +191,13 @@
              :alias nil,
              :type :single-column,
              :source-columns
-             [[{:column "b",
-                :alias nil,
-                :type :single-column,
-                :source-columns [[{:type :all-columns,
-                                   :table {:table "products"}}]]}]]}},
+             [[]]}},
           :returned-fields
           [{:column "a",
             :alias nil,
             :type :single-column,
             :source-columns
-            [[{:column "b",
-               :alias nil,
-               :type :single-column,
-               :source-columns [[{:type :all-columns,
-                                  :table {:table "products"}}]]}]]}]}
+            [[]]}]}
          (->references "select a from (select b from products)"))))
 
 (deftest different-case-nested-query-test

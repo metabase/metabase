@@ -94,7 +94,12 @@
                           sources)
           source-columns (into []
                                (map #(into []
-                                           (mapcat :returned-fields)
+                                           (comp (mapcat :returned-fields)
+                                                 (filter (fn [{field-alias :alias
+                                                               field-type :type
+                                                               field-column :column :as field-field}]
+                                                           (or (= field-type :all-columns)
+                                                               (= (or field-alias field-column) column)))))
                                            %))
                                valid-sources)
           source-column (some #(when (= column (or (:alias %) (:column %)))
