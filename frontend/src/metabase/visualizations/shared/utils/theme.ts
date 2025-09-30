@@ -1,6 +1,8 @@
+import Color from "color";
+
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/embedding-sdk/theme";
+import { color } from "metabase/lib/colors";
 import type { MantineThemeOther } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 
@@ -52,14 +54,14 @@ export function getVisualizationTheme({
       splitLine: {
         lineStyle: {
           color: isStaticViz
-            ? color("border")
+            ? Color(color("border")).hex()
             : cartesian.splitLine.lineStyle.color,
         },
       },
     },
     pie: {
       borderColor: isStaticViz
-        ? color("text-white")
+        ? Color(color("text-white")).hex()
         : getPieBorderColor(
             dashboard.card.backgroundColor,
             question.backgroundColor,
