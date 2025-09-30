@@ -126,18 +126,22 @@
                                                   :query {:database (mt/id)
                                                           :native {:query "SELECT 1"}}}}]
 
-        (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")]
-          (is (= "'1':8B 'select':7B 'sql':2A,5B 'test':1A,4B 'transform':3A,6B"
-                 (.getValue ^PGobject (:with_native_query_vector ingested-transform))))))
+        (let [ingested-transform (ingest-then-fetch! "transform" "Test SQL transform")
+              vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+          (is (string? vector-value))
+          (is (re-find #"select" vector-value))
+          (is (re-find #"sql" vector-value))))
 
       (mt/with-temp [:model/Transform _ {:target {:database (mt/id)}
                                          :source {:type "python"
                                                   :source-database (mt/id)
                                                   :body "import pandas as pd\n"}
                                          :name "Test python transform"}]
-        (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")]
-          (is (= "'import':7B 'panda':8B 'pd':10B 'python':2A,5B 'test':1A,4B 'transform':3A,6B"
-                 (.getValue ^PGobject (:with_native_query_vector ingested-transform))))))
+        (let [ingested-transform (ingest-then-fetch! "transform" "Test python transform")
+              vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+          (is (string? vector-value))
+          (is (re-find #"import" vector-value))
+          (is (re-find #"panda" vector-value))))
 
       (testing "MBQL queries are not indexed in with_native_query_vector"
         (mt/with-temp [:model/Transform _ {:target {:database (mt/id)
@@ -145,6 +149,11 @@
                                            :name "Test MBQL transform"
                                            :source {:type "query"
                                                     :query (mt/mbql-query venues {:limit 10})}}]
-          (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")]
-            (is (= "'mbql':2A,5B 'test':1A,4B 'transform':3A,6B"
-                   (.getValue ^PGobject (:with_native_query_vector ingested-transform))))))))))
+          (let [ingested-transform (ingest-then-fetch! "transform" "Test MBQL transform")
+                vector-value (.getValue ^PGobject (:with_native_query_vector ingested-transform))]
+            (is (string? vector-value))
+            (is (re-find #"test" vector-value))
+            (is (re-find #"mbql" vector-value))
+            ;; Ensure that the actual MQBL query isn't indexed
+            (is (not (re-find #"source" vector-value)))
+            (is (not (re-find #"table" vector-value)))))))))

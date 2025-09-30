@@ -177,6 +177,7 @@
 
 (def ^:private appdb-scorer-models
   (-> recent-views-models
+      ;; Add "transform" here because it's not a recent-views model, but should still be scored
       (conj "transform")
       (into (map name) search.scoring/bookmarked-models-and-sub-models)))
 
