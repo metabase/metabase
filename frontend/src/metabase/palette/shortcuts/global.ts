@@ -148,7 +148,7 @@ export const globalShortcuts = {
       return t`Toggle dark mode`;
     },
 
-    shortcut: ["$mod+Alt+KeyL"],
+    shortcut: ["Meta+Shift+KeyL"],
     shortcutGroup: "global" as const,
   },
 };
