@@ -17,7 +17,6 @@ The easiest way to get started with Metabase is to sign up for a free trial of [
 - [Set up in five minutes](https://www.metabase.com/docs/latest/configuring-metabase/setting-up-metabase) (we're not kidding).
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/questions/introduction) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
-- Chat with [Metabot AI](https://www.metabase.com/docs/latest/ai/metabot) to query data in plain English, generate and debug SQL, automate written summaries, and more.
 - Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/dashboards/introduction) with filters, auto-refresh, fullscreen, and custom click behavior.
 - Create [models](https://www.metabase.com/learn/metabase-basics/getting-started/models) that clean up, annotate, and/or combine raw tables.
 - Define canonical [segments and metrics](https://www.metabase.com/docs/latest/data-modeling/metrics) for your team to use.
