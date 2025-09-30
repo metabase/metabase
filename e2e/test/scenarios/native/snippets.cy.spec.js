@@ -189,8 +189,8 @@ describe("scenarios > question > snippets", () => {
       name: "category filter",
       content: "category = 'Widget'",
     });
-      H.startNewNativeQuestion();
-      cy.log("type a query with snippet tags containing trailing spaces");
+    H.startNewNativeQuestion();
+    cy.log("type a query with snippet tags containing trailing spaces");
     H.NativeEditor.type(
       "select id from products where {{snippet: category filter }}",
     );
