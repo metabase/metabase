@@ -29,6 +29,7 @@
   :visibility :admin
   :doc true
   :export? false
+  :sensitive? true
   :encryption :when-encryption-key-set
   :audit :getter)
 
