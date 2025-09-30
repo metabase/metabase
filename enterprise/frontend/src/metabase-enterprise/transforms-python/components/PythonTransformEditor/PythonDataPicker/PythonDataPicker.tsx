@@ -9,7 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
@@ -141,12 +141,10 @@ export function PythonDataPicker({
   };
 
   return (
-    <Stack
+    <Flex
       p="md"
       gap="md"
-      h="100%"
-      w="30%"
-      miw="300px"
+      w="100%"
       className={S.dataPicker}
       data-testid="python-data-picker"
     >
@@ -195,7 +193,7 @@ export function PythonDataPicker({
           </Stack>
         </Box>
       )}
-    </Stack>
+    </Flex>
   );
 }
 

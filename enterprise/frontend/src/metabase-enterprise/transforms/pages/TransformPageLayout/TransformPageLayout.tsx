@@ -1,16 +1,10 @@
 import type { ReactNode } from "react";
-import { t } from "ttag";
+import { Panel, PanelGroup } from "react-resizable-panels";
 
-import {
-  AdminNavItem,
-  AdminNavWrapper,
-} from "metabase/admin/components/AdminNav";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { getLocation } from "metabase/selectors/routing";
+import { ResizeHandle } from "metabase/bench/components/BenchApp";
+import { Box, type BoxProps } from "metabase/ui";
 
-import { getJobListUrl, getRunListUrl, getTransformListUrl } from "../../urls";
+import { TransformListPage } from "../TransformListPage/TransformListPage";
 
 type TransformPageLayoutPropsParams = {
   transformId?: string;
@@ -27,79 +21,38 @@ type TransformPageLayoutOwnProps = TransformPageLayoutProps & {
   maw?: string;
 };
 
-export function ListPageLayout({ params, children }: TransformPageLayoutProps) {
-  return (
-    <TransformPageLayout params={params} maw="100rem">
-      {children}
-    </TransformPageLayout>
-  );
-}
+const ScrollBox = ({ children, ...rest }: { children: ReactNode } & BoxProps) => (
+  <Box
+    style={{
+      overflow: "auto",
+    }}
+    {...rest}
+  >
+    {children}
+  </Box>
+);
 
-export function DetailsPageLayout({
-  params,
+export function TransformPageLayout({
   children,
-}: TransformPageLayoutProps) {
-  return (
-    <TransformPageLayout params={params} maw="60rem">
-      {children}
-    </TransformPageLayout>
-  );
-}
-
-function TransformPageLayout({
-  params,
-  maw,
-  fullWidth,
-  children,
+  location,
 }: TransformPageLayoutOwnProps) {
   return (
-    <AdminSettingsLayout
-      sidebar={<TransformPageSidebar params={params} />}
-      maw={maw}
-      fullWidth={fullWidth}
-    >
-      {children}
-    </AdminSettingsLayout>
+    <PanelGroup autoSaveId="transform-layout" direction="horizontal">
+      <Panel>
+        <ScrollBox w="30rem" p="md" h="100%">
+          <TransformListPage location={location}/>
+        </ScrollBox>
+      </Panel>
+      <ResizeHandle />
+      <Panel>
+        <ScrollBox p="md" key="details" h="100%">
+          {children}
+        </ScrollBox>
+      </Panel>
+    </PanelGroup>
   );
 }
 
 export function FullWidthTransformPageLayout(props: TransformPageLayoutProps) {
   return <TransformPageLayout {...props} fullWidth />;
-}
-
-type TransformPageSidebarProps = {
-  params: TransformPageLayoutPropsParams;
-};
-
-function TransformPageSidebar({ params }: TransformPageSidebarProps) {
-  const { transformId, jobId } = params;
-  const location = useSelector(getLocation);
-  const pathname = location?.pathname;
-  const transformListUrl = getTransformListUrl();
-  const jobListUrl = getJobListUrl();
-  const runListUrl = getRunListUrl();
-
-  return (
-    <AdminNavWrapper data-testid="transform-sidebar">
-      <AdminNavItem
-        label={t`Transforms`}
-        path={transformListUrl}
-        icon="refresh_downstream"
-        active={pathname === transformListUrl || transformId != null}
-      />
-      <AdminNavItem
-        label={t`Jobs`}
-        path={jobListUrl}
-        icon="play_outlined"
-        active={pathname === jobListUrl || jobId != null}
-      />
-      <AdminNavItem
-        label={t`Runs`}
-        path={runListUrl}
-        icon="list"
-        active={pathname === runListUrl}
-      />
-      {PLUGIN_TRANSFORMS_PYTHON.getTransformsNavLinks()}
-    </AdminNavWrapper>
-  );
 }
