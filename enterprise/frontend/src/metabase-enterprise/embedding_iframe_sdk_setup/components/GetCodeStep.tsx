@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
@@ -23,6 +24,7 @@ import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet"
 export const GetCodeStep = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
   const [updateInstanceSettings] = useUpdateSettingsMutation();
+  const codeEditorRef = useRef<HTMLDivElement>(null);
 
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");
@@ -35,6 +37,27 @@ export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
 
   const authType = settings.useExistingUserSession ? "user-session" : "sso";
+
+  const handleCodeSnippetCopied = () => {
+    // Embed Flow: track code copied
+    trackEmbedWizardCodeCopied(
+      settings.useExistingUserSession ? "user_session" : "sso",
+    );
+
+    // Embedding Hub: track step completion
+    const settingKey: SettingKey = settings.useExistingUserSession
+      ? "embedding-hub-test-embed-snippet-created"
+      : "embedding-hub-production-embed-snippet-created";
+
+    updateInstanceSettings({ [settingKey]: true });
+  };
+
+  const handleCodeSnippetKeyDown = (event: React.KeyboardEvent) => {
+    // Check for Ctrl/Cmd+C
+    if ((event.ctrlKey || event.metaKey) && event.key === "c") {
+      handleCodeSnippetCopied();
+    }
+  };
 
   return (
     <Stack gap="md">
@@ -105,12 +128,14 @@ export const GetCodeStep = () => {
         </Text>
 
         <Stack gap="sm">
-          <CodeEditor
-            language="html"
-            value={snippet}
-            readOnly
-            lineNumbers={false}
-          />
+          <div ref={codeEditorRef} onKeyDown={handleCodeSnippetKeyDown}>
+            <CodeEditor
+              language="html"
+              value={snippet}
+              readOnly
+              lineNumbers={false}
+            />
+          </div>
 
           <CopyButton value={snippet}>
             {({ copied, copy }: { copied: boolean; copy: () => void }) => (
@@ -118,17 +143,7 @@ export const GetCodeStep = () => {
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={() => {
                   copy();
-
-                  trackEmbedWizardCodeCopied(
-                    settings.useExistingUserSession ? "user_session" : "sso",
-                  );
-
-                  // Embedding Hub: track step completion
-                  const settingKey: SettingKey = settings.useExistingUserSession
-                    ? "embedding-hub-test-embed-snippet-created"
-                    : "embedding-hub-production-embed-snippet-created";
-
-                  updateInstanceSettings({ [settingKey]: true });
+                  handleCodeSnippetCopied();
                 }}
               >
                 {copied ? t`Copied!` : t`Copy Code`}

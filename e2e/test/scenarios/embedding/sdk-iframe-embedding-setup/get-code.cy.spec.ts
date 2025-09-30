@@ -125,6 +125,25 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
+  it("should track embed_wizard_code_copied when pressing Ctrl+C to copy snippet", () => {
+    navigateToGetCodeStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Existing Metabase session").should("be.checked");
+
+      codeBlock().should("contain", '"useExistingUserSession": true');
+      codeBlock().click().trigger("keydown", { key: "c", ctrlKey: true });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_code_copied",
+        event_detail: "user_session",
+      });
+    });
+  });
+
   it("should not include useExistingUserSession when SSO is selected", () => {
     enableJwtAuth();
     navigateToGetCodeStep({
