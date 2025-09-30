@@ -398,6 +398,7 @@ export const CommandSuggestion = forwardRef<
           modal={entityModal}
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
+          canBrowseAll
         />
       ) : (
         <>

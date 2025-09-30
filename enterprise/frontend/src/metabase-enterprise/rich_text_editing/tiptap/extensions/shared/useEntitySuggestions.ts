@@ -116,7 +116,10 @@ export function useEntitySuggestions({
   );
 
   const filteredSearchModels = useMemo(() => {
-    return (searchModels || []).filter((model) => {
+    if (!searchModels) {
+      return undefined;
+    }
+    return searchModels.filter((model) => {
       const modelName = getTranslatedEntityName(model) ?? "";
       return modelName.toLowerCase().startsWith(query.toLowerCase());
     });
@@ -129,7 +132,7 @@ export function useEntitySuggestions({
 
   // Determine if we're in model selection mode
   const searchModelMenuItems = useMemo(() => {
-    return selectedSearchModel
+    return selectedSearchModel || filteredSearchModels === undefined
       ? []
       : buildSearchModelMenuItems(
           filteredSearchModels,
@@ -139,7 +142,7 @@ export function useEntitySuggestions({
 
   // Check if we have any matching search models
   const hasSearchModels = (searchModels?.length ?? 0) > 0;
-  const hasMatchingSearchModels = effectiveSearchModels.length > 0;
+  const hasMatchingSearchModels = (effectiveSearchModels?.length ?? 0) > 0;
 
   // TODO: factor in a threshold
   const isInModelSelectionMode =
