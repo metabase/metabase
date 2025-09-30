@@ -86,18 +86,18 @@ export const SdkIframeEmbedSetupProvider = ({
     }
 
     return match([urlParams.resourceType, urlParams.resourceId])
-      .with(["dashboard", P.nonNullable], ([, id]) =>
+      .with(["dashboard", P.nonNullable], ([, resourceId]) =>
         getDefaultSdkIframeEmbedSettings({
           embeddingType: "simple",
           resourceType: "dashboard",
-          resourceId: id,
+          resourceId,
         }),
       )
-      .with(["question", P.nonNullable], ([, id]) =>
+      .with(["question", P.nonNullable], ([, resourceId]) =>
         getDefaultSdkIframeEmbedSettings({
           embeddingType: "simple",
           resourceType: "chart",
-          resourceId: id,
+          resourceId,
         }),
       )
       .otherwise(() =>
