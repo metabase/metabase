@@ -19,7 +19,7 @@
 (defn- auto-import!
   []
   (when (and (settings/remote-sync-enabled)
-             (= "import" (settings/remote-sync-type))
+             (= :production (settings/remote-sync-type))
              (settings/remote-sync-auto-import))
     (let [{task-id :id
            existing? :existing?}

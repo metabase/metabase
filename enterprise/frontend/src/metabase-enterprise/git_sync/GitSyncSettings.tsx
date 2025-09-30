@@ -240,19 +240,19 @@ export const GitSyncSettings = (): JSX.Element => {
                   <FormRadioGroup name={TYPE_KEY} label={t`Remote Sync Mode`}>
                     <Stack mt="sm">
                       <Radio
-                        value="export"
+                        value="development"
                         label={t`Development`}
                         description={t`In development mode, you can make changes to synced collections and pull and push from any git branch`}
                       />
                       <Radio
-                        value="import"
+                        value="production"
                         label={t`Production`}
                         description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
                       />
                     </Stack>
                   </FormRadioGroup>
 
-                  {values?.[TYPE_KEY] === "import" && (
+                  {values?.[TYPE_KEY] === "production" && (
                     <Stack ml="1.875rem">
                       <FormTextInput
                         name={BRANCH_KEY}
@@ -290,7 +290,7 @@ export const GitSyncSettings = (): JSX.Element => {
         <SettingsSection
           title={t`Collections`}
           description={
-            syncMode === "export"
+            syncMode === "development"
               ? t`Choose which collections to sync with Git`
               : t`Collections synced from your Git repository`
           }

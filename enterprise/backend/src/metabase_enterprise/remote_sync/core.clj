@@ -21,4 +21,4 @@
   :feature :none
   [collection]
   (or (not (collections/remote-synced-collection? collection))
-      (= (settings/remote-sync-type) "export")))
+      (= (settings/remote-sync-type) :development)))

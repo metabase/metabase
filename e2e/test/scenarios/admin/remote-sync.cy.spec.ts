@@ -6,7 +6,7 @@ function setupGitSync() {
   H.activateToken("bleeding-edge");
   cy.request("POST", "/api/ee/remote-sync/settings", {
     "remote-sync-branch": "main",
-    "remote-sync-type": "export",
+    "remote-sync-type": "development",
     "remote-sync-url": "./my-stuff",
     "remote-sync-enabled": true,
     "remote-sync-configured": true,

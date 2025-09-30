@@ -90,7 +90,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
-  const showSyncGroup = useSetting("remote-sync-type") === "export";
+  const showSyncGroup = useSetting("remote-sync-type") === "development";
 
   const [
     addDataModalOpened,

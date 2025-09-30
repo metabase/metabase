@@ -77,12 +77,13 @@
                  response)))))))
 
 (defn- wait-for-task-completion [task-id]
-  (dh/with-retry {:max-retries 10
-                  :delay-ms 500}
-    (u/prog1 (t2/select-one :model/RemoteSyncTask :id task-id)
-      (when (nil? (:ended_at <>))
-        (throw (ex-info "Not finished" {:task-id task-id
-                                        :result <>}))))))
+  (when task-id
+    (dh/with-retry {:max-retries 10
+                    :delay-ms 500}
+      (u/prog1 (t2/select-one :model/RemoteSyncTask :id task-id)
+        (when (nil? (:ended_at <>))
+          (throw (ex-info "Not finished" {:task-id task-id
+                                          :result <>})))))))
 
 (deftest import-endpoint-test
   (testing "POST /api/ee/remote-sync/import"
@@ -498,7 +499,7 @@
                     source/source-from-settings (constantly mock-main)]
         (testing "successful settings update"
           (mt/with-temporary-setting-values [remote-sync-enabled false
-                                             remote-sync-type "export"]
+                                             remote-sync-type :development]
 
             (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                                    {:remote-sync-enabled true
@@ -511,14 +512,14 @@
         (testing "successful settings update with import triggers import"
 
           (mt/with-temporary-setting-values [remote-sync-enabled true
-                                             remote-sync-type "import"
+                                             remote-sync-type :production
                                              remote-sync-branch "main"
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"]
 
             (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                                  {:remote-sync-enabled true
-                                                  :remote-sync-type "import"})
+                                                  :remote-sync-type :production})
                   task (wait-for-task-completion (:task_id response))]
               (is (=? {:success true} response))
               (is (remote-sync.task/successful? task))))))

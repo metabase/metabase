@@ -148,18 +148,19 @@
        [:remote-sync-enabled {:optional true} [:maybe :boolean]]
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
-       [:remote-sync-type {:optional true} [:maybe [:enum "import" "export"]]]
+       [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
   (try
     (settings/check-and-update-remote-settings! settings)
-    (when (and (settings/remote-sync-enabled)
-               (= "import" (settings/remote-sync-type)))
+    (if (and (settings/remote-sync-enabled)
+             (= :import (settings/remote-sync-type)))
       {:success true
-       :task_id (async-import! (settings/remote-sync-branch))})
+       :task_id (async-import! (settings/remote-sync-branch))}
+      {:success true})
     (catch Exception e
       (throw (ex-info "Invalid git settings"
-                      {:error (.getMessage e)
+                      {:error           (.getMessage e)
                        :status-code 400})))))
 
 (api.macros/defendpoint :get "/branches"

@@ -645,7 +645,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
   "remote-sync-configured"?: boolean | null;
-  "remote-sync-type"?: "import" | "export" | null;
+  "remote-sync-type"?: "production" | "development" | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

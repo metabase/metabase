@@ -41,12 +41,20 @@
   :export? false)
 
 (defsetting remote-sync-type
-  (deferred-tru "Git synchronization type - import or export")
-  :type :string
+  (deferred-tru "Git synchronization type - :development or :production")
+  :type :keyword
   :visibility :authenticated
   :export? false
   :encryption :no
-  :default "import")
+  :default :production
+  :setter (fn [new-value]
+            (let [new-value (or new-value :production)
+                  valid-types #{:production :development}
+                  value (or (valid-types (keyword new-value))
+                            (throw (ex-info "Remote-sync-type set to an unsupported value"
+                                            {:value   new-value
+                                             :options (seq valid-types)})))]
+              (setting/set-value-of-type! :keyword :remote-sync-type value))))
 
 (defsetting remote-sync-auto-import
   (deferred-tru "Whether to automatically import from the remote git repository. Only applies if remote-sync-type is ''import''.")

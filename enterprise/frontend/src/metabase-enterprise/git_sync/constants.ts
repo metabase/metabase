@@ -5,8 +5,8 @@ export const GIT_SYNC_SCHEMA = Yup.object({
   "remote-sync-url": Yup.string().nullable().default(null),
   "remote-sync-token": Yup.string().nullable().default(null),
   "remote-sync-type": Yup.string()
-    .oneOf(["import", "export"] as const)
+    .oneOf(["production", "development"] as const)
     .nullable()
-    .default("import"),
+    .default("production"),
   "remote-sync-branch": Yup.string().nullable().default("main"),
 });

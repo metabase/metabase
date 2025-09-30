@@ -41,7 +41,7 @@ export type ExportChangesResponse = {
 
 export type CurrentTaskResponse = {
   id: number;
-  sync_task_type: "import" | "export" | null;
+  sync_task_type: "production" | "development" | null;
   progress: number | null; // float between 0 and 1
   started_at: string | null;
   ended_at: string | null;
