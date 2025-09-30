@@ -11,7 +11,7 @@ import S from "./CommentsMenu.module.css";
 
 interface Props {
   active: boolean;
-  disabled: boolean;
+  disabled?: boolean;
   href: string;
   show: boolean;
   style: CSSProperties;
