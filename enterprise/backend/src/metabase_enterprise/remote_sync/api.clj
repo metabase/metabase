@@ -161,7 +161,7 @@
     (catch Exception e
       (throw (ex-info "Invalid git settings"
                       {:error           (.getMessage e)
-                       :status-code 400})))))
+                       :status-code 400} e)))))
 
 (api.macros/defendpoint :get "/branches"
   "Get list of branches from the configured git source.

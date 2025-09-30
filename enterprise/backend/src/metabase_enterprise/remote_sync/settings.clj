@@ -89,10 +89,16 @@
       (throw (ex-info "Unable to connect to git repository with the provided settings" {:cause (.getMessage e)} e)))))
 
 (defn check-and-update-remote-settings!
-  "Check that the given git settings are valid and update if they are. Throws exception if they are not."
-  [settings]
-  (check-git-settings settings)
-  (t2/with-transaction [_conn]
-    (doseq [key [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-enabled]]
-      (when (contains? settings :remote-sync-url)
-        (setting/set! key (settings key))))))
+  "Check that the given git settings are valid and update if they are. Throws exception if they are not.
+   NOTE: If the remote-sync-token comes in as obfuscated, we will not update the existing settings.
+   A nil value will clear it out"
+  [{:keys [remote-sync-token] :as settings}]
+  (let [current-token (setting/get :remote-sync-token)
+        obfuscated? (or (not (some? remote-sync-token))
+                        (= remote-sync-token (setting/obfuscate-value current-token)))
+        token-to-check (if obfuscated? current-token remote-sync-token)]
+    (check-git-settings (assoc settings :remote-sync-token token-to-check))
+    (t2/with-transaction [_conn]
+      (doseq [key [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-enabled]]
+        (when (not (and (= key :remote-sync-token) obfuscated?))
+          (setting/set! key (key settings)))))))
