@@ -73,13 +73,17 @@ const globalStyles = css`
 `;
 
 const decorators = [
-  (Story) => {
+  (Story, { args = {} }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
     return (
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <ThemeProvider
+          forceColorScheme={
+            "theme" in args && args.theme === "night" ? "dark" : "light"
+          }
+        >
           <Global styles={globalStyles} />
           <CssVariables />
           <Story />
