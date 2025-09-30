@@ -1288,10 +1288,10 @@
 
 (defn- maybe-extract-native-query
   "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil."
-  [{:keys [dataset_query]}]
-  (let [query ((:out mi/transform-metabase-query) dataset_query)
-        query-text (when (= :native (:type query))
-                     (get-in query [:native :query]))]
+  [{query :dataset_query, :as _card}]
+  (let [query ((:out lib-be/transform-query) query)
+        query-text (when (lib/native-only-query? query)
+                     (:native (lib/query-stage query 0)))]
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
