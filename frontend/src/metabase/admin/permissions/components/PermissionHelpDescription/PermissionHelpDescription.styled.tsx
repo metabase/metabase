@@ -1,10 +1,11 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { color } from "metabase/ui/utils/colors";
 
 interface PermissionIconContainerProps {
-  color: string;
+  color: ColorName;
 }
 
 export const PermissionIconContainer = styled.div<PermissionIconContainerProps>`
