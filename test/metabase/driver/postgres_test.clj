@@ -1896,6 +1896,3 @@
       (doseq [[provider host] tests]
         (let [database {:details {:host host} :engine :postgres}]
           (is (= provider (provider-detection/detect-provider-from-database database))))))))
-
-(deftest remove-me-test
-  (is (= 1 1)))
