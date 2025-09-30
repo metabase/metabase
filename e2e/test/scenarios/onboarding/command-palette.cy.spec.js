@@ -176,7 +176,7 @@ describe("command palette", () => {
   it("should display search results in the order returned by the API", () => {
     cy.visit("/");
 
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/ }).click();
     cy.intercept("/api/search?*").as("searchData");
 
     H.commandPalette().within(() => {
@@ -190,7 +190,7 @@ describe("command palette", () => {
         results.forEach((result, index) => {
           // eslint-disable-next-line no-unsafe-element-filtering
           cy.findAllByRole("option")
-            .eq(index + 2)
+            .eq(index + 1)
             .should("contain.text", result.name);
         });
       });
@@ -368,7 +368,7 @@ describe("command palette", () => {
 
   it("Should have a new metric item", () => {
     cy.visit("/");
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/ }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Me");
@@ -380,7 +380,7 @@ describe("command palette", () => {
 
   it("should show the 'Report an issue' command palette item", () => {
     cy.visit("/");
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/ }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Issue");
@@ -406,7 +406,9 @@ describe("command palette", () => {
     it("should have a 'New document' item", () => {
       cy.visit("/");
       cy.findByRole("button", { name: /search/ }).click();
+
       H.commandPalette().within(() => {
+        H.commandPaletteInput().should("exist").type("new document");
         cy.findByText("New document").should("be.visible").click();
         cy.location("pathname").should("eq", "/document/new");
       });
@@ -455,6 +457,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "create-new-collection",
     });
     H.openCommandPalette();
+    H.commandPaletteInput().should("exist").type("new dashboard");
     H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
