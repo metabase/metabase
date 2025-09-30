@@ -3,12 +3,12 @@
     color: var(--mb-color-text-white);
     background-color: var(--mb-color-brand);
 
-    .nested {
+    .subtitle {
       color: var(--mb-color-text-white);
     }
 
-    .ClickActionButtonIcon,
-    .ClickActionButtonTextIcon {
+    .clickActionButtonIcon,
+    .clickActionButtonTextIcon {
       color: white;
     }
   }
@@ -24,14 +24,35 @@
   }
 }
 
-.ClickActionButtonIcon {
-  margin-right: 0.2rem;
+.tokenFilterActionButton {
+  border-radius: 100px;
+  padding: 0.125rem 0.85rem 0.25rem;
+  border: 1px solid var(--mb-color-focus);
 }
 
-.ClickActionButtonTextIcon {
+.tokenFilterActionTokenButton {
+  border-radius: 100px;
+  padding: 0.3125rem 0.875rem;
+  border: 1px solid var(--mb-color-focus);
+}
+
+.clickActionButtonTextIcon {
   margin-right: 0.25rem;
   width: 0.875rem;
   height: 100%;
   font-weight: 700;
   font-size: 1.25rem;
+}
+
+.infoControl {
+  color: var(--mb-color-text-dark);
+  font-weight: bold;
+  line-height: 1.5rem;
+  max-width: 10.75rem;
+}
+
+.subtitle {
+  color: var(--mb-color-text-light);
+  font-weight: normal;
+  margin-left: 1rem;
 }
