@@ -512,7 +512,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup python-runner
-      if: ${{ matrix.job.needs-python-runner == true }}
+        if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
         with:
           metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
