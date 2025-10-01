@@ -146,7 +146,6 @@ export function PythonTransformEditor({
           onChange={handleDataChange}
         />
         <PythonEditorBody
-          isRunnable={isRunnable && isPythonTransformSource(source)}
           isRunning={isRunning}
           isDirty={isDirty}
           onRun={run}
