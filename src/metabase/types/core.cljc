@@ -384,7 +384,9 @@
   relating to a moment in time."
   [tyype                                                  :- :keyword
    {base-type :base_type, effective-type :effective_type} :- SnakeCasedField]
-  (some #(isa? % tyype) [base-type effective-type]))
+  (if (nil? effective-type)
+    (isa? base-type tyype)
+    (isa? effective-type tyype)))
 
 (mu/defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
