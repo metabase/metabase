@@ -29,13 +29,10 @@
         metadata-keys   (set (or id search-name))]
     (log/tracef "OverridingMetadataProvider request for %s" metadata-spec)
     (cond
-      ;; For tables, cards, snippets and transforms, return overrides if present and looking for specific keys and
-      ;; delegate if not.
-      (or (and (#{:metadata/table :metadata/card :metadata/transform :metadata/native-query-snippet} metadata-type)
-               (seq metadata-keys))
-          ;; Or for fetching a set of columns/fields by ID.
-          (and (= metadata-type :metadata/column)
-               (seq id)))
+      ;; For tables, cards, snippets, transforms, and columns, return overrides if present and looking for specific
+      ;; keys and delegate if not.
+      (and (#{:metadata/table :metadata/card :metadata/transform :metadata/native-query-snippet :metadata/column} metadata-type)
+           (seq metadata-keys))
       (let [overrides       (if (seq id)
                               (select-keys type-overrides id)
 
@@ -178,10 +175,11 @@
       (into {[:metadata/table (:id output-table)] (delay output-table)
              [::table-columns (:id output-table)] output-cols}
             ;; For each pre-existing output column, we need to add an override for a direct read by ID.
-            ;; If the column does not exist in the output, the delay contains nil!
+            ;; If the column does not exist in the output, return the original with :active false
             (map (fn [existing-col]
                    [[:metadata/column (:id existing-col)]
-                    (delay (get @outputs-by-id (:id existing-col)))]))
+                    (delay (or (get @outputs-by-id (:id existing-col))
+                               (assoc existing-col :active false)))]))
             existing-cols))))
 
 (defn- setup-transforms! [^OverridingMetadataProvider mp]
