@@ -121,7 +121,7 @@ export function SmartScalar({
           <ScalarValue
             fontFamily={fontFamily}
             gridSize={gridSize}
-            height={getValueHeight(innerHeight)}
+            height={getValueHeight(innerHeight, comparisons.length)}
             totalNumGridCols={totalNumGridCols}
             value={displayValue as string}
             width={getValueWidth(width)}

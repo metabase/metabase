@@ -69,11 +69,14 @@ const getWidthWithoutSpacing = (width: number) => {
   return Math.max(width - 2 * SPACING, 0);
 };
 
-export const getValueHeight = (height: number): number => {
+export const getValueHeight = (
+  height: number,
+  comparisonsCount: number,
+): number => {
   const valueHeight =
     height -
     (isPeriodVisible(height) ? SCALAR_TITLE_LINE_HEIGHT : 0) -
-    PREVIOUS_VALUE_SIZE -
+    PREVIOUS_VALUE_SIZE * comparisonsCount -
     4 * SPACING;
 
   return Math.max(valueHeight, 0);
