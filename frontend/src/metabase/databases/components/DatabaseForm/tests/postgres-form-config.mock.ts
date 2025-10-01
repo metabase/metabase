@@ -14,12 +14,14 @@ export const postgresFormConfig = {
       "helper-text":
         "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).",
       placeholder: "name.database.com",
+      "group-id": "host-and-port",
     },
     {
       name: "port",
       "display-name": "Port",
       type: "integer",
       placeholder: 5432,
+      "group-id": "host-and-port",
     },
     {
       name: "dbname",
@@ -47,5 +49,11 @@ export const postgresFormConfig = {
       text: "test",
     },
     providers: providerConfig,
+    "field-groups": [
+      {
+        id: "host-and-port",
+        "container-style": "host-and-port-section",
+      },
+    ],
   },
 } satisfies Engine;
