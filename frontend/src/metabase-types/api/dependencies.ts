@@ -1,34 +1,51 @@
 import type { Card, CardId, CardType } from "./card";
+import type { DatabaseId } from "./database";
 import type { NativeQuerySnippet } from "./snippets";
 import type { ConcreteTableId } from "./table";
 import type { Transform } from "./transform";
 
-export type DependencyNode = TableDependencyNode | CardDependencyNode;
+export type DependencyNode =
+  | DatabaseDependencyNode
+  | TableDependencyNode
+  | CardDependencyNode;
 export type DependencyEntityId = DependencyNode["id"];
 export type DependencyEntityType = DependencyNode["type"];
 
-export type TableDependencyNode = {
-  id: ConcreteTableId;
-  type: "table";
-  entity: TableDependencyEntity;
+type BaseDependencyNode<TId, TType, TData> = {
+  id: TId;
+  type: TType;
+  data: TData;
 };
 
-export type TableDependencyEntity = {
-  id: ConcreteTableId;
+export type DatabaseDependencyNode = BaseDependencyNode<
+  DatabaseId,
+  "database",
+  DatabaseDependencyData
+>;
+
+export type TableDependencyNode = BaseDependencyNode<
+  ConcreteTableId,
+  "table",
+  TableDependencyData
+>;
+
+export type CardDependencyNode = BaseDependencyNode<
+  CardId,
+  "card",
+  CardDependencyData
+>;
+
+export type DatabaseDependencyData = {
   name: string;
+};
+
+export type TableDependencyData = {
   display_name: string;
 };
 
-export type CardDependencyNode = {
-  id: CardId;
-  type: "card";
-  entity: CardDependencyEntity;
-};
-
-export type CardDependencyEntity = {
-  id: CardId;
-  type: CardType;
+export type CardDependencyData = {
   name: string;
+  type: CardType;
 };
 
 export type DependencyEdge = {

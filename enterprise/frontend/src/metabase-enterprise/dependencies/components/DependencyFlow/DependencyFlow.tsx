@@ -41,7 +41,7 @@ export function DependencyFlow() {
     setVisibleNodeIds(
       new Set([
         ...visibleNodeIds,
-        ...group.map((node) => getNodeId(node.id, node.type)),
+        ...group.slice(0, 10).map((node) => getNodeId(node.id, node.type)),
       ]),
     );
   };

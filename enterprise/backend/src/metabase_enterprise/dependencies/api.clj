@@ -118,21 +118,34 @@
   "TODO"
   []
   {:nodes (concat
+           (map (fn [{:keys [id name]}]
+                  {:id id
+                   :type :database
+                   :data {:id id
+                          :name name}})
+                (t2/select :model/Database))
            (map (fn [{:keys [id name display_name]}]
                   {:id id
                    :type :table
-                   :entity {:id id
-                            :name name
-                            :display_name display_name}})
+                   :data {:id id
+                          :name name
+                          :display_name display_name}})
                 (t2/select :model/Table :active true))
            (map (fn [{:keys [id name type]}]
                   {:id id
                    :type :card
-                   :entity {:id id
-                            :name name
-                            :type type}})
+                   :data {:id id
+                          :name name
+                          :type type}})
                 (t2/select :model/Card :archived false)))
-   :edges (t2/select :model/Dependency)})
+   :edges (concat
+           (map (fn [{:keys [id db_id]}]
+                  {:from_entity_id id
+                   :from_entity_type :table
+                   :to_entity_id db_id
+                   :to_entity_type :database})
+                (t2/select :model/Table :active true))
+           (t2/select :model/Dependency))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

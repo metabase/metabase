@@ -55,6 +55,20 @@ function getEntityEdges(edges: DependencyEdge[]): Edge[] {
   });
 }
 
+function getRealVisibleNodeIds(
+  nodes: EntityNode[],
+  edges: Edge[],
+  visibleNodeIds: Set<NodeId>,
+) {
+  const allSourceNodeIds = new Set(edges.map((edge) => edge.source));
+  return new Set([
+    ...nodes
+      .filter((node) => !allSourceNodeIds.has(node.id))
+      .map((node) => node.id),
+    ...visibleNodeIds,
+  ]);
+}
+
 function getVisibleNodes(
   nodes: EntityNode[],
   visibleNodeIds: Set<NodeId>,
@@ -70,7 +84,7 @@ function getVisibleEdges(edges: Edge[], visibleNodeIds: Set<NodeId>): Edge[] {
 }
 
 function getGroupNodeType(node: DependencyNode) {
-  return node.type === "card" ? node.entity.type : node.type;
+  return node.type === "card" ? node.data.type : node.type;
 }
 
 function getGroupMapping(
@@ -150,7 +164,7 @@ function getGroupEdges(
 
 function getNodesWithPositions(nodes: GraphNode[], edges: Edge[]): GraphNode[] {
   const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setGraph({ rankdir: "RL" });
+  dagreGraph.setGraph({ rankdir: "LR" });
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
@@ -158,7 +172,7 @@ function getNodesWithPositions(nodes: GraphNode[], edges: Edge[]): GraphNode[] {
   });
 
   edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
+    dagreGraph.setEdge(edge.target, edge.source);
   });
 
   dagre.layout(dagreGraph);
@@ -181,21 +195,26 @@ export function getGraphInfo(
 ): GraphInfo {
   const entityNodes = getEntityNodes(graph.nodes);
   const entityEdges = getEntityEdges(graph.edges);
+  const realVisibleNodeIds = getRealVisibleNodeIds(
+    entityNodes,
+    entityEdges,
+    visibleNodeIds,
+  );
 
   const groupMapping = getGroupMapping(
     entityNodes,
     entityEdges,
-    visibleNodeIds,
+    realVisibleNodeIds,
   );
   const groupNodes = getGroupNodes(groupMapping);
   const groupEdges = getGroupEdges(groupMapping);
 
   const visibleNodes = [
-    ...getVisibleNodes(entityNodes, visibleNodeIds),
+    ...getVisibleNodes(entityNodes, realVisibleNodeIds),
     ...groupNodes,
   ];
   const visibleEdges = [
-    ...getVisibleEdges(entityEdges, visibleNodeIds),
+    ...getVisibleEdges(entityEdges, realVisibleNodeIds),
     ...groupEdges,
   ];
 
