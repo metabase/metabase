@@ -63,11 +63,11 @@
              merge {}
              (u/group-by first second key-seq)))
 
-#_(defn- key-dependencies
-    "Get the dependency entity keys for the entity keys in `entity-keys`, a seq of keys.
+(defn- key-dependencies
+  "Get the dependency entity keys for the entity keys in `entity-keys`, a seq of keys.
   Entity keys are [entity-type, entity-id] pairs. See [[entity-type->model]]."
-    [key-seq]
-    (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq))
+  [key-seq]
+  (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq))
 
 (defn- key-dependents
   "Get the dependent entity keys for the entity keys in `entity-keys`.
@@ -81,8 +81,11 @@
     (children-fn key-seq)))
 
 ;; NOTE: We can easily construct a graph of upstream dependencies too, if it's useful.
-(defn- graph-dependents []
+(defn graph-dependents []
   (->DependencyGraph key-dependents))
+
+(defn graph-dependencies []
+  (->DependencyGraph key-dependencies))
 
 (defn transitive-dependents
   "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
@@ -103,6 +106,10 @@
                     [entity-type (:id entity)])]
      (->> (graph/transitive graph starters) ; This returns a flat list.
           (u/group-by first second conj #{})))))
+
+(defn bidirectional-tree-with-edges
+  [key-seq]
+  (graph/bidirectional-tree-with-edges (graph-dependencies) (graph-dependents) key-seq))
 
 (defn replace-dependencies
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with

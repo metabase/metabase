@@ -60,6 +60,22 @@
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
 
+(defn bidirectional-tree-with-edges
+  [upstream-graph downstream-graph key-seq]
+  (let [all-nodes (-> (into #{} key-seq)
+                      (into (transitive upstream-graph key-seq))
+                      (into (transitive downstream-graph key-seq)))
+        all-children (children-of downstream-graph all-nodes)
+        edges (for [[[parent-type parent-id] children] all-children
+                    [child-type child-id] children
+                    :when (all-nodes [child-type child-id])]
+                {:from_entity_type child-type
+                 :from_entity_id   child-id
+                 :to_entity_type   parent-type
+                 :to_entity_id     parent-id})]
+    {:nodes all-nodes
+     :edges edges}))
+
 (defn graph?
   "Whether `x` is a valid `Graph`."
   [x]
