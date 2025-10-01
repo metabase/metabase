@@ -1079,6 +1079,7 @@
    [:map [:output :string]]])
 
 (defn- search
+  "Shared handler for the /search and /search_v2 endpoints."
   [arguments conversation_id request]
   (try
     (let [options (mc/encode ::search-arguments
