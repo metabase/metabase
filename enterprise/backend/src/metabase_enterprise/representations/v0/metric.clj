@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -431,4 +432,4 @@
       patch-refs
 
       :always
-      v0-common/remove-nils)))
+      u/remove-nils)))

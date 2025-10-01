@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -143,7 +144,7 @@
              :database (:database query))
 
       :always
-      v0-common/remove-nils)))
+      u/remove-nils)))
 #_(comment
     (let [q (t2/select-one :model/Card :id 93)]
       (data/diff (:dataset_query q)

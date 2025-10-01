@@ -31,12 +31,6 @@
      (t2/select-one-pk :model/Collection :slug collection-ref)
      (t2/select-one-pk :model/Collection :name collection-ref))))
 
-;; this probably exists somewhere
-(defn remove-nils
-  "Remove them nils"
-  [m]
-  (into {} (remove (comp nil? val)) m))
-
 (defn ref?
   "Is it a ref?"
   [x]

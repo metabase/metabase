@@ -5,6 +5,7 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (defmethod import/type->schema :v0/collection [_]
@@ -69,7 +70,7 @@
        :name (:name collection)
        :description (:description collection)
        :children (children collection)}
-      v0-common/remove-nils))
+      u/remove-nils))
 
 (defmethod export/export-entity :model/Collection [collection]
   (export collection))

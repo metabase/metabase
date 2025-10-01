@@ -207,7 +207,7 @@
          :connection_details (some-> (:details database)
                                      (sanitize-connection-details ref))
          :schemas (get-database-schemas (:id database))}
-        v0-common/remove-nils)))
+        u/remove-nils)))
 
 (comment
   (export (t2/select-one :model/Database 52)))
