@@ -2,13 +2,13 @@ import { useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import { ProfileLink } from "../ProfileLink";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
@@ -91,7 +91,7 @@ const AppBarSmall = ({
                   />
                 ) : (
                   <Flex justify="end">
-                    <PLUGIN_METABOT.SearchButton />
+                    <SearchButton />
                   </Flex>
                 ))}
             </AppBarSearchContainer>
