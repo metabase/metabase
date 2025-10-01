@@ -46,7 +46,9 @@
   [:set :string])
 
 (defn backend-metabot-capabilities
-  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this capability."
+  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to
+  ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this
+  capability."
   []
   ;; 20 ns per call, safe to keep unmemoized
   (for [[[_method url _params] _spec] (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
