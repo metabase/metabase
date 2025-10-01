@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
-   [metabase.app-db.core :as mdb]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
    [metabase.models.interface :as mi]
@@ -10,11 +9,7 @@
    [metabase.util :as u]
    [methodical.core :as methodical]
    [potemkin :as p]
-   [toucan2.core :as t2])
-  (:import
-   (java.sql SQLException)))
-
-(set! *warn-on-reflection* true)
+   [toucan2.core :as t2]))
 
 (def current-dependency-analysis-version
   "Current version of the dependency analysis logic.
@@ -29,27 +24,6 @@
   {:from_entity_type mi/transform-keyword
    :to_entity_type   mi/transform-keyword})
 
-(defn- upsert-generic-dependency
-  "Upsert that the entity specified by `entity-type` and `entity-id` depends on entity specified
-  by `target-type` and `target-id`."
-  [entity-type entity-id target-type target-id]
-  (let [dependency {:from_entity_type entity-type :from_entity_id entity-id
-                    :to_entity_type   target-type :to_entity_id   target-id}]
-    (try
-      (t2/insert! :model/Dependency dependency)
-      (catch clojure.lang.ExceptionInfo e
-        (let [cause ^SQLException (ex-cause e)]
-          (case (when (instance? SQLException cause)
-                  (.getSQLState cause))
-            ;; 23505 - PostgreSQL/H2 unique constraint violation
-            "23505" 0
-            ;; 23000 - MySQL integrity constraint violation
-            "23000" (if (and (= (mdb/db-type) :mysql)
-                             (re-find #"(?i)idx_unique_dependency" (ex-message e)))
-                      0
-                      (throw e))
-            (throw e)))))))
-
 (defn- deps-children [src-type src-id dst-type dst-id key-seq]
   ;; Group all keys with the same type together, so we make O(types) indexed [[t2/select]] calls, not O(n).
   (transduce (map (fn [[entity-type entity-keys]]
@@ -62,12 +36,6 @@
                                   deps))))
              merge {}
              (u/group-by first second key-seq)))
-
-#_(defn- key-dependencies
-    "Get the dependency entity keys for the entity keys in `entity-keys`, a seq of keys.
-  Entity keys are [entity-type, entity-id] pairs. See [[entity-type->model]]."
-    [key-seq]
-    (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq))
 
 (defn- key-dependents
   "Get the dependent entity keys for the entity keys in `entity-keys`.
@@ -242,42 +210,3 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (transform-table-deps! object)))
-
-(comment
-  (set/difference #{3} nil)
-  (def card-ids (t2/select-fn-set :id :model/Card))
-  (def table-ids (t2/select-fn-set :id :model/Table))
-  (replace-dependencies :card 31 {:card (disj card-ids 31) :table table-ids})
-  (replace-dependencies :card 31 {:table #{3 4}})
-  (replace-dependencies :table 31 {})
-  (upsert-generic-dependency :card 31 :table 1)
-
-  (upsert-generic-dependency :table 155 :transform 1)
-
-  (t2/select :model/Dependency :from_entity_type :card      :from_entity_id 125)
-
-  (t2/select :model/Dependency :from_entity_type :card      :from_entity_id 124)
-  (t2/select :model/Dependency :from_entity_type :table     :from_entity_id 155)
-
-  (t2/select :model/Dependency :from_entity_type :transform :from_entity_id 2)
-  (t2/select :model/Dependency :to_entity_type   :transform :to_entity_id   2)
-  (t2/select-one :model/Table :id 175)
-  *e
-
-  (t2/select-one :model/Transform :id 1)
-
-  (t2/update! :model/Dependency 49 {:from_entity_id 255})
-  (t2/delete! :model/Dependency :to_entity_type   :transform :to_entity_id   1
-              :from_entity_type :table :from_entity_id 155)
-  (t2/insert! :model/Dependency
-              :from_entity_type :table     :from_entity_id 136 ; Existing but wrong table
-              :to_entity_type   :transform :to_entity_id   1)
-
-  (u/group-by first second (key-dependents [[:transform 1]]))
-
-  (bfs-nodes key-dependents [[:transform 1]])
-  (bfs-entities key-dependents (t2/select :model/Transform 1))
-  (transitive-dependents {:snippet [{:id 2}]})
-  (transitive-dependents {:transform [{:id 1}]})
-  (transitive-dependents {:table [{:id 136}]})
-  (transitive-dependents {:card [{:id 124}]}))
