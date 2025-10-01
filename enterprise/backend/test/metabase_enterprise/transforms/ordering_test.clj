@@ -12,7 +12,8 @@
 
 (defn- make-transform [query & [name schema]]
   (let [name (or name (mt/random-name))
-        default-schema (some-> driver/*driver* driver.sql/default-schema)
+        default-schema (when (get-method driver.sql/default-schema driver/*driver*)
+                         (driver.sql/default-schema driver/*driver*))
         schema (or schema default-schema "public")]
     {:source {:type :query
               :query query}

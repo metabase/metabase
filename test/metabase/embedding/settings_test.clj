@@ -5,8 +5,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
-   [metabase.premium-features.token-check :as token-check]
-   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -22,15 +20,10 @@
             (is (not (embed.settings/show-static-embed-terms)))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-            (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                           {:valid    true
-                                                            :status   "fake"
-                                                            :features ["test" "fixture"]
-                                                            :trial    false})]
-              (mt/with-temporary-setting-values [premium-embedding-token (token-check-test/random-token)]
-                (is (not (embed.settings/show-static-embed-terms)))
-                (embed.settings/show-static-embed-terms! false)
-                (is (not (embed.settings/show-static-embed-terms))))))
+            (mt/with-random-premium-token! [_token]
+              (is (not (embed.settings/show-static-embed-terms)))
+              (embed.settings/show-static-embed-terms! false)
+              (is (not (embed.settings/show-static-embed-terms)))))
           (testing "when an EE user doesn't have a valid token"
             (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
               (testing "should return true when the user has not accepted licensing terms"

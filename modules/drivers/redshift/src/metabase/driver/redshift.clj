@@ -37,6 +37,8 @@
 (doseq [[feature supported?] {:connection-impersonation       true
                               :describe-fields                true
                               :describe-fks                   true
+                              :rename                         true
+                              :atomic-renames                 true
                               :expression-literals            true
                               :identifiers-with-spaces        false
                               :uuid-type                      false
@@ -44,6 +46,7 @@
                               :test/jvm-timezone-setting      false
                               :database-routing               true
                               :metadata/table-existence-check true
+                              :transforms/python              true
                               :transforms/table               true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
@@ -460,15 +463,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db], :as opts}]
+  [_ {:keys [host port db dbname], :as opts}]
+  (when (and db dbname)
+    (throw (ex-info "Redshift connection details cannot contain both 'db' and 'dbname' options" {})))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" db)
+     :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}
-    (dissoc opts :host :port :db))))
+    (dissoc opts :host :port :db :dbname))))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
@@ -538,6 +543,27 @@
     :metabase.upload/date                     [:date]
     :metabase.upload/datetime                 [:timestamp]
     :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Redshift that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [[:varchar 65535]])
+(defmethod type->database-type :type/Text [_] [[:varchar 65535]])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:integer])
+(defmethod type->database-type :type/Float [_] [(keyword "double precision")])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+
+(defmethod driver/type->database-type :redshift
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod driver/allowed-promotions :redshift [_] {})
 

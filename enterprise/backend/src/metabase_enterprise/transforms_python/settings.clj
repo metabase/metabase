@@ -18,7 +18,7 @@
 (setting/defsetting python-runner-api-token
   (deferred-tru "API token for authorizing with the python-runner service.")
   :type       :string
-  :visibility :internal
+  :visibility :admin
   :default    (when (not config/is-prod?) "dev-token-12345")
   :feature    :transforms-python
   :doc        false
@@ -52,7 +52,7 @@
   (deferred-tru "S3 bucket name for storing Python execution artifacts.")
   :type       :string
   :visibility :admin
-  :default    (if (not config/is-prod?) "metabase-python-runner" "metabase-cloud-python-runner-staging")
+  :default    (when (not config/is-prod?) "metabase-python-runner")
   :feature    :transforms-python
   :doc        false
   :export?    false
@@ -64,7 +64,7 @@
   :type       :string
   :visibility :admin
   :feature    :transforms-python
-  :default    (if (not config/is-prod?) "test-prefix" "hosting-4b9351bb22b84791")
+  :default    (when (not config/is-prod?) "test-prefix")
   :doc        false
   :export?    false
   :encryption :no
@@ -108,6 +108,17 @@
   :type       :boolean
   :visibility :admin
   :default    (when (not config/is-prod?) true)
+  :feature    :transforms-python
+  :doc        false
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
+(setting/defsetting python-runner-timeout-seconds
+  (deferred-tru "Timeout in seconds for Python script execution. Defaults to 30 minutes (1800 seconds).")
+  :type       :integer
+  :visibility :admin
+  :default    1800 ;; 30 minutes
   :feature    :transforms-python
   :doc        false
   :export?    false

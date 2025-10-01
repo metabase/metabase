@@ -122,9 +122,9 @@ describe("admin > database > add", () => {
             .click({ force: true })
             .should("have.attr", "data-checked", "true");
 
-          cy.findByLabelText(
+          cy.findByDisplayValue(
             "Never, I'll do this manually if I need to",
-          ).should("have.attr", "aria-selected", "true");
+          ).should("exist");
 
           // make sure tooltips behave as expected
           cy.findByLabelText("Host")
@@ -243,11 +243,9 @@ describe("admin > database > add", () => {
           "true",
         );
 
-        cy.findByLabelText("Never, I'll do this manually if I need to").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        cy.findByDisplayValue(
+          "Never, I'll do this manually if I need to",
+        ).should("exist");
       });
     });
 
@@ -711,17 +709,15 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // "lets you change the cache_field_values period"
-    cy.findByLabelText("Never, I'll do this manually if I need to").should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
+    cy.findByDisplayValue("Never, I'll do this manually if I need to")
+      .should("be.visible")
+      .click();
 
-    cy.findByLabelText("Regularly, on a schedule")
-      .click()
-      .within(() => {
-        cy.findByText("Daily").click();
-      });
+    H.popover().findByText("Regularly, on a schedule").click();
+    cy.findAllByRole("button", { name: /Daily/ })
+      .should("have.length", 2)
+      .eq(1)
+      .click();
     H.popover().findByText("Weekly").click();
 
     cy.button("Save changes").click();
@@ -735,7 +731,8 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // "lets you change the cache_field_values to 'Only when adding a new filter widget'"
-    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.findByDisplayValue("Regularly, on a schedule").click();
+    H.popover().findByText("Only when adding a new filter widget").click();
     cy.button("Save changes", { timeout: 10000 }).click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
       editDatabase();
@@ -744,7 +741,8 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     // and back to never
-    cy.findByLabelText("Never, I'll do this manually if I need to").click();
+    cy.findByDisplayValue("Only when adding a new filter widget").click();
+    H.popover().findByText("Never, I'll do this manually if I need to").click();
     cy.button("Save changes", { timeout: 10000 }).click();
     cy.wait("@databaseUpdate").then(({ response: { body } }) => {
       editDatabase();
@@ -769,7 +767,8 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     editDatabase();
-    cy.findByLabelText("Regularly, on a schedule").click();
+    cy.findByDisplayValue("Never, I'll do this manually if I need to").click();
+    H.popover().findByText("Regularly, on a schedule").click();
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ request: { body } }) => {
       expect(body.is_full_sync).to.equal(true);
@@ -783,7 +782,8 @@ describe("scenarios > admin > databases > sample database", () => {
     });
 
     editDatabase();
-    cy.findByLabelText("Only when adding a new filter widget").click();
+    cy.findByDisplayValue("Regularly, on a schedule").click();
+    H.popover().findByText("Only when adding a new filter widget").click();
     cy.button("Save changes").click();
     cy.wait("@databaseUpdate").then(({ request: { body } }) => {
       expect(body.is_full_sync).to.equal(false);

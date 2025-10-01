@@ -1,7 +1,7 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   (:require
-   [clojure.core.memoize :as memoize]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -52,9 +52,11 @@
                               :window-functions/cumulative     (not driver-api/is-test?)
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
+                              :rename                          true
                               :actions                         false
                               :metadata/key-constraints        false
                               :database-routing                true
+                              :transforms/python               true
                               :transforms/table                true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
@@ -64,33 +66,6 @@
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port 8123})
-
-(defn- connection-details->spec* [details]
-  (let [;; ensure defaults merge on top of nils
-        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
-                           default-connection-details
-                           details)
-        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
-        host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
-                 (str/starts-with? host "http://")  (subs host 7)
-                 (str/starts-with? host "https://") (subs host 8)
-                 :else host)]
-    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
-         :subprotocol                    "clickhouse"
-         :subname                        (str "//" host ":" port "/" dbname)
-         :password                       (or password "")
-         :user                           user
-         :ssl                            (boolean ssl)
-         :use_server_time_zone_for_dates true
-         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
-         :remember_last_set_roles        true
-         :http_connection_provider       "HTTP_URL_CONNECTION"
-         :jdbc_ignore_unsupported_values "true"
-         :jdbc_schema_term               "schema"
-         :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
-        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
   [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
@@ -119,37 +94,37 @@
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
-(def ^:private ^{:arglists '([db-details])} cloud?
-  "Returns true if the `db-details` are for a ClickHouse Cloud instance, and false otherwise. If it fails to connect
-   to the database, it throws a java.sql.SQLException."
-  (memoize/ttl
-   (fn [db-details]
-     (let [spec (connection-details->spec* db-details)]
-       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (with-open [stmt (.createStatement conn)
-                      rset (.executeQuery stmt "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")]
-            (if (.next rset) (.getBoolean rset 1) false))))))
-   ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
-   :ttl/threshold (* 48 60 60 1000)))
-
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
-  (cond-> (connection-details->spec* details)
-    (try (cloud? details)
-         (catch java.sql.SQLException _e
-           false))
-    ;; select_sequential_consistency guarantees that we can query data from any replica in CH Cloud
-    ;; immediately after it is written
-    (assoc :select_sequential_consistency true)))
+  (let [;; ensure defaults merge on top of nils
+        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
+                           default-connection-details
+                           details)
+        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
+        host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
+                 (str/starts-with? host "http://")  (subs host 7)
+                 (str/starts-with? host "https://") (subs host 8)
+                 :else host)]
+    (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+         :subprotocol                    "clickhouse"
+         :subname                        (str "//" host ":" port "/" dbname)
+         :password                       (or password "")
+         :user                           user
+         :ssl                            (boolean ssl)
+         :use_server_time_zone_for_dates true
+         :product_name                   (format "metabase/%s" (:tag driver-api/mb-version-info))
+         :remember_last_set_roles        true
+         :http_connection_provider       "HTTP_URL_CONNECTION"
+         :jdbc_ignore_unsupported_values "true"
+         :jdbc_schema_term               "schema"
+         :select_sequential_consistency  true
+         :max_open_connections           (or max-open-connections 100)
+         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
+         :custom_http_params             (or clickhouse-settings "")}
+        (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (if (:details db)
-    (try (cloud? (:details db))
-         (catch java.sql.SQLException _e
-           false))
-    false))
+  (boolean (-> db clickhouse-version/dbms-version :cloud)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
@@ -212,6 +187,28 @@
     :metabase.upload/datetime                 "Nullable(DateTime64(3))"
     :metabase.upload/offset-datetime          nil))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for ClickHouse that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] [[:raw "Nullable(Boolean)"]])
+(defmethod type->database-type :type/Float [_] [[:raw "Nullable(Float64)"]])
+(defmethod type->database-type :type/Integer [_] [[:raw "Nullable(Int32)"]])
+(defmethod type->database-type :type/Number [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/BigInteger [_] [[:raw "Nullable(Int64)"]])
+(defmethod type->database-type :type/Text [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/TextLike [_] [[:raw "Nullable(String)"]])
+(defmethod type->database-type :type/Date [_] [[:raw "Nullable(Date32)"]])
+(defmethod type->database-type :type/Time [_] [[:raw "Nullable(Time)"]])
+(defmethod type->database-type :type/DateTime [_] [[:raw "Nullable(DateTime64(3))"]])
+;; we're lossy here
+(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "Nullable(DateTime64(3, 'UTC'))"]])
+
+(defmethod driver/type->database-type :clickhouse
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
   ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
@@ -219,7 +216,8 @@
   206)
 
 (defn- quote-name [s]
-  (let [parts (str/split (name s) #"\.")]
+  (let [s (if (and (keyword? s) (namespace s)) (str (namespace s) "." (name s)) s)
+        parts (filter identity (str/split (name s) #"\."))]
     (str/join "." (map #(str "`" % "`") parts))))
 
 (defn- create-table!-sql
@@ -241,7 +239,18 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (.execute stmt (create-table!-sql driver table-name column-definitions :primary-key primary-key))))))
+       (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+         (.execute stmt sql))))))
+
+;; rename-tables!* only supported by the atomic engine
+;; https://clickhouse.com/docs/engines/database-engines/atomic#exchange-tables
+
+(defmethod driver/rename-table! :clickhouse
+  [_driver db-id old-table-name new-table-name]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
+      (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
+        (.execute stmt sql)))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
@@ -278,10 +287,7 @@
 (defmethod driver/database-supports? [:clickhouse :connection-impersonation]
   [_driver _feature db]
   (if db
-    (try (clickhouse-version/is-at-least? 24 4 db)
-         (catch Throwable e
-           (log/warn e "Error checking connection impersonation")
-           false))
+    (clickhouse-version/is-at-least? 24 4 db)
     false))
 
 (defmethod driver.sql/set-role-statement :clickhouse
