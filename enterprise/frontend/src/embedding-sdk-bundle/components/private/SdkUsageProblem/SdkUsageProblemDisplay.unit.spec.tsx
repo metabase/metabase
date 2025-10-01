@@ -98,7 +98,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
@@ -127,7 +127,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
@@ -180,7 +180,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
@@ -211,7 +211,7 @@ describe("SdkUsageProblemDisplay", () => {
     ).toBeInTheDocument();
 
     const docsLink = within(card).getByRole("link", {
-      name: /Documentation/,
+      name: "Documentation",
     });
 
     expect(docsLink).toHaveAttribute(
