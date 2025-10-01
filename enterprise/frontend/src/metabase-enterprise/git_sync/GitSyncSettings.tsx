@@ -22,108 +22,29 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { isNotNull } from "metabase/lib/types";
 import {
-  ActionIcon,
   Badge,
   Box,
   Flex,
   Group,
-  Icon,
-  Menu,
   Radio,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import { useUpdateGitSyncSettingsMutation } from "metabase-enterprise/api/git-sync";
+import {
+  type GitSyncSettingsSet,
+  useUpdateGitSyncSettingsMutation,
+} from "metabase-enterprise/api/git-sync";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 
 import { CollectionSyncManager } from "./CollectionSyncManager";
 import { GIT_SYNC_SCHEMA } from "./constants";
 
-interface GitSyncStatusBadgeProps {
-  isEnabled: boolean;
-}
-
-const GitSyncStatusBadge = ({ isEnabled }: GitSyncStatusBadgeProps) => (
-  <Box
-    py="xs"
-    px="sm"
-    bg={isEnabled ? "brand-lighter" : "bg-light"}
-    c={isEnabled ? "brand" : "error"}
-    fz="sm"
-    fw={600}
-  >
-    {isEnabled ? t`Active` : t`Paused`}
-  </Box>
-);
-
-interface GitSyncMenuProps {
-  isEnabled: boolean;
-  onToggle: () => void;
-  onDeactivate: () => void;
-}
-
-const GitSyncMenu = ({
-  isEnabled,
-  onToggle,
-  onDeactivate,
-}: GitSyncMenuProps) => {
-  const menuItems = useMemo(
-    () =>
-      [
-        {
-          title: isEnabled ? t`Pause Sync` : t`Resume Sync`,
-          icon: isEnabled ? "pause" : "play",
-          action: onToggle,
-        },
-        {
-          title: t`Turn Off`,
-          icon: "close",
-          action: onDeactivate,
-        },
-      ].filter(isNotNull),
-    [isEnabled, onToggle, onDeactivate],
-  );
-
-  return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <ActionIcon variant="subtle" size="lg">
-          <Icon name="ellipsis" />
-        </ActionIcon>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {menuItems.map((item) => (
-          <Menu.Item
-            key={item.title}
-            leftSection={<Icon name={item.icon as any} />}
-            onClick={item.action}
-            c={item.icon === "close" ? "danger" : undefined}
-          >
-            {item.title}
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
-  );
-};
-
 const URL_KEY = "remote-sync-url";
 const TOKEN_KEY = "remote-sync-token";
 const TYPE_KEY = "remote-sync-type";
 const BRANCH_KEY = "remote-sync-branch";
-
-type GitSyncSettingsType = Pick<
-  EnterpriseSettings,
-  | "remote-sync-enabled"
-  | "remote-sync-url"
-  | "remote-sync-token"
-  | "remote-sync-type"
-  | "remote-sync-branch"
-  | "remote-sync-configured"
->;
 
 export const GitSyncSettings = (): JSX.Element => {
   const { data: settingValues } = useGetSettingsQuery();
@@ -148,17 +69,6 @@ export const GitSyncSettings = (): JSX.Element => {
     },
   );
 
-  const onSubmit = useCallback(
-    (values: GitSyncSettingsType) => {
-      return updateGitSyncSettings({
-        ...values,
-        "remote-sync-configured": true,
-      }).unwrap();
-    },
-    [updateGitSyncSettings],
-  );
-
-  const isGitSyncConfigured = useSetting("remote-sync-configured");
   const isGitSyncEnabled = useSetting("remote-sync-enabled");
 
   const handleDeactivate = useCallback(async () => {
@@ -168,16 +78,9 @@ export const GitSyncSettings = (): JSX.Element => {
       "remote-sync-token": null,
       "remote-sync-type": null,
       "remote-sync-branch": null,
-      "remote-sync-configured": false,
     } as Partial<EnterpriseSettings>);
     setIsDeactivateModalOpen(false);
   }, [updateSettings]);
-
-  const handlePauseResume = useCallback(async () => {
-    await updateSettings({
-      "remote-sync-enabled": !isGitSyncEnabled,
-    } as Partial<EnterpriseSettings>);
-  }, [isGitSyncEnabled, updateSettings]);
 
   const syncMode = settingValues?.[TYPE_KEY];
 
@@ -195,35 +98,22 @@ export const GitSyncSettings = (): JSX.Element => {
                 >{t`Enabled`}</Badge>
               )}
             </Group>
-
-            {isGitSyncConfigured && (
-              <>
-                <GitSyncStatusBadge isEnabled={!!isGitSyncEnabled} />
-                <Box ml="auto">
-                  <GitSyncMenu
-                    isEnabled={!!isGitSyncEnabled}
-                    onToggle={handlePauseResume}
-                    onDeactivate={() => setIsDeactivateModalOpen(true)}
-                  />
-                </Box>
-              </>
-            )}
           </Flex>
           <Text c="text-dark" size="sm" mb="md" maw="40rem" lh="1.5rem">
             {t`Keep your dashboards, questions, and collections safely backed up in Git.`}
           </Text>
 
           <FormProvider
-            initialValues={initialValues as GitSyncSettingsType}
+            initialValues={initialValues as GitSyncSettingsSet}
             enableReinitialize
             validationSchema={GIT_SYNC_SCHEMA}
             validationContext={settingValues}
-            onSubmit={onSubmit}
+            onSubmit={updateGitSyncSettings}
           >
             {({ dirty, values }) => (
               <Form disabled={!dirty}>
                 <Stack gap="md">
-                  {!isGitSyncConfigured && (
+                  {!isGitSyncEnabled && (
                     <Text c="text-medium" size="sm">
                       {jt`Need help setting this up? Check out our ${(
                         <ExternalLink key="link" href={docsUrl}>
@@ -283,9 +173,7 @@ export const GitSyncSettings = (): JSX.Element => {
                     <FormErrorMessage />
                     <FormSubmitButton
                       label={
-                        isGitSyncConfigured
-                          ? t`Save Changes`
-                          : t`Set Up Git Sync`
+                        isGitSyncEnabled ? t`Save changes` : t`Set up Git Sync`
                       }
                       variant="filled"
                       disabled={!dirty}

@@ -54,14 +54,13 @@ export type CurrentTaskResponse = {
   initiated_by: UserId;
 };
 
-export type GitSyncSettings = Pick<
+export type GitSyncSettingsSet = Pick<
   EnterpriseSettings,
   | "remote-sync-enabled"
   | "remote-sync-url"
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
-  | "remote-sync-configured"
 >;
 
 export const gitSyncApi = EnterpriseApi.injectEndpoints({
@@ -131,7 +130,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("collection-is-dirty")],
     }),
-    updateGitSyncSettings: builder.mutation<void, GitSyncSettings>({
+    updateGitSyncSettings: builder.mutation<void, GitSyncSettingsSet>({
       query: (settings) => ({
         method: "PUT",
         url: `/api/ee/remote-sync/settings`,

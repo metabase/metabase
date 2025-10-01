@@ -9,7 +9,6 @@ function setupGitSync() {
     "remote-sync-type": "development",
     "remote-sync-url": "./my-stuff",
     "remote-sync-enabled": true,
-    "remote-sync-configured": true,
   });
   H.snapshot("remote-sync-setup");
 }

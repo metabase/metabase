@@ -146,7 +146,6 @@
    _query-params
    settings
    :- [:map
-       [:remote-sync-configured {:optional true} [:maybe :boolean]]
        [:remote-sync-enabled {:optional true} [:maybe :boolean]]
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
