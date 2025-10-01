@@ -12,7 +12,7 @@ export const PREVIOUS_VALUE_SIZE = 27;
 
 export const PERIOD_HIDE_HEIGHT_THRESHOLD = 70; // determined empirically
 
-export const DASHCARD_HEADER_HEIGHT = 33;
+export const DASHCARD_HEADER_HEIGHT = 40;
 
 export const MAX_COMPARISONS = 3;
 
