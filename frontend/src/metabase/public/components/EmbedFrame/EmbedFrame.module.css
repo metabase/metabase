@@ -80,6 +80,34 @@ body:where(:global(.mb-wrapper)) {
   --mb-color-bg-dashboard: transparent;
 }
 
+[data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
+  .EmbedFrame {
+    background-color: transparent;
+
+    .DashCard .Card {
+      background-color: transparent;
+    }
+  }
+
+  .WithThemeBackground {
+    background-color: transparent;
+  }
+
+  .EmbedFrameHeader,
+  .EmbedFrameFooter {
+    background-color: transparent;
+  }
+
+  .ParameterPanel.IsSticky {
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-bg-white),
+      transparent 15%
+    );
+    border-bottom-color: transparent;
+  }
+}
+
 .CompactExportAsPdfButton {
   position: absolute;
   right: 1rem;
