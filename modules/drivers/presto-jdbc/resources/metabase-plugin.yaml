@@ -11,9 +11,11 @@ driver:
     - merge:
       - host
       - required: true
+        group-id: host-and-port
     - merge:
         - port
         - placeholder: 8080
+          group-id: host-and-port
     - merge:
         - dbname
         - name: catalog
@@ -129,6 +131,10 @@ driver:
       visible-if:
         advanced-options: true
     - default-advanced-options
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.presto-jdbc
