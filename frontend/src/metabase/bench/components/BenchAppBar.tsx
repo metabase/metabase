@@ -2,8 +2,6 @@ import { ActionIcon, Box, Group, Icon, TextInput } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 interface BenchToolbarProps {
-  onMetabotToggle: () => void;
-  isMetabotOpen: boolean;
   onSidebarToggle: () => void;
   isSidebarOpen: boolean;
 }

@@ -709,6 +709,7 @@ export const PLUGIN_METABOT = {
   isEnabled: () => false,
   Metabot: (_props: {
     hide?: boolean;
+    w?: string,
     config?: {
       emptyText?: string;
       hideSuggestedPrompts?: boolean;
@@ -846,13 +847,13 @@ export const PLUGIN_SEMANTIC_SEARCH = {
 };
 
 export type TransformsPlugin = {
-  getAdminPaths(): AdminPath[];
-  getAdminRoutes(): ReactNode;
+  getTransformRoutes(): ReactNode;
+  ROOT_URL: string | null;
 };
 
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
-  getAdminPaths: () => [],
-  getAdminRoutes: () => null,
+  getTransformRoutes: () => null,
+  ROOT_URL: null,
 };
 
 export type PythonTransformsPlugin = {
