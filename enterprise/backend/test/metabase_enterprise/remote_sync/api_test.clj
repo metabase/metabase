@@ -147,111 +147,112 @@
 
 (deftest export-endpoint-test
   (testing "POST /api/ee/remote-sync/export"
-    (testing "successful export with default settings"
-      (let [mock-main (test-helpers/create-mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
-                  task (wait-for-task-completion task_id)]
-              (is (remote-sync.task/successful? task))
-              (is (=? {:message string? :task_id int?}
-                      resp)))))))
-
-    (testing "successful export with custom branch and message"
-      (let [mock-main (test-helpers/create-mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
-                                                                   {:branch "feature-branch" :message "Custom export message"})
-                  task (wait-for-task-completion task_id)]
-              (is (=? {:message string? :task_id int?}
-                      resp))
-              (is (remote-sync.task/successful? task)))))))
-
-    (testing "successful export with specific collection"
-      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
-                                                      :type "remote-synced"
-                                                      :entity_id "test-collection-1xxxx"
-                                                      :location "/"}]
+    (mt/with-temporary-setting-values [remote-sync-type :development]
+      (testing "successful export with default settings"
         (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
             (with-redefs [source/source-from-settings (constantly mock-main)]
-              (let [resp (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
-                                               {:collection_id coll-id})
-                    task (wait-for-task-completion (:task_id resp))]
+              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                    task (wait-for-task-completion task_id)]
+                (is (remote-sync.task/successful? task))
                 (is (=? {:message string? :task_id int?}
-                        resp))
-                (is (remote-sync.task/successful? task))))))))
+                        resp)))))))
 
-    (testing "requires superuser permissions"
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {})))))
-
-    (testing "error when remote sync is disabled"
-      (mt/with-temporary-setting-values [remote-sync-enabled false]
-        (let [response (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {})]
-          (is (= "Git sync is paused. Please resume it to perform export operations."
-                 response)))))
-
-    (testing "error handling for export failure"
-      (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
-                  task (wait-for-task-completion (:task_id response))]
-              (is (remote-sync.task/failed? task)))))))
-
-    (testing "If a task already exists we get an error"
-      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
-        (let [mock-source (test-helpers/create-mock-source)]
+      (testing "successful export with custom branch and message"
+        (let [mock-main (test-helpers/create-mock-source)]
           (mt/with-temporary-setting-values [remote-sync-enabled true
                                              remote-sync-url "https://github.com/test/repo.git"
                                              remote-sync-token "test-token"
                                              remote-sync-branch "main"]
-            (with-redefs [source/source-from-settings (constantly mock-source)]
-              (is (= "Remote sync in progress"
-                     (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
+            (with-redefs [source/source-from-settings (constantly mock-main)]
+              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                                     {:branch "feature-branch" :message "Custom export message"})
+                    task (wait-for-task-completion task_id)]
+                (is (=? {:message string? :task_id int?}
+                        resp))
+                (is (remote-sync.task/successful? task)))))))
 
-(deftest get-current-sync-status-works
-  (testing "Works when there are no tasks at all"
-    (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task"))))
-  (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                 :last_progress_report_at :%now
-                                                 :started_at :%now}]
-    (testing "Returns the current task if one exists"
-      (is (=? {:id integer?
-               :started_at some?
-               :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
-    (testing "After task completion, it's still the current task"
-      (remote-sync.task/complete-sync-task! id)
-      (is (=? {:id integer?
-               :started_at some?
-               :ended_at some?}
-              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))
-  (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
-                                                 :last_progress_report_at :%now
-                                                 :started_at :%now}]
-    (testing "Returns the current task if one exists"
-      (is (=? {:id integer?
-               :started_at some?
-               :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
-    (testing "After task errors, returns nothing again"
-      (remote-sync.task/fail-sync-task! id "Some error")
-      (is (=? {:error_message "Some error"}
-              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+      (testing "successful export with specific collection"
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection"
+                                                        :type "remote-synced"
+                                                        :entity_id "test-collection-1xxxx"
+                                                        :location "/"}]
+          (let [mock-main (test-helpers/create-mock-source)]
+            (mt/with-temporary-setting-values [remote-sync-enabled true
+                                               remote-sync-url "https://github.com/test/repo.git"
+                                               remote-sync-token "test-token"
+                                               remote-sync-branch "main"]
+              (with-redefs [source/source-from-settings (constantly mock-main)]
+                (let [resp (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                 {:collection_id coll-id})
+                      task (wait-for-task-completion (:task_id resp))]
+                  (is (=? {:message string? :task_id int?}
+                          resp))
+                  (is (remote-sync.task/successful? task))))))))
+
+      (testing "requires superuser permissions"
+        (mt/with-temporary-setting-values [remote-sync-enabled true]
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :post 403 "ee/remote-sync/export" {})))))
+
+      (testing "error when remote sync is disabled"
+        (mt/with-temporary-setting-values [remote-sync-enabled false]
+          (let [response (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {})]
+            (is (= "Git sync is paused. Please resume it to perform export operations."
+                   response)))))
+
+      (testing "error handling for export failure"
+        (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings (constantly mock-main)]
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                    task (wait-for-task-completion (:task_id response))]
+                (is (remote-sync.task/failed? task)))))))
+
+      (testing "If a task already exists we get an error"
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
+          (let [mock-source (test-helpers/create-mock-source)]
+            (mt/with-temporary-setting-values [remote-sync-enabled true
+                                               remote-sync-url "https://github.com/test/repo.git"
+                                               remote-sync-token "test-token"
+                                               remote-sync-branch "main"]
+              (with-redefs [source/source-from-settings (constantly mock-source)]
+                (is (= "Remote sync in progress"
+                       (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
+
+  (deftest get-current-sync-status-works
+    (testing "Works when there are no tasks at all"
+      (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task"))))
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                   :last_progress_report_at :%now
+                                                   :started_at :%now}]
+      (testing "Returns the current task if one exists"
+        (is (=? {:id integer?
+                 :started_at some?
+                 :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
+      (testing "After task completion, it's still the current task"
+        (remote-sync.task/complete-sync-task! id)
+        (is (=? {:id integer?
+                 :started_at some?
+                 :ended_at some?}
+                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                   :last_progress_report_at :%now
+                                                   :started_at :%now}]
+      (testing "Returns the current task if one exists"
+        (is (=? {:id integer?
+                 :started_at some?
+                 :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
+      (testing "After task errors, returns nothing again"
+        (remote-sync.task/fail-sync-task! id "Some error")
+        (is (=? {:error_message "Some error"}
+                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))))
 
 (deftest is-dirty-endpoint-test
   (test-helpers/with-clean-change-log

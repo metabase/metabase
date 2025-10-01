@@ -146,7 +146,7 @@
    (if source
      (let [sync-timestamp (t/instant)
            collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
-       (when (= (settings/remote-sync-type) :development)
+       (when (= (settings/remote-sync-type) :production)
          (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
        (analytics/inc! :metabase-remote-sync/exports)
        (try
