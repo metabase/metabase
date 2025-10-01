@@ -35,6 +35,7 @@ import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedDisplayParams,
+  EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
@@ -96,7 +97,8 @@ export type DashboardContextReturned = DashboardContextOwnResult &
   DashboardContextErrorState &
   DashboardFullscreenControls & {
     fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
-  } & DashboardRefreshPeriodControls;
+  } & DashboardRefreshPeriodControls &
+  EmbedThemeControls;
 
 export const DashboardContext = createContext<
   DashboardContextReturned | undefined
@@ -125,6 +127,7 @@ const DashboardContextProviderInner = forwardRef(
 
       children,
 
+      theme = "light",
       background = true,
       bordered = true,
       titled = true,
@@ -368,6 +371,7 @@ const DashboardContextProviderInner = forwardRef(
           refreshPeriod,
           setRefreshElapsedHook,
           onRefreshPeriodChange,
+          theme,
           background,
           bordered,
           titled,
