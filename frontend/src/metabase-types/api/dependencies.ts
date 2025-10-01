@@ -1,7 +1,79 @@
-import type { NativeQuerySnippet } from "metabase-types/api/snippets";
+import type { Card, CardId, CardType } from "./card";
+import type { NativeQuerySnippet, NativeQuerySnippetId } from "./snippets";
+import type { ConcreteTableId } from "./table";
+import type { Transform, TransformId } from "./transform";
 
-import type { Card } from "./card";
-import type { Transform } from "./transform";
+export type DependencyNode =
+  | TableDependencyNode
+  | CardDependencyNode
+  | SnippetDependencyNode
+  | TransformDependencyNode;
+export type DependencyEntityId = DependencyNode["id"];
+export type DependencyEntityType = DependencyNode["type"];
+
+type BaseDependencyNode<TId, TType, TData> = {
+  id: TId;
+  type: TType;
+  data: TData;
+};
+
+export type TableDependencyNode = BaseDependencyNode<
+  ConcreteTableId,
+  "table",
+  TableDependencyData
+>;
+
+export type CardDependencyNode = BaseDependencyNode<
+  CardId,
+  "card",
+  CardDependencyData
+>;
+
+export type SnippetDependencyNode = BaseDependencyNode<
+  NativeQuerySnippetId,
+  "snippet",
+  SnippetDependencyData
+>;
+
+export type TransformDependencyNode = BaseDependencyNode<
+  TransformId,
+  "transform",
+  TransformDependencyData
+>;
+
+export type TableDependencyData = {
+  display_name: string;
+};
+
+export type CardDependencyData = {
+  name: string;
+  type: CardType;
+};
+
+export type SnippetDependencyData = {
+  name: string;
+};
+
+export type TransformDependencyData = {
+  name: string;
+};
+
+export type DependencyEdge = {
+  from_entity_id: DependencyEntityId;
+  from_entity_type: DependencyEntityType;
+  to_entity_id: DependencyEntityId;
+  to_entity_type: DependencyEntityType;
+};
+
+export type DependencyGraph = {
+  nodes: DependencyNode[];
+  edges: DependencyEdge[];
+};
+
+export type GetDependencyGraphRequest = {
+  id: DependencyEntityId;
+  type: DependencyEntityType;
+};
 
 export type CheckDependenciesResponse = {
   success: boolean;

@@ -876,6 +876,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 };
 
 type DependenciesPlugin = {
+  DependencyFlow: ComponentType;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -930,6 +931,7 @@ function useCheckDependencies<TChange>({
 }
 
 export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  DependencyFlow: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,

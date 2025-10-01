@@ -40,6 +40,7 @@ import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_DOCUMENTS,
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   PLUGIN_LANDING_PAGE,
@@ -152,6 +153,15 @@ export const getRoutes = (store) => {
             component={CanAccessOnboarding}
           >
             <IndexRoute component={Onboarding} />
+          </Route>
+
+          <Route path="dependencies">
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyFlow} />
+            <Route
+              path=":type/:id"
+              title={t`Dependencies`}
+              component={PLUGIN_DEPENDENCIES.DependencyFlow}
+            />
           </Route>
 
           <Route path="search" title={t`Search`} component={SearchApp} />
