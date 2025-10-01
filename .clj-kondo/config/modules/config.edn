@@ -1735,6 +1735,7 @@
            app-db
            api
            collections
+           config
            driver
            events
            graph
