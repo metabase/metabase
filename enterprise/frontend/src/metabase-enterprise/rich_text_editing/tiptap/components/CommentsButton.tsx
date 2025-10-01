@@ -6,7 +6,7 @@ import { Button, type ButtonProps, Icon } from "metabase/ui";
 interface Props extends ButtonProps {
   unresolvedCommentsCount: number;
   component?: React.ElementType<any, any>;
-  to: string;
+  to?: string;
 }
 
 export const CommentsButton = ({

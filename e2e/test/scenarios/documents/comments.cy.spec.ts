@@ -570,7 +570,7 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
-  it("prevents editing the document when comments are open", () => {
+  it("allows editing the document when comments are open", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -580,17 +580,17 @@ H.describeWithSnowplowEE("document comments", () => {
         H.documentContent().click();
 
         cy.realType("test");
-        cy.findByRole("button", { name: "Save" }).should("not.exist");
+        cy.findByRole("button", { name: "Save" }).should("exist");
 
         H.documentContent()
-          .get('[contenteditable="false"]')
+          .get('[contenteditable="true"]')
           .should("be.visible");
         H.documentFormattingMenu().should("not.exist");
       });
     });
   });
 
-  it("prevents opening comments when document has changes", () => {
+  it("allows opening comments when document has changes", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
