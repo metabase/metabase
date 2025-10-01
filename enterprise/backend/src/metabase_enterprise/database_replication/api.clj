@@ -1,13 +1,21 @@
 (ns metabase-enterprise.database-replication.api
   (:require
+   [clojure.core.memoize :as memoize]
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.database-replication.settings :as database-replication.settings]
    [metabase-enterprise.harbormaster.client :as hm.client]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.driver.sync :as driver.s]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.regex PatternSyntaxException)))
 
 (set! *warn-on-reflection* true)
 
@@ -28,28 +36,144 @@
 (defn- database-id->connection-id [conns database-id]
   (->> database-id kw-id (get conns) :connection-id))
 
+(defn- schema-filter->fn [{:keys [type patterns]}]
+  (if (= type "all")
+    (constantly true)
+    (let [pat (driver.s/schema-pattern->re-pattern patterns)
+          f   (case type
+                "inclusion" some?
+                "exclusion" nil?)]
+      (fn [table-schema]
+        (f (re-matches pat table-schema))))))
+
+(defn- schema-filters->fn [schema-filters]
+  (if (seq schema-filters)
+    (fn [table-schema]
+      (->> schema-filters
+           (map schema-filter->fn)
+           (every? #(% table-schema))))
+    (constantly true)))
+
+(defn- hm-preview [secret]
+  (hm.client/call :preview-connection, :connection-id "preview", :type "pg_replication", :secret secret))
+
+(def ^:private hm-preview-memo
+  (memoize/ttl hm-preview :ttl/threshold (u/minutes->ms 5)))
+
+(defn- preview-tables
+  [secret & replication-schema-filters]
+  (try
+    ;; realize this lazy seq here to catch the regex error, if any
+    (doall
+     (->> secret
+          ;; memo the slow preview call without replication-schema-filters, then
+          ;; apply filter over the memoized result for snappy UI
+          hm-preview-memo
+          :tables
+          (filter (comp (schema-filters->fn replication-schema-filters) :table_schema))))
+    (catch PatternSyntaxException _
+      {:error "Invalid schema pattern"})))
+
+(defn- get-free-quota [quotas]
+  (or
+   (some->> (m/find-first (comp #{"clickhouse-dwh"} :hosting-feature) quotas)
+            ((juxt :soft-limit :usage))
+            (apply -))
+   -1))
+
+(defn preview-replication
+  "Predicate that signals if replication looks right from the quota perspective.
+
+   This predicate checks that the quotas we got from the latest tokencheck have enough space for the database to be
+  replicated."
+  [quotas tables]
+  (let [tables-error               (:error tables)
+        tables                     (if tables-error [] tables)
+        free-quota                 (get-free-quota quotas)
+        replicated-tables          (->> tables
+                                        (filter :has_pkey)
+                                        (filter :has_ownership))
+        tables-without-pk          (filter (comp not :has_pkey) tables)
+        tables-without-owner-match (filter (comp not :has_ownership) tables)
+        total-estimated-row-count  (or
+                                    (some->>
+                                     replicated-tables
+                                     (map :estimated_row_count)
+                                     (remove nil?)
+                                     (reduce +))
+                                    0)
+        errors                     {:no-tables                      (empty? replicated-tables)
+                                    :no-quota                       (> total-estimated-row-count free-quota)
+                                    :invalid-schema-filters-pattern (boolean tables-error)}]
+    (log/infof "Quota left: %s. Estimate db row count: %s" free-quota total-estimated-row-count)
+    {:free-quota                 free-quota
+     :total-estimated-row-count  total-estimated-row-count
+     :errors                     errors
+     :can-set-replication        (not (some second errors))
+     :replicated-tables          replicated-tables
+     :tables-without-pk          tables-without-pk
+     :tables-without-owner-match tables-without-owner-match}))
+
+(defn- m->schema-filter [m]
+  (-> m
+      (select-keys [:schema-filters-type :schema-filters-patterns])
+      (set/rename-keys {:schema-filters-type :type, :schema-filters-patterns :patterns})))
+
+(defn- ->secret [{:keys [details]} & {:as replication-schema-filters}]
+  (let [dbname         (or (:dbname details) (:db details))
+        credentials    (-> details
+                           (select-keys [:host :user :password :port])
+                           (update :port #(or % 5432)) ;; port is required in the API, but optional in MB
+                           (merge {:dbname dbname
+                                   :dbtype "postgresql"}))
+        schema-filters (->> [(m->schema-filter details)
+                             (m->schema-filter replication-schema-filters)]
+                            (filterv not-empty))]
+    {:credentials    credentials
+     :schema-filters schema-filters}))
+
+(def ^:private body-schema
+  [:map
+   [:replicationSchemaFilters
+    {:optional true}
+    [:map
+     [:schema-filters-type [:enum "inclusion" "exclusion" "all"]]
+     [:schema-filters-patterns :string]]]])
+
+(api.macros/defendpoint :post "/connection/:database-id/preview"
+  "Return info about pg-replication connection that is about to be created."
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
+  (let [database (t2/select-one :model/Database :id database-id)
+        secret (->secret database)
+        replication-schema-filters (m->schema-filter replicationSchemaFilters)]
+    (u/recursive-map-keys u/->camelCaseEn (preview-replication (premium-features/quotas) (preview-tables secret replication-schema-filters)))))
+
 (api.macros/defendpoint :post "/connection/:database-id"
   "Create a new PG replication connection for the specified database."
-  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]]]
+  [{:keys [database-id]} :- [:map [:database-id ms/PositiveInt]] _ {:keys [replicationSchemaFilters]} :- body-schema]
   (api/check-400 (database-replication.settings/database-replication-enabled) "PG replication integration is not enabled.")
-  (let [database (t2/select-one :model/Database :id database-id)]
+  (let [database   (t2/select-one :model/Database :id database-id)
+        db-details (:details database)]
     (api/check-404 database)
     (api/check-400 (= :postgres (:engine database)) "PG replication is only supported for PostgreSQL databases.")
+    (api/check-400 (not (:tunnel-enabled db-details)) "PG replication is not supported with SSH Tunnel.")
+    (api/check-400 (not (or (:ssl-client-cert db-details) (:ssl-root-cert db-details)))
+                   "PG replication is not supported with root or client certificates.")
     (let [conns (pruned-database-replication-connections)]
       (api/check-400 (not (database-id->connection-id conns database-id)) "Database already has an active replication connection.")
-      (let [credentials (-> (:details database)
-                            (select-keys [:dbname :host :user :password :port])
-                            (update :port #(or % 5432))) ;; port is required in the API, but optional in MB
-            {:keys [schema-filters-type schema-filters-patterns]} (:details database)
-            schemas      (when-some [k ({"inclusion" :include, "exclusion" :exclude} schema-filters-type)]
-                           (when schema-filters-patterns
-                             {:schemas {k schema-filters-patterns}}))
-            secret       (merge {:credentials (merge {:dbtype "postgresql"} credentials)}
-                                schemas)
-            {:keys [id]} (hm.client/call :create-connection, :type "pg_replication", :secret secret)
-            conn         {:connection-id id}]
-        (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
-        conn))))
+      (let [secret (->secret database replicationSchemaFilters)]
+        (if (:can-set-replication (preview-replication (premium-features/quotas) (preview-tables secret)))
+          (let [{:keys [id]} (try
+                               (hm.client/call :create-connection, :type "pg_replication", :secret secret)
+                               (catch Exception e
+                                 (let [{:keys [error error-detail]} (ex-data e)]
+                                   (when (not= "incorrect" error)
+                                     (throw e))
+                                   (api/check-400 false error-detail))))
+                conn         {:connection-id id}]
+            (database-replication.settings/database-replication-connections! (assoc conns (kw-id database-id) conn))
+            conn)
+          (api/check-400 false "Not enough quota"))))))
 
 (api.macros/defendpoint :delete "/connection/:database-id"
   "Delete PG replication connection for the specified database."

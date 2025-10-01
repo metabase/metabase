@@ -16,6 +16,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.public-sharing.api :as api.public]
    [metabase.queries.api.card-test :as api.card-test]
+   [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
@@ -187,7 +188,8 @@
   {:enable_embedding true
    :dataset_query    {:database (mt/id)
                       :type     :native
-                      :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
+                      :native   {:query         "SELECT 1"
+                                 :template-tags {:a {:type "date", :name "a", :display_name "a" :id "a" :default "A TAG"}
                                                  :b {:type "date", :name "b", :display_name "b" :id "b" :default "B TAG"}
                                                  :c {:type "date", :name "c", :display_name "c" :id "c" :default "C TAG"}
                                                  :d {:type "date", :name "d", :display_name "d" :id "d" :default "D TAG"}}}}
@@ -314,6 +316,22 @@
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
                   (client/client :get 200 (str "public/card/" uuid "/query/xlsx?format_rows=true"))))))))))
+
+(deftest download-public-card-filename-test
+  (testing "GET /api/public/card/:uuid/query - filename generation"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (testing "with various card names"
+        (doseq [[card-name expected-slug] qp.card-test/card-download-filename-cases]
+          (testing (str "card name: " card-name)
+            (mt/with-temp [:model/Card card {:name card-name
+                                             :public_uuid (str (random-uuid))
+                                             :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+              (let [response (client/client-full-response
+                              :get 200
+                              (str "public/card/" (:public_uuid card) "/query/csv"))]
+                (is (str/includes?
+                     (get-in response [:headers "Content-Disposition"])
+                     (str expected-slug "_")))))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -1672,30 +1690,32 @@
   (= [\P \N \G] (drop 1 (take 4 s))))
 
 (deftest card-tile-query-test
-  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/public/tiles/card/:uuid/:zoom/:x/:y with latField and lonField query params"
     (let [uuid (str (random-uuid))]
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Card _card {:dataset_query (venues-query)
                                           :public_uuid uuid}]
-          (is (png? (client/client :get 200 (format "public/tiles/card/%s/1/1/1/%s/%s"
-                                                    uuid
-                                                    (tiles.api-test/encoded-lat-field-ref)
-                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
+          (let [lat-field (tiles.api-test/encoded-lat-field-ref)
+                lon-field (tiles.api-test/encoded-lon-field-ref)
+                url (str "public/tiles/card/" uuid "/1/1/1")]
+            (is (png? (client/client :get 200 url
+                                     :latField lat-field
+                                     :lonField lon-field)))))))))
 
 (deftest dashcard-tile-query-test
-  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/public/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
     (let [uuid (str (random-uuid))]
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:public_uuid uuid}
                        :model/Card          {card-id :id}      {:dataset_query (venues-query)}
                        :model/DashboardCard {dashcard-id :id}  {:card_id card-id
                                                                 :dashboard_id dashboard-id}]
-          (is (png? (client/client :get 200 (format "public/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
-                                                    uuid
-                                                    dashcard-id
-                                                    card-id
-                                                    (tiles.api-test/encoded-lat-field-ref)
-                                                    (tiles.api-test/encoded-lon-field-ref))))))))))
+          (let [lat-field (tiles.api-test/encoded-lat-field-ref)
+                lon-field (tiles.api-test/encoded-lon-field-ref)
+                url (str "public/tiles/dashboard/" uuid "/dashcard/" dashcard-id "/card/" card-id "/1/1/1")]
+            (is (png? (client/client :get 200 url
+                                     :latField lat-field
+                                     :lonField lon-field)))))))))
 
 ;;; --------------------------------- POST /oembed ----------------------------------
 

@@ -119,7 +119,7 @@ describe("QuestionActions", () => {
     },
   );
 
-  describe("model query & metadata", () => {
+  describe("model query & columns", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
       const { onSetQueryBuilderMode } = setup({
         card: createMockCard({
@@ -142,7 +142,7 @@ describe("QuestionActions", () => {
       await userEvent.click(screen.getByText("Edit metadata"));
       await waitFor(() => {
         expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-          datasetEditorTab: "metadata",
+          datasetEditorTab: "columns",
         });
       });
     });

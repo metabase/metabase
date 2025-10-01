@@ -23,24 +23,23 @@
    (wrap-value-literals query "UTC"))
 
   ([query ^String timezone-id]
-   (letfn [(thunk []
+   (letfn [(f [query]
              (mt/with-results-timezone-id timezone-id
                (qp.wrap-value-literals/wrap-value-literals query)))]
-     (if (qp.store/initialized?)
-       (thunk)
-       (qp.store/with-metadata-provider meta/metadata-provider
-         (thunk))))))
+     (if (:lib/type query)
+       (f query)
+       (let [mp meta/metadata-provider]
+         (-> (lib/query mp query)
+             f
+             lib/->legacy-MBQL))))))
 
 (deftest ^:parallel wrap-integers-test
   (is (= (lib.tu.macros/mbql-query venues
            {:filter [:>
                      $id
-                     [:value 50 {:base_type         :type/BigInteger
-                                 :effective_type    :type/BigInteger
-                                 :coercion_strategy nil
-                                 :semantic_type     :type/PK
-                                 :database_type     "BIGINT"
-                                 :name              "ID"}]]})
+                     [:value 50 {:base_type     :type/BigInteger
+                                 :semantic_type :type/PK
+                                 :database_type "BIGINT"}]]})
          (wrap-value-literals
           (lib.tu.macros/mbql-query venues
             {:filter [:> $id 50]})))))
@@ -48,18 +47,12 @@
 (deftest ^:parallel wrap-integers-test-2
   (is (= (lib.tu.macros/mbql-query venues
            {:filter [:and
-                     [:> $id [:value 50 {:base_type         :type/BigInteger
-                                         :effective_type    :type/BigInteger
-                                         :coercion_strategy nil
-                                         :semantic_type     :type/PK
-                                         :database_type     "BIGINT"
-                                         :name              "ID"}]]
-                     [:< $price [:value 5 {:base_type         :type/Integer
-                                           :effective_type    :type/Integer
-                                           :coercion_strategy nil
-                                           :semantic_type     :type/Category
-                                           :database_type     "INTEGER"
-                                           :name              "PRICE"}]]]})
+                     [:> $id [:value 50 {:base_type     :type/BigInteger
+                                         :semantic_type :type/PK
+                                         :database_type "BIGINT"}]]
+                     [:< $price [:value 5 {:base_type     :type/Integer
+                                           :semantic_type :type/Category
+                                           :database_type "INTEGER"}]]]})
          (wrap-value-literals
           (lib.tu.macros/mbql-query venues
             {:filter [:and
@@ -72,8 +65,8 @@
       (is (= (qp.timezone/results-timezone-id)
              timezone-id)
           "Make sure `results-timezone-id` is returning the bound value")
-      (second (#'qp.wrap-value-literals/add-type-info datetime-str
-                                                      {:unit :day})))))
+      (-> (#'qp.wrap-value-literals/add-type-info datetime-str {:unit :day})
+          (nth 2)))))
 
 (deftest parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
@@ -131,41 +124,44 @@
               :coercion-strategy :Coercion/UNIXSeconds->DateTime}]}))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test-4
-  (qp.store/with-metadata-provider unix-timestamp-metadata-provider
-    (is (= (:query
-            (lib.tu.macros/mbql-query checkins
-              {:filter [:and
-                        [:>
-                         !day.date
-                         [:absolute-datetime (t/offset-date-time "2015-06-01T00:00Z") :day]]
-                        [:<
-                         !day.date
-                         [:absolute-datetime (t/offset-date-time "2015-06-03T00:00:00Z") :day]]]}))
-           (:query
-            (wrap-value-literals
-             (lib.tu.macros/mbql-query checkins
-               {:filter [:and
-                         [:> !day.date "2015-06-01"]
-                         [:< !day.date "2015-06-03"]]}))))
-        "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/DateTime")))
+  (is (=? {:filters [[:>
+                      {}
+                      [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                      [:absolute-datetime {} (t/offset-date-time "2015-06-01T00:00Z") :day]]
+                     [:<
+                      {}
+                      [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                      [:absolute-datetime {} (t/offset-date-time "2015-06-03T00:00:00Z") :day]]]}
+          (-> (lib/query
+               unix-timestamp-metadata-provider
+               (lib.tu.macros/mbql-query checkins
+                 {:filter [:and
+                           [:> !day.date "2015-06-01"]
+                           [:< !day.date "2015-06-03"]]}))
+              wrap-value-literals
+              :stages
+              first))
+      "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/DateTime"))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test-5
   (qp.store/with-metadata-provider unix-timestamp-metadata-provider
-    (is (= (:query
-            (lib.tu.macros/mbql-query checkins
-              {:filter [:and
-                        [:>
-                         !day.date
-                         [:absolute-datetime (t/offset-date-time "2015-06-01T00:00Z") :day]]
-                        [:<
-                         !day.date
-                         [:absolute-datetime (t/offset-date-time "2015-06-03T00:00:00Z") :day]]]}))
-           (:query
-            (wrap-value-literals
-             (lib.tu.macros/mbql-query checkins
-               {:filter [:and
-                         [:> !day.date "2015-06-01"]
-                         [:< !day.date "2015-06-03"]]}))))
+    (is (=? {:filters [[:>
+                        {}
+                        [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                        [:absolute-datetime {} (t/offset-date-time "2015-06-01T00:00Z") :day]]
+                       [:<
+                        {}
+                        [:field {:temporal-unit :day} (meta/id :checkins :date)]
+                        [:absolute-datetime {} (t/offset-date-time "2015-06-03T00:00:00Z") :day]]]}
+            (-> (lib/query
+                 unix-timestamp-metadata-provider
+                 (lib.tu.macros/mbql-query checkins
+                   {:filter [:and
+                             [:> !day.date "2015-06-01"]
+                             [:< !day.date "2015-06-03"]]}))
+                wrap-value-literals
+                :stages
+                first))
         "should also apply if the Fields are UNIX timestamps or other things with semantic type of :type/DateTime")))
 
 (deftest wrap-datetime-literal-strings-test-6
@@ -189,13 +185,9 @@
     (is (= (lib.tu.macros/mbql-query checkins
              {:filter [:starts-with
                        !month.date
-                       [:value "2018-10-01" {:base_type         :type/Date
-                                             :effective_type    :type/Date
-                                             :coercion_strategy nil
-                                             :semantic_type     nil
-                                             :database_type     "DATE"
-                                             :unit              :month
-                                             :name              "DATE"}]]})
+                       [:value "2018-10-01" {:base_type     :type/Date
+                                             :database_type "DATE"
+                                             :unit          :month}]]})
            (wrap-value-literals
             (lib.tu.macros/mbql-query checkins
               {:filter [:starts-with !month.date "2018-10-01"]}))))))
@@ -235,16 +227,12 @@
 
 (deftest ^:parallel base-type-test
   (testing "Make sure base-type from `:field` w/ name is picked up correctly"
-    (is (= {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]]
-            :filter       [:not [:starts-with
-                                 [:field "A" {:base-type :type/Text}]
-                                 [:value "f" {:base_type :type/Text}]]]
-            :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
-           (#'qp.wrap-value-literals/wrap-value-literals-in-mbql-query
-            {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]],
-             :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]],
-             :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
-            nil)))))
+    (is (= [:not [:starts-with
+                  [:field "A" {:base-type :type/Text}]
+                  [:value "f" {:base_type :type/Text}]]]
+           #_{:clj-kondo/ignore [:deprecated-var]}
+           (qp.wrap-value-literals/wrap-value-literals-in-mbql
+            [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]])))))
 
 (deftest ^:parallel parse-temporal-string-literals-based-on-column-effective-type-test
   (testing "Temporal string literals should be parsed to different things based on the effective type of the target column (#39769)"
@@ -265,14 +253,14 @@
                                                        :base-type         :type/Text
                                                        :coercion-strategy :Coercion/UNIXSeconds->DateTime
                                                        :effective-type    column-type}]})
-            (is (= {:filter [:=
-                             [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
-                             expected]}
-                   (#'qp.wrap-value-literals/wrap-value-literals-in-mbql-query
-                    {:filter [:=
-                              [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
-                              "2024-03-20T15:24:00-07:00[US/Pacific]"]}
-                    nil)))))))))
+            (is (= [:=
+                    [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
+                    expected]
+                   #_{:clj-kondo/ignore [:deprecated-var]}
+                   (qp.wrap-value-literals/wrap-value-literals-in-mbql
+                    [:=
+                     [:field (meta/id :checkins :date) {:base-type :type/Text, :effective-type column-type}]
+                     "2024-03-20T15:24:00-07:00[US/Pacific]"])))))))))
 
 (deftest ^:parallel expression-test
   (testing "Value literals compared to :expression refs should get wrapped. Should give date literal strings :day bucketing (#17807)"
@@ -365,3 +353,13 @@
                 qp.preprocess/preprocess
                 lib/->legacy-MBQL
                 wrap-value-literals)))))
+
+(deftest ^:parallel wrap-value-literals-in-mbql-test
+  (is (= [:!=
+          [:field 1 {:base-type :type/Date, :temporal-unit :month-of-year}]
+          [:absolute-datetime #t "2016-01-01" :month-of-year]]
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         (#'qp.wrap-value-literals/wrap-value-literals-in-mbql
+          [:!=
+           [:field 1 {:base-type :type/Date, :temporal-unit :month-of-year}]
+           "2016-01-01"]))))

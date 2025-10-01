@@ -5,9 +5,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { match } from "ts-pattern";
+import { useLocation } from "react-use";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
+import { useSearchQuery } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
@@ -34,6 +36,7 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
@@ -50,18 +53,73 @@ export const SdkIframeEmbedSetupProvider = ({
     isRecentsLoading,
   } = useRecentItems();
 
+  const { data: searchData } = useSearchQuery({
+    limit: 0,
+    models: ["dataset"],
+  });
+
+  const modelCount = searchData?.total ?? 0;
+
+  // EmbeddingHub passes `auth_method`.
+  // EmbedContentModal passes `resource_type` and `resource_id`.
+  const urlParams = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+
+    return {
+      authMethod: params.get("auth_method"),
+      resourceType: params.get("resource_type"),
+      resourceId: params.get("resource_id"),
+    };
+  }, [location.search]);
+
   const defaultSettings = useMemo(() => {
-    return getDefaultSdkIframeEmbedSettings(
-      "dashboard",
-      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-    );
-  }, [recentDashboards]);
+    return match([urlParams.resourceType, urlParams.resourceId])
+      .with(["dashboard", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("dashboard", id),
+      )
+      .with(["question", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("chart", id),
+      )
+      .otherwise(() =>
+        getDefaultSdkIframeEmbedSettings(
+          "dashboard",
+          recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+        ),
+      );
+  }, [recentDashboards, urlParams]);
 
-  const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
-    "select-embed-experience",
-  );
+  // Default to the embed options step if both resource type and id are provided.
+  // This is to skip the experience and resource selection steps as we know both.
+  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (urlParams.resourceType !== null && urlParams.resourceId !== null) {
+      return "select-embed-options";
+    }
 
-  const settings = rawSettings ?? defaultSettings;
+    return "select-embed-experience";
+  }, [urlParams]);
+
+  const [currentStep, setCurrentStep] =
+    useState<SdkIframeEmbedSetupStep>(defaultStep);
+
+  const settings = useMemo(() => {
+    const latestSettings = rawSettings ?? defaultSettings;
+
+    // Append entity-types=model if there are more than 2 models in the instance.
+    if (modelCount > 2) {
+      return match(latestSettings)
+        .with({ componentName: "metabase-question" }, (settings) => ({
+          ...settings,
+          entityTypes: ["model" as const],
+        }))
+        .with({ componentName: "metabase-browser" }, (settings) => ({
+          ...settings,
+          dataPickerEntityTypes: ["model" as const],
+        }))
+        .otherwise((settings) => settings);
+    }
+
+    return latestSettings;
+  }, [defaultSettings, modelCount, rawSettings]);
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -137,11 +195,26 @@ export const SdkIframeEmbedSetupProvider = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({ ...settings, ...persistedSettings });
+      setRawSettings({
+        ...settings,
+        ...persistedSettings,
+
+        // Override the persisted settings if `auth_method` is specified.
+        // This is used for Embedding Hub.
+        ...(urlParams.authMethod !== null && {
+          useExistingUserSession: urlParams.authMethod === "user_session",
+        }),
+      });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
+  }, [
+    persistedSettings,
+    isEmbedSettingsLoaded,
+    settings,
+    isRecentsLoading,
+    urlParams,
+  ]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>

@@ -3,13 +3,13 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
-   [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
@@ -139,10 +139,6 @@
        (is (= [{:col "Count"} {:col 100.0}]
               actual))))))
 
-(defn dissoc-id-and-name [obj]
-  (cond-> obj
-    (map? obj) (dissoc :id :name)))
-
 (def successful-card-info
   "Data that should be returned if `GET /api/embed/card/:token` completes successfully (minus `:id` and `:name`).
    This should only be the bare minimum amount of info needed to display the Card, leaving out other data we wouldn't
@@ -158,7 +154,7 @@
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
    :param_fields {} :width "fixed"})
 
-(def ^:private yesterday (time/minus (time/now) (time/days 1)))
+(def ^:private yesterday (t/minus (t/instant) (t/days 1)))
 
 ;;; ------------------------------------------- GET /api/embed/card/:token -------------------------------------------
 
@@ -167,9 +163,8 @@
 (deftest it-should-be-possible-to-use-this-endpoint-successfully-if-all-the-conditions-are-met
   (with-embedding-enabled-and-new-secret-key!
     (with-temp-card [card {:enable_embedding true}]
-      (is (= successful-card-info
-             (dissoc-id-and-name
-              (client/client :get 200 (card-url card))))))))
+      (is (=? successful-card-info
+              (client/client :get 200 (card-url card)))))))
 
 (deftest we-should-fail-when-attempting-to-use-an-expired-token
   (with-embedding-enabled-and-new-secret-key!
@@ -211,7 +206,8 @@
       (with-temp-card [card {:enable_embedding true
                              :dataset_query    {:database (mt/id)
                                                 :type     :native
-                                                :native   {:template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
+                                                :native   {:query         "SELECT 1;"
+                                                           :template-tags {:a {:type "date", :name "a", :display_name "a" :id "a"}
                                                                            :b {:type "date", :name "b", :display_name "b" :id "b"}
                                                                            :c {:type "date", :name "c", :display_name "c" :id "c"}
                                                                            :d {:type "date", :name "d", :display_name "d" :id "d"}}}}
@@ -571,12 +567,10 @@
 (deftest it-should-be-possible-to-call-this-endpoint-successfully
   (with-embedding-enabled-and-new-secret-key!
     (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
-      (is (= successful-dashboard-info
-             (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url dash)))))
-      (is (= successful-dashboard-info
-             (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url (:entity_id dash) dash))))))))
+      (is (=? successful-dashboard-info
+              (client/client :get 200 (dashboard-url dash))))
+      (is (=? successful-dashboard-info
+              (client/client :get 200 (dashboard-url (:entity_id dash) dash)))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
@@ -1836,19 +1830,18 @@
                        [:field (mt/id :people :longitude) nil]]}})
 
 (deftest card-tile-query-test
-  (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/embed/tiles/card/:uuid/:zoom/:x/:y with latField and lonField query params"
     (with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (venues-query)
                                                 :enable_embedding true}]
         (let [token (card-token card-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1/%s/%s"
-                                                 token
-                                                 (tiles.api-test/encoded-lat-field-ref)
-                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
+                     :crowberto :get 200 (format "embed/tiles/card/%s/1/1/1" token)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
 (deftest dashcard-tile-query-test
-  (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y/:lat-field/:lon-field"
+  (testing "GET api/embed/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y with latField and lonField query params"
     (with-embedding-enabled-and-new-secret-key!
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:enable_embedding true}
 
@@ -1857,12 +1850,12 @@
                                                               :dashboard_id dashboard-id}]
         (let [token (dash-token dashboard-id)]
           (is (png? (mt/user-http-request
-                     :crowberto :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1/%s/%s"
+                     :crowberto :get 200 (format "embed/tiles/dashboard/%s/dashcard/%d/card/%d/1/1/1"
                                                  token
                                                  dashcard-id
-                                                 card-id
-                                                 (tiles.api-test/encoded-lat-field-ref)
-                                                 (tiles.api-test/encoded-lon-field-ref))))))))))
+                                                 card-id)
+                     :latField (tiles.api-test/encoded-lat-field-ref)
+                     :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
 
 (deftest embedded-string-parameter-case-sensitivity-regression-test
   "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.

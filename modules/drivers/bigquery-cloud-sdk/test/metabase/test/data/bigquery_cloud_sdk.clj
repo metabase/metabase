@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase-enterprise.transforms.test-util :as transforms.test-util]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -58,21 +59,13 @@
   "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
-  (cond
-    tx/*use-routing-dataset*
-    "metabase_routing_dataset"
-
-    (str/starts-with? database-name "sha_")
+  (if (str/starts-with? database-name "sha_")
     database-name
-
-    :else
     (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   {:project-id (tx/db-test-env-var :bigquery-cloud-sdk :project-id)
-   :service-account-json (if tx/*use-routing-details*
-                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json-routing)
-                           (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json))})
+   :service-account-json (tx/db-test-env-var :bigquery-cloud-sdk :service-account-json)})
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -480,6 +473,9 @@
   [driver database view-name options]
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
 
+(defmethod transforms.test-util/delete-schema! :bigquery-cloud-sdk [_driver _db schema]
+  (destroy-dataset! schema))
+
 (comment
   "REPL utilities for static datasets"
   (setup-tracking-dataset!)
@@ -490,3 +486,11 @@
 
   (execute! "select name from `%s`.metabase_test_tracking.datasets order by accessed_at" (project-id))
   (database-exists?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+
+(defn ^:private get-test-data-name
+  []
+  (test-dataset-id
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
+
+(defmethod sql.tx/session-schema :bigquery-cloud-sdk [_driver] (get-test-data-name))

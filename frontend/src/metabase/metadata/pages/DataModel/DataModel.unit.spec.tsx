@@ -880,7 +880,7 @@ describe("DataModel", () => {
 
       expect(screen.getByText("Custom mapping")).toBeInTheDocument();
       expect(
-        screen.getByText(
+        await screen.findByText(
           "You need unrestricted data access on this table to map custom display values.",
         ),
       ).toBeInTheDocument();

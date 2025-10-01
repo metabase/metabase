@@ -49,7 +49,6 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -67,6 +66,9 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
+  DatabaseData,
+  DatabaseId,
+  DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
   Document,
@@ -76,11 +78,14 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSource,
+  PythonTransformTableAliases,
   Revision,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -126,8 +131,14 @@ export const PLUGIN_WHITELABEL = {
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: NotFoundPlaceholder,
+export const PLUGIN_ADMIN_SETTINGS: {
+  InteractiveEmbeddingSettings: ComponentType | null;
+  LicenseAndBillingSettings: ComponentType;
+  useUpsellFlow: (props: { campaign: string; location: string }) => {
+    triggerUpsellFlow: (() => void) | undefined;
+  };
+} = {
+  InteractiveEmbeddingSettings: null,
   LicenseAndBillingSettings: PluginPlaceholder,
   useUpsellFlow: (_props: {
     campaign: string;
@@ -659,25 +670,6 @@ export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
   FixSqlQueryButton: PluginPlaceholder,
 };
 
-export type GenerateSqlQueryButtonProps = {
-  className?: string;
-  query: Lib.Query;
-  selectedQueryText?: string;
-  onGenerateQuery: (queryText: string) => void;
-};
-
-export type PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
-  isEnabled: () => boolean;
-  getPlaceholderText: () => string;
-};
-
-export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: PluginPlaceholder,
-  isEnabled: () => false,
-  getPlaceholderText: () => "",
-};
-
 export interface AIDashboardAnalysisSidebarProps {
   onClose?: () => void;
   dashcardId?: DashCardId;
@@ -724,12 +716,13 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
-  adminNavItem: [] as AdminPath[],
-  AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getAdminPaths: () => [] as AdminPath[],
+  getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
+  MetabotToggleButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
@@ -808,10 +801,27 @@ export const PLUGIN_SMTP_OVERRIDE: {
   SMTPOverrideConnectionForm: PluginPlaceholder,
 };
 
+export const PLUGIN_TABLE_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  getRoutes: () => null as React.ReactElement | null,
+  getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
+    updateDatabase: (
+      database: { id: DatabaseId } & Partial<DatabaseData>,
+    ) => Promise<void>;
+  }>,
+};
+
 export const PLUGIN_DOCUMENTS = {
   getRoutes: () => null as React.ReactElement | null,
   shouldShowDocumentInNewItemMenu: () => false,
   getCurrentDocument: (_state: any) => null as Document | null,
+  getSidebarOpen: (_state: any) => false,
+  getCommentSidebarOpen: (_state: any) => false,
+  DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
 export const PLUGIN_ENTITIES = {
@@ -830,4 +840,34 @@ export type TransformsPlugin = {
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+};
+
+export type PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: ComponentType;
+  SourceSection: ComponentType<{ transform: Transform }>;
+  TransformEditor: ComponentType<{
+    initialSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    };
+    isNew?: boolean;
+    isSaving?: boolean;
+    isRunnable?: boolean;
+    onSave: (newSource: PythonTransformSource) => void;
+    onCancel: () => void;
+  }>;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+  getCreateTransformsMenuItems: () => ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  TransformEditor: NotFoundPlaceholder,
+  SourceSection: PluginPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+  getCreateTransformsMenuItems: () => null,
 };

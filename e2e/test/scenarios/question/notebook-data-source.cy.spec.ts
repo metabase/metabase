@@ -436,7 +436,9 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
-        scrollAllTheWayDown();
+        H.entityPickerModalLevel(2).should("contain", "Animals");
+
+        cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
         H.entityPickerModalItem(1, "Schema Z").should("be.visible");
@@ -455,23 +457,6 @@ describe("issue 28106", () => {
       });
     },
   );
-
-  // The list is virtualized and the scrollbar height changes during scrolling (metabase#44966)
-  // that's why we need to scroll and wait multiple times.
-  function scrollAllTheWayDown() {
-    cy.get("@schemasList").realMouseWheel({ deltaY: 100 });
-    cy.wait(100);
-
-    cy.get("@schemasList").then(($element) => {
-      const list = $element[0];
-      const isScrolledAllTheWayDown =
-        list.scrollHeight - list.scrollTop === list.clientHeight;
-
-      if (!isScrolledAllTheWayDown) {
-        scrollAllTheWayDown();
-      }
-    });
-  }
 });
 
 // Needs to be OSS because EE will always have models due to instance analytics

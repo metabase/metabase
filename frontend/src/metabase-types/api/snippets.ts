@@ -1,4 +1,5 @@
 import type { RegularCollectionId } from "./collection";
+import type { TemplateTags } from "./dataset";
 import type { BaseEntityId } from "./entity-id";
 import type { UserId, UserInfo } from "./user";
 
@@ -9,6 +10,7 @@ export interface NativeQuerySnippet {
   name: string;
   description: string | null;
   content: string;
+  template_tags: TemplateTags | null;
   collection_id: RegularCollectionId | null;
   creator_id: UserId;
   creator: UserInfo;

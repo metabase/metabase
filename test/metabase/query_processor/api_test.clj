@@ -333,11 +333,11 @@
                                   encoded? json/encode)]]
           (testing (format "encoded? %b" encoded?)
             (doseq [mp [(lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mt/id :categories :name))
                         (lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mapv first (mt/rows (qp/process-query
                                                (mt/mbql-query categories
@@ -685,43 +685,6 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-(deftest ^:parallel pivot-dataset-with-added-expression-test
-  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-    (mt/dataset test-data
-      (testing "POST /api/dataset/pivot"
-        ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
-        ;; the GROUP BY expression
-        (when (#{:mongo :h2 :sqlite} driver/*driver*)
-          (testing "with an added expression"
-            ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
-            (let [query  (-> (qp.pivot.test-util/pivot-query)
-                             (assoc-in [:query :fields] [[:expression "test-expr"]])
-                             (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                  result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
-                  rows   (mt/rows result)]
-              (is (= 1144 (:row_count result)))
-              (is (= 1144 (count rows)))
-              (let [cols (mt/cols result)]
-                (is (= ["User → State"
-                        "User → Source"
-                        "Product → Category"
-                        "pivot-grouping"
-                        "Count"
-                        "Sum of Quantity"
-                        "test-expr"]
-                       (map :display_name cols)))
-                (is (=? {:base_type       "type/Integer"
-                         :effective_type  "type/Integer"
-                         :name            "pivot-grouping"
-                         :display_name    "pivot-grouping"
-                         :field_ref       ["expression" "pivot-grouping"]
-                         :source          "breakout"}
-                        (nth cols 3))))
-              (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
-
 (deftest ^:parallel pivot-dataset-row-totals-disabled-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
@@ -1056,8 +1019,9 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                    :query {:source-table (str "card__" card-id-1)}}}]
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"

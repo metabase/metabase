@@ -68,7 +68,10 @@
                   "display-name should include the display name of the FK field (for IMPLICIT JOINS)")
       (is (=? [{:display-name "Category → Name"
                 :source       :fields
-                :field-ref    [:field (meta/id :categories :name) {:join-alias "Category"}]}]
+                ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
+                ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
+                ;; act like the join isn't here yet
+                :field-ref    [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -201,7 +204,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               :field-ref         [:field 3 {:base-type :type/Text}]
+               :field-ref         [:field 3 nil]
                :parent-id         2
                :id                3
                :visibility-type   :normal
@@ -743,7 +746,7 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) {}], :unit :year)
+      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) nil], :unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
@@ -912,8 +915,8 @@
                   :display-name                               "Created At: Year"
                   :effective-type                             :type/Integer
                   ;; additional keys in field ref are WRONG
-                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
-                                                                                               :temporal-unit :year}])
+                  :field-ref                                  [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
+                                                                                               :temporal-unit :year})]
                   :id                                         (meta/id :orders :created-at)
                   :inherited-temporal-unit                    :year
                   :name                                       "CREATED_AT"
@@ -1091,3 +1094,15 @@
                [:field "NAME"   {}]
                [:field "NAME_2" {}]]
               (map :field-ref (#'result-metadata/deduplicate-field-refs cols)))))))
+
+(deftest ^:parallel remove-namespaced-options-test
+  (are [clause expected] (= expected
+                            (#'result-metadata/remove-namespaced-options clause))
+    [:field 1 {::namespaced true}]                [:field 1 nil]
+    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
+    [:expression "wow"]                           [:expression "wow"]
+    [:expression "wow" {::namespaced true}]       [:expression "wow"]
+    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
+    [:aggregation 0]                              [:aggregation 0]
+    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
+    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))

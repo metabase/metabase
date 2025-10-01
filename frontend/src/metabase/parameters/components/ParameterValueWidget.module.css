@@ -24,14 +24,14 @@
 
   &:hover {
     border-color: var(--mb-color-brand);
-    color: var(--mb-base-color-brand-60);
+    color: var(--mb-color-brand-dark);
 
     .Prefix,
     .parameterIcon,
     .widgetStatus,
     .widgetStatus button {
       transition: all 0.2s ease-in-out;
-      color: var(--mb-base-color-brand-60);
+      color: var(--mb-color-brand-dark);
     }
   }
 }
@@ -118,7 +118,7 @@
 }
 
 .DashboardNight .parameter {
-  --mb-color-border: var(--mb-base-color-orion-60);
+  --mb-color-border: var(--mb-color-border-dark);
 
   background-color: transparent;
 }

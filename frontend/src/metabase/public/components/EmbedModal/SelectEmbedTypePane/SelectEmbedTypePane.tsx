@@ -1,20 +1,23 @@
 import cx from "classnames";
 import type React from "react";
-import { type ComponentProps, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
-  UpsellSdkCta,
-  useUpsellSdkCta,
-} from "metabase/admin/upsells/UpsellSdkCta";
+  UpsellEmbedJsCta,
+  useUpsellEmbedJsCta,
+} from "metabase/admin/upsells/UpsellEmbedJsCta";
 import { UpsellGem } from "metabase/admin/upsells/components";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
-import { useDocsUrl, useSetting } from "metabase/common/hooks";
+import {
+  useDocsUrl,
+  useHasTokenFeature,
+  useSetting,
+} from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { trackPublicLinkRemoved } from "metabase/public/lib/analytics";
 import { getPublicEmbedHTML } from "metabase/public/lib/code";
 import type {
@@ -26,8 +29,8 @@ import { Group, Icon, List, Stack, Text, UnstyledButton } from "metabase/ui";
 
 import { PublicEmbedCard } from "./PublicEmbedCard";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
+import EmbeddedJsIllustration from "./illustrations/embedded-analytics-js.svg?component";
 import SdkIllustration from "./illustrations/embedding-sdk.svg?component";
-import InteractiveEmbeddingIllustration from "./illustrations/interactive-embedding.svg?component";
 import StaticEmbeddingIllustration from "./illustrations/static-embedding.svg?component";
 
 interface SelectEmbedTypePaneProps {
@@ -47,7 +50,19 @@ export function SelectEmbedTypePane({
   getPublicUrl,
   goToNextStep,
 }: SelectEmbedTypePaneProps) {
-  const { url } = useUpsellSdkCta();
+  const embedFlowUrl = useMemo(() => {
+    const params = new URLSearchParams();
+
+    params.set("resource_type", resourceType);
+
+    if (resource.id) {
+      params.set("resource_id", resource.id.toString());
+    }
+
+    return "/embed-js?" + params.toString();
+  }, [resourceType, resource.id]);
+
+  const { url } = useUpsellEmbedJsCta({ embedFlowUrl });
   const hasPublicLink = resource.public_uuid != null;
 
   const utmTags = {
@@ -57,6 +72,11 @@ export function SelectEmbedTypePane({
   // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
   const { url: embeddingUrl } = useDocsUrl("embedding/introduction", {
     anchor: "comparison-of-embedding-types",
+    utm: utmTags,
+  });
+
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- only visible to admins
+  const { url: sdkDocsUrl } = useDocsUrl("embedding/sdk/introduction", {
     utm: utmTags,
   });
 
@@ -92,13 +112,10 @@ export function SelectEmbedTypePane({
     }
   };
 
-  const isInteractiveEmbeddingAvailable = useSelector(
-    PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled,
-  );
+  const isEmbedJsAvailable = useHasTokenFeature("embedding_simple");
+  const isEmbeddingSdkAvailable = useHasTokenFeature("embedding_sdk");
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
-  const isInteractiveEmbeddingEnabled = useSetting(
-    "enable-embedding-interactive",
-  );
+  const isEmbedJsEnabled = useSetting("enable-embedding-simple");
   const isEmbeddingSdkEnabled = useSetting("enable-embedding-sdk");
 
   return (
@@ -110,13 +127,13 @@ export function SelectEmbedTypePane({
       align="stretch"
     >
       <Group gap="lg" maw="100%" align="stretch">
-        {/* STATIC EMBEDDING*/}
+        {/* Static Embedding */}
         <SharingPaneButton
           title={t`Static embedding`}
           illustration={<StaticEmbeddingIllustration />}
           onClick={isStaticEmbeddingEnabled ? goToNextStep : undefined}
           isDisabled={!isStaticEmbeddingEnabled}
-          disabledLink="/admin/settings/embedding-in-other-applications/standalone"
+          disabledLink="/admin/embedding/static"
         >
           <List>
             <List.Item>{t`Embedded, signed charts in iframes.`}</List.Item>
@@ -125,58 +142,62 @@ export function SelectEmbedTypePane({
           </List>
         </SharingPaneButton>
 
-        {/* INTERACTIVE EMBEDDING */}
-        <MaybeLinkInteractiveEmbedding
-          shouldRenderLink={
-            !isInteractiveEmbeddingAvailable || isInteractiveEmbeddingEnabled
-          }
+        {/* Embedded Analytics JS: render either upsell or embed flow link */}
+        <MaybeLinkEmbedJs
+          shouldRenderLink={!isEmbedJsAvailable || isEmbedJsEnabled}
+          embedFlowUrl={embedFlowUrl}
         >
           <SharingPaneButton
-            title={t`Interactive embedding`}
-            badge={<UpsellGem />}
-            illustration={<InteractiveEmbeddingIllustration />}
-            isDisabled={
-              isInteractiveEmbeddingAvailable && !isInteractiveEmbeddingEnabled
-            }
-            disabledLink={
-              "/admin/settings/embedding-in-other-applications/full-app"
+            title={t`Embedded Analytics JS`}
+            badge={!isEmbedJsAvailable && <UpsellGem />}
+            illustration={<EmbeddedJsIllustration />}
+            isDisabled={isEmbedJsAvailable && !isEmbedJsEnabled}
+            disabledLink="/admin/embedding/modular"
+            actionHint={
+              !isEmbedJsAvailable ? (
+                <UpsellEmbedJsCta embedFlowUrl={embedFlowUrl} />
+              ) : undefined
             }
           >
             <List>
-              {/* eslint-disable-next-line no-literal-metabase-strings -- only admin sees this */}
-              <List.Item>{t`Embed all of Metabase in an iframe.`}</List.Item>
-              <List.Item>{t`Let people click to explore.`}</List.Item>
+              <List.Item>{t`A simple way to embed using plain JavaScript`}</List.Item>
+              <List.Item>{t`Embed static or interactive dashboards and charts with drill-down, the query builder or let people browse and manage collections.`}</List.Item>
               <List.Item>
-                {t`Customize appearance with your logo, font, and colors.`}{" "}
-                {!isInteractiveEmbeddingAvailable && <LearnMore url={url} />}
+                {t`Advanced customizations for styling.`} <br />{" "}
+                {!isEmbedJsAvailable && <LearnMore url={url} />}
               </List.Item>
             </List>
-            {!isInteractiveEmbeddingAvailable && <UpsellSdkCta />}
           </SharingPaneButton>
-        </MaybeLinkInteractiveEmbedding>
+        </MaybeLinkEmbedJs>
 
-        {/* REACT SDK */}
-        <MaybeLink
-          to="/admin/settings/embedding-in-other-applications/sdk"
-          shouldRenderLink={isEmbeddingSdkEnabled}
-          aria-label={t`Embedded analytics SDK`}
-        >
+        {/* SDK for React */}
+        <ExternalLink href={sdkDocsUrl} className={CS.noDecoration}>
           <SharingPaneButton
-            title={t`Embedded analytics SDK`}
-            badge={<UpsellGem />}
+            title={t`SDK for React`}
+            badge={!isEmbeddingSdkAvailable && <UpsellGem />}
             illustration={<SdkIllustration />}
             isDisabled={!isEmbeddingSdkEnabled}
-            disabledLink={"/admin/settings/embedding-in-other-applications/sdk"}
+            disabledLink={"/admin/embedding/modular"}
+            actionHint={
+              <Group gap="xs">
+                <Text c="brand" fw="bold">
+                  {t`Go to quick start`}
+                </Text>
+
+                <Icon name="external" c="brand" aria-hidden />
+              </Group>
+            }
           >
             <List>
               {/* eslint-disable-next-line no-literal-metabase-strings -- visible only to admin */}
-              <List.Item>{t`Embed Metabase components with React (like standalone charts, dashboards, the Query Builder, and more)`}</List.Item>
+              <List.Item>{t`Embed Metabase components with React (like standalone charts, dashboards, the query builder, and more)`}</List.Item>
               <List.Item>{t`Manage access and interactivity per component`}</List.Item>
               <List.Item>{t`Advanced customization options for styling`}</List.Item>
             </List>
           </SharingPaneButton>
-        </MaybeLink>
+        </ExternalLink>
       </Group>
+
       <Group justify="space-between">
         {/* PUBLIC EMBEDDING */}
         {isPublicSharingEnabled ? (
@@ -220,16 +241,18 @@ function LearnMore({ url }: { url: string | undefined }) {
   );
 }
 
-interface MaybeLinkInteractiveEmbeddingProps {
-  shouldRenderLink?: boolean;
-  children: React.ReactNode;
-}
-
-function MaybeLinkInteractiveEmbedding({
+function MaybeLinkEmbedJs({
   shouldRenderLink,
+  embedFlowUrl,
   ...props
-}: MaybeLinkInteractiveEmbeddingProps) {
-  const { url, internalLink, triggerUpsellFlow } = useUpsellSdkCta();
+}: {
+  shouldRenderLink?: boolean;
+  embedFlowUrl: string;
+  children: React.ReactNode;
+}) {
+  const { url, internalLink, triggerUpsellFlow } = useUpsellEmbedJsCta({
+    embedFlowUrl,
+  });
 
   if (!shouldRenderLink) {
     return props.children;
@@ -240,7 +263,7 @@ function MaybeLinkInteractiveEmbedding({
       <UnstyledButton
         onClick={triggerUpsellFlow}
         type="button"
-        aria-label={t`Interactive embedding`}
+        aria-label={t`Embedded Analytics JS`}
       >
         {props.children}
       </UnstyledButton>
@@ -253,7 +276,7 @@ function MaybeLinkInteractiveEmbedding({
         {...props}
         href={url}
         target="_blank"
-        aria-label={t`Interactive embedding`}
+        aria-label={t`Embedded Analytics JS`}
       />
     );
   }
@@ -263,21 +286,9 @@ function MaybeLinkInteractiveEmbedding({
       <Link
         {...props}
         to={internalLink}
-        aria-label={t`Interactive embedding`}
+        aria-label={t`Embedded Analytics JS`}
       />
     );
-  }
-
-  return props.children;
-}
-
-interface MaybeLinkProps extends ComponentProps<typeof Link> {
-  shouldRenderLink?: boolean;
-}
-
-function MaybeLink({ shouldRenderLink, ...props }: MaybeLinkProps) {
-  if (shouldRenderLink) {
-    return <Link {...props} />;
   }
 
   return props.children;

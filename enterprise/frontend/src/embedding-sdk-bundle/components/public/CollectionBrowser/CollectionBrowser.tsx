@@ -6,9 +6,8 @@ import {
   withPublicComponentWrapper,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import { useTranslatedCollectionId } from "embedding-sdk-bundle/hooks/private/use-translated-collection-id";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
-import { useSdkSelector } from "embedding-sdk-bundle/store/use-sdk-selector";
 import type {
   MetabaseCollectionItem,
   SdkCollectionId,
@@ -22,6 +21,8 @@ import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
 import type { CollectionId, CollectionItemModel } from "metabase-types/api";
+
+import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
 
 const USER_FACING_ENTITY_NAMES = [
   "collection",
@@ -100,9 +101,7 @@ export const CollectionBrowserInner = ({
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
   style,
-}: Omit<CollectionBrowserProps, "collectionId"> & {
-  collectionId: CollectionId;
-}) => {
+}: CollectionBrowserProps) => {
   const baseCollectionId = useSdkSelector((state) =>
     getCollectionIdSlugFromReference(state, collectionId),
   );
@@ -191,21 +190,19 @@ const CollectionBrowserWrapper = ({
   ...restProps
 }: CollectionBrowserProps) => {
   const { isLocaleLoading } = useLocale();
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: collectionId,
-  });
 
-  if (isLocaleLoading || isLoading) {
+  if (isLocaleLoading) {
     return <SdkLoader />;
   }
 
-  if (!id) {
+  if (!collectionId) {
     return <CollectionNotFoundError id={collectionId} />;
   }
 
-  return <CollectionBrowserInner collectionId={id} {...restProps} />;
+  return <CollectionBrowserInner collectionId={collectionId} {...restProps} />;
 };
 
-export const CollectionBrowser = withPublicComponentWrapper(
-  CollectionBrowserWrapper,
+export const CollectionBrowser = Object.assign(
+  withPublicComponentWrapper(CollectionBrowserWrapper),
+  { schema: collectionBrowserPropsSchema },
 );

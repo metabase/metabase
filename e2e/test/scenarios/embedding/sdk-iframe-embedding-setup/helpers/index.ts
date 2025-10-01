@@ -16,10 +16,7 @@ export const getEmbedSidebar = () => cy.findByRole("complementary");
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = ({
-  locale,
-  dismissEmbedTerms = true,
-}: { locale?: string; dismissEmbedTerms?: boolean } = {}) => {
+export const visitNewEmbedPage = ({ locale }: { locale?: string } = {}) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
   const params = new URLSearchParams();
@@ -29,22 +26,6 @@ export const visitNewEmbedPage = ({
   }
 
   cy.visit("/embed-js?" + params);
-
-  if (dismissEmbedTerms) {
-    cy.log("simple embedding terms card should be shown");
-    cy.findByTestId("simple-embed-terms-card").within(() => {
-      cy.findByText("First, some legalese.").should("be.visible");
-
-      cy.findByText(
-        "When using Embedded Analytics JS, each end user should have their own Metabase account.",
-      ).should("be.visible");
-
-      cy.findByText("Got it").should("be.visible").click();
-    });
-
-    cy.log("simple embedding terms card should be dismissed");
-    cy.findByTestId("simple-embed-terms-card").should("not.exist");
-  }
 
   cy.wait("@dashboard");
 
@@ -74,21 +55,19 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 type NavigateToStepOptions =
   | {
       experience: "exploration";
-      dismissEmbedTerms?: boolean;
       resourceName?: never;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
-      dismissEmbedTerms?: boolean;
       resourceName: string;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience, dismissEmbedTerms } = options;
+  const { experience } = options;
 
-  visitNewEmbedPage({ dismissEmbedTerms });
+  visitNewEmbedPage();
 
   cy.log("select an experience");
 

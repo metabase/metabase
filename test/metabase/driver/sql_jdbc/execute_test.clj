@@ -24,19 +24,26 @@
 (deftest connection-reuse-test
   (testing "resilient context reuses reconnected connections"
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
-      (let [connection-count (volatile! 0)
+      (let [test-db-id (mt/id)  ;; Get the test database ID
+            connection-count (volatile! 0)
             orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
         (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                       (fn [driver db opts]
-                        (reify javax.sql.DataSource
-                          (getConnection [_]
-                            (vswap! connection-count inc)
-                            (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts)))))]
+                        ;; Only count connections for our test database because on startup the audit-db will be
+                        ;; synced, which causes this to fail intermittently because it creates connections (to db
+                        ;; 13371337)
+                        (if (= db test-db-id)
+                          (reify javax.sql.DataSource
+                            (getConnection [_]
+                              (vswap! connection-count inc)
+                              (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
+                          ;; For other databases (like audit DB), just pass through
+                          (orig-do-with-resolved-connection-data-source driver db opts)))]
           (let [closed-conn (doto (.getConnection ^DataSource
-                                   (orig-do-with-resolved-connection-data-source driver/*driver* (mt/id) {}))
+                                   (orig-do-with-resolved-connection-data-source driver/*driver* test-db-id {}))
                               (.close))]
             (driver/do-with-resilient-connection
-             driver/*driver* (mt/id)
+             driver/*driver* test-db-id
              (fn [driver _]
                ;; reinit, as we it has been used for setup
                (vreset! connection-count 0)
@@ -136,3 +143,23 @@
         (is (false? (sql-jdbc.execute/is-conn-open? conn :check-valid? true)))
         (is (true? @close-called?) "Connection should be closed when invalid")
         (is (true? (.isClosed conn)))))))
+
+(deftest statement-is-closed-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (testing "can check isClosed on statement"
+      (when (driver/database-supports? driver/*driver* :jdbc/statements nil)
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver/*driver* (mt/id) nil
+         (fn [^Connection conn]
+           (let [stmt (sql-jdbc.execute/statement driver/*driver* conn)]
+             (is (false? (.isClosed stmt)))
+             (.close stmt)
+             (is (true? (.isClosed stmt))))))))
+    (testing "can check isClosed on prepared statement"
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/id) nil
+       (fn [^Connection conn]
+         (let [prepared-stmt (sql-jdbc.execute/prepared-statement driver/*driver* conn "select 1" [])]
+           (is (false? (.isClosed prepared-stmt)))
+           (.close prepared-stmt)
+           (is (true? (.isClosed prepared-stmt)))))))))

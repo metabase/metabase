@@ -38,6 +38,7 @@ import type {
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
+import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
@@ -84,6 +85,7 @@ import {
   getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "../selectors";
 import { getIsObjectDetail, getMode } from "../selectors/mode";
@@ -183,6 +185,8 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
+
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
     didFirstNonTableChartGenerated: getSetting(
@@ -298,13 +302,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   );
 
   const onClickBookmark = () => {
-    const {
-      card: { id },
-    } = props;
+    const { card } = props;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark(id);
+    if (!isBookmarked) {
+      trackCardBookmarkAdded(card);
+    }
+
+    toggleBookmark(card.id);
   };
 
   /**

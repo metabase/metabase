@@ -1,0 +1,102 @@
+.listViewContainer {
+  --max-width: 75rem;
+
+  background: var(--mb-color-background-light);
+  width: 100%;
+  height: 100%;
+  gap: var(--mantine-spacing-xs);
+  padding-top: var(--mantine-spacing-xl);
+  padding-inline: var(--mantine-spacing-sm);
+}
+
+.listContainer {
+  --item-padding: 1.4rem;
+
+  height: 100%;
+}
+
+.listHeader {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding-inline: var(--item-padding);
+}
+
+.listBody {
+  position: relative;
+  max-width: var(--max-width);
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  gap: var(--mantine-spacing-lg);
+  padding-inline: calc(50% - var(--max-width) / 2);
+  overflow: auto;
+}
+
+@media (max-width: 80rem) {
+  .listHeader,
+  .listBody {
+    padding-inline: var(--mantine-spacing-lg);
+  }
+}
+
+.listItem {
+  width: 100%;
+  max-width: 75rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mb-color-bg-white);
+  padding: var(--mantine-spacing-md)
+    var(--item-padding, var(--mantine-spacing-md));
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+}
+
+.listItemVirtualized {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.listHeader,
+.listItem {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 12%);
+  gap: var(--mantine-spacing-md);
+  align-items: center;
+}
+
+.categoryValue {
+  padding: 4px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--mb-color-border);
+  max-width: 100%;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listViewConfigurationInputs {
+  display: grid;
+  grid-template-columns: 32px minmax(calc(30% - 32px - 1rem), 1fr) calc(
+      70% - 1rem
+    );
+  gap: var(--mantine-spacing-md);
+  align-items: start;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  max-width: var(--max-width);
+  background: var(--mb-color-bg-white);
+  padding: var(--mantine-spacing-md);
+}
+
+.listEntityIcon {
+  color: var(--mb-color-text-light);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

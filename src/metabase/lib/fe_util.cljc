@@ -1,4 +1,5 @@
 (ns metabase.lib.fe-util
+  (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -13,6 +14,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
@@ -33,6 +35,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [every? mapv select-keys some]]
    [metabase.util.time :as u.time]))
 
 (def ^:private ExpressionArg
@@ -291,7 +294,7 @@
   (expression-clause-with-in operator (into [column] values)
                              (if (#{:is-empty :not-empty := :!=} operator)
                                {}
-                               options)))
+                               {:case-sensitive (:case-sensitive options false)})))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -336,7 +339,7 @@
     (value :guard number?)
     value
 
-    [:value (_ :guard #(= (:base-type %) :type/BigInteger)) (value :guard string?)]
+    [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
     (u.number/parse-bigint value)))
 
 (def ^:private NumberFilterParts
@@ -554,7 +557,7 @@
       [:time-interval
        opts
        (col-ref :guard date-col?)
-       (value :guard #(or (number? %) (= :current %)))
+       (value :guard (or (number? value) (= :current value)))
        (unit :guard keyword?)]
       {:column       (ref->col col-ref)
        :value        (if (= value :current) 0 value)
@@ -799,6 +802,26 @@
       _
       (lib.metadata.calculation/display-name query stage-number filter-clause))))
 
+(defn- query-dependents-snippets
+  "Recursively extract snippet dependencies from snippet template tags.
+   Returns a sequence of dependent items including the snippet and any nested snippets."
+  [metadata-providerable snippet-id visited-ids]
+  (if-let [snippet (lib.metadata/native-query-snippet metadata-providerable snippet-id)]
+    (let [visited-ids' (conj visited-ids snippet-id)]
+      (cons {:type :native-query-snippet, :id snippet-id}
+            ;; Recursively get dependencies from the snippet's own template tags
+            (for [{nested-type       :type,
+                   nested-snippet-id :snippet-id} (vals (:template-tags snippet))
+                  :when (and (= nested-type :snippet)
+                             (integer? nested-snippet-id)
+                             (not (contains? visited-ids' nested-snippet-id)))
+                  dependency (query-dependents-snippets metadata-providerable
+                                                        nested-snippet-id
+                                                        visited-ids')]
+              dependency)))
+    ;; Return just the ID if we can't fetch the snippet:
+    [{:type :native-query-snippet, :id snippet-id}]))
+
 (defn- query-dependents-foreign-keys
   [metadata-providerable columns]
   (for [column columns
@@ -810,20 +833,34 @@
 
 (defn- query-dependents
   [metadata-providerable query-or-join]
-  (let [base-stage (first (:stages query-or-join))
+  (let [base-stage  (first (:stages query-or-join))
         database-id (or (:database query-or-join) -1)]
     (concat
      (when (pos? database-id)
        [{:type :database, :id database-id}
-        {:type :schema,   :id database-id}])
+        {:type :schema, :id database-id}])
      (when (= (:lib/type base-stage) :mbql.stage/native)
-       (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
-             :when (and (= tag-type :dimension)
-                        (= dim-tag :field)
-                        (integer? id))]
-         {:type :field, :id id}))
+       (concat
+        ;; Extract field dependencies from dimension template tags
+        (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))
+              :when                                           (and (= tag-type :dimension)
+                                                                   (= dim-tag :field)
+                                                                   (integer? id))]
+          {:type :field, :id id})
+        ;; Extract snippet dependencies from snippet template tags (with recursion)
+        (mapcat
+         (fn [{tag-type :type, snippet-id :snippet-id}]
+           (when (and (= tag-type :snippet)
+                      (some? snippet-id)
+                      (integer? snippet-id))
+             ;; Only try to recurse if we have a real metadata provider
+             (if (lib.metadata.protocols/metadata-providerable? metadata-providerable)
+               (query-dependents-snippets metadata-providerable snippet-id #{})
+               ;; If we don't have a real metadata provider, just return the direct dependency
+               [{:type :native-query-snippet, :id snippet-id}])))
+         (vals (:template-tags base-stage)))))
      (when-let [card-id (:source-card base-stage)]
-       (let [card (lib.metadata/card metadata-providerable card-id)
+       (let [card       (lib.metadata/card metadata-providerable card-id)
              definition (:dataset-query card)]
          (concat [{:type :table, :id (str "card__" card-id)}]
                  (when-let [card-columns (lib.card/saved-question-metadata metadata-providerable card-id)]
@@ -835,20 +872,21 @@
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable
                                             (lib.metadata/fields metadata-providerable table-id))))
-     (for [stage (:stages query-or-join)
-           join (:joins stage)
+     (for [stage     (:stages query-or-join)
+           join      (:joins stage)
            dependent (query-dependents metadata-providerable join)]
        dependent))))
 
 (def ^:private DependentItem
   [:and
    [:map
-    [:type [:enum :database :schema :table :card :field]]]
+    [:type [:enum :database :schema :table :card :field :native-query-snippet]]]
    [:multi {:dispatch :type}
     [:database [:map [:id ::lib.schema.id/database]]]
     [:schema   [:map [:id ::lib.schema.id/database]]]
     [:table    [:map [:id [:or ::lib.schema.id/table :string]]]]
-    [:field    [:map [:id ::lib.schema.id/field]]]]])
+    [:field [:map [:id ::lib.schema.id/field]]]
+    [:native-query-snippet [:map [:id ::lib.schema.id/native-query-snippet]]]]])
 
 (mu/defn dependent-metadata :- [:sequential DependentItem]
   "Return the IDs and types of entities the metadata about is required

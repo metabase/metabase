@@ -4,22 +4,22 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.util.malli.registry :as mr]))
 
-(def ^{:arglists '([field-clause])} Field?
+(defn Field?
   "Is this a valid Field clause?"
-  (mr/validator mbql.s/Field))
+  [x]
+  ((mr/validator ::mbql.s/field-or-expression-ref) x))
 
-(def ^{:arglists '([filter-clause])} Filter?
+(defn Filter?
   "Is this a valid `:filter` clause?"
-  (mr/validator mbql.s/Filter))
+  [x]
+  ((mr/validator ::mbql.s/Filter) x))
 
-(def ^{:arglists '([emptyable-clause])} Emptyable?
+(defn Emptyable?
   "Is this a valid Emptyable clause?"
-  (mr/validator mbql.s/Emptyable))
+  [x]
+  ((mr/validator ::mbql.s/Emptyable) x))
 
-(def ^{:arglists '([filter-clause])} DatetimeExpression?
-  "Is this a valid DatetimeExpression clause?"
-  (mr/validator mbql.s/DatetimeExpression))
-
-(def ^{:arglists '([field-clause])} FieldOrExpressionDef?
+(defn FieldOrExpressionDef?
   "Is this a something that is valid as a top-level expression definition?"
-  (mr/validator ::mbql.s/FieldOrExpressionDef))
+  [x]
+  ((mr/validator ::mbql.s/FieldOrExpressionDef) x))

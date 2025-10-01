@@ -36,6 +36,7 @@ export type ExpressionWidgetProps = {
   header?: ReactNode;
   initialExpressionClause?: DefinedClauseName | null;
   availableColumns: Lib.ColumnMetadata[];
+  readOnly?: boolean;
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -56,6 +57,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     onChangeClause,
     onClose,
     initialExpressionClause,
+    readOnly,
   } = props;
 
   const [name, setName] = useState(initialName || "");
@@ -191,6 +193,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         id="expression-content"
         expressionMode={expressionMode}
         clause={clause}
+        initialClause={initialClause}
         onChange={handleExpressionChange}
         query={query}
         stageIndex={stageIndex}
@@ -202,6 +205,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         hasHeader={Boolean(header)}
         onCloseEditor={onClose}
         initialExpressionClause={initialExpressionClause}
+        readOnly={readOnly}
       />
 
       <LayoutFooter>
@@ -212,10 +216,11 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
               onChange={setName}
               onSubmit={handleSubmit}
               expressionMode={expressionMode}
+              readOnly={readOnly}
             />
           )}
           <Flex py="sm" pr="sm" gap="sm">
-            {onClose && (
+            {onClose && !readOnly && (
               <Button
                 onClick={onClose}
                 variant="subtle"
@@ -228,7 +233,9 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
               onClick={handleSubmit}
               size="xs"
             >
-              {initialName || initialClause ? t`Update` : t`Done`}
+              {(initialName || initialClause) && !readOnly
+                ? t`Update`
+                : t`Done`}
             </Button>
           </Flex>
         </Flex>

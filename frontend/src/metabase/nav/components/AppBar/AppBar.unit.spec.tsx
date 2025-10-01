@@ -163,6 +163,7 @@ describe("AppBar", () => {
 });
 
 const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
+  detailView: null,
   currentUser: createMockUser(),
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),

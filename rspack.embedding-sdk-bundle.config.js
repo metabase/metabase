@@ -38,6 +38,9 @@ const {
 const {
   getBuildInfoValues,
 } = require("./frontend/build/embedding-sdk/rspack/get-build-info-values");
+const {
+  getSdkBundleVersionFromVersionProperties,
+} = require("./frontend/build/embedding-sdk/lib/get-sdk-bundle-version-from-version-properties");
 
 const SDK_BUNDLE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
@@ -172,8 +175,7 @@ const config = {
     new rspack.EnvironmentPlugin({
       IS_EMBEDDING_SDK: "true",
       ...getBuildInfoValues({
-        // Version of the SDK bundle is equal to Metabase Instance version and received from it via API call
-        version: null,
+        version: getSdkBundleVersionFromVersionProperties(),
       }),
     }),
     shouldAnalyzeBundles &&

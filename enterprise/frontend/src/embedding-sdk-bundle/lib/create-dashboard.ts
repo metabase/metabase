@@ -1,4 +1,4 @@
-import { getCollectionNumericIdFromReference } from "embedding-sdk-bundle/store/collections";
+import { getCollectionIdValueFromReference } from "embedding-sdk-bundle/store/collections";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import type {
   CreateDashboardValues,
@@ -12,7 +12,7 @@ export const createDashboard =
     collectionId = "personal",
     ...rest
   }: CreateDashboardValues): Promise<MetabaseDashboard> => {
-    const realCollectionId = getCollectionNumericIdFromReference(
+    const realCollectionId = getCollectionIdValueFromReference(
       reduxStore.getState(),
       collectionId,
     );

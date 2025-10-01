@@ -4,97 +4,22 @@ on:
   issues:
     types:
       - labeled
+  pull_request_review:
+    types:
+      - submitted
   workflow_dispatch:
     inputs:
       issue_number:
         description: "Issue number to fix"
         required: true
         type: string
+      override_employee_check:
+        description: "Override employee check for issue creator"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  check-employee-and-issue:
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    permissions:
-      contents: read
-      issues: read
-    if: |
-      (github.event_name == 'issues' && github.event.label.name == 'Claude Bug Fix' && github.event.issue.state == 'open') ||
-      (github.event_name == 'workflow_dispatch')
-    outputs:
-      is_employee: ${{ steps.check_employee.outputs.is_employee }}
-      issue_number: ${{ steps.get_issue.outputs.issue_number }}
-      issue_data: ${{ steps.get_issue.outputs.issue_data }}
-    steps:
-      - name: Generate GitHub App Token
-        uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-
-      - name: Get issue data
-        id: get_issue
-        uses: actions/github-script@v7
-        with:
-          script: |
-            let issueNumber, issueData;
-
-            if (context.eventName === 'issues') {
-              // Original issue label event
-              issueNumber = context.payload.issue.number;
-              issueData = context.payload.issue;
-            } else if (context.eventName === 'workflow_dispatch') {
-              // Manual trigger with issue number input
-              issueNumber = parseInt('${{ github.event.inputs.issue_number }}');
-              const { data } = await github.rest.issues.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber
-              });
-              issueData = data;
-            }
-
-            core.setOutput('issue_number', issueNumber);
-            core.setOutput('issue_data', JSON.stringify(issueData));
-
-            console.log(`Issue #${issueNumber}: ${issueData.title}`);
-            console.log(`Issue author: ${issueData.user.login}`);
-
-      - name: Check if issue creator is a Metabase employee
-        id: check_employee
-        uses: actions/github-script@v7
-        env:
-          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
-        with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const issueData = JSON.parse(process.env.ISSUE_DATA);
-            const issueAuthor = issueData.user.login;
-
-            try {
-              // Check if user is a member of the metabase organization (including private members)
-              const { data: membership } = await github.rest.orgs.getMembershipForUser({
-                org: 'metabase',
-                username: issueAuthor
-              });
-
-              if (membership.state === 'active') {
-                console.log(`User ${issueAuthor} is an active member of the Metabase organization. Proceeding with bug fix automation.`);
-                core.setOutput('is_employee', 'true');
-              } else {
-                console.log(`User ${issueAuthor} is not an active member of the Metabase organization. Skipping bug fix automation.`);
-                core.setOutput('is_employee', 'false');
-              }
-            } catch (error) {
-              if (error.status === 404) {
-                console.log(`User ${issueAuthor} is not a member of the Metabase organization. Skipping bug fix automation.`);
-              } else {
-                console.error('Error checking organization membership:', error);
-              }
-              core.setOutput('is_employee', 'false');
-            }
-
   auto-fix-bug:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -103,8 +28,10 @@ jobs:
       issues: write
       pull-requests: write
       id-token: write
-    needs: check-employee-and-issue
-    if: needs.check-employee-and-issue.outputs.is_employee == 'true'
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == 'Claude Bug Fix' && github.event.issue.state == 'open') ||
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event_name == 'pull_request_review' && github.event.review.state == 'changes_requested' && startsWith(github.event.pull_request.head.ref, 'claude-fix/'))
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -112,67 +39,95 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get issue data and check employee status
+        id: get_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { getIssueData } = require('${{ github.workspace }}/.github/scripts/get-issue-data.js');
+
+            try {
+              const result = await getIssueData({
+                context,
+                github,
+                manualIssueNumber: '${{ github.event.inputs.issue_number }}'
+              });
+
+              const { issueNumber, issueData, employeeComments, prReviews, triggerType, isIssueAuthorEmployee } = result;
+
+              // Check employee status and fail if not authorized
+              if (!result.isIssueAuthorEmployee && '${{ github.event.inputs.override_employee_check }}' !== 'true') {
+                  core.setFailed(`User ${result.issueData.user.login} is not a Metabase employee. Skipping bug fix automation.`);
+              }
+
+              core.setOutput('issue_number', issueNumber);
+              core.setOutput('issue_data', JSON.stringify(issueData));
+              core.setOutput('issue_comments', JSON.stringify(employeeComments));
+              core.setOutput('pr_reviews', JSON.stringify(prReviews));
+              core.setOutput('trigger_type', triggerType);
+            } catch (error) {
+              core.setFailed(error.message);
+            }
+
       - name: Set up git configuration
         run: |
           git config --global user.name "Claude Code[bot]"
           git config --global user.email "noreply@anthropic.com"
 
-      - name: Prepare dynamic issue info
-        id: prepare_issue_info
+      - name: Prepare issue context and bug fix prompt
+        id: prepare_prompt
         uses: actions/github-script@v7
         env:
-          ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
+          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
+          ISSUE_COMMENTS: ${{ steps.get_issue.outputs.issue_comments }}
+          PR_REVIEWS: ${{ steps.get_issue.outputs.pr_reviews }}
+          TRIGGER_TYPE: ${{ steps.get_issue.outputs.trigger_type }}
         with:
           script: |
             const issueData = JSON.parse(process.env.ISSUE_DATA);
-            const issueNumber = '${{ needs.check-employee-and-issue.outputs.issue_number }}';
+            const issueComments = JSON.parse(process.env.ISSUE_COMMENTS);
+            const prReviews = JSON.parse(process.env.PR_REVIEWS);
+            const triggerType = process.env.TRIGGER_TYPE;
+            const issueNumber = '${{ steps.get_issue.outputs.issue_number }}';
 
-            // Convert issue title to kebab case
+            // Convert issue title to kebab case and create branch name
             const issueTitle = issueData.title || 'untitled';
             const kebabTitle = issueTitle
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/^-+|-+$/g, '')
               .replace(/-+/g, '-')
-              .substring(0, 50); // Limit length
+              .substring(0, 50);
+            const branchName = `claude-fix/issue-${issueNumber}-${kebabTitle}`;
 
-            // Create base branch name
-            const baseBranchName = `claude-fix/issue-${issueNumber}-${kebabTitle}`;
-            core.exportVariable('BASE_BRANCH_NAME', baseBranchName);
+            // Format data for bash environment
+            const formattedComments = issueComments.length > 0
+              ? issueComments.map(comment =>
+                  `**Comment by @${comment.user.login} on ${comment.created_at}:**\n${comment.body}`
+                ).join('\n\n---\n\n')
+              : '';
+            const formattedReviews = prReviews.length > 0
+              ? prReviews.map(review =>
+                  `**Review by @${review.user.login} on ${review.submitted_at} (Changes Requested):**\n${review.body || 'No review comment provided'}`
+                ).join('\n\n---\n\n')
+              : '';
 
-            // Export issue info for the prompt
+            core.exportVariable('BRANCH_NAME', branchName);
             core.exportVariable('ISSUE_NUMBER', issueNumber);
             core.exportVariable('ISSUE_TITLE', issueData.title);
             core.exportVariable('ISSUE_AUTHOR', issueData.user.login);
             core.exportVariable('ISSUE_CREATED', issueData.created_at);
             core.exportVariable('ISSUE_BODY', issueData.body || 'No description provided');
+            core.exportVariable('ISSUE_COMMENTS_FORMATTED', formattedComments);
+            core.exportVariable('PR_REVIEWS_FORMATTED', formattedReviews);
+            core.exportVariable('TRIGGER_TYPE', triggerType);
 
-      - name: Determine branch strategy
+      - name: Generate bug fix prompt
         run: |
-          # Use the base branch name (no counters)
-          BRANCH_NAME="${{ env.BASE_BRANCH_NAME }}"
-
-          # Check if this exact branch already exists
-          if git branch -r --list "origin/${BRANCH_NAME}" | grep -q .; then
-            echo "Branch already exists: $BRANCH_NAME"
-            echo "Will push to existing branch and skip PR creation"
-            echo "BRANCH_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "Creating new branch: $BRANCH_NAME"
-            echo "Will create new PR"
-            echo "BRANCH_EXISTS=false" >> $GITHUB_ENV
-          fi
-
-          # Export the branch name
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-
-      - name: Prepare bug fix prompt
-        id: prepare_prompt
-        run: |
-          # Prepare the prompt for Claude
           cat << 'EOF' >> $GITHUB_ENV
           BUG_FIX_PROMPT<<PROMPT_END
-          You are helping to automatically fix a bug reported in GitHub issue #${{ env.ISSUE_NUMBER }}.
+          You are helping to fix a bug reported in GitHub issue #${{ env.ISSUE_NUMBER }}.
 
           ## Bug Report Details
           **Title:** ${{ env.ISSUE_TITLE }}
@@ -182,8 +137,27 @@ jobs:
           **Description:**
           ${{ env.ISSUE_BODY }}
 
+          **Comments:**
+          ${{ env.ISSUE_COMMENTS_FORMATTED }}
+          EOF
+
+          # Add review feedback section only if this is a review trigger
+          if [ "${{ env.TRIGGER_TYPE }}" = "pull_request_review" ]; then
+            cat << 'EOF' >> $GITHUB_ENV
+
+          ## Previous Fix Attempt - Review Feedback (MUST ADDRESS)
+          Your previous automated fix attempt received the following feedback that needs to be addressed:
+
+          ${{ env.PR_REVIEWS_FORMATTED }}
+          EOF
+          fi
+
+          # Add the rest of the prompt (always the same)
+          cat << 'EOF' >> $GITHUB_ENV
+
           ## Instructions
-          1. **Analyze the bug report** - Understand what the issue is describing
+          1. **Analyze the issue description and comments** - Understand what the issue is describing
+             a. Pay particular attention to reproduction steps and if there's an agreed upon fix.
           2. **Search the codebase** - Use Grep and Glob tools to find relevant files
           3. **Implement a fix** - Follow existing code patterns and conventions
           4. **Test the fix** - Run appropriate tests using the commands in CLAUDE.md:
@@ -205,14 +179,25 @@ jobs:
           - Only modify actual production code in the main repository directories
           - The scratchpad will be cleaned up automatically - nothing from it will be committed
 
-          ## If You Cannot Fix The Bug
-          If you determine that you cannot create a definitive fix, create a file called `FAILED_FIX_ANALYSIS.md` with:
-          1. **Why No Fix** - Specific reason why you couldn't implement a fix
-          2. **Tool Limitations** - If you needed additional tools/access that weren't available
-
           Start by understanding the bug and then systematically work toward a solution.
           PROMPT_END
           EOF
+
+      - name: Determine branch strategy
+        run: |
+          BRANCH_NAME="${{ env.BRANCH_NAME }}"
+          if git branch -r --list "origin/${BRANCH_NAME}" | grep -q .; then
+            echo "Branch already exists: $BRANCH_NAME"
+            echo "Will push to existing branch and skip PR creation"
+            echo "BRANCH_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "Creating new branch: $BRANCH_NAME"
+            echo "Will create new PR"
+            echo "BRANCH_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+          # Export the branch name
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
       - name: Create scratchpad directory for Claude
         run: |
@@ -249,20 +234,6 @@ jobs:
       - name: Check for changes and analysis
         id: check_changes
         run: |
-          # Check if Claude created an analysis file first and store its content
-          if [ -f "FAILED_FIX_ANALYSIS.md" ]; then
-            echo "has_analysis=true" >> $GITHUB_OUTPUT
-            echo "Analysis file found"
-            # Store analysis content in a GitHub output (base64 encoded to handle multiline)
-            ANALYSIS_CONTENT=$(base64 -w 0 FAILED_FIX_ANALYSIS.md)
-            echo "analysis_content=$ANALYSIS_CONTENT" >> $GITHUB_OUTPUT
-            # Remove analysis file so it doesn't count as a code change
-            rm -f FAILED_FIX_ANALYSIS.md
-          else
-            echo "has_analysis=false" >> $GITHUB_OUTPUT
-            echo "No analysis file found"
-          fi
-
           # Now check for actual code changes (excluding analysis file)
           if [ -n "$(git status --porcelain)" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
@@ -278,24 +249,15 @@ jobs:
         id: prepare_reviewers
         uses: actions/github-script@v7
         env:
-          ISSUE_DATA: ${{ needs.check-employee-and-issue.outputs.issue_data }}
+          ISSUE_DATA: ${{ steps.get_issue.outputs.issue_data }}
         with:
           script: |
-            // Get existing team labels from the issue
             const issueData = JSON.parse(process.env.ISSUE_DATA);
             const issueLabels = issueData.labels.map(label => label.name);
             const teamLabels = issueLabels.filter(label => label.startsWith('.Team/'));
-
-            console.log('Issue labels:', issueLabels);
-            console.log('Team labels found:', teamLabels);
-
-            // Add issue creator as reviewer
             const issueCreator = issueData.user.login;
-
             core.setOutput('team_labels', teamLabels.join(','));
             core.setOutput('reviewers', issueCreator);
-
-            console.log('Reviewer:', issueCreator);
 
       - name: Create Pull Request
         if: steps.check_changes.outputs.has_changes == 'true'
@@ -363,25 +325,3 @@ jobs:
         with:
           script: |
             console.log('🤖 No code changes were made by Claude.');
-
-            // Check if Claude provided a detailed analysis
-            if ('${{ steps.check_changes.outputs.has_analysis }}' === 'true') {
-              try {
-                // Decode the base64-encoded analysis content
-                const analysisBase64 = '${{ steps.check_changes.outputs.analysis_content }}';
-                const analysisContent = Buffer.from(analysisBase64, 'base64').toString('utf8');
-                console.log('📋 Claude provided detailed analysis:');
-                console.log('='.repeat(50));
-                console.log(analysisContent);
-                console.log('='.repeat(50));
-              } catch (error) {
-                console.log('❌ Could not decode analysis content:', error);
-              }
-            } else {
-              console.log('ℹ️  No detailed analysis file was created by Claude.');
-              console.log('This could be because:');
-              console.log('- The issue requires more context or clarification');
-              console.log('- The fix is complex and requires human judgment');
-              console.log('- The issue is not a straightforward code bug');
-              console.log('- Claude couldn\'t locate the relevant code to modify');
-            }

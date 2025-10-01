@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
+import { Nav as DetailViewNav } from "metabase/detail-view/components";
+import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
+import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
@@ -21,9 +24,12 @@ import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
+  isDocumentSidebarOpen?: boolean;
+  isCommentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
@@ -36,10 +42,13 @@ export interface AppBarLargeProps {
 }
 
 const AppBarLarge = ({
+  detailView,
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
   isMetabotVisible,
+  isDocumentSidebarOpen,
+  isCommentSidebarOpen,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
@@ -53,7 +62,14 @@ const AppBarLarge = ({
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   return (
-    <AppBarRoot hasSidebarOpen={isNavBarVisible || isMetabotVisible}>
+    <AppBarRoot
+      hasSidebarOpen={
+        isNavBarVisible ||
+        isMetabotVisible ||
+        isDocumentSidebarOpen ||
+        isCommentSidebarOpen
+      }
+    >
       <AppBarLeftContainer>
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}
@@ -67,7 +83,13 @@ const AppBarLarge = ({
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
-          {isQuestionLineageVisible ? (
+          {detailView ? (
+            <DetailViewNav
+              ml={DETAIL_VIEW_PADDING_LEFT - 125}
+              rowName={detailView.rowName}
+              table={detailView.table}
+            />
+          ) : isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />

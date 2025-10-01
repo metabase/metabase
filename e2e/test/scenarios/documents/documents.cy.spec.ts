@@ -8,6 +8,7 @@ import {
   PRODUCTS_AVERAGE_BY_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
 } from "e2e/support/test-visualizer-data";
+import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -53,6 +54,18 @@ H.describeWithSnowplowEE("documents", () => {
     H.expectUnstructuredSnowplowEvent({ event: "document_created" });
     cy.wrap(getDocumentStub).should("not.have.been.called");
 
+    cy.findByLabelText("More options").click();
+    H.popover().findByText("Bookmark").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "document",
+      triggered_from: "document_header",
+    });
+
+    // Delete the bookmark because we need to bookmark the doc again in the test
+    cy.request("DELETE", "/api/bookmark/document/1");
+
     H.appBar()
       .findByRole("link", { name: /First collection/ })
       .click();
@@ -79,6 +92,11 @@ H.describeWithSnowplowEE("documents", () => {
     H.openCollectionItemMenu("Test Document");
 
     H.popover().findByText("Bookmark").click();
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "document",
+      triggered_from: "collection_list",
+    });
 
     H.navigationSidebar()
       .findByRole("tab", { name: "Bookmarks" })
@@ -94,9 +112,36 @@ H.describeWithSnowplowEE("documents", () => {
 
     H.openCollectionItemMenu("Test Document");
 
-    H.popover().findByText("Move to trash").click();
+    H.popover().findByText("Duplicate").click();
+    cy.findByRole("heading", { name: 'Duplicate "Test Document"' }).should(
+      "exist",
+    );
+
+    cy.findByTestId("collection-picker-button").click();
+    H.entityPickerModalTab("Collections").click();
+    H.entityPickerModalItem(0, /Personal Collection/).click();
+    H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+    H.modal().findByRole("button", { name: "Copy" }).click();
+    H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Your personal collection").click();
+
+    cy.findByTestId("collection-table")
+      .findByText("Test Document - Duplicate")
+      .click();
+
+    cy.findByRole("textbox", { name: "Document Title" }).should(
+      "have.value",
+      "Test Document - Duplicate",
+    );
+
+    H.documentContent().should("contain.text", "This is a paragraph");
 
     H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Our analytics").click();
+
+    H.openCollectionItemMenu("Test Document");
+
+    H.popover().findByText("Move to trash").click();
 
     // Force the click since this is hidden behind a toast notification
     H.navigationSidebar().findByText("Trash").click({ force: true });
@@ -143,23 +188,54 @@ H.describeWithSnowplowEE("documents", () => {
                     text: "Lorem Ipsum and some more words",
                   },
                 ],
-              },
-              {
-                type: "cardEmbed",
                 attrs: {
-                  id: ORDERS_QUESTION_ID,
-                  name: null,
+                  _id: "1",
                 },
               },
               {
+                type: "resizeNode",
+                attrs: {
+                  height: 442,
+                  minHeight: 280,
+                },
+                content: [
+                  {
+                    type: "cardEmbed",
+                    attrs: {
+                      id: ORDERS_QUESTION_ID,
+                      name: null,
+                      _id: "2",
+                    },
+                  },
+                ],
+              },
+              {
                 type: "paragraph",
+                attrs: {
+                  _id: "3",
+                },
               },
             ],
             type: "doc",
           },
           collection_id: null,
-          alias: "documentId",
+          alias: "document",
+          idAlias: "documentId",
         });
+      });
+
+      it("renders a 'not found' message if the copied card has been permanently deleted", () => {
+        cy.get<Document>("@document").then(({ id, document: { content } }) => {
+          const resizeNode = content?.find((n) => n.type === "resizeNode");
+          const cardEmbed = resizeNode?.content?.[0];
+          const clonedCardId = cardEmbed?.attrs?.id;
+          cy.request("DELETE", `/api/card/${clonedCardId}`);
+          cy.visit(`/document/${id}`);
+        });
+        cy.findByTestId("document-card-embed").should(
+          "have.text",
+          "Couldn't find this chart.",
+        );
       });
 
       it("read only access", () => {
@@ -215,6 +291,58 @@ H.describeWithSnowplowEE("documents", () => {
           });
         });
       });
+
+      it("should handle undo/redo properly, resetting the history whenever a different document is viewed", () => {
+        const isMac = Cypress.platform === "darwin";
+        const metaKey = isMac ? "Meta" : "Control";
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.getDocumentCard("Orders").should("exist");
+        H.documentContent().within(() => {
+          const originalText = "Lorem Ipsum and some more words";
+          const originalExact = new RegExp(`^${originalText}$`);
+          cy.contains(originalExact).click();
+          cy.realPress([metaKey, "z"]);
+          cy.contains(originalExact);
+
+          const modification = " etc.";
+          const modifiedExact = new RegExp(`^${originalText}${modification}$`);
+          H.addToDocument(modification, false);
+          cy.contains(modifiedExact);
+          cy.realPress([metaKey, "z"]);
+          cy.contains(originalExact);
+          cy.realPress(["Shift", metaKey, "z"]);
+          cy.contains(modifiedExact);
+          cy.realPress([metaKey, "z"]); // revert to prevent "unsaved changes" dialog
+        });
+        H.newButton("Document").click();
+        H.documentContent().should("have.text", "");
+        cy.realPress([metaKey, "z"]);
+        H.documentContent().should("have.text", "");
+      });
+
+      it("should not clear undo history on save", () => {
+        const isMac = Cypress.platform === "darwin";
+        const metaKey = isMac ? "Meta" : "Control";
+
+        const originalText = "Lorem Ipsum and some more words";
+        const originalExact = new RegExp(`^${originalText}$`);
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+        H.documentContent().contains(originalExact).click();
+
+        const modification = " etc.";
+        const modifiedExact = new RegExp(`^${originalText}${modification}$`);
+        H.addToDocument(modification, false);
+        H.documentContent().contains(modifiedExact);
+
+        cy.realPress([metaKey, "s"]);
+        cy.findByTestId("toast-undo")
+          .findByText("Document saved")
+          .should("be.visible");
+
+        cy.realPress([metaKey, "z"]);
+        cy.realPress([metaKey, "z"]);
+        H.documentContent().contains(originalExact);
+      });
     });
   });
 
@@ -227,13 +355,15 @@ H.describeWithSnowplowEE("documents", () => {
           type: "doc",
         },
         collection_id: null,
-        alias: "documentId",
+        alias: "document",
+        idAlias: "documentId",
       });
 
-      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      H.addPostgresDatabase();
     });
 
     it("should support typing with a markdown syntax", () => {
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
       H.documentContent().click();
 
       H.addToDocument("# This is a heading level 1");
@@ -387,6 +517,67 @@ H.describeWithSnowplowEE("documents", () => {
             dashboard_id: id,
           });
         });
+        cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+      });
+
+      it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        assertOnlyOneOptionActive(/Ask Metabot/);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        //Link should be active
+        assertOnlyOneOptionActive("Link");
+
+        // Hover over Quote
+        H.commandSuggestionItem(/Quote/).realHover();
+
+        assertOnlyOneOptionActive(/Quote/);
+
+        H.addToDocument("pro", false);
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Products average/);
+
+        H.commandSuggestionItem(/Products by Category/).realHover();
+
+        assertOnlyOneOptionActive(/Products by Category/);
+
+        cy.realPress("Escape");
+
+        H.clearDocumentContent();
+
+        H.addToDocument("@ord", false);
+
+        cy.realPress("{downarrow}");
+        cy.realPress("{downarrow}");
+
+        assertOnlyOneOptionActive(/Orders, Count$/, "mention");
+
+        H.documentSuggestionDialog()
+          .findByRole("option", { name: /Browse all/ })
+          .realHover();
+
+        assertOnlyOneOptionActive(/Browse all/, "mention");
+
+        cy.realPress("Escape");
+        H.clearDocumentContent();
+        H.addToDocument("/", false);
+
+        H.commandSuggestionItem(/Ask Metabot/).click();
+        H.addToDocument("@", false);
+
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
+        cy.realPress("{downarrow}");
+        assertOnlyOneOptionActive(/Sample/, "metabot");
+
+        H.documentMetabotSuggestionItem(/QA Postgres/).realHover();
+        assertOnlyOneOptionActive(/QA Postgres/, "metabot");
       });
 
       it("should support adding cards and updating viz settings", () => {
@@ -506,10 +697,46 @@ H.describeWithSnowplowEE("documents", () => {
           });
         });
 
-        H.getDocumentCard(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).should(
-          "not.exist",
-        );
+        H.documentContent()
+          .findAllByTestId("card-embed-title")
+          .contains(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name)
+          .should("not.exist");
+
         H.getDocumentCard("Orders").should("exist");
+      });
+
+      it("should support resizing cards", () => {
+        H.documentContent().click();
+        H.addToDocument("/", false);
+
+        cy.log("search via type");
+        H.addToDocument("Accounts", false);
+        H.commandSuggestionDialog().should(
+          "contain.text",
+          ACCOUNTS_COUNT_BY_CREATED_AT.name,
+        );
+
+        cy.realPress("{downarrow}");
+        H.addToDocument("\n", false);
+
+        H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+          const ogHeight = el.height();
+          const resizeNode = H.getDocumentCardResizeContainer(
+            ACCOUNTS_COUNT_BY_CREATED_AT.name,
+          );
+
+          H.documentDoDrag(H.getDragHandleForDocumentResizeNode(resizeNode), {
+            y: 200,
+          });
+
+          H.getDocumentCard(ACCOUNTS_COUNT_BY_CREATED_AT.name).then((el) => {
+            const newHeight = el.height();
+
+            cy.log(`${ogHeight}, ${newHeight}`);
+
+            expect(newHeight).to.be.lessThan(ogHeight as number);
+          });
+        });
       });
 
       it("should copy an added card on save", () => {
@@ -615,4 +842,70 @@ H.describeWithSnowplowEE("documents", () => {
       });
     });
   });
+
+  describe("error handling", () => {
+    it("should display an error toast when creating a new document fails", () => {
+      // setup
+      cy.intercept("POST", "/api/ee/document", { statusCode: 500 });
+      cy.visit("/document/new");
+
+      // make changes and attempt to save
+      cy.findByRole("textbox", { name: "Document Title" }).type("Title");
+      H.documentSaveButton().click();
+      H.entityPickerModalTab("Collections").click();
+      H.entityPickerModalItem(0, "Our analytics")
+        .should("have.attr", "data-active", "true")
+        .click();
+      H.entityPickerModal().findByRole("button", { name: "Select" }).click();
+
+      // assert error toast is visible and user can reattempt save
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Error saving document");
+      H.documentSaveButton().should("be.visible");
+    });
+
+    it("should display an error toast when updating a document fails", () => {
+      // setup
+      cy.intercept("PUT", "/api/ee/document/*", { statusCode: 500 });
+      H.createDocument({
+        name: "Test Document",
+        document: { type: "doc", content: [] },
+        idAlias: "documentId",
+      });
+      cy.get("@documentId").then((id) => cy.visit(`/document/${id}`));
+
+      // make changes and attempt to save
+      H.documentContent().click();
+      H.addToDocument("aaa");
+      H.documentSaveButton().click();
+
+      // assert error toast is visible and user can reattempt save
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Error saving document");
+      H.documentSaveButton().should("be.visible");
+    });
+  });
 });
+
+const assertOnlyOneOptionActive = (
+  name: string | RegExp,
+  dialog: "command" | "mention" | "metabot" = "command",
+) => {
+  const dialogContainer =
+    dialog === "command"
+      ? H.commandSuggestionDialog
+      : dialog === "mention"
+        ? H.documentSuggestionDialog
+        : H.documentMetabotDialog;
+
+  dialogContainer()
+    .findByRole("option", { name })
+    .should("have.attr", "aria-selected", "true");
+
+  dialogContainer()
+    .findAllByRole("option")
+    .filter("[aria-selected=true]")
+    .should("have.length", 1);
+};

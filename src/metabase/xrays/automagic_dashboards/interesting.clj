@@ -127,6 +127,8 @@
                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
                      id                 [:field id {:base-type base_type}]
                      :else              [:field name {:base-type base_type}]))]
+    ;; legacy usages -- use Lib in new code going forward
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (cond
       (isa? base_type :type/Temporal)
       (mbql.u/with-temporal-unit reference (keyword (or aggregation

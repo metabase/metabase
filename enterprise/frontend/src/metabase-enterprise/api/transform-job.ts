@@ -1,5 +1,7 @@
 import type {
   CreateTransformJobRequest,
+  ListTransformJobsRequest,
+  Transform,
   TransformJob,
   TransformJobId,
   UpdateTransformJobRequest,
@@ -12,12 +14,13 @@ import {
   listTag,
   provideTransformJobListTags,
   provideTransformJobTags,
+  provideTransformListTags,
   tag,
 } from "./tags";
 
 export const transformJobApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
-    listTransformJobs: builder.query<TransformJob[], void>({
+    listTransformJobs: builder.query<TransformJob[], ListTransformJobsRequest>({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/transform-job",
@@ -32,6 +35,16 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (job) => (job ? provideTransformJobTags(job) : []),
     }),
+    listTransformJobTransforms: builder.query<Transform[], TransformJobId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/transform-job/${id}/transforms`,
+      }),
+      providesTags: (transforms = [], _error, id) => [
+        idTag("transform-job", id),
+        ...provideTransformListTags(transforms),
+      ],
+    }),
     runTransformJob: builder.mutation<void, TransformJobId>({
       query: (id) => ({
         method: "POST",
@@ -43,6 +56,29 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
           tag("transform"),
           tag("table"),
         ]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          transformJobApi.util.updateQueryData(
+            "getTransformJob",
+            id,
+            (draft) => {
+              draft.last_run = {
+                id: -1,
+                status: "started",
+                start_time: new Date().toISOString(),
+                end_time: null,
+                message: null,
+                run_method: "manual",
+              };
+            },
+          ),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     createTransformJob: builder.mutation<
       TransformJob,
@@ -65,8 +101,12 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform-job/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("transform-job", id)]),
+      invalidatesTags: (_, error, { id, tag_ids = [] }) =>
+        invalidateTags(error, [
+          listTag("transform-job"),
+          idTag("transform-job", id),
+          ...tag_ids.map((tagId) => idTag("transform-job-via-tag", tagId)),
+        ]),
       onQueryStarted: async (
         { id, ...patch },
         { dispatch, queryFulfilled },
@@ -100,6 +140,7 @@ export const transformJobApi = EnterpriseApi.injectEndpoints({
 
 export const {
   useListTransformJobsQuery,
+  useListTransformJobTransformsQuery,
   useGetTransformJobQuery,
   useLazyGetTransformJobQuery,
   useRunTransformJobMutation,

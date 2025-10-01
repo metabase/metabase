@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,18 +7,25 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
+import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { Flex, Icon, Paper, Stack, Text } from "metabase/ui";
-import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
+import { Flex, Paper, Stack, Text } from "metabase/ui";
+import { Messages } from "metabase-enterprise/metabot/components/MetabotChat/MetabotChatMessage";
+import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import {
+  useMetabotAgent,
+  useMetabotChatHandlers,
+} from "metabase-enterprise/metabot/hooks";
+import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 
 import { MetabotChatEmbedding } from "./MetabotChatEmbedding";
+import { metabotQuestionSchema } from "./MetabotQuestion.schema";
 import { QuestionDetails } from "./QuestionDetails";
 import { QuestionTitle } from "./QuestionTitle";
 
 const MetabotQuestionInner = () => {
   const { isLocaleLoading } = useLocale();
-  const [redirectUrl, setRedirectUrl] = useState<string>("");
-  const [messages, setMessages] = useState<string[]>([]);
+  const { navigateToPath } = useMetabotReactions();
 
   if (isLocaleLoading) {
     return <SdkLoader />;
@@ -26,16 +33,13 @@ const MetabotQuestionInner = () => {
 
   return (
     <Flex direction="column" align="center" gap="md">
-      <MetabotChatEmbedding
-        onRedirectUrl={setRedirectUrl}
-        onMessages={setMessages}
-      />
-      {messages.map((message, index) => (
-        <Message key={index} message={message} />
-      ))}
-      {redirectUrl && (
+      <MetabotMessages />
+
+      <MetabotChatEmbedding />
+
+      {!!navigateToPath && (
         <SdkAdHocQuestion
-          questionPath={redirectUrl}
+          questionPath={navigateToPath}
           title={false}
           isSaveEnabled={false}
         >
@@ -50,28 +54,36 @@ const MetabotQuestionInner = () => {
           />
         </SdkAdHocQuestion>
       )}
+
       <Disclaimer />
     </Flex>
   );
 };
 
-interface MessageProps {
-  message: string;
-}
-function Message({ message }: MessageProps) {
-  const isErrorMessage = message === METABOT_ERR_MSG.agentOffline;
-  if (isErrorMessage) {
-    return (
-      <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg" ta="center">
-        <Icon name="info_filled" c="var(--mb-color-text-tertiary)" size={32} />
-        <Text mt="sm">{message}</Text>
-      </Paper>
-    );
+function MetabotMessages() {
+  const metabot = useMetabotAgent();
+  const { messages, errorMessages } = metabot;
+  const { handleRetryMessage } = useMetabotChatHandlers();
+  const { setNavigateToPath } = useMetabotReactions();
+
+  if (!messages.length && !errorMessages.length) {
+    return null;
   }
 
   return (
     <Paper shadow="sm" p="lg" w="100%" maw="41.5rem" radius="lg">
-      <Text>{message}</Text>
+      <Flex direction="column">
+        <Messages
+          messages={messages}
+          errorMessages={errorMessages}
+          onRetryMessage={handleRetryMessage}
+          isDoingScience={metabot.isDoingScience}
+          showFeedbackButtons={false}
+          onInternalLinkClick={setNavigateToPath}
+        />
+      </Flex>
+
+      {metabot.isLongConversation && <MetabotResetLongChatButton />}
     </Paper>
   );
 }
@@ -82,4 +94,23 @@ function Disclaimer() {
   );
 }
 
-export const MetabotQuestion = withPublicComponentWrapper(MetabotQuestionInner);
+const MetabotQuestionWrapped = () => {
+  const ensureSingleInstanceId = useId();
+
+  return (
+    <EnsureSingleInstance
+      groupId="metabot-question"
+      instanceId={ensureSingleInstanceId}
+      multipleRegisteredInstancesWarningMessage={
+        "Multiple instances of MetabotQuestion detected. Ensure only one instance of MetabotQuestion is rendered at a time."
+      }
+    >
+      <MetabotQuestionInner />
+    </EnsureSingleInstance>
+  );
+};
+
+export const MetabotQuestion = Object.assign(
+  withPublicComponentWrapper(MetabotQuestionWrapped),
+  { schema: metabotQuestionSchema },
+);

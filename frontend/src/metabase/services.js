@@ -80,6 +80,10 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+/**
+ * @param {*} question
+ * @param {object} param
+ */
 export async function runQuestionQuery(
   question,
   {
@@ -96,7 +100,7 @@ export async function runQuestionQuery(
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
-    const { dashboardId, dashcardId } = card;
+    const { dashboardId, dashcardId } = question.getDashboardProps();
 
     const queryParams = {
       cardId: question.id(),

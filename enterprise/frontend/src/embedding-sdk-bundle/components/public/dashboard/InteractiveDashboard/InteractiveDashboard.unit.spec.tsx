@@ -21,6 +21,35 @@ const setup = async (
 console.warn = () => {};
 
 describe("InteractiveDashboard", () => {
+  it("should call onVisualizationChange when a card is opened", async () => {
+    const onVisualizationChange = jest.fn();
+
+    await setup({
+      dashboardName: "Test dashboard",
+      props: {
+        onVisualizationChange,
+      },
+    });
+
+    await userEvent.click(screen.getByText("Here is a card title"));
+
+    expect(
+      await screen.findByLabelText("Back to Test dashboard"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Filter")).toBeInTheDocument();
+    expect(screen.getByText("Group")).toBeInTheDocument();
+    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
+
+    expect(onVisualizationChange).toHaveBeenCalledTimes(1);
+    expect(onVisualizationChange).toHaveBeenCalledWith("table");
+
+    await userEvent.click(screen.getByText("Table"));
+    await userEvent.click(screen.getByText("Bar"));
+
+    expect(onVisualizationChange).toHaveBeenCalledTimes(2);
+    expect(onVisualizationChange).toHaveBeenCalledWith("bar");
+  });
+
   it("should allow users to click the dashcard title", async () => {
     await setup({
       dashboardName: "Test dashboard",

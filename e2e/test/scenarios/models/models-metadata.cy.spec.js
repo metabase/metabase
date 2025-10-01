@@ -43,7 +43,7 @@ describe("scenarios > models metadata", () => {
       });
 
       H.popover().findByTextEnsureVisible("Edit metadata").click();
-      cy.url().should("include", "/metadata");
+      cy.url().should("include", "/columns");
       H.waitForLoaderToBeRemoved();
 
       H.openColumnOptions("Subtotal");
@@ -138,7 +138,7 @@ describe("scenarios > models metadata", () => {
     });
 
     H.popover().findByTextEnsureVisible("Edit metadata").click();
-    cy.url().should("include", "/metadata");
+    cy.url().should("include", "/columns");
     H.waitForLoaderToBeRemoved();
 
     H.openColumnOptions("SUBTOTAL");
@@ -204,7 +204,7 @@ describe("scenarios > models metadata", () => {
     H.NativeEditor.clear();
     H.NativeEditor.type("SELECT TOTAL FROM ORDERS LIMIT 5");
 
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     cy.wait("@dataset");
 
     cy.findAllByTestId("header-cell")
@@ -223,7 +223,7 @@ describe("scenarios > models metadata", () => {
         query: "SELECT * FROM ORDERS LIMIT 5",
       },
     }).then(({ body: { id: nativeModelId } }) => {
-      cy.visit(`/model/${nativeModelId}/metadata`);
+      cy.visit(`/model/${nativeModelId}/columns`);
       cy.wait("@cardQuery");
     });
 
@@ -294,12 +294,8 @@ describe("scenarios > models metadata", () => {
 
     H.openQuestionActions();
     H.popover().findByTextEnsureVisible("Edit metadata").click();
-    cy.url().should("include", "/metadata");
+    cy.url().should("include", "/columns");
     H.waitForLoaderToBeRemoved();
-
-    cy.log("wait for the hint, otherwise scroll into view doesn't work ");
-    cy.findByTestId("tab-hint-toast").should("be.visible");
-    H.tableInteractiveScrollContainer().scrollTo("right");
 
     cy.log("move Product -> Price before Products -> Vendor");
 

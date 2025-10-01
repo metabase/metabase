@@ -1,0 +1,68 @@
+.inlineEditingTextInput {
+  transition: none;
+  outline: 2px solid var(--mb-base-color-blue-50);
+  outline-offset: -2px;
+  border-color: transparent;
+  box-sizing: border-box;
+  background-color: var(--mb-base-color-white);
+  border-radius: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+
+  /* Should be in sync with DEFAULT_FONT_SIZE */
+  font-size: 12.5px;
+
+  /* Properly alignment with BaseCell, to avoid text flickering (BaseCell has only border-bottom 1px) */
+  border-top-width: 0;
+
+  /* Keep outline consistent for inline editing, since focused and non focused state is semantically the same */
+  &:focus {
+    outline: 2px solid var(--mb-base-color-blue-50);
+  }
+}
+
+.selectLabel {
+  /* Should be in sync with DEFAULT_FONT_SIZE */
+  font-size: 12.5px;
+}
+
+.cell {
+  font-weight: normal;
+  border-bottom-color: var(--mb-color-border);
+}
+
+.readonlyCell {
+  font-weight: normal;
+  color: var(--mb-color-text-disabled);
+  cursor: not-allowed;
+  border-bottom-color: var(--mb-color-border);
+}
+
+.errorCell {
+  background-color: var(--mb-base-color-dubloon-5);
+  outline: 2px solid var(--mb-base-color-dubloon-30);
+  outline-offset: -2px;
+  border-radius: 0.25rem;
+
+  &:hover {
+    background-color: var(--mb-base-color-dubloon-5);
+  }
+}
+
+.updatingCell {
+  background: linear-gradient(
+    110deg,
+    var(--mb-color-bg-light) 8%,
+    var(--mb-color-bg-white) 18%,
+    var(--mb-color-bg-light) 33%
+  );
+  background-size: 200% 100%;
+  animation: 1s shine linear infinite;
+}
+
+@keyframes shine {
+  to {
+    background-position-x: -200%;
+  }
+}

@@ -132,6 +132,12 @@
             {:name (u.random/random-name)
              :channel_type "channel/metabase-test"}))
 
+   :model/Comment
+   (fn [_] (default-timestamped
+            {:target_type "document"
+             :creator_id  (rasta-id)
+             :content     {:text (u.random/random-name)}}))
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)
@@ -167,6 +173,21 @@
    (fn [_] (default-timestamped
             {:name (u.random/random-name)
              :type "internal"}))
+
+   :model/Document
+   (fn [_] (default-timestamped
+            {:name (u.random/random-name)
+             :document {:type "doc"
+                        :content [{:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "Hello"}]}
+                                  {:attrs {:_id (str (random-uuid))}
+                                   :type "paragraph"
+                                   :content [{:type "text"
+                                              :text "World"}]}]}
+             :content_type "application/json+vnd.prose-mirror"
+             :creator_id (rasta-id)}))
 
    :model/Field
    (fn [_] (default-timestamped
@@ -248,19 +269,6 @@
              :schedule_type :daily
              :schedule_hour 15}))
 
-   :model/Document
-   (fn [_] (default-timestamped
-            {:name (u.random/random-name)
-             :document {:type "doc"
-                        :content [{:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "Hello"}]}
-                                  {:type "paragraph"
-                                   :content [{:type "text"
-                                              :text "World"}]}]}
-             :content_type "application/json+vnd.prose-mirror"
-             :creator_id (rasta-id)}))
-
    :model/Revision
    (fn [_] {:user_id (rasta-id)
             :is_creation false
@@ -327,8 +335,9 @@
    :model/TransformJob
    (fn [_]
      (default-timestamped
-      {:name (str "Test Transform Job " (u/generate-nano-id))
-       :schedule "0 0 * * * ?"}))
+      {:name            (str "Test Transform Job " (u/generate-nano-id))
+       :schedule        "0 0 * * * ?"
+       :ui_display_type :cron/raw}))
 
    :model/TransformRun
    (fn [_]
@@ -580,6 +589,24 @@
   {:style/indent 1}
   [settings & body]
   `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
+
+(defmacro with-random-premium-token!
+  "Temporarily sets a premium embedding token to a random value and stubs token check to avoid
+  triggering premium token status checks. Use like:
+
+  (mt/with-random-premium-token [token-value]
+    (some-call))
+
+  The token-value binding will contain the random token that was set."
+  [[token-value] & body]
+  `(let [~token-value (premium-features.test-util/random-token)]
+     (with-redefs [metabase.premium-features.token-check/fetch-token-status
+                   (constantly {:valid    true
+                                :status   "fake"
+                                :features ["test" "fixture"]
+                                :trial    false})]
+       (with-temporary-raw-setting-values [:premium-embedding-token ~token-value]
+         ~@body))))
 
 (defn- maybe-merge-original-values
   "For some map columns like `Database.settings` or `User.settings`, merge the original values with the temp ones to
@@ -1579,7 +1606,7 @@
   `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
      ~@body))
 
-(defn do-poll-until [^Long timeout-ms thunk]
+(defn do-poll-until [^Long timeout-ms code thunk]
   (let [result-prom (promise)
         _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
         _runner (future (loop []
@@ -1588,7 +1615,8 @@
                             (recur))))
         result @result-prom]
     (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
-                                               {:timeout-ms timeout-ms}))
+                                               {:timeout-ms timeout-ms
+                                                :code code}))
           (instance? Throwable result) (throw result)
           :else result)))
 
@@ -1602,6 +1630,7 @@
   [timeout-ms & body]
   `(do-poll-until
     ~timeout-ms
+    '~@body
     (fn ~'poll-body [] ~@body)))
 
 (methodical/defmethod =?/=?-diff [(Class/forName "[B") (Class/forName "[B")]

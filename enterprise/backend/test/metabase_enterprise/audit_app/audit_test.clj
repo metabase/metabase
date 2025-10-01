@@ -44,7 +44,7 @@
       (with-redefs [ee-audit/analytics-dir-resource nil]
         (is (nil? @#'ee-audit/analytics-dir-resource))
         (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
@@ -53,7 +53,7 @@
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-      (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))

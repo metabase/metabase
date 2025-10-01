@@ -160,6 +160,18 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
+  notify
+  {:doc      "Send notification for a comment (that already exists"
+   :requires [[mage.be-dev :refer [nrepl-eval]]]
+   :options  [["-c" "--comment-id ID" "Notify about this comment id"]
+              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task     (let [opts (:options (cli/parse! (current-task)))
+                   ;; note: no quoting -> expect it to be int
+                   code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
+               (if (:port opts)
+                 (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
+                 (nrepl-eval "metabase-enterprise.comments.core" code)))}
+
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]
       :requires [[mage.util :as u]]
@@ -217,6 +229,8 @@
    :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
                (apply readability/check arguments))}
 
+  ;; Uncomment this if you want to play with the example calculator task:
+  #_#_
   -example-calculator
   {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
    ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.

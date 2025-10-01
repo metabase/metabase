@@ -680,20 +680,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           assertOnPivotFields();
         });
 
-        // Skipped to avoid flake
-        it(
-          "should display pivot table in an embed preview",
-          { tags: "@skip" },
-          () => {
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(/Embed in your application/).click();
-            // we use preview endpoints when MB is iframed in itself
-            // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-            cy.findByText(test.subject);
-            H.getIframeBody().within(assertOnPivotFields);
-          },
-        );
-
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
@@ -1311,7 +1297,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
       cy.findByTestId("pivot-table").findByText("KS").click();
-      H.popover().findByText("Zoom in").click();
+      H.popover().findByText("Zoom in: State").click();
 
       cy.log("Filter pills");
       cy.findByTestId("filter-pill").should("have.text", "User → State is KS");

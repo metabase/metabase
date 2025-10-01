@@ -4,5 +4,8 @@
   gap: 0.5rem;
   color: var(--mb-color-text-white);
   font-weight: 700;
-  cursor: pointer;
+
+  &:not(:disabled) {
+    cursor: pointer;
+  }
 }

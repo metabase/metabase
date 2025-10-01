@@ -26,6 +26,8 @@
     :model/Collection                        metabase.collections.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
+    :model/Comment                           metabase-enterprise.comments.models.comment
+    :model/CommentReaction                   metabase-enterprise.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/ContentTranslation                metabase.content-translation.models
     :model/Dashboard                         metabase.dashboards.models.dashboard
@@ -42,12 +44,14 @@
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
-    :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
+    :model/Glossary                          metabase.glossary.models.glossary
+    :model/Sandbox                           metabase-enterprise.sandbox.models.sandbox
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
-    :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
+    :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
+    :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
@@ -64,6 +68,7 @@
     :model/PermissionsGroupMembership        metabase.permissions.models.permissions-group-membership
     :model/PermissionsRevision               metabase.permissions.models.permissions-revision
     :model/PersistedInfo                     metabase.model-persistence.models.persisted-info
+    :model/PythonLibrary                     metabase-enterprise.transforms-python.models.python-library
     :model/Pulse                             metabase.pulse.models.pulse
     :model/PulseCard                         metabase.pulse.models.pulse-card
     :model/PulseChannel                      metabase.pulse.models.pulse-channel
@@ -79,6 +84,7 @@
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
     :model/Segment                           metabase.segments.models.segment
+    :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
     :model/Setting                           metabase.settings.models.setting
     :model/Table                             metabase.warehouse-schema.models.table
@@ -88,11 +94,11 @@
     :model/Transform                         metabase-enterprise.transforms.models.transform
     :model/TransformJob                      metabase-enterprise.transforms.models.transform-job
     :model/TransformJobRun                   metabase-enterprise.transforms.models.job-run
-    :model/TransformJobTransformTag metabase-enterprise.transforms.models.transform-job-transform-tag
+    :model/TransformJobTransformTag          metabase-enterprise.transforms.models.transform-job-transform-tag
     :model/TransformRun                      metabase-enterprise.transforms.models.transform-run
     :model/TransformRunCancelation           metabase-enterprise.transforms.models.transform-run-cancelation
     :model/TransformTag                      metabase-enterprise.transforms.models.transform-tag
-    :model/TransformTransformTag metabase-enterprise.transforms.models.transform-transform-tag
+    :model/TransformTransformTag             metabase-enterprise.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value

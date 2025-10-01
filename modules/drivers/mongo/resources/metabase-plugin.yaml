@@ -81,6 +81,7 @@ driver:
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
           visible-if:
             use-conn-uri: false
+            advanced-options: true
     - name: use-srv
       type: boolean
       default: false

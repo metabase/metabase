@@ -19,20 +19,30 @@ Currently you can choose to embed:
 - A dashboard
 - A question (chart). You can embed both questions built with the query builder and questions built with SQL.
 - Full graphical [query builder](../questions/query-builder/editor.md) to enable people to build their own charts and explorations.
+- A browser to navigate collections and open dashboards or questions.
 
 ## Quickstart
 
+You can also follow the setup guide directly in Metabase in **Admin > Embedding > Setup guide**. We're recording the steps here for convenience.
+
 ### 1. Enable Embedded Analytics JS
 
-1. In Metabase, go to **Admin Settings > Embedding > Modular embedding**.
+1. In Metabase, go to **Admin > Embedding > Modular embedding**.
 2. Toggle on **Embedded Analytics JS**.
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
 
 ### 2. Create a new embed
 
-1. In Metabase, click on **+ New** button in top right corner and select **Embed**. Note that this will only be visible to admins.
-2. Choose the type of entity to embed. Currently the available types are dashboard, question, and exploration (which will embed the Metabase query builder).
-3. Next, select the entity you want to embed.
+1. In Metabase, go to **Admin > Embedding > Setup guide > Embed in your code**, and select **Try it out** next to **Embedded analytics JS**.
+
+   If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
+
+2. Choose the _type_ of entity to embed:
+   - Dashboard
+   - Question
+   - Exploration (which will embed the Metabase query builder)
+   - Browser
+3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
 Once you've selected what you want to embed, click Next to customize your embed.
 
@@ -42,7 +52,7 @@ The exact customization options you see will depend on what type of entity you'r
 
 ![Customizing embeds](./images/embed-flow-options.png)
 
-You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you' can specify a [theme](#theming) in your embed code snippet.
+You'll also be be able to pick brand, text, and background color used for all your embeds. To configure other colors (e.g. secondary colors, query builder colors etc), as well as font, you can specify a [theme](#theming) in your embed code snippet.
 
 All the customization options you select in this interactive flow will be reflected in the parameter values in the embed code, so you'll be able to adjust them later by editing the embed snippet.
 
@@ -104,13 +114,13 @@ Note the `defer` attribute and the reference to your Metabase URL in the script 
 
 If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
 
-You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **+ New > Embed**. Check out the [Quickstart](#quickstart).
+You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [quickstart](#quickstart).
 
 ## Customizing embeds
 
 The exact customization options you see will depend on what type of entity you're embedding.
 
-When you're creating a new embed using **+ New > Embed**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -121,6 +131,8 @@ When you're creating a new embed using **+ New > Embed**, you'll see the followi
 - **Parameters**: for dashboard filters, SQL variables, and time grouping parameters, you can add default values. Default values set here override the default values set at the dashboard or question level. For dashboard filters and parameters, you can choose whether to hide the parameter.
 
 - **Show title**: what it says on the tin.
+
+- **Allow editing dashboards and questions**: lets people create and edit dashboards or questions in the current collection. When disabled, they can still perform actions like filter, summarize, and drill-through, but won’t be able to save results.
 
 ## Configuring embeds
 
@@ -133,6 +145,8 @@ To define the configuration that applies to every embed on the page, use the `de
 - `useExistingUserSession: true|false` (optional, for development only) - lets you preview the embed locally using your Metabase admin account session. Only supported in Google Chrome.
 
 - `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
+
+- `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./sdk/authentication.md#customizing-jwt-authentication).
 
 ### Theming
 
@@ -348,3 +362,19 @@ To render a question (chart).
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
 - `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
+
+- ### Browser
+
+To render a collection browser so people can navigate a collection and open dashboards or questions.
+
+```html
+<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+```
+
+**Required parameters:**
+
+- `initial-collection` - This can be a collection ID or `root`. Use a collection ID (e.g., `14`) to start in a specific collection. Use `root` to start at the top-level, "Our Analytics" collection.
+
+**Optional parameters:**
+
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.

@@ -1,7 +1,9 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
-import { TAG_TYPES } from "metabase/api/tags";
+import { TAG_TYPES, provideUserTags } from "metabase/api/tags";
 import type {
+  Comment,
+  PythonLibrary,
   Transform,
   TransformJob,
   TransformRun,
@@ -16,10 +18,13 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-prompt-suggestions",
   "gsheets-status",
   "document",
+  "comment",
   "transform",
   "transform-tag",
   "transform-job",
+  "transform-job-via-tag",
   "transform-run",
+  "python-transform-library",
 ] as const;
 
 export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -95,11 +100,37 @@ export function provideTransformTagListTags(
 export function provideTransformJobTags(
   job: TransformJob,
 ): TagDescription<EnterpriseTagType>[] {
-  return [idTag("transform-job", job.id)];
+  return [
+    idTag("transform-job", job.id),
+    ...(job.tag_ids?.map((tagId) => idTag("transform-job-via-tag", tagId)) ??
+      []),
+  ];
 }
 
 export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<EnterpriseTagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<EnterpriseTagType>[] {
+  if (comment.creator) {
+    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
+  }
+
+  return [idTag("comment", comment.id)];
+}
+
+export function providePythonLibraryTags(
+  library: PythonLibrary,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("python-transform-library", library.path)];
 }

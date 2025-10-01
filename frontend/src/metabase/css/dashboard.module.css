@@ -26,7 +26,6 @@
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-bg-light: var(--mb-base-color-gray-70);
 
   background-color: var(--mb-color-bg-black);
 }
@@ -223,6 +222,12 @@
 .ScalarValue {
   font-weight: 700;
   white-space: pre;
+}
+
+.Dashboard .DashboardChartLegend {
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 /*

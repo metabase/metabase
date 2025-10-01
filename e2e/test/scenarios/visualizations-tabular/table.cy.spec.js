@@ -126,15 +126,14 @@ describe("scenarios > visualizations > table", () => {
 
     // Copy formatted content with Cmd+C
     cy.realPress(["Meta", "c"]);
-    cy.window()
-      .then((win) => win.navigator.clipboard.readText())
-      .should("equal", "39.72		February 11, 2025, 9:40 PM");
+    H.readClipboard().should("equal", "39.72		February 11, 2025, 9:40 PM");
 
     // Copy unformatted content with Shift+Cmd+C
     cy.realPress(["Shift", "Meta", "c"]);
-    cy.window()
-      .then((win) => win.navigator.clipboard.readText())
-      .should("equal", "39.718145389078366	null	2025-02-11T21:40:27.892-08:00");
+    H.readClipboard().should(
+      "equal",
+      "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
+    );
 
     // Escape to clear selection
     cy.realPress("Escape");
@@ -155,7 +154,7 @@ describe("scenarios > visualizations > table", () => {
     H.openObjectDetail(5);
 
     // Ensure click on row index opens the object detail
-    H.modal().findByText("Order");
+    H.modal().findAllByText("6").should("have.length", 2).and("be.visible");
 
     // Close object detail modal
     cy.realType("{esc}");
@@ -531,7 +530,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findByText(rowsRegex)
       .should("not.exist");
 
-    cy.get("@tableDashcard").findByText("2,000 rows");
+    cy.get("@tableDashcard").findByText("Showing first 2,000 rows");
 
     // Enable pagination
     H.editDashboard();

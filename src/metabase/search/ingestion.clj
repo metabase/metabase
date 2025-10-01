@@ -51,11 +51,22 @@
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
-  (->> (:search-terms (search.spec/spec (:model m)))
-       (keep m)
-       (map str/trim)
-       (remove str/blank?)
-       (str/join " ")))
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        getter       (if (map? search-terms)
+                       (fn [[k tx]]
+                         (let [tx (if (true? tx) identity tx)]
+                           (some-> (get m k) tx)))
+                       m)
+        xf           (comp (keep getter)
+                           (map str/trim)
+                           (remove str/blank?))]
+    (->> (into [] xf search-terms)
+         (str/join " "))))
+
+(defn- search-term-columns
+  "Extract column names from search-terms spec for SQL query generation"
+  [search-terms]
+  (if (map? search-terms) (keys search-terms) search-terms))
 
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
@@ -64,8 +75,12 @@
   "Execute a single function attribute and return the result"
   [attr-key attr-def record]
   (try
-    (let [f (:fn attr-def)]
-      (f record))
+    (let [f (:fn attr-def)
+          fields (:fields attr-def)
+          input (if fields
+                  (select-keys record fields)
+                  record)]
+      (f input))
     (catch Exception e
       (log/warn e "Function execution failed for attribute" attr-key)
       false)))
@@ -103,22 +118,21 @@
 
 (defn- spec-index-query*
   [search-model]
-  (let [spec (search.spec/spec search-model)
-        fn-deps (search.spec/collect-fn-attr-req-fields spec)
-        fn-selects (map (fn [field]
-                          [(keyword (str "this." (name field))) field])
-                        fn-deps)]
+  (let [spec         (search.spec/spec search-model)
+        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
+        fn-selects   (map (fn [field]
+                            [(keyword (str "this." (name field))) field])
+                          fn-deps)
+        search-terms (set (search-term-columns (:search-terms spec)))]
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
                                                (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
                                                                 term])
-                                                    (:search-terms spec))
+                                                    search-terms)
                                                (mapcat (fn [k] (attrs->select-items
-                                                                (let [search-terms (set (:search-terms spec))]
-                                                                  (->> k
-                                                                       (get spec)
-                                                                       (remove (comp search-terms key))))))
+                                                                (->> (get spec k)
+                                                                     (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]

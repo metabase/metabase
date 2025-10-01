@@ -19,7 +19,7 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
             <ToolsNavItem
               label={t`Help`}
               path="/admin/tools/help"
-              icon="info_filled"
+              icon="info"
             />
             <ToolsNavItem
               label={t`Tasks`}
@@ -60,7 +60,7 @@ const ToolsNavItem = (props: AdminNavItemProps) => {
   const subpath = location?.pathname;
 
   // we want to highlight the nav item even if a subpath is active
-  const isActive = subpath.includes(props.path);
+  const isActive = !!props.path && subpath.includes(props.path);
 
   return <AdminNavItem {...props} active={isActive} />;
 };

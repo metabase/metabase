@@ -1,8 +1,11 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
+  (:refer-clojure :exclude [every? mapv])
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   ;; allowed because `:field_ref` is supposed to be a legacy field ref for backward compatibility purposes
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
@@ -14,6 +17,7 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? mapv]]
    [potemkin :as p]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)

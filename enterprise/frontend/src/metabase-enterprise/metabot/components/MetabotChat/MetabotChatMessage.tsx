@@ -1,9 +1,9 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useState } from "react";
+import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { downloadObjectAsJson } from "metabase/lib/download";
 import {
   ActionIcon,
   Flex,
@@ -12,6 +12,7 @@ import {
   type IconName,
   Text,
 } from "metabase/ui";
+import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
 import type {
   MetabotChatMessage,
   MetabotErrorMessage,
@@ -107,8 +108,10 @@ const FeedbackButton = ({
 interface AgentMessageProps extends BaseMessageProps {
   onRetry: (messageId: string) => void;
   onCopy: (messageId: string) => void;
+  showFeedbackButtons: boolean;
   setFeedbackMessage?: (data: { messageId: string; positive: boolean }) => void;
   submittedFeedback: "positive" | "negative" | undefined;
+  onInternalLinkClick?: (link: string) => void;
 }
 
 export const AgentMessage = ({
@@ -116,13 +119,21 @@ export const AgentMessage = ({
   className,
   onCopy,
   onRetry,
+  showFeedbackButtons,
   setFeedbackMessage,
   submittedFeedback,
+  onInternalLinkClick,
   hideActions,
   ...props
 }: AgentMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
-    <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
+    <AIMarkdown
+      className={Styles.message}
+      onInternalLinkClick={onInternalLinkClick}
+    >
+      {message.message}
+    </AIMarkdown>
+
     <Flex className={Styles.messageActions}>
       {!hideActions && (
         <>
@@ -133,7 +144,7 @@ export const AgentMessage = ({
           >
             <Icon name="copy" size="1rem" />
           </ActionIcon>
-          {setFeedbackMessage && (
+          {showFeedbackButtons && setFeedbackMessage && (
             <>
               <FeedbackButton
                 data-testid="metabot-chat-message-thumbs-up"
@@ -161,6 +172,7 @@ export const AgentMessage = ({
               />
             </>
           )}
+
           <ActionIcon
             onClick={() => onRetry(message.id)}
             h="sm"
@@ -228,11 +240,15 @@ export const Messages = ({
   errorMessages,
   onRetryMessage,
   isDoingScience,
+  showFeedbackButtons,
+  onInternalLinkClick,
 }: {
   messages: MetabotChatMessage[];
   errorMessages: MetabotErrorMessage[];
   onRetryMessage: (messageId: string) => void;
   isDoingScience: boolean;
+  showFeedbackButtons: boolean;
+  onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
@@ -245,19 +261,25 @@ export const Messages = ({
     modal: undefined,
   });
 
+  const [submitMetabotFeedback] = useSubmitMetabotFeedbackMutation();
+
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
     const { message_id, positive } = metabotFeedback.feedback;
 
-    downloadObjectAsJson(metabotFeedback, `metabot-feedback-${message_id}`);
-    sendToast({ icon: "check", message: "Feedback downloaded successfully" });
+    try {
+      await submitMetabotFeedback(metabotFeedback).unwrap();
+      sendToast({ icon: "check", message: t`Feedback submitted` });
 
-    setFeedbackState((prevState) => ({
-      submitted: {
-        ...prevState.submitted,
-        [message_id]: positive ? "positive" : "negative",
-      },
-      modal: undefined,
-    }));
+      setFeedbackState((prevState) => ({
+        submitted: {
+          ...prevState.submitted,
+          [message_id]: positive ? "positive" : "negative",
+        },
+        modal: undefined,
+      }));
+    } catch (error) {
+      sendToast({ icon: "warning", message: t`Failed to submit feedback` });
+    }
   };
 
   const onAgentMessageCopy = useCallback(
@@ -270,9 +292,13 @@ export const Messages = ({
 
   const setFeedbackModal = useCallback(
     (data: { messageId: string; positive: boolean } | undefined) => {
+      if (!showFeedbackButtons) {
+        return;
+      }
+
       setFeedbackState((prev) => ({ ...prev, modal: data }));
     },
-    [],
+    [showFeedbackButtons],
   );
 
   return (
@@ -285,9 +311,11 @@ export const Messages = ({
             message={message}
             onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
+            showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={messages[index + 1]?.role === "agent"}
+            onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
           <UserMessage

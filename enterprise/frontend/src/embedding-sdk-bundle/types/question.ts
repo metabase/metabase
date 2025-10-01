@@ -69,4 +69,12 @@ export type SdkQuestionTitleProps =
 
 export type EntityTypeFilterKeys = "table" | "model";
 
-export type SqlParameterValues = Record<string, string | number>;
+export type SqlParameterValues = Record<
+  string,
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean | null>
+  | null
+  | undefined
+>;

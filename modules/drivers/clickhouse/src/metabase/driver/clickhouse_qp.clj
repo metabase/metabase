@@ -1,5 +1,6 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -12,7 +13,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.performance :refer [some]])
   (:import
    [java.net Inet4Address Inet6Address]
    [java.sql ResultSet ResultSetMetaData Types]
@@ -358,13 +360,22 @@
   (let [[qual valuevalue fieldinfo] value
         hsql-field (sql.qp/->honeysql driver field)
         hsql-value (sql.qp/->honeysql driver value)]
-    (if (and (isa? qual :value)
-             (isa? (:base_type fieldinfo) :type/Text)
-             (nil? valuevalue))
+    (cond
+      (and (isa? qual :value)
+           (isa? (:base_type fieldinfo) :type/Text)
+           (nil? valuevalue))
       [:or
        [:= hsql-field hsql-value]
        [:= [:'empty hsql-field] 1]]
-      ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
+
+      ;; UUID fields can be compared directly with strings in ClickHouse.
+      (and (isa? qual :value)
+           (isa? (:base_type fieldinfo) :type/UUID)
+           (isa? (:base-type (nth field 2)) :type/UUID)
+           (string? valuevalue))
+      [:= hsql-field hsql-value]
+
+      :else ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [op field value]]

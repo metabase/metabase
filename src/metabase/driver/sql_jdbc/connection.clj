@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
+  (:refer-clojure :exclude [some select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
@@ -12,6 +13,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some select-keys]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -376,5 +378,5 @@
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (can-connect-with-spec? jdbc-spec)))
 
-(defmethod driver/connection-details :sql-jdbc [driver db]
-  (connection-details->spec driver (:details db)))
+(defmethod driver/connection-spec :sql-jdbc [_driver db]
+  (db->pooled-connection-spec  db))

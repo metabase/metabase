@@ -1,7 +1,9 @@
 (ns metabase.lib.query
-  (:refer-clojure :exclude [remove])
+  (:refer-clojure :exclude [remove some select-keys mapv])
   (:require
    [medley.core :as m]
+   ;; allowed since this is needed to convert legacy queries to MBQL 5
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -27,6 +29,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys mapv]]
    [weavejester.dependency :as dep]))
 
 (defmethod lib.metadata.calculation/metadata-method :mbql/query
@@ -120,10 +123,10 @@
   [query :- ::lib.schema/query]
   (can-run query "question"))
 
-(defn add-types-to-fields
+(mu/defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
   `:effective-type` is required for coerced fields to pass schema checks."
-  [x metadata-provider]
+  [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (lib.util.match/match x
                        [:field
                         (_options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
@@ -170,12 +173,13 @@
 (defn- query-from-legacy-query
   [metadata-providerable legacy-query]
   (try
-    (let [pmbql-query (-> (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                            (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
-                          (add-types-to-fields metadata-providerable))]
+    (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+                        (lib.convert/->pMBQL (mbql.normalize/normalize-or-throw legacy-query)))
+          mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
+          mbql5-query (add-types-to-fields mbql5-query mp)]
       (merge
-       pmbql-query
-       (query-with-stages metadata-providerable (:stages pmbql-query))))
+       mbql5-query
+       (query-with-stages mp (:stages mbql5-query))))
     (catch #?(:clj Throwable :cljs :default) e
       (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
                       {:legacy-query legacy-query}
@@ -207,12 +211,12 @@
 ;; - fill in top expression refs with metadata
 (defmethod query-method :mbql/query
   [metadata-providerable {converted? :lib.convert/converted? :as query}]
-  (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
-        query (-> query
-                  (assoc :lib/metadata metadata-provider)
-                  (dissoc :lib.convert/converted?)
-
-                  lib.normalize/normalize)
+  (let [database-id       (some #(get query %) [:database "database"])
+        metadata-provider (lib.metadata/->metadata-provider metadata-providerable database-id)
+        query             (-> query
+                              (assoc :lib/metadata metadata-provider)
+                              (dissoc :lib.convert/converted?)
+                              lib.normalize/normalize)
         stages (:stages query)]
     (cond-> query
       converted?
@@ -232,9 +236,9 @@
                                             second
                                             (select-keys [:base-type :effective-type])))
                                        (catch #?(:clj Exception :cljs :default) _
-                                        ;; This currently does not find expressions defined in join stages
+                                         ;; This currently does not find expressions defined in join stages
                                          nil))]
-                      ;; Fallback if metadata is missing
+                       ;; Fallback if metadata is missing
                        [:expression (merge found-ref opts) expression-name]))))
              (m/indexed stages))))))
 
@@ -442,19 +446,13 @@
   (let [{q :query, n :stage-number} (wrap-native-query-with-mbql a-query stage-number card-id)]
     (apply f q n args)))
 
-;;; TODO (Cam 7/10/25) -- not sure this is really needed since the `:encode/serialize` keys for schemas already say
-;;; how to do this
-(defn serializable
-  "Given a query, ensure it doesn't have any keys or structures that aren't safe for serialization.
-
-  For example, any Atoms or Delays or should be removed."
-  [a-query]
-  (dissoc a-query :lib/metadata))
-
-(defn- get-native-stages [native-stage]
-  (for [{:keys [card-id] tag-type :type} (-> native-stage :template-tags vals)
-        :when (= tag-type :card)]
-    {:source-card card-id}))
+(defn- template-tag-stages
+  [template-tags]
+  (for [{:keys [card-id snippet-id] tag-type :type} (vals template-tags)
+        :when (#{:card :snippet} tag-type)]
+    (case tag-type
+      :card {:source-card card-id}
+      :snippet {:source-snippet-id snippet-id})))
 
 (defn- stage-seq* [query-fragment]
   (cond
@@ -467,38 +465,53 @@
 
     (map? query-fragment)
     (if (= (:lib/type query-fragment) :mbql.stage/native)
-      (get-native-stages query-fragment)
+      (-> query-fragment :template-tags template-tag-stages)
       (concat (:stages query-fragment) (mapcat stage-seq* (vals query-fragment))))
 
     :else
     []))
 
-(defn- stage-seq [card-id a-query]
-  (map #(assoc % ::from-card card-id) (stage-seq* a-query)))
+(defn- stage-seq [from-entity a-query]
+  ;; from-entity is [entity-type entity-id] like [:card 123] or [:snippet 456]
+  (map #(assoc % ::from-entity from-entity) (stage-seq* a-query)))
+
+(defn- snippet-seq [from-entity snippet]
+  (map #(assoc % ::from-entity from-entity) (template-tag-stages (:template-tags snippet))))
 
 (defn- expand-stage [metadata-provider stage]
-  (let [card-id (:source-card stage)
-        expanded-query (some->> card-id
-                                (lib.metadata/card metadata-provider)
-                                :dataset-query
-                                (query metadata-provider))]
-    (stage-seq card-id expanded-query)))
+  (let [{card-id    :source-card
+         snippet-id :source-snippet-id} stage]
+    (cond
+      card-id
+      (let [expanded-query (some->> card-id
+                                    (lib.metadata/card metadata-provider)
+                                    :dataset-query
+                                    (query metadata-provider))]
+        (stage-seq [:card card-id] expanded-query))
+
+      snippet-id
+      (when-let [snippet (lib.metadata/native-query-snippet metadata-provider snippet-id)]
+        (snippet-seq [:snippet snippet-id] snippet))
+
+      :else [])))
 
 (defn- add-stage-dep [graph stage]
-  (let [card-id  (:source-card  stage)
-        table-id (:source-table stage)
-        from-id  (::from-card   stage)]
+  (let [{card-id :source-card
+         snippet-id :source-snippet-id
+         table-id :source-table
+         from-entity ::from-entity} stage]
     (try
       (cond-> graph
-        card-id  (dep/depend [:card from-id] [:card  card-id])
-        table-id (dep/depend [:card from-id] [:table table-id]))
+        card-id (dep/depend from-entity [:card card-id])
+        snippet-id (dep/depend from-entity [:snippet snippet-id])
+        table-id (dep/depend from-entity [:table table-id]))
       (catch #?(:clj Exception :cljs :default) e
         (throw (ex-info (i18n/tru "Cannot save card with cycles.") {} e))))))
 
-(defn- build-graph [source-id metadata-provider a-query]
+(defn- build-card-snippet-graph [source-entity metadata-provider a-query]
   (loop [graph (dep/graph)
          stages-visited 0
-         stages (stage-seq source-id a-query)]
+         stages (stage-seq source-entity a-query)]
     (cond
       (empty? stages)
       graph
@@ -512,12 +525,12 @@
                (inc stages-visited)
                (concat stages (expand-stage metadata-provider stage)))))))
 
-(defn check-overwrite
+(defn check-card-overwrite
   "Returns nil if the card with given `card-id` can be overwritten with `query`.
   Throws `ExceptionInfo` with a user-facing message otherwise.
 
   Currently checks for cycles (self-referencing queries)."
   [card-id new-query]
-  (build-graph card-id new-query new-query)
+  (build-card-snippet-graph [:card card-id] new-query new-query)
   ;; return nil if nothing throws
   nil)

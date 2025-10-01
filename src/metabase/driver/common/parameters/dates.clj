@@ -1,5 +1,6 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  (:refer-clojure :exclude [every? some])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
@@ -15,6 +16,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
@@ -176,6 +178,8 @@
 
 (defn- with-temporal-unit-if-field
   [clause unit]
+  ;; legacy usages -- use Lib in new code going forward
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> clause
     (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
 

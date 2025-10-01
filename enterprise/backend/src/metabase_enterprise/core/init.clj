@@ -10,6 +10,7 @@
    [metabase-enterprise.advanced-config.init]
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
+   [metabase-enterprise.comments.init]
    [metabase-enterprise.database-replication.init]
    [metabase-enterprise.documents.init]
    [metabase-enterprise.gsheets.init]
@@ -19,4 +20,5 @@
    [metabase-enterprise.semantic-search.init]
    [metabase-enterprise.sso.init]
    [metabase-enterprise.stale.init]
+   [metabase-enterprise.transforms-python.init]
    [metabase-enterprise.transforms.init]))

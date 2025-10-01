@@ -6,7 +6,7 @@
       --env LDAP_PASSWORDS=123456,123465 \
       --env LDAP_ROOT=dc=example,dc=org \
       --env LDAP_PORT_NUMBER=389 \
-      bitnami/openldap:2.6.4
+      bitnamilegacy/openldap:2.6.4
  */
 export const setupLdap = () => {
   cy.log("Set up LDAP mock server");

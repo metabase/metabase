@@ -1,5 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -16,11 +17,23 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.stage.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.namespaces :as shared.ns]
+   [metabase.util.performance :refer [mapv some]]))
+
+(comment metabase.lib.stage.util/keep-me)
+
+(shared.ns/import-fns
+ [metabase.lib.stage.util
+  append-stage
+  drop-empty-stages
+  drop-stage
+  has-clauses?])
 
 (lib.hierarchy/derive :mbql.stage/mbql   ::stage)
 (lib.hierarchy/derive :mbql.stage/native ::stage)
@@ -77,14 +90,21 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
-    (-> (for [[tag :as ref-clause] fields
-              :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
-          (cond-> col
-            (= tag :expression) (assoc :lib/source              :source/expressions
-                                       :lib/source-column-alias (:lib/expression-name col))))
-        (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
-        not-empty)))
+  (let [stage             (lib.util/query-stage query stage-number)
+        ;; this key is added by [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]; we
+        ;; forward it as `:qp/implicit-field?`
+        ;; so [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] will know to force Field ID
+        ;; `:field_ref`s in the QP results metadata to preserve historic behavior
+        added-implicitly? (:qp/added-implicit-fields? stage)]
+    (when-let [{fields :fields} stage]
+      (-> (for [[tag :as ref-clause] fields
+                :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
+            (cond-> col
+              (= tag :expression) (assoc :lib/source              :source/expressions
+                                         :lib/source-column-alias (:lib/expression-name col))
+              added-implicitly?   (assoc :qp/implicit-field? true)))
+          (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
+          not-empty))))
 
 (mu/defn- summary-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query
@@ -347,35 +367,6 @@
                                             previous-stage-number
                                             (lib.util/query-stage query previous-stage-number)
                                             style))))
-
-(mu/defn has-clauses? :- :boolean
-  "Does given query stage have any clauses?"
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (boolean (seq (dissoc (lib.util/query-stage query stage-number) :lib/type :source-table :source-card))))
-
-(mu/defn append-stage :- ::lib.schema/query
-  "Adds a new blank stage to the end of the pipeline."
-  [query]
-  (update query :stages conj {:lib/type :mbql.stage/mbql}))
-
-(mu/defn drop-stage :- ::lib.schema/query
-  "Drops the final stage in the pipeline, will no-op if it is the only stage"
-  [query]
-  (if (= 1 (count (:stages query)))
-    query
-    (update query :stages pop)))
-
-(mu/defn drop-empty-stages :- ::lib.schema/query
-  "Drops all empty stages in the pipeline."
-  [query :- ::lib.schema/query]
-  (update query :stages (fn [stages]
-                          (into []
-                                (keep-indexed (fn [stage-number stage]
-                                                (when (or (zero? stage-number)
-                                                          (has-clauses? query stage-number))
-                                                  stage)))
-                                stages))))
 
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]
   "Given a query and current stage, returns a tuple of `[query next-stage-number]`.

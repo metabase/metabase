@@ -54,7 +54,8 @@
        [[metabase.util :as u]])
    [clojure.set :as set]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; Table (entity) Types
 
@@ -373,7 +374,7 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
-(def ^:private SnakeCasedField
+(mr/def ::snake-cased-type-info
   "E.g. the version coming back from the app DB as opposed to MLv2 metadata. This should eventually be considered
   deprecated."
   [:map
@@ -381,15 +382,25 @@
 
 (mu/defn field-is-type?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
-  relating to a moment in time."
+  relating to a moment in time.
+
+  DEPRECATED: Prefer MBQL 5 + [[metabase.lib.schema.expression/type-of]] (if you only have the clause)
+  or [[metabase.lib.metadata.calculation/type-of]] (if you have the query and stage number as well) going forward."
+  {:deprecated "0.57.0"}
   [tyype                                                  :- :keyword
-   {base-type :base_type, effective-type :effective_type} :- SnakeCasedField]
-  (some #(isa? % tyype) [base-type effective-type]))
+   {base-type :base_type, effective-type :effective_type} :- ::snake-cased-type-info]
+  (if (nil? effective-type)
+    (isa? base-type tyype)
+    (isa? effective-type tyype)))
 
 (mu/defn temporal-field?
   "True if a Metabase `Field` instance has a temporal base or semantic type, i.e. if this Field represents a value
-  relating to a moment in time."
-  [field :- SnakeCasedField]
+  relating to a moment in time.
+
+  DEPRECATED: Prefer using MBQL 5 + [[metabase.lib.types.isa/temporal?]] going forward."
+  {:deprecated "0.57.0"}
+  [field :- ::snake-cased-type-info]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (field-is-type? :type/Temporal field))
 
 (def ^:private assignable-hierarchy

@@ -21,15 +21,18 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: false,
     });
 
     const toggles = screen.getAllByRole("switch");
     expect(toggles).toHaveLength(2);
 
-    expect(screen.getByText("SDK for React")).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "SDK for React toggle" }),
+    ).toBeInTheDocument();
 
-    expect(screen.getByText("Embedded Analytics JS")).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "Embedded Analytics JS toggle" }),
+    ).toBeInTheDocument();
   });
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {
@@ -37,14 +40,16 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: true,
     });
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    // Check the Simple Embedding toggle
-    const toggles = screen.getAllByRole("switch");
-    await userEvent.click(toggles[1]); // Second toggle is for Simple SDK Embedding
+    // Enable Embedded Analytics JS
+    const toggle = await screen.findByRole("switch", {
+      name: "Embedded Analytics JS toggle",
+    });
+
+    await userEvent.click(toggle);
 
     // Should show the legalese modal
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -58,11 +63,13 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: true,
     });
 
-    const toggles = screen.getAllByRole("switch");
-    await userEvent.click(toggles[1]); // Second toggle is for Simple SDK Embedding
+    const toggle = await screen.findByRole("switch", {
+      name: "Embedded Analytics JS toggle",
+    });
+
+    await userEvent.click(toggle);
     await userEvent.click(screen.getByText("Agree and continue"));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -76,13 +83,27 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     });
   });
 
+  it("should show embed button and docs when simple embedding is available", async () => {
+    await setup({
+      isEmbeddingSdkEnabled: false,
+      isEmbeddingSimpleEnabled: true,
+      showSdkEmbedTerms: false,
+    });
+
+    const card = screen
+      .getAllByTestId("sdk-setting-card")
+      .find((card) => card.textContent?.includes("Embedded Analytics JS"));
+
+    expect(card).toHaveTextContent("New embed");
+    expect(card).toHaveTextContent("Documentation");
+  });
+
   describe("Authorized Origins input field", () => {
     it("should be disabled when both SDK and simple embedding are disabled", async () => {
       await setup({
         isEmbeddingSdkEnabled: false,
         isEmbeddingSimpleEnabled: false,
         showSdkEmbedTerms: false,
-        showSimpleEmbedTerms: false,
       });
 
       expect(
@@ -119,7 +140,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
           isEmbeddingSdkEnabled,
           isEmbeddingSimpleEnabled,
           showSdkEmbedTerms: false,
-          showSimpleEmbedTerms: false,
         });
 
         const originInput = screen.getByPlaceholderText(

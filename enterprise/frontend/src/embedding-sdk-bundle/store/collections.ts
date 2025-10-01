@@ -7,10 +7,10 @@ import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 import type { SdkCollectionId } from "../types/collection";
 
 /**
- * Converts "personal" and "root" to the _numeric_ ids accepted by the api
- * For the root collection id, the API expects null
+ * Converts "personal" and "root" to the ids accepted by the api
+ * For the root collection id, the API expects null.
  */
-export const getCollectionNumericIdFromReference = createSelector(
+export const getCollectionIdValueFromReference = createSelector(
   [
     getUserPersonalCollectionId,
     (_, collectionReference: SdkCollectionId) => collectionReference,
@@ -19,10 +19,10 @@ export const getCollectionNumericIdFromReference = createSelector(
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
       .with("root", () => null)
-      .with(P.number, () => collectionReference as RegularCollectionId)
+      .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
         throw new Error(
-          "Invalid collection id, expected `number | 'root' | 'personal'`",
+          "Invalid collection id, expected `number | string | 'root' | 'personal'`",
         );
       });
   },
@@ -43,10 +43,10 @@ export const getCollectionIdSlugFromReference = createSelector(
     return match(collectionReference)
       .with("personal", () => personalCollectionId as RegularCollectionId)
       .with("root", () => "root" as const)
-      .with(P.number, () => collectionReference as RegularCollectionId)
+      .with(P.union(P.number, P.string), (id) => id)
       .otherwise(() => {
         throw new Error(
-          "Invalid collection id, expected `number | 'root' | 'personal'`",
+          "Invalid collection id, expected `number | string | 'root' | 'personal'`",
         );
       });
   },

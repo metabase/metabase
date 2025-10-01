@@ -24,6 +24,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "renderTableHeader",
   "mode",
   "renderEmptyMessage",
+  "zoomedRowIndex",
 ];
 
 export default class VisualizationResult extends Component {
@@ -137,6 +138,7 @@ export default class VisualizationResult extends Component {
             isObjectDetail={false}
             isQueryBuilder={true}
             isShowingSummarySidebar={isShowingSummarySidebar}
+            isRunning={isRunning}
             onEditSummary={onEditSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}

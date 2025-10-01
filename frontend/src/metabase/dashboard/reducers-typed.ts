@@ -10,9 +10,11 @@ import {
 } from "metabase/api";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
 import { handleActions } from "metabase/lib/redux";
-import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
+import {
+  NAVIGATE_BACK_TO_DASHBOARD,
+  REVERT_TO_REVISION,
+} from "metabase/query_builder/actions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -20,6 +22,7 @@ import type {
   Dashboard,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
 import type {
@@ -238,7 +241,7 @@ export const parameterValues = createReducer(
         type: string;
         payload: {
           id: ParameterId;
-          value: ParameterValueOrArray;
+          value: ParameterValueOrArray | undefined | null;
           isDraft: boolean;
         };
       }
@@ -252,7 +255,7 @@ export const parameterValues = createReducer(
       string,
       {
         type: string;
-        payload: Record<ParameterId, ParameterValueOrArray>;
+        payload: ParameterValuesMap;
       }
     >(SET_PARAMETER_VALUES, (_state, { payload }) => {
       return payload;
@@ -453,12 +456,12 @@ export const dashcardData = createReducer(
         },
       )
       .addCase<string, { type: string; payload: Revision }>(
-        Revisions.actionTypes.REVERT,
+        REVERT_TO_REVISION,
         (state, action) => {
-          const { model_id } = action.payload;
-          if (model_id) {
+          const { id } = action.payload;
+          if (id != null) {
             for (const dashcardId in state) {
-              delete state[dashcardId][model_id];
+              delete state[dashcardId][id];
             }
           }
         },

@@ -1,4 +1,6 @@
 import type {
+  DatabaseId,
+  PythonTransformTableAliases,
   Transform,
   TransformJob,
   TransformRun,
@@ -9,13 +11,27 @@ import type {
 
 import { createMockStructuredDatasetQuery } from "./query";
 
-export function createMockTransformSource(
-  opts?: Partial<TransformSource>,
-): TransformSource {
+export function createMockTransformSource(): TransformSource {
   return {
     type: "query",
     query: createMockStructuredDatasetQuery(),
-    ...opts,
+  };
+}
+
+export function createMockPythonTransformSource({
+  sourceDatabase = 1,
+  sourceTables = {},
+  body = "# Python script\nprint('Hello, world!')",
+}: {
+  sourceDatabase?: DatabaseId;
+  sourceTables?: PythonTransformTableAliases;
+  body?: string;
+}): TransformSource {
+  return {
+    type: "python",
+    body,
+    "source-database": sourceDatabase,
+    "source-tables": sourceTables,
   };
 }
 
@@ -26,6 +42,7 @@ export function createMockTransformTarget(
     type: "table",
     name: "Table",
     schema: null,
+    database: 1,
     ...opts,
   };
 }
@@ -77,6 +94,7 @@ export function createMockTransformJob(
     name: "Job",
     description: null,
     schedule: "0 0 0 * * ? *",
+    ui_display_type: "cron/builder",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
     ...opts,

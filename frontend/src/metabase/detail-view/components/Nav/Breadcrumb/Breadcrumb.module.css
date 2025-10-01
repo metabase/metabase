@@ -1,0 +1,9 @@
+.breadcrumb {
+  overflow: hidden;
+}
+
+.link {
+  &:hover {
+    color: var(--mb-color-brand) !important;
+  }
+}

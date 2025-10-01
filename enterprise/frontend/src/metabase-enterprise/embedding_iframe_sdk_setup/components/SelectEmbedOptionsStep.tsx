@@ -19,8 +19,8 @@ export const SelectEmbedOptionsStep = () => {
     (experience === "dashboard" && settings.dashboardId) ||
     (experience === "chart" && settings.questionId);
 
-  const isExplorationEmbed = settings.template === "exploration";
-  const isBrowserEmbed = settings.componentName === "metabase-browser";
+  const isBrowserComponent = settings.componentName === "metabase-browser";
+  const isQuestionComponent = settings.componentName === "metabase-question";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -42,7 +42,7 @@ export const SelectEmbedOptionsStep = () => {
         <Stack gap="md">
           {isQuestionOrDashboardEmbed && (
             <Checkbox
-              label={t`Allow users to drill through on data points`}
+              label={t`Allow people to drill through on data points`}
               checked={settings.drills}
               onChange={(e) => updateSettings({ drills: e.target.checked })}
             />
@@ -58,9 +58,9 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isExplorationEmbed && (
+          {isQuestionComponent && (
             <Checkbox
-              label={t`Allow users to save new questions`}
+              label={t`Allow people to save new questions`}
               checked={settings.isSaveEnabled}
               onChange={(e) =>
                 updateSettings({ isSaveEnabled: e.target.checked })
@@ -68,7 +68,7 @@ export const SelectEmbedOptionsStep = () => {
             />
           )}
 
-          {isBrowserEmbed && (
+          {isBrowserComponent && (
             <Checkbox
               label={t`Allow editing dashboards and questions`}
               checked={!settings.readOnly}
