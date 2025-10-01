@@ -123,11 +123,24 @@ const AutomaticDashboardAppInner = () => {
                     />
                   </FixedWidthContainer>
                   <div
-                    className={cx(CS.flex, CS.flexGrow1)}
-                    style={{ maxWidth: SIDEBAR_W }}
+                    className={cx(
+                      CS.flex,
+                      CS.flexGrow1,
+                      CS.alignCenter,
+                      CS.justifyEnd,
+                    )}
+                    style={{ maxWidth: SIDEBAR_W, whiteSpace: "nowrap" }}
                   >
                     {savedDashboardId != null ? (
-                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                      <>
+                        <Link
+                          className={cx(CS.link, CS.textBold, CS.mr2)}
+                          to={Urls.dashboard({ id: savedDashboardId })}
+                        >
+                          {t`See it`}
+                        </Link>
+                        <Button disabled>{t`Saved`}</Button>
+                      </>
                     ) : (
                       <ActionButton
                         className={cx(CS.mlAuto, CS.textNoWrap)}
