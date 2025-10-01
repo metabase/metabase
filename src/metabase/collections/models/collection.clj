@@ -1107,8 +1107,8 @@
 
   Raises:
     ex-info object with remote-synced-dependencies and a 400 status code"
-  [original-colleciton-id model]
-  (when-let [remote-synced-deps (not-empty (remote-synced-dependents original-colleciton-id model))]
+  [original-collection-id model]
+  (when-let [remote-synced-deps (not-empty (remote-synced-dependents original-collection-id model))]
     (throw (ex-info (str (deferred-tru "Model has remote-synced dependents")) {:remote-synced-models remote-synced-deps
                                                                                :status-code 400})))
   model)

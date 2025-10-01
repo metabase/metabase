@@ -1456,7 +1456,9 @@
             (let [child-location (collection/children-location collection-before-update)]
               (t2/query-one {:update :collection
                              :where [:like :location #p (str child-location "%")]
-                             :set {:type (:type updates)}}))))))
+                             :set {:type (:type updates)}}))
+            (when (= (:type updates) "remote-synced")
+              (collection/check-non-remote-synced-dependencies (t2/select-one :model/Collection :id id)))))))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
