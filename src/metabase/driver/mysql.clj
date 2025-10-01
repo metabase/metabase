@@ -220,8 +220,8 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 3306)
+   [(assoc driver.common/default-host-details :group-id "host-and-port")
+    (assoc driver.common/default-port-details :placeholder 3306 :group-id "host-and-port")
     driver.common/default-dbname-details
     driver.common/default-user-details
     driver.common/default-password-details
@@ -1127,3 +1127,8 @@
 (defmethod driver.sql/default-schema :mysql
   [_]
   nil)
+
+(defmethod driver/extra-info :mysql
+  [_driver]
+  {:field-groups [{:id "host-and-port"
+                   :container-style "host-and-port-section"}]})
