@@ -22,10 +22,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- metadatas [delegate overrides {metadata-type :lib/type
-                                      :keys [id name card-id table-id]
+                                      search-name :name
+                                      :keys [id card-id table-id]
                                       :as metadata-spec}]
   (let [type-overrides  (get overrides metadata-type)
-        metadata-keys   (set (or id name))]
+        metadata-keys   (set (or id search-name))]
     (log/tracef "OverridingMetadataProvider request for %s" metadata-spec)
     (cond
       ;; For tables, cards, snippets and transforms, return overrides if present and looking for specific keys and
@@ -39,7 +40,7 @@
                               (select-keys type-overrides id)
 
                               (into {} (keep #(when-let [x (deref %)]
-                                                (when (name (:name x))
+                                                (when (search-name (:name x))
                                                   [(:name x) %])))
                                     (vals type-overrides)))
             override-key    (if (seq id) :id :name)
