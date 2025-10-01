@@ -60,13 +60,13 @@
   :feature :sso-ldap
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
    {:keys [sync-groups?], :as settings}                                  :- sso/LDAPSettings]
-  (let [user (or (attribute-synced-user user-info)
-                 (sso-utils/check-user-provisioning :ldap)
-                 (-> (sso/create-new-ldap-auth-user! {:first_name       first-name
-                                                      :last_name        last-name
-                                                      :email            email
-                                                      :login_attributes attributes})
-                     (assoc :is_active true)))]
+  (let [user (or #p (attribute-synced-user user-info)
+                 #p (sso-utils/check-user-provisioning :ldap)
+                 #p (-> (sso/create-new-ldap-auth-user! {:first_name       first-name
+                                                         :last_name        last-name
+                                                         :email            email
+                                                         :login_attributes attributes})
+                        (assoc :is_active true)))]
     (u/prog1 user
       (when sync-groups?
         (let [group-ids            (sso/ldap-groups->mb-group-ids groups settings)

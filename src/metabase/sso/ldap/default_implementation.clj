@@ -165,22 +165,22 @@
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
 
-  (let [user     (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]
-                                :%lower.email (u/lower-case-en email))
+  (let [user     #p (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]
+                                   :%lower.email (u/lower-case-en email))
         new-user (if user
-                   (let [old-first-name (:first_name user)
-                         old-last-name  (:last_name user)
-                         user-changes   (merge
-                                         (when (not= first-name old-first-name) {:first_name first-name})
-                                         (when (not= last-name old-last-name) {:last_name last-name}))]
-                     (if (seq user-changes)
-                       (do
-                         (t2/update! :model/User (:id user) user-changes)
-                         (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
-                       user))
-                   (create-new-ldap-auth-user! {:first_name first-name
-                                                :last_name  last-name
-                                                :email      email}))]
+                   #p (let [old-first-name (:first_name user)
+                            old-last-name  (:last_name user)
+                            user-changes   (merge
+                                            (when (not= first-name old-first-name) {:first_name first-name})
+                                            (when (not= last-name old-last-name) {:last_name last-name}))]
+                        (if (seq user-changes)
+                          (do
+                            (t2/update! :model/User (:id user) user-changes)
+                            (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+                          user))
+                   #p (create-new-ldap-auth-user! {:first_name first-name
+                                                   :last_name  last-name
+                                                   :email      email}))]
     (u/prog1 new-user
       (when sync-groups?
         (let [group-ids            (ldap-groups->mb-group-ids groups settings)
