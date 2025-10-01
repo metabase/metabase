@@ -2,6 +2,7 @@
   display: flex;
   gap: 0.5rem;
   padding: 1rem;
+  width: 250px;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: var(--mb-color-bg-white);

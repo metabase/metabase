@@ -26,9 +26,7 @@ export function DependencyFlow() {
     useGetDependencyGraphQuery();
   const [nodes, setNodes, handleNodeChange] = useNodesState<GraphNode>([]);
   const [edges, setEdges, handleEdgeChange] = useEdgesState<Edge>([]);
-  const [visibleNodeIds, setVisibleNodeIds] = useState(
-    new Set<NodeId>(["table-11"]),
-  );
+  const [visibleNodeIds, setVisibleNodeIds] = useState(new Set<NodeId>());
 
   useEffect(() => {
     const { nodes, edges } = getGraphInfo(graph, visibleNodeIds);
