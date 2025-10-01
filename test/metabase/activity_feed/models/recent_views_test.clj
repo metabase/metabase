@@ -128,6 +128,7 @@
              :id my-coll-id
              :timestamp String
              :authority_level nil
+             :collection_type nil
              :model :collection}]
            (mt/with-test-user :rasta
              (mapv fixup
@@ -148,6 +149,7 @@
              :parent_collection {:id coll-id-c, :name "parent coll", :authority_level :official}
              :timestamp String
              :authority_level nil
+             :collection_type nil
              :model :collection}]
            (mt/with-test-user :rasta
              (mapv fixup
@@ -241,6 +243,7 @@
                    :model :collection,
                    :can_write true,
                    :authority_level nil,
+                   :collection_type nil,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
                   {:id "ID",
                    :name "my dash",

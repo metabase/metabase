@@ -697,7 +697,6 @@
                 :personal_owner_id
                 :location
                 :archived_directly
-                :type
                 [:type :collection_type]
                 [(h2x/literal "collection") :model]
                 :authority_level])
@@ -801,7 +800,8 @@
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
 (defn- remove-unwanted-keys [row]
-  (dissoc row :collection_type :model_ranking :archived_directly :total_count))
+  (cond-> (dissoc row :model_ranking :archived_directly :total_count)
+    (not= :model :collection) (dissoc :collection_type)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)
@@ -854,7 +854,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :type :collection_type [:archived :boolean] [:last_used_at :timestamp]
+   :collection_type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -1253,13 +1253,13 @@
                          (contains? params :type) type
                          parent-type parent-type
                          :else nil)]
-  ;; Now create the new Collection :)
+     ;; Now create the new Collection :)
     (u/prog1 (t2/insert-returning-instance!
               :model/Collection
               (merge
                {:name            name
                 :description     description
-                :type effective-type
+                :type            effective-type
                 :authority_level authority_level
                 :namespace       effective-namespace}
                (when parent-collection
@@ -1275,7 +1275,7 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:type {:optional true} [:maybe CollectionType]]
+            [:type            {:optional true} [:maybe CollectionType]]
             [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   (create-collection! body))
 

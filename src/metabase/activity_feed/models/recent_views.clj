@@ -426,7 +426,7 @@
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
      :authority_level (some-> (:authority_level collection) name)
-     :type (some-> (:type collection) name)
+     :collection_type (some-> (:type collection) name)
      :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 

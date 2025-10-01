@@ -8,3 +8,6 @@
   (doseq [username test.users/usernames]
     ;; fetch-user will force creation of users
     (test.users/fetch-user username)))
+
+(comment
+  (metabase.test.initialize.test-users/init!))
