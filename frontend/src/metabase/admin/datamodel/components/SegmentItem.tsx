@@ -1,11 +1,10 @@
-import { Link } from "react-router";
-
+import Link from "metabase/common/components/Link";
+import { usePath } from "metabase/common/hooks";
 import { TableBreadcrumbs } from "metabase/metadata/components";
-import { Box, Flex, Group, Icon } from "metabase/ui";
+import { Box, Flex, Group, Icon, NavLink, Stack, Text } from "metabase/ui";
 import type { Segment } from "metabase-types/api";
 
 import SegmentActionSelect from "./SegmentActionSelect";
-import S from "./SegmentItem.module.css";
 
 interface Props {
   segment: Segment;
@@ -13,37 +12,49 @@ interface Props {
 }
 
 export const SegmentItem = ({ segment, onRetire }: Props) => {
+  const path = usePath();
+
+  const currentPathId = path?.split("/").pop();
+  const isActive = currentPathId === String(segment.id);
+
   return (
-    <tr>
-      <Box component="td" className={S.cell} p="sm">
-        <Link to={`/admin/datamodel/segment/${segment.id}`}>
-          <Group display="inline-flex" gap="sm" wrap="nowrap">
-            <Box
-              color="text-medium"
-              component={Icon}
-              flex="0 0 auto"
-              name="segment"
-            />
-            <Box c="text-dark" fw="bold">
-              {segment.name}
+    <NavLink
+      component={Link}
+      to={`/bench/segment/${segment.id}`}
+      active={isActive}
+      label={
+        <Flex justify="space-between">
+          <Stack gap="sm">
+            <Link to={`/bench/segment/${segment.id}`}>
+              <Group display="inline-flex" gap="sm" wrap="nowrap">
+                <Box
+                  color="text-medium"
+                  component={Icon}
+                  flex="0 0 auto"
+                  name="segment"
+                />
+                <Box c="text-dark" fw="bold">
+                  {segment.name}
+                </Box>
+              </Group>
+            </Link>
+            <Box maw={500} c="text-light">
+              <TableBreadcrumbs tableId={segment.table_id} />
             </Box>
-          </Group>
-        </Link>
-      </Box>
 
-      <Box component="td" className={S.cell} maw={500} p="sm">
-        <TableBreadcrumbs tableId={segment.table_id} />
-      </Box>
+            <Text c="text-light">
 
-      <Box component="td" className={S.cell} p="sm">
-        {segment.definition_description}
-      </Box>
+              {segment.definition_description}
+            </Text>
 
-      <Box component="td" className={S.cell} p="sm">
-        <Flex justify="center">
-          <SegmentActionSelect object={segment} onRetire={onRetire} />
+          </Stack>
+          <Box>
+            <Flex justify="center">
+              <SegmentActionSelect object={segment} onRetire={onRetire} />
+            </Flex>
+          </Box>
         </Flex>
-      </Box>
-    </tr>
+      }
+    />
   );
 };

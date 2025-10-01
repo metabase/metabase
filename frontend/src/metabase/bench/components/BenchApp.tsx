@@ -2,7 +2,9 @@ import { index } from "d3";
 import type React from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
-import { Box, Flex , Stack } from "metabase/ui";
+import { PLUGIN_METABOT } from "metabase/plugins";
+import { Stack } from "metabase/ui";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { BenchAppBar } from "./BenchAppBar"
 import { BenchNav } from "./BenchNav";
@@ -33,7 +35,24 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
         <Panel>
           {children}
         </Panel>
+        <BenchMetabot />
       </PanelGroup>
     </Stack>
+  )
+}
+
+function BenchMetabot() {
+  const metabot = useMetabotAgent();
+
+  if(!metabot.visible) {
+    return null;
+  }
+  return (
+    <>
+      <ResizeHandle />
+      <Panel maxSize={30} style={{ height: "100%"}}>
+          <PLUGIN_METABOT.Metabot w="100%" />
+      </Panel>
+    </>
   )
 }
