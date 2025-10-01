@@ -25,6 +25,8 @@ import {
   getErrorPage,
   getIsAdminApp,
   getIsAppBarVisible,
+  getIsBenchApp,
+  getIsEmbeddingSetup,
   getIsNavBarEnabled,
 } from "metabase/selectors/app";
 import StatusListing from "metabase/status/components/StatusListing";
@@ -55,6 +57,8 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 interface AppStateProps {
   errorPage: AppErrorDescriptor | null;
   isAdminApp: boolean;
+  isBenchApp: boolean;
+  isEmbeddingSetup: boolean;
   bannerMessageDescriptor?: string;
   isAppBarVisible: boolean;
   isNavBarEnabled: boolean;
@@ -77,6 +81,8 @@ const mapStateToProps = (
 ): AppStateProps => ({
   errorPage: getErrorPage(state),
   isAdminApp: getIsAdminApp(state, props),
+  isBenchApp: getIsBenchApp(state, props),
+  isEmbeddingSetup: getIsEmbeddingSetup(state, props),
   isAppBarVisible: getIsAppBarVisible(state, props),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
 });
@@ -88,6 +94,8 @@ const mapDispatchToProps: AppDispatchProps = {
 function App({
   errorPage,
   isAdminApp,
+  isBenchApp,
+  isEmbeddingSetup,
   isAppBarVisible,
   isNavBarEnabled,
   children,
@@ -120,7 +128,7 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp} />
+              <PLUGIN_METABOT.Metabot hide={isAdminApp || isBenchApp} />
             </AppContentContainer>
           </AppContainer>
           <Palette />

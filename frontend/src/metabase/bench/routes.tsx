@@ -1,11 +1,10 @@
-import { IndexRedirect, Redirect } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
-import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
+import SegmentApp, { CreateSegmentForm, UpdateSegmentForm } from "metabase/admin/datamodel/containers/SegmentApp";
 import { createAdminRouteGuard } from "metabase/admin/utils";
-import { BrowseMetrics } from "metabase/browse";
+import { BrowseMetrics, BrowseModels } from "metabase/browse";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import type { AppStore } from "metabase/lib/redux";
@@ -13,9 +12,13 @@ import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
+import { DatasetEditor } from "metabase/query_builder/components/DatasetEditor";
 
 import { BenchApp } from "./components/BenchApp";
-import { ModelsList } from "./components/models/ModelsList";
+import { EmptySailboat } from "./components/BenchLayout";
+import { OverviewPage } from "./components/OverviewPage";
+import { MetricEditor, MetricsLayout } from "./components/metrics/MetricsList";
+import { ModelMetadataEditor, ModelsLayout, ModelsList } from "./components/models/ModelsList";
 
 export const getBenchRoutes = (
   store: AppStore,
@@ -25,12 +28,22 @@ export const getBenchRoutes = (
   <Route path="/bench" component={CanAccessSettings}>
     <Route title={t`Bench`} component={BenchApp}>
       <IndexRedirect to="overview" />
-      <Route path="overview" component={() => <div>{t`Overview`}</div>} />
+      <Route path="overview" component={() => <OverviewPage />} />
       {PLUGIN_TRANSFORMS.getAdminRoutes()}
-      <Route path="segments" component={SegmentListApp} />
-      <Route path="model" component={ModelsList} />
-      <Route path="model/:slug" component={() => <div>{t`Model`}</div>} />
-      <Route path="metrics" component={BrowseMetrics} />
+      <Route path="segment" component={SegmentApp}>
+        <Route path="new" component={CreateSegmentForm} />
+        <Route path=":id" component={UpdateSegmentForm} />
+        <Route path=":id/revisions" component={RevisionHistoryApp} />
+      </Route>
+
+      <Route path="model" component={ModelsLayout}>
+        <IndexRoute component={EmptySailboat} />
+        <Route path=":id" component={ModelMetadataEditor} />
+      </Route>
+      <Route path="metric" component={MetricsLayout} >
+        <IndexRoute component={EmptySailboat} />
+        <Route path=":id" component={MetricEditor} />
+      </Route>
       <Route path="metadata" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
@@ -49,8 +62,6 @@ export const getBenchRoutes = (
             component={DataModel}
           />
           <Route component={DataModel}>
-            <Route path="segments" component={SegmentListApp} />
-            <Route path="segment/create" component={SegmentApp} />
             <Route path="segment/:id" component={SegmentApp} />
             <Route
               path="segment/:id/revisions"

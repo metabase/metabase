@@ -1,4 +1,5 @@
 import { ActionIcon, Box, Group, Icon, TextInput } from "metabase/ui";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 interface BenchToolbarProps {
   onMetabotToggle: () => void;
@@ -8,11 +9,10 @@ interface BenchToolbarProps {
 }
 
 export function BenchAppBar({
-  onMetabotToggle,
-  isMetabotOpen,
   onSidebarToggle,
   isSidebarOpen,
 }: BenchToolbarProps) {
+  const metabot = useMetabotAgent();
   return (
     <Box
       style={{
@@ -50,8 +50,8 @@ export function BenchAppBar({
 
       <Group gap="xs">
         <ActionIcon
-          variant={isMetabotOpen ? "filled" : "subtle"}
-          onClick={onMetabotToggle}
+          variant={metabot.visible ? "filled" : "subtle"}
+          onClick={() => metabot.setVisible(!metabot.visible)}
         >
           <Icon name="insight" />
         </ActionIcon>
