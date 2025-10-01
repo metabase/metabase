@@ -8,10 +8,9 @@ import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
 
-type SYNCED_KEY = "refresh" | "fullscreen" | "theme";
+type SYNCED_KEY = "refresh" | "fullscreen";
 
 const DEFAULT_SYNCED_DASHBOARD_OPTIONS = {
-  theme: "light",
   fullscreen: false,
   refresh: null,
 } as const;

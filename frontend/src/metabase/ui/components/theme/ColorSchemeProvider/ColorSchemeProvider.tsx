@@ -12,25 +12,21 @@ import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
-type ResolvedColorScheme = "light" | "dark";
+export type ResolvedColorScheme = "light" | "dark";
 
 export type ColorScheme = "auto" | ResolvedColorScheme;
 
 interface ColorSchemeContextType {
   colorScheme: ColorScheme;
-  colorSchemeOverride: null | ColorScheme;
   resolvedColorScheme: ResolvedColorScheme;
   setColorScheme: (scheme: ColorScheme) => void;
-  setColorSchemeOverride: (scheme: null | ResolvedColorScheme) => void;
   toggleColorScheme: () => void;
 }
 
 const defaultValue: ColorSchemeContextType = {
   colorScheme: "light",
-  colorSchemeOverride: null,
   resolvedColorScheme: "light",
   setColorScheme: noop,
-  setColorSchemeOverride: noop,
   toggleColorScheme: noop,
 };
 
@@ -39,7 +35,7 @@ const ColorSchemeContext = createContext<ColorSchemeContextType>(defaultValue);
 interface ColorSchemeProviderProps {
   children: ReactNode;
   defaultColorScheme?: ColorScheme;
-  forceColorScheme?: ResolvedColorScheme;
+  forceColorScheme?: ResolvedColorScheme | null;
 }
 
 function getSystemColorScheme(): ResolvedColorScheme {
@@ -60,8 +56,6 @@ export function ColorSchemeProvider({
   defaultColorScheme = "light",
   forceColorScheme,
 }: ColorSchemeProviderProps) {
-  const [colorSchemeOverride, setColorSchemeOverride] =
-    useState<ResolvedColorScheme | null>(null);
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
     // Try to get saved preference from localStorage
     if (typeof window !== "undefined") {
@@ -77,10 +71,10 @@ export function ColorSchemeProvider({
       return forceColorScheme;
     }
     if (getIsEmbeddingIframe()) {
-      return colorSchemeOverride || "light";
+      return "light";
     }
-    return resolveColorScheme(colorSchemeOverride || colorScheme);
-  }, [colorScheme, colorSchemeOverride, forceColorScheme]);
+    return resolveColorScheme(colorScheme);
+  }, [colorScheme, forceColorScheme]);
 
   useEffect(() => {
     localStorage.setItem("metabase-color-scheme", colorScheme);
@@ -104,8 +98,6 @@ export function ColorSchemeProvider({
         colorScheme,
         resolvedColorScheme,
         setColorScheme,
-        colorSchemeOverride,
-        setColorSchemeOverride,
         toggleColorScheme: () => {
           setColorScheme((current) => {
             switch (current) {
