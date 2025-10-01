@@ -697,6 +697,7 @@
                 :personal_owner_id
                 :location
                 :archived_directly
+                :type
                 [:type :collection_type]
                 [(h2x/literal "collection") :model]
                 :authority_level])
@@ -853,7 +854,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type [:archived :boolean] [:last_used_at :timestamp]
+   :type :collection_type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 

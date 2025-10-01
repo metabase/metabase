@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
 import {
   Box,
   Button,
@@ -37,6 +39,7 @@ export const BranchPicker = ({
   baseBranch = "main",
   allowCreate = true,
 }: BranchPickerProps) => {
+  const dispatch = useDispatch();
   const combobox = useCombobox();
   const [searchValue, setSearchValue] = useState("");
   const { data: branchesData, isLoading: branchesLoading } =
@@ -83,7 +86,13 @@ export const BranchPicker = ({
 
       onChange(branchName, true);
     } catch (error) {
-      console.error("Failed to create branch:", error);
+      dispatch(
+        addUndo({
+          message: t`Failed to create branch`,
+          toaster: true,
+          undo: false,
+        }),
+      );
     }
   };
 

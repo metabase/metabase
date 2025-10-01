@@ -100,9 +100,14 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
 interface AllChangesViewProps {
   entities: DirtyEntity[];
   collections: Collection[];
+  title?: string;
 }
 
-const AllChangesView = ({ entities, collections }: AllChangesViewProps) => {
+const AllChangesView = ({
+  entities,
+  collections,
+  title,
+}: AllChangesViewProps) => {
   const { data: collectionTree = [] } = useListCollectionsTreeQuery();
 
   const collectionMap = useMemo(() => {
@@ -163,7 +168,7 @@ const AllChangesView = ({ entities, collections }: AllChangesViewProps) => {
     <Box>
       <Group gap="xs" mb="md" align="end">
         <Title order={4} mr="sm" c="text-dark">
-          {t`Changes to push`}
+          {title ?? t`Changes to push`}
         </Title>
         <Badge
           size="md"
@@ -263,11 +268,12 @@ const AllChangesView = ({ entities, collections }: AllChangesViewProps) => {
   );
 };
 
-export const ChangesLists = ({
-  collections,
-}: {
+interface ChangesListsProps {
   collections: Collection[];
-}) => {
+  title?: string;
+}
+
+export const ChangesLists = ({ collections, title }: ChangesListsProps) => {
   const { data: dirtyData, isLoading: isLoadingChanges } =
     useGetChangedEntitiesQuery(undefined, {
       refetchOnMountOrArgChange: true,
@@ -294,7 +300,13 @@ export const ChangesLists = ({
     );
   }
 
-  return <AllChangesView entities={allEntities} collections={collections} />;
+  return (
+    <AllChangesView
+      entities={allEntities}
+      collections={collections}
+      title={title}
+    />
+  );
 };
 
 interface CommitMessageSectionProps {

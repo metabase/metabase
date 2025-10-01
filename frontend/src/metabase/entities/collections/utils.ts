@@ -38,7 +38,7 @@ export function getCollectionIcon(
   }
 
   if (isSyncedCollection(collection)) {
-    return { name: "sync" };
+    return { name: "synced_collection" };
   }
 
   const type = PLUGIN_COLLECTIONS.getCollectionType(collection);

@@ -130,21 +130,23 @@ export const SyncedCollectionsSidebarSection = ({
                   isLoading={isLoading}
                   baseBranch={currentBranch ?? "main"}
                 />
-                <Button
-                  variant="subtle"
-                  onClick={openPush}
-                  disabled={isLoading}
-                  h={24}
-                  px={0}
-                  ml="auto"
-                >
-                  <Icon
-                    name="upload"
-                    c="brand"
-                    size={20}
-                    tooltip={t`Push to Git`}
-                  />
-                </Button>
+                {isDirty && (
+                  <Button
+                    variant="subtle"
+                    onClick={openPush}
+                    disabled={isLoading}
+                    h={24}
+                    px={0}
+                    ml="auto"
+                  >
+                    <Icon
+                      name="upload"
+                      c="brand"
+                      size={18}
+                      tooltip={t`Push to Git`}
+                    />
+                  </Button>
+                )}
               </Group>
               {isLoading && (
                 <LoadingModal status={status} progress={progress} />
@@ -182,12 +184,15 @@ export const SyncedCollectionsSidebarSection = ({
         onClose={closeConfirm}
         title={t`Switch branches?`}
         message={t`Switching branches will discard these unsynced changes:`}
-        confirmButtonText={t`Import from Git`}
+        confirmButtonText={t`Discard changes and switch`}
         onConfirm={() => handleBranchChange(nextBranch)}
       >
         {showConfirm && (
           <ScrollArea.Autosize mah="50dvh" offsetScrollbars type="hover">
-            <ChangesLists collections={syncedCollections} />
+            <ChangesLists
+              collections={syncedCollections}
+              title={t`Unsynced changes`}
+            />
           </ScrollArea.Autosize>
         )}
       </ConfirmModal>
@@ -210,9 +215,9 @@ const CollectionStatusBadge = ({
   const { data } = useGetChangedEntitiesQuery();
 
   const isDirty =
-    data?.changedCollections && collection?.id in data.changedCollections;
-
-  // toDo: scan through changes and put badges next to changed collections
+    data?.changedCollections != null &&
+    typeof collection?.id === "number" &&
+    data.changedCollections[collection.id];
 
   if (!isDirty) {
     return null;
@@ -220,7 +225,7 @@ const CollectionStatusBadge = ({
 
   return (
     <Tooltip label={t`Unsynced changes`}>
-      <Box bdrs="50%" bg="warning" h={12} w={12} />
+      <Box bdrs="50%" bg="warning" h={12} w={12} mr="xs" />
     </Tooltip>
   );
 };

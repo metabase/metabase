@@ -94,7 +94,7 @@ const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
   }
 
   if (PLUGIN_COLLECTIONS.isSyncedCollection(collection)) {
-    return <Icon name="sync" size={24} c="brand" />;
+    return <Icon name="synced_collection" size={24} c="brand" />;
   }
 
   if (isRootTrashCollection(collection)) {

@@ -1,0 +1,15 @@
+.CollectionSelectFolderIcon {
+  color: var(--mb-color-brand);
+}
+
+.CollectionSelectOpenIcon {
+  color: var(--mb-color-text-medium);
+}
+
+.CollectionSelectOption[aria-selected="true"] {
+  .CollectionSelectFolderIcon,
+  .CollectionSelectOpenIcon,
+  .CollectionSelectText {
+    color: var(--mb-color-text-white);
+  }
+}

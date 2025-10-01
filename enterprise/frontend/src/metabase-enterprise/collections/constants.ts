@@ -15,7 +15,7 @@ export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
 
 export const REMOTE_SYNC_COLLECTION: CollectionInstanceAnaltyicsConfig = {
   type: "remote-synced",
-  icon: "folder",
+  icon: "synced_collection",
 };
 
 export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {

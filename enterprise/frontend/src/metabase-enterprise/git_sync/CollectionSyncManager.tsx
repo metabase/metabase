@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   useListCollectionItemsQuery,
@@ -27,6 +27,8 @@ import {
   Text,
 } from "metabase/ui";
 import type { Collection, EnterpriseSettings } from "metabase-types/api";
+
+import S from "./CollectionSyncManager.module.css";
 
 interface CollectionSyncManagerProps {
   mode: EnterpriseSettings["remote-sync-type"];
@@ -63,6 +65,9 @@ const CollectionSelect = ({
         maw={400}
         leftSection={<Icon name="add" size={16} />}
         disabled={availableCollections.length === 0}
+        classNames={{
+          option: S.CollectionSelectOption,
+        }}
         renderOption={({ option }) => {
           const collection = availableCollections.find(
             (c) => String(c.id) === option.value,
@@ -70,8 +75,12 @@ const CollectionSelect = ({
           return (
             <Group justify="space-between" wrap="nowrap" w="100%" p="sm">
               <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
-                <Icon name="folder" c="brand" size={16} />
-                <Text truncate size="sm">
+                <Icon
+                  className={S.CollectionSelectFolderIcon}
+                  name="folder"
+                  size={16}
+                />
+                <Text className={S.CollectionSelectText} truncate>
                   {option.label}
                 </Text>
               </Group>
@@ -84,7 +93,11 @@ const CollectionSelect = ({
                     window.open(Urls.collection(collection), "_blank");
                   }}
                 >
-                  <Icon name="external" size={14} />
+                  <Icon
+                    className={S.CollectionSelectOpenIcon}
+                    name="external"
+                    size={14}
+                  />
                 </ActionIcon>
               )}
             </Group>
@@ -251,9 +264,11 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
       {hasSyncedCollections ? (
         <Box>
           <Text c="text-medium" size="sm" mb="md">
-            {mode === "export"
-              ? t`${syncedCollections.length} collection${syncedCollections.length === 1 ? "" : "s"} syncing to Git`
-              : t`${syncedCollections.length} collection${syncedCollections.length === 1 ? "" : "s"} from Git`}
+            {ngettext(
+              msgid`${syncedCollections.length} collection`,
+              `${syncedCollections.length} collections`,
+              syncedCollections.length,
+            )}
           </Text>
           <Stack gap="xs">
             {syncedCollections.map((collection) => (

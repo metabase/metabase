@@ -261,6 +261,7 @@ export const GitSyncSettings = (): JSX.Element => {
                         {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
                       />
                       <FormSwitch
+                        size="sm"
                         name="remote-sync-enabled"
                         label={t`Auto-sync with git`}
                       />

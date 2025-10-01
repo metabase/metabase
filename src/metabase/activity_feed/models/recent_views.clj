@@ -407,7 +407,7 @@
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
-                                           :archived :location]
+                                           :archived :location :type]
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]
@@ -426,6 +426,7 @@
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
      :authority_level (some-> (:authority_level collection) name)
+     :type (some-> (:type collection) name)
      :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 

@@ -27,16 +27,19 @@ import {
   isSyncedCollection,
 } from "./utils";
 
+// @ts-expect-error remote_sync feature will be added in the future
+// eslint-disable-next-line no-constant-condition
+if (true || hasPremiumFeature("remote_sync")) {
+  PLUGIN_COLLECTIONS.getIcon = getIcon;
+  PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
+}
+
 if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
 
   PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
   PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
-
-  PLUGIN_COLLECTIONS.getIcon = getIcon;
-
-  PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
 
   PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
     collection: Collection,
