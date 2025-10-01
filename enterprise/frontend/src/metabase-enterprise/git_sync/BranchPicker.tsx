@@ -112,9 +112,10 @@ export const BranchPicker = ({
     >
       <Combobox.Target>
         <Button
+          p={0}
           size="compact-sm"
+          variant="subtle"
           disabled={disabled || isLoading}
-          bdrs="4px"
           onClick={() => combobox.toggleDropdown()}
           leftSection={<Icon name="git_branch" c="brand" size={14} />}
           rightSection={
