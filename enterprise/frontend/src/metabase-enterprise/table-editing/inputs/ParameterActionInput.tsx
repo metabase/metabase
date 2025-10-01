@@ -75,7 +75,10 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
             fieldId={parameter.field_id}
             searchFieldId={parameter.human_readable_field_id}
             isNullable={parameter.nullable}
-            withCreateNew={!parameter.human_readable_field_id}
+            withCreateNew={
+              !parameter.human_readable_field_id &&
+              parameter.semantic_type !== "type/FK"
+            }
           />
         );
       }
