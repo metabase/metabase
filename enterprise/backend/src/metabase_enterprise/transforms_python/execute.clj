@@ -308,7 +308,7 @@
                                            (i18n/tru "Transform interrupted")
                                            (i18n/tru "Something went wrong")))])))
 
-(defn execute-python-transform!
+(defn execute!
   "Execute a Python transform by calling the python runner.
 
   Blocks until the transform returns."

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase-enterprise.transforms.canceling :as canceling]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
@@ -104,18 +105,10 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
-;; TODO this and target-database-id can be transforms multimethods?
-(defn target-database-id
-  "Return the target database id of a transform"
-  [transform]
-  (if (python-transform? transform)
-    (-> transform :target :database)
-    (-> transform :source :query :database)))
-
 (defn target-table-exists?
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
-  (let [db-id (target-database-id transform)
+  (let [db-id (transforms.i/target-db-id transform)
         {driver :engine :as database} (t2/select-one :model/Database db-id)]
     (driver/table-exists? driver database target)))
 
@@ -157,7 +150,7 @@
   [{:keys [id target], :as transform}]
   (when target
     (let [target (update target :type keyword)
-          database-id (target-database-id transform)
+          database-id (transforms.i/target-db-id transform)
           {driver :engine :as database} (t2/select-one :model/Database database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
