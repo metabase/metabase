@@ -1,6 +1,7 @@
 (ns metabase.lib.database
   (:require
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
@@ -14,8 +15,7 @@
 
   we will attempt to resolve the correct Database ID by getting metadata for the source Card and returning its
   `:database-id`; if this is not available for one reason or another this will return `nil`."
-  ;; TODO(johnswanson) wtf did I have to remove the query schema bit here
-  [query :- :any]
+  [query :- ::lib.schema/query]
   (when-let [id (:database query)]
     (if (not= id lib.schema.id/saved-questions-virtual-database-id)
       id

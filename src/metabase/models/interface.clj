@@ -58,10 +58,6 @@
   on a future deserialization."
   false)
 
-(def ^:dynamic *syncing-source-of-truth-entities*
-  "This is dynamically bound to the set of entities that we are syncing when syncing the source of truth."
-  #{})
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
   ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.

@@ -3,7 +3,7 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise editable?
-  "Should the library be editable. Always true on OSS"
+  "Should remote-synced collections be editable. Always true on OSS"
   metabase-enterprise.remote-sync.core
   [_collection]
   true)

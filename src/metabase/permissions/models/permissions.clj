@@ -282,7 +282,9 @@
   (if (or (= read-or-write :read)
           (remote-sync/editable? (or (:collection instance) (:collection_id instance))))
     (perms-objects-set-for-parent-collection instance read-or-write)
-    #{"library-access"}))
+    ;; We need to return a dummy permissions string that cannot possibly be long to a user in
+    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
+    #{"___no-remote-sync-access"}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
