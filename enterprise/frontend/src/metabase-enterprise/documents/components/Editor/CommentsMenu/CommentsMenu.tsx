@@ -29,10 +29,7 @@ export const getUnresolvedComments = (
 };
 
 export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
-  function CommentsMenu(
-    { active, href, show, style, threads }: Props,
-    ref,
-  ) {
+  function CommentsMenu({ active, href, show, style, threads }: Props, ref) {
     const unresolvedCommentsCount = useMemo(
       () => getUnresolvedComments(threads).length,
       [threads],
