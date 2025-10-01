@@ -58,7 +58,6 @@ import {
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import {
-  getCommentSidebarOpen,
   getDraftCards,
   getHasUnsavedChanges,
   getSelectedEmbedIndex,
@@ -92,7 +91,6 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const commentSidebarOpen = useSelector(getCommentSidebarOpen);
   const draftCards = useSelector(getDraftCards);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -141,7 +139,7 @@ export const DocumentPage = ({
     !!commentsData?.comments && commentsData.comments.length > 0;
 
   const canWrite =
-    (isNewDocument || documentData?.can_write) && !commentSidebarOpen;
+    (isNewDocument || documentData?.can_write);
 
   useEffect(() => {
     if (error) {
