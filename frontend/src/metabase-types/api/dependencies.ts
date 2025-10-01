@@ -1,9 +1,13 @@
 import type { Card, CardId, CardType } from "./card";
-import type { NativeQuerySnippet } from "./snippets";
+import type { NativeQuerySnippet, NativeQuerySnippetId } from "./snippets";
 import type { ConcreteTableId } from "./table";
-import type { Transform } from "./transform";
+import type { Transform, TransformId } from "./transform";
 
-export type DependencyNode = TableDependencyNode | CardDependencyNode;
+export type DependencyNode =
+  | TableDependencyNode
+  | CardDependencyNode
+  | SnippetDependencyNode
+  | TransformDependencyNode;
 export type DependencyEntityId = DependencyNode["id"];
 export type DependencyEntityType = DependencyNode["type"];
 
@@ -25,6 +29,18 @@ export type CardDependencyNode = BaseDependencyNode<
   CardDependencyData
 >;
 
+export type SnippetDependencyNode = BaseDependencyNode<
+  NativeQuerySnippetId,
+  "snippet",
+  SnippetDependencyData
+>;
+
+export type TransformDependencyNode = BaseDependencyNode<
+  TransformId,
+  "transform",
+  TransformDependencyData
+>;
+
 export type TableDependencyData = {
   display_name: string;
 };
@@ -32,6 +48,14 @@ export type TableDependencyData = {
 export type CardDependencyData = {
   name: string;
   type: CardType;
+};
+
+export type SnippetDependencyData = {
+  name: string;
+};
+
+export type TransformDependencyData = {
+  name: string;
 };
 
 export type DependencyEdge = {

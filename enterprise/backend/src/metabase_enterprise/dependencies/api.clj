@@ -115,7 +115,11 @@
     (broken-cards-response breakages)))
 
 (api.macros/defendpoint :get "/graph"
-  "TBD"
+  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently only :table or :card) and return the
+  entity with all its upstream and downstream dependencies that should be fetched recursively. :edges match our
+  :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data depends on the node type. For
+  :table, there should be :display_name. For :card, there should be :name and :type. For :snippet -> :name. For
+  :transform -> :name."
   [_route-params
    {:keys [id type]} :- [:map
                          [:id ms/PositiveInt]

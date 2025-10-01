@@ -3,19 +3,22 @@ import type { DependencyNode } from "metabase-types/api";
 
 export function getNodeIcon(node: DependencyNode): IconName {
   switch (node.type) {
-    case "database":
-      return "database";
     case "table":
       return "table";
     case "card":
       return "table2";
+    case "snippet":
+      return "snippet";
+    case "transform":
+      return "refresh_downstream";
   }
 }
 
 export function getNodeLabel(node: DependencyNode) {
   switch (node.type) {
-    case "database":
     case "card":
+    case "snippet":
+    case "transform":
       return node.data.name;
     case "table":
       return node.data.display_name;
