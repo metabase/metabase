@@ -109,10 +109,6 @@ export const DataModel = ({ children, location, params }: Props) => {
           schemaName={schemaName}
           tableId={tableId}
         />
-
-        <Box className={S.footer} mx="xl" py="sm">
-          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
-        </Box>
       </Stack>
 
       {isSegments && children}
