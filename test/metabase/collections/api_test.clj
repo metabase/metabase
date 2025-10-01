@@ -3243,3 +3243,98 @@
             "Collection should not have library type")
         (is (= parent-id (:parent_id response))
             "Collection should be moved to new parent")))))
+
+(deftest update-collection-type-cascades-to-children-test
+  (testing "PUT /api/collection/:id with type change"
+    (testing "Updating a collection's type should cascade to all child collections"
+      (mt/with-temporary-setting-values [remote-sync-type :development]
+        (mt/with-temp [:model/Collection parent {}
+                       :model/Collection child-1 {:location (collection/children-location parent)}
+                       :model/Collection child-2 {:location (collection/children-location parent)}
+                       :model/Collection grandchild {:location (collection/children-location child-1)}]
+          ;; Verify initial state - all should have nil type
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id parent)))))
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id child-1)))))
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id child-2)))))
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id grandchild)))))
+
+          ;; Update parent collection type to "remote-synced"
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
+                                {:type "remote-synced"})
+
+          ;; Verify all descendants now have the same type
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id parent)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id child-1)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id child-2)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id grandchild))))))))))
+
+(deftest update-collection-type-to-nil-cascades-test
+  (testing "PUT /api/collection/:id with type change to nil"
+    (testing "Changing type from remote-synced to nil should cascade to children"
+      (mt/with-temporary-setting-values [remote-sync-type :development]
+        (mt/with-temp [:model/Collection parent {:type "remote-synced"}
+                       :model/Collection child {:location (collection/children-location parent)
+                                                :type "remote-synced"}]
+          ;; Verify initial state
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id parent)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id child)))))
+
+          ;; Update parent collection type to nil
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
+                                {:type nil})
+
+          ;; Verify both parent and child now have nil type
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id parent)))))
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id child))))))))))
+
+(deftest update-collection-type-does-not-affect-unrelated-collections-test
+  (testing "PUT /api/collection/:id with type change"
+    (testing "Type change should not affect unrelated collections"
+      (mt/with-temporary-setting-values [remote-sync-type :development]
+        (mt/with-temp [:model/Collection parent {}
+                       :model/Collection child {:location (collection/children-location parent)}
+                       :model/Collection unrelated {}]
+          ;; Update parent collection type
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
+                                {:type "remote-synced"})
+
+          ;; Verify parent and child have the new type
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id parent)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id child)))))
+
+          ;; Verify unrelated collection is unchanged
+          (is (nil? (:type (t2/select-one :model/Collection :id (:id unrelated))))))))))
+
+(deftest update-collection-type-only-cascades-when-changed-test
+  (testing "PUT /api/collection/:id with same type"
+    (testing "Type change cascades only when type actually changes"
+      (mt/with-temporary-setting-values [remote-sync-type :development]
+        (mt/with-temp [:model/Collection parent {:type "remote-synced"}
+                       :model/Collection child {:location (collection/children-location parent)
+                                                :type "remote-synced"}]
+          ;; Update parent with same type (no actual change)
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
+                                {:name "Updated Name"
+                                 :type "remote-synced"})
+
+          ;; Verify types remain unchanged
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id parent)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id child))))))))))
+
+(deftest update-collection-type-cascades-through-multiple-levels-test
+  (testing "PUT /api/collection/:id with type change through deep hierarchy"
+    (testing "Type change cascades through multiple levels"
+      (mt/with-temporary-setting-values [remote-sync-type :development]
+        (mt/with-temp [:model/Collection level1 {}
+                       :model/Collection level2 {:location (collection/children-location level1)}
+                       :model/Collection level3 {:location (collection/children-location level2)}
+                       :model/Collection level4 {:location (collection/children-location level3)}]
+          ;; Update level1 type
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (:id level1))
+                                {:type "remote-synced"})
+
+          ;; Verify all levels have the new type
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id level1)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id level2)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id level3)))))
+          (is (= "remote-synced" (:type (t2/select-one :model/Collection :id (:id level4))))))))))

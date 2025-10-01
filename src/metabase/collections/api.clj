@@ -1449,7 +1449,14 @@
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level :type])]
       (when (seq updates)
-        (t2/update! :model/Collection id updates)))
+        (t2/with-transaction [_conn]
+          (t2/update! :model/Collection id updates)
+          ;; if type is changing, cascade the type change to all child collections
+          (when (api/column-will-change? :type collection-before-update updates)
+            (let [child-location (collection/children-location collection-before-update)]
+              (t2/query-one {:update :collection
+                             :where [:like :location #p (str child-location "%")]
+                             :set {:type (:type updates)}}))))))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
