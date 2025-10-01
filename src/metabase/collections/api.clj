@@ -1436,7 +1436,7 @@
                                                                   [:description     {:optional true} [:maybe ms/NonBlankString]]
                                                                   [:archived        {:default false} [:maybe ms/BooleanValue]]
                                                                   [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                  [:type {:optional true} [:maybe CollectionType]]
+                                                                  [:type            {:optional true} [:maybe CollectionType]]
                                                                   [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
