@@ -26,7 +26,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
-   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -605,8 +604,7 @@
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
                           (t2/select-one [:model/Card :dataset_query :type :result_metadata :card_schema]
-                                         :id (u/the-id id)))
-          changes        (m/update-existing changes :dataset_query lib-be/normalize-query)]
+                                         :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (some-> changes :dataset_query lib/native-only-query?)
@@ -767,7 +765,8 @@
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  (let [changes (t2/changes card)]
+  (let [changes (some-> card t2/changes queries.schema/normalize-card)
+        card    (queries.schema/normalize-card card)]
     (-> card
         (dissoc :verified-result-metadata?)
         (assoc :card_schema current-schema-version)
@@ -987,16 +986,14 @@
     :query_type ;; these first three may not even be changeable
     :dataset_query})
 
-(defn- mbql-clause->identifier-for-parameter-updates
+(mu/defn- mbql-clause->identifier-for-parameter-updates
   "Get the unique key used to power the parameter mapping update stuff added in #49308. Key is an MBQL-5-style clause
   but with an empty options clause."
-  [mbql-clause]
-  (if (lib/clause? mbql-clause)
-    (lib/update-options mbql-clause (constantly nil))
-    ;; Parameter mapping targets still use legacy MBQL field refs (for now)... future-proof ourselves a bit and handle
-    ;; either type.
-    (lib.util.match/match-lite mbql-clause
-      [:field (id-or-name :guard (some-fn string? pos-int?)) _opts] [:field nil id-or-name])))
+  [mbql-clause :- vector?]
+  ;; this can currently get called with either MBQL 5 (from query breakouts) or with legacy refs (in `parameter_mappings`)
+  (if (map? (second mbql-clause))
+    (into [(first mbql-clause)] (drop 2) mbql-clause)
+    (subvec mbql-clause 0 2)))
 
 (defn- breakout->identifier->refs
   "Generate mapping of of _ref identifier_ -> #{_ref..._}.
@@ -1016,7 +1013,7 @@
   [after-identifier->refs identifier before-refs]
   (let [after-refs (get after-identifier->refs identifier #{})]
     (when (and (= 1 (count before-refs) (count after-refs))
-               (not= before-refs after-refs))
+               (not= (lib/remove-lib-uuids before-refs) (lib/remove-lib-uuids after-refs)))
       [:update (first after-refs)])))
 
 (defn- breakouts->identifier->action

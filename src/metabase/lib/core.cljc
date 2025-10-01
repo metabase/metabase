@@ -419,7 +419,8 @@
   replace-join]
  [metabase.lib.schema
   native-only-query?]
- [metabase.lib.schema.util]
+ [metabase.lib.schema.util
+  remove-lib-uuids]
  [lib.segment
   available-segments]
  [metabase.lib.serialize

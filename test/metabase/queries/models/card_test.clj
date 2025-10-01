@@ -407,7 +407,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
+           #"Invalid output: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
                                                      :type "id"}]}]
@@ -419,7 +419,7 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
+             #"Invalid output:.*:parameters"
              (t2/update! :model/Card id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
@@ -441,7 +441,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+           #"Invalid output:.*:parameter_mappings"
            (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
                                                              :target       [:field 1000 nil]}]}]
@@ -453,12 +453,12 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+             #"Invalid output:.*:parameter_mappings"
              (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest ^:parallel normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
     (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                     :card_id      1
@@ -468,7 +468,7 @@
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
@@ -603,7 +603,7 @@
             (is (=? [{:name                 "Param 1"
                       :id                   "param_1"
                       :type                 :category
-                      :values_source_type   "card"
+                      :values_source_type   :card
                       :values_source_config {:card_id     source-card-id
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
@@ -863,30 +863,35 @@
             (is (false? (mi/can-write? card)))))))))
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
-  (are [b1 b2 expected-identifier->action] (= expected-identifier->action
-                                              (#'card/breakouts->identifier->action b1 b2))
-    [[:field 10 {:temporal-unit :day}]]
+  (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
+                                               (#'card/breakouts->identifier->action
+                                                (map lib/normalize b1)
+                                                (map lib/normalize b2)))
+    [[:field {:temporal-unit :day} 10]]
     nil
     nil
 
-    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression {:temporal-unit :day} "x"]]
     nil
     nil
 
-    [[:expression "x" {:temporal-unit :day}]]
-    [[:expression "x" {:temporal-unit :month}]]
-    {[:expression "x"] [:update [:expression "x" {:temporal-unit :month}]]}
+    [[:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :month} "x"]]
+    {[:expression "x"] [:update [:expression {:temporal-unit :month} "x"]]}
 
-    [[:expression "x" {:temporal-unit :day}]]
-    [[:expression "x" {:temporal-unit :day}]]
+    [[:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :day} "x"]]
     nil
 
-    [[:field 10 {:temporal-unit :day}] [:expression "x" {:temporal-unit :day}]]
-    [[:expression "x" {:temporal-unit :day}] [:field 10 {:temporal-unit :month}]]
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    [[:field {:temporal-unit :day} 10]
+     [:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :day} "x"]
+     [:field {:temporal-unit :month} 10]]
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
 
-    [[:field 10 {:temporal-unit :year}] [:field 10 {:temporal-unit :day-of-week}]]
-    [[:field 10 {:temporal-unit :year}]]
+    [[:field {:temporal-unit :year} 10]
+     [:field {:temporal-unit :day-of-week} 10]]
+    [[:field {:temporal-unit :year} 10]]
     nil))
 
 (deftest ^:parallel update-for-dashcard-fn-test
@@ -894,11 +899,11 @@
        (= expected-quasi-dashcards
           (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
 
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
     [{:parameter_mappings []}]
     nil
 
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
     [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
 
@@ -906,7 +911,7 @@
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
     nil
 
-    {[:field 10] [:update [:field 10 {:temporal-unit :month}]]}
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
     [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
                                  {:target [:dimension [:field 33 {:temporal-unit :month}]]}
                                  {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
@@ -1089,3 +1094,10 @@
         (let [doc (first search-docs)]
           (testing "native-query field is nil for non-native queries"
             (is (nil? (:native_query doc)))))))))
+
+(deftest normalize-card-on-update-test
+  (mt/with-temp [:model/Card card {:name "some card", :type "model"}]
+    (let [card' (assoc card :type "question")]
+      (t2/save! card')
+      (is (= :question
+             (t2/select-one-fn :type :model/Card :id (:id card)))))))
