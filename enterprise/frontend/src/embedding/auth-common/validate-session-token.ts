@@ -1,25 +1,25 @@
 import * as MetabaseError from "embedding-sdk-bundle/errors";
 
-export function validateSessionToken(session: any) {
-  if (!session || typeof session !== "object") {
+export function validateSessionToken(token: any) {
+  if (!token || typeof token !== "object") {
     throw MetabaseError.INVALID_SESSION_OBJECT({
       expected: "{ jwt: string }",
-      actual: JSON.stringify(session, null, 2),
+      actual: JSON.stringify(token, null, 2),
     });
   }
 
-  if ("status" in session && session.status !== "ok") {
-    if ("message" in session && typeof session.message === "string") {
+  if ("status" in token && token.status !== "ok") {
+    if ("message" in token && typeof token.message === "string") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
         expected: "{ jwt: string }",
-        actual: session.message,
+        actual: token.message,
       });
     }
 
-    if (typeof session.status === "string") {
+    if (typeof token.status === "string") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
         expected: "{ jwt: string }",
-        actual: session.status,
+        actual: token.status,
       });
     }
   }
@@ -31,19 +31,16 @@ export function validateSessionToken(session: any) {
    * (EMB-829) Temporarily allow `exp` to be null or undefined while we're deprecating token without it
    * after we disallow token without expiration, we will re-add this check.
    */
-  if (typeof session.id !== "string") {
+  if (typeof token.id !== "string") {
     throw MetabaseError.INVALID_SESSION_SCHEMA({
       expected: "{ id: string, exp: number, iat: number }",
-      actual: JSON.stringify(session, null, 2),
+      actual: JSON.stringify(token, null, 2),
     });
   }
 }
 
-export function isSessionTokenValid(session: any) {
-  try {
-    validateSessionToken(session);
-    return true;
-  } catch {
-    return false;
-  }
+export function shouldRefreshToken(token?: any) {
+  return (
+    !token || (typeof token?.exp === "number" && token.exp * 1000 < Date.now())
+  );
 }

@@ -3,6 +3,6 @@ export { jwtDefaultRefreshTokenFunction } from "./jwt";
 export { openSamlLoginPopup } from "./saml";
 export {
   validateSessionToken,
-  isSessionTokenValid,
+  shouldRefreshToken,
 } from "./validate-session-token";
 export { samlTokenStorage } from "./saml-token-storage";
