@@ -1,6 +1,3 @@
-import { useElementSize } from "@mantine/hooks";
-import { useEffect, useState } from "react";
-
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -18,21 +15,9 @@ interface PaletteResultItemProps {
   active: boolean;
 }
 
-const NAME_LINE_HEIGHT = 16;
-
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   const icon = item.icon ? getCommandPaletteIcon(item) : null;
   const subtext = item.extra?.subtext;
-  const [hideSubtext, setHideSubtext] = useState(false);
-
-  const nameElement = useElementSize();
-
-  useEffect(() => {
-    if (!hideSubtext && nameElement.height > 0) {
-      // hide subtext if there's no room for it
-      setHideSubtext(nameElement.height > NAME_LINE_HEIGHT);
-    }
-  }, [hideSubtext, nameElement.height]);
 
   const content = (
     <Flex
@@ -63,16 +48,9 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       )}
 
       <Stack gap="xs" flex="1" style={{ overflow: "hidden" }}>
-        <Flex align="center" gap="sm" justify="space-between" wrap="nowrap">
+        <Flex align="center" gap="md" justify="space-between" wrap="nowrap">
           <Group align="center" gap="sm" wrap="nowrap">
-            <Text
-              c="inherit"
-              component="span"
-              lh="1rem"
-              lineClamp={hideSubtext ? 1 : undefined}
-              miw={0}
-              ref={nameElement.ref}
-            >
+            <Text c="inherit" component="span" lh="1rem" lineClamp={1} miw={0}>
               {item.name}
             </Text>
 
@@ -89,7 +67,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
             )}
           </Group>
 
-          {subtext && !hideSubtext && (
+          {subtext && (
             <Text
               flex="0 0 auto"
               c={
@@ -99,6 +77,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
               }
               fz="0.75rem"
               lh="1rem"
+              lineClamp={1}
+              maw="40%"
             >
               {subtext}
             </Text>
