@@ -285,6 +285,24 @@
                             (m/index-by :id))]
     (mapv #(merge (-> % :id id->card-param) %) parameters)))
 
+(defn- card-read-context
+  "The context to use for tracking the view. Return nil if the view should not be tracked"
+  [{:keys [context]}]
+  (case context
+    :public-dashboard :dashboard
+    :public-question :question
+    :embedded-dashboard :dashboard
+    :embedded-question :question
+    :csv-download nil
+    :public-csv-download nil
+    :json-download nil
+    :public-json-download nil
+    :xlsx-download nil
+    :public-xlsx-download nil
+    :dashboard-subscription nil
+    :pulse nil
+    context))
+
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.server.streaming_response.StreamingResponse` (see [[metabase.server.streaming-response]]) that should be
@@ -347,14 +365,10 @@
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
-      (events/publish-event! :event/card-read {:object-id card-id
-                                               :user-id   (:executed-by info)
-                                               :context   (case (:context info)
-                                                            :public-dashboard :dashboard
-                                                            :public-question :question
-                                                            :embedded-dashboard :dashboard
-                                                            :embedded-question :question
-                                                            (:context info))})
+      (when-let [context (card-read-context info)]
+        (events/publish-event! :event/card-read {:object-id card-id
+                                                 :user-id   (:executed-by info)
+                                                 :context   context}))
       (qp.store/with-metadata-provider (:database_id card)
         (qp.results-metadata/store-previous-result-metadata! card)
         (runner query info)))))
