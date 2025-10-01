@@ -85,7 +85,7 @@ const toDashCase = (str: string): string =>
 
 // Convert values to string attributes
 export const formatAttributeValue = (value: unknown): string => {
-  if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+  if (Array.isArray(value) || typeof value === "object") {
     const jsonString = JSON.stringify(value);
     const escapedString = jsonString.replace(/'/g, "&39;");
     return `'${escapedString}'`;
