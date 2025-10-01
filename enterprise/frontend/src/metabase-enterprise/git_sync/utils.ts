@@ -6,6 +6,11 @@ import type { Collection } from "metabase-types/api";
 
 import type { DirtyEntity } from "../api/git-sync";
 
+export type CollectionPathSegment = {
+  id: number | string | null;
+  name: string;
+};
+
 type SyncStatus = DirtyEntity["sync_status"];
 
 type ErrorData = {
@@ -21,21 +26,6 @@ type ExportError = {
 type ParsedError = {
   errorMessage: string | null;
   hasConflict: boolean;
-};
-
-export const getSyncStatusLabel = (status: SyncStatus): string => {
-  switch (status) {
-    case "create":
-      return t`New`;
-    case "delete":
-      return t`Removed`;
-    case "update":
-      return t`Changed`;
-    case "touch":
-      return t`Modified`;
-    default:
-      return status;
-  }
 };
 
 export const getSyncStatusIcon = (status: SyncStatus): IconName => {
@@ -65,35 +55,6 @@ export const getSyncStatusColor = (status: SyncStatus): string => {
       return "var(--mb-base-color-orion-50)";
   }
 };
-
-export const getSyncStatusBackgroundColor = (status: SyncStatus): string => {
-  switch (status) {
-    case "create":
-      return "var(--mb-base-color-palm-10)";
-    case "delete":
-      return "var(--mb-base-color-lobster-10)";
-    case "update":
-    case "touch":
-      return "var(--mb-base-color-blue-10)";
-    default:
-      return "var(--mb-base-color-orion-10)";
-  }
-};
-
-export const groupEntitiesBySyncStatus = (
-  entities: DirtyEntity[],
-): Record<SyncStatus, DirtyEntity[]> =>
-  entities.reduce(
-    (acc, entity) => {
-      const status = entity.sync_status;
-      if (!acc[status]) {
-        acc[status] = [];
-      }
-      acc[status].push(entity);
-      return acc;
-    },
-    {} as Record<SyncStatus, DirtyEntity[]>,
-  );
 
 const isValidErrorData = (data: unknown): data is ErrorData =>
   typeof data === "object" && data !== null;
@@ -204,4 +165,43 @@ export const getCollectionFullPath = (
   }
 
   return collection.name;
+};
+
+export const getCollectionPathSegments = (
+  collectionId: number | undefined,
+  collectionMap: Map<number, Collection>,
+): CollectionPathSegment[] => {
+  if (!collectionId) {
+    return [{ id: "root", name: t`Root` }];
+  }
+
+  const collection = collectionMap.get(collectionId);
+  if (!collection) {
+    return [{ id: "root", name: t`Root` }];
+  }
+
+  const segments: CollectionPathSegment[] = [];
+
+  if (collection.effective_ancestors) {
+    collection.effective_ancestors.forEach((ancestor) => {
+      segments.push({ id: ancestor.id, name: ancestor.name });
+    });
+    segments.push({ id: collection.id, name: collection.name });
+    return segments;
+  }
+
+  if (collection.location) {
+    const locationParts = collection.location.split("/").filter(Boolean);
+
+    locationParts.forEach((idStr) => {
+      const parentId = parseInt(idStr);
+      const parent = collectionMap.get(parentId);
+      if (parent) {
+        segments.push({ id: parent.id, name: parent.name });
+      }
+    });
+  }
+
+  segments.push({ id: collection.id, name: collection.name });
+  return segments;
 };

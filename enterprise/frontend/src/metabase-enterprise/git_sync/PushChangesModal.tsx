@@ -1,15 +1,14 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api/collection";
 import { useAdminSetting } from "metabase/api/utils";
 import { getIcon } from "metabase/lib/icon";
-import { modelToUrl } from "metabase/lib/urls";
+import { collection as collectionUrl, modelToUrl } from "metabase/lib/urls";
 import {
   Alert,
   Anchor,
-  Badge,
   Box,
   Button,
   Card,
@@ -34,13 +33,11 @@ import {
 
 import S from "./PushChangesModal.module.css";
 import {
+  type CollectionPathSegment,
   buildCollectionMap,
-  getCollectionFullPath,
-  getSyncStatusBackgroundColor,
+  getCollectionPathSegments,
   getSyncStatusColor,
   getSyncStatusIcon,
-  getSyncStatusLabel,
-  groupEntitiesBySyncStatus,
   parseExportError,
 } from "./utils";
 
@@ -56,6 +53,38 @@ const SYNC_STATUS_ORDER: DirtyEntity["sync_status"][] = [
   "touch",
   "delete",
 ];
+
+interface CollectionPathProps {
+  segments: CollectionPathSegment[];
+}
+
+const CollectionPath = ({ segments }: CollectionPathProps) => {
+  return (
+    <Group gap="sm" wrap="wrap">
+      {segments.map((segment, index) => (
+        <Fragment key={segment.id}>
+          {index > 0 && (
+            <Text size="sm" c="text-secondary">
+              /
+            </Text>
+          )}
+          <Anchor
+            href={collectionUrl({
+              id: segment.id,
+              name: segment.name,
+            })}
+            target="_blank"
+            size="sm"
+            c="text-secondary"
+            td="none"
+          >
+            {segment.name}
+          </Anchor>
+        </Fragment>
+      ))}
+    </Group>
+  );
+};
 
 interface EntityLinkProps {
   entity: DirtyEntity;
@@ -74,25 +103,30 @@ const EntityLink = ({ entity }: EntityLinkProps) => {
     return null;
   }
 
+  const statusIcon = getSyncStatusIcon(entity.sync_status);
+  const statusColor = getSyncStatusColor(entity.sync_status);
+
   return (
-    <Group gap="xs" wrap="nowrap" px="sm" className={S.entityLink}>
-      <Icon
-        name={entityIcon.name}
-        size={16}
-        c="text-primary"
-        className={S.icon}
-      />
+    <Group gap="sm" wrap="nowrap" px="sm" className={S.entityLink}>
       <Anchor
         href={url}
         target="_blank"
         size="sm"
-        c="text-primary"
-        fw="bold"
+        c="text-secondary"
         td="none"
         classNames={{ root: S.anchor }}
+        display="flex"
       >
+        <Icon
+          name={entityIcon.name}
+          size={16}
+          mr="sm"
+          c="text-secondary"
+          className={S.icon}
+        />
         {entity.name}
       </Anchor>
+      <Icon name={statusIcon} size={16} c={statusColor} ml="auto" />
     </Group>
   );
 };
@@ -122,67 +156,40 @@ const AllChangesView = ({
     return map;
   }, [collectionTree, collections]);
 
-  const groupedByStatus = groupEntitiesBySyncStatus(entities);
-
   const groupedData = useMemo(() => {
-    const result: Array<{
-      status: DirtyEntity["sync_status"];
-      groups: Array<{
-        path: string;
-        collectionId: number | undefined;
-        items: DirtyEntity[];
-      }>;
-    }> = [];
+    const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
 
-    SYNC_STATUS_ORDER.forEach((status) => {
-      const items = groupedByStatus[status];
-      if (!items || items.length === 0) {
-        return;
-      }
-
-      const byCollection = _.groupBy(items, (e) => e.collection_id || 0);
-
-      const pathGroups = Object.entries(byCollection)
-        .map(([collectionId, entities]) => ({
-          path: getCollectionFullPath(
-            Number(collectionId) || undefined,
-            collectionMap,
-          ),
-          collectionId: Number(collectionId) || undefined,
-          items: entities,
-        }))
-        .sort((a, b) => a.path.localeCompare(b.path));
-
-      result.push({
-        status,
-        groups: pathGroups,
-      });
-    });
+    const result = Object.entries(byCollection)
+      .map(([collectionId, items]) => ({
+        pathSegments: getCollectionPathSegments(
+          Number(collectionId) || undefined,
+          collectionMap,
+        ),
+        collectionId: Number(collectionId) || undefined,
+        items: items.sort((a, b) => {
+          const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
+          const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
+          if (statusOrderA !== statusOrderB) {
+            return statusOrderA - statusOrderB;
+          }
+          return a.name.localeCompare(b.name);
+        }),
+      }))
+      .sort((a, b) =>
+        a.pathSegments
+          .map((s) => s.name)
+          .join(" / ")
+          .localeCompare(b.pathSegments.map((s) => s.name).join(" / ")),
+      );
 
     return result;
-  }, [groupedByStatus, collectionMap]);
-
-  const totalChanges = entities.length;
+  }, [entities, collectionMap]);
 
   return (
     <Box>
-      <Group gap="xs" mb="md" align="end">
-        <Title order={4} mr="sm" c="text-dark">
-          {title ?? t`Changes to push`}
-        </Title>
-        <Badge
-          size="md"
-          px="sm"
-          variant="light"
-          style={{ textTransform: "none" }}
-        >
-          {ngettext(
-            msgid`${totalChanges} item`,
-            `${totalChanges} items`,
-            totalChanges,
-          )}
-        </Badge>
-      </Group>
+      <Title order={4} mb="md" c="text-secondary">
+        {title ?? t`Changes to push`}
+      </Title>
 
       <Paper
         withBorder
@@ -195,70 +202,29 @@ const AllChangesView = ({
         }}
       >
         <Stack gap={0}>
-          {groupedData.map(({ status, groups }, statusIndex) => (
-            <Fragment key={status}>
-              {statusIndex > 0 && <Divider />}
-              <Box pb="md">
-                <Box p="md" pb="md">
-                  <Group
-                    gap="xs"
-                    p="sm"
-                    bdrs="md"
-                    bg={getSyncStatusBackgroundColor(status)}
-                  >
-                    <Icon
-                      name={getSyncStatusIcon(status)}
-                      size={14}
-                      c={getSyncStatusColor(status)}
+          {groupedData.map((group, groupIndex) => (
+            <Fragment key={group.collectionId}>
+              {groupIndex > 0 && <Divider />}
+              <Box p="md">
+                <Group p="sm" gap="sm" mb="12px" bg="bg-light" bdrs="md">
+                  <Icon name="synced_collection" size={16} c="text-secondary" />
+                  <CollectionPath segments={group.pathSegments} />
+                </Group>
+                <Stack
+                  gap="12px"
+                  ml="md"
+                  pl="xs"
+                  style={{
+                    borderLeft: "2px solid var(--mb-color-border)",
+                  }}
+                >
+                  {group.items.map((entity) => (
+                    <EntityLink
+                      key={`${entity.model}-${entity.id}`}
+                      entity={entity}
                     />
-                    <Text
-                      fw={600}
-                      size="sm"
-                      c={getSyncStatusColor(status)}
-                      lh="md"
-                    >
-                      {getSyncStatusLabel(status)}
-                    </Text>
-                    <Text
-                      size="xs"
-                      c={getSyncStatusColor(status)}
-                      ml="auto"
-                      lh="md"
-                      px="sm"
-                      fw="bold"
-                    >
-                      {groups.reduce((sum, g) => sum + g.items.length, 0)}
-                    </Text>
-                  </Group>
-                </Box>
-
-                {groups.map((group) => (
-                  <Box key={`${status}-${group.collectionId}`}>
-                    <Box px="md" pb="sm">
-                      <Group px="sm" gap="xs" mb="sm">
-                        <Icon name="folder" size={16} c="text-medium" />
-                        <Text size="sm" c="text-medium" lh="md">
-                          {group.path}
-                        </Text>
-                      </Group>
-                      <Stack
-                        gap="sm"
-                        ml="md"
-                        pl="sm"
-                        style={{
-                          borderLeft: "2px solid var(--mb-color-border)",
-                        }}
-                      >
-                        {group.items.map((entity) => (
-                          <EntityLink
-                            key={`${entity.model}-${entity.id}`}
-                            entity={entity}
-                          />
-                        ))}
-                      </Stack>
-                    </Box>
-                  </Box>
-                ))}
+                  ))}
+                </Stack>
               </Box>
             </Fragment>
           ))}
