@@ -156,7 +156,7 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route
-            path="dependencies"
+            path="dependencies/:type/:id"
             title={t`Dependencies`}
             component={PLUGIN_DEPENDENCIES.DependencyFlow}
           />

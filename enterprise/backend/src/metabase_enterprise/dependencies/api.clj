@@ -115,37 +115,29 @@
     (broken-cards-response breakages)))
 
 (api.macros/defendpoint :get "/graph"
-  "TODO"
-  []
-  {:nodes (concat
-           (map (fn [{:keys [id name]}]
-                  {:id id
-                   :type :database
-                   :data {:id id
-                          :name name}})
-                (t2/select :model/Database))
-           (map (fn [{:keys [id name display_name]}]
-                  {:id id
-                   :type :table
-                   :data {:id id
-                          :name name
-                          :display_name display_name}})
-                (t2/select :model/Table :active true))
-           (map (fn [{:keys [id name type]}]
-                  {:id id
-                   :type :card
-                   :data {:id id
-                          :name name
-                          :type type}})
-                (t2/select :model/Card :archived false)))
-   :edges (concat
-           (map (fn [{:keys [id db_id]}]
-                  {:from_entity_id id
-                   :from_entity_type :table
-                   :to_entity_id db_id
-                   :to_entity_type :database})
-                (t2/select :model/Table :active true))
-           (t2/select :model/Dependency))})
+  "TBD"
+  [_route-params
+   {:keys [id type]} :- [:map
+                         [:id ms/PositiveInt]
+                         [:type (ms/enum-decode-keyword [:table :card])]]]
+  (let [entity (if (= type :table) (t2/select-one :model/Table id) (t2/select-one :model/Card id))
+        upstream-card-deps (t2/select :model/Dependency :to_entity_type :card
+                                      :from_entity_type type
+                                      :from_entity_id id)
+        downstream-card-deps (t2/select :model/Dependency :from_entity_type :card
+                                        :to_entity_type type
+                                        :to_entity_id id)
+        card-ids (into [] (concat (map :to_entity_id upstream-card-deps) (map :from_entity_id downstream-card-deps)))
+        cards (when (seq card-ids) (t2/select :model/Card :id [:in card-ids]))]
+    {:nodes (concat
+             [{:id id
+               :type type
+               :data (select-keys entity (if (= type :table) [:display_name] [:name :type]))}]
+             (map (fn [card]
+                    {:id (:id card)
+                     :type :card
+                     :data (select-keys card [:name :type])}) cards))
+     :edges (concat upstream-card-deps downstream-card-deps)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
