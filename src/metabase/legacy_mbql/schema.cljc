@@ -1384,7 +1384,8 @@
     ;; collection (table) this query should run against. Needed for MongoDB
     [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
    (lib.schema.common/disallowed-keys
-    {:type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
+    {:lib/type     "Legacy MBQL inner queries must not have :lib/type"
+     :type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
      :source-table ":source-table is only allowed in MBQL inner queries."
      :fields       ":fields is only allowed in MBQL inner queries."})])
 
@@ -1651,7 +1652,8 @@
     (fn [{:keys [breakout fields]}]
       (empty? (set/intersection (set breakout) (set fields))))]
    (lib.schema.common/disallowed-keys
-    {:type "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
+    {:lib/type "Legacy MBQL inner queries must not have :lib/type"
+     :type     "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1773,5 +1775,6 @@
    [:ref ::check-keys-for-query-type]
    [:ref ::check-query-does-not-have-source-metadata]
    (lib.schema.common/disallowed-keys
-    {:source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
+    {:lib/type     "Legacy MBQL queries must not have :lib/type"
+     :source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
      :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])
