@@ -23,12 +23,12 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Generate a dashboard" card should work correctly', () => {
+    it('"Create a dashboard" card should work correctly', () => {
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Find and click on 'Generate a dashboard' card");
+      cy.log("Find and click on 'Create a dashboard' card");
       cy.findByTestId("admin-layout-content")
-        .findByText("Generate a dashboard")
+        .findByText("Create a dashboard")
         .click();
 
       cy.log("Select a table to generate dashboard from");
@@ -44,11 +44,13 @@ describe("scenarios - embedding hub", () => {
       cy.url().should("include", "/auto/dashboard/table/");
     });
 
-    it('"Add data" card should work correctly', () => {
+    it('"Connect a database" card should work correctly', () => {
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("Find and click on 'Add data' card");
-      cy.findByTestId("admin-layout-content").findByText("Add data").click();
+      cy.log("Find and click on 'Connect a database' card");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .click();
 
       cy.log("Add data modal should open");
       cy.findByRole("dialog").within(() => {
@@ -70,14 +72,16 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide");
 
-      cy.log("'Add data' should not be marked as done");
+      cy.log("'Connect a database' should not be marked as done");
       cy.findByTestId("admin-layout-content")
-        .findByText("Add data")
+        .findByText("Connect a database")
         .closest("button")
         .findByText("Done")
         .should("not.exist");
 
-      cy.findByTestId("admin-layout-content").findByText("Add data").click();
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect a database")
+        .click();
 
       H.modal().within(() => {
         cy.findByText("CSV").click();
@@ -101,9 +105,9 @@ describe("scenarios - embedding hub", () => {
 
       cy.wait("@getChecklist");
 
-      cy.log("'Add data' should be marked as done");
+      cy.log("'Connect a database' should be marked as done");
       cy.findByTestId("admin-layout-content")
-        .findByText("Add data")
+        .findByText("Connect a database")
         .closest("button")
         .scrollIntoView()
         .findByText("Done")
@@ -143,11 +147,11 @@ describe("scenarios - embedding hub", () => {
       });
     });
 
-    it('"Embed in your code" card should take you to the embed flow', () => {
+    it('"Get embed snippet" card should take you to the embed flow', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.findByTestId("admin-layout-content")
-        .findByText("Embed in your code")
+        .findByText("Get embed snippet")
         .click();
 
       cy.url().should("include", "/embed-js?auth_method=user_session");
@@ -189,8 +193,8 @@ describe("scenarios - embedding hub", () => {
 
       cy.get("main").within(() => {
         cy.findByText("Create models").should("be.visible");
-        cy.findByText("Generate a dashboard").should("be.visible");
-        cy.findByText("Add data").should("be.visible").click();
+        cy.findByText("Create a dashboard").should("be.visible");
+        cy.findByText("Connect a database").should("be.visible").click();
       });
 
       cy.log("Sanity check: add data modal should open");
