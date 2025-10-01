@@ -11,7 +11,6 @@ const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
 const shouldWhitelabel = !!tokenFeatures["whitelabel"];
 const whitelabelColors =
   (shouldWhitelabel && win.MetabaseBootstrap?.["application-colors"]) || {};
-const baseBrand = whitelabelColors.brand || "hsla(208, 72%, 60%, 1.00)"; // default Metabase brand color
 
 // Do not export this or you will be fired
 const baseColors = {
@@ -20,17 +19,17 @@ const baseColors = {
 
   // Brand colors (dynamic based on --mb-color-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
-    100: `color-mix(in srgb, ${baseBrand}, black 86%)`,
-    90: `color-mix(in srgb, ${baseBrand}, black 75%)`,
-    80: `color-mix(in srgb, ${baseBrand}, black 62%)`,
-    70: `color-mix(in srgb, ${baseBrand}, black 47%)`,
-    60: `color-mix(in srgb, ${baseBrand}, black 28%)`,
-    50: `color-mix(in srgb, ${baseBrand}, black 12%)`,
-    40: baseBrand, // This is the base brand color
-    30: `color-mix(in srgb, ${baseBrand}, white 35%)`,
-    20: `color-mix(in srgb, ${baseBrand}, white 70%)`,
-    10: `color-mix(in srgb, ${baseBrand}, white 91%)`,
-    5: `color-mix(in srgb, ${baseBrand}, white 96%)`,
+    100: "color-mix(in srgb, var(--mb-color-brand), black 86%)",
+    90: "color-mix(in srgb, var(--mb-color-brand), black 75%)",
+    80: "color-mix(in srgb, var(--mb-color-brand), black 62%)",
+    70: "color-mix(in srgb, var(--mb-color-brand), black 47%)",
+    60: "color-mix(in srgb, var(--mb-color-brand), black 28%)",
+    50: "color-mix(in srgb, var(--mb-color-brand), black 12%)",
+    40: "var(--mb-color-brand)", // This is the base brand color
+    30: "color-mix(in srgb, var(--mb-color-brand), white 35%)",
+    20: "color-mix(in srgb, var(--mb-color-brand), white 70%)",
+    10: "color-mix(in srgb, var(--mb-color-brand), white 91%)",
+    5: "color-mix(in srgb, var(--mb-color-brand), white 96%)",
   },
 
   // Deprecated Blue
@@ -344,8 +343,8 @@ export const colorConfig = {
     dark: baseColors.brand[100],
   },
   brand: {
-    light: baseBrand,
-    dark: baseBrand,
+    light: whitelabelColors.brand || baseColors.blue[40],
+    dark: whitelabelColors.brand || baseColors.blue[40],
   },
   danger: {
     light: baseColors.lobster[50],
