@@ -3,17 +3,16 @@ import fetchMock from "fetch-mock";
 
 beforeEach(() => {
   fetchMock.mockGlobal();
+  fetchMock.catch((url, opts) => {
+    const requestUrl = url?.url || url;
+    const method = opts?.method || "GET";
+
+    console.error(`Unmocked ${method} request to: ${requestUrl}`);
+    throw new Error(`Unmocked ${method} request to: ${requestUrl}`);
+  });
 });
 
 afterEach(() => {
   fetchMock.removeRoutes();
   fetchMock.callHistory.clear();
-  fetchMock.catch((url, request) => {
-    const errorMessage = `Caught unmocked ${request.method} request to: ${url}`;
-
-    Promise.reject(errorMessage);
-
-    // consider all not mocked requests are broken
-    return 500;
-  });
 });
