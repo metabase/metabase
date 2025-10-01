@@ -146,12 +146,13 @@
   (log/info "Executing BackfillDependencies job...")
   (let [full-batch-selected? (backfill-dependencies)
         retries? (has-pending-retries?)]
-    (when (or full-batch-selected?
-              retries?)
+    (if (or full-batch-selected?
+            retries?)
       (let [delay-seconds    (* (get-delay-minutes) 60)
             variance-seconds (* (get-variance-minutes) 60)
             delay-in-seconds (max 0 (+ (- delay-seconds variance-seconds) (rand-int (* 2 variance-seconds))))]
-        (schedule-next-run! delay-in-seconds (.getScheduler ctx))))))
+        (schedule-next-run! delay-in-seconds (.getScheduler ctx)))
+      (log/info "No more entities to backfill for, stopping."))))
 
 (def ^:private job-key     "metabase.task.dependency-backfill.job")
 (def ^:private trigger-key "metabase.task.dependency-backfill.trigger")
