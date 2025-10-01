@@ -1,15 +1,14 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-impersonation-test
   "SET ROLE (connection impersonation feature) tests with single node or on-premise cluster setups."
   (:require
-   [clojure.core.memoize :as memoize]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.util-test :as impersonation.tu]
    [metabase.driver :as driver]
-   [metabase.driver.clickhouse-version :as clickhouse.version]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.test-util :as driver.tu]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync.core]
    [metabase.test :as mt]
@@ -99,7 +98,12 @@
       (testing "on-premise cluster"
         (testing "should support the impersonation feature"
           (t2.with-temp/with-temp
-            [:model/Database db {:engine :clickhouse :details {:user "default" :port (mt/db-test-env-var :clickhouse :nginx-port)}}]
+            [:model/Database db {:engine :clickhouse
+                                 :details {:user "default" :port (mt/db-test-env-var :clickhouse :nginx-port)}
+                                 :dbms_version {:version "25.1.3.23"
+                                                :semantic-version {:major 25
+                                                                   :minor 1}
+                                                :cloud false}}]
             (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
         (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER '{cluster}';"
                           "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER '{cluster}' (i Int32)
@@ -120,7 +124,13 @@
       (testing "older ClickHouse version" ;; 23.3
         (testing "should NOT support the impersonation feature"
           (t2.with-temp/with-temp
-            [:model/Database db {:engine :clickhouse :details {:user "default" :port (mt/db-test-env-var :clickhouse :old-port)}}]
+            [:model/Database db {:engine :clickhouse
+                                 :details {:user "default" :port (mt/db-test-env-var :clickhouse :old-port)}
+                                 ;; deliberately an older version here
+                                 :dbms_version {:version "23.3"
+                                                :semantic-version {:major 23
+                                                                   :minor 3}
+                                                :cloud false}}]
             (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))))))))
 
 (deftest conn-impersonation-test-clickhouse
@@ -195,25 +205,23 @@
 (defmacro ^:private with-ssh-tunnel! [tunnel-details & body]
   `(with-ssh-tunnel*! ~tunnel-details (^:once fn* [] ~@body)))
 
-(deftest impersonation-support-check-over-ssh-tunnel-test
-  (testing "driver-supports? :connection-impersonation should work through an SSH tunnel (#62377)"
-    ;; Use an in-memory SSH server that forwards to the correct port through localhost.
-    ;; Since the real database is still reachable locally, it's possible for the driver to ignore the SSH tunnel and
-    ;; still connect to the DB. So this test runs twice, once with all correct and once with an incorrect SSH
-    ;; password. The latter check should fail (returning false for `driver-supports?`) if the SSH tunnel is being
-    ;; respected.
-    (mt/test-driver :clickhouse
-      (let [username "username", password "password"]
-        (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
-          (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
-            (memoize/memo-clear! @#'clickhouse.version/get-clickhouse-version)
-            (let [ssh-port (.getPort ssh-server)]
-              (with-ssh-tunnel! {:tunnel-enabled true
-                                 :tunnel-host "localhost"
-                                 :tunnel-auth-option "password"
-                                 :tunnel-port ssh-port
-                                 :tunnel-user username
-                                 :tunnel-pass ssh-password}
-                (testing (str "using " ssh-password)
-                  (is (= correct-password?
-                         (driver/database-supports? :clickhouse :connection-impersonation (mt/id)))))))))))))
+(deftest clickhouse-ssh-tunnel-test
+  (mt/test-driver :clickhouse
+    (let [username "username"
+          password "password"]
+      (with-open [ssh-server (driver.tu/basic-auth-ssh-server username password)]
+        (let [tunnel-details {:tunnel-enabled true
+                              :tunnel-host "localhost"
+                              :tunnel-auth-option "password"
+                              :tunnel-port (.getPort ssh-server)
+                              :tunnel-user username
+                              :tunnel-pass password}]
+          (testing "can connect and query through ssh tunnel"
+            (with-ssh-tunnel! tunnel-details
+              (is (= 100
+                     (count (mt/rows (qp/process-query (mt/mbql-query venues))))))))
+          (testing "connection fails with wrong ssh credentials"
+            (with-ssh-tunnel! (assoc tunnel-details :tunnel-pass "wrong-password")
+              (is (thrown-with-msg?
+                   org.apache.sshd.common.SshException #"No more authentication methods available"
+                   (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))))))

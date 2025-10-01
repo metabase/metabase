@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot-v3.api
   "`/api/ee/metabot-v3/` routes"
   (:require
+   [clj-http.client :as http]
+   [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api.document]
    [metabase-enterprise.metabot-v3.api.metabot]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
@@ -14,7 +16,11 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as u]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -79,6 +85,24 @@
             [:state :map]]]
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
+
+(api.macros/defendpoint :post "/feedback"
+  "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
+  [_route-params
+   _query-params
+   feedback :- :map]
+  (let [token (premium-features/premium-embedding-token)
+        base-url (store-api/store-api-url)]
+    (api/check-400 (not (or (str/blank? token) (str/blank? base-url)))
+                   "Cannot build a request. The license token and/or Store api url are missing!")
+    (try
+      (http/post (str base-url "/api/v2/metabot/feedback/" token)
+                 {:content-type :json
+                  :body         (json/encode feedback)})
+      api/generic-204-no-content
+      (catch Exception e
+        (log/error e "Failed to submit feedback to Harbormaster")
+        (throw e)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/metabot-v3` routes."

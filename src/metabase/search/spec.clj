@@ -142,7 +142,9 @@
    [:visibility [:enum :all :app-user]]
    [:model :keyword]
    [:attrs Attrs]
-   [:search-terms [:sequential {:min 1} :keyword]]
+   [:search-terms [:or
+                   [:sequential {:min 1} :keyword]
+                   [:map-of :keyword [:or fn? true?]]]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -215,33 +217,24 @@
       [[:this (keyword (u/->snake_case_en (name k)))]]
       (find-fields-expr v))))
 
-(defn- find-fields-select-item [x]
-  (cond
-    (keyword? x)
-    (find-fields-kw x)
+(defn- find-fields-search [item]
+  (let [x (if (map-entry? item) (key item) item)]
+    (cond
+      (keyword? x)
+      (find-fields-kw x)
 
-    (vector? x)
-    (find-fields-expr (first x))))
-
-(defn- find-fields-top [x]
-  (cond
-    (map? x)
-    (into [] (mapcat find-fields-attr) x)
-
-    (sequential? x)
-    (into [] (mapcat find-fields-select-item) x)
-
-    :else
-    (throw (ex-info "Unexpected format for fields" {:x x}))))
+      (vector? x)
+      (find-fields-expr (first x)))))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
   (u/group-by #(nth % 0) #(nth % 1) conj #{}
               (-> []
-                  (into (mapcat find-fields-top)
-                        ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-                        (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
+                  ;; select fields that will influence content
+                  (into (mapcat find-fields-attr (:attrs spec)))
+                  (into (mapcat find-fields-search (:search-terms spec)))
+                  (into (mapcat find-fields-attr (:render-terms spec)))
                   (into (find-fields-expr (:where spec))))))
 
 (defn- replace-qualification [expr from to]
@@ -408,3 +401,10 @@
 
   (let [where (-> (:model/ModelIndexValue (model-hooks)) first :where)]
     (insert-values where :updated {:model_index_id 1 :model_pk 5})))
+
+;;;; indexing helpers
+
+(defn explode-camel-case
+  "Transform CamelCase into 'CamelCase Camel Case' so that every word can be searchable"
+  [s]
+  (str s " " (str/replace s #"([a-z])([A-Z])" "$1 $2")))

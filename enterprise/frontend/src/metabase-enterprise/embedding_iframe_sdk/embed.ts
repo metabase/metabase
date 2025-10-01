@@ -13,6 +13,7 @@ import { debouncedReportAnalytics } from "./analytics";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   DISABLE_UPDATE_FOR_KEYS,
+  METABASE_CONFIG_IS_PROXY_FIELD_NAME,
 } from "./constants";
 import type {
   SdkIframeEmbedElementSettings,
@@ -34,9 +35,17 @@ const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 // window.metabaseConfig to re-create the proxy if the whole object is replaced,
 // for example if this script is loaded before the customer calls
 // `defineMetabaseConfig` in their code, which replaces the entire object.
-const setupConfigWatcher = () => {
+export const setupConfigWatcher = () => {
   const createProxy = (target: Record<string, unknown>) =>
     new Proxy(target, {
+      get(target, prop, receiver) {
+        // Needed for EmbedJS Wizard to call setupConfigWatcher on the Wizard reinitialization
+        if (prop === METABASE_CONFIG_IS_PROXY_FIELD_NAME) {
+          return true;
+        }
+
+        return Reflect.get(target, prop, receiver);
+      },
       set(metabaseConfig, prop, newValue) {
         metabaseConfig[prop as string] = newValue;
         updateAllEmbeds({ [prop]: newValue });
