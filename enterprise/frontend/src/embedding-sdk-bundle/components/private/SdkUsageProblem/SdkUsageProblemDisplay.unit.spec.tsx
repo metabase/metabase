@@ -132,7 +132,7 @@ describe("SdkUsageProblemDisplay", () => {
 
     expect(docsLink).toHaveAttribute(
       "href",
-      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server",
+      "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication",
     );
   });
 
