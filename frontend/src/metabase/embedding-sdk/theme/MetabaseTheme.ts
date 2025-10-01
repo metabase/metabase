@@ -87,6 +87,14 @@ export interface MetabaseColors {
 
   /** Color used to indicate dangerous actions and negative values/trends */
   negative?: string;
+
+  /** Color used for white text */
+  "text-white"?: string;
+
+  "tooltip-background"?: string;
+  "tooltip-text"?: string;
+  "tooltip-background-focused"?: string;
+  "tooltip-text-secondary"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;
