@@ -164,6 +164,13 @@ export const CommentEditor = ({
       event.preventDefault();
       submitDoc();
     }
+
+    // shortcut is used for code block extension, conflicts with global shortcut
+    // for openning metabot sidebar we have to stop event propagation as other
+    // variants didn't work or uglier that this solution
+    if ((event.ctrlKey || event.metaKey) && event.key === "E") {
+      event.stopPropagation();
+    }
   };
 
   return (
@@ -173,7 +180,7 @@ export const CommentEditor = ({
         [S.readonly]: readonly,
         [S.active]: active,
       })}
-      onKeyDownCapture={handleKeyDown}
+      onKeyDown={handleKeyDown}
     >
       <Box className={S.contentWrapper}>
         <EditorContent
