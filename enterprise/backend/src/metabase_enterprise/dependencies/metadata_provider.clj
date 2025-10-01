@@ -154,7 +154,6 @@
                                   {:lib/type        :metadata/table
                                    :id              (fake-id)
                                    :db-id           (:id (lib.metadata/database (inner-mp mp)))
-                                   :active          true
                                    :display-name    (:name target)
                                    :visibility-type nil}))
         existing-cols  (when existing-table

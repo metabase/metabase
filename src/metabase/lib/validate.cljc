@@ -23,7 +23,7 @@
                              query path clause)]
                  (when (or (not column)
                            (::lib.field.resolution/fallback-metadata? column)
-                           (not (:active column)))
+                           (not (:active column true)))
                    (vswap! bad-fields conj clause))))
              nil))
     (not-empty @bad-fields)))
