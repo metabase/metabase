@@ -95,6 +95,12 @@ export interface MetabaseColors {
   "tooltip-text"?: string;
   "tooltip-background-focused"?: string;
   "tooltip-text-secondary"?: string;
+
+  /** Color used for error icons and borders. Defaults to red. */
+  error?: string;
+
+  /** Color used for error backgrounds. Defaults to light red. */
+  "background-error"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;
