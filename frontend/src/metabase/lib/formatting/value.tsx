@@ -40,7 +40,15 @@ const MARKDOWN_RENDERERS = {
 };
 
 export function formatValue(value: unknown, _options: OptionsType = {}) {
+  if (_options.column) {
+    _options = {
+      ..._options.column.settings,
+      ..._options,
+    };
+  }
+
   let { prefix, suffix, ...options } = _options;
+
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
     options.click_behavior &&
