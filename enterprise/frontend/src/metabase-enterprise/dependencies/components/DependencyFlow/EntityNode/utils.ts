@@ -6,7 +6,15 @@ export function getNodeIcon(node: DependencyNode): IconName {
     case "table":
       return "table";
     case "card":
-      return "table2";
+      switch (node.data.type) {
+        case "question":
+          return "table2";
+        case "model":
+          return "model";
+        case "metric":
+          return "metric";
+      }
+      break;
     case "snippet":
       return "snippet";
     case "transform":
