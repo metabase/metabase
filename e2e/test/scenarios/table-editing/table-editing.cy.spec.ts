@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
 
@@ -403,16 +403,25 @@ describe("scenarios > table-editing", () => {
     beforeEach(() => {
       resetSnowplow();
 
-      cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
-        "getOrdersTable",
-      );
+      H.restore("postgres-writable");
+      H.resetTestTable({ type: "postgres", table: "scoreboard_actions" });
+      H.resyncDatabase({
+        dbId: WRITABLE_DB_ID,
+        tableName: "scoreboard_actions",
+      });
 
+    H.activateToken("bleeding-edge");
+      setTableEditingEnabledForDB(WRITABLE_DB_ID);
+
+      cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
       cy.intercept("POST", "api/dataset").as("getTableDataQuery");
       cy.intercept("POST", "api/ee/action-v2/execute-bulk").as("executeBulk");
 
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
+      H.getTableId({ name: "scoreboard_actions" }).then((tableId) => {
+        cy.visit(`/browse/databases/${WRITABLE_DB_ID}/tables/${tableId}/edit`);
+      });
 
-      cy.wait("@getOrdersTable");
+      cy.wait("@getTableMetadata");
     });
 
     it("should allow to create a row", () => {
@@ -449,8 +458,8 @@ describe("scenarios > table-editing", () => {
     });
 
     it("should allow to delete multiple rows (bulk)", () => {
-      cy.findAllByTestId("row-select-checkbox").eq(15).click();
-      cy.findAllByTestId("row-select-checkbox").eq(16).click();
+      cy.findAllByTestId("row-select-checkbox").eq(1).click();
+      cy.findAllByTestId("row-select-checkbox").eq(2).click();
 
       cy.log("should not show edit icon when rows are selected");
       cy.findByTestId("row-edit-icon").should("not.exist");
