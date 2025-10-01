@@ -5,8 +5,6 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Box, Group, Stack, Title } from "metabase/ui";
 import { useListTransformTagsQuery } from "metabase-enterprise/api";
 
-import { ListPageLayout } from "../TransformPageLayout";
-
 import { CreateTransformMenu } from "./CreateTransformMenu";
 import { TransformFilterList } from "./TransformFilterList";
 import { TransformList } from "./TransformList";

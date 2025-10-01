@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { index } from "d3";
 import type React from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -15,24 +16,28 @@ export const ResizeHandle =  () => (
 
 
 export const BenchApp = ({ children }: { children: React.ReactNode }) => {
+  const [showBenchNav, { toggle }] = useDisclosure(true);
   return (
     <Stack h="100vh" style={{ overflow: "hidden" }} gap={0}>
       <BenchAppBar
-        onMetabotToggle={() => {}}
-        isMetabotOpen={false}
-        onSidebarToggle={() => {}}
-        isSidebarOpen={false}
+        onSidebarToggle={toggle}
+        isSidebarOpen={showBenchNav}
       />
       <PanelGroup autoSaveId="workbench-panels" direction="horizontal">
-        <Panel
-          key={`resizable-box-${index}`}
-          collapsible={true} collapsedSize={5} minSize={10}
-          style={{ overflow: "hidden"}}
-        >
-          <BenchNav />
-        </Panel>
-        <ResizeHandle />
-        <Panel>
+        {showBenchNav && (
+          <>
+            <Panel
+              id="bench-nav"
+              key={`resizable-box-${index}`}
+              collapsible={true} collapsedSize={5} minSize={10}
+              style={{ overflow: "hidden"}}
+            >
+              <BenchNav />
+            </Panel>
+            <ResizeHandle />
+          </>
+        )}
+        <Panel id="bench-main">
           {children}
         </Panel>
         <BenchMetabot />
@@ -50,7 +55,7 @@ function BenchMetabot() {
   return (
     <>
       <ResizeHandle />
-      <Panel maxSize={30} style={{ height: "100%"}}>
+      <Panel id="bench-metabot"maxSize={30} style={{ height: "100%"}}>
           <PLUGIN_METABOT.Metabot w="100%" />
       </Panel>
     </>
