@@ -177,7 +177,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.button("Save this").click();
 
-    // 'See it' link is displayed in the header and in the toast
+    cy.log("'See it' link should be displayed both in the header and in the toast");
     cy.findByTestId("automatic-dashboard-header").within(() => {
       cy.findByText("See it").should("exist");
     });
