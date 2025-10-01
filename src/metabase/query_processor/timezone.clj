@@ -9,7 +9,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
   (:import
    (java.time ZonedDateTime)))
 
@@ -49,6 +50,7 @@
   (^String [driver   :- :keyword
             database :- [:or
                          ::lib.schema.metadata/database
+                         (ms/InstanceOf :model/Database)
                          [:= ::db-from-store]]]
    (let [database (if (= database ::db-from-store)
                     (lib.metadata/database (qp.store/metadata-provider))

@@ -987,8 +987,7 @@
            metabase.query-processor.util.relative-datetime
            metabase.query-processor.util.transformations.nest-breakouts
            metabase.query-processor.writeback}
-   :uses #{actions
-           analytics
+   :uses #{analytics
            analyze
            api
            app-db
@@ -1448,7 +1447,6 @@
            database-routing
            driver
            events
-           legacy-mbql
            lib
            lib-be
            models
