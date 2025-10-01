@@ -232,9 +232,10 @@
 
 (defn maybe-normalize-transform-source
   "Normalizes the `source` of a transform."
-  [in-or-out source]
-  (-> (m/map-keys keyword source)
-      (update  :query (partial maybe-normalize-query in-or-out))))
+  [in-or-out raw-source]
+  (let [{source-type :type :as source} (m/map-keys keyword raw-source)]
+    (cond-> source
+      (= (keyword source-type) :query) (update :query (partial maybe-normalize-query in-or-out)))))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
