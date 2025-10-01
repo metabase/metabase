@@ -1056,7 +1056,7 @@
   "Unified schema for search result items."
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum :table :model :dashboard :question :metric :database]]
+   [:type [:enum :table :model :dashboard :question :metric :database :transform]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -1121,7 +1121,7 @@
                                                     [:map [:arguments {:optional true} ::search-arguments]]
                                                     ::tool-request]
    request]
-  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
+  (metabot-v3.context/log (assoc body :api :search_v2) :llm.log/llm->be)
   (search arguments conversation_id request))
 
 (api.macros/defendpoint :post "/get-snippets" :- [:merge ::get-snippets-result ::tool-request]

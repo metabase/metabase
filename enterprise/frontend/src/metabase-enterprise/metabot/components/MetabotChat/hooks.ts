@@ -23,7 +23,7 @@ function calculateFillerHeight(
     parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
   const contentHeight = containerHeight - paddingAdjustment;
 
-  return Math.max(0, contentHeight - nonFillerElsHeight);
+  return Math.max(0, Math.floor(contentHeight - nonFillerElsHeight));
 }
 
 function resizeFillerArea(
