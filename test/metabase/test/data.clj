@@ -43,6 +43,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -177,10 +178,9 @@
 
 (declare id)
 
-(mu/defn native-query
+(mu/defn native-query :- ::mbql.s/Query
   "Like `mbql-query`, but for native queries."
-  [inner-native-query :- [:map
-                          [:query some?]]]
+  [inner-native-query :- mbql.s/NativeQuery]
   {:database (id)
    :type     :native
    :native   inner-native-query})

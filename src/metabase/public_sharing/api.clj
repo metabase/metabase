@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.dashboards.api :as api.dashboard]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -68,8 +69,15 @@
     card
     (mi/instance
      :model/Card
-     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
-                                 [:dataset_query :type [:native :template-tags]]]))))
+     (-> card
+         (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
+         (update :dataset_query (fn [query]
+                                  (-> query
+                                      (select-keys [:lib/type :database :stages])
+                                      (m/update-existing :stages (fn [stages]
+                                                                   (mapv (fn [stage]
+                                                                           (select-keys stage [:lib/type :template-tags]))
+                                                                         stages))))))))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -222,7 +230,7 @@
                                                        (m/remove-keys hidden-parameter-ids fields)))
         (select-keys action-public-keys))))
 
-(defn public-dashboard
+(mu/defn public-dashboard :- ::dashboards.schema/dashboard
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
   general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]

@@ -123,9 +123,9 @@
                                         :graph.dimensions (seq viz-dims))
                                  (merge (colorize dashcard))
                                  (cond->
-                                     series_labels (assoc :graph.series_labels series_labels)
-                                     x_label (assoc :graph.x_axis.title_text x_label)
-                                     y_label (assoc :graph.y_axis.title_text y_label)))}))
+                                  series_labels (assoc :graph.series_labels series_labels)
+                                  x_label (assoc :graph.x_axis.title_text x_label)
+                                  y_label (assoc :graph.y_axis.title_text y_label)))}))
 
 (defn dashcard-defaults
   "Default properties for a dashcard on magic dashboard."

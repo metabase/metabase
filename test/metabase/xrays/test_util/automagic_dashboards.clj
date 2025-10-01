@@ -2,12 +2,11 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.schema :as lib.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [metabase.xrays.automagic-dashboards.schema :as ads]))
+   [metabase.xrays.automagic-dashboards.schema :as ads]
+   [toucan2.core :as t2]))
 
 (defmacro with-rollback-only-transaction
   "Execute body and cleanup all dashboard elements created."

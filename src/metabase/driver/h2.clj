@@ -15,18 +15,19 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some every?]])
+   [metabase.util.performance :refer [every? some]]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.core :as lib]
+   [metabase.legacy-mbql.schema :as mbql.s])
   (:import
-   (java.sql
-    Clob
-    ResultSet
-    ResultSetMetaData
-    SQLException)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)))
@@ -155,7 +156,8 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(defn- check-native-query-not-using-default-user [{query-type :type, :as query}]
+(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map
+                                                                                       [:type [:enum :native :query]]]]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
@@ -171,8 +173,8 @@
 
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
-  ^Parser [h2-db-id]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
+  ^Parser [h2-database-or-id]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database-or-id))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
     (let [inner (.unwrap conn java.sql.Connection) ;; May be a wrapper, get the innermost object that has session field
           session (get-field inner "session")]
@@ -194,8 +196,11 @@
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
-  [database query]
-  (when-let [h2-parser (make-h2-parser database)]
+  [database-or-id :- [:or
+                        ::lib.schema.id/database
+                        ::lib.schema.metadata/database]
+   ^String query  :- :string]
+  (when-let [h2-parser (make-h2-parser database-or-id)]
     (try
       (let [command            (.prepareCommand h2-parser query)
             first-command-type (.getCommandType command)
@@ -255,10 +260,14 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-read-only-statements [{{:keys [query]} :native}]
-  (when query
+(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map
+                                                                             [:type [:enum :query :native]]
+                                                                             [:native
+                                                                              [:map
+                                                                               [:query string?]]]]]
+  (when sql
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
-                                               query)]
+                                               sql)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))

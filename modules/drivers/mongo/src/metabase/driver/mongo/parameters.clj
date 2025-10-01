@@ -4,7 +4,7 @@
    [java-time.api :as t]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]

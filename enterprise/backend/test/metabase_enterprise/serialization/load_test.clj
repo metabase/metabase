@@ -278,7 +278,8 @@
   [entity _]
   entity)
 
-;; If this test fails after adding a new column, add the column to the list of columns in `metabase-enterprise.serialization.serialize/strip-crud`
+;; If this test fails after adding a new column, add the column to the list of columns in
+;; `metabase-enterprise.serialization.serialize/strip-crud`
 (deftest dump-load-entities-test
   (try
     ;; in case it already exists

@@ -3,7 +3,7 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as cancel]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.interface :as mi]
    [metabase.util :as u]

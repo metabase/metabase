@@ -44,9 +44,23 @@
          metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
+(defn- normalize-stage-common [m]
+  (when-let [m (common/normalize-map m)]
+    (reduce
+     (fn [m k]
+       (cond-> m
+         (and (contains? m k)
+              (empty? (m k)))
+         (dissoc m k)))
+     m
+     [:parameters
+      :lib/stage-metadata])))
+
 (mr/def ::stage.common
   [:map
-   [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]])
+   {:decode/normalize normalize-stage-common}
+   [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
+   [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]])
 
 (mr/def ::stage.native
   [:and
@@ -54,13 +68,12 @@
     ::stage.common
     [:map
      {:decode/normalize #(->> %
-                              common/normalize-map
+                              normalize-stage-common
                               ;; filter out null :collection keys -- see #59675
                               (m/filter-kv (fn [k v]
                                              (not (and (= k :collection)
                                                        (nil? v))))))}
      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
-     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
      ;; It is valid to have a blank query like `{:type :native}` in legacy.
@@ -196,10 +209,9 @@
    [:items pos-int?]])
 
 (defn- normalize-mbql-stage [m]
-  (when (map? m)
-    (let [m (common/normalize-map m)]
-      ;; remove deprecated ident keys if they are present for some reason.
-      (dissoc m :aggregation-idents :breakout-idents :expression-idents))))
+  (when-let [m (normalize-stage-common m)]
+    ;; remove deprecated ident keys if they are present for some reason.
+    (dissoc m :aggregation-idents :breakout-idents :expression-idents)))
 
 (mr/def ::stage.mbql
   [:and
@@ -208,7 +220,6 @@
     [:map
      {:decode/normalize normalize-mbql-stage}
      [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
-     [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
      [:joins              {:optional true} [:ref ::join/joins]]
      [:expressions        {:optional true} [:ref ::expression/expressions]]
      [:breakout           {:optional true} [:ref ::breakouts]]

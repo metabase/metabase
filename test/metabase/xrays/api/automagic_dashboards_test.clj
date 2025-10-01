@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.indexed-entities.models.model-index :as model-index]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
@@ -11,6 +10,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
@@ -19,10 +19,7 @@
    [metabase.xrays.transforms.core :as tf]
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :as tf.specs]
-   [toucan2.core :as t2]
-   [metabase.models.interface :as mi]
-   [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.util.malli :as mu]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once
   (fixtures/initialize :db :web-server :test-users :test-users-personal-collections)

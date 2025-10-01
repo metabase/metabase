@@ -3,8 +3,9 @@
                        ;; this is actually ok here since this is a drivers namespace
                        {:discouraged-namespace {metabase.query-processor.store {:level :off}}
                         ;; this is also ok here since this is a drivers namespace
-                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
-  (:refer-clojure :exclude [replace compile require])
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}
+                        :missing-docstring     {:level :off}}}}
+  (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -185,22 +186,19 @@
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)
-
-#_{:clj-kondo/ignore [:missing-docstring]}
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
-(do
-  (p/import-fn setting/get-value-of-type setting-get-value-of-type)
-  (p/import-fn secrets/value-as-string secret-value-as-string)
-  (p/import-fn secrets/value-as-file! secret-value-as-file!)
-  (p/import-fn table/database table->database)
+(p/import-fn setting/get-value-of-type setting-get-value-of-type)
+(p/import-fn secrets/value-as-string secret-value-as-string)
+(p/import-fn secrets/value-as-file! secret-value-as-file!)
+(p/import-fn table/database table->database)
 
-  (p/import-def qp.error-type/db qp.error-type.db)
-  (p/import-def qp.error-type/driver qp.error-type.driver)
-  (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
-  (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
-  (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
-  (p/import-def qp.error-type/qp qp.error-type.qp)
-  (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature))
+(p/import-def qp.error-type/db qp.error-type.db)
+(p/import-def qp.error-type/driver qp.error-type.driver)
+(p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
+(p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
+(p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
+(p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"
@@ -309,3 +307,7 @@
 (def qp.util.transformations.nest-breakouts.externally-remapped-field
   ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
   ::qp.util.transformations.nest-breakouts/externally-remapped-field)
+
+(def qp.compile.query-with-compiled-query
+  "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
+  ::qp.compile/query-with-compiled-query)

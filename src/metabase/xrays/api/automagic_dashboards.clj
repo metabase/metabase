@@ -1,12 +1,14 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
@@ -20,9 +22,7 @@
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
-   [toucan2.core :as t2]
-   [medley.core :as m]
-   [metabase.util :as u]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 

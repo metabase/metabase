@@ -725,7 +725,12 @@
   motivation behind it.
 
   REPL Tip: use [[call-core-fn]] to call the core-fn directly."
-  {:added "0.53.0"}
+  {:added "0.53.0", :arglists '([method
+                                 route
+                                 docstring?
+                                 metadata?
+                                 [route-params? query-params? body-params? request? respond? raise?]
+                                 & body])}
   [& args]
   (let [parsed (parse-args args)]
     `(let [core-fn#  (endpoint-core-fn ~parsed)

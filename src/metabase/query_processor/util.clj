@@ -146,14 +146,6 @@
 
 ;;; ------------------------------------------- Metadata Combination Utils --------------------------------------------
 
-(defn field-ref->key
-  "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
-  be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
-  non-unique at times, numeric ids are not guaranteed."
-  {:deprecated "0.57.0"}
-  [[tyype identifier]]
-  [tyype identifier])
-
 (def ^:private ^{:deprecated "0.57.0"} field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id
   #{:source-field :join-alias})

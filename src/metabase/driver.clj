@@ -782,7 +782,7 @@
   Note that it's the same set of `driver-features` with respect to
   both database-supports? and [[supports?]])
 
-  Database is guaranteed to be a Database instance.
+  Database is guaranteed to be a `:metabase.lib.schema.metadata/database` instance.
 
   Most drivers can always return true or always return false for a given feature
   (e.g., :left-join is not supported by any version of Mongo DB).

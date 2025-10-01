@@ -4,12 +4,11 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.warehouse-schema.models.field :as field]
-   [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
-   [metabase.xrays.automagic-dashboards.schema :as ads]))
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
+   [metabase.xrays.automagic-dashboards.util :as magic.util]
+   [toucan2.core :as t2]))
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"

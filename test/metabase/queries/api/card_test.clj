@@ -737,7 +737,7 @@
                                     :collection_id (u/the-id collection)
                                     :parameters [{:id "abc123", :name "test", :type "date"}]
                                     :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                          :target       [:dimension [:template-tags "category"]]}])]
+                                                          :target       [:dimension [:template-tag "category"]]}])]
                     (is (=? (merge
                              card-defaults
                              {:name                   (:name card)
@@ -746,7 +746,7 @@
                               :creator_id             (mt/user->id :rasta)
                               :parameters             [{:id "abc123", :name "test", :type "date"}]
                               :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
-                                                        :target       ["dimension" ["template-tags" "category"]]}]
+                                                        :target       ["dimension" ["template-tag" "category"]]}]
                               :dataset_query          true
                               :query_type             "query"
                               :visualization_settings {:global {:title nil}}
@@ -1054,11 +1054,11 @@
               (is (= 1
                      @called)))))))))
 
-(deftest updating-card-updates-metadata-3
+(deftest ^:parallel updating-card-updates-metadata-3
   (let [query (updating-card-updates-metadata-query)]
     (testing "Patching the card _without_ the query does not clear the metadata"
       ;; in practice the application does not do this. But cypress does and it poisons the state of the frontend
-      (mt/with-model-cleanup [:model/Card]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [card (mt/user-http-request :crowberto :post 200 "card"
                                          (card-with-name-and-query "card-name"
                                                                    query))]
@@ -1068,10 +1068,10 @@
                                                :type        :model})]
             (is (= ["ID" "NAME"] (map norm (:result_metadata updated))))))))))
 
-(deftest updating-card-updates-metadata-4
+(deftest ^:parallel updating-card-updates-metadata-4
   (let [query (updating-card-updates-metadata-query)]
     (testing "You can update just the metadata"
-      (mt/with-model-cleanup [:model/Card]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [card (mt/user-http-request :crowberto :post 200 "card"
                                          (card-with-name-and-query "card-name"
                                                                    query))]
@@ -1082,14 +1082,14 @@
             (is (= ["UPDATED" "UPDATED"]
                    (map :display_name (:result_metadata updated))))))))))
 
-(deftest updating-native-card-preserves-metadata
+(deftest ^:parallel updating-native-card-preserves-metadata
   (testing "A trivial change in a native question should not remove result_metadata (#37009)"
     (let [query (to-native (updating-card-updates-metadata-query))
           updated-query (update-in query [:native :query] str/replace #"\d+$" "1000")]
       ;; sanity check
       (is (not= query updated-query))
       ;; the actual test
-      (mt/with-model-cleanup [:model/Card]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [card (mt/user-http-request :rasta :post 200 "card"
                                          (card-with-name-and-query "card-name"
                                                                    query))
@@ -1526,16 +1526,18 @@
     (mt/with-temp [:model/Card card]
       (testing "successfully update with valid parameter_mappings"
         (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                             :target ["dimension" ["template-tags" "category"]]}]}
+                                             :target ["dimension" ["template-tag" "category"]]}]}
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                                   :target ["dimension" ["template-tags" "category"]]}]})))))
+                                                                   :target ["dimension" ["template-tag" "category"]]}]})))))))
 
+(deftest update-card-parameter-mappings-test-2
+  (testing "PUT /api/card/:id"
     (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                           :target ["dimension" ["template-tags" "category"]]}]}]
+                                                           :target ["dimension" ["template-tag" "category"]]}]}]
       (testing "nil parameters will no-op"
         (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                             :target ["dimension" ["template-tags" "category"]]}]}
+                                             :target ["dimension" ["template-tag" "category"]]}]}
                       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                                             {:parameters nil}))))
       (testing "an empty list will remove parameter_mappings"

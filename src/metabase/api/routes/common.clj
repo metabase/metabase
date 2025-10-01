@@ -43,11 +43,11 @@
   [handler]
   (fn [request respond _raise]
     (let [raise (fn [^Throwable e]
+                  (log/error e "Exception in API call")
                   (respond {:status 400, :body (ex-message e)}))]
       (try
         (handler request respond raise)
         (catch Throwable e
-          (log/error e "Exception in API call")
           (raise e))))))
 
 (def ^:private mb-api-key-doc-url

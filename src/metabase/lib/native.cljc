@@ -20,7 +20,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some select-keys mapv every?]]))
+   [metabase.util.performance :refer [every? mapv select-keys some]]))
 
 ;; Template Tags: Variables
 

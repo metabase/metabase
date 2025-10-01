@@ -1559,13 +1559,13 @@
                                               :breakout    [!month.created_at]
                                               :limit       2})])
           (let [query (mt/native-query
-                        {:query         "SELECT * FROM {{#1}} x"
-                         :template-tags {"#1"
-                                         {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
-                                          :name         "#1"
-                                          :display-name "#1"
-                                          :type         :card
-                                          :card-id      1}}})]
+                       {:query         "SELECT * FROM {{#1}} x"
+                        :template-tags {"#1"
+                                        {:id           "5aa37572-058f-14f6-179d-a158ad6c029d"
+                                         :name         "#1"
+                                         :display-name "#1"
+                                         :type         :card
+                                         :card-id      1}}})]
             (is (= [["2016-04-01T00:00:00Z" 1]
                     ["2016-05-01T00:00:00Z" 5]]
                    (mt/formatted-rows

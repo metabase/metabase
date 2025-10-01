@@ -18,30 +18,20 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [mapv]])
   (:import
-   (java.sql
-    Connection
-    DatabaseMetaData
-    PreparedStatement
-    ResultSet
-    Time)
-   (java.time
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.util UUID)
    (net.sf.jsqlparser.schema Table)
@@ -70,9 +60,9 @@
                               :jdbc/statements                        false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
-  [_ _ db]
-  (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
+(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db :- ::lib.schema.metadata/database]
+  (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]
     (when (zero? major-version)
       (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))

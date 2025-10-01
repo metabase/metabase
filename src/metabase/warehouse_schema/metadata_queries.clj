@@ -2,9 +2,9 @@
   "Functions for constructing queries that can be used to get metadata about an attached data warehouse. TODO -- do
   these belong here? Or in `warehouses`? Or in `sync`?"
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib-be.core :as lib-be]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
@@ -19,37 +19,33 @@
     :type/Date     (lib/> field "0001-01-01")
     :type/DateTime (lib/> field "0001-01-01T00:00:00")))
 
-(mu/defn add-required-filters-if-needed-mbql5 :- ::lib.schema/query
+(mu/defn add-required-filters-if-needed :- ::lib.schema/query
   "Add a dummy filter for tables that require filters.
   Look into tables from source tables and all the joins.
   Currently this only apply to partitioned tables on bigquery that requires a partition filter.
   In the future we probably want this to be dispatched by database engine or handled by QP."
   [query :- ::lib.schema/query]
-  (let [table-ids              (lib/all-source-table-ids query)
-        ;; TODO -- consider whether we can use the Metadata providers to power this -- we'd probably need to extend
-        ;; `:metabase.warehouse-schema.metadata-queries/metadata-spec` a bit
-        required-filter-fields (when (seq table-ids)
-                                 (t2/select :metadata/column {:where [:and
-                                                                      [:= :field/active true]
-                                                                      [:= :field/database_partitioned true]
-                                                                      [:= :table/active true]
-                                                                      [:= :table/database_require_filter true]
-                                                                      [:in :table/id table-ids]]}))]
-    (transduce
-     (map partition-field->filter-form)
-     (completing lib/filter)
-     query
-     required-filter-fields)))
-
-(mu/defn add-required-filters-if-needed :- ::mbql.s/Query
-  "DEPRECATED: Use [[add-required-filters-if-needed-mbql-5]] going forward."
-  {:deprecated "0.57.0"}
-  [query :- ::mbql.s/Query]
-  (->> query
-       (lib/query (lib-be/application-database-metadata-provider (:database query)))
-       add-required-filters-if-needed-mbql5
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       lib/->legacy-MBQL))
+  (transduce
+   (comp (map (fn [table-id]
+                (lib.metadata/table query table-id)))
+         (filter :active)
+         (filter :database-require-filter)
+         (mapcat (fn [{table-id :id, :as _table}]
+                   (lib.metadata/active-fields query table-id)))
+         (filter :database-partitioned)
+         ;; resolve the Field ID to correct visible metadata, e.g. if this column
+         ;; comes from a join or something we need to make sure we have metadata
+         ;; with a join alias.
+         ;;
+         ;; don't fetch visible columns unless we actually need to
+         (keep (let [visible-columns (delay (lib/visible-columns query))]
+                 (fn [field]
+                   (m/find-first #(= (:id %) (:id field))
+                                 @visible-columns))))
+         (map partition-field->filter-form))
+   (completing lib/filter)
+   query
+   (lib/all-source-table-ids query)))
 
 (mu/defn human-readable-remapping-map :- [:maybe ::parameters.schema/human-readable-remapping-map]
   "Get the human readable (internally mapped) values of the field specified by `field-id`."

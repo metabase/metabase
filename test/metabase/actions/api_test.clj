@@ -2,9 +2,12 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -40,12 +43,14 @@
    [:id                     ms/PositiveInt]
    [:type                   [:= "query"]]
    [:model_id               ms/PositiveInt]
-   [:database_id            ms/PositiveInt]
+   [:database_id            ::lib.schema.id/database]
    [:dataset_query          [:map
-                             [:database ms/PositiveInt]
-                             [:type     [:= "native"]]
-                             [:native   [:map
-                                         [:query :string]]]]]
+                             [:database ::lib.schema.id/database]
+                             [:stages   [:sequential
+                                         {:min 1, :max 1}
+                                         [:map
+                                          [:lib/type [:= "mbql.stage/native"]]
+                                          [:native   string?]]]]]]
    [:parameters             :any]
    [:parameter_mappings     :any]
    [:visualization_settings :map]
@@ -69,8 +74,7 @@
     :description   "A simple update query action"
     :type          "query"
     :model_id      card-id
-    :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
-                           :type name)
+    :dataset_query (lib/native-query (mt/metadata-provider) "update users set name = 'foo' where id = {{x}}")
     :database_id   (t2/select-one-fn :database_id :model/Card :id card-id)
     :parameters    [{:id "x" :type "type/biginteger"}]}
    {:name       "Implicit example"
@@ -252,18 +256,30 @@
                                        (assoc :kind "row/update" :description "A new description")
 
                                        (= (:type initial-action) "query")
-                                       (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
-                                                                     :type name))
+                                       (assoc :dataset_query
+                                              (lib/native-query (mt/metadata-provider) "update users set name = 'bar' where id = {{x}}"))
 
                                        (= (:type initial-action) "http")
                                        (-> (assoc :response_handle ".body.result"  :description nil))))
                     expected-fn    (fn [m]
-                                     (cond-> m
-                                       (= (:type initial-action) "implicit")
-                                       (assoc :database_id (mt/id)
-                                              :parameters (if (= "row/create" (:kind initial-action))
-                                                            []
-                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
+                                     (-> m
+                                         (cond-> (= (:type initial-action) "implicit")
+                                           (assoc :database_id (mt/id)
+                                                  :parameters (if (= "row/create" (:kind initial-action))
+                                                                []
+                                                                [{:id "id" :type "type/BigInteger" :special "hello"}])))
+                                         (m/update-existing :dataset_query (letfn [(update-template-tags [template-tags]
+                                                                                     (update-vals template-tags #(dissoc % :id)))
+                                                                                   (update-stage [stage]
+                                                                                     (m/update-existing stage :template-tags update-template-tags))
+                                                                                   (update-stages [stages]
+                                                                                     (mapv update-stage stages))
+                                                                                   (update-query [query]
+                                                                                     (-> query
+                                                                                         mt/obj->json->obj
+                                                                                         (dissoc :lib/metadata)
+                                                                                         (update :stages update-stages)))]
+                                                                             update-query))))
                     updated-action (update-fn initial-action)]
                 (testing "Create fails with"
                   (testing "no permission"

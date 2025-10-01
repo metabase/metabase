@@ -1148,14 +1148,14 @@
            {:schema-name schema-name, :auxiliary-sync-steps :synchronous}
            (fn [model]
              (with-upload-table! [new-table (card->table model)]
-               (is (=? {:display          :table
-                        :database_id      db-id
-                        :dataset_query    {:database db-id
-                                           :query    {:source-table (:id new-table)}
-                                           :type     :query}
-                        :creator_id       (mt/user->id :rasta)
-                        :name             #"(?i)example csv file(.*)"
-                        :collection_id    nil}
+               (is (=? {:display       :table
+                        :database_id   db-id
+                        :dataset_query {:database db-id
+                                        :stages   [{:source-table (:id new-table)}]
+                                        :lib/type :mbql/query}
+                        :creator_id    (mt/user->id :rasta)
+                        :name          #"(?i)example csv file(.*)"
+                        :collection_id nil}
                        (t2/select-one :model/Card :table_id (:id new-table)))
                    "A new model is created")
                (is (=? {:name      #"(?i)example(.*)"

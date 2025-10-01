@@ -72,7 +72,8 @@
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize]
+   [metabase.lib.core :as lib]))
 
 (set! *warn-on-reflection* true)
 
@@ -1190,7 +1191,9 @@
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [encoded]
-  (ids->fully-qualified-names encoded))
+  (let [encoded (cond-> encoded
+                  (:lib/type encoded) lib/->legacy-MBQL)]
+    (ids->fully-qualified-names encoded)))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."

@@ -4,10 +4,14 @@
    [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [dev.deps-graph]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]
-   [rewrite-clj.zip :as z]))
+   [rewrite-clj.zip :as z]
+   [lambdaisland.deep-diff2 :as ddiff]
+   [clojure.set :as set]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,3 +138,33 @@
          (testing (format "\n'%s' module" module)
            (is (= (sort-module-names uses)
                   uses))))))))
+
+(deftest ^:parallel modules-config-up-to-date-test
+  (testing "Please update .clj-kondo/config/modules/config.edn 🥰\n"
+    (let [expected (dev.deps-graph/generate-config)
+          actual   (dev.deps-graph/kondo-config)
+          modules  (set/union (set (keys expected))
+                              (set (keys actual)))]
+      (doseq [module modules
+              :let   [_ (testing (format "Remove %s" (pr-str module))
+                          (is (seq (get expected module))))]
+              k      [:api :uses]
+              :let   [ks       [module k]
+                      expected (get-in expected ks)
+                      actual   (get-in actual ks)]
+              :when  (not= actual :any)
+              :let   [missing    (set/difference expected actual)
+                      extraneous (set/difference actual expected)]]
+        (testing (format "Add %s to %s\nused by %s"
+                         (pr-str missing)
+                         (pr-str ks)
+                         (pr-str (case k
+                                   :uses (reduce
+                                          (partial merge-with set/union)
+                                          {}
+                                          (map #(dev.deps-graph/module-usages-of-other-module module %)
+                                               missing))
+                                   :api  (select-keys (dev.deps-graph/external-usages-by-namespace module) missing))))
+          (is (empty? missing)))
+        (testing (format "Remove %s from %s" (pr-str extraneous) (pr-str ks))
+          (is (empty? extraneous)))))))

@@ -28,7 +28,7 @@
    [:params {:optional true} [:maybe [:sequential {:max 0} :any]]]])
 
 (mr/def ::query-with-compiled-query
-  "A legacy query that also has a compiled native query attached (unless it was already a native-only query in the first
+  "An MBQL 5 query that also has a compiled native query attached (unless it was already a native-only query in the first
   place)."
   [:merge
    [:ref ::lib.schema/query]

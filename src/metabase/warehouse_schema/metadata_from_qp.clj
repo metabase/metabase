@@ -11,6 +11,7 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [toucan2.core :as t2]))
 
@@ -31,7 +32,7 @@
          query       (-> (lib/query mp (lib.metadata/table mp table-id))
                          query-xform
                          (assoc-in [:middleware :disable-remaps?] true)
-                         schema.metadata-queries/add-required-filters-if-needed-mbql5)]
+                         schema.metadata-queries/add-required-filters-if-needed)]
      (binding [qp.i/*disable-qp-logging* true]
        (qp/process-query query rff)))))
 
@@ -40,18 +41,26 @@
   ([field]
    (field-distinct-count field nil))
 
-  ([field :- ::lib.schema.metadata/column
+  ([field :- [:or
+              ::lib.schema.metadata/column
+              (ms/InstanceOf :model/Field)]
     limit :- [:maybe pos-int?]]
-   (-> (table-query (:table_id field)
-                    (fn [query]
-                      (-> query
-                          (lib/aggregate (lib/distinct field))
-                          (cond-> limit
-                            (lib/limit limit)))))
-       :data :rows first first int)))
+   (let [field (cond-> field
+                 (t2/model field) (lib-be/instance->metadata :metadata/column))]
+     (-> (table-query (:table-id field)
+                      (fn [query]
+                        (-> query
+                            (lib/aggregate (lib/distinct field))
+                            (cond-> limit
+                              (lib/limit limit)))))
+         :data :rows first first int))))
 
-(defn field-count
+(mu/defn field-count
   "Return the count of `field`."
-  [field]
-  (-> (table-query (:table_id field) #(lib/aggregate % (lib/count field)))
-      :data :rows first first int))
+  [field :- [:or
+             ::lib.schema.metadata/column
+             (ms/InstanceOf :model/Field)]]
+  (let [field (cond-> field
+                (t2/model field) (lib-be/instance->metadata :metadata/column))]
+    (-> (table-query (:table-id field) #(lib/aggregate % (lib/count field)))
+        :data :rows first first int)))

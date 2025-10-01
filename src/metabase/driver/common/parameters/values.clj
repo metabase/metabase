@@ -9,7 +9,6 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:refer-clojure :exclude [every? some mapv])
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
@@ -30,7 +29,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some mapv]])
+   [metabase.util.performance :refer [every? mapv some]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -452,7 +451,9 @@
     (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters} :- :map]
+  [{tags :template-tags, params :parameters, :as _inner-query} :- [:or
+                                                                   ::mbql.s/MBQLQuery
+                                                                   mbql.s/NativeQuery]]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags

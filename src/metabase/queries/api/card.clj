@@ -491,8 +491,8 @@
    [:dataset_query          ms/Map]
                             ;; TODO: Make entity_id a NanoID regex schema?
    [:entity_id              {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
-   [:parameter_mappings     {:optional true} [:maybe [:sequential ::parameters.schema/parameter-mapping]]]
+   [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
+   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:description            {:optional true} [:maybe ms/NonBlankString]]
    [:display                ms/NonBlankString]
    [:visualization_settings ms/Map]
@@ -569,10 +569,12 @@
           result-metadata (:result_metadata card-updates)]
       (query-perms/check-result-metadata-data-perms database-id result-metadata))))
 
+;;; TODO -- merge this into `:metabase.queries.schema/card`
 (def ^:private CardUpdateSchema
   [:map
    [:name                   {:optional true} [:maybe ms/NonBlankString]]
-   [:parameters             {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+   [:parameters             {:optional true} [:maybe ::parameters.schema/parameters]]
+   [:parameter_mappings     {:optional true} [:maybe ::parameters.schema/parameter-mappings]]
    [:dataset_query          {:optional true} [:maybe ms/Map]]
    [:type                   {:optional true} [:maybe ::queries.schema/card-type]]
    [:display                {:optional true} [:maybe ms/NonBlankString]]

@@ -45,8 +45,10 @@
       (m/update-existing :parameters (fn [parameters]
                                        (mapv lib/->legacy-MBQL parameters)))
       (m/update-existing :template-tags update-vals lib/->legacy-MBQL)
+      (dissoc :lib/type)
       (->> (driver/substitute-native-parameters driver/*driver*))
-      (set/rename-keys {:query :native})))
+      (set/rename-keys {:query :native})
+      (assoc :lib/type (:lib/type stage))))
 
 (mu/defn expand-stage :- ::lib.schema/stage.native
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in

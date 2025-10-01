@@ -453,7 +453,7 @@
                                 (lib/order-by field))
                 (not original-field) (lib/breakout field))
         (add-filters source-table-id joined-table-ids constraints)
-        schema.metadata-queries/add-required-filters-if-needed-mbql5)))
+        schema.metadata-queries/add-required-filters-if-needed)))
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 

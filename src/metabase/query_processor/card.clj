@@ -9,8 +9,6 @@
    ;; legacy usages -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
    ;; Lib soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -159,8 +157,7 @@
   (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
     (into
      {}
-     (comp
-      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
+     (keep (fn [[param-name {widget-type :widget-type, tag-type :type}]]
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
@@ -172,7 +169,6 @@
                (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                    (= tag-type :temporal-unit))
                [param-name tag-type])))
-      (filter some?))
      (lib/all-template-tags-map query))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
@@ -306,7 +302,7 @@
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
-  {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
+  {:pre [(pos-int? card-id) (u/maybe? sequential? parameters)]}
   (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
@@ -338,7 +334,7 @@
                      (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
-      (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
+      (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]

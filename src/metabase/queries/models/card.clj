@@ -24,7 +24,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util.match :as lib.util.match]
@@ -32,6 +31,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
@@ -378,7 +378,7 @@
 ;;; If this function moves you should update the comment that links to this one (#40013)
 ;;;
 ;;; TODO -- does this belong HERE or in the `parameters` module?
-(mu/defn template-tag-parameters :- ::lib.schema.parameter/parameters
+(mu/defn template-tag-parameters :- ::parameters.schema/parameters
   "Transforms native query's `template-tags` into `parameters`.
   An older style was to not include `:template-tags` onto cards as parameters. I think this is a mistake and they
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
@@ -729,7 +729,7 @@
   (-> card
       (assoc :metabase_version config/mb-version-string
              :card_schema current-schema-version)
-      (m/update-existing :dataset_query lib-be/normalize-query)
+      queries.schema/normalize-card
       ;; Must have an entity_id before populating the metadata. TODO (Cam 7/11/25) -- actually, this is no longer true,
       ;; since we're removing `:ident`s; we can probably remove this now.
       (u/assoc-default :entity_id (u/generate-nano-id))
