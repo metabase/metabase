@@ -69,8 +69,8 @@
 
 (defmethod microseconds-test-expected-rows :sqlite
   [_driver]
-  [[1 4 "2015-06-06 10:40:00"]
-   [2 0 "2015-06-10 19:51:00"]])
+  [[1 4 "2015-06-06 10:40:00.000000"]
+   [2 0 "2015-06-10 19:51:00.000000"]])
 
 (deftest ^:parallel microseconds-test
   (mt/test-drivers (mt/normal-drivers)
