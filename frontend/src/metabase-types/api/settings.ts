@@ -702,6 +702,7 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-secret-key"?: string | null;
   "python-storage-s-3-container-endpoint"?: string | null;
   "python-storage-s-3-path-style-access"?: boolean | null;
+  "python-runner-timeout-seconds"?: number | null;
   /**
    * @deprecated
    */
