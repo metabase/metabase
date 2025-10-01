@@ -410,7 +410,7 @@ describe("scenarios > table-editing", () => {
         tableName: "scoreboard_actions",
       });
 
-    H.activateToken("bleeding-edge");
+      H.activateToken("bleeding-edge");
       setTableEditingEnabledForDB(WRITABLE_DB_ID);
 
       cy.intercept("GET", "/api/table/*/query_metadata").as("getTableMetadata");
@@ -427,20 +427,27 @@ describe("scenarios > table-editing", () => {
     it("should allow to create a row", () => {
       cy.findByTestId("new-record-button").click();
 
-      H.modal().within(() => {
-        cy.findByText("Create a new record").should("be.visible");
-        cy.findByTestId("Tax-field-input").type("50");
-        cy.findByTestId("Total-field-input").type("100");
-        cy.findByTestId("Discount-field-input").type("10");
-        cy.findByTestId("create-row-form-submit-button").click();
-      });
+      H.modal().findByText("Create a new record").should("be.visible");
+
+      cy.findByTestId("Team Name-field-input").click();
+      H.popover().findByRole("textbox").type("New York Bricks");
+      H.popover()
+        .findByText(/Add option/)
+        .click();
+      cy.findByTestId("Score-field-input").type("987");
+      cy.findByTestId("Status-field-input").click();
+      H.popover().findByText("active").click();
+
+      cy.findByTestId("create-row-form-submit-button").click();
 
       cy.wait("@executeBulk").then(({ response, request }) => {
         expect(request.body.action).to.equal("data-grid.row/create");
         expect(response?.body.outputs[0].op).to.equal("created");
-        expect(response?.body.outputs[0].row.TAX).to.equal(50);
-        expect(response?.body.outputs[0].row.TOTAL).to.equal(100);
-        expect(response?.body.outputs[0].row.DISCOUNT).to.equal(10);
+        expect(response?.body.outputs[0].row.score).to.equal(987);
+        expect(response?.body.outputs[0].row.status).to.equal("active");
+        expect(response?.body.outputs[0].row.team_name).to.equal(
+          "New York Bricks",
+        );
       });
 
       H.undoToast().within(() => {
@@ -448,12 +455,19 @@ describe("scenarios > table-editing", () => {
         cy.findByLabelText("close icon").click();
       });
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "edit_data_record_modified",
-        event_detail: "create",
-        target_id: ORDERS_ID,
-        triggered_from: "modal",
-        result: "success",
+      cy.findByTestId("table-root").within(() => {
+        cy.findByText("New York Bricks").should("be.visible");
+        cy.findByText("987").should("be.visible");
+      });
+
+      H.getTableId({ name: "scoreboard_actions" }).then((tableId) => {
+        H.expectUnstructuredSnowplowEvent({
+          event: "edit_data_record_modified",
+          event_detail: "create",
+          target_id: tableId,
+          triggered_from: "modal",
+          result: "success",
+        });
       });
     });
 
