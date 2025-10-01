@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.yaml :as yaml]
@@ -72,7 +73,8 @@
               yaml (yaml/generate-string edn)
               rep (yaml/parse-string yaml)
               rep (rep/normalize-representation rep)
-              question (rep/persist! rep)
+              ref-index {(v0-common/unref (:database edn)) (t2/select-one :model/Database (mt/id))}
+              question (rep/persist! rep ref-index)
               question (t2/select-one :model/Card :id (:id question))
               edn (rep/export question)
               yaml (yaml/generate-string edn)

@@ -88,7 +88,8 @@
         query (v0-mbql/import-dataset-query representation ref-index)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
-                      {:database database})))
+                      {:database database
+                       :index ref-index})))
     {:entity_id (or entity-id
                     (v0-common/generate-entity-id representation))
      :creator_id (or api/*current-user-id*
