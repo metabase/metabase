@@ -81,7 +81,9 @@ const decorators = [
       <EmotionCacheProvider>
         <ThemeProvider
           forceColorScheme={
-            "theme" in args && args.theme === "night" ? "dark" : "light"
+            "theme" in args && (args.theme === "night" || args.theme === "dark")
+              ? "dark"
+              : "light"
           }
         >
           <Global styles={globalStyles} />
