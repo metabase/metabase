@@ -702,14 +702,14 @@
                                                                          :collection_id coll2-id
                                                                          :dataset_query
                                                                          (mt/native-query
-                                                                           {:query         "select {{snippet}}"
-                                                                            :template-tags {"snippet"
-                                                                                            {:display-name "Snippet 1",
-                                                                                             :id           s1-eid,
-                                                                                             :name         "snippet 1",
-                                                                                             :snippet-id   s1-id,
-                                                                                             :snippet-name "snip",
-                                                                                             :type         "snippet"}}})}]
+                                                                          {:query         "select {{snippet}}"
+                                                                           :template-tags {"snippet"
+                                                                                           {:display-name "Snippet 1",
+                                                                                            :id           s1-eid,
+                                                                                            :name         "snippet 1",
+                                                                                            :snippet-id   s1-id,
+                                                                                            :snippet-name "snip",
+                                                                                            :type         "snippet"}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]
