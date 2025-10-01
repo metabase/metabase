@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
@@ -11,6 +11,9 @@ import type {
   Table,
   TableId,
 } from "metabase-types/api";
+
+import { DataFetcher } from "../../services/data-fetcher";
+import { pyodideWorkerManager } from "../../services/pyodide-worker-manager";
 
 import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
@@ -167,15 +170,97 @@ type TestPythonScriptState = {
 export function useTestPythonTransform(
   source: PythonTransformSourceDraft,
 ): TestPythonScriptState {
-  const [executePython, { isLoading: isRunning, originalArgs }] =
+  const [executePython, { isLoading: isBackendRunning, originalArgs }] =
     useExecutePythonMutation();
   const abort = useRef<(() => void) | null>(null);
   const [executionResult, setData] =
     useState<ExecutePythonTransformResponse | null>(null);
+  const [isPyodideRunning, setIsPyodideRunning] = useState(false);
+  const [pyodideStatus, setPyodideStatus] = useState<
+    "idle" | "loading" | "loaded" | "error"
+  >("idle");
 
+  const isRunning = isBackendRunning || isPyodideRunning;
   const isDirty = originalArgs?.code !== source.body;
 
-  const run = async () => {
+  // Initialize Pyodide Web Worker when component mounts
+  useEffect(() => {
+    if (pyodideStatus === "idle") {
+      setPyodideStatus("loading");
+      pyodideWorkerManager
+        .initialize()
+        .then(() => setPyodideStatus("loaded"))
+        .catch((error) => {
+          console.error("Failed to initialize Pyodide Web Worker:", error);
+          setPyodideStatus("error");
+        });
+    }
+  }, [pyodideStatus]);
+
+  const runWithPyodide = useCallback(async () => {
+    if (source["source-database"] === undefined) {
+      setData({ error: t`Please select a source database` });
+      return;
+    }
+
+    setIsPyodideRunning(true);
+
+    try {
+      // Fetch data for each table
+      const tableEntries = Object.entries(source["source-tables"]);
+      const sourcesPromises = tableEntries.map(
+        async ([variableName, tableId]) => {
+          // Fetch table metadata to get the actual table name and schema
+          const tableResponse = await fetch(`/api/table/${tableId}`);
+          const tableData = await tableResponse.json();
+
+          // Fetch 1 row of data
+          const transformSource = await DataFetcher.fetchTableData({
+            databaseId: source["source-database"] as number,
+            tableName: tableData.name,
+            schemaName: tableData.schema,
+            limit: 1,
+          });
+
+          return {
+            ...transformSource,
+            variable_name: variableName,
+            database_id: source["source-database"] as number,
+          };
+        },
+      );
+
+      const sources = await Promise.all(sourcesPromises);
+
+      // Get shared library code if available
+      let _sharedLibrary = "";
+      try {
+        const libResponse = await fetch("/api/ee/transforms-python/library");
+        if (libResponse.ok) {
+          const libData = await libResponse.json();
+          _sharedLibrary = libData.body || "";
+        }
+      } catch (error) {
+        console.warn("Failed to fetch shared library:", error);
+      }
+
+      // Execute with Pyodide Web Worker
+      const result = await pyodideWorkerManager.executePython(
+        source.body,
+        sources,
+      );
+
+      setData(result);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : t`An unknown error occurred`;
+      setData({ error: errorMessage });
+    } finally {
+      setIsPyodideRunning(false);
+    }
+  }, [source]);
+
+  const _runWithBackend = useCallback(async () => {
     if (source["source-database"] === undefined) {
       return null;
     }
@@ -199,10 +284,22 @@ export function useTestPythonTransform(
       const errorMessage = getErrorMessage(error, t`An unknown error occurred`);
       setData({ error: errorMessage });
     }
+  }, [source, executePython]);
+
+  const run = async () => {
+    // Use Pyodide for preview instead of backend
+    // Comment out the backend call but keep the code
+    // await runWithBackend();
+    await runWithPyodide();
   };
 
   const cancel = () => {
-    abort.current?.();
+    if (isPyodideRunning) {
+      // Cancel is handled automatically by the worker
+      setIsPyodideRunning(false);
+    } else {
+      abort.current?.();
+    }
   };
 
   return {

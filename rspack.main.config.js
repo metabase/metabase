@@ -8,6 +8,7 @@ const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+// const { PyodidePlugin } = require("@pyodide/webpack-plugin"); // Using custom implementation for Rspack compatibility
 
 const {
   IS_DEV_MODE,
@@ -244,6 +245,12 @@ const config = {
       "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
     },
+    fallback: {
+      // Standard Node.js modules that need polyfills for browser
+      "crypto": "crypto-browserify",
+      "fs": false,
+      "path": "path-browserify",
+    },
   },
   optimization: {
     runtimeChunk: "single",
@@ -319,6 +326,7 @@ const config = {
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new rspack.ProvidePlugin({ process: "process/browser.js" }),
+    // Pyodide will be loaded in a Web Worker to avoid CSP issues
   ],
 };
 
