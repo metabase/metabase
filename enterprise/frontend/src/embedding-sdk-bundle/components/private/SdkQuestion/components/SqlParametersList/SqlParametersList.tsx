@@ -14,8 +14,13 @@ import SqlParametersListS from "./SqlParametersList.module.css";
  * @category InteractiveQuestion
  */
 export const SqlParametersList = () => {
-  const { question, originalQuestion, updateQuestion, hiddenParameters } =
-    useSdkQuestionContext();
+  const {
+    question,
+    originalQuestion,
+    parameterValues,
+    updateParameterValues,
+    hiddenParameters,
+  } = useSdkQuestionContext();
 
   const isNativeQuestion = useMemo(() => {
     if (!question) {
@@ -42,19 +47,19 @@ export const SqlParametersList = () => {
             (originalParameter) => originalParameter.id === id,
           ) && !hiddenParameters?.includes(slug),
       );
-  }, [originalQuestion, question, hiddenParameters]);
+  }, [question, originalQuestion, hiddenParameters]);
 
   if (!question || !isNativeQuestion) {
     return null;
   }
 
   const setParameterValue = (parameterId: ParameterId, value: string) => {
-    const questionWithParams = question.setParameterValues({
-      ...question._parameterValues,
+    const nextParameterValues = {
+      ...parameterValues,
       [parameterId]: value,
-    });
+    };
 
-    updateQuestion(questionWithParams, { run: true });
+    updateParameterValues(nextParameterValues);
   };
 
   return (

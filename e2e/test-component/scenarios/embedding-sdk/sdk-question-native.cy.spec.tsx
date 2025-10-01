@@ -230,46 +230,81 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
       cy.findByPlaceholderText("Source").should("not.exist");
     });
 
-    it("shows editable sql parameters controls when `SqlParametersList` is defined in a custom layout", () => {
-      mountInteractiveQuestion({
-        initialSqlParameters: { State: "NY" },
-        hiddenParameters: ["Source"],
-        children: (
-          <>
-            <InteractiveQuestion.Title />
-            <InteractiveQuestion.SqlParametersList />
-            <InteractiveQuestion.QuestionVisualization />
-          </>
-        ),
+    describe("when `SqlParametersList` component is defined in a custom question layout", () => {
+      it("allows to edit sql parameters", () => {
+        mountInteractiveQuestion({
+          hiddenParameters: ["Source"],
+          children: (
+            <>
+              <InteractiveQuestion.Title />
+              <InteractiveQuestion.SqlParametersList />
+              <InteractiveQuestion.QuestionVisualization />
+            </>
+          ),
+        });
+
+        cy.wait("@cardQuery");
+
+        cy.findByPlaceholderText("State").should("exist");
+        cy.findByPlaceholderText("City").should("exist");
+        cy.findByPlaceholderText("Source").should("not.exist");
+
+        getSdkRoot().within(() => {
+          cy.findByPlaceholderText("State").clear().type("NY{enter}");
+        });
+
+        ensureParameterColumnValue({
+          columnName: "STATE",
+          columnValue: "NY",
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByPlaceholderText("State").clear().type("AR{enter}");
+        });
+
+        ensureParameterColumnValue({
+          columnName: "STATE",
+          columnValue: "AR",
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByPlaceholderText("City").type("El Paso{enter}");
+        });
+
+        ensureParameterColumnValue({
+          columnName: "CITY",
+          columnValue: "El Paso",
+        });
       });
 
-      cy.wait("@cardQuery");
+      it("initializes sql parameters controls with initial values and keeps an initial value when changing other parameters", () => {
+        mountInteractiveQuestion({
+          initialSqlParameters: { State: "AR" },
+          hiddenParameters: ["Source"],
+          children: (
+            <>
+              <InteractiveQuestion.Title />
+              <InteractiveQuestion.SqlParametersList />
+              <InteractiveQuestion.QuestionVisualization />
+            </>
+          ),
+        });
 
-      cy.findByPlaceholderText("State").should("exist");
-      cy.findByPlaceholderText("City").should("exist");
-      cy.findByPlaceholderText("Source").should("not.exist");
+        cy.wait("@cardQuery");
 
-      ensureParameterColumnValue({
-        columnName: "STATE",
-        columnValue: "NY",
-      });
+        ensureParameterColumnValue({
+          columnName: "STATE",
+          columnValue: "AR",
+        });
 
-      getSdkRoot().within(() => {
-        cy.findByPlaceholderText("State").clear().type("AR{enter}");
-      });
+        getSdkRoot().within(() => {
+          cy.findByPlaceholderText("City").type("El Paso{enter}");
+        });
 
-      ensureParameterColumnValue({
-        columnName: "STATE",
-        columnValue: "AR",
-      });
-
-      getSdkRoot().within(() => {
-        cy.findByPlaceholderText("City").type("El Paso{enter}");
-      });
-
-      ensureParameterColumnValue({
-        columnName: "CITY",
-        columnValue: "El Paso",
+        ensureParameterColumnValue({
+          columnName: "CITY",
+          columnValue: "El Paso",
+        });
       });
     });
   });
