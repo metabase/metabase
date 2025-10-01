@@ -26,7 +26,7 @@ export const ItemsListSection = ({
   const [isSortingMenuOpen, setIsSortingMenuOpen] = useState(false);
 
   return (
-    <Box miw={300}>
+    <Box w="100%" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <Flex
         direction="row"
         justify="space-between"
@@ -124,7 +124,7 @@ export const ItemsListSection = ({
           />
         </Group>
       </Flex>
-      <ul>{listItems}</ul>
+      <Box p="md" style={{ overflow: "auto" }}>{listItems}</Box>
     </Box>
   );
 };

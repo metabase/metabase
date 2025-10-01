@@ -23,9 +23,10 @@ export interface MetabotConfig {
 export interface MetabotProps {
   hide?: boolean;
   config?: MetabotConfig;
+  w?: string;
 }
 
-export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
+export const MetabotAuthenticated = ({ hide, config, w }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
 
   return (
     <ErrorBoundary errorComponent={() => null}>
-      <MetabotChat config={config} />
+      <MetabotChat config={config} w={w} />
     </ErrorBoundary>
   );
 };

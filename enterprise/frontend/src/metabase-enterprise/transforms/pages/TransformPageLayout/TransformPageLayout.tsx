@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 
 import { ResizeHandle } from "metabase/bench/components/BenchApp";
+import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import { Box, type BoxProps } from "metabase/ui";
 
+import { TransformList } from "../TransformListPage/TransformList";
 import { TransformListPage } from "../TransformListPage/TransformListPage";
 
 type TransformPageLayoutPropsParams = {
@@ -37,19 +39,12 @@ export function TransformPageLayout({
   location,
 }: TransformPageLayoutOwnProps) {
   return (
-    <PanelGroup autoSaveId="transform-layout" direction="horizontal">
-      <Panel>
-        <ScrollBox w="30rem" p="md" h="100%">
-          <TransformListPage location={location}/>
-        </ScrollBox>
-      </Panel>
-      <ResizeHandle />
-      <Panel>
-        <ScrollBox p="md" key="details" h="100%">
-          {children}
-        </ScrollBox>
-      </Panel>
-    </PanelGroup>
+    <BenchLayout
+      nav={<TransformList params={{ location }} />}
+      name="transform"
+    >
+      {children}
+    </BenchLayout>
   );
 }
 

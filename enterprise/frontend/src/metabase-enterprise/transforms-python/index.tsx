@@ -23,9 +23,7 @@ if (hasPremiumFeature("transforms-python")) {
   PLUGIN_TRANSFORMS_PYTHON.SourceSection = SourceSection;
 
   PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes = () => (
-    <Route component={FullWidthTransformPageLayout}>
-      <Route path="library/:path" component={PythonLibraryEditorPage} />
-    </Route>
+    <Route path="library/:path" component={PythonLibraryEditorPage} />
   );
 
   PLUGIN_TRANSFORMS_PYTHON.getTransformsNavLinks = () => (
