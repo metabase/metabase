@@ -14,10 +14,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
+    - merge:
+      - host
+      - group-id: host-and-port
     - merge:
         - port
         - placeholder: 5433
+          group-id: host-and-port
     - dbname
     - user
     - password
@@ -28,6 +31,10 @@ driver:
         - additional-options
         - placeholder: 'ConnectionLoadBalance=1'
     - default-advanced-options
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.vertica

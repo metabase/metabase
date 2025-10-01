@@ -14,10 +14,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
+    - merge:
+        - host
+        - group-id: host-and-port
     - merge:
         - port
         - placeholder: 1521
+          group-id: host-and-port
     - name: sid
       display-name: Oracle system ID (SID)
       placeholder: Usually something like ORCL or XE. Optional if using service name
@@ -73,6 +76,10 @@ driver:
     - ssh-tunnel
     - advanced-options-start
     - default-advanced-options
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.oracle

@@ -12,9 +12,11 @@ driver:
         - host
         - placeholder: my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com
           required: true
+          group-id: host-and-port
     - merge:
         - port
         - placeholder: 5439
+          group-id: host-and-port
     - merge:
         - dbname
         - name: db
@@ -31,6 +33,10 @@ driver:
       - additional-options
       - placeholder: 'SocketTimeout=0'
     - default-advanced-options
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.postgres
