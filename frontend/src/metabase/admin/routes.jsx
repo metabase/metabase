@@ -48,7 +48,6 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_METABOT,
-  PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -113,7 +112,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
         </Route>
       </Route>
-      {PLUGIN_TRANSFORMS.getAdminRoutes()}
       {/* PEOPLE */}
       <Route path="people" component={createAdminRouteGuard("people")}>
         <Route title={t`People`} component={AdminPeopleApp}>

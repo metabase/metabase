@@ -1,3 +1,4 @@
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type { Transform } from "metabase-types/api";
 
 export function transforms() {
@@ -5,17 +6,17 @@ export function transforms() {
 }
 
 export function newNativeTransform() {
-  return `/admin/transforms/new/native`;
+  return `${ROOT_URL}/new/native`;
 }
 
 export function newPythonTransform() {
-  return `/admin/transforms/new/python`;
+  return `${ROOT_URL}/new/python`;
 }
 
 export function transform(id: Transform["id"]) {
-  return `/admin/transforms/${id}`;
+  return `${ROOT_URL}/${id}`;
 }
 
 export function transformEdit(id: Transform["id"]) {
-  return `/admin/transforms/${id}/query`;
+  return `${ROOT_URL}/${id}/query`;
 }
