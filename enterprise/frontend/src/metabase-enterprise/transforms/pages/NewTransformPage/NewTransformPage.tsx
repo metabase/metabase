@@ -17,6 +17,7 @@ import {
 import type {
   CardId,
   DatasetQuery,
+  SuggestedTransform,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -56,6 +57,7 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
   const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
+
   const canUseSuggestedTransform = match({
     type,
     suggestionSourceType: suggestedTransform?.source.type,
@@ -76,19 +78,34 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
     ? getInitialTransformSource(card, type)
     : initialSuggestedSource || getInitialTransformSource(card, type);
 
+  const proposedSource = useMemo(
+    () =>
+      _.isEqual(suggestedTransform?.source, initialSource)
+        ? undefined
+        : suggestedTransform?.source,
+    [suggestedTransform, initialSource],
+  );
+
   return (
     <AdminSettingsLayout fullWidth>
-      <NewTransformPageInner initialSource={initialSource} />
+      <NewTransformPageInner
+        initialSource={initialSource}
+        proposedSource={proposedSource}
+        suggestedTransform={suggestedTransform}
+      />
     </AdminSettingsLayout>
   );
 }
 
 export function NewTransformPageInner({
   initialSource,
+  proposedSource,
+  suggestedTransform,
 }: {
   initialSource: InitialTransformSource;
+  proposedSource: TransformSource | undefined;
+  suggestedTransform: SuggestedTransform | undefined;
 }) {
-  // TODO: fix type
   const [source, setSource] = useState<TransformSource | undefined>(
     initialSource as any,
   );
@@ -106,23 +123,14 @@ export function NewTransformPageInner({
     openModal();
   };
 
+  const handleChange = () => dispatch(setSuggestedTransform(undefined));
+
   const handleRejectProposed = () => dispatch(setSuggestedTransform(undefined));
 
   const handleCancel = () => {
     dispatch(push(getTransformListUrl()));
     handleRejectProposed();
   };
-
-  const suggestedTransform = useSelector(
-    getMetabotSuggestedTransform as any,
-  ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedSource = useMemo(
-    () =>
-      _.isEqual(suggestedTransform?.source, initialSource)
-        ? undefined
-        : suggestedTransform?.source,
-    [suggestedTransform, initialSource],
-  );
 
   const createTransformInitValues = useMemo(
     () =>
@@ -143,6 +151,7 @@ export function NewTransformPageInner({
       <NewTransformEditorBody
         initialSource={initialSource}
         proposedSource={proposedSource}
+        onChange={handleChange}
         onSave={handleSave}
         onCancel={handleCancel}
         onRejectProposed={handleRejectProposed}
@@ -163,6 +172,7 @@ export function NewTransformPageInner({
 interface NewTransformEditorBody {
   initialSource: InitialTransformSource;
   proposedSource?: TransformSource;
+  onChange: (source: TransformSource) => void;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
@@ -172,6 +182,7 @@ interface NewTransformEditorBody {
 function NewTransformEditorBody({
   initialSource,
   proposedSource,
+  onChange,
   onSave,
   onCancel,
   onRejectProposed,
@@ -187,6 +198,7 @@ function NewTransformEditorBody({
         isNew
         onSave={onSave}
         onCancel={onCancel}
+        // onChange={onChange}
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />
@@ -202,6 +214,7 @@ function NewTransformEditorBody({
       isNew
       onSave={onSave}
       onCancel={onCancel}
+      onChange={onChange}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
     />

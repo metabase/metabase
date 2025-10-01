@@ -1,5 +1,5 @@
 import { useDisclosure, useHotkeys, useToggle } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -34,9 +34,10 @@ import {
   useInsertSnippetHandler,
   useSelectedText,
 } from "./utils";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 
 type QueryEditorProps = {
-  transform?: Pick<Transform, "name">;
+  transform?: Transform | undefined;
   initialSource: QueryTransformSource;
   proposedSource?: QueryTransformSource;
   isNew?: boolean;
@@ -76,6 +77,12 @@ export function QueryEditor({
   const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
   const validationResult = getValidationResult(question.query());
+
+  const source = useMemo(() => {
+    const query = proposedSource?.query ?? question.datasetQuery();
+    return { type: "query" as const, query };
+  }, [proposedSource, question]);
+  useRegisterMetabotTransformContext(transform, source);
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);

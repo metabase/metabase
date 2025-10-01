@@ -1,3 +1,4 @@
+import { PythonTransformSourceDraft } from "metabase-enterprise/transforms-python/components/PythonTransformEditor";
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
@@ -26,6 +27,10 @@ export type Transform = {
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &
   Pick<Transform, "name" | "description" | "source" | "target">;
+
+export type DraftTransform = Partial<
+  Pick<Transform, "id" | "name" | "description" | "target">
+> & { source: Transform["source"] | PythonTransformSourceDraft };
 
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 

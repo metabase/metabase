@@ -8,6 +8,7 @@ import type {
   PythonTransformSource,
   PythonTransformTableAliases,
   Table,
+  Transform,
 } from "metabase-types/api";
 
 import { PythonDataPicker } from "./PythonDataPicker";
@@ -20,6 +21,7 @@ import {
   useShouldShowPythonDebugger,
   useTestPythonTransform,
 } from "./utils";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 
 export type PythonTransformSourceDraft = {
   type: "python";
@@ -29,11 +31,13 @@ export type PythonTransformSourceDraft = {
 };
 
 export type PythonTransformEditorProps = {
+  transform?: Transform | undefined;
   initialSource: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
+  onChange?: (newSource: PythonTransformSourceDraft) => void;
   onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
@@ -41,11 +45,13 @@ export type PythonTransformEditorProps = {
 };
 
 export function PythonTransformEditor({
+  transform,
   initialSource,
   proposedSource,
   isNew = true,
   isSaving = false,
   isRunnable = true,
+  onChange,
   onSave,
   onCancel,
   onRejectProposed,
@@ -53,6 +59,8 @@ export function PythonTransformEditor({
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
+
+  useRegisterMetabotTransformContext(transform, proposedSource ?? source);
 
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonTransform(source);
@@ -64,6 +72,7 @@ export function PythonTransformEditor({
     };
     setSource(newSource);
     setIsSourceDirty(true);
+    onChange?.(newSource);
   };
 
   const handleDataChange = (

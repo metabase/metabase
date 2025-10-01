@@ -4,6 +4,7 @@ import type {
   CardType,
   DashboardId,
   DatasetQuery,
+  DraftTransform,
   PaginationResponse,
   RowValue,
   SuggestedTransform,
@@ -124,8 +125,9 @@ export type MetabotDocumentInfo = {
 };
 
 export type MetabotTransformInfo =
-  | ({ type: "transform" } & Transform)
-  | ({ type: "transform" } & SuggestedTransform);
+  | ({ type: "transform" } & Transform) // edit
+  | ({ type: "transform" } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform" } & DraftTransform); // edit unsaved suggested
 
 export type MetabotEntityInfo =
   | MetabotCardInfo

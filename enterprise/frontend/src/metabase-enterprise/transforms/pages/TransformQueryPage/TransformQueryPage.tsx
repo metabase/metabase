@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,7 +7,6 @@ import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/Admi
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
@@ -66,8 +64,6 @@ export function TransformQueryPageBody({
   const metabot = useMetabotAgent();
 
   const initialSource = transform.source;
-  const [source, setSource] = useState(initialSource);
-
   const suggestedTransform = useSelector(
     (state) => getMetabotSuggestedTransform(state, transform.id) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
@@ -76,10 +72,7 @@ export function TransformQueryPageBody({
   const isPropsedSame = _.isEqual(suggestedTransform?.source, initialSource);
   const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
 
-  useRegisterMetabotContextProvider(async () => {
-    const viewedTransform = suggestedTransform ?? { ...transform, source };
-    return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
-  }, [transform, source, suggestedTransform]);
+  const handleChange = () => dispatch(setSuggestedTransform(undefined));
 
   const onRejectProposed = () => {
     dispatch(setSuggestedTransform(undefined));
@@ -130,12 +123,14 @@ export function TransformQueryPageBody({
     return (
       <AdminSettingsLayout fullWidth key={transform.id}>
         <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          transform={transform}
           initialSource={transform.source}
           proposedSource={
             proposedSource?.type === "python" ? proposedSource : undefined
           }
           isNew={false}
           isSaving={isLoading}
+          onChange={handleChange}
           onSave={handleSourceSave}
           onCancel={handleCancel}
           onRejectProposed={onRejectProposed}
@@ -153,7 +148,7 @@ export function TransformQueryPageBody({
         isNew={false}
         isSaving={isLoading}
         onSave={handleSourceSave}
-        onChange={setSource}
+        onChange={handleChange}
         onCancel={handleCancel}
         proposedSource={
           proposedSource?.type === "query" ? proposedSource : undefined

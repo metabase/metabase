@@ -36,6 +36,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  MetabotTransformInfo,
   QueryTransformSource,
   SuggestedTransform,
   Transform,
@@ -147,6 +148,7 @@ export const AgentSuggestionMessage = ({
     isLoading,
     error,
   } = useGetOldTransform(message.payload);
+
   const { data: latestTransform } = useGetTransformQuery(
     suggestedTransform.id || skipToken,
   );
