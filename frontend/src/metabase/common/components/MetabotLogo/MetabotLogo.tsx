@@ -32,6 +32,7 @@ const MetabotLogo = forwardRef(function MetabotLogo(
       {...rest}
       ref={ref}
       aria-label={t`Metabot`}
+      role="img"
     />
   );
 });
