@@ -81,15 +81,17 @@
   [_route-params
    _query-params
    {:keys [id source target] :as _body} :- ::transform-body]
-  (let [database-id   (-> source :query :database)
-        base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
-        original      (lib.metadata/transform base-provider id)
-        transform     (-> original
-                          (cond-> #_transform source (assoc :source source))
-                          (cond-> #_transform target (assoc :target target)))
-        edits         {:transform [transform]}
-        breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
-    (broken-cards-response breakages)))
+  (when (= (keyword (:type source))
+           :query)
+    (let [database-id   (-> source :query :database)
+          base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+          original      (lib.metadata/transform base-provider id)
+          transform     (-> original
+                            (cond-> #_transform source (assoc :source source))
+                            (cond-> #_transform target (assoc :target target)))
+          edits         {:transform [transform]}
+          breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
+      (broken-cards-response breakages))))
 
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
