@@ -367,7 +367,44 @@
                      :model_entity_id "entity-id-dash-789012"
                      :sync_type "create"}
                     (first entries)))
-            (is (re-find #"create Dashboard by user .*" (:message (first entries))))))))))
+            (is (re-find #"create Dashboard by user .*" (:message (first entries))))))
+        (testing "does not mark newly-created entities as updated if the creation has not been synced"
+          (testing "when there has been no sync"
+            (t2/delete! :model/RemoteSyncChangeLog)
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "create")
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "update")
+            (is (=? [{:model_type      "Dashboard"
+                      :model_entity_id "entity-id-dash-789012"
+                      :sync_type       "create"}] (t2/select :model/RemoteSyncChangeLog))))
+          (testing "when the last sync was after the creation, they are updated"
+            (#'lib.events/create-remote-sync-change-log-entry! "Collection" "collection-id-12345" "export")
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "update")
+            (is (=? [{:model_type      "Dashboard"
+                      :model_entity_id "entity-id-dash-789012"
+                      :sync_type       "create"
+                      :most_recent     false}
+                     {:model_type      "Dashboard"
+                      :model_entity_id "entity-id-dash-789012"
+                      :sync_type       "update"
+                      :most_recent     true}] (t2/select :model/RemoteSyncChangeLog :model_entity_id "entity-id-dash-789012" {:order-by :id})))))
+        (testing "does not mark newly-created entities as deleted if the creation has not been synced"
+          (testing "when there has been no sync"
+            (t2/delete! :model/RemoteSyncChangeLog)
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "create")
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "delete")
+            (is (empty? (t2/select :model/RemoteSyncChangeLog))))
+          (testing "when the last sync was after the creation, they are marked as deleted"
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "create")
+            (#'lib.events/create-remote-sync-change-log-entry! "Collection" "collection-id-12345" "export")
+            (#'lib.events/create-remote-sync-change-log-entry! "Dashboard" "entity-id-dash-789012" "delete")
+            (is (=? [{:model_type      "Dashboard"
+                      :model_entity_id "entity-id-dash-789012"
+                      :sync_type       "create"
+                      :most_recent     false}
+                     {:model_type      "Dashboard"
+                      :model_entity_id "entity-id-dash-789012"
+                      :sync_type       "delete"
+                      :most_recent     true}] (t2/select :model/RemoteSyncChangeLog :model_entity_id "entity-id-dash-789012" {:order-by :id})))))))))
 
 (deftest event-derivation-test
   (testing "events properly derive from :metabase/event"

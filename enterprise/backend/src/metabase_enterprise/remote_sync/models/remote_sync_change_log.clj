@@ -112,7 +112,7 @@
   "A honeysql select statement that returns dirty children of a collection or any sub items of this collection.
 
   Arguments:
-    col-or-id (optional): the colleciton or the id of the collection to check, if omitted checks for any dirty
+    col-or-id (optional): the collection or the id of the collection to check, if omitted checks for any dirty
       items in any remote-synced root
     selection-options: mapping of model-type->honeysql for the select clause of the options
 

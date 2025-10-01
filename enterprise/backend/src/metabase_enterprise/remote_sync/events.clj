@@ -105,16 +105,30 @@
    Returns:
        map: The created change log entry."
   [model-type model-entity-id sync-type & [user-id]]
-  (let [user-id (or user-id api/*current-user-id*)]
-    (t2/insert! :model/RemoteSyncChangeLog
-                {:model_type model-type
-                 :model_entity_id (str model-entity-id)
-                 :sync_type sync-type
-                 :source_branch nil
-                 :target_branch nil
-                 :most_recent true
-                 :status "success"
-                 :message (format "%s %s by user %s" (name sync-type) model-type user-id)})))
+  (let [user-id (or user-id api/*current-user-id*)
+        last-sync (t2/select-one-fn :created_at [:model/RemoteSyncChangeLog :created_at] :sync_type [:in ["import" "export"]])
+        base-where-clause [:and
+                           [:= :model_type model-type]
+                           [:= :model_entity_id (str model-entity-id)]
+                           [:= :most_recent true]
+                           [:= :sync_type [:inline "create"]]]
+        created-since-sync (pos-int? (t2/count :model/RemoteSyncChangeLog {:where (cond-> base-where-clause
+                                                                                    (some? last-sync) (conj [:> :created_at last-sync]))}))]
+    (if created-since-sync
+      (when (= sync-type "delete")
+        (t2/delete! :model/RemoteSyncChangeLog
+                    :model_type model-type
+                    :model_entity_id (str model-entity-id)
+                    :sync_type "create"))
+      (t2/insert! :model/RemoteSyncChangeLog
+                  {:model_type      model-type
+                   :model_entity_id (str model-entity-id)
+                   :sync_type       sync-type
+                   :source_branch   nil
+                   :target_branch   nil
+                   :most_recent     true
+                   :status          "success"
+                   :message         (format "%s %s by user %s" (name sync-type) model-type user-id)}))))
 
 ;; Model change tracking event handlers
 
