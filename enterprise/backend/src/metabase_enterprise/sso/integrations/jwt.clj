@@ -9,15 +9,14 @@
    [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.embedding.settings :as embed.settings]
+   [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response]
-   [toucan2.core :as t2])
-  (:import
-   (java.net URLEncoder)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -98,7 +97,7 @@
 
 (defn- session-data
   [jwt {{redirect :return_to} :params, :as request}]
-  (let [redirect-url (or redirect (URLEncoder/encode "/"))]
+  (let [redirect-url (or redirect "/")]
     (sso-utils/check-sso-redirect redirect-url)
     (let [jwt-data     (try
                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
@@ -155,14 +154,14 @@
   [{{:keys [jwt redirect]} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
   (let [jwt-data (when jwt (session-data jwt request))
-        is-react-sdk? (sso-utils/is-react-sdk-header? request)
-        is-simple-embed? (sso-utils/is-simple-embed-header? request)
-        is-embed? (or is-react-sdk? is-simple-embed?)]
+        is-react-sdk? (embed.util/has-react-sdk-header? request)
+        is-embedded-analytics-js? (embed.util/has-embedded-analytics-js-header? request)
+        is-modular-embedding? (or is-react-sdk? is-embedded-analytics-js?)]
     (cond
       (and is-react-sdk? (not (embed.settings/enable-embedding-sdk))) (throw-react-sdk-embedding-disabled)
-      (and is-simple-embed? (not (embed.settings/enable-embedding-simple))) (throw-simple-embedding-disabled)
-      (and is-embed? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))
-      is-embed?           (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"}))
+      (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple))) (throw-simple-embedding-disabled)
+      (and is-modular-embedding? jwt (token-utils/has-token request)) (generate-response-token (:session jwt-data) (:jwt-data jwt-data))
+      is-modular-embedding?           (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri) :method "jwt"}))
       jwt               (request/set-session-cookies request
                                                      (response/redirect (:redirect-url jwt-data))
                                                      (:session jwt-data)

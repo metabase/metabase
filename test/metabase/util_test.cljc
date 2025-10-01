@@ -535,6 +535,20 @@
     [1 2]   true
     [1 2 1] false))
 
+(deftest ^:parallel traverse-test
+  (testing "u/traverse tracks deps correctly"
+    (let [graph {:a [:b :d]
+                 :b [:c :d]
+                 :c nil
+                 :d [:e]
+                 :e nil}]
+      (is (= {:a nil
+              :b #{:a}
+              :c #{:b}
+              :d #{:a :b}
+              :e #{:d}}
+             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
+
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected
                                    (u/round-to-decimals decimal-place 1250.04253))
@@ -694,3 +708,14 @@
       (is (nil? (u/find-first-map test-maps [:a :b] 5)))
       (is (= {:a {:b 2}}
              (u/find-first-map test-maps [:a :b] 2))))))
+
+(deftest ^:parallel last-test
+  (testing "u/last works"
+    (are [res src] (= res (u/last src))
+      9      (range 10)
+      3      '(1 2 3)
+      nil    '()
+      3      [1 2 3]
+      nil    []
+      \c     "abc"
+      [:b 2] {:a 1 :b 2})))

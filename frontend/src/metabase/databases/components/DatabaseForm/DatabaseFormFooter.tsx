@@ -91,15 +91,18 @@ export const DatabaseFormFooter = ({
   // to false, we can assume that the instance loads with the Sample Database.
   // https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_load_sample_content
   if (hasSampleDatabase !== false && showSampleDatabase) {
+    const sampleDatabaseLabel = (
+      <strong key="sample">{t`Sample Database`}</strong>
+    );
     return (
       <>
         <Button variant="filled" mb="md" mt="lg" onClick={onCancel}>
           {t`Continue with sample data`}
         </Button>
         <Text fz="sm">
-          {c("{0} is 'Sample Database'").jt`Use our ${(
-            <strong key="sample">{t`Sample Database`}</strong>
-          )} to explore and test the app.`}
+          {c("{0} is 'Sample Database'").jt`Use our ${
+            sampleDatabaseLabel
+          } to explore and test the app.`}
         </Text>
         <Text fz="sm">{t`Add your own data at any time.`}</Text>
       </>

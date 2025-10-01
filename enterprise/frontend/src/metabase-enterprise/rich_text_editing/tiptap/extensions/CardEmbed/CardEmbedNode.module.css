@@ -1,6 +1,7 @@
 .embedWrapper {
   display: block;
   width: 100%;
+  height: 100%;
 }
 
 .cardEmbed {
@@ -15,6 +16,8 @@
   transition: border-color 0.2s ease;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  background: var(--mb-color-background);
 }
 
 .cardEmbed.selected {
@@ -29,13 +32,18 @@
   -ms-user-select: none;
 }
 
+.cardEmbed div[data-element-id="data-grid-measure-root"] {
+  display: none;
+}
+
 .questionHeader {
   padding: 0.5rem 1rem;
 }
 
 .questionResults {
-  height: 400px;
   position: relative;
+  flex-grow: 1;
+  overflow: hidden; /* needed to constraint funnel chart */
 }
 
 .loadingContainer {
@@ -51,11 +59,19 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  overflow: hidden;
+  flex-shrink: 1;
+}
+
+.titleText {
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
 
 .titleEditIcon {
   opacity: 0;
   transition: opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
 .titleContainer:hover .titleEditIcon {
@@ -63,6 +79,11 @@
 }
 
 .menuButton {
+  cursor: pointer;
   border: none;
   border-radius: var(--mantine-radius-xs);
+
+  &:hover {
+    background-color: var(--mb-color-bg-light);
+  }
 }

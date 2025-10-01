@@ -148,7 +148,7 @@ function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
       acc.toolCalls.push({ ...streamPart.value, state: "call" });
       acc.history.push({
         role: "assistant",
-        "tool-calls": [
+        tool_calls: [
           {
             id: streamPart.value.toolCallId,
             name: streamPart.value.toolName,
@@ -175,7 +175,7 @@ function accumulateStreamParts(streamParts: ParsedStreamPart[]) {
       acc.history.push({
         role: "tool",
         content: streamPart.value.result,
-        "tool-call-id": streamPart.value.toolCallId,
+        tool_call_id: streamPart.value.toolCallId,
       });
     }
 

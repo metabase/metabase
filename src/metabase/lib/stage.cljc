@@ -1,5 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -22,7 +23,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.namespaces :as shared.ns]))
+   [metabase.util.namespaces :as shared.ns]
+   [metabase.util.performance :refer [mapv some]]))
 
 (comment metabase.lib.stage.util/keep-me)
 
@@ -88,14 +90,21 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (when-let [{fields :fields} (lib.util/query-stage query stage-number)]
-    (-> (for [[tag :as ref-clause] fields
-              :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
-          (cond-> col
-            (= tag :expression) (assoc :lib/source              :source/expressions
-                                       :lib/source-column-alias (:lib/expression-name col))))
-        (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
-        not-empty)))
+  (let [stage             (lib.util/query-stage query stage-number)
+        ;; this key is added by [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]]; we
+        ;; forward it as `:qp/implicit-field?`
+        ;; so [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] will know to force Field ID
+        ;; `:field_ref`s in the QP results metadata to preserve historic behavior
+        added-implicitly? (:qp/added-implicit-fields? stage)]
+    (when-let [{fields :fields} stage]
+      (-> (for [[tag :as ref-clause] fields
+                :let                 [col (lib.metadata.calculation/metadata query stage-number ref-clause)]]
+            (cond-> col
+              (= tag :expression) (assoc :lib/source              :source/expressions
+                                         :lib/source-column-alias (:lib/expression-name col))
+              added-implicitly?   (assoc :qp/implicit-field? true)))
+          (as-> $cols (concat $cols (lib.metadata.calculation/remapped-columns query stage-number $cols options)))
+          not-empty))))
 
 (mu/defn- summary-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   [query        :- ::lib.schema/query

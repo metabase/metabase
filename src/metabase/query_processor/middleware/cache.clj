@@ -12,7 +12,7 @@
    [medley.core :as m]
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
-   [metabase.lib.query :as lib.query]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
@@ -59,7 +59,8 @@
   [object]
   (when *in-fn*
     (*in-fn* (cond-> object
-               (map? object) (m/update-existing :json_query lib.query/serializable)))))
+               (map? object) (-> (m/update-existing :json_query lib/prepare-for-serialization)
+                                 (m/update-existing :preprocessed_query lib/prepare-for-serialization))))))
 
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."

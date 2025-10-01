@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 
+import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotPromptSubmissionResult,
   getAgentErrorMessages,
@@ -14,6 +15,7 @@ import {
   getMetabotId,
   getMetabotRequestId,
   getMetabotVisible,
+  getProfileOverride,
   getToolCalls,
   resetConversation as resetConversationAction,
   retryPrompt,
@@ -66,6 +68,10 @@ export const useMetabotAgent = () => {
     [dispatch],
   );
 
+  const profile = useSelector(getProfileOverride as any) as ReturnType<
+    typeof getProfileOverride
+  >;
+
   const resetConversation = useCallback(
     () => dispatch(resetConversationAction()),
     [dispatch],
@@ -95,6 +101,8 @@ export const useMetabotAgent = () => {
           metabot_id: metabotRequestId,
         }),
       );
+
+      trackMetabotRequestSent();
 
       if (isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);
@@ -158,5 +166,6 @@ export const useMetabotAgent = () => {
     submitInput,
     retryMessage,
     toolCalls,
+    profile,
   };
 };

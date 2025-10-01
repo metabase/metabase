@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
@@ -16,6 +17,11 @@ import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
+import {
+  isTransformCanceling,
+  isTransformRunning,
+  isTransformSyncing,
+} from "./utils";
 
 type TransformPageParams = {
   transformId: string;
@@ -41,7 +47,7 @@ export function TransformPage({ params }: TransformPageProps) {
   });
 
   if (isPolling !== isPollingNeeded(transform)) {
-    setIsPolling(!isPolling);
+    setIsPolling(isPollingNeeded(transform));
   }
 
   if (isLoading || error != null) {
@@ -59,6 +65,7 @@ export function TransformPage({ params }: TransformPageProps) {
         <NameSection transform={transform} />
       </Stack>
       <RunSection transform={transform} />
+      <PLUGIN_TRANSFORMS_PYTHON.SourceSection transform={transform} />
       <TargetSection transform={transform} />
       <ManageSection transform={transform} />
       <DependenciesSection transform={transform} />
@@ -66,7 +73,7 @@ export function TransformPage({ params }: TransformPageProps) {
   );
 }
 
-export function getParsedParams({
+function getParsedParams({
   transformId,
 }: TransformPageParams): TransformPageParsedParams {
   return {
@@ -74,9 +81,11 @@ export function getParsedParams({
   };
 }
 
-export function isPollingNeeded(transform?: Transform) {
+function isPollingNeeded(transform?: Transform) {
   return (
-    transform?.last_run?.status === "started" ||
-    (transform?.last_run?.status === "succeeded" && transform.table == null)
+    transform != null &&
+    (isTransformRunning(transform) ||
+      isTransformSyncing(transform) ||
+      isTransformCanceling(transform))
   );
 }

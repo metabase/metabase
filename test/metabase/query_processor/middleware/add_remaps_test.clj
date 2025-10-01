@@ -524,7 +524,7 @@
 
 (deftest ^:parallel internal-remap-e2e-test
   (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                    (mt/application-database-metadata-provider (mt/id))
+                                    (mt/metadata-provider)
                                     (mt/id :venues :category_id)
                                     (mapv first (mt/rows (qp/process-query
                                                           (mt/mbql-query categories
@@ -625,15 +625,15 @@
                       "first join source query should have 10 fields (9 from orders plus one from the remap)")
                   (is (=? {:source-table (meta/id :orders)
                            :joins        [{:alias "PEOPLE__via__USER_ID"}]
-                           :fields       [[:field (meta/id :orders :id) nil]
+                           :fields       [[:field (meta/id :orders :id) {}]
                                           [:field (meta/id :orders :user-id) {::qp.add-remaps/original-field-dimension-id pos-int?}]
-                                          [:field (meta/id :orders :product-id) nil]
-                                          [:field (meta/id :orders :subtotal) nil]
-                                          [:field (meta/id :orders :tax) nil]
-                                          [:field (meta/id :orders :total) nil]
-                                          [:field (meta/id :orders :discount) nil]
-                                          [:field (meta/id :orders :created-at) nil]
-                                          [:field (meta/id :orders :quantity) nil]
+                                          [:field (meta/id :orders :product-id) {}]
+                                          [:field (meta/id :orders :subtotal) {}]
+                                          [:field (meta/id :orders :tax) {}]
+                                          [:field (meta/id :orders :total) {}]
+                                          [:field (meta/id :orders :discount) {}]
+                                          [:field (meta/id :orders :created-at) {}]
+                                          [:field (meta/id :orders :quantity) {}]
                                           ;; 1 remap for self-joined orders.user-id => people.email
                                           [:field (meta/id :people :email) {:source-field                          (meta/id :orders :user-id)
                                                                             :join-alias                            "PEOPLE__via__USER_ID"
@@ -667,15 +667,15 @@
                  (count (:fields preprocessed-query)))
               "Should have 20 fields")
           (is (=? {:fields [;; 9 columns from orders
-                            [:field (meta/id :orders :id) nil]
+                            [:field (meta/id :orders :id) {}]
                             [:field (meta/id :orders :user-id) {::qp.add-remaps/original-field-dimension-id pos-int?}]
-                            [:field (meta/id :orders :product-id) nil]
-                            [:field (meta/id :orders :subtotal) nil]
-                            [:field (meta/id :orders :tax) nil]
-                            [:field (meta/id :orders :total) nil]
-                            [:field (meta/id :orders :discount) nil]
-                            [:field (meta/id :orders :created-at) nil]
-                            [:field (meta/id :orders :quantity) nil]
+                            [:field (meta/id :orders :product-id) {}]
+                            [:field (meta/id :orders :subtotal) {}]
+                            [:field (meta/id :orders :tax) {}]
+                            [:field (meta/id :orders :total) {}]
+                            [:field (meta/id :orders :discount) {}]
+                            [:field (meta/id :orders :created-at) {}]
+                            [:field (meta/id :orders :quantity) {}]
                             ;; 9 columns from self-join against orders
                             [:field (meta/id :orders :id) {:join-alias "j"}]
                             [:field (meta/id :orders :user-id) {:join-alias "j", ::qp.add-remaps/original-field-dimension-id pos-int?}]
@@ -693,10 +693,10 @@
                             ;; -- Cam
                             ;;
                             ;;
-                            ;; 1 remap for self-joined orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "j"}]
                             ;; 1 remap for source table orders.user-id => people.email
-                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]]}
+                            [:field (meta/id :people :email) {:join-alias "PEOPLE__via__USER_ID", ::qp.add-remaps/new-field-dimension-id pos-int?}]
+                            ;; 1 remap for self-joined orders.user-id => people.email
+                            [:field (meta/id :people :email) {:join-alias "j"}]]}
                   preprocessed-query)))))))
 
 (deftest ^:parallel add-remaps-to-joins-e2e-test-2
@@ -760,10 +760,8 @@
                                                 [:field (meta/id :venues :longitude)   {:join-alias "J"}]
                                                 [:field (meta/id :venues :price)       {:join-alias "J"}]
                                                 ;; we shouldn't use IDs here because they would be ambiguous.
-                                                [:field "NAME_2"        {:join-alias "J"}]
-                                                [:field "NAME_3"        {:join-alias "J"}]
-                                                ;; TODO -- this shouldn't be here! DUPLICATE!
-                                                [:field (meta/id :categories :name) {}]]}
+                                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
+                                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}
                                 ;; these are in the opposite order as the join source query because `CATEGORY_ID`
                                 ;; appears before `ID` here but the other way around above.
                                 {:alias "CATEGORIES__via__CATEGORY_ID"}
@@ -777,15 +775,14 @@
                                 [:field (meta/id :venues :latitude)    {:join-alias "J"}]
                                 [:field (meta/id :venues :longitude)   {:join-alias "J"}]
                                 [:field (meta/id :venues :price)       {:join-alias "J"}]
-                                [:field "NAME_2"                       {:join-alias "J"}]
-                                [:field "NAME_3"                       {:join-alias "J"}]
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
-                                ;; TODO DUPLICATE!!!
-                                [:field (meta/id :categories :name) {:join-alias "J"}]]}}
+                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
+                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}}
               (-> query
                   qp.preprocess/preprocess
-                  lib/->legacy-MBQL))))))
+                  lib/->legacy-MBQL
+                  (select-keys [:query])))))))
 
 (deftest ^:parallel do-not-include-remaps-in-joins-for-columns-that-are-not-in-fields-e2e-test
   (testing "Do not include remaps in joins for columns that are not in :fields (#63165)"

@@ -355,41 +355,44 @@
 
 (deftest question-metrics-test
   (testing "Returns metrics for cards using a single sql query"
-    (mt/with-temp [:model/User      u {}
-                   :model/Dashboard d {:creator_id (u/the-id u)}
-                   :model/Card      _ {}
-                   :model/Card      _ {:query_type "native"}
-                   :model/Card      _ {:query_type "gui"}
-                   :model/Card      _ {:public_uuid (str (random-uuid))}
-                   :model/Card      _ {:dashboard_id (u/the-id d)}
-                   :model/Card      _ {:enable_embedding true}
-                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
-                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
-                                       :embedding_params {:category_name "locked" :name_category "disabled"}}
-                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
-                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :string}}}}
-                                       :embedding_params {:category_name "enabled" :name_category "enabled"}}]
-      (testing "reported metrics for all app db types"
-        (is (malli= [:map
-                     [:questions [:map
-                                  [:total [:= 8]]
-                                  [:native [:= 1]]
-                                  [:gui [:= 1]]
-                                  [:is_dashboard_question [:= 1]]]]
-                     [:public [:map
-                               [:total [:= 3]]]]
-                     [:embedded [:map
-                                 [:total [:= 3]]]]]
-                    (#'stats/question-metrics))))
-      (when (contains? #{:mysql :postgres} (mdb/db-type))
-        (testing "reports json column derived-metrics"
-          (let [reported (#'stats/question-metrics)]
-            (is (= 2 (get-in reported [:questions :with_params])))
-            (is (= 2 (get-in reported [:public :with_params])))
-            (is (= 2 (get-in reported [:embedded :with_params])))
-            (is (= 1 (get-in reported [:embedded :with_enabled_params])))
-            (is (= 1 (get-in reported [:embedded :with_locked_params])))
-            (is (= 1 (get-in reported [:embedded :with_disabled_params])))))))))
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User      u {}
+                     :model/Dashboard d {:creator_id (u/the-id u)}
+                     :model/Card      _ {}
+                     :model/Card      _ {:query_type "native"}
+                     :model/Card      _ {:query_type "gui"}
+                     :model/Card      _ {:public_uuid (str (random-uuid))}
+                     :model/Card      _ {:dashboard_id (u/the-id d)}
+                     :model/Card      _ {:enable_embedding true}
+                     :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                         :dataset_query    {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query         "SELECT *"
+                                                                       :template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
+                                         :embedding_params {:category_name "locked" :name_category "disabled"}}
+                     :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                         :dataset_query    {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query         "SELECT *"
+                                                                       :template-tags {:param {:name "param" :display-name "Param" :type :text}}}}
+                                         :embedding_params {:category_name "enabled" :name_category "enabled"}}]
+        (testing "reported metrics for all app db types"
+          (is (=? {:questions {:total                 8
+                               :native                3
+                               :gui                   1
+                               :is_dashboard_question 1}
+                   :public    {:total 3}
+                   :embedded  {:total 3}}
+                  (#'stats/question-metrics))))
+        (when (contains? #{:mysql :postgres} (mdb/db-type))
+          (testing "reports json column derived-metrics"
+            (let [reported (#'stats/question-metrics)]
+              (is (= 2 (get-in reported [:questions :with_params])))
+              (is (= 2 (get-in reported [:public :with_params])))
+              (is (= 2 (get-in reported [:embedded :with_params])))
+              (is (= 1 (get-in reported [:embedded :with_enabled_params])))
+              (is (= 1 (get-in reported [:embedded :with_locked_params])))
+              (is (= 1 (get-in reported [:embedded :with_disabled_params]))))))))))
 
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
@@ -558,6 +561,7 @@
     :embedding
     :embedding-sdk
     :embedding-simple
+    :embedding-hub
     :enhancements
     :etl-connections
     :etl-connections-pg

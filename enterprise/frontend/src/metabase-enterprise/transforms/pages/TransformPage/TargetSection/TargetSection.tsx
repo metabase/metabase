@@ -18,6 +18,7 @@ import {
   Loader,
   Text,
 } from "metabase/ui";
+import { sourceDatabaseId } from "metabase-enterprise/transforms/utils";
 import type { Transform } from "metabase-types/api";
 
 import { SplitSection } from "../../../components/SplitSection";
@@ -27,6 +28,7 @@ import {
   getQueryBuilderUrl,
   getTableMetadataUrl,
 } from "../../../urls";
+import { isTransformRunning } from "../utils";
 
 import { UpdateTargetModal } from "./UpdateTargetModal";
 
@@ -58,7 +60,7 @@ type TargetInfoProps = {
 
 function TargetInfo({ transform }: TargetInfoProps) {
   const { source, target, table } = transform;
-  const { database: databaseId } = source.query;
+  const databaseId = sourceDatabaseId(source);
 
   const { data: databaseFromApi, isLoading: isDatabaseLoading } =
     useGetDatabaseQuery(
@@ -76,7 +78,6 @@ function TargetInfo({ transform }: TargetInfoProps) {
     );
 
   const database = table?.db ?? databaseFromApi;
-
   const isLoading = isDatabaseLoading || isSchemasLoading;
 
   if (isLoading) {
@@ -185,6 +186,7 @@ function EditTargetButton({ transform }: EditTargetButtonProps) {
     <>
       <Button
         leftSection={<Icon name="pencil_lines" aria-hidden />}
+        disabled={isTransformRunning(transform)}
         onClick={openModal}
       >
         {t`Change target`}

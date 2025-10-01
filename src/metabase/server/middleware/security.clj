@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
@@ -102,16 +103,24 @@
                new-domain
                (when (and port (not= domain "*")) (format ":%s" port))))))))
 
+(def ^:private always-allowed-iframe-hosts
+  ["'self'"
+   "https://www.metabase.com/"
+   "https://metabase.com/"])
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
   (->> (str/split hosts-string #"[ ,\s\r\n]+")
        (remove str/blank?)
        (mapcat add-wildcard-entries)
-       (into ["'self'"])))
+       (into always-allowed-iframe-hosts)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
+
+(def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
+(def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -127,7 +136,7 @@
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
-                                    "http://localhost:8080")
+                                    frontend-address)
                                   ;; for react dev tools to work in Firefox until resolution of
                                   ;; https://github.com/facebook/react/issues/17997
                                   (when config/is-dev?
@@ -146,7 +155,7 @@
                                    (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
-                                   "http://localhost:8080")
+                                   frontend-address)
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
@@ -165,7 +174,7 @@
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
-                                   "*:8080 ws://*:8080")
+                                   (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]

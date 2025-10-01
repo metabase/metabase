@@ -2,6 +2,10 @@ import cx from "classnames";
 import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
 
+import {
+  RelatedSettingsSection,
+  getModularEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { UpsellEmbeddingButton } from "metabase/admin/upsells/UpsellEmbeddingButton";
@@ -27,10 +31,9 @@ import {
 
 import { SettingHeader } from "../../SettingHeader";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
-import { LinkButton } from "../EmbeddingOption/LinkButton";
-import { EmbeddingToggle } from "../EmbeddingToggle";
 
 import S from "./EmbeddingSdkSettings.module.css";
+import { SdkSettingsCard } from "./SdkSettingsCard/SdkSettingsCard";
 
 const utmTags = {
   utm_source: "product",
@@ -43,19 +46,19 @@ export function EmbeddingSdkSettings() {
   const isEE = isEEBuild();
 
   const isReactSdkEnabled = useSetting("enable-embedding-sdk");
-  const isReactSdkFeatureEnabled = PLUGIN_EMBEDDING_SDK.isEnabled();
+  const isReactSdkFeatureAvailable = PLUGIN_EMBEDDING_SDK.isEnabled();
   const isLocalhostCorsDisabled = useSetting("disable-cors-on-localhost");
 
   const isSimpleEmbedEnabled = useSetting("enable-embedding-simple");
-  const isSimpleEmbedFeatureEnabled =
+  const isSimpleEmbedFeatureAvailable =
     PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
 
   const isEmbeddingAvailable =
-    isReactSdkFeatureEnabled || isSimpleEmbedFeatureEnabled;
+    isReactSdkFeatureAvailable || isSimpleEmbedFeatureAvailable;
 
   const canEditSdkOrigins =
-    (isReactSdkFeatureEnabled && isReactSdkEnabled) ||
-    (isSimpleEmbedFeatureEnabled && isSimpleEmbedEnabled);
+    (isReactSdkFeatureAvailable && isReactSdkEnabled) ||
+    (isSimpleEmbedFeatureAvailable && isSimpleEmbedEnabled);
 
   const isHosted = useSetting("is-hosted?");
 
@@ -136,99 +139,59 @@ export function EmbeddingSdkSettings() {
 
   return (
     <SettingsPageWrapper title={t`Modular embedding`}>
-      <UpsellDevInstances location="embedding-page" />
-
-      <Flex direction="column" p="xl" className={S.SectionCard} gap="md">
-        <Group>
-          <Text fz="h3" fw={600} c="text-dark">
-            {t`SDK for React`}
-          </Text>
-        </Group>
-
-        <Group gap="sm" align="center" justify="space-between" w="100%">
-          <EmbeddingToggle
-            label={t`Enabled`}
-            settingKey="enable-embedding-sdk"
-            labelPosition="right"
-            aria-label={t`SDK for React toggle`}
-          />
-
-          <Group gap="md">
-            <Button
-              size="compact-xs"
-              variant="outline"
-              component={ExternalLink}
-              href={sdkQuickStartUrl}
-              rightSection={<Icon size={12} name="external" />}
-              fz="sm"
-            >
-              {t`Quick start`}
-            </Button>
-
-            <Button
-              size="compact-xs"
-              variant="outline"
-              component={ExternalLink}
-              href={sdkDocumentationUrl}
-              rightSection={<Icon size={12} name="external" />}
-              fz="sm"
-            >
-              {t`Documentation`}
-            </Button>
-          </Group>
-        </Group>
-      </Flex>
-
-      <Box p="xl" className={S.SectionCard}>
-        <Flex direction="column" gap="md">
-          <Group gap="sm">
-            <Text fz="h3" fw={600} c="text-dark">
-              {t`Embedded Analytics JS`}
-            </Text>
-          </Group>
-
-          <Group gap="sm" align="center" justify="space-between" w="100%">
-            <EmbeddingToggle
-              label={t`Enabled`}
-              labelPosition="right"
-              settingKey="enable-embedding-simple"
-              disabled={!isSimpleEmbedFeatureEnabled}
-              aria-label={t`Embedded Analytics JS toggle`}
+      <SdkSettingsCard
+        title={t`Embedded Analytics JS`}
+        description={t`An easy-to-use library that lets you embed Metabase entities like charts, dashboards, or even the query builder into your own application using customizable components.`}
+        settingKey="enable-embedding-simple"
+        isFeatureEnabled={isSimpleEmbedFeatureAvailable}
+        links={[
+          ...(isSimpleEmbedFeatureAvailable
+            ? [
+                {
+                  type: "button" as const,
+                  title: t`New embed`,
+                  to: "/embed-js",
+                },
+              ]
+            : []),
+          {
+            type: "link",
+            icon: "reference",
+            title: t`Documentation`,
+            href: embedJsDocumentationUrl?.url,
+          },
+        ]}
+        rightSideContent={
+          !isSimpleEmbedFeatureAvailable ? (
+            <UpsellEmbeddingButton
+              url="https://www.metabase.com/product/embedded-analytics"
+              campaign="embedded-analytics-js"
+              location="embedding-page"
+              size="default"
             />
+          ) : undefined
+        }
+      />
 
-            {isSimpleEmbedFeatureEnabled ? (
-              <Group gap="md">
-                <LinkButton
-                  size="compact-xs"
-                  variant="outline"
-                  to="/embed-js"
-                  fz="sm"
-                >
-                  {t`Try it out`}
-                </LinkButton>
-
-                <Button
-                  size="compact-xs"
-                  variant="outline"
-                  component={ExternalLink}
-                  href={embedJsDocumentationUrl?.url}
-                  rightSection={<Icon size={12} name="external" />}
-                  fz="sm"
-                >
-                  {t`Documentation`}
-                </Button>
-              </Group>
-            ) : (
-              <UpsellEmbeddingButton
-                url="https://www.metabase.com/product/embedded-analytics"
-                campaign="embedded-analytics-js"
-                location="embedding-page"
-                size="default"
-              />
-            )}
-          </Group>
-        </Flex>
-      </Box>
+      <SdkSettingsCard
+        title={t`SDK for React`}
+        description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
+        settingKey="enable-embedding-sdk"
+        links={[
+          {
+            type: "link",
+            icon: "bolt",
+            title: t`Quick start`,
+            href: sdkQuickStartUrl,
+          },
+          {
+            type: "link",
+            icon: "reference",
+            title: t`Documentation`,
+            href: sdkDocumentationUrl,
+          },
+        ]}
+      />
 
       <Box py="lg" px="xl" className={S.SectionCard}>
         <AdminSettingInput
@@ -244,7 +207,7 @@ export function EmbeddingSdkSettings() {
               {isEmbeddingAvailable && (
                 <HoverCard position="bottom">
                   <HoverCard.Target>
-                    <Icon name="info_filled" c="text-medium" cursor="pointer" />
+                    <Icon name="info" c="text-medium" cursor="pointer" />
                   </HoverCard.Target>
 
                   <HoverCard.Dropdown>
@@ -291,11 +254,7 @@ export function EmbeddingSdkSettings() {
       >
         <Flex gap="sm">
           <Box>
-            <Icon
-              color="var(--mb-color-text-secondary)"
-              name="info_filled"
-              mt="2px"
-            />
+            <Icon color="var(--mb-color-text-secondary)" name="info" mt="2px" />
           </Box>
 
           <Text c="text-medium" lh="lg">
@@ -303,6 +262,12 @@ export function EmbeddingSdkSettings() {
           </Text>
         </Flex>
       </Alert>
+
+      <RelatedSettingsSection
+        items={getModularEmbeddingRelatedSettingItems()}
+      />
+
+      <UpsellDevInstances location="embedding-page" />
     </SettingsPageWrapper>
   );
 }

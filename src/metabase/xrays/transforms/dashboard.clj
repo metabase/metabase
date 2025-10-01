@@ -2,7 +2,9 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.transforms.materialize :as tf.materialize]
    [metabase.xrays.transforms.specs :refer [transform-specs]]
@@ -33,8 +35,9 @@
                                  :position   0})))
           cards))
 
-(defn- card-for-source-table
-  [table]
+(mu/defn- card-for-source-table
+  [table :- [:map
+             [:db_id ::lib.schema.id/database]]]
   {:pre [(map? table)]}
   {:creator_id             api/*current-user-id*
    :dataset_query          {:type     :query

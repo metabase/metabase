@@ -379,3 +379,5 @@
          order by created"]
        (jdbc/reducible-query (no-db-connection-spec))
        (into [] (map (juxt :database_name :created)))))
+
+(defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")

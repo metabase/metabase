@@ -154,7 +154,7 @@ describe("scenarios > visualizations > table", () => {
     H.openObjectDetail(5);
 
     // Ensure click on row index opens the object detail
-    H.modal().findByText("6").should("be.visible");
+    H.modal().findAllByText("6").should("have.length", 2).and("be.visible");
 
     // Close object detail modal
     cy.realType("{esc}");
@@ -530,7 +530,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findByText(rowsRegex)
       .should("not.exist");
 
-    cy.get("@tableDashcard").findByText("2,000 rows");
+    cy.get("@tableDashcard").findByText("Showing first 2,000 rows");
 
     // Enable pagination
     H.editDashboard();

@@ -144,6 +144,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             listTag("schema"),
             listTag("table"),
+            listTag("embedding-hub-checklist"),
           ]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({

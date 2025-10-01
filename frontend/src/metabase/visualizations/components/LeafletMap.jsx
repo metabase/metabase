@@ -84,7 +84,14 @@ export default class LeafletMap extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    const { bounds, settings } = this.props;
+    const { bounds, settings, zoomControl } = this.props;
+
+    if (zoomControl === false) {
+      this.map.removeControl(this.map.zoomControl);
+    } else {
+      this.map.addControl(this.map.zoomControl);
+    }
+
     if (
       !prevProps ||
       prevProps.points !== this.props.points ||

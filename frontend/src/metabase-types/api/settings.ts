@@ -38,6 +38,7 @@ export const engineKeys = [
   "databricks",
   "druid-jdbc",
   "druid",
+  "mongo",
   "mysql",
   "oracle",
   "postgres",
@@ -161,6 +162,8 @@ export type ScheduleDayType =
 
 export type ScheduleFrameType = "first" | "mid" | "last";
 
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
+
 export interface FontFile {
   src: string;
   fontWeight: number;
@@ -229,6 +232,7 @@ const tokenStatusFeatures = [
   "embedding-sdk",
   "embedding",
   "embedding-simple",
+  "embedding-hub",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -320,6 +324,7 @@ export const tokenFeatures = [
   "documents",
   "semantic_search",
   "transforms",
+  "transforms-python",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -449,6 +454,8 @@ interface AdminSettings {
   "system-timezone"?: string;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -669,6 +676,18 @@ export interface EnterpriseSettings extends Settings {
   "saml-group-mappings": Record<string, GroupId[]> | null;
   "database-replication-enabled": boolean | null;
   "database-replication-connections"?: DatabaseReplicationConnections | null;
+  "embedding-hub-test-embed-snippet-created": boolean;
+  "embedding-hub-production-embed-snippet-created": boolean;
+  "python-runner-url"?: string | null;
+  "python-runner-api-token"?: string | null;
+  "python-storage-s-3-endpoint"?: string | null;
+  "python-storage-s-3-region"?: string | null;
+  "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-access-key"?: string | null;
+  "python-storage-s-3-secret-key"?: string | null;
+  "python-storage-s-3-container-endpoint"?: string | null;
+  "python-storage-s-3-path-style-access"?: boolean | null;
+  "python-runner-timeout-seconds"?: number | null;
   /**
    * @deprecated
    */

@@ -58,7 +58,7 @@
                                             {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "77.1"}               ; Used to transliterate Unicode characters into Latin characters
   com.knuddels/jtokkit                      {:mvn/version "1.1.0"}              ; Java tokenizer library for OpenAI models, used for token counting in semantic search
-  com.mchange/c3p0                          {:mvn/version "0.10.1"}             ; DB connection pool
+  com.mchange/c3p0                          {:mvn/version "0.11.2"}             ; DB connection pool
   com.snowplowanalytics/snowplow-java-tracker ^:antq/exclude                    ; 2+ depend on apache httpclient 5.x, but saml and clj-http depend on 4.x
                                             {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
@@ -85,7 +85,7 @@
   hiccup/hiccup                             {:mvn/version "2.0.0"}              ; HTML templating
   inflections/inflections                   {:mvn/version "0.15.0"}             ; Clojure/Script library used for prularizing words
   instaparse/instaparse                     {:mvn/version "1.5.0"}              ; Make your own parser
-  io.github.camsaul/toucan2                 {:mvn/version "1.0.566"}
+  io.github.camsaul/toucan2                 {:mvn/version "1.0.567"}
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "4998a1fdd9d3713d7034d04509e9212204773bf2"
                                              :git/url "https://github.com/eerohele/pp"}
@@ -198,6 +198,8 @@
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
+  software.amazon.awssdk/s3                 {:mvn/version "2.33.0"}             ; AWS SDK v2 for S3
+  software.amazon.awssdk/sts                {:mvn/version "2.33.0"}             ; Required for S3 client to use service account
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   user-agent/user-agent                     {:mvn/version "0.1.1"}              ; User-Agent string parser, for Login History page & elsewhere
   weavejester/dependency                    {:mvn/version "1.0.0"}              ; Dependency graphs and topological sorting
@@ -284,6 +286,8 @@
                  "-Duser.country=US"
                  ;; Allow clojure goes fast tooling to work
                  "-Djdk.attach.allowAttachSelf"
+                 ;; have core.async report usages of blocking operations in go blocks
+                 "-Dclojure.core.async.go-checking=true"
                  ;; This will suppress the warning about dynamically loaded agents (like clj-memory-meter)
                  "-XX:+EnableDynamicAgentLoading"
                  ;; set the logging properties set in `metabase.core.bootstrap`. calling (dev) will load it but

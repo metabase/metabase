@@ -1,12 +1,11 @@
 (ns metabase.lib.schema.util
-  (:refer-clojure :exclude [ref])
+  (:refer-clojure :exclude [ref run! every? mapv])
   (:require
-   #?(:clj [metabase.util.performance :refer [postwalk]]
-      :default [clojure.walk :refer [postwalk]])
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [run! every? mapv]]))
 
 (declare collect-uuids*)
 
@@ -73,9 +72,11 @@
 
 (defn- opts-distinct-key [opts]
   ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
-  (reduce-kv (fn [acc k _v]
+  (reduce-kv (fn [acc k v]
                (if (or (qualified-keyword? k)
-                       (#{:base-type :effective-type} k))
+                       (#{:base-type :effective-type} k)
+                       (and (#{:temporal-unit :inherited-temporal-unit} k)
+                            (= v :default)))
                  (dissoc acc k)
                  acc))
              opts
@@ -118,7 +119,7 @@
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."
   [x]
-  (postwalk
+  (perf/postwalk
    (fn [x]
      (cond-> x
        (map? x) (dissoc :lib/uuid)))

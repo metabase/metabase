@@ -117,11 +117,6 @@ export function getAvatarColumn(
   return avatar ?? image;
 }
 
-export function getBodyColumns(columns: DatasetColumn[]): DatasetColumn[] {
-  const headerColumns = getHeaderColumns(columns);
-  return columns.filter((column) => !headerColumns.includes(column));
-}
-
 export function getRowName(
   columns: DatasetColumn[],
   row: RowValue[] | undefined,

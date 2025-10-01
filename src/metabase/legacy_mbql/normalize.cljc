@@ -28,6 +28,7 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
+  (:refer-clojure :exclude [mapv every? some select-keys])
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -42,7 +43,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [mapv every? some select-keys]]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -395,7 +396,8 @@
 
 (mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
   [fingerprint :- [:maybe :map]]
-  (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint))
+  (when fingerprint
+    (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint)))
 
 (mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
@@ -410,13 +412,13 @@
                                 u/->snake_case_en
                                 u/->kebab-case-en) k)
                            v (case k
-                               (:base_type
-                                :effective_type
-                                :semantic_type
+                               (:semantic_type
                                 :visibility_type
                                 :source
                                 :unit
                                 :lib/source) (keyword v)
+                               (:effective_type
+                                :base_type)  (or (keyword v) :type/*)
                                :field_ref    (normalize-field-ref v)
                                :fingerprint  (normalize-fingerprint v)
                                :binning_info (m/update-existing v :binning_strategy keyword)
@@ -1051,16 +1053,16 @@
 (defn- replace-legacy-filters
   "Replaces legacy filter clauses with modern alternatives."
   [query]
-  (try
-    (lib.util.match/replace query
-      (filter-clause :guard mbql.preds/Filter?)
+  (lib.util.match/replace query
+    (filter-clause :guard mbql.preds/Filter?)
+    (try
       (-> filter-clause
           replace-relative-date-filters
-          replace-exclude-date-filters))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error replacing legacy filters")
-                      {:query query}
-                      e)))))
+          replace-exclude-date-filters)
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (i18n/tru "Error replacing legacy filters")
+                        {:filter-clause filter-clause, :query query}
+                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |

@@ -5,7 +5,8 @@ import {
   useMemo,
   useState,
 } from "react";
-import { match } from "ts-pattern";
+import { useLocation } from "react-use";
+import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useSearchQuery } from "metabase/api";
@@ -35,6 +36,7 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
@@ -58,16 +60,46 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const modelCount = searchData?.total ?? 0;
 
-  const defaultSettings = useMemo(() => {
-    return getDefaultSdkIframeEmbedSettings(
-      "dashboard",
-      recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
-    );
-  }, [recentDashboards]);
+  // EmbeddingHub passes `auth_method`.
+  // EmbedContentModal passes `resource_type` and `resource_id`.
+  const urlParams = useMemo(() => {
+    const params = new URLSearchParams(location.search);
 
-  const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
-    "select-embed-experience",
-  );
+    return {
+      authMethod: params.get("auth_method"),
+      resourceType: params.get("resource_type"),
+      resourceId: params.get("resource_id"),
+    };
+  }, [location.search]);
+
+  const defaultSettings = useMemo(() => {
+    return match([urlParams.resourceType, urlParams.resourceId])
+      .with(["dashboard", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("dashboard", id),
+      )
+      .with(["question", P.nonNullable], ([, id]) =>
+        getDefaultSdkIframeEmbedSettings("chart", id),
+      )
+      .otherwise(() =>
+        getDefaultSdkIframeEmbedSettings(
+          "dashboard",
+          recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
+        ),
+      );
+  }, [recentDashboards, urlParams]);
+
+  // Default to the embed options step if both resource type and id are provided.
+  // This is to skip the experience and resource selection steps as we know both.
+  const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (urlParams.resourceType !== null && urlParams.resourceId !== null) {
+      return "select-embed-options";
+    }
+
+    return "select-embed-experience";
+  }, [urlParams]);
+
+  const [currentStep, setCurrentStep] =
+    useState<SdkIframeEmbedSetupStep>(defaultStep);
 
   const settings = useMemo(() => {
     const latestSettings = rawSettings ?? defaultSettings;
@@ -163,11 +195,26 @@ export const SdkIframeEmbedSetupProvider = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({ ...settings, ...persistedSettings });
+      setRawSettings({
+        ...settings,
+        ...persistedSettings,
+
+        // Override the persisted settings if `auth_method` is specified.
+        // This is used for Embedding Hub.
+        ...(urlParams.authMethod !== null && {
+          useExistingUserSession: urlParams.authMethod === "user_session",
+        }),
+      });
 
       setEmbedSettingsLoaded(true);
     }
-  }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
+  }, [
+    persistedSettings,
+    isEmbedSettingsLoaded,
+    settings,
+    isRecentsLoading,
+    urlParams,
+  ]);
 
   return (
     <SdkIframeEmbedSetupContext.Provider value={value}>

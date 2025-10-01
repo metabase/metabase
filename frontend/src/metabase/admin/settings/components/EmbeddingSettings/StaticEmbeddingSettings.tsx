@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  RelatedSettingsSection,
+  getStaticEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
+import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
@@ -20,7 +24,6 @@ export function StaticEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Static embedding`}>
-      <UpsellDevInstances location="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
@@ -36,6 +39,9 @@ export function StaticEmbeddingSettings() {
         )}
       </SettingsSection>
       <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+
+      <RelatedSettingsSection items={getStaticEmbeddingRelatedSettingItems()} />
+      <UpsellDevInstances location="embedding-page" />
     </SettingsPageWrapper>
   );
 }

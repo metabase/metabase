@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.util
   "Utilitiy functions for working with MBQL queries."
-  (:refer-clojure :exclude [replace])
+  (:refer-clojure :exclude [replace some mapv every?])
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
+   [metabase.util.performance :refer [some mapv every?]]
    [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns
@@ -28,7 +29,7 @@
 (mu/defn normalize-token :- [:or :keyword :string]
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
   keyword."
-  [token :- schema.helpers/KeywordOrString]
+  [token :- [:or :keyword :string]]
   (let [s (u/qualified-name token)]
     (if (str/starts-with? s "type/")
       ;; TODO (Cam 8/12/25) -- there's tons of code using incorrect parameter types or normalizing base types
@@ -522,8 +523,10 @@
   `nil`, returns `nil`.
 
   Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
-  form), because it cannot return an accurate result for a query that has not yet been preprocessed."
-  {:arglists '([outer-query])}
+  form), because it cannot return an accurate result for a query that has not yet been preprocessed.
+
+  Prefer [[metabase.lib.core/source-table-id]] going forward."
+  {:arglists '([outer-query]), :deprecated "0.57.0"}
   [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
   (cond
     ;; for native queries, there's no source table to resolve
@@ -549,21 +552,6 @@
     ;; otherwise resolve the source Table
     :else
     source-table-id))
-
-(mu/defn add-order-by-clause :- mbql.s/MBQLQuery
-  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
-  already being used in another order-by clause, this function does nothing."
-  [inner-query     :- mbql.s/MBQLQuery
-   [dir orderable] :- ::mbql.s/OrderBy]
-  (let [existing-orderables (into #{}
-                                  (map (fn [[_dir orderable]]
-                                         orderable))
-                                  (:order-by inner-query))]
-    (if (existing-orderables orderable)
-      ;; Field already referenced, nothing to do
-      inner-query
-      ;; otherwise add new clause at the end
-      (update inner-query :order-by (comp vec distinct conj) [dir orderable]))))
 
 (defn dispatch-by-clause-name-or-class
   "Dispatch function perfect for use with multimethods that dispatch off elements of an MBQL query. If `x` is an MBQL
@@ -731,6 +719,7 @@
 
      (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
      ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
+  {:deprecated "0.57.0"}
   [names :- [:sequential :string]]
   (map (unique-name-generator) names))
 
@@ -817,19 +806,13 @@
       (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
-(defn remove-namespaced-options
-  "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys in the
-  options map. This is mainly for clause equality comparison purposes -- in current usage namespaced keys are used by
-  individual pieces of middleware or driver implementations for tracking little bits of information that should not be
-  considered relevant when comparing clauses for equality."
-  [field-or-ref]
-  (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
-                                                                (qualified-keyword? k))))))
-
 (defn referenced-field-ids
   "Find all the `:field` references with integer IDs in `coll`, which can be a full MBQL query, a snippet of MBQL, or a
   sequence of those things; return a set of Field IDs. Includes Fields referenced indirectly via `:source-field`.
-  Returns `nil` if no IDs are found."
+  Returns `nil` if no IDs are found.
+
+  DEPRECATED: Use [[metabase.lib.core/all-field-ids]] going forward."
+  {:deprecated "0.57.0"}
   [coll]
   (not-empty
    (into #{}

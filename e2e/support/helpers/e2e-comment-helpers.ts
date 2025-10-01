@@ -1,7 +1,5 @@
 import type { DocumentId } from "metabase-types/api";
 
-import { modal } from "./e2e-ui-elements-helpers";
-
 export const Comments = {
   getDocumentNodeButton,
   getDocumentNodeButtons,
@@ -15,22 +13,30 @@ export const Comments = {
   reopenCommentByText,
   openAllComments,
   reactToComment,
+  getSidebar,
+  closeSidebar,
 };
 
 function getDocumentNodeButton({
   targetId,
   childTargetId,
   hasComments,
+  isCardEmbedNode,
 }: {
   targetId: DocumentId;
   childTargetId: string;
   hasComments?: boolean;
+  isCardEmbedNode?: boolean;
 }) {
   const threadUrl = `/document/${targetId}/comments/${childTargetId}${hasComments ? "" : "?new=true"}`;
 
-  return getDocumentNodeButtons().filter(
-    (_, element) => element.getAttribute("href") === threadUrl,
-  );
+  if (isCardEmbedNode) {
+    return cy.findByRole("button", { name: "Comments" });
+  } else {
+    return getDocumentNodeButtons().filter(
+      (_, element) => element.getAttribute("href") === threadUrl,
+    );
+  }
 }
 
 function getDocumentNodeButtons() {
@@ -59,7 +65,7 @@ function getCommentByText(text: string | RegExp) {
 
 function openAllComments() {
   cy.findByRole("link", { name: "Show all comments" }).click();
-  cy.findByRole("dialog").should("contain.text", "All comments");
+  getSidebar().should("contain.text", "All comments");
 }
 
 function getEmojiPicker() {
@@ -89,7 +95,7 @@ function reopenCommentByText(text: string | RegExp) {
 }
 
 function reactToComment(comment: string | RegExp, emoji: string) {
-  modal().within(() => {
+  getSidebar().within(() => {
     getCommentByText(comment)
       .realHover()
       .within(() => {
@@ -100,4 +106,12 @@ function reactToComment(comment: string | RegExp, emoji: string) {
   getEmojiPicker().within(() => {
     cy.findByText(emoji).click();
   });
+}
+
+function getSidebar() {
+  return cy.findByTestId("comments-sidebar");
+}
+
+function closeSidebar() {
+  cy.icon("close").click();
 }

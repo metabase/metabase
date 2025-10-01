@@ -1,4 +1,5 @@
 (ns metabase.lib.metadata
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
@@ -8,7 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -22,10 +24,26 @@
 
 (mu/defn ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Get a MetadataProvider from something that can provide one."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
-  (if (lib.metadata.protocols/metadata-provider? metadata-providerable)
-    metadata-providerable
-    (some-> metadata-providerable :lib/metadata ->metadata-provider)))
+  ([metadata-providerable]
+   (->metadata-provider metadata-providerable nil))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    database-id           :- [:maybe
+                              [:or
+                               ::lib.schema.id/database
+                               ::lib.schema.id/saved-questions-virtual-database]]]
+   (cond
+     (lib.metadata.protocols/metadata-provider? metadata-providerable)
+     metadata-providerable
+
+     (map? metadata-providerable)
+     (some-> metadata-providerable :lib/metadata ->metadata-provider)
+
+     ((some-fn fn? var?) metadata-providerable)
+     (if (pos-int? database-id)
+       (metadata-providerable database-id)
+       (throw (ex-info "Cannot initialize new metadata provider without a Database ID"
+                       {:f metadata-providerable}))))))
 
 (mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."
@@ -43,11 +61,29 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
+(defn- fields* [metadata-providerable table-id {:keys [only-active?]}]
+  (-> (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id)
+      (cond->> only-active?
+        (remove (fn [col]
+                  (or (false? (:active col))
+                      (#{:sensitive :retired} (:visibility-type col))))))
+      (->> (sort-by (juxt #(:position % 0) #(u/lower-case-en (:name % "")))))))
+
 (mu/defn fields :- [:sequential ::lib.schema.metadata/column]
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
+  (fields* metadata-providerable table-id {:only-active? false}))
+
+(mu/defn active-fields :- [:sequential ::lib.schema.metadata/column]
+  "Like [[fields]], but filters out any Fields that are not `:active` or with `:visibility-type`s that mean they
+  should not be included in queries.
+
+  These fields are the ones we use for default `:fields`, which becomes the default `SELECT ...` (or equivalent) when
+  building a query."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table]
+  (fields* metadata-providerable table-id {:only-active? true}))
 
 (mu/defn metadatas-for-table :- [:maybe [:sequential [:or
                                                       ::lib.schema.metadata/column
