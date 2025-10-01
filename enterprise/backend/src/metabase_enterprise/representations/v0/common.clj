@@ -70,18 +70,23 @@
 (defn ref->id
   "Find database ID by name or ref. Returns nil if not found."
   [entity-ref ref-index]
-  (cond (integer? entity-ref)
-        entity-ref
-        (ref? entity-ref)
-        (->> (unref entity-ref)
-             (get ref-index)
-             :id)
-        (nil? entity-ref) nil
-        :else
-        (throw
-         (ex-info "Could not process entity ref!"
-                  {:entity-ref entity-ref
-                   :ref-index ref-index}))))
+  (cond
+    (integer? entity-ref)
+    entity-ref
+
+    (ref? entity-ref)
+    (->> (unref entity-ref)
+         (get ref-index)
+         :id)
+
+    (nil? entity-ref)
+    nil
+
+    :else
+    (throw
+     (ex-info "Could not process entity ref!"
+              {:entity-ref entity-ref
+               :ref-index ref-index}))))
 
 (def representations-export-dir
   "The dir where POC import/export representations are stored."
