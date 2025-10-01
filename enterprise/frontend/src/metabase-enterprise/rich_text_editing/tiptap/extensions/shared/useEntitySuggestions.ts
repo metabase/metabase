@@ -143,11 +143,8 @@ export function useEntitySuggestions({
   // Check if we have any matching search models
   const hasSearchModels = (searchModels?.length ?? 0) > 0;
   const hasMatchingSearchModels = (effectiveSearchModels?.length ?? 0) > 0;
-
-  // TODO: factor in a threshold
   const isInModelSelectionMode =
     !selectedSearchModel && hasSearchModels && hasMatchingSearchModels;
-  const shouldEnableEntitySearch = enabled && !isInModelSelectionMode;
 
   const {
     menuItems: entityMenuItems,
@@ -158,7 +155,12 @@ export function useEntitySuggestions({
     onSelectRecent: handleRecentSelect,
     onSelectSearchResult: handleSearchResultSelect,
     onSelectUser: handleUserSelect,
-    enabled: shouldEnableEntitySearch,
+    enabled: enabled && !isInModelSelectionMode,
+    shouldFetchRecents:
+      enabled &&
+      query.length === 0 &&
+      !isInModelSelectionMode &&
+      !selectedSearchModel,
     searchModels: effectiveSearchModels,
   });
 

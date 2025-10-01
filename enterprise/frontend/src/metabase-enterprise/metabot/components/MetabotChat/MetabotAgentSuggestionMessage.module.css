@@ -61,3 +61,15 @@
     }
   }
 }
+
+.suggestionHeader {
+  cursor: pointer;
+}
+
+.suggestionHeaderCollapsed {
+  user-select: none;
+
+  * {
+    user-select: none;
+  }
+}

@@ -329,7 +329,7 @@ export const Messages = ({
       {messages.map((message, index) =>
         message.role === "agent" ? (
           <AgentMessage
-            key={"msg-" + index}
+            key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
             onRetry={onRetryMessage}
@@ -337,12 +337,14 @@ export const Messages = ({
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
-            hideActions={messages[index + 1]?.role === "agent"}
+            hideActions={
+              isDoingScience || messages[index + 1]?.role === "agent"
+            }
             onInternalLinkClick={onInternalLinkClick}
           />
         ) : (
           <UserMessage
-            key={"msg-" + index}
+            key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
             hideActions={isDoingScience && messages.length === index + 1}

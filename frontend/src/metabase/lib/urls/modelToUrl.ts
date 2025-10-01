@@ -42,7 +42,7 @@ export function modelToUrl(item: UrlableModel) {
     case "user":
       return null;
     case "transform":
-      return transform(item);
+      return transform(item.id);
     default:
       return null;
   }

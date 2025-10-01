@@ -2,14 +2,16 @@ import { unifiedMergeView } from "@codemirror/merge";
 import { useDisclosure } from "@mantine/hooks";
 import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
+import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import * as Urls from "metabase/lib/urls";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -23,10 +25,9 @@ import {
   Text,
 } from "metabase/ui";
 import {
+  useGetTransformQuery,
   useLazyGetTransformQuery,
-  useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   setSuggestedTransform,
@@ -38,7 +39,6 @@ import type {
   QueryTransformSource,
   SuggestedTransform,
   Transform,
-  TransformSource,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
@@ -47,9 +47,23 @@ const PreviewContent = ({
   oldSource,
   newSource,
 }: {
-  oldSource?: string;
+  oldSource: string;
   newSource: string;
 }) => {
+  const extensions = useMemo(
+    () => [
+      unifiedMergeView({
+        original: oldSource,
+        mergeControls: false,
+        collapseUnchanged: {
+          margin: 1,
+          minSize: 1,
+        },
+      }),
+    ],
+    [oldSource],
+  );
+
   return (
     <CodeMirror
       className={cx(
@@ -57,20 +71,7 @@ const PreviewContent = ({
         S.suggestionEditor,
         !oldSource && S.suggestionEditorOnlyNew,
       )}
-      extensions={
-        oldSource
-          ? [
-              unifiedMergeView({
-                original: oldSource,
-                mergeControls: false,
-                collapseUnchanged: {
-                  margin: 1,
-                  minSize: 1,
-                },
-              }),
-            ]
-          : undefined
-      }
+      extensions={extensions}
       value={newSource}
       readOnly
       autoCorrect="off"
@@ -97,12 +98,6 @@ const useGetOldTransform = ({
 
   return result;
 };
-
-// TODO: need to handle suggestion invalidation and consumed states:
-// - accepted in sidebar
-// - rejected in sidebar
-// - latest transform no long matches base transform
-// - accepted / rejected via the editor
 
 const parseTemplateTags = (
   source: QueryTransformSource,
@@ -135,122 +130,39 @@ export const AgentSuggestionMessage = ({
 }: {
   message: MetabotAgentEditSuggestionChatMessage;
 }) => {
-  const { suggestedTransform } = message.payload;
-  const isNew = !suggestedTransform.id;
-
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  const url = useLocation();
-  // TODO: this doesn't work for new routes
-  const isViewing = url.pathname?.startsWith(
-    `/admin/transforms/${suggestedTransform.id}/query`,
-  );
+  const { suggestedTransform } = message.payload;
+  const isNew = !suggestedTransform.id;
 
-  // TODO: optimization: abstract out submitting values to metabot into a seperate light-weight hook that this component does not have to re-render on every update to messages
-  const metabot = useMetabotAgent();
+  const url = useLocation();
+  const transformUrl = getTransformUrl(suggestedTransform);
+  const isViewing = url.pathname?.startsWith(transformUrl);
+
+  const [opened, { toggle }] = useDisclosure(!isViewing);
 
   const {
     data: originalTransform,
     isLoading,
     error,
   } = useGetOldTransform(message.payload);
-
-  // TODO: handle loading state
-  const [updateTransform, { isLoading: isUpdating }] =
-    useUpdateTransformMutation();
-
-  const [opened, { toggle }] = useDisclosure(!isViewing);
-
-  function getSourceCode(transform: Pick<Transform, "source">): string {
-    return match(transform)
-      .with(
-        { source: { type: "query", query: { type: "native" } } },
-        (t) => t.source.query.native.query,
-      )
-      .with({ source: { type: "python" } }, (t) => t.source.body)
-      .otherwise(() => "");
-  }
-
-  function processTransform(
-    transform: SuggestedTransform,
-    newSource?: TransformSource,
-  ) {
-    const source = newSource ?? transform.source;
-    const processedSource =
-      source.type === "query" ? parseTemplateTags(source, metadata) : source;
-    return {
-      ...transform,
-      source: processedSource,
-    };
-  }
+  const { data: latestTransform } = useGetTransformQuery(
+    suggestedTransform.id || skipToken,
+  );
 
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
+  const latestSource = latestTransform
+    ? getSourceCode(latestTransform)
+    : undefined;
+
+  const isStale = latestSource && oldSource !== latestSource;
 
   const handleFocus = () => {
-    const transform = processTransform(suggestedTransform);
-
-    const url = match(transform)
-      .with({ id: P.number }, ({ id }) => `/admin/transforms/${id}/query`)
-      .with(
-        { source: { type: "python" } },
-        () => "/admin/transforms/new/python",
-      )
-      .with({ source: { type: "query" } }, () => "/admin/transforms/new/native")
-      .exhaustive();
-    dispatch(push(url) as UnknownAction);
+    const transform = processTransform(suggestedTransform, metadata);
     dispatch(setSuggestedTransform(transform));
-  };
-
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
-  const handleSave = async (source: TransformSource) => {
-    if (suggestedTransform.id) {
-      // Create a temporary source to process template tags
-      const processedTransform = processTransform(suggestedTransform, source);
-      const { error } = await updateTransform({
-        id: suggestedTransform.id,
-        source: processedTransform.source,
-      });
-
-      if (error) {
-        sendErrorToast(t`Failed to update transform query`);
-      } else {
-        sendSuccessToast(t`Transform query updated`);
-      }
-    } else {
-      // TODO: handle create
-      // console.log("TODO");
-    }
-  };
-
-  const handleAccept = async () => {
-    const processedTransform = processTransform(suggestedTransform);
-
-    if (!isViewing && !suggestedTransform.id) {
-      dispatch(setSuggestedTransform(processedTransform));
-      handleFocus();
-    }
-
-    await handleSave(processedTransform.source);
-    metabot.submitInput({
-      type: "action",
-      message:
-        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
-      // @ts-expect-error -- TODO
-      userMessage: "✅ You accepted the change",
-    });
-  };
-
-  const handleReject = () => {
-    dispatch(setSuggestedTransform(undefined));
-    metabot.submitInput({
-      type: "action",
-      message:
-        "HIDDEN MESSAGE: the user has rejected your changes, ask for clarification on what they'd like to do instead.",
-      // @ts-expect-error -- TODO
-      userMessage: "❌ You rejected the change",
-    });
+    dispatch(push(transformUrl) as UnknownAction);
   };
 
   return (
@@ -317,42 +229,58 @@ export const AgentSuggestionMessage = ({
             borderTop: opened ? `1px solid var(--mb-color-border)` : "",
           }}
         >
-          <Flex align="center" gap="sm">
-            <Button
-              size="compact-xs"
-              disabled={isViewing}
-              variant="subtle"
-              fw="normal"
-              fz="sm"
-              c={isViewing ? "text-lighter" : "text-secondary"}
-              onClick={() => handleFocus()}
-            >
-              {isViewing ? t`Focused` : t`Focus`}
-            </Button>
-          </Flex>
-
-          <Flex align="center" gap="sm">
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              fw="normal"
-              fz="sm"
-              c="success"
-              disabled={isUpdating}
-              onClick={handleAccept}
-            >{t`Accept`}</Button>
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              fw="normal"
-              fz="sm"
-              c="danger"
-              disabled={isUpdating}
-              onClick={handleReject}
-            >{t`Reject`}</Button>
+          <Flex
+            align="center"
+            justify="flex-end"
+            w="100%"
+            h="1.375rem"
+            gap="sm"
+          >
+            {isStale && (
+              <Button
+                size="compact-xs"
+                disabled={isViewing}
+                variant="subtle"
+                fw="normal"
+                fz="sm"
+                c={isViewing ? "text-lighter" : "text-secondary"}
+                onClick={() => handleFocus()}
+              >
+                {isViewing ? t`Focused` : t`Focus`}
+              </Button>
+            )}
           </Flex>
         </Group>
       </Collapse>
     </Paper>
   );
 };
+
+function getSourceCode(transform: Pick<Transform, "source">): string {
+  return match(transform)
+    .with(
+      { source: { type: "query", query: { type: "native" } } },
+      (t) => t.source.query.native.query,
+    )
+    .with({ source: { type: "python" } }, (t) => t.source.body)
+    .otherwise(() => "");
+}
+
+function processTransform(transform: SuggestedTransform, metadata: Metadata) {
+  const processedSource =
+    transform.source.type === "query"
+      ? parseTemplateTags(transform.source, metadata)
+      : transform.source;
+  return {
+    ...transform,
+    source: processedSource,
+  };
+}
+
+function getTransformUrl(transform: SuggestedTransform): string {
+  return match(transform)
+    .with({ id: P.number }, ({ id }) => Urls.transform(id))
+    .with({ source: { type: "python" } }, Urls.newPythonTransform)
+    .with({ source: { type: "query" } }, Urls.newNativeTransform)
+    .exhaustive();
+}

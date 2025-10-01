@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 
-import { useSearchQuery } from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useListMentionsQuery } from "metabase-enterprise/api";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   MentionableUser,
   RecentItem,
@@ -11,12 +10,19 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 
+import type { SuggestionModel } from "../shared/types";
+
 import {
   LINK_SEARCH_LIMIT,
   LINK_SEARCH_MODELS,
   USER_SEARCH_LIMIT,
 } from "./constants";
-import { buildSearchMenuItems, buildUserMenuItems } from "./suggestionUtils";
+import {
+  buildRecentsMenuItems,
+  buildSearchMenuItems,
+  buildUserMenuItems,
+  filterRecents,
+} from "./suggestionUtils";
 
 interface UseEntitySearchOptions {
   query: string;
@@ -24,6 +30,7 @@ interface UseEntitySearchOptions {
   onSelectSearchResult: (item: SearchResult) => void;
   onSelectUser: (item: MentionableUser) => void;
   enabled?: boolean;
+  shouldFetchRecents?: boolean;
   searchModels?: SuggestionModel[];
 }
 
@@ -35,28 +42,28 @@ interface UseEntitySearchResult {
 
 export function useEntitySearch({
   query,
-  // onSelectRecent,
+  onSelectRecent,
   onSelectSearchResult,
   onSelectUser,
   enabled = true,
+  shouldFetchRecents = true,
   searchModels = LINK_SEARCH_MODELS,
 }: UseEntitySearchOptions): UseEntitySearchResult {
-  // TODO: add back
-  // const shouldFetchRecents = enabled && query.length === 0;
-  // const { data: recents = [], isLoading: isRecentsLoading } =
-  //   useListRecentsQuery(undefined, {
-  //     refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
-  //     skip: !shouldFetchRecents,
-  //   });
-  // const filteredRecents = useMemo(
-  //   () =>
-  //     shouldFetchRecents
-  //       ? recents
-  //           .filter((recent) => filterRecents(recent, searchModels))
-  //           .slice(0, LINK_SEARCH_LIMIT)
-  //       : [],
-  //   [recents, shouldFetchRecents, searchModels],
-  // );
+  const { data: recents = [], isLoading: isRecentsLoading } =
+    useListRecentsQuery(undefined, {
+      refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
+      skip: !shouldFetchRecents,
+    });
+
+  const filteredRecents = useMemo(
+    () =>
+      shouldFetchRecents
+        ? recents
+            .filter((recent) => filterRecents(recent, searchModels))
+            .slice(0, LINK_SEARCH_LIMIT)
+        : [],
+    [recents, shouldFetchRecents, searchModels],
+  );
 
   const { data: searchResponse, isLoading: isSearchLoading } = useSearchQuery(
     {
@@ -67,7 +74,7 @@ export function useEntitySearch({
       limit: LINK_SEARCH_LIMIT,
     },
     {
-      skip: !enabled, // TODO  || !query || query.length === 0,
+      skip: !enabled || shouldFetchRecents,
     },
   );
 
@@ -92,42 +99,39 @@ export function useEntitySearch({
   const menuItems = useMemo(() => {
     const items: MenuItem[] = [];
 
-    if (!isUsersLoading) {
-      items.push(...buildUserMenuItems(users, onSelectUser));
-    }
+    if (!shouldFetchRecents) {
+      if (!isUsersLoading) {
+        items.push(...buildUserMenuItems(users, onSelectUser));
+      }
 
-    if (!isSearchLoading) {
-      items.push(...buildSearchMenuItems(searchResults, onSelectSearchResult));
+      if (!isSearchLoading) {
+        items.push(
+          ...buildSearchMenuItems(searchResults, onSelectSearchResult),
+        );
+      }
+    } else {
+      if (!isRecentsLoading && filteredRecents.length > 0) {
+        items.push(...buildRecentsMenuItems(filteredRecents, onSelectRecent));
+      }
     }
-
-    // TODO: need to change if recents option has been explicitly accepted
-    // } else {
-    //   if (!isRecentsLoading && filteredRecents.length > 0) {
-    //     items.push(...buildRecentsMenuItems(filteredRecents, onSelectRecent));
-    //   }
-    // }
 
     return items;
   }, [
-    // query,
+    shouldFetchRecents,
     searchResults,
     users,
     isSearchLoading,
     isUsersLoading,
-    // filteredRecents,
-    // isRecentsLoading,
-    // onSelectRecent,
+    filteredRecents,
+    isRecentsLoading,
+    onSelectRecent,
     onSelectSearchResult,
     onSelectUser,
   ]);
 
-  const isLoading =
-    // (shouldFetchRecents && isRecentsLoading) ||
-    query.length > 0 && isSearchLoading;
-
   return {
     menuItems,
-    isLoading,
+    isLoading: shouldFetchRecents ? isRecentsLoading : isSearchLoading,
     searchResults,
   };
 }
