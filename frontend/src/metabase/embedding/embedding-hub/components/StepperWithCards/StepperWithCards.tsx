@@ -99,7 +99,10 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
                   const isNextCard = nextCard && nextCard.id === card.id;
 
                   return (
-                    <Grid.Col span={card.optional ? 4 : 8} key={card.id}>
+                    <Grid.Col
+                      span={{ xs: 12, md: card.optional ? 4 : 8 }}
+                      key={card.id}
+                    >
                       <CardAction card={card}>
                         <Card
                           className={cx(S.stepCard, {
