@@ -16,6 +16,7 @@ export type PublicOrEmbeddedDashboardProps = Pick<
   | "background"
   | "bordered"
   | "titled"
+  | "theme"
   | "hideParameters"
   | "downloadsEnabled"
   | "parameterQueryParams"
