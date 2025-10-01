@@ -49,7 +49,7 @@ export function DependencyFlow({ params }: DependencyFlowProps) {
   const { data: graph = { nodes: [], edges: [] } } = useGetDependencyGraphQuery(
     id ? { id, type } : skipToken,
   );
-  const { nodes, edges } = getGraphInfo(graph);
+  const { nodes, edges } = getGraphInfo(graph, id, type);
   const [isOpened, setIsOpened] = useState(false);
   const dispatch = useDispatch();
 

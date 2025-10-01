@@ -20,13 +20,18 @@ export function getNodeId(
   return `${type}-${id}`;
 }
 
-function getEntityNodes(nodes: DependencyNode[]): EntityNode[] {
+function getEntityNodes(
+  nodes: DependencyNode[],
+  selectedId?: DependencyEntityId,
+  selectedType?: DependencyEntityType,
+): EntityNode[] {
   return nodes.map((node) => ({
     id: getNodeId(node.id, node.type),
     className: S.node,
     type: "entity",
     data: node,
     position: { x: 0, y: 0 },
+    selected: node.id === selectedId && node.type === selectedType,
     connectable: false,
   }));
 }
@@ -72,8 +77,12 @@ function getNodesWithPositions(nodes: GraphNode[], edges: Edge[]): GraphNode[] {
   });
 }
 
-export function getGraphInfo(graph: DependencyGraph): GraphInfo {
-  const entityNodes = getEntityNodes(graph.nodes);
+export function getGraphInfo(
+  graph: DependencyGraph,
+  selectedId?: DependencyEntityId,
+  selectedType?: DependencyEntityType,
+): GraphInfo {
+  const entityNodes = getEntityNodes(graph.nodes, selectedId, selectedType);
   const entityEdges = getEntityEdges(graph.edges);
 
   return {
