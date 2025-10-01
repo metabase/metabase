@@ -17,15 +17,15 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { SetTitle } from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
+import { Box, Flex, Group } from "metabase/ui";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { FixedWidthContainer } from "../../components/Dashboard/DashboardComponents";
-import { useDashboardUrlQuery } from "../../hooks/use-dashboard-url-query";
 import { XrayIcon } from "../XrayIcon";
 
 import S from "./AutomaticDashboardApp.module.css";
@@ -111,30 +111,31 @@ const AutomaticDashboardAppInner = () => {
               <FixedWidthContainer
                 isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
-                <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                  <FixedWidthContainer
+                <Flex
+                  columnGap="md"
+                  justify="space-between"
+                  py="md"
+                  wrap={{ base: "wrap", sm: "nowrap" }}
+                >
+                  <Group
                     data-testid="fixed-width-dashboard-header"
-                    className={cx(CS.flex, CS.alignCenter)}
-                    isFixedWidth={dashboard?.width === "fixed"}
+                    gap={0}
+                    wrap="nowrap"
                   >
                     <XrayIcon />
-                    <Dashboard.Title
-                      className={cx(CS.textWrap, CS.mr2, CS.h2)}
-                    />
-                  </FixedWidthContainer>
-                  <div
-                    className={cx(
-                      CS.flex,
-                      CS.flexGrow1,
-                      CS.alignCenter,
-                      CS.justifyEnd,
-                    )}
-                    style={{ maxWidth: SIDEBAR_W, whiteSpace: "nowrap" }}
+                    <Dashboard.Title className={cx(CS.textWrap, CS.h2)} />
+                  </Group>
+                  <Group
+                    align="center"
+                    gap="md"
+                    justify="flex-end"
+                    wrap="nowrap"
                   >
                     {savedDashboardId != null ? (
                       <>
                         <Link
-                          className={cx(CS.link, CS.textBold, CS.mr2)}
+                          className={cx(CS.link, CS.textBold)}
+                          style={{ whiteSpace: "nowrap" }}
                           to={Urls.dashboard({ id: savedDashboardId })}
                         >
                           {t`See it`}
@@ -154,8 +155,8 @@ const AutomaticDashboardAppInner = () => {
                         {t`Save this`}
                       </ActionButton>
                     )}
-                  </div>
-                </div>
+                  </Group>
+                </Flex>
                 {dashboard && tabs.length > 1 && (
                   <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
                     <Dashboard.Tabs />
