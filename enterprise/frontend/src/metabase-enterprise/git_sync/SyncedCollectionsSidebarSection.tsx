@@ -64,7 +64,10 @@ export const SyncedCollectionsSidebarSection = ({
     setNextBranch(currentBranch ?? "main");
   }, [currentBranch]);
 
-  const { data: dirtyData } = useGetChangedEntitiesQuery();
+  const { data: dirtyData } = useGetChangedEntitiesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+  });
 
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
 
@@ -173,7 +176,12 @@ export const SyncedCollectionsSidebarSection = ({
               role="tree"
               aria-label="collection-tree"
               rightSection={(item) => {
-                return <CollectionStatusBadge collection={item} />;
+                return (
+                  <CollectionStatusBadge
+                    collection={item}
+                    changedCollections={dirtyData?.changedCollections}
+                  />
+                );
               }}
             />
           </Box>
@@ -207,17 +215,19 @@ export const SyncedCollectionsSidebarSection = ({
   );
 };
 
+interface CollectionStatusBadgeProps {
+  collection: Pick<Collection, "id">;
+  changedCollections?: Record<number, boolean>;
+}
+
 const CollectionStatusBadge = ({
   collection,
-}: {
-  collection: Pick<Collection, "id">;
-}) => {
-  const { data } = useGetChangedEntitiesQuery();
-
+  changedCollections,
+}: CollectionStatusBadgeProps) => {
   const isDirty =
-    data?.changedCollections != null &&
+    changedCollections != null &&
     typeof collection?.id === "number" &&
-    data.changedCollections[collection.id];
+    changedCollections[collection.id];
 
   if (!isDirty) {
     return null;
