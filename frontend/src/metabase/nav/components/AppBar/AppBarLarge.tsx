@@ -103,7 +103,7 @@ const AppBarLarge = ({
             (isEmbeddingIframe ? (
               <SearchBar />
             ) : (
-              <PLUGIN_METABOT.SearchButton />
+              <PLUGIN_METABOT.SearchButton mr="md" />
             ))}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           <PLUGIN_METABOT.MetabotAppBarButton />

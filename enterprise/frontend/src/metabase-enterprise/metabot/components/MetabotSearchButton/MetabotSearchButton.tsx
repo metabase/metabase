@@ -4,9 +4,9 @@ import { c } from "ttag";
 
 import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
 import S from "metabase/nav/components/search/SearchButton/SearchButton.module.css";
-import { Button, Flex, Icon } from "metabase/ui";
+import { Button, Flex, type FlexProps, Icon } from "metabase/ui";
 
-export const MetabotSearchButton = () => {
+export const MetabotSearchButton = (props: FlexProps) => {
   const kbar = useKBar();
 
   const { setVisualState } = kbar.query;
@@ -42,6 +42,7 @@ export const MetabotSearchButton = () => {
         borderRadius: "var(--mantine-radius-default)",
         border: "1px solid var(--mb-color-border)",
       }}
+      {...props}
     >
       <Button
         className={S.searchTextButton}
@@ -49,8 +50,8 @@ export const MetabotSearchButton = () => {
         aria-label={label}
         onClick={handleClick}
         variant="subtle"
-        color="text-light"
-        leftSection={<Icon name="search" />}
+        c="var(--mb-color-text-light)"
+        leftSection={<Icon name="search" c="var(--mb-color-text-primary)" />}
       >
         {label}
       </Button>

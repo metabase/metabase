@@ -47,7 +47,13 @@ import {
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
-import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type {
+  ButtonProps,
+  FlexProps,
+  IconName,
+  IconProps,
+  StackProps,
+} from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -698,26 +704,42 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   chartAnalysisRenderFormats: {},
 };
 
-export const PLUGIN_METABOT = {
+type PLUGIN_METABOT_TYPE = {
+  isEnabled: () => boolean;
+  Metabot: (props: { hide?: boolean }) => React.ReactElement | null;
+  defaultMetabotContextValue: MetabotContext;
+  MetabotContext: React.Context<MetabotContext>;
+  getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
+  useMetabotPalletteActions: (searchText: string) => PaletteAction[];
+  getAdminPaths: () => AdminPath[];
+  getAdminRoutes: () => React.ReactElement;
+  getMetabotRoutes: () => React.ReactElement | null;
+  MetabotAdminPage: ComponentType;
+  getMetabotVisible: (state: State) => boolean;
+  SearchButton: ComponentType<ButtonProps> | ComponentType<FlexProps>;
+  MetabotToggleButton: ComponentType<{ className?: string }>;
+  MetabotAppBarButton: ComponentType;
+};
+
+export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
   isEnabled: () => false,
-  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
+  Metabot: () => null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
-    return ({ children }: { children: React.ReactNode }) =>
+    return ({ children }) =>
       React.createElement(
         PLUGIN_METABOT.MetabotContext.Provider,
         { value: PLUGIN_METABOT.defaultMetabotContextValue },
         children,
       );
   },
-  useMetabotPalletteActions: (_searchText: string) =>
-    useMemo(() => [] as PaletteAction[], []),
-  getAdminPaths: () => [] as AdminPath[],
+  useMetabotPalletteActions: () => useMemo(() => [], []),
+  getAdminPaths: () => [],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
-  getMetabotRoutes: () => null as React.ReactElement | null,
+  getMetabotRoutes: () => null,
   MetabotAdminPage: () => `placeholder`,
-  getMetabotVisible: (_state: State) => false,
+  getMetabotVisible: () => false,
   SearchButton: SearchButton,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,

@@ -20,6 +20,7 @@
   &:hover .shortcutText {
     color: var(--mb-color-text-light);
     transition: color 100ms ease;
+    background-color: var(--mb-color-background-light);
   }
 }
 
@@ -27,4 +28,6 @@
   color: transparent;
   user-select: none;
   transition: color 350ms ease;
+  border-radius: 2px;
+  padding: 3px;
 }
