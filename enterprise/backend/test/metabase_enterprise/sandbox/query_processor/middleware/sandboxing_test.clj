@@ -1551,3 +1551,31 @@
               [3]]
              (mt/rows
               (qp/process-query (query))))))))
+
+(deftest datetime-extraction-to-int-test
+  (testing "Downloading CSV/XLSX for query with COUNT grouped by day of month should work for sandboxed users (#UXW-660)"
+    (met/with-gtaps! {:gtaps {:orders {:remappings {"user_id" ["variable" [:field (mt/id :orders :user_id) nil]]}}},
+                      :attributes {"user_id" 1}}
+      (let [query (mt/mbql-query orders
+                    {:aggregation [[:count]]
+                     :breakout [[:field (mt/id :orders :created_at) {:effective-type :type/Integer
+                                                                     :base-type :type/DateTime
+                                                                     :temporal-unit :day-of-month}]]
+                     :order-by [[:asc [:field (mt/id :orders :created_at) {:effective-type :type/Integer
+                                                                           :base-type :type/DateTime
+                                                                           :temporal-unit :day-of-month}]]]
+                     :limit 5})]
+        (testing "Query should complete successfully with normal processing"
+          (let [result (qp/process-query query)]
+            (is (= :completed (:status result)))
+            (is (seq (mt/rows result)))))
+        (testing "Query should complete successfully when downloading as CSV"
+          (let [result (streaming.test-util/process-query-basic-streaming :csv query ["Created At: Day of month" "Count"])]
+            (is (seq result))
+            (testing "Results should include integer day-of-month values and counts"
+              (is (every? (fn [[day count]]
+                            (and (string? day)
+                                 (string? count)
+                                 (let [day-int (parse-long day)]
+                                   (<= 1 day-int 31))))
+                          (next result))))))))))
