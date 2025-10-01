@@ -1282,3 +1282,42 @@ describe("issue 54271", () => {
     H.assertQueryBuilderRowCount(1076);
   });
 });
+
+describe("issue 63671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+              },
+            ],
+          ],
+          filter: [
+            "between",
+            ["field", PRODUCTS.CREATED_AT, null],
+            "2025-01-01",
+            "2025-12-31",
+          ],
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
+    cy.findByTestId("query-visualization-root")
+      .findByText("2025")
+      .should("have.length", 1);
+  });
+});
