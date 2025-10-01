@@ -246,9 +246,12 @@
 
 (mu/defn- check-permissions
   [policy   :- :keyword
-   arg-maps :- [:sequential ::actions.args/common]]
+   arg-maps :- [:sequential [:or
+                             ::actions.args/common
+                             [:= {:description "empty map"} {}]]]]
   (when (#{:model-action :ad-hoc-invocation} policy)
     (doseq [arg-map arg-maps
+            :when   (seq arg-map)
             :let    [mp    (lib-be/application-database-metadata-provider (:database arg-map))
                      query (if (:table-id arg-map)
                              (lib/query mp (lib.metadata/table mp (:table-id arg-map)))
