@@ -5,27 +5,15 @@ import {
   ReactFlow,
   useReactFlow,
 } from "@xyflow/react";
-import { useLayoutEffect, useState } from "react";
-import { push } from "react-router-redux";
-import { t } from "ttag";
+import { useLayoutEffect } from "react";
 
 import { skipToken } from "metabase/api";
-import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
-import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Button } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import {
-  getQuestionIdFromVirtualTableId,
-  isVirtualCardId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
-import type {
-  DependencyEntityType,
-  DependencyGraph,
-  TableId,
-} from "metabase-types/api";
+import type { DependencyEntityType, DependencyGraph } from "metabase-types/api";
 
 import { EntityNode } from "./EntityNode";
+import { SearchPanel } from "./SearchPanel";
 import { getGraphInfo } from "./utils";
 
 const NODE_TYPES = {
@@ -48,18 +36,6 @@ export function DependencyFlow({ params }: DependencyFlowProps) {
     id ? { id, type } : skipToken,
   );
   const { nodes, edges } = getGraphInfo(graph, id, type);
-  const [isOpened, setIsOpened] = useState(false);
-  const dispatch = useDispatch();
-
-  const handleChange = (tableId: TableId) => {
-    if (isVirtualCardId(tableId)) {
-      dispatch(
-        push(`/dependencies/card/${getQuestionIdFromVirtualTableId(tableId)}`),
-      );
-    } else {
-      dispatch(push(`/dependencies/table/${tableId}`));
-    }
-  };
 
   return (
     <ReactFlow
@@ -73,18 +49,7 @@ export function DependencyFlow({ params }: DependencyFlowProps) {
       <Background />
       <Controls />
       <Panel position="top-left">
-        <Button
-          variant="filled"
-          onClick={() => setIsOpened(true)}
-        >{t`Select entity`}</Button>
-        {isOpened && (
-          <DataPickerModal
-            value={undefined}
-            title={`Pick an entity`}
-            onChange={handleChange}
-            onClose={() => setIsOpened(false)}
-          />
-        )}
+        <SearchPanel />
       </Panel>
       <FitView graph={graph} />
     </ReactFlow>
