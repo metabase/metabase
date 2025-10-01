@@ -44,8 +44,8 @@
 
 (defn export-set
   "Returns a transitive set of ref-dependencies"
-  [representation]
-  (loop [acc #{representation}
+  [representations]
+  (loop [acc (set representations)
          prev #{}]
     (if-some [new (seq (set/difference acc prev))]
       (let [refs (set (mapcat v0-common/refs new))

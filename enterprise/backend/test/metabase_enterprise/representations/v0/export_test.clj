@@ -12,7 +12,7 @@
       (let [database (t2/select-one :model/Database :id (mt/id))
             qrep (export/export-entity question)
             drep (export/export-entity database)
-            set (export/export-set qrep)]
+            set (export/export-set #{qrep})]
         (is (= (:id database)
                (:database_id question)))
         (is (= 2 (count set)))
@@ -28,6 +28,6 @@
             qrep1 (export/export-entity question1)
             qrep2 (export/export-entity question2)
             drep (export/export-entity database)
-            set (export/export-set qrep2)]
+            set (export/export-set #{qrep2})]
         (is (= 3 (count set)))
         (is (= #{qrep2 drep qrep1} set))))))
