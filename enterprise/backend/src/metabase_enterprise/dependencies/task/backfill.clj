@@ -6,6 +6,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -72,7 +73,7 @@
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
                          (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-update {:object card :user-id nil}))
+      (events/publish-event! :event/card-update {:object card :user-id config/internal-mb-user-id}))
     update-count))
 
 (defn- backfill-entity!
