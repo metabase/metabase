@@ -11,7 +11,7 @@ redirect_from:
 
 {% include shared/in-page-promo-embedding-workshop.html %}
 
-**Interactive embedding** allows you to embed the entire Metabase app in an iframe. Interactive embedding integrates with your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](https://www.metabase.com/glossary/query-builder) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
+**Interactive embedding** lets you embed the entire Metabase app in an iframe. Interactive embedding integrates your [permissions](../permissions/introduction.md) and [SSO](../people-and-groups/start.md#authentication) to give people the right level of access to [query](../questions/editor.md) and [drill-down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) into your data.
 
 > If you are just starting out with Metabase embedding, consider using [Embedded Analytics JS](./embedded-analytics-js.md) instead of interactive embedding - it's an improved, more customizable option for embedding interactive Metabase elements. Interactive embedding remains fully supported.
 
