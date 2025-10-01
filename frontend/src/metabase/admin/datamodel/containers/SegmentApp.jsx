@@ -1,17 +1,24 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useState } from "react";
+import { Panel, PanelGroup } from "react-resizable-panels";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { ResizeHandle } from "metabase/bench/components/BenchApp";
+import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
+import { Box, Card, Center } from "metabase/ui";
 
 import SegmentForm from "../components/SegmentForm";
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
+
+import SegmentListApp from "./SegmentListApp";
 
 const mapDispatchToProps = {
   updatePreviewSummary,
@@ -60,7 +67,7 @@ const UpdateSegmentFormInner = ({
   );
 };
 
-const UpdateSegmentForm = _.compose(
+export const UpdateSegmentForm = _.compose(
   Segments.load({
     id: (_state, { params }) => parseInt(params.id),
   }),
@@ -71,7 +78,7 @@ const UpdateSegmentForm = _.compose(
   }),
 )(UpdateSegmentFormInner);
 
-const CreateSegmentForm = ({
+export const CreateSegmentForm = ({
   route,
   createSegment,
   onChangeLocation,
@@ -114,11 +121,22 @@ const CreateSegmentForm = ({
 };
 
 const SegmentApp = (props) => {
-  if (props.params.id) {
-    return <UpdateSegmentForm {...props} />;
-  }
-
-  return <CreateSegmentForm {...props} />;
+  return (
+    <BenchLayout
+      nav={<SegmentListApp {...props} />}
+      name="segment"
+    >
+      {!props.children ? (
+        <Center w="100%" h="100%"><NoDataError  /></Center>
+      ) : (
+          <Box p="md">
+            <Card>
+              {props.children}
+            </Card>
+          </Box>
+      )}
+    </BenchLayout>
+  )
 };
 
 export default connect(mapStateToProps, mapDispatchToProps)(SegmentApp);

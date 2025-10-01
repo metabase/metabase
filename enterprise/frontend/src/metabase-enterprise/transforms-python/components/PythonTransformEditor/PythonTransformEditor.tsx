@@ -137,15 +137,24 @@ export function PythonTransformEditor({
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />
-      <Flex h="100%" w="100%">
-        <PythonDataPicker
-          database={source["source-database"]}
-          tables={source["source-tables"]}
-          onChange={handleDataChange}
+      <PythonDataPicker
+        database={source["source-database"]}
+        tables={source["source-tables"]}
+        onChange={handleDataChange}
+      />
+      <Stack w="100%" h="100%" gap={0}>
+        <PythonEditorBody
+          isRunnable={isRunnable && isPythonTransformSource(source)}
+          isRunning={isRunning}
+          isDirty={isDirty}
+          onRun={run}
+          onCancel={cancel}
+          source={source.body}
+          onChange={handleScriptChange}
+          withDebugger={showDebugger}
         />
-        <Stack w="100%" h="100%" gap={0}>
-          <PythonEditorBody
-            isRunnable={isRunnable && isPythonTransformSource(source)}
+        {showDebugger && (
+          <PythonEditorResults
             isRunning={isRunning}
             isDirty={isDirty}
             onRun={run}
@@ -157,14 +166,8 @@ export function PythonTransformEditor({
             onAcceptProposed={handleAcceptProposed}
             onRejectProposed={onRejectProposed}
           />
-          {showDebugger && (
-            <PythonEditorResults
-              isRunning={isRunning}
-              executionResult={executionResult}
-            />
-          )}
-        </Stack>
-      </Flex>
+        )}
+      </Stack>
     </Stack>
   );
 }

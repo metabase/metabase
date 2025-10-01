@@ -1,11 +1,14 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
-import { Card, Flex } from "metabase/ui";
+import { useDispatch , useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
+import { Box, Card, Flex, NavLink, Text } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
@@ -65,59 +68,76 @@ export function TransformList({ params }: TransformListProps) {
   }
 
   return (
-    <Card p={0} shadow="none" withBorder>
-      <AdminContentTable
-        columnTitles={[
-          t`Transform`,
-          t`Target`,
-          <Flex key="last-run-at" component="span" align="center" gap="xs">
-            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
-            <TimezoneIndicator />
-          </Flex>,
-          <span key="last-run-status" className={S.nowrap}>
-            {t`Last run status`}
-          </span>,
-          t`Tags`,
-        ]}
-      >
-        {transforms.map((transform) => (
-          <tr
-            key={transform.id}
-            className={S.row}
-            onClick={() => handleRowClick(transform)}
-          >
-            <td className={S.wrap}>{transform.name}</td>
-            <td className={S.wrap}>{transform.target.name}</td>
-            <td className={S.nowrap}>
-              {transform.last_run?.end_time
-                ? parseTimestampWithTimezone(
-                    transform.last_run.end_time,
-                    systemTimezone,
-                  ).format("lll")
-                : null}
-            </td>
-            <td className={S.nowrap}>
-              {transform.last_run != null ? (
-                <RunStatusInfo
-                  status={transform.last_run.status}
-                  message={transform.last_run.message}
-                  endTime={
-                    transform.last_run.end_time != null
-                      ? parseTimestampWithTimezone(
-                          transform.last_run.end_time,
-                          systemTimezone,
-                        ).toDate()
-                      : null
-                  }
-                />
-              ) : null}
-            </td>
-            <td className={S.wrap}>
-              <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
-            </td>
-          </tr>
+    <ItemsListSection
+      sectionTitle={t`Transforms`}
+      titleMenuItems={<div />}
+      onChangeSorting={() => null}
+      onAddNewItem={() => null}
+      listItems={
+        <Box>
+          {transforms.map((transform) => (
+            <TransformListItem key={transform.id} transform={transform} />
+          // <tr
+          //   key={transform.id}
+          //   className={S.row}
+          //   onClick={() => handleRowClick(transform)}
+          // >
+          //   <td className={S.wrap}>{transform.name}</td>
+          //   <td className={S.wrap}>{transform.target.name}</td>
+          //   <td className={S.nowrap}>
+          //     {transform.last_run?.end_time
+          //       ? parseTimestampWithTimezone(
+          //           transform.last_run.end_time,
+          //           systemTimezone,
+          //         ).format("lll")
+          //       : null}
+          //   </td>
+          //   <td className={S.nowrap}>
+          //     {transform.last_run != null ? (
+          //       <RunStatusInfo
+          //         status={transform.last_run.status}
+          //         message={transform.last_run.message}
+          //         endTime={
+          //           transform.last_run.end_time != null
+          //             ? parseTimestampWithTimezone(
+          //                 transform.last_run.end_time,
+          //                 systemTimezone,
+          //               ).toDate()
+          //             : null
+          //         }
+          //       />
+          //     ) : null}
+          //   </td>
+          //   <td className={S.wrap}>
+          //     <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
+          //   </td>
+          // </tr>
         ))}
-      </AdminContentTable>
-    </Card>
+        </Box>
+      }
+    />
   );
+}
+
+function TransformListItem({ transform }: { transform: Transform }) {
+  const location = useSelector(getLocation);
+  // get id off the end
+  const id = location?.pathname?.split("/")?.pop();
+  const isActive = id === String(transform.id);
+  return (
+    <NavLink
+      component={Link}
+      to={getTransformUrl(transform.id)}
+      active={isActive}
+      w="100%"
+      label={
+        <Box>
+          <Text fw="bold">{transform.name}</Text>
+          <Box c="text-light" fz="sm">
+            {t`Target:`} {transform.target.name}
+          </Box>
+        </Box>
+      }
+    />
+  )
 }

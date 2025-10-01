@@ -7,6 +7,7 @@ import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
   Box,
+  type BoxProps,
   Button,
   Flex,
   Icon,
@@ -40,8 +41,10 @@ const defaultConfig: MetabotConfig = {
 
 export const MetabotChat = ({
   config = defaultConfig,
+  w = "30rem",
 }: {
   config?: MetabotConfig;
+  w?: string;
 }) => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
@@ -80,7 +83,7 @@ export const MetabotChat = ({
     <Sidebar
       isOpen={metabot.visible}
       side="right"
-      width="30rem"
+      width={w}
       aria-hidden={!metabot.visible}
     >
       <Box className={Styles.container} data-testid="metabot-chat">

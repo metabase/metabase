@@ -49,14 +49,7 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   background-color: transparent;
   overflow-x: hidden;
   overflow-y: auto;
-
-  ${breakpointMinSmall} {
-    width: ${(props) => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
-  }
-
-  ${breakpointMaxSmall} {
-    width: ${(props) => (props.isOpen ? "90vw" : 0)};
-  }
+  width: 100%;
 `;
 
 export const SidebarContentRoot = styled.div`
@@ -64,6 +57,7 @@ export const SidebarContentRoot = styled.div`
   flex: 1;
   flex-direction: column;
   justify-content: space-between;
+  width: 100%;
 `;
 
 export const SidebarSection = styled(Box)<BoxProps>`

@@ -9,6 +9,7 @@ import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
 import { Logout } from "metabase/auth/components/Logout";
 import { ResetPassword } from "metabase/auth/components/ResetPassword";
+import { getBenchRoutes } from "metabase/bench/routes";
 import {
   BrowseDatabases,
   BrowseMetrics,
@@ -369,6 +370,9 @@ export const getRoutes = (store) => {
 
           {/* ADMIN */}
           {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
+
+          {/* ANALYTS WORKBENCH */}
+          {getBenchRoutes(store, CanAccessSettings, IsAdmin)}
         </Route>
       </Route>
 

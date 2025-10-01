@@ -32,18 +32,7 @@ type TransformQueryPageProps = {
   params: TransformQueryPageParams;
 };
 
-export function TransformQueryPage({ params }: TransformQueryPageProps) {
-  const transformId = Urls.extractEntityId(params.transformId);
-  const {
-    data: transform,
-    isLoading,
-    error,
-  } = useGetTransformQuery(transformId ?? skipToken);
-
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
+export function TransformQueryPage({ transform }: { transform: Transform }) {
   if (transform == null) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
