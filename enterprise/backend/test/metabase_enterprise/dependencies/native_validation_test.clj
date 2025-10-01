@@ -93,28 +93,12 @@
         (validates? mp driver 11 [{:column "CATEGORY",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns
-                                   [[{:column "ID",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
-                                     {:column "NAME",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
+                                   :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}])
         (validates? mp driver 12 [{:column "CATEGORY",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns
-                                   [[{:column "ID",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
-                                     {:column "NAME",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
+                                   :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}]))
 
       (testing "Nested subqueries"
@@ -122,15 +106,7 @@
         (validates? mp driver 14 [{:column "CATEGORY",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns
-                                   [[{:column "ID",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
-                                     {:column "NAME",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
+                                   :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}]))
 
       (testing "SELECT * from subquery expands to subquery columns"
@@ -139,15 +115,7 @@
         (validates? mp driver 17 [{:column "EMAIL",
                                    :alias nil,
                                    :type :single-column,
-                                   :source-columns
-                                   [[{:column "ID",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}
-                                     {:column "NAME",
-                                      :alias nil,
-                                      :type :single-column,
-                                      :source-columns [[{:type :all-columns, :table {:table "PEOPLE"}}]]}]],
+                                   :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}])))))
 
 (deftest validate-card-reference-after-expansion-test
@@ -163,39 +131,7 @@
                     [{:column "DESCRIPTION",
                       :alias nil,
                       :type :single-column,
-                      :source-columns
-                      [[{:column "ID",
-                         :alias "ID",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "EAN",
-                         :alias "EAN",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "TITLE",
-                         :alias "TITLE",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "CATEGORY",
-                         :alias "CATEGORY",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "VENDOR",
-                         :alias "VENDOR",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "PRICE",
-                         :alias "PRICE",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "RATING",
-                         :alias "RATING",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "CREATED_AT",
-                         :alias "CREATED_AT",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
+                      :source-columns [[]],
                       :metabase.driver.sql/bad-reference true}]))
 
       (testing "Card reference with alias - valid column"
@@ -206,39 +142,7 @@
                     [{:column "PASSWORD",
                       :alias nil,
                       :type :single-column,
-                      :source-columns
-                      [[{:column "ID",
-                         :alias "ID",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "EAN",
-                         :alias "EAN",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "TITLE",
-                         :alias "TITLE",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "CATEGORY",
-                         :alias "CATEGORY",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "VENDOR",
-                         :alias "VENDOR",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "PRICE",
-                         :alias "PRICE",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "RATING",
-                         :alias "RATING",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "CREATED_AT",
-                         :alias "CREATED_AT",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
+                      :source-columns [[]],
                       :metabase.driver.sql/bad-reference true}]))
 
       (testing "Wildcard selection from card reference"
@@ -249,39 +153,7 @@
                     [{:column "LATITUDE",
                       :alias nil,
                       :type :single-column,
-                      :source-columns
-                      [[{:column "ID",
-                         :alias "ID",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "EAN",
-                         :alias "EAN",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "TITLE",
-                         :alias "TITLE",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "CATEGORY",
-                         :alias "CATEGORY",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "VENDOR",
-                         :alias "VENDOR",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "PRICE",
-                         :alias "PRICE",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "RATING",
-                         :alias "RATING",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}
-                        {:column "CREATED_AT",
-                         :alias "CREATED_AT",
-                         :type :single-column,
-                         :source-columns [[{:type :all-columns, :table {:table "PRODUCTS", :schema "PUBLIC"}}]]}]],
+                      :source-columns [[]],
                       :metabase.driver.sql/bad-reference true}])))))
 
 (defn- check-result-metadata [driver mp query expected]
