@@ -1056,7 +1056,7 @@
   "Unified schema for search result items."
   [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
    [:id :int]
-   [:type [:enum :table :model :dashboard :question :metric :database]]
+   [:type [:enum :table :model :dashboard :question :metric :database :transform]]
    [:name :string]
    [:display_name {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
@@ -1078,15 +1078,9 @@
                          [:total_count :int]]]]
    [:map [:output :string]]])
 
-(api.macros/defendpoint :post "/search" :- [:merge ::search-result ::tool-request]
-  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
-  [_route-params
-   _query-params
-   {:keys [arguments conversation_id] :as body} :- [:merge
-                                                    [:map [:arguments {:optional true} ::search-arguments]]
-                                                    ::tool-request]
-   request]
-  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
+(defn- search
+  "Shared handler for the /search and /search_v2 endpoints."
+  [arguments conversation_id request]
   (try
     (let [options (mc/encode ::search-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))
@@ -1105,6 +1099,30 @@
       (doto (-> {:output (str "Search failed: " (or (ex-message e) "Unknown error"))}
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))))
+
+(api.macros/defendpoint :post "/search" :- [:merge ::search-result ::tool-request]
+  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-arguments]]
+                                                    ::tool-request]
+   request]
+  (metabot-v3.context/log (assoc body :api :search) :llm.log/llm->be)
+  (search arguments conversation_id request))
+
+(api.macros/defendpoint :post "/search_v2" :- [:merge ::search-result ::tool-request]
+  "Enhanced search with term and semantic queries using Reciprocal Rank Fusion. This is identical to /search, but
+  duplicated in order to add a new capability to AI service that indicates that Metabot can search transforms. The
+  /search endpoint is kept around for backward compatibility."
+  [_route-params
+   _query-params
+   {:keys [arguments conversation_id] :as body} :- [:merge
+                                                    [:map [:arguments {:optional true} ::search-arguments]]
+                                                    ::tool-request]
+   request]
+  (metabot-v3.context/log (assoc body :api :search_v2) :llm.log/llm->be)
+  (search arguments conversation_id request))
 
 (api.macros/defendpoint :post "/get-snippets" :- [:merge ::get-snippets-result ::tool-request]
   "Get a list of all known SQL snippets."

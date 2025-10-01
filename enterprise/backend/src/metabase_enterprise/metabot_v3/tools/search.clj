@@ -100,7 +100,7 @@
           (map :search-result)))))
 
 (defn search
-  "Search for data sources (tables, models, cards, dashboards, metrics) in Metabase.
+  "Search for data sources (tables, models, cards, dashboards, metrics, transforms) in Metabase.
   Abstracted from the API endpoint logic."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
            entity-types limit metabot-id search-native-query]}]
@@ -139,8 +139,11 @@
                                             :context :metabot
                                             :archived false
                                             :limit (or limit 50)
-                                            :offset 0
-                                            :search-native-query (boolean search-native-query)}
+                                            :offset 0}
+                                           ;; Don't include search-native-query key if nil so that we don't
+                                           ;; inadvertently filter out search models that don't support it
+                                           (when search-native-query
+                                             {:search-native-query (boolean search-native-query)})
                                            (when use-verified-content?
                                              {:verified true})))
                           _ (log/infof "[METABOT-SEARCH] Search context models for query '%s': %s"

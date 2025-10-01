@@ -320,3 +320,27 @@
                                               :entity-types ["dashboard"]})]
                   (is (= 1 (count results)))
                   (is (= 2 (:id (first results)))))))))))))
+
+(deftest search-native-query-test
+  (mt/with-test-user :rasta
+    (with-redefs [perms/impersonated-user? (fn [] false)
+                  perms/sandboxed-user? (fn [] false)
+                  api/*current-user-id* 1]
+      (testing ":search-native-query is included in context when true"
+        (with-redefs [search-core/search (fn [context]
+                                           (is (true? (:search-native-query context)))
+                                           {:data []})]
+          (search/search {:term-queries ["test"]
+                          :entity-types ["card"]
+                          :search-native-query true})))
+
+      (testing ":search-native-query is not included in context when nil or false"
+        (with-redefs [search-core/search (fn [context]
+                                           (is (not (contains? context :search-native-query)))
+                                           {:data []})]
+          (search/search {:term-queries ["test"]
+                          :entity-types ["card"]
+                          :search-native-query false})
+          (search/search {:term-queries ["test"]
+                          :entity-types ["card"]
+                          :search-native-query nil}))))))
