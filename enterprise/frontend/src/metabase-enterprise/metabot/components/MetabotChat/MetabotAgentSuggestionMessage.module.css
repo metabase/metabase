@@ -1,63 +1,21 @@
 .suggestionEditor {
-  --change: var(--mb-color-success);
-  --change-light: color-mix(in srgb, var(--change) 11%, transparent);
-  --remove: var(--mb-color-danger);
-  --remove-mid: color-mix(in srgb, var(--remove) 25%, transparent);
-  --remove-light: color-mix(in srgb, var(--remove) 11%, transparent);
-
   :global {
     .cm-content {
       padding: 0;
     }
 
     .cm-collapsedLines {
-      background: var(--mb-color-bg-light) !important;
-      color: var(--mb-color-text-light);
       padding-left: 0;
-
-      &:before,
-      &:after {
-        content: "-";
-        color: var(--mb-color-text-light);
-      }
-    }
-
-    .cm-changedLineGutter {
-      background: var(--change);
-    }
-
-    .cm-deletedLineGutter {
-      background: var(--remove);
-    }
-
-    .cm-deletedChunk {
-      background: var(--remove-light);
-    }
-
-    .cm-deletedText {
-      background: var(--remove-mid);
-    }
-
-    .cm-merge-b {
-      .cm-changedText {
-        background: linear-gradient(var(--change), var(--change)) bottom / 100%
-          2px no-repeat;
-      }
-
-      .cm-changedLine {
-        background: var(--change-light);
-      }
     }
   }
 }
 
 .suggestionEditorOnlyNew {
   background: color-mix(in srgb, var(--mb-color-success) 11%, transparent);
-  padding-left: 4px;
 
   :global {
     .cm-gutters {
-      display: none;
+      background: transparent;
     }
   }
 }
@@ -66,10 +24,7 @@
   cursor: pointer;
 }
 
-.suggestionHeaderCollapsed {
+.suggestionHeaderCollapsed,
+.suggestionHeaderCollapsed * {
   user-select: none;
-
-  * {
-    user-select: none;
-  }
 }

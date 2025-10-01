@@ -15,10 +15,9 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import {
+  deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
-  setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import type { Transform, TransformSource } from "metabase-types/api";
 
@@ -63,8 +62,6 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const metabot = useMetabotAgent();
-
   const initialSource = transform.source;
   const [source, setSource] = useState(initialSource);
 
@@ -82,31 +79,14 @@ export function TransformQueryPageBody({
   }, [transform, source, suggestedTransform]);
 
   const onRejectProposed = () => {
-    dispatch(setSuggestedTransform(undefined));
-    metabot.submitInput({
-      type: "action",
-      message:
-        "HIDDEN MESSAGE: the user has rejected your changes, ask for clarification on what they'd like to do instead.",
-      // @ts-expect-error -- TODO
-      userMessage: "❌ You rejected the change",
-    });
+    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
   };
   const onAcceptProposed = async (source: TransformSource) => {
-    await handleSourceSave(source, { leaveEditor: false });
-    dispatch(setSuggestedTransform(undefined));
-    metabot.submitInput({
-      type: "action",
-      message:
-        "HIDDEN MESSAGE: user has accepted your changes, move to the next step!",
-      // @ts-expect-error -- TODO
-      userMessage: "✅ You accepted the change",
-    });
+    setSource(source);
+    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
   };
 
-  const handleSourceSave = async (
-    source: TransformSource,
-    { leaveEditor } = { leaveEditor: true },
-  ) => {
+  const handleSourceSave = async (source: TransformSource) => {
     const { error } = await updateTransform({
       id: transform.id,
       source,
@@ -116,9 +96,8 @@ export function TransformQueryPageBody({
       sendErrorToast(t`Failed to update transform query`);
     } else {
       sendSuccessToast(t`Transform query updated`);
-      if (leaveEditor) {
-        dispatch(push(getTransformUrl(transform.id)));
-      }
+      dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+      dispatch(push(getTransformUrl(transform.id)));
     }
   };
 

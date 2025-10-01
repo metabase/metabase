@@ -51,7 +51,7 @@ export type MetabotAgentEditSuggestionChatMessage = {
   model: "transform";
   payload: {
     editorTransform: MetabotTransformInfo | undefined;
-    suggestedTransform: SuggestedTransform;
+    suggestedTransform: MetabotSuggestedTransform;
   };
 };
 
@@ -80,9 +80,14 @@ export type MetabotToolCall = {
   status: "started" | "ended";
 };
 
+export type MetabotSuggestedTransform = SuggestedTransform & {
+  active: boolean;
+  suggestionId: string; // internal unique identifier for marking active/inactive
+};
+
 export type MetabotReactionsState = {
   navigateToPath: string | null;
-  suggestedTransform: SuggestedTransform | undefined;
+  suggestedTransforms: MetabotSuggestedTransform[];
 };
 
 export interface MetabotState {
@@ -111,7 +116,7 @@ export const getMetabotInitialState = (): MetabotState => ({
   state: {},
   reactions: {
     navigateToPath: null,
-    suggestedTransform: undefined,
+    suggestedTransforms: [],
   },
   toolCalls: [],
   experimental: {
@@ -217,7 +222,7 @@ export const metabot = createSlice({
       state.isProcessing = false;
       state.toolCalls = [];
       state.conversationId = uuid();
-      state.reactions.suggestedTransform = undefined;
+      state.reactions.suggestedTransforms = [];
       state.experimental.metabotReqIdOverride = undefined;
     },
     resetConversationId: (state) => {
@@ -228,15 +233,6 @@ export const metabot = createSlice({
     },
     setNavigateToPath: (state, action: PayloadAction<string>) => {
       state.reactions.navigateToPath = action.payload;
-    },
-    setSuggestedTransform: (
-      state,
-      action: PayloadAction<SuggestedTransform | undefined>,
-    ) => {
-      // transform type makes this flakily produce possibly infinite
-      // typescript errors. since unused ts-expect-error directives produces
-      // errors, casting this as any to avoid having to add / remove constantly.
-      state.reactions.suggestedTransform = action.payload as any;
     },
     setVisible: (state, action: PayloadAction<boolean>) => {
       state.visible = action.payload;
@@ -249,6 +245,38 @@ export const metabot = createSlice({
     },
     setProfileOverride: (state, action: PayloadAction<string | undefined>) => {
       state.experimental.profileOverride = action.payload;
+    },
+    addSuggestedTransform: (
+      state,
+      { payload: transform }: PayloadAction<MetabotSuggestedTransform>,
+    ) => {
+      // mark all other transform w/ same id as inactive before adding new one
+      state.reactions.suggestedTransforms.map((t) =>
+        t.id === transform.id ? { ...t, active: false } : t,
+      );
+      // transform type caused flaky "possible infinite type definition" errorj
+      // ts-expect-error fails when it doesn't fail, so casting to any
+      state.reactions.suggestedTransforms.push(transform as any);
+    },
+    activateSuggestedTransform: (
+      state,
+      action: PayloadAction<{
+        id?: SuggestedTransform["id"];
+        suggestionId: string;
+      }>,
+    ) => {
+      const { id, suggestionId } = action.payload;
+      state.reactions.suggestedTransforms.map((t) =>
+        t.id === id ? { ...t, active: t.suggestionId === suggestionId } : t,
+      );
+    },
+    deactivateSuggestedTransform: (
+      state,
+      action: PayloadAction<SuggestedTransform["id"] | undefined>,
+    ) => {
+      state.reactions.suggestedTransforms.map((t) =>
+        t.id === action.payload ? { ...t, active: false } : t,
+      );
     },
   },
   extraReducers: (builder) => {

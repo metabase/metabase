@@ -1,4 +1,10 @@
 .editor {
+  --change: var(--mb-color-success);
+  --change-light: color-mix(in srgb, var(--change) 11%, transparent);
+  --remove: var(--mb-color-danger);
+  --remove-mid: color-mix(in srgb, var(--remove) 25%, transparent);
+  --remove-light: color-mix(in srgb, var(--remove) 11%, transparent);
+
   width: 100%;
   min-width: 0;
   max-width: 100%;
@@ -88,6 +94,45 @@
         text-align: right;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+    }
+
+    /* merge view styles */
+    .cm-collapsedLines {
+      background: var(--mb-color-bg-light) !important;
+      color: var(--mb-color-text-light);
+
+      &:before,
+      &:after {
+        content: "-";
+        color: var(--mb-color-text-light);
+      }
+    }
+
+    .cm-merge-b .cm-changedLineGutter {
+      background: var(--change);
+    }
+
+    .cm-deletedLineGutter {
+      background: var(--remove);
+    }
+
+    .cm-deletedChunk {
+      background: var(--remove-light);
+    }
+
+    .cm-deletedText {
+      background: var(--remove-mid);
+    }
+
+    .cm-merge-b {
+      .cm-changedText {
+        background: linear-gradient(var(--change), var(--change)) bottom / 100%
+          2px no-repeat;
+      }
+
+      .cm-changedLine {
+        background: var(--change-light);
       }
     }
   }

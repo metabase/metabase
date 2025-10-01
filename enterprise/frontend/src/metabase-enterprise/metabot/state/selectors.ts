@@ -156,11 +156,19 @@ export const getNavigateToPath = createSelector(
   (reactionsState) => reactionsState.navigateToPath,
 );
 
+export const getMetabotSuggestedTransforms = createSelector(
+  getMetabotReactionsState,
+  (reactionsState) => reactionsState.suggestedTransforms,
+);
+
 export const getMetabotSuggestedTransform = createSelector(
-  [getMetabotReactionsState, (_, transformId?: TransformId) => transformId],
-  (reactionsState, transformId) => {
-    return reactionsState.suggestedTransform?.id === transformId
-      ? reactionsState.suggestedTransform
-      : undefined;
+  [
+    getMetabotSuggestedTransforms,
+    (_, transformId?: TransformId) => transformId,
+  ],
+  (suggestedTransforms, transformId) => {
+    return suggestedTransforms.findLast(
+      (t) => t.id === transformId && t.active,
+    );
   },
 );

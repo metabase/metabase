@@ -52,6 +52,7 @@ export function PythonTransformEditor({
   onAcceptProposed,
 }: PythonTransformEditorProps) {
   const [source, setSource] = useState(initialSource);
+  const saveSource = proposedSource ?? source;
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
   const { isRunning, isDirty, cancel, run, executionResult } =
@@ -88,8 +89,8 @@ export function PythonTransformEditor({
   };
 
   const handleSave = () => {
-    if (isPythonTransformSource(source)) {
-      onSave(source);
+    if (isPythonTransformSource(saveSource)) {
+      onSave(saveSource);
     }
   };
 
@@ -109,14 +110,14 @@ export function PythonTransformEditor({
     }
     if (isRunning) {
       cancel();
-    } else if (isRunnable && isPythonTransformSource(source)) {
+    } else if (isRunnable && isPythonTransformSource(saveSource)) {
       run();
     }
   };
 
   useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
-  const validationResult = getValidationResult(source);
+  const validationResult = getValidationResult(saveSource);
 
   return (
     <Stack
@@ -129,6 +130,7 @@ export function PythonTransformEditor({
       <EditorHeader
         isNew={isNew}
         isSaving={isSaving}
+        hasProposedQuery={!!proposedSource}
         onSave={handleSave}
         onCancel={onCancel}
         validationResult={validationResult}

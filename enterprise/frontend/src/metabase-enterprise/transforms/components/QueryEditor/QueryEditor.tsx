@@ -83,7 +83,10 @@ export function QueryEditor({
   };
 
   const handleSave = () => {
-    onSave({ type: "query", query: question.datasetQuery() });
+    onSave({
+      type: "query",
+      query: proposedQuestion?.datasetQuery() ?? question.datasetQuery(),
+    });
   };
 
   const handleCmdEnter = () => {
@@ -161,6 +164,7 @@ export function QueryEditor({
           name={transform?.name}
           isNew={isNew}
           isSaving={isSaving}
+          hasProposedQuery={!!proposedSource}
           isQueryDirty={isQueryDirty}
           onSave={handleSave}
           onCancel={onCancel}

@@ -11,8 +11,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
+  deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
-  setSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import type {
   CardId,
@@ -106,10 +106,16 @@ export function NewTransformPageInner({
     openModal();
   };
 
-  const handleRejectProposed = () => dispatch(setSuggestedTransform(undefined));
+  const handleAcceptProposed = (newSource: TransformSource) => {
+    setSource(newSource);
+    dispatch(deactivateSuggestedTransform(undefined));
+  };
+  const handleRejectProposed = () =>
+    dispatch(deactivateSuggestedTransform(undefined));
 
   const handleCancel = () => {
     dispatch(push(getTransformListUrl()));
+    dispatch(deactivateSuggestedTransform(undefined));
     handleRejectProposed();
   };
 
@@ -146,7 +152,7 @@ export function NewTransformPageInner({
         onSave={handleSave}
         onCancel={handleCancel}
         onRejectProposed={handleRejectProposed}
-        onAcceptProposed={handleSave}
+        onAcceptProposed={handleAcceptProposed}
       />
       {isModalOpened && source && (
         <CreateTransformModal

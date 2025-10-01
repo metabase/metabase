@@ -10,10 +10,9 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Button,
   Collapse,
@@ -30,15 +29,11 @@ import {
 } from "metabase-enterprise/api";
 import {
   type MetabotAgentEditSuggestionChatMessage,
-  setSuggestedTransform,
+  activateSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  QueryTransformSource,
+  MetabotTransformInfo,
   SuggestedTransform,
-  Transform,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
@@ -51,16 +46,19 @@ const PreviewContent = ({
   newSource: string;
 }) => {
   const extensions = useMemo(
-    () => [
-      unifiedMergeView({
-        original: oldSource,
-        mergeControls: false,
-        collapseUnchanged: {
-          margin: 1,
-          minSize: 1,
-        },
-      }),
-    ],
+    () =>
+      oldSource
+        ? [
+            unifiedMergeView({
+              original: oldSource,
+              mergeControls: false,
+              collapseUnchanged: {
+                margin: 1,
+                minSize: 1,
+              },
+            }),
+          ]
+        : [],
     [oldSource],
   );
 
@@ -99,39 +97,12 @@ const useGetOldTransform = ({
   return result;
 };
 
-const parseTemplateTags = (
-  source: QueryTransformSource,
-  metadata: Metadata,
-): QueryTransformSource => {
-  // For unsaved native queries, ensure template tags (like #{{123-my-model}}) are parsed from query text
-  const query = source.query;
-  let question = Question.create({ dataset_query: query, metadata });
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-
-  if (isNative && !question.isSaved()) {
-    question = question.setQuery(
-      Lib.withNativeQuery(
-        question.query(),
-        Lib.rawNativeQuery(question.query()),
-      ),
-    );
-
-    return {
-      ...source,
-      query: question.datasetQuery(),
-    };
-  } else {
-    return source;
-  }
-};
-
 export const AgentSuggestionMessage = ({
   message,
 }: {
   message: MetabotAgentEditSuggestionChatMessage;
 }) => {
   const dispatch = useDispatch();
-  const metadata = useSelector(getMetadata);
 
   const { suggestedTransform } = message.payload;
   const isNew = !suggestedTransform.id;
@@ -160,8 +131,7 @@ export const AgentSuggestionMessage = ({
   const isStale = latestSource && oldSource !== latestSource;
 
   const handleFocus = () => {
-    const transform = processTransform(suggestedTransform, metadata);
-    dispatch(setSuggestedTransform(transform));
+    dispatch(activateSuggestedTransform(suggestedTransform));
     dispatch(push(transformUrl) as UnknownAction);
   };
 
@@ -256,7 +226,9 @@ export const AgentSuggestionMessage = ({
   );
 };
 
-function getSourceCode(transform: Pick<Transform, "source">): string {
+function getSourceCode(
+  transform: Pick<MetabotTransformInfo, "source">,
+): string {
   return match(transform)
     .with(
       { source: { type: "query", query: { type: "native" } } },
@@ -264,17 +236,6 @@ function getSourceCode(transform: Pick<Transform, "source">): string {
     )
     .with({ source: { type: "python" } }, (t) => t.source.body)
     .otherwise(() => "");
-}
-
-function processTransform(transform: SuggestedTransform, metadata: Metadata) {
-  const processedSource =
-    transform.source.type === "query"
-      ? parseTemplateTags(transform.source, metadata)
-      : transform.source;
-  return {
-    ...transform,
-    source: processedSource,
-  };
 }
 
 function getTransformUrl(transform: SuggestedTransform): string {

@@ -1,4 +1,4 @@
-import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
+import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 
@@ -53,7 +53,9 @@ export const {
   toolCallEnd,
   setProfileOverride,
   setMetabotReqIdOverride,
-  setSuggestedTransform,
+  addSuggestedTransform,
+  activateSuggestedTransform,
+  deactivateSuggestedTransform,
 } = metabot.actions;
 
 type PromptErrorOutcome = {
@@ -256,30 +258,33 @@ export const sendAgentRequest = createAsyncThunk<
                   dispatch(push(part.value) as UnknownAction);
                 }
               })
-              .with(
-                { type: "transform_suggestion" },
-                ({ value: suggestedTransform }) => {
-                  dispatch(setSuggestedTransform(suggestedTransform));
+              .with({ type: "transform_suggestion" }, ({ value }) => {
+                const suggestedTransform = {
+                  ...value,
+                  id: value.id || undefined,
+                  active: true,
+                  suggestionId: nanoid(),
+                };
+                dispatch(addSuggestedTransform(suggestedTransform));
 
-                  const transform = req.context.user_is_viewing
-                    .filter(
-                      (t): t is MetabotTransformInfo => t.type === "transform",
-                    )
-                    .find((t) => t.id === suggestedTransform.id);
-                  const message: Omit<
-                    MetabotAgentEditSuggestionChatMessage,
-                    "id" | "role"
-                  > = {
-                    type: "edit_suggestion",
-                    model: "transform",
-                    payload: {
-                      editorTransform: transform,
-                      suggestedTransform,
-                    },
-                  };
-                  dispatch(addAgentMessage(message));
-                },
-              )
+                const transform = req.context.user_is_viewing
+                  .filter(
+                    (t): t is MetabotTransformInfo => t.type === "transform",
+                  )
+                  .find((t) => t.id === suggestedTransform.id);
+                const message: Omit<
+                  MetabotAgentEditSuggestionChatMessage,
+                  "id" | "role"
+                > = {
+                  type: "edit_suggestion",
+                  model: "transform",
+                  payload: {
+                    editorTransform: transform,
+                    suggestedTransform,
+                  },
+                };
+                dispatch(addAgentMessage(message));
+              })
               .exhaustive();
           },
           onTextPart: function handleTextPart(part) {

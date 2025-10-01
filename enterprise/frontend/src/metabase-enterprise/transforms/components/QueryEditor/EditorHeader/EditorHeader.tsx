@@ -12,6 +12,7 @@ type EditorHeaderProps = {
   isNew: boolean;
   isQueryDirty: boolean;
   isSaving: boolean;
+  hasProposedQuery: boolean;
   onSave: () => void;
   onCancel: () => void;
 };
@@ -22,11 +23,14 @@ export function EditorHeader({
   isNew,
   isQueryDirty,
   isSaving,
+  hasProposedQuery,
   onSave,
   onCancel,
 }: EditorHeaderProps) {
   const canSave =
-    (isNew || isQueryDirty) && validationResult.isValid && !isSaving;
+    (isNew || isQueryDirty || hasProposedQuery) &&
+    validationResult.isValid &&
+    !isSaving;
 
   return (
     <EditBar
