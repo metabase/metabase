@@ -25,6 +25,7 @@ import {
   getIsWhiteLabeling,
 } from "metabase/selectors/whitelabel";
 import { ActionIcon, Icon, type IconName, Menu, Tooltip } from "metabase/ui";
+import type { MetabaseInfo } from "metabase-types/api";
 import type { AdminPath, State } from "metabase-types/store";
 
 import { useHelpLink } from "./useHelpLink";
@@ -67,10 +68,9 @@ function ProfileLinkInner({
   openDiagnostics,
 }: ProfileLinkProps) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
-  const version = useSetting("version");
+  const version = useSetting("version") as MetabaseInfo["version"];
   const applicationName = useSelector(getApplicationName);
-  const { tag, ...versionExtra } = version;
-  const date = versionExtra.date as string | undefined;
+  const { tag, date, ...versionExtra } = version;
   const helpLink = useHelpLink();
   const dispatch = useDispatch();
 

@@ -14,6 +14,7 @@ export interface MetabaseInfo {
   "hosting-env": string;
   "run-mode": string;
   settings: Record<string, any>;
+  // should it be merged with Version?
   version: {
     date: string;
     hash: string;
