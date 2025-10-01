@@ -25,13 +25,11 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { EntityGroupNode } from "./EntityGroupNode";
 import { EntityNode } from "./EntityNode";
 import { getGraphInfo } from "./utils";
 
 const NODE_TYPES = {
   entity: EntityNode,
-  "entity-group": EntityGroupNode,
 };
 
 type DependencyFlowParams = {
