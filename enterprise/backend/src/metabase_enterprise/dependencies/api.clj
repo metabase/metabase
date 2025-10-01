@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
+   [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase.analyze.core :as analyze]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -114,43 +115,43 @@
         breakages (dependencies/errors-from-proposed-edits {:snippet [snippet]})]
     (broken-cards-response breakages)))
 
+(defn- entity-keys [entity-type]
+  (case entity-type
+    :table [:display_name]
+    :card [:name :type]
+    :snippet [:name]
+    :transform [:name]
+    []))
+
+(defn- entity-model [entity-type]
+  (case entity-type
+    :table :model/Table
+    :card :model/Card
+    :snippet :model/NativeQuerySnippet
+    :transform :model/Transform))
+
 (api.macros/defendpoint :get "/graph"
-  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently only :table or :card) and return the
-  entity with all its upstream and downstream dependencies that should be fetched recursively. :edges match our
-  :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data depends on the node type. For
-  :table, there should be :display_name. For :card, there should be :name and :type. For :snippet -> :name. For
+  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
+  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched
+  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
+  depends on the node type. For :table, there should be :display_name. For :card, there should be :name
+  and :type. For :snippet -> :name. For
   :transform -> :name."
   [_route-params
    {:keys [id type]} :- [:map
                          [:id ms/PositiveInt]
-                         [:type (ms/enum-decode-keyword [:table :card])]]]
-  (let [entity (if (= type :table) (t2/select-one :model/Table id) (t2/select-one :model/Card id))
-        upstream-table-deps (t2/select :model/Dependency :to_entity_type :table
-                                       :from_entity_type type
-                                       :from_entity_id id)
-        upstream-card-deps (t2/select :model/Dependency :to_entity_type :card
-                                      :from_entity_type type
-                                      :from_entity_id id)
-        downstream-card-deps (t2/select :model/Dependency :from_entity_type :card
-                                        :to_entity_type type
-                                        :to_entity_id id)
-        table-ids (into [] (map :to_entity_id) upstream-table-deps)
-        tables (when (seq table-ids) (t2/select :model/Table :id [:in table-ids]))
-        card-ids (into [] (concat (map :to_entity_id upstream-card-deps) (map :from_entity_id downstream-card-deps)))
-        cards (when (seq card-ids) (t2/select :model/Card :id [:in card-ids]))]
-    {:nodes (concat
-             [{:id id
-               :type type
-               :data (select-keys entity (if (= type :table) [:display_name] [:name :type]))}]
-             (map (fn [table]
-                    {:id (:id table)
-                     :type :table
-                     :data (select-keys table [:display_name])}) tables)
-             (map (fn [card]
-                    {:id (:id card)
-                     :type :card
-                     :data (select-keys card [:name :type])}) cards))
-     :edges (concat upstream-table-deps upstream-card-deps downstream-card-deps)}))
+                         [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
+  (let [{:keys [nodes edges]} (dependency/bidirectional-tree-with-edges [[type id]])
+        nodes-by-type (->> (group-by first nodes)
+                           (m/map-vals #(map second %)))]
+    {:nodes (mapcat (fn [[entity-type entity-ids]]
+                      (->> (t2/select (entity-model entity-type) :id [:in entity-ids])
+                           (map (fn [{entity-id :id :as entity}]
+                                  {:id entity-id
+                                   :type entity-type
+                                   :data (select-keys entity (entity-keys entity-type))}))))
+                    nodes-by-type)
+     :edges edges}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
