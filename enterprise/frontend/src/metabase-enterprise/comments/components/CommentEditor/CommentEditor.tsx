@@ -155,7 +155,9 @@ export const CommentEditor = ({
       editor.commands.blur();
     }
   };
-  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
+  const handleKeyDownCapture: KeyboardEventHandler<HTMLDivElement> = (
+    event,
+  ) => {
     if (readonly) {
       return;
     }
@@ -164,11 +166,16 @@ export const CommentEditor = ({
       event.preventDefault();
       submitDoc();
     }
+  };
 
+  // we have two different handlers and it is fine. handleKeyDownCapture works
+  // well with submitting data handleKeyDown is needed to prevent event to
+  // bubble to the global listener
+  const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     // shortcut is used for code block extension, conflicts with global shortcut
-    // for openning metabot sidebar we have to stop event propagation as other
+    // for opening metabot sidebar we have to stop event propagation as other
     // variants didn't work or uglier that this solution
-    if ((event.ctrlKey || event.metaKey) && event.key === "E") {
+    if ((event.ctrlKey || event.metaKey) && event.key === "e") {
       event.stopPropagation();
     }
   };
@@ -180,6 +187,7 @@ export const CommentEditor = ({
         [S.readonly]: readonly,
         [S.active]: active,
       })}
+      onKeyDownCapture={handleKeyDownCapture}
       onKeyDown={handleKeyDown}
     >
       <Box className={S.contentWrapper}>
