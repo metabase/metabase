@@ -30,7 +30,7 @@ export function groupFields({
     .map((field) => (field ? fields.indexOf(field) : -1))
     .filter((index) => index !== -1);
 
-  // // If we haven't found all the fields, return the original fields
+  // If we haven't found all the fields, return the original fields
   if (fieldIndexes.length === 0) {
     return fields;
   }
