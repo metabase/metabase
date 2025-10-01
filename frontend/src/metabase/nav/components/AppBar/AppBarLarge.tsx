@@ -12,6 +12,7 @@ import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
@@ -100,11 +101,7 @@ const AppBarLarge = ({
           flex="1 1 auto"
         >
           {isSearchVisible &&
-            (isEmbeddingIframe ? (
-              <SearchBar />
-            ) : (
-              <PLUGIN_METABOT.SearchButton mr="md" />
-            ))}
+            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
           <PLUGIN_METABOT.MetabotAppBarButton />
           {isProfileLinkVisible && (

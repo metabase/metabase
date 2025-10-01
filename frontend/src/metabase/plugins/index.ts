@@ -38,7 +38,6 @@ import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/compo
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
-import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
 import {
   NotFoundPlaceholder,
@@ -47,13 +46,7 @@ import {
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
-import type {
-  ButtonProps,
-  FlexProps,
-  IconName,
-  IconProps,
-  StackProps,
-} from "metabase/ui";
+import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -716,7 +709,6 @@ type PLUGIN_METABOT_TYPE = {
   getMetabotRoutes: () => React.ReactElement | null;
   MetabotAdminPage: ComponentType;
   getMetabotVisible: (state: State) => boolean;
-  SearchButton: ComponentType<ButtonProps> | ComponentType<FlexProps>;
   MetabotToggleButton: ComponentType<{ className?: string }>;
   MetabotAppBarButton: ComponentType;
 };
@@ -740,7 +732,6 @@ export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
   getMetabotRoutes: () => null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: () => false,
-  SearchButton: SearchButton,
   MetabotToggleButton: PluginPlaceholder,
   MetabotAppBarButton: PluginPlaceholder,
 };
