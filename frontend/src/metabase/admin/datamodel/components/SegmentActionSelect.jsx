@@ -42,13 +42,13 @@ export default class SegmentActionSelect extends Component {
         >
           <ul className={AdminS.UserActionsSelect}>
             <li>
-              <ActionLink to={`/admin/datamodel/segment/${object.id}`}>
+              <ActionLink to={`/bench/segment/${object.id}`}>
                 {t`Edit Segment`}
               </ActionLink>
             </li>
             <li>
               <ActionLink
-                to={`/admin/datamodel/segment/${object.id}/revisions`}
+                to={`/bench/segment/${object.id}/revisions`}
               >
                 {t`Revision History`}
               </ActionLink>

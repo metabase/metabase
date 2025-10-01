@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { Stack } from "metabase/ui";
+import { Box, Card, Stack } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
 import type { Transform, TransformId } from "metabase-types/api";
 
@@ -71,11 +71,15 @@ export function TransformPage({ params }: TransformPageProps) {
   return (
     <PanelGroup direction="horizontal">
       <Panel>
-        <TransformQueryPage transform={transform} />
+        <Box p="md" h="100%">
+          <Card h="100%">
+            <TransformQueryPage transform={transform} />
+          </Card>
+        </Box>
       </Panel>
       <ResizeHandle />
-      <Panel>
-        <Stack gap="md" data-testid="transform-page">
+      <Panel style={{ overflow: "hidden" }}>
+        <Stack h="100%" gap="md" data-testid="transform-details" style={{ overflow: "auto" }} p="md">
           <Stack gap="sm">
             <HeaderSection transform={transform} />
             <NameSection transform={transform} />

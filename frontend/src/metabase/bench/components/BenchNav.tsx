@@ -144,7 +144,7 @@ function _BenchNav({ location }: BenchSidebarProps) {
             label={t`Transforms`}
           />
           <BenchNavItem
-            url="/bench/segments"
+            url="/bench/segment"
             icon="filter"
             label={t`Segments`}
           />
@@ -155,7 +155,7 @@ function _BenchNav({ location }: BenchSidebarProps) {
             label={t`Models`}
           />
           <BenchNavItem
-            url="/bench/metrics"
+            url="/bench/metric"
             icon="metric"
             label={t`Metrics`}
           />

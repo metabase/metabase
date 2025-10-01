@@ -2,8 +2,11 @@ import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
+import EmptyState from "metabase/common/components/EmptyState";
+import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import { Route } from "metabase/hoc/Title";
 import { PLUGIN_TRANSFORMS, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { Box, Center } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { JobListPage } from "./pages/JobListPage";
@@ -32,7 +35,7 @@ if (hasPremiumFeature("transforms")) {
       </Route>
       <Route path="transforms" component={createAdminRouteGuard("transforms")}>
         <Route title={t`Transforms`} component={TransformPageLayout}>
-          <IndexRoute component={() => <div>pick a transform</div>} />
+          <IndexRoute component={() => <Center w="100%" h="100%"><NoDataError  /></Center>} />
           <Route path=":transformId" component={TransformPage} />
           <Route path="new/:type" component={NewTransformPage} />
           <Route path="new/card/:cardId" component={NewTransformPage} />
