@@ -97,7 +97,7 @@
                                            (comp (mapcat :returned-fields)
                                                  (filter (fn [{field-alias :alias
                                                                field-type :type
-                                                               field-column :column :as field-field}]
+                                                               field-column :column}]
                                                            (or (= field-type :all-columns)
                                                                (= (or field-alias field-column) column)))))
                                            %))
