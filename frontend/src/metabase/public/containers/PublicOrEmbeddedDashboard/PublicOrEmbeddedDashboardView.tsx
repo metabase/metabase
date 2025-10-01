@@ -9,6 +9,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import { SetTitle } from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
+import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
@@ -28,6 +29,7 @@ export function PublicOrEmbeddedDashboardView() {
     background,
     bordered,
     titled,
+    theme,
     hideParameters,
     withFooter,
     downloadsEnabled,
@@ -51,6 +53,11 @@ export function PublicOrEmbeddedDashboardView() {
     selectedTabId,
   });
 
+  const normalizedTheme = normalizeTheme({
+    theme,
+    background,
+  });
+
   const isCompactHeader = !titled && !hasVisibleParameters && !dashboardHasTabs;
 
   return (
@@ -70,6 +77,7 @@ export function PublicOrEmbeddedDashboardView() {
       background={background}
       bordered={bordered}
       titled={titled}
+      theme={normalizedTheme}
       hide_parameters={hideParameters}
       pdfDownloadsEnabled={downloadsEnabled.pdf}
       withFooter={withFooter}
@@ -85,4 +93,22 @@ export function PublicOrEmbeddedDashboardView() {
       </FullWidthContainer>
     </EmbedFrame>
   );
+}
+
+/**
+ * When both `background: false` and `theme: "transparent"` options are supplied,
+ * the new behavior takes precedence (metabase#43838)
+ */
+function normalizeTheme({
+  theme,
+  background,
+}: {
+  theme: DisplayTheme;
+  background: boolean;
+}) {
+  if (!background && theme === "transparent") {
+    return "light";
+  }
+
+  return theme;
 }
