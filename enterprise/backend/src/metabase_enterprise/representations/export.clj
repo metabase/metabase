@@ -18,9 +18,8 @@
   (def representation-type nil))
 
 (defmulti representation-type
-  "df"
   {:arglists '[[entity]]}
-  (fn [entity] (t2/model entity)))
+  t2/model)
 
 (defmethod representation-type :model/Card [card] (:type card))
 (defmethod representation-type :default [entity] (t2/model entity))
