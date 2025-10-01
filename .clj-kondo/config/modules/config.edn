@@ -1863,10 +1863,12 @@
   enterprise/representations
   {:team "Querying"
    :api #{metabase-enterprise.representations.core
-          metabase-enterprise.representations.init
-          metabase-enterprise.representations.ingestion.core
-          metabase-enterprise.representations.schema.core}
-   :uses #{config
+          metabase-enterprise.representations.api
+          metabase-enterprise.representations.init}
+   :uses #{api
+           collections
+           config
+           driver
            lib
            models
            util}}

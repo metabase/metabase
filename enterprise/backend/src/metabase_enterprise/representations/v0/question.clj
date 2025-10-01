@@ -78,27 +78,26 @@
 
 (defmethod import/yaml->toucan :v0/question
   [{question-name :name
-    :keys [type ref entity-id description database collection] :as representation}
+    :keys [_type _ref entity-id description database collection] :as representation}
    ref-index]
   (let [database-id (v0-common/ref->id database ref-index)
         query (v0-mbql/import-dataset-query representation ref-index)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
-    (merge
-     {:entity_id (or entity-id
-                     (v0-common/generate-entity-id representation))
-      :creator_id (or api/*current-user-id*
-                      config/internal-mb-user-id)
-      :name question-name
-      :description (or description "")
-      :display :table
-      :dataset_query query
-      :visualization_settings {}
-      :database_id database-id
-      :query_type (if (= (:type query) "native") :native :query)
-      :type :question
-      :collection_id (v0-common/find-collection-id collection)})))
+    {:entity_id (or entity-id
+                    (v0-common/generate-entity-id representation))
+     :creator_id (or api/*current-user-id*
+                     config/internal-mb-user-id)
+     :name question-name
+     :description (or description "")
+     :display :table
+     :dataset_query query
+     :visualization_settings {}
+     :database_id database-id
+     :query_type (if (= (:type query) "native") :native :query)
+     :type :question
+     :collection_id (v0-common/find-collection-id collection)}))
 
 (defmethod import/persist! :v0/question
   [representation ref-index]
@@ -142,16 +141,15 @@
 
       :always
       v0-common/remove-nils)))
+#_(comment
+    (let [q (t2/select-one :model/Card :id 93)]
+      (data/diff (:dataset_query q)
+                 (patch-refs-for-export (:dataset_query q))))
 
-(comment
-  (let [q (t2/select-one :model/Card :id 93)]
-    (clojure.data/diff (:dataset_query q)
-                       (patch-refs-for-export (:dataset_query q))))
+    (source-table-ref 2)
 
-  (source-table-ref 2)
+    (export (t2/select-one :model/Card :id 97))
+    (t2/select-one :model/Table 2)
+    (t2/select-one :model/Field 57)
 
-  (export (t2/select-one :model/Card :id 97))
-  (t2/select-one :model/Table 2)
-  (t2/select-one :model/Field 57)
-
-  (clojure.pprint/pprint (export (t2/select-one :model/Card :id 123))))
+    (clojure.pprint/pprint (export (t2/select-one :model/Card :id 123))))

@@ -1,19 +1,19 @@
 (ns metabase-enterprise.representations.v0.database
   (:require
-   [clj-yaml.core :as yaml]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 

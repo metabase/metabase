@@ -1,20 +1,13 @@
 (ns metabase-enterprise.representations.v0.transform
   "The v0 transform representation namespace."
   (:require
-   [clojure.set :as set]
-   [clojure.string :as str]
-   [malli.core :as m]
-   [malli.error :as me]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -109,7 +102,7 @@
 
 (defn yaml->toucan
   "Convert a validated v0 transform representation into data suitable for creating/updating a Transform."
-  [{:keys [ref name description database source target] :as representation}
+  [{:keys [_ref name description database source target] :as representation}
    ref-index]
   (let [database-id (try
                       (v0-common/ref->id database ref-index)
@@ -179,7 +172,9 @@
 
 ;; EXPORT
 
-(defn ->ref [card]
+(defn ->ref
+  "Make a ref"
+  [card]
   (format "%s-%s" "transform" (:id card)))
 
 (defn- source-table-ref [table]
@@ -195,7 +190,7 @@
       (->ref referred-card))))
 
 (defn- update-source-table [card]
-  (if-some [table (get-in card [:mbql_query :source-table])]
+  (if-some [_table (get-in card [:mbql_query :source-table])]
     (update-in card [:mbql_query :source-table] source-table-ref)
     card))
 

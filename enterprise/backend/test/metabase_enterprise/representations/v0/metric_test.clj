@@ -4,8 +4,7 @@
    [metabase-enterprise.representations.core :as rep]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [metabase.util.yaml :as yaml]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -15,7 +14,7 @@
             []]
       (testing (str "Validating: " filename)
         (let [rep (yaml/from-file filename)]
-          (is (rep/validate rep)))))))
+          (is (rep/normalize-representation rep)))))))
 
 (deftest validate-exported-metrics
   (doseq [query [(mt/native-query {:query "select 1"})
@@ -26,7 +25,7 @@
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
             rep  (yaml/parse-string yaml)]
-        (is (rep/validate rep))))))
+        (is (rep/normalize-representation rep))))))
 
 (deftest can-import
   (doseq [filename []]

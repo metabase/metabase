@@ -328,7 +328,7 @@
    - Includes result_metadata with column definitions
    - Display is typically :table since models represent structured data"
   [{model-name :name
-    :keys [type ref description database collection columns] :as representation}
+    :keys [_type _ref description database collection columns] :as representation}
    ref-index]
   (let [database-id (v0-common/ref->id database ref-index)
         dataset-query (v0-mbql/import-dataset-query representation ref-index)]
@@ -381,7 +381,9 @@
 
 ;;; -- Export --
 
-(defn ->ref [card]
+(defn ->ref
+  "Make a ref"
+  [card]
   (format "%s-%s" (name (:type card)) (:id card)))
 
 (defn- source-table-ref [table]
@@ -397,7 +399,7 @@
       (->ref referred-card))))
 
 (defn- update-source-table [card]
-  (if-some [table (get-in card [:mbql_query :source-table])]
+  (if-some [_table (get-in card [:mbql_query :source-table])]
     (update-in card [:mbql_query :source-table] source-table-ref)
     card))
 

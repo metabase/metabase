@@ -44,20 +44,28 @@
 
 ;;; -- Export --
 
-(defn model->card-type [model]
+(defn model->card-type
+  "Given a model, returns a card-type."
+  [model]
   (let [kw (keyword (:model model))]
     (get {:dataset :model :card :question} kw kw)))
 
-(defn- model->url [model]
+(defn- model->url
+  "Given a model, return a url."
+  [model]
   (format "/api/ee/representation/%s/%s" (name (model->card-type model)) (:id model)))
 
-(defn children [collection]
+(defn children
+  "Returns the URLS of children of a collection."
+  [collection]
   (->> (coll.api/collection-children collection {:show-dashboard-questions? true
                                                  :archived? false})
        :data
        (mapv model->url)))
 
-(defn export [collection]
+(defn export
+  "Export the collection, returning EDN suitable for yml"
+  [collection]
   (-> {:type "collection"
        :ref (format "%s-%s" "collection" (:id collection))
        :name (:name collection)
