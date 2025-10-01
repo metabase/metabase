@@ -17,8 +17,10 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io Closeable File)
+   (java.io Closeable)
    (java.net SocketException)
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
@@ -240,13 +242,14 @@
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
               shared-storage-ref (s3/open-shared-storage! (:source-tables source))]
-    (let [driver     (:engine db)
-          server-url (transforms-python.settings/python-runner-url)
-          _          (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                        :shared-storage @shared-storage-ref
-                                                        :table-name->id (:source-tables source)
-                                                        :cancel-chan    cancel-chan})
-          _          (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+    (let [driver          (:engine db)
+          server-url      (transforms-python.settings/python-runner-url)
+          _               (python-runner/copy-tables-to-s3! {:run-id         run-id
+                                                             :shared-storage @shared-storage-ref
+                                                             :table-name->id (:source-tables source)
+                                                             :cancel-chan    cancel-chan})
+          _               (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url
@@ -254,9 +257,9 @@
             :run-id         run-id
             :table-name->id (:source-tables source)
             :shared-storage @shared-storage-ref})
-          ;; TODO temporary to keep more code stable while refactoring
-          ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
-          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+
+          output-manifest (python-runner/read-output-manifest @shared-storage-ref)
+          events          (python-runner/read-events @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
       (when (seq events)
         (replace-python-logs! message-log events))
@@ -268,15 +271,16 @@
                          :body              body
                          :events            events}))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
+          (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
+                temp-file (.toFile temp-path)]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
                                :raw-body               body
                                :events                 events})))
             (try
-              (with-open [writer (io/writer temp-file)]
-                (.write writer ^String output))
+              (with-open [in (python-runner/open-output @shared-storage-ref)]
+                (io/copy in temp-file))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))

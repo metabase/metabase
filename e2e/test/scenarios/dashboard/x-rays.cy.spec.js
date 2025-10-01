@@ -177,10 +177,14 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.button("Save this").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Your dashboard was saved");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See it").click();
+    // 'See it' link is displayed in the header and in the toast
+    cy.findByTestId("automatic-dashboard-header").within(() => {
+      cy.findByText("See it").should("exist");
+    });
+    H.undoToast().within(() => {
+      cy.findByText("Your dashboard was saved");
+      cy.findByText("See it").click();
+    });
 
     cy.url().should("contain", "a-look-at-orders");
 

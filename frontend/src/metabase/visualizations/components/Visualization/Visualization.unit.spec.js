@@ -247,4 +247,16 @@ describe("Visualization", () => {
       });
     });
   });
+
+  it("should not show loader and error at the same time (metabase#63410)", async () => {
+    await renderViz(undefined, {
+      error: new Error("This is my error message"),
+      isRunning: true,
+    });
+
+    expect(
+      screen.queryByText("This is my error message"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
 });

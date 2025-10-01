@@ -2,7 +2,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -20,7 +19,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentQueue)
-   (java.io BufferedWriter File OutputStream OutputStreamWriter)
+   (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
@@ -204,17 +203,24 @@
                                    {:error string-if-error}))
                                string-if-error)))))
 
-;; temporary, we should not need to realize data/events files into memory longer term
-(defn read-output-objects
-  "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
+(defn read-events
+  "Returns a vector of event contents (or nil if the event file does not exist)"
   [{:keys [s3-client bucket-name objects]}]
-  (let [{:keys [output output-manifest events]} objects
-        output-content          (s3/read-to-string s3-client bucket-name (:path output) nil)
-        output-manifest-content (s3/read-to-string s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (s3/read-to-string s3-client bucket-name (:path events))]
-    {:output          output-content
-     :output-manifest (json/decode+kw output-manifest-content)
-     :events          (mapv json/decode+kw (str/split-lines events-content))}))
+  ;; note we expect :events to be a small file, limits ought to be enforced by the runner
+  (when-some [in (s3/open-object s3-client bucket-name (:path (:events objects)))]
+    (with-open [in in
+                rdr (io/reader in)]
+      (mapv json/decode+kw (line-seq rdr)))))
+
+(defn read-output-manifest
+  "Return the output manifest map. Returns nil if it does not exist."
+  [{:keys [s3-client bucket-name objects]}]
+  (json/decode+kw (s3/read-to-string s3-client bucket-name (:path (:output-manifest objects)) "{}")))
+
+(defn open-output
+  "Return an InputStream with the output jsonl contents. Close with .close. Returns nil if the object does not exist."
+  ^InputStream [{:keys [s3-client bucket-name objects]}]
+  (s3/open-object s3-client bucket-name (:path (:output objects))))
 
 (defn cancel-python-code-http-call!
   "Calls the /cancel endpoint of the python runner. Returns immediately."

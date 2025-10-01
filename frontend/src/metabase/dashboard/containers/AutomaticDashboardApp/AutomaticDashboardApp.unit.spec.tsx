@@ -54,14 +54,14 @@ const setup = async () => {
   };
 };
 
-describe("DashboardApp", () => {
+describe("AutomaticDashboardApp", () => {
   it("Shows 'See it' link next to Save button when dashboard is saved", async () => {
     const { dashboardId } = await setup();
     await userEvent.click(screen.getByRole("button", { name: "Save this" }));
     const savedButton = await screen.findByRole("button", { name: "Saved" });
     expect(savedButton).toBeDisabled();
     const seeItLink = within(
-      screen.getByTestId("fixed-width-dashboard-header"),
+      screen.getByTestId("automatic-dashboard-header"),
     ).getByRole("link", { name: "See it" });
     expect(seeItLink).toHaveAttribute("href", `/dashboard/${dashboardId}`);
   });
