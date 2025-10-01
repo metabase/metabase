@@ -96,7 +96,8 @@ export function PythonTransformEditor({
   const handleAcceptProposed =
     proposedSource && onAcceptProposed
       ? () => {
-          handleScriptChange(proposedSource.body);
+          setSource(proposedSource);
+          setIsSourceDirty(true);
           onAcceptProposed(proposedSource);
         }
       : undefined;
