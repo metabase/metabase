@@ -6,6 +6,7 @@
    [clojure.walk :as walk]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -65,7 +66,7 @@
     (-> {:ref/database (v0-common/->ref (:db_id t) :database)
          :ref/schema (:schema t)
          :ref/table (:name t)}
-        v0-common/remove-nils)))
+        u/remove-nils)))
 
 (defn- card-ref
   "Convert a card reference string (e.g. 'card__123') to a representation ref."

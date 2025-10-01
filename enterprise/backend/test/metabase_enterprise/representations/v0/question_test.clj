@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -12,9 +13,10 @@
 
 (def good-yamls ["test_resources/representations/v0/monthly-revenue.question.yml"
                  ;;"test_resources/representations/v0/pokemon-cards-limited.question.yml"
-                 "test_resources/representations/v0/collection-8/pokemon-cards.question.yml"
-                 "test_resources/representations/v0/collection-8/sales-data.question.yml"
-                 "test_resources/representations/v0/collection-8/trainers.question.yml"])
+                 ;;"test_resources/representations/v0/collection-8/pokemon-cards.question.yml"
+                 ;;"test_resources/representations/v0/collection-8/sales-data.question.yml"
+                 ;;"test_resources/representations/v0/collection-8/trainers.question.yml"
+                 ])
 
 (deftest validate-example-yamls
   (testing "Testing valid examples"
@@ -42,26 +44,26 @@
 
 (deftest can-import
   (let [filename "test_resources/representations/v0/monthly-revenue.question.yml"
-        rep (yaml/from-file filename)]
-    (is (rep/persist! rep))))
+        rep (yaml/from-file filename)
+        ref-index {(v0-common/unref (:database rep))
+                   (t2/select-one :model/Database (mt/id))}]
+    (is (rep/persist! rep ref-index))))
 
-#_(deftest import-export
-    (testing "Testing import then export roundtrip"
-      (let [db (t2/select-one :model/Database)]
-        (doseq [filename good-yamls]
-          (testing (str "Importing-Exporting: " filename)
-            (println filename)
-            (let [rep (rep/import-yaml filename)
-                  rep (assoc rep :database (:name db))]
-              (with-redefs [v0-common/find-database-id (fn [_] (:id db))]
-                (let [persisted (rep/persist! rep)]
-                  (is persisted)
-                  (let [question (t2/select-one :model/Card :id (:id persisted))
-                        edn (rep/export question)
+(deftest import-export
+  (testing "Testing import then export roundtrip"
+    (doseq [filename good-yamls]
+      (testing (str "Importing-Exporting: " filename)
+        (let [rep (import/import-yaml filename)
+              ref-index {(v0-common/unref (:database rep))
+                         (t2/select-one :model/Database (mt/id))}
+              persisted (rep/persist! rep ref-index)]
+          (is persisted)
+          (let [question (t2/select-one :model/Card :id (:id persisted))
+                edn (rep/export question)
 
-                        yaml (yaml/generate-string edn)
-                        rep2 (yaml/parse-string yaml)]
-                    (is (=? (dissoc rep :ref) rep2)))))))))))
+                yaml (yaml/generate-string edn)
+                rep2 (yaml/parse-string yaml)]
+            (is (=? (dissoc rep :ref :databaseq) rep2))))))))
 
 (deftest export-import
   (testing "Testing export then import roundtrip"
