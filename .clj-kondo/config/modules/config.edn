@@ -473,6 +473,7 @@
    :api  #{metabase.embedding.api
            metabase.embedding.init
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -487,6 +488,7 @@
            public-sharing
            queries
            query-processor
+           request
            settings
            tiles
            util}}
@@ -981,6 +983,7 @@
            metabase.request.init}
    :uses #{api
            config
+           embedding
            permissions                  ; FIXME
            session
            settings
