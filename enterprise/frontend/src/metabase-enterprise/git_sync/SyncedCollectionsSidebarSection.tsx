@@ -6,13 +6,14 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Tree } from "metabase/common/components/tree";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   SidebarHeading,
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -114,6 +115,7 @@ export const SyncedCollectionsSidebarSection = ({
   };
 
   const hasSyncedCollections = syncedCollections.length > 0;
+  const isAdmin = useSelector(getUserIsAdmin);
 
   return (
     <>
@@ -121,36 +123,38 @@ export const SyncedCollectionsSidebarSection = ({
         <ErrorBoundary>
           <Flex justify="space-between">
             <Box w="100%">
-              <Group gap="sm">
+              <Group gap="sm" pb="sm">
                 <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
                 {message && <SyncError message={message} />}
               </Group>
-              <Group p="sm" pl="14px" gap="sm" w="100%">
-                <BranchPicker
-                  value={nextBranch ?? "main"}
-                  onChange={handleBranchSelect}
-                  disabled={isLoading}
-                  isLoading={isLoading}
-                  baseBranch={currentBranch ?? "main"}
-                />
-                {isDirty && (
-                  <Button
-                    variant="subtle"
-                    onClick={openPush}
+              {isAdmin && (
+                <Group p="sm" pl="14px" gap="sm" w="100%" pt={0}>
+                  <BranchPicker
+                    value={nextBranch ?? "main"}
+                    onChange={handleBranchSelect}
                     disabled={isLoading}
-                    h={24}
-                    px={0}
-                    ml="auto"
-                  >
-                    <Icon
-                      name="upload"
-                      c="brand"
-                      size={18}
-                      tooltip={t`Push to Git`}
-                    />
-                  </Button>
-                )}
-              </Group>
+                    isLoading={isLoading}
+                    baseBranch={currentBranch ?? "main"}
+                  />
+                  {isDirty && (
+                    <Button
+                      variant="subtle"
+                      onClick={openPush}
+                      disabled={isLoading}
+                      h={24}
+                      px={0}
+                      ml="auto"
+                    >
+                      <Icon
+                        name="upload"
+                        c="brand"
+                        size={18}
+                        tooltip={t`Push to Git`}
+                      />
+                    </Button>
+                  )}
+                </Group>
+              )}
               {isLoading && (
                 <LoadingModal status={status} progress={progress} />
               )}
