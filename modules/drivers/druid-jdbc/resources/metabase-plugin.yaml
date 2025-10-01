@@ -12,10 +12,12 @@ driver:
         - host
         - placeholder: http://localhost
           required: true
+          group-id: host-and-port
     - merge:
         - port
         - display-name: Router node port
           placeholder: 8888
+          group-id: host-and-port
     - ssh-tunnel
     - advanced-options-start
     - name: json-unfolding
@@ -48,6 +50,10 @@ driver:
       visible-if:
         auth-enabled: true
     - default-advanced-options
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.druid-jdbc

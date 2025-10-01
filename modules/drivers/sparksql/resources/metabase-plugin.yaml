@@ -13,9 +13,11 @@ driver:
       - merge:
         - host
         - required: true
+          group-id: host-and-port
       - merge:
           - port
           - placeholder: 10000
+            group-id: host-and-port
       - merge:
           - dbname
           - placeholder: default
@@ -29,6 +31,10 @@ driver:
           - name: jdbc-flags
             placeholder: ';transportMode=http'
       - default-advanced-options
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.hive-like
