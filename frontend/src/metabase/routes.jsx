@@ -155,11 +155,14 @@ export const getRoutes = (store) => {
             <IndexRoute component={Onboarding} />
           </Route>
 
-          <Route
-            path="dependencies/:type/:id"
-            title={t`Dependencies`}
-            component={PLUGIN_DEPENDENCIES.DependencyFlow}
-          />
+          <Route path="dependencies">
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyFlow} />
+            <Route
+              path=":type/:id"
+              title={t`Dependencies`}
+              component={PLUGIN_DEPENDENCIES.DependencyFlow}
+            />
+          </Route>
 
           <Route path="search" title={t`Search`} component={SearchApp} />
           {/* Send historical /archive route to trash - can remove in v52 */}

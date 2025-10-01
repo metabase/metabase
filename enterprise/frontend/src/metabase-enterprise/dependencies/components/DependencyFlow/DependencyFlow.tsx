@@ -1,20 +1,22 @@
-import {
-  Background,
-  Controls,
-  type Edge,
-  ReactFlow,
-  useEdgesState,
-  useNodesState,
-} from "@xyflow/react";
-import { useEffect } from "react";
+import { Background, Controls, Panel, ReactFlow } from "@xyflow/react";
+import { useState } from "react";
+import { push } from "react-router-redux";
+import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
+import { DataPickerModal } from "metabase/common/components/Pickers/DataPicker";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { Button } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntityType } from "metabase-types/api";
+import {
+  getQuestionIdFromVirtualTableId,
+  isVirtualCardId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { DependencyEntityType, TableId } from "metabase-types/api";
 
 import { EntityGroupNode } from "./EntityGroupNode";
 import { EntityNode } from "./EntityNode";
-import type { GraphNode } from "./types";
 import { getGraphInfo } from "./utils";
 
 const NODE_TYPES = {
@@ -35,31 +37,47 @@ export function DependencyFlow({ params }: DependencyFlowProps) {
   const id = Urls.extractEntityId(params.id)!;
   const type = params.type;
   const { data: graph = { nodes: [], edges: [] } } = useGetDependencyGraphQuery(
-    { id, type },
+    id ? { id, type } : skipToken,
   );
-  const [nodes, setNodes, handleNodeChange] = useNodesState<GraphNode>([]);
-  const [edges, setEdges, handleEdgeChange] = useEdgesState<Edge>([]);
+  const { nodes, edges } = getGraphInfo(graph);
+  const [isOpened, setIsOpened] = useState(false);
+  const dispatch = useDispatch();
 
-  useEffect(() => {
-    const { nodes, edges } = getGraphInfo(graph);
-    setNodes(nodes);
-    setEdges(edges);
-  }, [graph, setNodes, setEdges]);
+  const handleChange = (tableId: TableId) => {
+    if (isVirtualCardId(tableId)) {
+      dispatch(
+        push(`/dependencies/card/${getQuestionIdFromVirtualTableId(tableId)}`),
+      );
+    } else {
+      dispatch(push(`/dependencies/table/${tableId}`));
+    }
+  };
 
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}
+      minZoom={0.001}
       defaultEdgeOptions={{ type: "smoothstep" }}
       fitView
-      minZoom={0.001}
-      maxZoom={1000}
-      onNodesChange={handleNodeChange}
-      onEdgesChange={handleEdgeChange}
     >
       <Background />
       <Controls />
+      <Panel position="top-left">
+        <Button
+          variant="filled"
+          onClick={() => setIsOpened(true)}
+        >{t`Select entity`}</Button>
+        {isOpened && (
+          <DataPickerModal
+            value={undefined}
+            title={`Pick an entity`}
+            onChange={handleChange}
+            onClose={() => setIsOpened(false)}
+          />
+        )}
+      </Panel>
     </ReactFlow>
   );
 }
