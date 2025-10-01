@@ -13,6 +13,9 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(defmethod import/type->schema :v0/database [_]
+  ::database)
+
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------

@@ -1,10 +1,14 @@
 (ns metabase-enterprise.representations.v0.collection
   (:require
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]))
+
+(defmethod import/type->schema :v0/collection [_]
+  ::collection)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -44,16 +48,10 @@
 
 ;;; -- Export --
 
-(defn model->card-type
-  "Given a model, returns a card-type."
-  [model]
-  (let [kw (keyword (:model model))]
-    (get {:dataset :model :card :question} kw kw)))
-
 (defn- model->url
   "Given a model, return a url."
   [model]
-  (format "/api/ee/representation/%s/%s" (name (model->card-type model)) (:id model)))
+  (format "/api/ee/representation/%s/%s" (name (export/model->card-type model)) (:id model)))
 
 (defn children
   "Returns the URLS of children of a collection."

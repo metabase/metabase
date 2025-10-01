@@ -3,7 +3,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
    [metabase.util.log :as log]
@@ -60,6 +59,12 @@
   (when-let [db-id (:database_id child)]
     [db-id]))
 
+(defn model->card-type
+  "Given a model, returns a card-type."
+  [model]
+  (let [kw (keyword (:model model))]
+    (get {:dataset :model :card :question} kw kw)))
+
 (defn export-collection-representations
   "Export the stuff."
   ([id] (export-collection-representations id v0-common/representations-export-dir))
@@ -81,7 +86,7 @@
            (log/errorf e "Unable to export database with id %s" db-id))))
      (doseq [child children]
        (let [child-id (:id child)
-             model-type (v0-coll/model->card-type child)]
+             model-type (model->card-type child)]
          (if (= model-type :collection)
            (export-collection-representations child-id (str path coll-dir))
            (try

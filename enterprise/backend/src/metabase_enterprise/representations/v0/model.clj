@@ -13,6 +13,9 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
+(defmethod import/type->schema :v0/model [_]
+  ::model)
+
 ;;; ----------------------------- Column Schema Definitions -----------------------------
 
 (mr/def ::column-name

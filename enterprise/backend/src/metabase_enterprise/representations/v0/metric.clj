@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.api.common :as api]
@@ -11,6 +12,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(defmethod import/type->schema :v0/metric [_]
+  ::metric)
 
 ;;; ----------------------------- Column Schema Definitions -----------------------------
 

@@ -4,15 +4,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase-enterprise.representations.v0.collection :as v0-coll]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.database :as v0-db]
-   [metabase-enterprise.representations.v0.document :as v0-doc]
-   [metabase-enterprise.representations.v0.metric :as v0-metric]
-   [metabase-enterprise.representations.v0.model :as v0-model]
-   [metabase-enterprise.representations.v0.question :as v0-question]
-   [metabase-enterprise.representations.v0.snippet :as v0-snippet]
-   [metabase-enterprise.representations.v0.transform :as v0-transform]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.yaml :as yaml]
@@ -37,17 +29,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;
 
-(def ^:private type->schema
-  "Registry mapping type strings to their corresponding schemas.
-   Keys are strings like 'v0/question', values are qualified keywords."
-  {:v0/question ::v0-question/question
-   :v0/model ::v0-model/model
-   :v0/metric ::v0-metric/metric
-   :v0/collection ::v0-coll/collection
-   :v0/database ::v0-db/database
-   :v0/document ::v0-doc/document
-   :v0/snippet ::v0-snippet/snippet
-   :v0/transform ::v0-transform/transform})
+(defmulti type->schema
+  "Returns the schema for a given type keyword.
+   Each v0 namespace implements this for its own type."
+  {:arglists '[[type-kw]]}
+  identity)
+
+(defmethod type->schema :default [type]
+  (throw (ex-info (str "Unknown type: " type) {:type type})))
 
 (def ^:private default-version "v0")
 
