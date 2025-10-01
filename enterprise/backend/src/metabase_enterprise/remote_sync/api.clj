@@ -123,6 +123,8 @@
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
                     {:status-code 400})))
+  (when (= (settings/remote-sync-type) :production)
+    (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
   {:message "Export task started"
    :task_id (async-export! (or branch (settings/remote-sync-branch))
                            (or message "Exported from Metabase")

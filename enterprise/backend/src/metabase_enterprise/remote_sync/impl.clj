@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
@@ -146,10 +145,8 @@
    (if source
      (let [sync-timestamp (t/instant)
            collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
-       (when (= (settings/remote-sync-type) :production)
-         (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
-       (analytics/inc! :metabase-remote-sync/exports)
        (try
+         (analytics/inc! :metabase-remote-sync/exports)
          (serdes/with-cache
            (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
                                                 :no-collections           false
