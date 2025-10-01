@@ -121,10 +121,8 @@
 (defn successful?
   "Returns truthy iff this is a successfully completed task. If task is nil, returns true."
   [task]
-  (if (nil? task)
-    true
-    (and (nil? (:error_message task))
-         (some? (:ended_at task)))))
+  (and (nil? (:error_message task))
+       (some? (:ended_at task))))
 
 (defn failed?
   "Returns truthy iff this is a failed, completed task"
