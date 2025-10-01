@@ -77,18 +77,18 @@ export function getJobListUrl({
   });
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/jobs?${queryString}`;
+    return `/bench/jobs?${queryString}`;
   } else {
-    return `${ROOT_URL}/jobs`;
+    return `/bench/jobs`;
   }
 }
 
 export function getNewJobUrl() {
-  return `${ROOT_URL}/jobs/new`;
+  return `/bench/jobs/new`;
 }
 
 export function getJobUrl(id: TransformJobId) {
-  return `${ROOT_URL}/jobs/${id}`;
+  return `/bench/jobs/${id}`;
 }
 
 export function getRunListUrl({
