@@ -17,6 +17,7 @@ import {
 import type {
   CardId,
   DatasetQuery,
+  DraftTransform,
   SuggestedTransform,
   Transform,
   TransformSource,
@@ -70,10 +71,6 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
     canUseSuggestedTransform ? suggestedTransform?.source : undefined,
   );
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   const initialSource = cardId
     ? getInitialTransformSource(card, type)
     : initialSuggestedSource || getInitialTransformSource(card, type);
@@ -85,6 +82,10 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
         : suggestedTransform?.source,
     [suggestedTransform, initialSource],
   );
+
+  if (isLoading || error) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
 
   return (
     <AdminSettingsLayout fullWidth>
@@ -172,7 +173,7 @@ export function NewTransformPageInner({
 interface NewTransformEditorBody {
   initialSource: InitialTransformSource;
   proposedSource?: TransformSource;
-  onChange: (source: TransformSource) => void;
+  onChange: (source: DraftTransform["source"]) => void;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
@@ -198,7 +199,7 @@ function NewTransformEditorBody({
         isNew
         onSave={onSave}
         onCancel={onCancel}
-        // onChange={onChange}
+        onChange={onChange}
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />

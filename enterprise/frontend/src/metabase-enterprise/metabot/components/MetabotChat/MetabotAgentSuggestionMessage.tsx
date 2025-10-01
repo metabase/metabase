@@ -39,7 +39,6 @@ import type {
   MetabotTransformInfo,
   QueryTransformSource,
   SuggestedTransform,
-  Transform,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
@@ -258,7 +257,9 @@ export const AgentSuggestionMessage = ({
   );
 };
 
-function getSourceCode(transform: Pick<Transform, "source">): string {
+function getSourceCode(
+  transform: Pick<MetabotTransformInfo, "source">,
+): string {
   return match(transform)
     .with(
       { source: { type: "query", query: { type: "native" } } },
