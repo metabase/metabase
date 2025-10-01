@@ -33,6 +33,7 @@ function getEntityNodes(
     position: { x: 0, y: 0 },
     selected: node.id === selectedId && node.type === selectedType,
     connectable: false,
+    draggable: false,
   }));
 }
 
