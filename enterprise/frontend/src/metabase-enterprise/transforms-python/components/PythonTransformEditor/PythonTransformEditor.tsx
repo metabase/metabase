@@ -139,8 +139,8 @@ export function PythonTransformEditor({
       />
       <Flex h="100%" w="100%">
         <PythonDataPicker
-          database={source["source-database"]}
-          tables={source["source-tables"]}
+          database={saveSource["source-database"]}
+          tables={saveSource["source-tables"]}
           onChange={handleDataChange}
         />
         <Stack w="100%" h="100%" gap={0}>
