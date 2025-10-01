@@ -352,7 +352,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defn- validate-custom-formatting!
   [new-value]
-  (let [separators (some-> new-value :type/Number :number_separators)]
+  (when-some [separators (some-> new-value :type/Number :number_separators)]
     (when-not (avaialable-number-separators separators)
       (throw (ex-info (tru "Invalid number separators.")
                       {:separators separators
