@@ -158,10 +158,6 @@ export const getNavigateToPath = createSelector(
 export const getMetabotSuggestedTransform = createSelector(
   [getMetabotReactionsState, (_, transformId?: TransformId) => transformId],
   (reactionsState, transformId) => {
-    if (!transformId) {
-      return reactionsState.suggestedTransform;
-    }
-
     return reactionsState.suggestedTransform?.id === transformId
       ? reactionsState.suggestedTransform
       : undefined;

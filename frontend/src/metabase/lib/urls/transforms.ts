@@ -9,5 +9,9 @@ export function newPythonTransform() {
 }
 
 export function transform(id: Transform["id"]) {
+  return `/admin/transforms/${id}`;
+}
+
+export function transformEdit(id: Transform["id"]) {
   return `/admin/transforms/${id}/query`;
 }

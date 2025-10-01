@@ -22,7 +22,7 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
   const slots = new Array(toolCalls.length + 2).fill(null);
 
   return (
-    <Stack gap={0} className={S.toolCalls}>
+    <Stack gap={0} mb="sm" className={S.toolCalls}>
       {slots.map((_, i) => {
         const tc: MetabotToolCall | undefined = toolCalls[i];
         return (

@@ -138,7 +138,7 @@ export const AgentSuggestionMessage = ({
 
   const url = useLocation();
   const transformUrl = getTransformUrl(suggestedTransform);
-  const isViewing = url.pathname?.startsWith(transformUrl);
+  const isViewing = !!url.pathname?.startsWith(transformUrl);
 
   const [opened, { toggle }] = useDisclosure(!isViewing);
 
@@ -236,7 +236,7 @@ export const AgentSuggestionMessage = ({
             h="1.375rem"
             gap="sm"
           >
-            {isStale && (
+            {!isStale && (
               <Button
                 size="compact-xs"
                 disabled={isViewing}
@@ -279,7 +279,7 @@ function processTransform(transform: SuggestedTransform, metadata: Metadata) {
 
 function getTransformUrl(transform: SuggestedTransform): string {
   return match(transform)
-    .with({ id: P.number }, ({ id }) => Urls.transform(id))
+    .with({ id: P.number }, ({ id }) => Urls.transformEdit(id))
     .with({ source: { type: "python" } }, Urls.newPythonTransform)
     .with({ source: { type: "query" } }, Urls.newNativeTransform)
     .exhaustive();
