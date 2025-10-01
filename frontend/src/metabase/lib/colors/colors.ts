@@ -7,7 +7,10 @@
 // NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
 const win = typeof window !== "undefined" ? window : ({} as Window);
-const whitelabelColors = win.MetabaseBootstrap?.["application-colors"] ?? {};
+const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
+const shouldWhitelabel = !!tokenFeatures["whitelabel"];
+const whitelabelColors =
+  (shouldWhitelabel && win.MetabaseBootstrap?.["application-colors"]) || {};
 const baseBrand = whitelabelColors.brand || "hsla(208, 72%, 60%, 1.00)"; // default Metabase brand color
 
 // Do not export this or you will be fired
@@ -353,8 +356,8 @@ export const colorConfig = {
     dark: baseColors.lobster[50],
   },
   filter: {
-    light: baseColors.octopus[50],
-    dark: baseColors.octopus[40],
+    light: whitelabelColors.filter || baseColors.octopus[50],
+    dark: whitelabelColors.filter || baseColors.octopus[40],
   },
   focus: {
     light: baseColors.blue[20],
@@ -420,8 +423,8 @@ export const colorConfig = {
     dark: baseColors.palm[50],
   },
   summarize: {
-    light: baseColors.palm[50],
-    dark: baseColors.palm[40],
+    light: whitelabelColors.summarize || baseColors.palm[50],
+    dark: whitelabelColors.summarize || baseColors.palm[40],
   },
   "switch-off": {
     light: baseColors.orionAlpha[20],
