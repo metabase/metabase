@@ -13720,6 +13720,35 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-v3" ]
       }
     },
+    "/api/ee/metabot-v3/feedback" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-v3/feedback",
+        "description" : "Proxy Metabot feedback to Harbormaster, adding the premium embedding token.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3" ]
+      }
+    },
     "/api/ee/metabot-v3/metabot/" : {
       "get" : {
         "summary" : "GET /api/ee/metabot-v3/metabot/",
