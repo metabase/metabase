@@ -4,7 +4,7 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { samlTokenStorage } from "embedding/auth-common";
+import { isSessionTokenValid, samlTokenStorage } from "embedding/auth-common";
 import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
@@ -61,10 +61,7 @@ export const getOrRefreshSession = createAsyncThunk(
     const state = getSessionTokenState(getState() as SdkStoreState);
     const token = storedAuthToken ?? state?.token;
 
-    const isTokenValid =
-      typeof token?.exp === "number" && token.exp * 1000 >= Date.now();
-
-    if (isTokenValid) {
+    if (isSessionTokenValid(token)) {
       return token;
     }
 

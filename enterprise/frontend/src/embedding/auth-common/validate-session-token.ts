@@ -38,3 +38,12 @@ export function validateSessionToken(session: any) {
     });
   }
 }
+
+export function isSessionTokenValid(session: any) {
+  try {
+    validateSessionToken(session);
+    return true;
+  } catch {
+    return false;
+  }
+}
