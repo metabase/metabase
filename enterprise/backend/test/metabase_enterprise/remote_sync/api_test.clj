@@ -147,6 +147,18 @@
 
 (deftest export-endpoint-test
   (testing "POST /api/ee/remote-sync/export"
+    (mt/with-temporary-setting-values [remote-sync-type :production]
+      (testing "If we are in production sync it errors"
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "foo"}]
+          (let [mock-source (test-helpers/create-mock-source)]
+            (mt/with-temporary-setting-values [remote-sync-enabled true
+                                               remote-sync-url "https://github.com/test/repo.git"
+                                               remote-sync-token "test-token"
+                                               remote-sync-branch "main"]
+              (with-redefs [source/source-from-settings (constantly mock-source)]
+                (is (= "Exports are only allowed when remote-sync-type is set to 'development'"
+                       (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {})))))))))
+
     (mt/with-temporary-setting-values [remote-sync-type :development]
       (testing "successful export with default settings"
         (let [mock-main (test-helpers/create-mock-source)]
