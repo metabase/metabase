@@ -15,16 +15,6 @@
          (#'cmd/validate "rotate-encryption-key" [])))
   (is (nil? (#'cmd/validate "rotate-encryption-key" [:some-arg]))))
 
-(deftest load-command-test
-  (do-with-captured-call-enterprise-calls!
-   (fn []
-     (testing "with no options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-load! "/path/" {:mode :skip, :on-error :continue})
-              (cmd/load "/path/"))))
-     (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-load! "/path/" {:mode :skip, :on-error :abort})
-              (cmd/load "/path/" "--on-error" "abort")))))))
-
 (deftest import-command-test
   (do-with-captured-call-enterprise-calls!
    (fn []
@@ -37,16 +27,6 @@
      (testing "with options"
        (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:full-stacktrace true})
               (cmd/import "/path/" "--full-stacktrace")))))))
-
-(deftest dump-command-test
-  (do-with-captured-call-enterprise-calls!
-   (fn []
-     (testing "with no options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-dump! "/path/" {:state :all})
-              (cmd/dump "/path/"))))
-     (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v1-dump! "/path/" {:state :active})
-              (cmd/dump "/path/" "--state" "active")))))))
 
 (deftest export-command-arg-parsing-test
   (do-with-captured-call-enterprise-calls!

@@ -9,7 +9,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.lib.core :as lib]))
 
 (mu/defn- find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
   "Find the associated sandboxing card (if there is one) for the given `table-or-table-id` and `user-or-user-id`.
@@ -41,14 +42,13 @@
 (defn- filter-fields-for-sandboxing [table query-metadata-response]
   ;; If we have sandboxed permissions and the associated sandbox limits the fields returned, we need to make sure
   ;; the query_metadata endpoint also excludes any fields the sandbox query would exclude.
-  (if-let [sandbox-source-card (find-sandbox-source-card table api/*current-user-id*)]
-    (case (get-in sandbox-source-card [:dataset_query :type])
-      :native (update query-metadata-response :fields
-                      (partial filter-fields-by-name
-                               (->> sandbox-source-card :result_metadata (map :name) set)))
-      :query  (update query-metadata-response :fields
-                      (partial filter-fields-by-id
-                               (->> sandbox-source-card :result_metadata (map u/id) set))))
+  (if-let [{sandbox-query :dataset_query, :as sandbox-source-card} (find-sandbox-source-card table api/*current-user-id*)]
+    (update query-metadata-response :fields
+            (if (lib/native-only-query? sandbox-query)
+              (partial filter-fields-by-name
+                       (->> sandbox-source-card :result_metadata (map :name) set))
+              (partial filter-fields-by-id
+                       (->> sandbox-source-card :result_metadata (map u/id) set))))
     ;; Sandboxed via user attribute, not a source question, so no column-level sandboxing is in place
     query-metadata-response))
 

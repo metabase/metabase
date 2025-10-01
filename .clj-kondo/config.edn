@@ -273,6 +273,7 @@
    clojure.java.jdbc/with-db-connection               {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata                 {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
+   clojure.pprint/print-table                         {:message "Use metabase.util.log instead of printing directly to the console"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    compojure.core/context                             {:message "Use metabase.api.util.handlers/route-map-handler instead of compojure.core/context, it is much faster and supports OpenAPI spec generation"}

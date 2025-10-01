@@ -93,11 +93,15 @@
             (assoc-in [:target 2 :stage-number] -2)))
         parameters))
 
-(defn query-for-card
+(mu/defn query-for-card
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
-    :as           card} parameters constraints middleware & [ids]]
+    :as           card}
+   parameters  :- [:maybe [:sequential :map]]
+   constraints :- [:maybe :map]
+   middleware  :- [:maybe :map]
+   & [ids]]
   (let [stage-numbers (explict-stage-references parameters)
         explicit-stage-numbers? (boolean (seq stage-numbers))
         parameters (cond-> parameters

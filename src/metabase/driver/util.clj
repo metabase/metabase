@@ -222,9 +222,12 @@
                   (fn [[driver feature database]]
                     [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
-(mu/defn- ensure-lib-database :- ::lib.schema.metadata/database
+;;; this can get called in post-select which doesn't always have ID
+(mu/defn- ensure-lib-database :- [:map
+                                  [:lib/type [:= :metadata/database]]]
   [database :- [:or
-                ::lib.schema.metadata/database
+                [:map
+                 [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
@@ -242,7 +245,9 @@
   [driver   :- :keyword
    feature  :- :keyword
    database :- [:or
-                ::lib.schema.metadata/database
+                ;; this can get called with an incomplete object in post-select
+                [:map
+                 [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
   (let [database (ensure-lib-database database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]
@@ -268,7 +273,9 @@
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver   :- :keyword
    database :- [:or
-                ::lib.schema.metadata/database
+                ;; this can get called in post-select which doesn't always have ID
+                [:map
+                 [:lib/type [:= :metadata/database]]]
                 (ms/InstanceOf :model/Database)]]
   (let [database (ensure-lib-database database)
         f (if *memoize-supports?* memoized-features* features*)]

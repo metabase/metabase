@@ -277,14 +277,6 @@
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
-(defn- do-with-legacy-and-mbql5-native-queries [f]
-  (doseq [[message query-fn] {"legacy MBQL native query" (fn [sql]
-                                                           {:database (mt/id)
-                                                            :type     :native
-                                                            :native   {:query sql}})}]
-    (testing message
-      (f query-fn))))
-
 (defn- check-read-only-statements [query]
   (mt/with-metadata-provider (mt/id)
     (-> query
@@ -297,8 +289,9 @@
     (are [query] (nil?
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:engine :h2
-                      :native {:query query}})))
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}})))
       "select * from orders"
       "select 1; select 2;"
       "explain select * from orders"
@@ -316,8 +309,9 @@
                   #"Only SELECT statements are allowed in a native query."
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:engine :h2
-                      :native {:query query}}))
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}}))
                   "update venues set name = 'bill'")
       "insert into venues (name) values ('bill')"
       "delete venues"

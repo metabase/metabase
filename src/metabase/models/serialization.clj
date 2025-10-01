@@ -1,6 +1,8 @@
 ;; -*- outline-regexp: "[; ]+#+[[:space:]]+" -*-
 (ns metabase.models.serialization
-  "Defines core interfaces for serialization.
+  "TODO (Cam 10/1/25) -- move this into the serialization module or something like that, not all models need this.
+
+  Defines core interfaces for serialization.
 
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place,
   these methods are defined here and implemented for all the exported models.
@@ -61,6 +63,7 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -72,8 +75,7 @@
    [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize]
-   [metabase.lib.core :as lib]))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -1362,7 +1364,7 @@
   [parameters]
   (reduce set/union #{}
           (for [parameter parameters
-                :when (= "card" (:values_source_type parameter))
+                :when (= (:values_source_type parameter) :card)
                 :let  [config (:values_source_config parameter)]]
             (set/union #{[{:model "Card" :id (:card_id config)}]}
                        (mbql-deps-vector (:value_field config))))))

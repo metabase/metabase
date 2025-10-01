@@ -451,9 +451,11 @@
     (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters, :as _inner-query} :- [:or
-                                                                   ::mbql.s/MBQLQuery
-                                                                   mbql.s/NativeQuery]]
+  [{tags :template-tags, params :parameters, :as _inner-query} :- [:and
+                                                                   [:map]
+                                                                   [:fn
+                                                                    {:error/message "should be a legacy inner query"}
+                                                                    (complement :lib/type)]]]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags

@@ -587,7 +587,7 @@
 
 (mu/defn- cached-field-values
   [field-id    :- ::lib.schema.id/field
-   constraints :- ::constraints
+   constraints :- [:maybe ::constraints]
    {:keys [limit], :as _options}]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
