@@ -1,5 +1,11 @@
-import { Background, Controls, Panel, ReactFlow } from "@xyflow/react";
-import { useState } from "react";
+import {
+  Background,
+  Controls,
+  Panel,
+  ReactFlow,
+  useReactFlow,
+} from "@xyflow/react";
+import { useLayoutEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -13,7 +19,11 @@ import {
   getQuestionIdFromVirtualTableId,
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { DependencyEntityType, TableId } from "metabase-types/api";
+import type {
+  DependencyEntityType,
+  DependencyGraph,
+  TableId,
+} from "metabase-types/api";
 
 import { EntityGroupNode } from "./EntityGroupNode";
 import { EntityNode } from "./EntityNode";
@@ -78,6 +88,21 @@ export function DependencyFlow({ params }: DependencyFlowProps) {
           />
         )}
       </Panel>
+      <FitView graph={graph} />
     </ReactFlow>
   );
+}
+
+type FitViewProps = {
+  graph: DependencyGraph;
+};
+
+function FitView({ graph }: FitViewProps) {
+  const { fitView } = useReactFlow();
+
+  useLayoutEffect(() => {
+    fitView();
+  }, [graph, fitView]);
+
+  return null;
 }
