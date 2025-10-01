@@ -125,23 +125,32 @@
                          [:id ms/PositiveInt]
                          [:type (ms/enum-decode-keyword [:table :card])]]]
   (let [entity (if (= type :table) (t2/select-one :model/Table id) (t2/select-one :model/Card id))
+        upstream-table-deps (t2/select :model/Dependency :to_entity_type :table
+                                       :from_entity_type type
+                                       :from_entity_id id)
         upstream-card-deps (t2/select :model/Dependency :to_entity_type :card
                                       :from_entity_type type
                                       :from_entity_id id)
         downstream-card-deps (t2/select :model/Dependency :from_entity_type :card
                                         :to_entity_type type
                                         :to_entity_id id)
+        table-ids (into [] (map :to_entity_id) upstream-table-deps)
+        tables (when (seq table-ids) (t2/select :model/Table :id [:in table-ids]))
         card-ids (into [] (concat (map :to_entity_id upstream-card-deps) (map :from_entity_id downstream-card-deps)))
         cards (when (seq card-ids) (t2/select :model/Card :id [:in card-ids]))]
     {:nodes (concat
              [{:id id
                :type type
                :data (select-keys entity (if (= type :table) [:display_name] [:name :type]))}]
+             (map (fn [table]
+                    {:id (:id table)
+                     :type :table
+                     :data (select-keys table [:display_name])}) tables)
              (map (fn [card]
                     {:id (:id card)
                      :type :card
                      :data (select-keys card [:name :type])}) cards))
-     :edges (concat upstream-card-deps downstream-card-deps)}))
+     :edges (concat upstream-table-deps upstream-card-deps downstream-card-deps)}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
