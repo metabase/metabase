@@ -125,7 +125,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
   });
 
-  it("should track embed_wizard_code_copied when pressing Ctrl+C to copy snippet", () => {
+  it("should track embed_wizard_code_copied when copy event triggers", () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -135,7 +135,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByLabelText("Existing Metabase session").should("be.checked");
 
       codeBlock().should("contain", '"useExistingUserSession": true');
-      codeBlock().click().trigger("keydown", { key: "c", ctrlKey: true });
+      codeBlock().trigger("copy");
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",

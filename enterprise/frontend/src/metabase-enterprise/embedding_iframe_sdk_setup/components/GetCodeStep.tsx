@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
@@ -24,7 +23,6 @@ import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet"
 export const GetCodeStep = () => {
   const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
   const [updateInstanceSettings] = useUpdateSettingsMutation();
-  const codeEditorRef = useRef<HTMLDivElement>(null);
 
   const isJwtEnabled = useSetting("jwt-enabled");
   const isSamlEnabled = useSetting("saml-enabled");
@@ -50,13 +48,6 @@ export const GetCodeStep = () => {
       : "embedding-hub-production-embed-snippet-created";
 
     updateInstanceSettings({ [settingKey]: true });
-  };
-
-  const handleCodeSnippetKeyDown = (event: React.KeyboardEvent) => {
-    // Check for Ctrl/Cmd+C
-    if ((event.ctrlKey || event.metaKey) && event.key === "c") {
-      handleCodeSnippetCopied();
-    }
   };
 
   return (
@@ -128,7 +119,7 @@ export const GetCodeStep = () => {
         </Text>
 
         <Stack gap="sm">
-          <div ref={codeEditorRef} onKeyDown={handleCodeSnippetKeyDown}>
+          <div onCopy={handleCodeSnippetCopied}>
             <CodeEditor
               language="html"
               value={snippet}
