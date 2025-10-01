@@ -18,10 +18,11 @@ const urlByVariant = {
 export interface MetabotLogoProps {
   className?: string;
   variant?: MetabotVariant;
+  isCool?: boolean;
 }
 
 const MetabotLogo = forwardRef(function MetabotLogo(
-  { variant = "happy", className, ...rest }: MetabotLogoProps,
+  { variant = "happy", className, isCool, ...rest }: MetabotLogoProps,
   ref: Ref<any>,
 ) {
   const MetabotComponent = urlByVariant[variant];
