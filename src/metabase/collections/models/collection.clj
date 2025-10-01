@@ -1067,7 +1067,7 @@
     (let [root-collection-id (or (-> collection :location location-path->ids first)
                                  (:id collection))
           descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id])))]
-      (apply set/union (for [model #{:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet}
+      (apply set/union (for [model (collectable-models)
                              :let [key (name model)]]
                          (set/difference (set (get descendants key))
                                          (t2/select-pks-set model {:inner-join [[:collection :c]

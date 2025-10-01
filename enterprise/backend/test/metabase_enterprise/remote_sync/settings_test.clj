@@ -1,8 +1,9 @@
 (ns metabase-enterprise.remote-sync.settings-test
-  (:require [clojure.test :refer :all]
-            [metabase-enterprise.remote-sync.settings :as settings]
-            [metabase.settings.core :as setting]
-            [metabase.test :as mt]))
+  (:require
+   [clojure.test :refer :all]
+   [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase.settings.core :as setting]
+   [metabase.test :as mt]))
 
 (deftest check-and-update-remote-settings
   (let [full-token "full_token_value"
@@ -43,8 +44,8 @@
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token other-token))
           (is (= other-token (settings/remote-sync-token))))))))
 
-(deftest cannot-set-remote-sync-type-to-invalid-value)
-(mt/with-temporary-setting-values [:remote-sync-type :production]
-  (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                        #"Remote-sync-type set to an unsupported value"
-                        (setting/set-value-of-type! :keyword :remote-sync-type :invalid-type))))
+(deftest cannot-set-remote-sync-type-to-invalid-value
+  (mt/with-temporary-setting-values [:remote-sync-type :production]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Remote-sync-type set to an unsupported value"
+                          (setting/set-value-of-type! :keyword :remote-sync-type :invalid-type)))))

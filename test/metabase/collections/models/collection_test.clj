@@ -2226,12 +2226,10 @@
                                   :collection_id coll-id
                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-card-id)})}]
         ;; This should throw an exception because the dependency (non-remote-synced-card) is not in a remote-synced collection
-      (let [ex (is (thrown? Exception
-                            (collection/move-collection! coll (format "/%d/" parent-id) true))
+      (let [ex (is (thrown-with-msg? Exception
+                                     #"Model has non-remote-synced dependencies"
+                                     (collection/move-collection! coll (format "/%d/" parent-id) true))
                    "Should throw exception for non-remote-synced dependencies")]
-          ;; Verify exception details
-        (is (= "Model has non-remote-synced dependencies" (ex-message ex))
-            "Exception should have correct message")
         (let [ex-data (ex-data ex)]
           (is (= 400 (:status-code ex-data))
               "Exception should have 400 status code")
