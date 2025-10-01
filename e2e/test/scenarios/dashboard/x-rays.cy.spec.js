@@ -178,12 +178,13 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.button("Save this").click();
 
     cy.log("'See it' link should be displayed both in the header and in the toast");
-    cy.findByTestId("automatic-dashboard-header").within(() => {
-      cy.findByText("See it").should("exist");
-    });
-    H.undoToast().within(() => {
-      cy.findByText("Your dashboard was saved");
-      cy.findByText("See it").click();
+    H.undoToast()
+      .should("contain", "Your dashboard was saved")
+      .and("contain", "See it");
+    
+    cy.findByTestId("automatic-dashboard-header")
+      .findByRole("link", { name: "See it" })
+      .should("be.visible").click();
     });
 
     cy.url().should("contain", "a-look-at-orders");
