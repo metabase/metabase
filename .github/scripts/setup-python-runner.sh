@@ -24,6 +24,7 @@ git clone --depth 1 https://${METABASE_AUTOMATION_USER_TOKEN}@github.com/metabas
 if [ "$SKIP_START" = false ]; then
   echo "Starting python-runner..."
   cd python-runner
-  make run-ci
+  make run-ci 1> ../python-runner.out.log 2> ../python-runner.err.log
+  make logs 1>> ../python-runner.out.log 2>> ../python-runner.err.log &
   cd ..
 fi

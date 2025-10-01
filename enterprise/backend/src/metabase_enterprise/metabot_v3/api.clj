@@ -94,8 +94,8 @@
    feedback :- :map]
   (let [token (premium-features/premium-embedding-token)
         base-url (store-api/store-api-url)]
-    (when (or (str/blank? token) (str/blank? base-url))
-      (throw (ex-info "Cannot build a request. The license token and/or Store api url are missing!" {})))
+    (api/check-400 (not (or (str/blank? token) (str/blank? base-url)))
+                   "Cannot build a request. The license token and/or Store api url are missing!")
     (try
       (http/post (str base-url "/api/v2/metabot/feedback/" token)
                  {:content-type :json
