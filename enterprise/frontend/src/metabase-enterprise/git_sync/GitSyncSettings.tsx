@@ -25,8 +25,10 @@ import {
 import { isNotNull } from "metabase/lib/types";
 import {
   ActionIcon,
+  Badge,
   Box,
   Flex,
+  Group,
   Icon,
   Menu,
   Radio,
@@ -184,7 +186,16 @@ export const GitSyncSettings = (): JSX.Element => {
       <SettingsSection>
         <Box flex={1} maw="52rem">
           <Flex align="flex-end" gap="md" mb="xs">
-            <Title order={2}>{t`Git Sync`}</Title>
+            <Group gap="sm">
+              <Title order={2}>{t`Git Sync`}</Title>
+              {isGitSyncEnabled && (
+                <Badge
+                  style={{ textTransform: "none" }}
+                  px="sm"
+                >{t`Enabled`}</Badge>
+              )}
+            </Group>
+
             {isGitSyncConfigured && (
               <>
                 <GitSyncStatusBadge isEnabled={!!isGitSyncEnabled} />
