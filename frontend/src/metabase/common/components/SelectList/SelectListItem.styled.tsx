@@ -12,7 +12,7 @@ export const ItemTitle = styled(Text)<TextProps>`
   word-break: break-word;
 ` as unknown as typeof Text;
 
-export const ItemIcon = styled(Icon)<{ color?: ColorName | null }>`
+export const ItemIcon = styled(Icon)<{ color?: ColorName | string | null }>`
   color: ${(props) => color(props.color ?? "text-light")};
   justify-self: end;
 `;
