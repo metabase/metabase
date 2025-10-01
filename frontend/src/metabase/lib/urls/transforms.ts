@@ -1,5 +1,9 @@
 import type { Transform } from "metabase-types/api";
 
+export function transforms() {
+  return `/admin/transforms`;
+}
+
 export function newNativeTransform() {
   return `/admin/transforms/new/native`;
 }

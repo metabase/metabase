@@ -1,6 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
+import * as Urls from "metabase/lib/urls";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { getLocation } from "metabase/selectors/routing";
 import type { TransformId } from "metabase-types/api";
@@ -21,7 +22,7 @@ export const getMetabot = (state: MetabotStoreState) => {
 export const getMetabotVisible = createSelector(
   [getMetabot, getLocation],
   (metabot, location) =>
-    location.pathname.startsWith("/admin/transforms") ? true : metabot.visible,
+    location.pathname.startsWith(Urls.transforms()) ? true : metabot.visible,
 );
 
 export const getMessages = createSelector(
@@ -130,7 +131,7 @@ export const getProfile = createSelector(
       return profileOverride;
     }
 
-    return location.pathname.startsWith("/admin/transforms")
+    return location.pathname.startsWith(Urls.transforms())
       ? "transforms_codegen"
       : undefined;
   },
