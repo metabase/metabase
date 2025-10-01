@@ -96,8 +96,8 @@ export function TransformQueryPageBody({
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
         initialSource={transform.source}
         isNew={false}
-        isSaving={isLoading}
-        onSave={handleSourceSave}
+        isSaving={isSaving}
+        onSave={handleSaveSource}
         onCancel={handleCancel}
       />
     );
