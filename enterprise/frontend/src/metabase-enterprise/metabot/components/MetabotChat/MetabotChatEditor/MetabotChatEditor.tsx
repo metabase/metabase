@@ -18,6 +18,7 @@ import {
   MetabotMentionPluginKey,
 } from "metabase-enterprise/rich_text_editing/tiptap/extensions/MetabotMention/MetabotMentionExtension";
 import { SmartLink } from "metabase-enterprise/rich_text_editing/tiptap/extensions/SmartLink/SmartLinkNode";
+import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 import { createSuggestionRenderer } from "metabase-enterprise/rich_text_editing/tiptap/extensions/suggestionRenderer";
 
 import S from "./MetabotChatEditor.module.css";
@@ -33,6 +34,7 @@ interface Props {
   disabled?: boolean;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  suggestionModels: SuggestionModel[];
 }
 
 export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
@@ -42,6 +44,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
       placeholder = t`Tell me to do something, or ask a question`,
       autoFocus = false,
       disabled = false,
+      suggestionModels,
       onChange,
       onSubmit,
     },
@@ -72,7 +75,7 @@ export const MetabotChatEditor = forwardRef<MetabotChatInputRef | null, Props>(
         suggestion: {
           render: createSuggestionRenderer(
             createMentionSuggestion({
-              searchModels: ["dataset", "transform", "table", "database"],
+              searchModels: suggestionModels,
               canBrowseAll: false,
             }),
           ),

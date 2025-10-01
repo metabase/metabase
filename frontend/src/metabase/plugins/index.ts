@@ -81,6 +81,7 @@ import type {
   PythonTransformSource,
   PythonTransformTableAliases,
   Revision,
+  SearchModel,
   Series,
   TableId,
   Timeline,
@@ -710,6 +711,7 @@ export const PLUGIN_METABOT = {
       hideSuggestedPrompts?: boolean;
       preventClose?: boolean;
       preventRetryMessage?: boolean;
+      suggestionModels: (SearchModel | "transform" | "user")[];
     };
   }) => null as React.ReactElement | null,
   defaultMetabotContextValue,

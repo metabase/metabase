@@ -3,7 +3,6 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import type { UrlableModel } from "metabase/lib/urls/modelToUrl";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   Database,
   MentionableUser,
@@ -11,6 +10,8 @@ import type {
   SearchResult,
 } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
+
+import type { SuggestionModel } from "./types";
 
 export const filterRecents = (item: RecentItem, models: SuggestionModel[]) =>
   models.includes(item.model);

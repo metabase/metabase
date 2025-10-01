@@ -27,7 +27,22 @@ import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
 
-export const MetabotChat = ({ config = {} }: { config?: MetabotConfig }) => {
+const defaultConfig: MetabotConfig = {
+  suggestionModels: [
+    "dataset",
+    "metric",
+    "card",
+    "table",
+    "database",
+    "dashboard",
+  ],
+};
+
+export const MetabotChat = ({
+  config = defaultConfig,
+}: {
+  config?: MetabotConfig;
+}) => {
   const metabot = useMetabotAgent();
   const { handleSubmitInput, handleRetryMessage, handleResetInput } =
     useMetabotChatHandlers(config);
@@ -188,6 +203,7 @@ export const MetabotChat = ({ config = {} }: { config?: MetabotConfig }) => {
               placeholder={t`Tell me to do something, or ask a question`}
               onChange={handleEditorChange}
               onSubmit={handleEditorSubmit}
+              suggestionModels={config.suggestionModels}
             />
           </Paper>
         </Box>

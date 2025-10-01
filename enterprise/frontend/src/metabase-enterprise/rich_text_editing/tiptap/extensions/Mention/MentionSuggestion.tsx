@@ -7,11 +7,11 @@ import {
   LoadingSuggestionPaper,
   SuggestionPaper,
 } from "metabase-enterprise/documents/components/Editor/shared/SuggestionPaper";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { getCurrentDocument } from "metabase-enterprise/documents/selectors";
 import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
+import type { SuggestionModel } from "../shared/types";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { MentionCommandProps } from "./MentionExtension";

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   MentionableUser,
   RecentItem,
@@ -15,6 +14,7 @@ import {
   buildSearchModelMenuItems,
   entityToUrlableModel,
 } from "./suggestionUtils";
+import type { SuggestionModel } from "./types";
 import { useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {

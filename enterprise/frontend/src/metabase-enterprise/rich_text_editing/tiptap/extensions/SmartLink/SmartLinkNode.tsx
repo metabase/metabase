@@ -27,7 +27,6 @@ import {
   useGetDocumentQuery,
   useListMentionsQuery,
 } from "metabase-enterprise/api";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import { updateMentionsCache } from "metabase-enterprise/documents/documents.slice";
 import {
   METABSE_PROTOCOL_MD_LINK,
@@ -49,6 +48,7 @@ import {
   entityToUrlableModel,
   isMentionableUser,
 } from "../shared/suggestionUtils";
+import type { SuggestionModel } from "../shared/types";
 
 import styles from "./SmartLinkNode.module.css";
 
