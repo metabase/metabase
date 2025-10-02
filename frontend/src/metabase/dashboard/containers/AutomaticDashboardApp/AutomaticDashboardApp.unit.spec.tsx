@@ -63,6 +63,9 @@ describe("AutomaticDashboardApp", () => {
     const seeItLink = within(
       screen.getByTestId("automatic-dashboard-header"),
     ).getByRole("link", { name: "See it" });
-    expect(seeItLink).toHaveAttribute("href", `/dashboard/${dashboardId}`);
+    expect(seeItLink).toHaveAttribute(
+      "href",
+      `/dashboard/${dashboardId}-dashboard`,
+    );
   });
 });
