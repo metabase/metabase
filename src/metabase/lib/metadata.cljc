@@ -120,6 +120,18 @@
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
       (field metadata-providerable remap-field-id))))
 
+;; TODO: Better schemas for transforms coming out of the metadata provider.
+(mu/defn transform :- [:maybe [:map]]
+  "Gets a Transform by ID, or nil if it does not exist."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   transform-id          :- :int]
+  (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id))
+
+(mu/defn transforms :- [:maybe [:sequential [:map]]]
+  "Gets all Transforms"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable)))
+
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable

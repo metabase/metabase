@@ -2584,7 +2584,7 @@
 
 (deftest unique-long-column-names-test
   (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
+        expected [:%ce%b1bcd  :%_a2ba0330 :%ce%b1bc_2 :%ce%b1bc_3]
         displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
     (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]

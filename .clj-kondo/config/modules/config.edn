@@ -428,6 +428,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Querying"
+   :api  #{metabase.premium-features.core}
+   :uses #{premium-features}}
+
   driver
   {:team "Drivers"
    :api  #{metabase.driver
@@ -563,6 +568,11 @@
    :uses #{api
            models
            util}}
+
+  graph
+  {:team "Querying"
+   :api  #{metabase.graph.core}
+   :uses #{util}}
 
   indexed-entities
   {:team "UX West"
@@ -730,6 +740,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           events
            lib
            models
            permissions
@@ -1698,6 +1709,29 @@
            warehouse-schema
            warehouses}}
 
+  enterprise/dependencies
+  {:team "Querying"
+   :api  #{metabase-enterprise.dependencies.api
+           metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.init}
+   :uses #{analyze
+           api
+           app-db
+           collections
+           config
+           driver
+           events
+           graph
+           lib
+           lib-be
+           models
+           native-query-snippets
+           premium-features
+           queries
+           query-processor
+           task
+           util}}
+
   enterprise/documents
   {:team "UX West"
    :api  #{metabase-enterprise.documents.api
@@ -1982,7 +2016,9 @@
            api
            app-db
            driver
+           events
            lib
+           lib-be
            models
            premium-features
            query-processor

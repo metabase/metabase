@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -365,3 +366,54 @@
   [query :- ::lib.schema/query]
   (assert-native-query (lib.util/query-stage query 0))
   (:engine (lib.metadata/database query)))
+
+(defn- get-parameter-value
+  [tag-name {:keys [id dimension], param-type :type}]
+  ;; note that the actual values chosen are completely arbitrary.  We just need to provide some
+  ;; value so that the query will compile.
+  (case param-type
+    :text          {:id     id,
+                    :type   :string/=,
+                    :value  ["foo"],
+                    :target ["variable" ["template-tag" tag-name]]}
+    :number        {:id     id,
+                    :type   :number/=,
+                    :value  ["0"],
+                    :target ["variable" ["template-tag" tag-name]]}
+    :date          {:id     id,
+                    :type   :date/single,
+                    :value  "1970-01-01",
+                    :target ["variable" ["template-tag" tag-name]]}
+    :boolean       {:id     id,
+                    :type   :boolean/=,
+                    :value  [false],
+                    :target ["variable" ["template-tag" tag-name]]}
+    :dimension     (merge {:id     id,
+                           :type   :string/=,
+                           :value  ["foo"],
+                           :target ["dimension" ["template-tag" tag-name]]}
+                          (when (isa? (-> dimension lib.options/options :effective-type) :type/Number)
+                            {:type   :number/=,
+                             :value  ["0"]}))
+    :temporal-unit {:id     id,
+                    :type   :temporal-unit,
+                    :value  "week",
+                    :target ["dimension" ["template-tag" tag-name]]}
+    nil))
+
+(defn add-parameters-for-template-tags
+  "Adds dummy values for parameters that don't have one.
+  This is so that the resulting native query can be parsed. It's not expected to be executable."
+  [query]
+  (let [ttags (-> (lib.util/query-stage query 0)
+                  :template-tags)
+        parameters (:parameters query)
+        params-by-id (m/index-by :id parameters)
+        new-parameters (into []
+                             (keep (fn [[tag-name {:keys [id] :as tag}]]
+                                     (or (params-by-id id)
+                                         (get-parameter-value tag-name tag))))
+
+                             ttags)]
+    (cond-> query
+      (seq new-parameters) (assoc :parameters new-parameters))))

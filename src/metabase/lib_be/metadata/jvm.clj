@@ -350,6 +350,28 @@
   (instance->metadata snippet :metadata/native-query-snippet))
 
 ;;;
+;;; Transforms
+;;;
+
+(derive :metadata/transform :model/Transform)
+
+(methodical/defmethod t2.model/resolve-model :metadata/transform
+  [model]
+  (t2/resolve-model :model/Transform) ; for side-effects
+  model)
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/transform
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :name :source :target]}))
+
+(t2/define-after-select :metadata/transform
+  [snippet]
+  (instance->metadata snippet :metadata/transform))
+
+;;;
 ;;; MetadataProvider
 ;;;
 
@@ -368,7 +390,8 @@
     :metadata/card                 :card/database_id
     :metadata/metric               :database_id
     :metadata/segment              :table/db_id
-    :metadata/native-query-snippet nil))
+    :metadata/native-query-snippet nil
+    :metadata/transform            nil))
 
 (defn- id-key [metadata-type]
   (case metadata-type
@@ -377,7 +400,8 @@
     :metadata/card                 :card/id
     :metadata/metric               :id
     :metadata/segment              :segment/id
-    :metadata/native-query-snippet :id))
+    :metadata/native-query-snippet :id
+    :metadata/transform            :id))
 
 (defn- name-key [metadata-type]
   (case metadata-type
@@ -386,7 +410,8 @@
     :metadata/card                 :card/name
     :metadata/metric               :name
     :metadata/segment              :segment/name
-    :metadata/native-query-snippet :name))
+    :metadata/native-query-snippet :name
+    :metadata/transform            :name))
 
 (defn- table-id-key [metadata-type]
   ;; types not in the case statement do not support Table ID

@@ -545,7 +545,7 @@
   separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
   probably just use `:metadata/card` here."
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
-   :metadata/segment])
+   :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::lib-or-legacy-column
   "Schema for the maps in card `:result-metadata` and similar. These can be either

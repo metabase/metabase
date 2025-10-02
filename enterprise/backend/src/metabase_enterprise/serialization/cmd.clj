@@ -133,8 +133,8 @@
                                                 (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
-        (log/error @err "Error during serialization")
-        (log/error (u/strip-error @err "Error during deserialization")))
+        (log/error @err "Error during serialization export")
+        (log/error (u/strip-error @err "Error during serialization export")))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))
