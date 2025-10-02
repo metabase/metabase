@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { index } from "d3";
 import type React from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
@@ -23,12 +22,11 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
         onSidebarToggle={toggle}
         isSidebarOpen={showBenchNav}
       />
-      <PanelGroup autoSaveId="workbench-panels" direction="horizontal">
+      <PanelGroup autoSaveId="workbench-layout" direction="horizontal">
         {showBenchNav && (
           <>
             <Panel
               id="bench-nav"
-              key={`resizable-box-${index}`}
               collapsible={true} collapsedSize={5} minSize={10}
               style={{ overflow: "hidden"}}
             >
