@@ -4,13 +4,20 @@ import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_
 export const useGetCurrentResource = (
   settings: SdkIframeEmbedSetupSettings,
 ) => {
-  const { data: dashboard, isLoading: isDashboardLoading } =
-    useGetDashboardQuery(
-      settings.dashboardId ? { id: settings.dashboardId } : skipToken,
-      { refetchOnMountOrArgChange: true },
-    );
+  const {
+    data: dashboard,
+    isLoading: isDashboardLoading,
+    isFetching: isDashboardFetching,
+  } = useGetDashboardQuery(
+    settings.dashboardId ? { id: settings.dashboardId } : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
 
-  const { data: card, isLoading: isCardLoading } = useGetCardQuery(
+  const {
+    data: card,
+    isLoading: isCardLoading,
+    isFetching: isCardFetching,
+  } = useGetCardQuery(
     settings.questionId ? { id: settings.questionId as number } : skipToken,
     { refetchOnMountOrArgChange: true },
   );
@@ -18,5 +25,6 @@ export const useGetCurrentResource = (
   return {
     resource: dashboard ?? card ?? null,
     isLoading: isDashboardLoading || isCardLoading,
+    isFetching: isDashboardFetching || isCardFetching,
   };
 };

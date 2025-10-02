@@ -9,6 +9,7 @@ interface EmbedModalContentStatusBarProps {
   isPublished: boolean;
   resourceType: EmbedResourceType;
   hasSettingsChanges: boolean;
+  isFetching?: boolean;
   onDiscard: () => void;
   onUnpublish: () => Promise<void>;
   onSave: () => Promise<void>;
@@ -18,6 +19,7 @@ export const EmbedModalContentStatusBar = ({
   isPublished,
   resourceType,
   hasSettingsChanges,
+  isFetching,
   onDiscard,
   onUnpublish,
   onSave,
@@ -50,7 +52,7 @@ export const EmbedModalContentStatusBar = ({
               <Button
                 variant="subtle"
                 color="error"
-                loading={isUnpublishing}
+                loading={isUnpublishing || isFetching}
                 onClick={() => {
                   setIsUnpublishing(true);
                   onUnpublish().finally(() => setIsUnpublishing(false));
@@ -61,7 +63,7 @@ export const EmbedModalContentStatusBar = ({
           {(!isPublished || hasSettingsChanges) && (
             <Button
               variant="filled"
-              loading={isPublishing}
+              loading={isPublishing || isFetching}
               onClick={() => {
                 setIsPublishing(true);
                 onSave().finally(() => setIsPublishing(false));

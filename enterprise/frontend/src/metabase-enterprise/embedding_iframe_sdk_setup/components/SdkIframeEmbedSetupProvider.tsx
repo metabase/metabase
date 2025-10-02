@@ -126,7 +126,7 @@ export const SdkIframeEmbedSetupProvider = ({
     return rawSettings;
   }, [modelCount, rawSettings]);
 
-  const { resource, isLoading } = useGetCurrentResource(settings);
+  const { resource, isLoading, isFetching } = useGetCurrentResource(settings);
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -179,6 +179,7 @@ export const SdkIframeEmbedSetupProvider = ({
     experience,
     resource,
     isLoading,
+    isFetching,
     settings,
     replaceSettings,
     updateSettings,

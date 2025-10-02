@@ -25,8 +25,11 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
   resourceType,
 }: Props) => {
   const exampleDashboardId = useSetting("example-dashboard-id");
-  const { availableParameters: resourceParameters, isLoading } =
-    useSdkIframeEmbedSetupContext();
+  const {
+    availableParameters: resourceParameters,
+    isLoading,
+    isFetching,
+  } = useSdkIframeEmbedSetupContext();
   const { buildEmbeddedParameters, setEmbeddingParameters } =
     useStaticEmbeddingParameters();
 
@@ -101,6 +104,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
     <EmbedModalContentStatusBar
       resourceType={resourceType}
       isPublished={resource.enable_embedding}
+      isFetching={isFetching}
       hasSettingsChanges={hasSettingsChanges}
       onSave={handleSave}
       onUnpublish={handleUnpublish}
