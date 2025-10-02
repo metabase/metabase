@@ -12,6 +12,7 @@ export function getQueryBuilderModeFromLocation(
 ): LocationQBModeResult {
   const { pathname } = location;
   const lastPathSegment = pathname?.split("/").pop();
+  const isBench = pathname?.includes("/bench/");
 
   if (lastPathSegment === "notebook") {
     return {
@@ -21,11 +22,12 @@ export function getQueryBuilderModeFromLocation(
   if (
     lastPathSegment === "query" ||
     lastPathSegment === "metadata" ||
-    lastPathSegment === "columns"
+    lastPathSegment === "columns" ||
+    isBench
   ) {
     return {
       queryBuilderMode: "dataset",
-      datasetEditorTab: lastPathSegment,
+      datasetEditorTab: isBench ? "query" : lastPathSegment,
     };
   }
   return {
