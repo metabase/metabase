@@ -9,7 +9,12 @@ import { useLocation } from "react-use";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import { useSearchQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetDashboardQuery,
+  useSearchQuery,
+} from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
@@ -23,33 +28,23 @@ import {
 } from "../context";
 import { useParameterList, useRecentItems } from "../hooks";
 import type {
-  SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupStartWith,
   SdkIframeEmbedSetupStep,
 } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
-  startWith?: SdkIframeEmbedSetupStartWith;
 }
 
 export const SdkIframeEmbedSetupProvider = ({
   children,
-  startWith,
 }: SdkIframeEmbedSetupProviderProps) => {
   const location = useLocation();
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
-  const embeddingType: SdkIframeEmbedSetupEmbeddingType =
-    startWith?.embeddingType ?? "simple";
-  const isStaticEmbedding = embeddingType === "static";
-
-  const [persistedSettings, persistSettings] = usePersistedSettings({
-    isStaticEmbedding,
-  });
+  const [persistedSettings, persistSettings] = usePersistedSettings();
 
   // We don't want to re-fetch the recent items every time we switch between
   // steps, therefore we load recent items once in the provider.
@@ -81,47 +76,36 @@ export const SdkIframeEmbedSetupProvider = ({
   }, [location.search]);
 
   const defaultSettings = useMemo(() => {
-    if (startWith) {
-      return getDefaultSdkIframeEmbedSettings(startWith);
-    }
-
     return match([urlParams.resourceType, urlParams.resourceId])
       .with(["dashboard", P.nonNullable], ([, resourceId]) =>
         getDefaultSdkIframeEmbedSettings({
-          embeddingType: "simple",
           resourceType: "dashboard",
           resourceId,
         }),
       )
       .with(["question", P.nonNullable], ([, resourceId]) =>
         getDefaultSdkIframeEmbedSettings({
-          embeddingType: "simple",
           resourceType: "chart",
           resourceId,
         }),
       )
       .otherwise(() =>
         getDefaultSdkIframeEmbedSettings({
-          embeddingType: "simple",
           resourceType: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
         }),
       );
-  }, [startWith, recentDashboards, urlParams]);
+  }, [recentDashboards, urlParams]);
 
   // Default to the embed options step if both resource type and id are provided.
   // This is to skip the experience and resource selection steps as we know both.
   const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
-    if (startWith?.step) {
-      return startWith?.step;
-    }
-
     if (urlParams.resourceType !== null && urlParams.resourceId !== null) {
       return "select-embed-options";
     }
 
     return "select-embed-experience";
-  }, [startWith, urlParams]);
+  }, [urlParams]);
 
   const [rawSettings, setRawSettings] =
     useState<SdkIframeEmbedSetupSettings>(defaultSettings);
@@ -146,6 +130,16 @@ export const SdkIframeEmbedSetupProvider = ({
     return rawSettings;
   }, [modelCount, rawSettings]);
 
+  // Fetch dashboard/question data for parameter extraction
+  const { data: dashboard, isFetching: isDashboardLoading } =
+    useGetDashboardQuery(
+      settings.dashboardId ? { id: settings.dashboardId } : skipToken,
+    );
+
+  const { data: card, isFetching: isCardLoading } = useGetCardQuery(
+    settings.questionId ? { id: settings.questionId as number } : skipToken,
+  );
+
   // Which embed experience are we setting up?
   const experience = useMemo(
     () =>
@@ -163,15 +157,10 @@ export const SdkIframeEmbedSetupProvider = ({
   // Use parameter list hook for dynamic parameter loading
   const { availableParameters, isLoadingParameters } = useParameterList({
     experience,
-
-    // We're always using numeric IDs for previews.
-    ...(settings.dashboardId && {
-      dashboardId: settings.dashboardId as number,
-    }),
-
-    ...(settings.questionId && {
-      questionId: Number(settings.questionId),
-    }),
+    dashboard,
+    isDashboardLoading,
+    card,
+    isCardLoading,
   });
 
   const updateSettings = useCallback(
@@ -201,11 +190,13 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   const value: SdkIframeEmbedSetupContextType = {
-    startWith,
-    embeddingType,
     currentStep,
     setCurrentStep,
     experience,
+    dashboard,
+    isDashboardLoading,
+    card,
+    isCardLoading,
     settings,
     replaceSettings,
     updateSettings,
@@ -221,11 +212,6 @@ export const SdkIframeEmbedSetupProvider = ({
   // Once the persisted settings are loaded, check if they are valid.
   // If they are, set them as the current settings.
   useEffect(() => {
-    // Ignore persisted settings for static embedding.
-    if (isStaticEmbedding) {
-      return;
-    }
-
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
       setRawSettings({
         ...settings,
@@ -241,7 +227,6 @@ export const SdkIframeEmbedSetupProvider = ({
       setEmbedSettingsLoaded(true);
     }
   }, [
-    isStaticEmbedding,
     persistedSettings,
     isEmbedSettingsLoaded,
     settings,
@@ -259,14 +244,10 @@ export const SdkIframeEmbedSetupProvider = ({
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession"]);
+  return _.pick(settings, ["theme", "useExistingUserSession", "isStatic"]);
 };
 
-const usePersistedSettings = ({
-  isStaticEmbedding,
-}: {
-  isStaticEmbedding: boolean;
-}) => {
+const usePersistedSettings = () => {
   const [rawPersisted, rawPersistSettings] = useUserSetting(
     "sdk-iframe-embed-setup-settings",
     { debounceTimeout: USER_SETTINGS_DEBOUNCE_MS },
@@ -279,14 +260,9 @@ const usePersistedSettings = ({
 
   const persistSettings = useCallback(
     (settings: Partial<SdkIframeEmbedSetupSettings>) => {
-      // Don't persist settings for static embedding
-      if (isStaticEmbedding) {
-        return;
-      }
-
       rawPersistSettings(getSettingsToPersist(settings));
     },
-    [isStaticEmbedding, rawPersistSettings],
+    [rawPersistSettings],
   );
 
   return [persistedSettings, persistSettings] as const;

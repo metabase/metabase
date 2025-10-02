@@ -1,36 +1,31 @@
 import { useEffect, useMemo } from "react";
 import { useLatest } from "react-use";
 
-import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type { Card, Parameter } from "metabase-types/api";
+import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
 interface UseParameterListProps {
   experience: SdkIframeEmbedSetupExperience;
-  dashboardId?: number;
-  questionId?: number;
+  dashboard: Dashboard | undefined;
+  isDashboardLoading: boolean;
+  card: Card | undefined;
+  isCardLoading: boolean;
 }
 
 export const useParameterList = ({
   experience,
-  dashboardId,
-  questionId,
+  dashboard,
+  isDashboardLoading,
+  card,
+  isCardLoading,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
-  // Fetch dashboard/question data for parameter extraction
-  const { data: dashboard, isLoading: isDashboardLoading } =
-    useGetDashboardQuery(dashboardId ? { id: dashboardId } : skipToken);
-
-  const { data: card, isLoading: isCardLoading } = useGetCardQuery(
-    questionId ? { id: questionId as number } : skipToken,
-  );
-
   const metadata = useSelector(getMetadata);
 
   // This prevents `availableParameters` from being updated on every metadata change,

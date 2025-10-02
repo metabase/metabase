@@ -36,11 +36,11 @@ declare global {
   }
 }
 
-export const SdkIframeEmbedPreview = () => {
-  const { settings, embeddingType } = useSdkIframeEmbedSetupContext();
+const SdkIframeEmbedPreviewInner = () => {
+  const { settings } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
 
-  const isStaticEmbedding = embeddingType === "static";
+  const isStaticEmbedding = !!settings.isStatic;
 
   const localeOverride = useSearchParam("locale");
 
@@ -217,4 +217,20 @@ export const SdkIframeEmbedPreview = () => {
       />
     </Card>
   );
+};
+
+export const SdkIframeEmbedPreview = () => {
+  const { settings } = useSdkIframeEmbedSetupContext();
+
+  const remountKey = useMemo(
+    () =>
+      JSON.stringify({
+        // We must re-mount preview when `isStatic` setting is changed
+        // to properly work with no-user auth handling inside rendered SDK
+        isStaticEmbedding: settings.isStatic,
+      }),
+    [settings.isStatic],
+  );
+
+  return <SdkIframeEmbedPreviewInner key={remountKey} />;
 };

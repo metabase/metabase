@@ -1,32 +1,32 @@
 import { match } from "ts-pattern";
 
+import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
-import { DEFAULT_STATIC_EMBEDDING_SETTINGS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 
 import type {
+  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupStartWith,
 } from "../types";
 
 export const getDefaultSdkIframeEmbedSettings = ({
-  embeddingType,
   resourceType,
   resourceId,
-}: Omit<SdkIframeEmbedSetupStartWith, "step">): SdkIframeEmbedSetupSettings => {
-  const isStaticEmbedding = embeddingType === "static";
-
+}: {
+  resourceType: SdkIframeEmbedSetupExperience;
+  resourceId: SdkDashboardId | SdkQuestionId;
+}): SdkIframeEmbedSetupSettings => {
   const templateDefaults = match(resourceType)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
         componentName: "metabase-dashboard",
         dashboardId: resourceId,
-        drills: !isStaticEmbedding,
+        drills: true,
         withDownloads: false,
         withTitle: true,
       }),
@@ -36,7 +36,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
       (): QuestionEmbedOptions => ({
         componentName: "metabase-question",
         questionId: resourceId,
-        drills: !isStaticEmbedding,
+        drills: true,
         withDownloads: false,
         withTitle: true,
         isSaveEnabled: false,
@@ -62,7 +62,6 @@ export const getDefaultSdkIframeEmbedSettings = ({
 
   return {
     ...templateDefaults,
-    useExistingUserSession: !isStaticEmbedding,
-    ...(isStaticEmbedding && DEFAULT_STATIC_EMBEDDING_SETTINGS),
+    useExistingUserSession: true,
   };
 };

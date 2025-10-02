@@ -18,6 +18,7 @@ import {
   Image,
   Stack,
 } from "metabase/ui";
+import { SdkIframeStaticEmbeddingStatusBar } from "metabase-enterprise/embedding_iframe_sdk_setup/components/SdkIframeStaticEmbeddingStatusBar";
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -29,11 +30,10 @@ import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
 export const SdkIframeEmbedSetupContent = () => {
   const [updateSettings] = useUpdateSettingsMutation();
-  const { embeddingType, currentStep, settings } =
-    useSdkIframeEmbedSetupContext();
+  const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
-  const isStaticEmbedding = embeddingType === "static";
+  const isStaticEmbedding = !!settings.isStatic;
 
   const { handleNext, handleBack, canGoBack, StepContent } =
     useSdkIframeEmbedNavigation();
@@ -76,38 +76,47 @@ export const SdkIframeEmbedSetupContent = () => {
 
   return (
     <Box className={S.Container}>
-      <SidebarResizer>
-        <Box className={S.Sidebar} component="aside">
-          <Box className={S.SidebarContent}>
-            <StepContent />
+      <SdkIframeStaticEmbeddingStatusBar />
+
+      <Box className={S.ContainerInner}>
+        <SidebarResizer>
+          <Box className={S.Sidebar} component="aside">
+            <Box className={S.SidebarContent}>
+              <StepContent />
+            </Box>
+
+            <Group className={S.Navigation} justify="space-between">
+              <Button
+                variant="default"
+                onClick={handleBack}
+                disabled={!canGoBack || !isSimpleEmbeddingEnabled}
+              >
+                {t`Back`}
+              </Button>
+
+              {nextStepButton}
+            </Group>
           </Box>
+        </SidebarResizer>
 
-          <Group className={S.Navigation} justify="space-between">
-            <Button
-              variant="default"
-              onClick={handleBack}
-              disabled={!canGoBack || !isSimpleEmbeddingEnabled}
-            >
-              {t`Back`}
-            </Button>
-
-            {nextStepButton}
-          </Group>
+        <Box className={S.PreviewPanel}>
+          <Stack h="100%">
+            {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
+              <SdkIframeEmbedPreview />
+            ) : (
+              <Card h="100%">
+                <Flex h="100%" align="center" justify="center">
+                  <Image
+                    w={120}
+                    h={120}
+                    src={noResultsSource}
+                    alt="No results"
+                  />
+                </Flex>
+              </Card>
+            )}
+          </Stack>
         </Box>
-      </SidebarResizer>
-
-      <Box className={S.PreviewPanel}>
-        <Stack h="100%">
-          {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
-            <SdkIframeEmbedPreview />
-          ) : (
-            <Card h="100%">
-              <Flex h="100%" align="center" justify="center">
-                <Image w={120} h={120} src={noResultsSource} alt="No results" />
-              </Flex>
-            </Card>
-          )}
-        </Stack>
       </Box>
     </Box>
   );

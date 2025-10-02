@@ -1,26 +1,27 @@
 import { createContext, useContext } from "react";
 
-import type { Parameter } from "metabase-types/api";
+import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
-  SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
   SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupStartWith,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
-  startWith?: SdkIframeEmbedSetupStartWith;
-  embeddingType: SdkIframeEmbedSetupEmbeddingType;
-
   // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
   experience: SdkIframeEmbedSetupExperience;
+
+  // Loaded resources
+  dashboard: Dashboard | undefined;
+  isDashboardLoading: boolean;
+  card: Card | undefined;
+  isCardLoading: boolean;
 
   // Embed settings
   settings: SdkIframeEmbedSetupSettings;

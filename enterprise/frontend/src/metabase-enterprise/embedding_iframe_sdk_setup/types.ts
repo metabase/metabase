@@ -59,10 +59,7 @@ export type SdkIframeEmbedSetupSettings = Omit<
   Partial<SdkIframeEmbedSetupStaticEmbeddingSettings> &
   SdkIframeEmbedSetupTemplateSettings;
 
-export type SdkIframeEmbedSetupEmbeddingType = "simple" | "static";
-
 export type SdkIframeEmbedSetupStartWith = {
-  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   step: SdkIframeEmbedSetupStep;
   resourceType: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;

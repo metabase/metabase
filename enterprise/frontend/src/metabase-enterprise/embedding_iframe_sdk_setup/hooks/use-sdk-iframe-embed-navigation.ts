@@ -4,7 +4,7 @@ import { EMBED_STEPS } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
-  const { startWith, experience, currentStep, setCurrentStep } =
+  const { experience, currentStep, setCurrentStep } =
     useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
@@ -36,15 +36,12 @@ export function useSdkIframeEmbedNavigation() {
     }
   };
 
-  const firstStepIndex = startWith
-    ? availableSteps.findIndex((step) => step.id === startWith.step)
-    : 0;
   const currentIndex = availableSteps.findIndex(
     (step) => step.id === currentStep,
   );
 
   const canGoNext = currentIndex < availableSteps.length - 1;
-  const canGoBack = currentIndex > firstStepIndex;
+  const canGoBack = currentIndex > 0;
 
   const isLastStep = currentIndex === availableSteps.length - 1;
 

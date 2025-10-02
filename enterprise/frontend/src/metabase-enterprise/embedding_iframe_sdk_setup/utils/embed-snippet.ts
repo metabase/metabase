@@ -15,7 +15,6 @@ import { getVisibleParameters } from "metabase-enterprise/embedding_iframe_sdk_s
 
 import type {
   SdkIframeDashboardEmbedSettings,
-  SdkIframeEmbedSetupEmbeddingType,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
   SdkIframeQuestionEmbedSettings,
@@ -26,12 +25,10 @@ import { filterEmptySettings } from "./filter-empty-settings";
 type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
 
 export function getEmbedSnippet({
-  embeddingType,
   settings,
   instanceUrl,
   experience,
 }: {
-  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   settings: SdkIframeEmbedSetupSettings;
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
@@ -47,26 +44,23 @@ function defineMetabaseConfig(config) {
 <script>
   defineMetabaseConfig({
     ${getMetabaseConfigSnippet({
-      embeddingType,
       settings,
       instanceUrl,
     })}
   });
 </script>
 
-${getEmbedCustomElementSnippet({ embeddingType, settings, experience })}`;
+${getEmbedCustomElementSnippet({ settings, experience })}`;
 }
 
 export function getEmbedCustomElementSnippet({
-  embeddingType,
   settings,
   experience,
 }: {
-  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
 }): string {
-  const isStaticEmbedding = embeddingType === "static";
+  const isStaticEmbedding = !!settings.isStatic;
 
   const elementName = match(experience)
     .with("dashboard", () => "metabase-dashboard")
@@ -164,15 +158,13 @@ export function transformEmbedSettingsToAttributes(
 }
 
 export function getMetabaseConfigSnippet({
-  embeddingType,
   settings,
   instanceUrl,
 }: {
-  embeddingType: SdkIframeEmbedSetupEmbeddingType;
   settings: Partial<SdkIframeEmbedSetupSettings>;
   instanceUrl: string;
 }): string {
-  const isStaticEmbedding = embeddingType === "static";
+  const isStaticEmbedding = !!settings.isStatic;
 
   const config = _.pick(
     settings,

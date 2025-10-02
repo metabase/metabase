@@ -6,8 +6,15 @@
 
 .Container {
   display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
+}
+
+.ContainerInner {
+  display: flex;
+  overflow: hidden;
+  height: 100%;
 }
 
 .ResizeHandle {

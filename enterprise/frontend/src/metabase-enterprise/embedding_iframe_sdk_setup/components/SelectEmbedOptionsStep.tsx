@@ -14,6 +14,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
+import { DEFAULT_STATIC_EMBEDDING_SETTINGS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -21,10 +22,10 @@ import { ColorCustomizationSection } from "./ColorCustomizationSection";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
-  const { embeddingType, experience, settings, updateSettings } =
+  const { experience, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
-  const isStaticEmbedding = embeddingType === "static";
+  const isStaticEmbedding = !!settings.isStatic;
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
@@ -53,7 +54,25 @@ export const SelectEmbedOptionsStep = () => {
   const isSsoEnabledAndConfigured =
     (isJwtEnabled && isJwtConfigured) || (isSamlEnabled && isSamlConfigured);
 
-  const authType = settings.useExistingUserSession ? "user-session" : "sso";
+  const authType = settings.isStatic
+    ? "no-user"
+    : settings.useExistingUserSession
+      ? "user-session"
+      : "sso";
+
+  const handleAuthTypeChange = (value: string) => {
+    const isStatic = value === "no-user";
+
+    if (isStatic) {
+      updateSettings(DEFAULT_STATIC_EMBEDDING_SETTINGS);
+      return;
+    }
+
+    updateSettings({
+      useExistingUserSession: value === "user-session",
+      isStatic: false,
+    });
+  };
 
   return (
     <Stack gap="md">
@@ -67,14 +86,7 @@ export const SelectEmbedOptionsStep = () => {
             {t`Choose the authentication method for embedding:`}
           </Text>
 
-          <Radio.Group
-            value={authType}
-            onChange={(value) =>
-              updateSettings({
-                useExistingUserSession: value === "user-session",
-              })
-            }
-          >
+          <Radio.Group value={authType} onChange={handleAuthTypeChange}>
             <Stack gap="sm">
               <Radio
                 value="user-session"
@@ -106,6 +118,32 @@ export const SelectEmbedOptionsStep = () => {
                 value="sso"
                 label={t`Single sign-on (SSO)`}
                 disabled={!isSsoEnabledAndConfigured}
+              />
+
+              <Radio
+                value="no-user"
+                label={
+                  <Flex align="center" gap="xs">
+                    {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                    <Text>{t`Without User`}</Text>
+                    <HoverCard position="bottom">
+                      <HoverCard.Target>
+                        <Icon
+                          name="info"
+                          size={14}
+                          c="text-medium"
+                          cursor="pointer"
+                        />
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown>
+                        <Text size="sm" p="md" style={{ width: 300 }}>
+                          {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                          {t`This option lets you run Embedded Analytics JS without a user authorization.`}
+                        </Text>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  </Flex>
+                }
               />
             </Stack>
           </Radio.Group>

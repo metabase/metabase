@@ -10,6 +10,7 @@ import { Group, Stack, Text } from "metabase/ui";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { useStaticEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import { getStaticEmbeddingResourceType } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-static-embedding-resource-type";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValueOrArray } from "metabase-types/api";
@@ -21,7 +22,6 @@ import { useHideParameter } from "./hooks/use-hide-parameter";
 
 export const ParameterSettings = () => {
   const {
-    embeddingType,
     experience,
     settings,
     updateSettings,
@@ -34,7 +34,7 @@ export const ParameterSettings = () => {
   const { buildEmbeddedParameters, setEmbeddingParameters } =
     useStaticEmbeddingParameters();
 
-  const isStaticEmbedding = embeddingType === "static";
+  const isStaticEmbedding = !!settings.isStatic;
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
 
@@ -115,9 +115,15 @@ export const ParameterSettings = () => {
       embeddingParams,
     );
 
+    const resourceType = getStaticEmbeddingResourceType(settings);
+
+    if (!resourceType) {
+      return null;
+    }
+
     return (
       <ParametersSettings
-        resourceType={settings.dashboardId ? "dashboard" : "question"}
+        resourceType={resourceType}
         resourceParameters={availableParameters}
         embeddingParams={embeddingParams}
         lockedParameters={lockedParameters}
