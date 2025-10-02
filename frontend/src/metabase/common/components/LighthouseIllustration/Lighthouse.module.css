@@ -20,5 +20,5 @@
 }
 
 .LighthouseThumbnail {
-  scale: 4;
+  transform: scale(4);
 }
