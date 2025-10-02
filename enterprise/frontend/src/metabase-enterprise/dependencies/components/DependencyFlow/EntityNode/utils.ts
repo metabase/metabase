@@ -3,8 +3,6 @@ import type { DependencyNode } from "metabase-types/api";
 
 export function getNodeIcon(node: DependencyNode): IconName {
   switch (node.type) {
-    case "table":
-      return "table";
     case "card":
       switch (node.data.type) {
         case "question":
@@ -15,6 +13,8 @@ export function getNodeIcon(node: DependencyNode): IconName {
           return "metric";
       }
       break;
+    case "table":
+      return "table";
     case "snippet":
       return "snippet";
     case "transform":

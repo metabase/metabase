@@ -1,71 +1,74 @@
 import {
   Background,
   Controls,
-  Panel,
   ReactFlow,
+  useEdgesState,
+  useNodesInitialized,
+  useNodesState,
   useReactFlow,
 } from "@xyflow/react";
 import { useLayoutEffect } from "react";
 
-import { skipToken } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntityType, DependencyGraph } from "metabase-types/api";
+import type { DependencyGraph } from "metabase-types/api";
 
 import { EntityNode } from "./EntityNode";
-import { SearchPanel } from "./SearchPanel";
-import { getGraphInfo } from "./utils";
+import { getEdges, getNodes, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
   entity: EntityNode,
 };
 
-type DependencyFlowParams = {
-  id: string;
-  type: DependencyEntityType;
+const GRAPH: DependencyGraph = {
+  nodes: [
+    { id: 1, type: "table", data: { display_name: "Orders" } },
+    { id: 1, type: "card", data: { name: "Count of Orders", type: "model" } },
+  ],
+  edges: [
+    {
+      from_entity_id: 1,
+      from_entity_type: "card",
+      to_entity_id: 1,
+      to_entity_type: "table",
+    },
+  ],
 };
 
-type DependencyFlowProps = {
-  params: DependencyFlowParams;
-};
-
-export function DependencyFlow({ params }: DependencyFlowProps) {
-  const id = Urls.extractEntityId(params.id)!;
-  const type = params.type;
-  const { data: graph = { nodes: [], edges: [] } } = useGetDependencyGraphQuery(
-    id ? { id, type } : skipToken,
+export function DependencyFlow() {
+  const [nodes, _setNodes, onNodesChange] = useNodesState(
+    getNodes(GRAPH.nodes),
   );
-  const { nodes, edges } = getGraphInfo(graph, id, type);
+  const [edges, _setEdges, onEdgesChange] = useEdgesState(
+    getEdges(GRAPH.edges),
+  );
 
   return (
     <ReactFlow
       nodes={nodes}
       edges={edges}
       nodeTypes={NODE_TYPES}
-      minZoom={0.001}
-      defaultEdgeOptions={{ type: "smoothstep" }}
       fitView
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
     >
       <Background />
       <Controls />
-      <Panel position="top-left">
-        <SearchPanel />
-      </Panel>
-      <FitView graph={graph} />
+      <NodeLayout />
     </ReactFlow>
   );
 }
 
-type FitViewProps = {
-  graph: DependencyGraph;
-};
-
-function FitView({ graph }: FitViewProps) {
-  const { fitView } = useReactFlow();
+function NodeLayout() {
+  const { getNodes, getEdges, setNodes } = useReactFlow();
+  const isInitialized = useNodesInitialized();
 
   useLayoutEffect(() => {
-    fitView();
-  }, [graph, fitView]);
+    if (isInitialized) {
+      const nodes = getNodes();
+      const edges = getEdges();
+      const nodesWithPositions = getNodesWithPositions(nodes, edges);
+      setNodes(nodesWithPositions);
+    }
+  }, [isInitialized, getNodes, getEdges, setNodes]);
 
   return null;
 }

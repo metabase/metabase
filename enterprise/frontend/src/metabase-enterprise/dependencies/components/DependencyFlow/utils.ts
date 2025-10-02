@@ -1,43 +1,33 @@
 import dagre from "@dagrejs/dagre";
-import type { Edge } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type {
   DependencyEdge,
   DependencyEntityId,
   DependencyEntityType,
-  DependencyGraph,
   DependencyNode,
 } from "metabase-types/api";
 
 import S from "./DependencyFlow.module.css";
-import { NODE_HEIGHT, NODE_WIDTH } from "./constants";
-import type { EntityNode, GraphInfo, GraphNode, NodeId } from "./types";
 
-export function getNodeId(
-  id: DependencyEntityId,
-  type: DependencyEntityType,
-): NodeId {
+function getNodeId(id: DependencyEntityId, type: DependencyEntityType) {
   return `${type}-${id}`;
 }
 
-function getEntityNodes(
-  nodes: DependencyNode[],
-  selectedId?: DependencyEntityId,
-  selectedType?: DependencyEntityType,
-): EntityNode[] {
+export function getNodes(nodes: DependencyNode[]): Node[] {
   return nodes.map((node) => ({
     id: getNodeId(node.id, node.type),
     className: S.node,
     type: "entity",
     data: node,
     position: { x: 0, y: 0 },
-    selected: node.id === selectedId && node.type === selectedType,
     connectable: false,
     draggable: false,
+    deletable: false,
   }));
 }
 
-function getEntityEdges(edges: DependencyEdge[]): Edge[] {
+export function getEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
     const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
     const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
@@ -47,17 +37,21 @@ function getEntityEdges(edges: DependencyEdge[]): Edge[] {
       data: edge,
       source: sourceId,
       target: targetId,
+      deletable: false,
     };
   });
 }
 
-function getNodesWithPositions(nodes: GraphNode[], edges: Edge[]): GraphNode[] {
+export function getNodesWithPositions(nodes: Node[], edges: Edge[]): Node[] {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({ rankdir: "LR" });
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT });
+    dagreGraph.setNode(node.id, {
+      width: node.measured?.width,
+      height: node.measured?.height,
+    });
   });
 
   edges.forEach((edge) => {
@@ -76,18 +70,4 @@ function getNodesWithPositions(nodes: GraphNode[], edges: Edge[]): GraphNode[] {
       },
     };
   });
-}
-
-export function getGraphInfo(
-  graph: DependencyGraph,
-  selectedId?: DependencyEntityId,
-  selectedType?: DependencyEntityType,
-): GraphInfo {
-  const entityNodes = getEntityNodes(graph.nodes, selectedId, selectedType);
-  const entityEdges = getEntityEdges(graph.edges);
-
-  return {
-    nodes: getNodesWithPositions(entityNodes, entityEdges),
-    edges: entityEdges,
-  };
 }

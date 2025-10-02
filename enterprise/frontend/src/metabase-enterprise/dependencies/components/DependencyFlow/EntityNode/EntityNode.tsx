@@ -1,6 +1,6 @@
 import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
 
-import { FixedSizeIcon } from "metabase/ui";
+import { FixedSizeIcon, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "./utils";
@@ -15,8 +15,12 @@ export function EntityNode({
 }: EntityNodeProps) {
   return (
     <>
-      <FixedSizeIcon name={getNodeIcon(data)} c="brand" />
-      {getNodeLabel(data)}
+      <Stack gap="sm">
+        <Group gap="sm">
+          <FixedSizeIcon name={getNodeIcon(data)} c="brand" />
+          {getNodeLabel(data)}
+        </Group>
+      </Stack>
       <Handle
         type="source"
         position={sourcePosition}
