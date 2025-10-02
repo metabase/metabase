@@ -81,13 +81,6 @@
      (let [rff (or rff qp.reducible/default-rff)]
        (process-query* query rff)))))
 
-(mu/defn compile-query-with-metadata-provider
-  "Compiles a given query with the provided metadata provider."
-  [metadata-providerable :- :metabase.lib.schema.metadata/metadata-providerable
-   query                 :- ::qp.schema/any-query]
-  (-> (lib/query metadata-providerable query)
-      qp.compile/compile))
-
 (mu/defn userland-query :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
   behavior:

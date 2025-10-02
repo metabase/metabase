@@ -113,8 +113,8 @@
           ;; at the last stage can be filtered on the summary results. We know
           ;; this happened if we get a reference to one above the last stage.
           filter-stage-added?     (and explicit-stage-numbers?
-                                   (= (inc (last-stage-number dataset-query))
-                                      (apply max stage-numbers)))
+                                       (= (inc (last-stage-number dataset-query))
+                                          (apply max stage-numbers)))
           query                   (cond-> dataset-query
                                     (and explicit-stage-numbers?
                                          (or
@@ -125,13 +125,13 @@
                                     lib/append-stage)
           query                   (-> query
                     ;; don't want default constraints overridding anything that's already there
-                    (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                    (m/assoc-some :constraints (not-empty constraints)
-                                  :parameters  (not-empty (cond-> parameters
-                                                            filter-stage-added? add-stage-to-temporal-unit-parameters))
-                                  :middleware  (not-empty middleware)))
+                                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                                      (m/assoc-some :constraints (not-empty constraints)
+                                                    :parameters  (not-empty (cond-> parameters
+                                                                              filter-stage-added? add-stage-to-temporal-unit-parameters))
+                                                    :middleware  (not-empty middleware)))
           cs                      (-> (cache-strategy card (:dashboard-id ids))
-                    (enrich-strategy query))]
+                                      (enrich-strategy query))]
       (-> query
           (assoc :cache-strategy cs)
           (->> (lib/normalize ::lib.schema/query))))))

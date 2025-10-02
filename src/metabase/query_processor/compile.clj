@@ -38,17 +38,10 @@
     ;; into the existing query. Otherwise we should include this.
     [:qp/compiled-inline {:optional true} ::compiled-with-inlined-parameters]]])
 
-(defn- native-only?
-  "Whether the query is native-only and thus does not need further compiling; true if the only stage is native. Native
-  stages can only be the first stage, so if the last stage is native it means we have only one stage and this query is
-  native-only."
-  [query]
-  (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
-
 (mu/defn- compile* :- ::compiled
   [query :- ::lib.schema/query]
   (assert (not (:qp/compiled query)) "This query has already been compiled!")
-  (if (native-only? query)
+  (if (lib/native-only-query? query)
     (set/rename-keys (lib/query-stage query -1) {:native :query})
     (driver/mbql->native driver/*driver* (lib/->legacy-MBQL query))))
 

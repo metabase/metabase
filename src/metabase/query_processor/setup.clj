@@ -28,7 +28,7 @@
       (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
                       {:query query, :type qp.error-type/invalid-query}))))
 
-(mu/defn- source-card-id-for-pmbql-query :- [:maybe ::lib.schema.id/card]
+(mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
   [query :- ::qp.schema/any-query]
   (-> query :stages first :source-card))
 
@@ -89,7 +89,7 @@
   [query :- ::qp.schema/any-query]
   (case (query-type query)
     :mbql/query
-    (source-card-id-for-pmbql-query query)
+    (source-card-id-for-mbql5-query query)
 
     (:query :native)
     (source-card-id-for-legacy-query query)

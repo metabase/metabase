@@ -11,9 +11,12 @@
 
   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information
   about that Field, but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient
-  than fetching those Fields potentially dozens of times in a single query execution."
+  than fetching those Fields potentially dozens of times in a single query execution.
+
+  THE QP STORE IS DEPRECATED! It's only needed for legacy queries, and we're moving to an MBQL 5 world. Don't use it
+  in new code going forward."
   ;; This whole namespace is in the process of deprecation so ignore deprecated vars in this namespace.
-  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}, :deprecated "0.57.0"}
   (:require
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]

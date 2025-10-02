@@ -7,9 +7,11 @@
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.graph.core :as graph]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -39,27 +41,15 @@
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
      (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
-(defmulti check-query-inner
-  "Given a `MetadataProvider` and a lib query, find any bad refs in that query."
-  {:arglists '([metadata-provider driver query])}
-  (fn [_mp _driver query]
-    (-> (lib/query-stage query 0)
-        :lib/type)))
+(mu/defn- check-query
+  "Find any bad refs in a `query`."
+  [driver :- :keyword
+   query  :- ::lib.schema/query]
+  (if (lib/any-native-stage? query)
+    (deps.native/validate-native-query driver query)
+    (lib/find-bad-refs query)))
 
-(defmethod check-query-inner :mbql.stage/mbql
-  [_mp _driver query]
-  (lib/find-bad-refs query))
-
-(defmethod check-query-inner :mbql.stage/native
-  [mp driver query]
-  (deps.native/validate-native-query driver mp query))
-
-(defn- check-query
-  "Given a `MetadataProvider` and a query, find any bad refs in that query."
-  [mp driver query]
-  (check-query-inner mp driver (lib/query mp query)))
-
-(defmulti check-entity
+(defmulti ^:private check-entity
   "Given a `MetadataProvider`, and entity type, and an entity id, find any bad refs in that entity."
   {:arglists '([metadata-provider entity-type entity-id])}
   (fn [_mp entity-type _entity-id]
@@ -69,18 +59,22 @@
   [_mp _entity-type _entity-id]
   nil)
 
+;; TODO (Cam 10/2/25) -- we already have keywords for these things, `:model/Card` and `:model/Transform`, we should
+;; use those for consistency and discoverability.
 (defmethod check-entity :card
-  [mp _entity-type entity-id]
-  (let [query (:dataset-query (lib.metadata/card mp entity-id))
-        driver (:engine (lib.metadata/database mp))]
-    (check-query mp driver query)))
+  [mp _entity-type card-id]
+  (let [query  (-> (:dataset-query (lib.metadata/card mp card-id))
+                   (assoc :lib/metadata mp))
+        driver (:engine (lib.metadata/database query))]
+    (check-query driver query)))
 
 (defmethod check-entity :transform
   [mp _entity-type entity-id]
   (let [{{target-schema :schema target-name :name} :target
-         {:keys [query]} :source
+         {query :query} :source
          :as _transform} (lib.metadata/transform mp entity-id)
         driver (:engine (lib.metadata/database mp))
+        query (assoc query :lib/metadata mp)
         output-table (some #(when (and (= (:schema %) target-schema)
                                        (= (:name %) target-name))
                               %)
@@ -95,7 +89,7 @@
                                                 :duplicate-fields duplicate-fields}))
                                            {:seen #{}}
                                            output-fields)]
-    (into duplicate-fields (check-query mp driver query))))
+    (into duplicate-fields (check-query driver query))))
 
 (mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
@@ -156,7 +150,7 @@
    (let [all-deps (deps.graph/transitive-dependents edits)
          by-db    (group-by-db all-deps)]
      (reduce (fn [errors [db-id deps]]
-               (-> (lib-be.metadata.jvm/application-database-metadata-provider db-id)
+               (-> (lib-be/application-database-metadata-provider db-id)
                    (metadata-provider edits :dependents deps)
                    check-query-soundness
                    (merge errors)))
@@ -176,9 +170,10 @@
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
   ;; This should work on any fresh-ish Metabase instance; these are the built-in example questions.
-  (let [base-mp (lib-be.metadata.jvm/application-database-metadata-provider 39)
+  (let [base-mp (lib-be/application-database-metadata-provider 39)
         transform (lib.metadata/transform base-mp 1)
         transform (-> transform
+                      ;; NOTE: NO RAW MANIPULATION OUTSIDE OF LIB! DO NOT EVER DO THIS PLEASE <3
                       (update-in [:source :query :query :expressions]
                                  ;; Replacing the expression Age with Duration - this breaks downstream uses!
                                  update-keys (constantly "Fair Die"))
@@ -201,5 +196,5 @@
   (metabase.premium-features.core/token-features)
 
   (let [card (t2/select-one :model/Card :id 121)
-        mp   (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))]
+        mp   (lib-be/application-database-metadata-provider (:database_id card))]
     (upstream-deps:card mp card)))

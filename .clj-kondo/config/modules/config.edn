@@ -663,8 +663,7 @@
   lib-be
   {:team "Querying"
    :api  #{metabase.lib-be.core
-           metabase.lib-be.init
-           metabase.lib-be.metadata.jvm}
+           metabase.lib-be.init}
    :uses #{lib
            models
            settings

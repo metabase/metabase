@@ -116,7 +116,9 @@
  lib.util.match/replace
  lib.util/truncate-alias
  lib/->legacy-MBQL
+ lib/->metadata-provider
  lib/query-from-legacy-inner-query
+ lib/raw-native-query
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?

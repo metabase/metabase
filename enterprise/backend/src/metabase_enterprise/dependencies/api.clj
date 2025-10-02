@@ -19,11 +19,11 @@
    [toucan2.core :as t2]))
 
 (mr/def ::card-body
-  [:map
-   [:id              {:optional false} ms/PositiveInt]
-   [:dataset_query   {:optional true}  [:maybe ms/Map]]
-   [:type            {:optional true}  [:maybe ::queries.schema/card-type]]
-   [:result_metadata {:optional true}  [:maybe analyze/ResultsMetadata]]])
+  [:merge
+   ::queries.schema/card
+   ;; TODO (Cam 10/1/25) -- merge this into `::queries.schema/card` itself
+   [:map
+    [:result_metadata {:optional true} [:maybe analyze/ResultsMetadata]]]])
 
 (defn- broken-cards-response
   [{:keys [card transform]}]

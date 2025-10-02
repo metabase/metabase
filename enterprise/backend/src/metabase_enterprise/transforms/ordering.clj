@@ -11,11 +11,13 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(defn- transform-deps [transform]
+(mu/defn- transform-deps :- ::driver/native-query-deps
+  [transform]
   (if (transforms.util/python-transform? transform)
     ;; Python transforms have dependencies via source-tables mapping
     (into #{}
@@ -24,21 +26,16 @@
     ;; Query transforms have dependencies via SQL query analysis
     (let [query (-> (get-in transform [:source :query])
                     transforms.util/massage-sql-query
-                    qp.preprocess/preprocess
-                    ;; legacy usage -- don't do things like this going forward
-                    #_{:clj-kondo/ignore [:discouraged-var]}
-                    lib/->legacy-MBQL)]
-      (case (:type query)
-        :native (driver/native-query-deps (-> (qp.store/metadata-provider)
-                                              lib.metadata/database
-                                              :engine)
-                                          (get-in query [:native :query]))
-        :query (into #{}
-                     (keep #(clojure.core.match/match %
-                              [:source-table source] (when (int? source)
-                                                       {:table source})
-                              _ nil))
-                     (tree-seq coll? seq query))))))
+                    qp.preprocess/preprocess)
+          driver (-> query
+                     lib.metadata/database
+                     :engine)]
+      (if (lib/native-only-query? query)
+        (driver/native-query-deps driver query)
+        (into #{}
+              (map (fn [table-id]
+                     {:table table-id}))
+              (lib/all-source-table-ids query))))))
 
 (defn- dependency-map [transforms]
   (into {}

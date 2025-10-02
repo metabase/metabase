@@ -3,6 +3,8 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
+   ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
+   ;; Driver API namespace?
    [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -173,26 +175,25 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
-(defmethod driver/native-query-deps :sql
-  ([driver query]
-   (driver/native-query-deps driver query
-                             (driver-api/metadata-provider)))
-  ([driver query metadata-provider]
-   (let [db-tables (driver-api/tables metadata-provider)
-         db-transforms (driver-api/transforms metadata-provider)]
-     (->> query
-          macaw/parsed-query
-          macaw/query->components
-          :tables
-          (map :component)
-          (into #{} (keep #(->> (normalize-table-spec driver %)
-                                (find-table-or-transform driver db-tables db-transforms))))))))
+(mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables (driver-api/tables query)
+        db-transforms (driver-api/transforms query)]
+    (->> query
+         driver-api/raw-native-query
+         macaw/parsed-query
+         macaw/query->components
+         :tables
+         (map :component)
+         (into #{} (keep #(->> (normalize-table-spec driver %)
+                               (find-table-or-transform driver db-tables db-transforms)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti resolve-field
+(defmulti ^:private resolve-field
   "Resolves a field reference to one or more actual database fields.
 
   This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the field
@@ -271,25 +272,31 @@
       :effective-type (apply lca :type/* (map :effective-type member-fields))
       :semantic-type (apply lca :Semantic/* (map :semantic-type member-fields))}]))
 
-(defmethod driver/native-result-metadata :sql
-  [driver metadata-provider native-query]
-  (let [{:keys [returned-fields]} (->> (macaw/parsed-query native-query)
+(mu/defmethod driver/native-result-metadata :sql
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (let [{:keys [returned-fields]} (->> native-query
+                                       driver-api/raw-native-query
+                                       macaw/parsed-query
                                        macaw/->ast
                                        (sql.references/field-references driver))]
-    (->> (mapcat (partial resolve-field driver metadata-provider) returned-fields)
+    (->> (mapcat (partial resolve-field driver native-query) returned-fields)
          (remove ::bad-reference))))
 
-(defmethod driver/validate-native-query-fields :sql
-  [driver metadata-provider native-query]
-  (let [{:keys [used-fields returned-fields bad-sql]} (->> (macaw/parsed-query native-query)
+(mu/defmethod driver/validate-native-query-fields :sql
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (let [{:keys [used-fields returned-fields bad-sql]} (->> native-query
+                                                           driver-api/raw-native-query
+                                                           macaw/parsed-query
                                                            macaw/->ast
                                                            (sql.references/field-references driver))
         check-fields #(mapcat (fn [col-spec]
-                                (->> (resolve-field driver metadata-provider col-spec)
+                                (->> (resolve-field driver (driver-api/->metadata-provider native-query) col-spec)
                                      (filter ::bad-reference)))
                               %)]
     (-> (concat (when bad-sql
-                  [{:error :bad-sql}])
+                  [{:error ::bad-sql}])
                 (check-fields used-fields)
                 (check-fields returned-fields))
         distinct)))

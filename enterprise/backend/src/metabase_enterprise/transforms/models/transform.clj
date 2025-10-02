@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -18,8 +19,19 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+(defn- transform-source-out [m]
+  (-> m
+      mi/json-out-without-keywordization
+      (update-keys keyword)
+      (m/update-existing :source lib-be/normalize-query)))
+
+(defn- transform-source-in [m]
+  (-> m
+      (m/update-existing :source (comp lib/prepare-for-serialization lib-be/normalize-query))
+      mi/json-in))
+
 (t2/deftransforms :model/Transform
-  {:source      lib-be/transform-query
+  {:source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
