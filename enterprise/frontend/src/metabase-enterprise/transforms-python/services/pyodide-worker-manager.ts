@@ -26,6 +26,27 @@ type ResultsMessage = {
 type WorkerMessage = ReadyMessage | ResultsMessage;
 
 class PyodideWorkerManager {
+  workers: PyodideWorker[];
+
+  constructor() {
+    this.workers = Array.from({ length: 5 }, () => new PyodideWorker());
+  }
+
+  private getWorker(): PyodideWorker {
+    this.workers.push(new PyodideWorker());
+    return this.workers.shift() ?? new PyodideWorker();
+  }
+
+  async executePython(
+    code: string,
+    sources: PyodideTableSource[],
+  ): Promise<any> {
+    const worker = this.getWorker();
+    return worker.executePython(code, sources);
+  }
+}
+
+class PyodideWorker {
   private worker: Worker;
   private ready: Promise<ReadyMessage>;
 
@@ -96,6 +117,8 @@ function waitFor<T extends WorkerMessage["type"]>(
 
 function getPythonScript(code: string, sources: PyodideTableSource[]) {
   return `
+${code}
+
 import pandas as pd
 import numpy as np
 import json
@@ -114,9 +137,6 @@ ${source.variable_name} = pd.DataFrame(${JSON.stringify(source.rows)})
 
 # Define a container for the result
 _transform_result = None
-
-# Execute the user's transform function
-${code}
 
 # Call the transform function
 if 'transform' in locals():
