@@ -64,12 +64,12 @@ export const getDefaultSdkIframeEmbedSettings = (
 
 export const getResourceIdFromSettings = (
   settings: SdkIframeEmbedSetupSettings,
-): string | number =>
+): string | number | undefined =>
   match(settings)
     .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
     .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
     .with({ questionId: P.nonNullable }, (s) => s.questionId)
-    .otherwise(() => "");
+    .otherwise(() => undefined);
 
 export const getExperienceFromSettings = (
   settings: SdkIframeEmbedSetupSettings,

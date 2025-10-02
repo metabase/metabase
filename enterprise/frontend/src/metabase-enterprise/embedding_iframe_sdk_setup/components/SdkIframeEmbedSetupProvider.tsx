@@ -174,7 +174,7 @@ export const SdkIframeEmbedSetupProvider = ({
     experience,
     settings,
     defaultSettings: {
-      resourceId: getResourceIdFromSettings(defaultSettings),
+      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
       experience: getExperienceFromSettings(defaultSettings),
     },
     replaceSettings,

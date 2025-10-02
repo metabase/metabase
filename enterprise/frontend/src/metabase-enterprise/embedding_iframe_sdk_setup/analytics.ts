@@ -52,7 +52,7 @@ export const trackEmbedWizardResourceSelectionCompleted = (
   currentSettings: SdkIframeEmbedSetupSettings,
   defaultResourceId: string | number,
 ) => {
-  const currentResourceId = getResourceIdFromSettings(currentSettings);
+  const currentResourceId = getResourceIdFromSettings(currentSettings) ?? "";
   const isDefault = currentResourceId === defaultResourceId;
 
   trackSimpleEvent({

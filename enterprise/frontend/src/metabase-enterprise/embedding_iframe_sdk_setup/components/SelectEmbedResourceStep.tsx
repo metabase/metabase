@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
@@ -14,6 +14,7 @@ import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../types";
+import { getResourceIdFromSettings } from "../utils/default-embed-setting";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
 import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
@@ -43,11 +44,7 @@ export const SelectEmbedResourceStep = () => {
     .with("chart", () => recentQuestions)
     .exhaustive();
 
-  const selectedItemId = match(settings)
-    .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
-    .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
-    .with({ questionId: P.nonNullable }, (s) => s.questionId)
-    .otherwise(() => undefined);
+  const selectedItemId = getResourceIdFromSettings(settings);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
