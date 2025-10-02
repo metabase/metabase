@@ -1,7 +1,14 @@
+.header {
+  border-top: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
 .logs {
   white-space: pre;
-  border: 1px solid var(--mb-color-border);
+  border-block: 1px solid var(--mb-color-border);
   font-family: var(--mb-default-monospace-font-family);
+  margin-inline: calc(-1 * var(--mantine-spacing-md));
+  overflow: auto;
 }
 
 .visualization {
@@ -15,10 +22,6 @@
   border-radius: var(--mantine-radius-md);
 }
 
-.empty {
-  border-top: 1px solid var(--mb-color-border);
-}
-
 .tableHeader {
   background-color: var(--mb-color-bg-light);
   padding: var(--mantine-spacing-sm);
@@ -27,23 +30,6 @@
 .tableCell {
   border-top: 1px solid var(--mb-color-border);
   padding: var(--mantine-spacing-sm);
-}
-
-.error {
-  color: var(--mb-color-error);
-  background-color: var(--mb-color-bg-error);
-  border-bottom: 1px solid var(--mb-color-border);
-}
-
-.info {
-  color: var(--mb-color-text-dark);
-  border: 1px solid var(--mb-color-bg-medium);
-  background-color: var(--mb-color-bg-light);
-}
-
-.success {
-  color: var(--mb-color-success);
-  border-bottom: 1px solid var(--mb-color-border);
 }
 
 .loading {
