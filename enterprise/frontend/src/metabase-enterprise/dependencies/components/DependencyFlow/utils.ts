@@ -1,5 +1,5 @@
 import dagre from "@dagrejs/dagre";
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge, HandleType, Node } from "@xyflow/react";
 
 import type {
   DependencyEdge,
@@ -21,23 +21,25 @@ function getNodeBydId(nodes: DependencyNode[]) {
   return nodeById;
 }
 
-function getSourceIdsByTargetId(edges: DependencyEdge[]) {
-  const sourceIdsByTargetId = new Map<NodeId, NodeId[]>();
+function getEdgeIdById(edges: DependencyEdge[], type: HandleType) {
+  const startIdsByEndId = new Map<NodeId, NodeId[]>();
 
   edges.forEach((edge) => {
     const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
     const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
+    const startId = type === "source" ? sourceId : targetId;
+    const endId = type === "source" ? targetId : sourceId;
 
-    let sourceIds = sourceIdsByTargetId.get(targetId);
-    if (sourceIds == null) {
-      sourceIds = [];
-      sourceIdsByTargetId.set(targetId, sourceIds);
+    let startIds = startIdsByEndId.get(endId);
+    if (startIds == null) {
+      startIds = [];
+      startIdsByEndId.set(endId, startIds);
     }
 
-    sourceIds.push(sourceId);
+    startIds.push(startId);
   });
 
-  return sourceIdsByTargetId;
+  return startIdsByEndId;
 }
 
 export function getNodes(
@@ -45,11 +47,13 @@ export function getNodes(
   edges: DependencyEdge[],
 ): Node[] {
   const nodeById = getNodeBydId(nodes);
-  const sourceIdsByTargetId = getSourceIdsByTargetId(edges);
+  const sourceIdsByTargetId = getEdgeIdById(edges, "target");
+  const targetIdsBySourceId = getEdgeIdById(edges, "source");
 
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
     const sourceIds = sourceIdsByTargetId.get(nodeId) ?? [];
+    const targetIds = targetIdsBySourceId.get(nodeId) ?? [];
 
     return {
       id: nodeId,
@@ -58,6 +62,7 @@ export function getNodes(
       data: {
         node,
         sources: sourceIds.map((nodeId) => nodeById.get(nodeId)),
+        targets: targetIds.map((nodeId) => nodeById.get(nodeId)),
       },
       position: { x: 0, y: 0 },
       connectable: false,

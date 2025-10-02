@@ -20,8 +20,8 @@ export const EntityNode = memo(function EntityNode({
   targetPosition = Position.Right,
   isConnectable,
 }: EntityNodeProps) {
-  const { node, sources } = data;
-  const groups = getNodeGroups(sources);
+  const { node, sources, targets } = data;
+  const groups = getNodeGroups(targets);
 
   return (
     <>
@@ -39,16 +39,20 @@ export const EntityNode = memo(function EntityNode({
           </Group>
         ))}
       </Stack>
-      <Handle
-        type="source"
-        position={sourcePosition}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="target"
-        position={targetPosition}
-        isConnectable={isConnectable}
-      />
+      {sources.length > 0 && (
+        <Handle
+          type="source"
+          position={sourcePosition}
+          isConnectable={isConnectable}
+        />
+      )}
+      {targets.length > 0 && (
+        <Handle
+          type="target"
+          position={targetPosition}
+          isConnectable={isConnectable}
+        />
+      )}
     </>
   );
 });

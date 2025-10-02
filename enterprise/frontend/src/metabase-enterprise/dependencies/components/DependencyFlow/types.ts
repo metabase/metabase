@@ -11,4 +11,5 @@ export type NodeType = CardType | Exclude<DependencyEntityType, "card">;
 export type NodeData = {
   node: DependencyNode;
   sources: DependencyNode[];
+  targets: DependencyNode[];
 };
