@@ -1,4 +1,13 @@
 (ns metabase-enterprise.dependencies.task.backfill
+  "Implements a task that brings all entities with dependencies tracked in the dependency table
+  (see [[metabase-enterprise.dependencies.models.dependency]]) up to date, that is, makes sure
+  the dependency table contains fresh entries.
+
+  This is done by finding entities whose dependency_analysis_version is less than
+  [[metabase-enterprise.dependencies.models.dependency/current-dependency-analysis-version]] and
+  updates this field. In most cases this triggers an event handler that calculates the dependencies
+  and populates the dependency table. For cards, the event is emitted by the job handler itself,
+  because the update of the record doesn't trigger the event handler. "
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
@@ -6,6 +15,7 @@
    [environ.core :as env]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
@@ -72,7 +82,7 @@
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
                          (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-update {:object card :user-id nil}))
+      (events/publish-event! :event/card-update {:object card :user-id config/internal-mb-user-id}))
     update-count))
 
 (defn- backfill-entity!
@@ -91,7 +101,7 @@
         terminally-broken-set ^Set (terminally-broken model-kw)
         ids (get-processable-ids model-kw batch-size)] ; Use the new get-processable-ids
     (when (seq ids)
-      (log/infof "Processing a batch of %s %ss..." (count ids) model-name))
+      (log/infof "Processing a batch of %s %s(s)..." (count ids) model-name))
     (reduce (fn [total id]
               (+ total
                  (try
@@ -127,6 +137,8 @@
                   (if (< batch-size 1)
                     (reduced 0)
                     (let [processed (backfill-entity-batch! model-kw batch-size)]
+                      (when (pos? processed)
+                        (log/info "Updated" processed "entities."))
                       (- batch-size processed))))
                 (get-batch-size)
                 entities)
