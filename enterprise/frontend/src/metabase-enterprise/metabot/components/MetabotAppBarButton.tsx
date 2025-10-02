@@ -18,14 +18,13 @@ export function MetabotAppBarButton({
 
   const handleClick = () => {
     if (!metabot.visible) {
-      // TODO: or app bar?
-      trackMetabotChatOpened("search");
+      trackMetabotChatOpened("header");
     }
 
     metabot.setVisible(!metabot.visible);
   };
 
-  const label = t`Chat with Metabot (${METAKEY}+e)`;
+  const label = t`Chat with Metabot (${METAKEY}+E)`;
 
   return (
     <Tooltip label={label}>

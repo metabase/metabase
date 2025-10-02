@@ -51,7 +51,7 @@ interface ProfileLinkProps {
 }
 
 interface MenuItem {
-  title: string;
+  title?: string;
   icon?: IconName | null;
   externalLink?: boolean;
   link?: string;
@@ -82,7 +82,7 @@ function ProfileLinkInner({
     setModalOpen(null);
   };
 
-  const generateOptionsForUser = () => {
+  const generateOptionsForUser = (): MenuItem[] => {
     const showAdminSettingsItem = adminItems?.length > 0;
 
     // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
@@ -147,7 +147,7 @@ function ProfileLinkInner({
         action: () => onLogout(),
         event: `Navbar;Profile Dropdown;Logout`,
       },
-    ].filter(Boolean) as MenuItem[];
+    ].filter((item) => !!item);
   };
 
   // show trademark if application name is not whitelabeled
@@ -189,20 +189,48 @@ function ProfileLinkInner({
                 ? ForwardRefLink
                 : "button";
 
+            const commonProps = {
+              leftSection: item.icon && <Icon name={item.icon} />,
+              onClick: () => {
+                if (item.action) {
+                  item.action();
+                }
+              },
+            };
+
+            if (component === ForwardRefLink && item.link) {
+              return (
+                <Menu.Item<typeof ForwardRefLink>
+                  key={item.title}
+                  {...commonProps}
+                  component={ForwardRefLink}
+                  to={item.link}
+                >
+                  {item.title}
+                </Menu.Item>
+              );
+            }
+
+            if (component === "a" && item.link) {
+              return (
+                <Menu.Item<"a">
+                  key={item.title}
+                  {...commonProps}
+                  component="a"
+                  href={item.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {item.title}
+                </Menu.Item>
+              );
+            }
+
             return (
-              <Menu.Item<typeof component>
+              <Menu.Item<"button">
                 key={item.title}
-                leftSection={item.icon && <Icon name={item.icon} />}
-                onClick={() => {
-                  if (item.action) {
-                    item.action();
-                  }
-                }}
-                component={component}
-                href={item.link}
-                to={item.link || ""}
-                target={item.externalLink ? "_blank" : undefined}
-                rel={item.externalLink ? "noopener noreferrer" : undefined}
+                {...commonProps}
+                component="button"
               >
                 {item.title}
               </Menu.Item>

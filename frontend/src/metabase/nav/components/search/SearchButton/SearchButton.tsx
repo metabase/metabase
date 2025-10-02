@@ -37,10 +37,8 @@ export const SearchButton = (props: ButtonProps) => {
       c="var(--mb-color-text-light)"
       leftSection={<Icon name="search" c="var(--mb-color-text-primary)" />}
       onClick={handleClick}
-      // TODO: Adjust this with Mantine V7
       styles={{
         inner: {
-          justifyContent: "start",
           width: "100%",
         },
         label: {

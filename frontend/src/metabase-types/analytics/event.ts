@@ -395,7 +395,7 @@ export type TableEditingEvent =
 export type MetabotChatOpenedEvent = ValidateEvent<{
   event: "metabot_chat_opened";
   triggered_from:
-    | "search"
+    | "header"
     | "command_palette"
     | "keyboard_shortcut"
     | "native_editor";
