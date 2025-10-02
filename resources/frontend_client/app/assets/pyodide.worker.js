@@ -11,7 +11,7 @@ async function run() {
     const { type, data } = event.data;
 
     if (type === "execute") {
-      const result = await execute(pyodide, data.code, data.context);
+      const result = await execute(pyodide, data.code);
       self.postMessage({ type: "results", ...result });
       return;
     }
@@ -34,14 +34,7 @@ async function init() {
   });
 }
 
-async function execute(pyodide, code, context = {}) {
-  pyodide.globals.clear();
-
-  // Set up context variables
-  for (const [key, value] of Object.entries(context)) {
-    pyodide.globals.set(key, value);
-  }
-
+async function execute(pyodide, code) {
   let stdout = "";
   pyodide.setStdout({
     batched(out) {
