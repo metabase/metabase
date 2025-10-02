@@ -243,12 +243,13 @@
   and move on for now."
   [driver   :- :keyword
    feature  :- :keyword
-   database :- [:or
-                ;; this can get called with an incomplete object in post-select
-                [:map
-                 [:lib/type [:= :metadata/database]]]
-                (ms/InstanceOf :model/Database)]]
-  (let [database (ensure-lib-database database)
+   database :- [:maybe
+                [:or
+                 ;; this can get called with an incomplete object in post-select
+                 [:map
+                  [:lib/type [:= :metadata/database]]]
+                 (ms/InstanceOf :model/Database)]]]
+  (let [database (some-> database ensure-lib-database)
         f        (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
 

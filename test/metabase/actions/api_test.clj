@@ -59,7 +59,7 @@
    [:creator_id             ms/PositiveInt]
    [:creator                DefaultUser]])
 
-(defn all-actions-default
+(defn- all-actions-default
   [card-id]
   [{:name            "Get example"
     :description     "A dummy HTTP action"
@@ -76,12 +76,13 @@
     :model_id      card-id
     :dataset_query (lib/native-query (mt/metadata-provider) "update users set name = 'foo' where id = {{x}}")
     :database_id   (t2/select-one-fn :database_id :model/Card :id card-id)
-    :parameters    [{:id "x" :type "type/biginteger"}]}
+    :parameters    [{:id "x" :type "number"}]}
    {:name       "Implicit example"
     :type       "implicit"
     :model_id   card-id
     :kind       "row/create"
-    :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
+    :parameters [{:id "nonexistent" :special "shouldbeignored", :type "number"}
+                 {:id "id" :special "hello", :type "number"}]}])
 
 (deftest list-actions-test
   (search/reset-tracking!)
@@ -267,7 +268,7 @@
                                            (assoc :database_id (mt/id)
                                                   :parameters (if (= "row/create" (:kind initial-action))
                                                                 []
-                                                                [{:id "id" :type "type/BigInteger" :special "hello"}])))
+                                                                [{:id "id" :type "number" :special "hello"}])))
                                          (m/update-existing :dataset_query (letfn [(update-template-tags [template-tags]
                                                                                      (update-vals template-tags #(dissoc % :id)))
                                                                                    (update-stage [stage]
@@ -368,7 +369,6 @@
                                    "num_parameters" (count parameters)
                                    "type"           type}}
                         (last (snowplow-test/pop-event-data-and-user-id!)))))
-
               (testing (format "update an action of type %s" type)
                 (let [updated-action (mt/user-http-request :crowberto :put 200 (str "action/" (:id new-action)) {:name "new name"})]
                   (is (=? {:user-id (str (mt/user->id :crowberto))
@@ -376,7 +376,6 @@
                                      "event"          "action_updated"
                                      "type"           type}}
                           (last (snowplow-test/pop-event-data-and-user-id!))))))
-
               (testing (format "delete an action of type %s" type)
                 (mt/user-http-request :crowberto :delete 204 (str "action/" (:id new-action)))
                 (is (=? {:user-id (str (mt/user->id :crowberto))

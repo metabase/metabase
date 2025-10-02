@@ -23,11 +23,11 @@
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
-      (m/update-existing :source lib-be/normalize-query)))
+      (m/update-existing :query lib-be/normalize-query)))
 
 (defn- transform-source-in [m]
   (-> m
-      (m/update-existing :source (comp lib/prepare-for-serialization lib-be/normalize-query))
+      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
 (t2/deftransforms :model/Transform

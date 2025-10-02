@@ -27,6 +27,7 @@
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
@@ -106,7 +107,7 @@
     (let [stage-numbers           (explict-stage-references parameters)
           explicit-stage-numbers? (boolean (seq stage-numbers))
           parameters              (cond-> parameters
-                       ;; models are not transparent (questions and metrics are)
+                                    ;; models are not transparent (questions and metrics are)
                                     (and explicit-stage-numbers? (= card-type :model))
                                     point-parameters-to-last-stage)
           ;; The FE might have "added" a stage so that a question with breakouts
@@ -124,7 +125,7 @@
                                           filter-stage-added?))
                                     lib/append-stage)
           query                   (-> query
-                    ;; don't want default constraints overridding anything that's already there
+                                      ;; don't want default constraints overridding anything that's already there
                                       (m/dissoc-in [:middleware :add-default-userland-constraints?])
                                       (m/assoc-some :constraints (not-empty constraints)
                                                     :parameters  (not-empty (cond-> parameters

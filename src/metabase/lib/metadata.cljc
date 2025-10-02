@@ -122,8 +122,9 @@
       (field metadata-providerable remap-field-id))))
 
 (defn- normalize-query [query metadata-providerable]
-  (if (and (:lib/type query)
-           (lib.metadata.protocols/metadata-provider? (:lib/metadata query)))
+  (if (or (and (:lib/type query)
+               (lib.metadata.protocols/metadata-provider? (:lib/metadata query)))
+          (empty? query))
     query
     ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
      metadata-providerable

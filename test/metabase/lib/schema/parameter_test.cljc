@@ -75,3 +75,8 @@
   (is (= [:variable [:template-tag "x"]]
          (lib/normalize ::lib.schema.parameter/target ["template-tag" :x])
          (lib/normalize ::lib.schema.parameter/target [:template-tag "x"]))))
+
+(deftest ^:parallel decode-busted-param-type-test
+  (is (= :text
+         (lib/normalize ::lib.schema.parameter/type "type/Text")
+         (lib/normalize ::lib.schema.parameter/type :type/Text))))

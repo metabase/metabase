@@ -162,11 +162,9 @@
                                      (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (when-not (premium-features/enable-cache-granular-controls?)
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))
-
   (doseq [db-id database] (api/write-check :model/Database db-id))
   (doseq [dashboard-id dashboard] (api/write-check :model/Dashboard dashboard-id))
   (doseq [question-id question] (api/write-check :model/Card question-id))
-
   (let [cnt (cache-config/invalidate! {:databases       database
                                        :dashboards      dashboard
                                        :questions       question
