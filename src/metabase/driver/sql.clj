@@ -130,7 +130,6 @@
                                    (- driver.impl/default-alias-max-length-bytes (count suffix)))
        suffix))
 
-;; TODO(rileythomp, 2025-09-09): This probably doesn't need to be a driver multi-method
 (defmethod driver/run-transform! [:sql :table]
   [driver {:keys [db-id query target conn-spec] :as _transform-details}]
   (let [db (driver-api/with-metadata-provider db-id (driver-api/database (driver-api/metadata-provider)))
