@@ -10,6 +10,10 @@ export type PyodideTableSource = {
   rows: Record<string, RowValue>[];
 };
 
+type ExecutePythonOptions = {
+  signal?: AbortSignal;
+};
+
 export type PythonExecutionResult = {
   columns: string[];
   data: Record<string, RowValue>[];
@@ -40,9 +44,10 @@ class PyodideWorkerManager {
   async executePython(
     code: string,
     sources: PyodideTableSource[],
+    options?: ExecutePythonOptions,
   ): Promise<any> {
     const worker = this.getWorker();
-    return worker.executePython(code, sources);
+    return worker.executePython(code, sources, options);
   }
 }
 
@@ -58,7 +63,12 @@ class PyodideWorker {
   async executePython(
     code: string,
     sources: PyodideTableSource[],
+    options?: ExecutePythonOptions,
   ): Promise<any> {
+    options?.signal?.addEventListener("abort", () => {
+      this.worker.terminate();
+    });
+
     try {
       await this.ready;
 
