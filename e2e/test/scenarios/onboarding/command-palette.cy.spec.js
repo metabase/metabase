@@ -62,7 +62,7 @@ describe("command palette", () => {
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.visit("/");
 
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
     H.commandPalette().should("be.visible");
     cy.findByRole("option", { name: "Orders in a dashboard" }).should(
       "have.attr",
@@ -77,12 +77,12 @@ describe("command palette", () => {
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist");
 
-      cy.log("limit to 5 basic actions");
-      cy.findByText("New question");
-      cy.findByText("New SQL query");
-      cy.findByText("New dashboard");
-      cy.findByText("New collection");
-      cy.findByText("New model");
+      cy.log("does not show actions if there is no search query");
+      cy.findByText("New question").should("not.exist");
+      cy.findByText("New SQL query").should("not.exist");
+      cy.findByText("New dashboard").should("not.exist");
+      cy.findByText("New collection").should("not.exist");
+      cy.findByText("New model").should("not.exist");
       cy.findByText("New metric").should("not.exist");
 
       cy.log("Should show recent items");
@@ -144,16 +144,30 @@ describe("command palette", () => {
       .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
-    H.pressPageDown();
+    H.commandPaletteInput().type("New");
+    H.commandPalette()
+      .findByText(/loading/i)
+      .should("not.exist");
+    H.commandPalette().findByText("No results for “New”").should("be.visible");
 
     H.commandPalette()
-      .findByRole("option", { name: "New dashboard" })
+      .findByRole("option", { name: "New question" })
+      .should("have.attr", "aria-selected", "true");
+
+    cy.wait(100); // pressing page down too fast does nothing
+    H.pressPageDown();
+    H.commandPalette()
+      .findByRole("option", { name: "New metric" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
-
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: 'Search documentation for "New"' })
+      .should("have.attr", "aria-selected", "true");
+
+    H.pressPageUp();
+    H.commandPalette()
+      .findByRole("option", { name: "New metric" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageUp();
@@ -162,21 +176,20 @@ describe("command palette", () => {
       .should("have.attr", "aria-selected", "true");
 
     H.pressEnd();
-
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: 'Search documentation for "New"' })
       .should("have.attr", "aria-selected", "true");
 
     H.pressHome();
     H.commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
+      .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
   });
 
   it("should display search results in the order returned by the API", () => {
     cy.visit("/");
 
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
     cy.intercept("/api/search?*").as("searchData");
 
     H.commandPalette().within(() => {
@@ -188,9 +201,9 @@ describe("command palette", () => {
         const results = response.body.data;
 
         results.forEach((result, index) => {
-          // eslint-disable-next-line no-unsafe-element-filtering
           cy.findAllByRole("option")
-            .eq(index + 2)
+            .should("have.length", 7)
+            .eq(index + 1)
             .should("contain.text", result.name);
         });
       });
@@ -368,7 +381,7 @@ describe("command palette", () => {
 
   it("Should have a new metric item", () => {
     cy.visit("/");
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Me");
@@ -380,7 +393,7 @@ describe("command palette", () => {
 
   it("should show the 'Report an issue' command palette item", () => {
     cy.visit("/");
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Issue");
@@ -395,7 +408,7 @@ describe("command palette", () => {
 
     it("should show the 'Create a new embed' command palette item", () => {
       cy.visit("/");
-      cy.findByRole("button", { name: /search/ }).click();
+      cy.findByRole("button", { name: /search/i }).click();
 
       H.commandPalette().within(() => {
         H.commandPaletteInput().should("exist").type("new embed");
@@ -405,8 +418,10 @@ describe("command palette", () => {
 
     it("should have a 'New document' item", () => {
       cy.visit("/");
-      cy.findByRole("button", { name: /search/ }).click();
+      cy.findByRole("button", { name: /search/i }).click();
+
       H.commandPalette().within(() => {
+        H.commandPaletteInput().should("be.visible").type("new document");
         cy.findByText("New document").should("be.visible").click();
         cy.location("pathname").should("eq", "/document/new");
       });
@@ -455,6 +470,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "create-new-collection",
     });
     H.openCommandPalette();
+    H.commandPaletteInput().should("be.visible").type("new dashboard");
     H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
