@@ -1,17 +1,16 @@
 import type { PropsWithChildren } from "react";
-import { jt } from "ttag";
 
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { useSelector } from "metabase/lib/redux";
-import { isEmpty } from "metabase/lib/validate";
-import { Flex, Text, Title, useMantineTheme } from "metabase/ui";
+import { Flex, Title, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
 import { TOOLTIP_ICON_SIZE } from "../constants";
 
+import { DetailCandidate } from "./DetailCandidate";
 import {
   VariationIcon,
   VariationValue,
@@ -20,8 +19,6 @@ import { Separator } from "./Separator";
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
-  width: number;
-  fontFamily: string;
   formatOptions: ColumnSettings;
 }
 
@@ -31,7 +28,6 @@ export function PreviousValueComparisonTooltip({
 }: PreviousValueComparisonProps) {
   const {
     changeType,
-    comparisonDescStr,
     comparisonValue,
     changeArrowIconName,
     changeColor,
@@ -48,42 +44,6 @@ export function PreviousValueComparisonTooltip({
       : []),
     "",
   ];
-
-  const getDetailCandidate = (
-    valueFormatted: string | number | JSX.Element | null,
-    { inTooltip }: { inTooltip?: boolean } = {},
-  ) => {
-    if (isEmpty(valueFormatted)) {
-      return comparisonDescStr;
-    }
-
-    const descColor = inTooltip
-      ? "var(--mb-color-tooltip-text-secondary)"
-      : "var(--mb-color-text-secondary)";
-
-    if (isEmpty(comparisonDescStr)) {
-      return (
-        <Text
-          key={valueFormatted as string}
-          c={descColor}
-          component="span"
-          lh={1}
-        >
-          {valueFormatted}
-        </Text>
-      );
-    }
-
-    return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" c={descColor} component="span" lh={1}>
-        {valueFormatted}
-      </Text>
-    )}`;
-  };
-
-  const tooltipFullDetailDisplay = getDetailCandidate(valueCandidates[0], {
-    inTooltip: true,
-  });
 
   const VariationPercent = ({
     inTooltip,
@@ -130,7 +90,13 @@ export function PreviousValueComparisonTooltip({
       <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
         {display.percentChange}
       </VariationPercent>
-      <VariationDetails inTooltip>{tooltipFullDetailDisplay}</VariationDetails>
+      <VariationDetails inTooltip>
+        <DetailCandidate
+          comparison={comparison}
+          inTooltip
+          valueFormatted={valueCandidates[0]}
+        />
+      </VariationDetails>
     </Flex>
   );
 }
