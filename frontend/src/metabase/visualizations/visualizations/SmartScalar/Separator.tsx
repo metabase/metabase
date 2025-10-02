@@ -21,6 +21,7 @@ export const Separator = ({ inTooltip }: Props) => {
       mx="0.2rem"
       style={{ transform: "scale(0.7)" }}
       c={separatorColor}
+      lh={1}
       component="span"
     >
       {" • "}

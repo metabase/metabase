@@ -100,14 +100,19 @@ export function PreviousValueComparison({
 
     if (isEmpty(comparisonDescStr)) {
       return (
-        <Text key={valueFormatted as string} c={descColor} component="span">
+        <Text
+          key={valueFormatted as string}
+          c={descColor}
+          component="span"
+          lh={1}
+        >
           {valueFormatted}
         </Text>
       );
     }
 
     return jt`${comparisonDescStr}: ${(
-      <Text key="value-str" c={descColor} component="span">
+      <Text key="value-str" c={descColor} component="span" lh={1}>
         {valueFormatted}
       </Text>
     )}`;
