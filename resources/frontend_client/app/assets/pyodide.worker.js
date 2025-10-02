@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-const PACKAGES = ["micropip", "numpy", "pandas"];
+const PACKAGES = ["numpy", "pandas"];
 
 run();
 
