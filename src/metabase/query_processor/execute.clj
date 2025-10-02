@@ -1,6 +1,5 @@
 (ns metabase.query-processor.execute
   (:require
-   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]

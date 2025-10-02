@@ -30,7 +30,7 @@
            (into #{}
                  (map :table_name (t2/query view-query))))))))
 
-(deftest naudit-db-basic-query-test
+(deftest audit-db-basic-query-test
   (audit-test/with-audit-db-restoration!
     (mt/with-premium-features #{:audit-app}
       (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id audit/audit-db-id))

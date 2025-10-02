@@ -8,9 +8,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib-be.core :as lib-be]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
@@ -21,7 +19,8 @@
    [metabase.test.util :as tu]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.random :as u.random]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -246,7 +245,7 @@
 
 (defn do-with-actions! [model-def f]
   (initialize/initialize-if-needed! :web-server)
-  (mt/with-temp [:model/Card model model-def]
+  (t2.with-temp/with-temp [:model/Card model model-def]
     (tu/with-model-cleanup [:model/Action]
       (f model))))
 
@@ -285,7 +284,7 @@
           bindings
           (list*
            '_
-           {:type :model, :dataset_query (mt/mbql-query categories)}
+           {:type :model, :dataset_query '(metabase.test/mbql-query categories)}
            bindings))]
     `(do-with-actions!
       ~model-def

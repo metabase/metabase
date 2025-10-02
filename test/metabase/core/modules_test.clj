@@ -6,8 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [dev.deps-graph]
-   [lambdaisland.deep-diff2 :as ddiff]
-   [metabase.util :as u]
    [metabase.util.json :as json]
    [rewrite-clj.node :as n]
    [rewrite-clj.parser :as r.parser]

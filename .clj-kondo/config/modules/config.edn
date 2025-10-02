@@ -338,6 +338,7 @@
            driver
            eid-translation
            events
+           lib
            lib-be
            models
            notification

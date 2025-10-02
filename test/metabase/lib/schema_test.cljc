@@ -358,7 +358,7 @@
                         :lib/stage-metadata nil
                         :native             "update users set name = 'foo' where id = {{x}}"})}))))
 
-(deftest ^:paralell lib-type-sorted-map-test
+(deftest ^:parallel lib-type-sorted-map-test
   (doseq [m [(sorted-map :a 1)
              (sorted-map "a" 1)]]
     (is (nil? (#'lib.schema/lib-type m)))))
