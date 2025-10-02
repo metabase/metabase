@@ -29,16 +29,18 @@ type ResultsMessage = {
 
 type WorkerMessage = ReadyMessage | ResultsMessage;
 
-class PyodideWorkerManager {
+export class PyodideWorkerManager {
   workers: PyodideWorker[];
+  packages: string[];
 
-  constructor() {
-    this.workers = Array.from({ length: 5 }, () => new PyodideWorker());
+  constructor(packages: string[] = []) {
+    this.packages = packages;
+    this.workers = Array.from({ length: 5 }, () => new PyodideWorker(packages));
   }
 
   private getWorker(): PyodideWorker {
-    this.workers.push(new PyodideWorker());
-    return this.workers.shift() ?? new PyodideWorker();
+    this.workers.push(new PyodideWorker(this.packages));
+    return this.workers.shift() ?? new PyodideWorker(this.packages);
   }
 
   async executePython(
@@ -55,8 +57,13 @@ class PyodideWorker {
   private worker: Worker;
   private ready: Promise<ReadyMessage>;
 
-  constructor() {
-    this.worker = new Worker("/app/assets/pyodide.worker.js");
+  constructor(packages: string[] = []) {
+    const url = new URL("/app/assets/pyodide.worker.js", window.location.href);
+    for (const pkg of packages) {
+      url.searchParams.append("packages", pkg);
+    }
+
+    this.worker = new Worker(url.toString());
     this.ready = waitFor(this.worker, "ready", 10000);
   }
 
@@ -89,8 +96,6 @@ class PyodideWorker {
     }
   }
 }
-
-export const pyodideWorkerManager = new PyodideWorkerManager();
 
 function waitFor<T extends WorkerMessage["type"]>(
   worker: Worker,

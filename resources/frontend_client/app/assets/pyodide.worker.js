@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 
-const PACKAGES = ["numpy", "pandas"];
+const url = new URL(self.location.href);
+const packages = url.searchParams.getAll("packages");
+console.log("packages", packages);
 
 run();
 
@@ -30,12 +32,12 @@ async function init() {
   // @ts-ignore - loadPyodide is available after importScripts
   const pyodide = await loadPyodide({
     indexURL: "/app/assets/pyodide/",
-    packages: PACKAGES,
+    packages,
   });
 
   // import the packages on initialization since that is slow
   await pyodide.runPythonAsync(
-    PACKAGES.map((pkg) => `import ${pkg}`).join("\n"),
+    packages.map((pkg) => `import ${pkg}`).join("\n"),
   );
 
   return pyodide;
