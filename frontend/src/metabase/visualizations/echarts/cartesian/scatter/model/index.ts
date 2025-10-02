@@ -117,6 +117,7 @@ export function getScatterPlotModel(
     false,
     [],
     false,
+    undefined, // gridSize not available in scatter plot model
   );
 
   const trendLinesModel = getTrendLines(
