@@ -45,6 +45,7 @@ export const SdkQuestionProvider = ({
   entityTypes,
   targetCollection,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   targetDashboardId,
   backToDashboard,
@@ -94,6 +95,7 @@ export const SdkQuestionProvider = ({
   const {
     question,
     originalQuestion,
+    parameterValues,
 
     queryResults,
 
@@ -104,6 +106,7 @@ export const SdkQuestionProvider = ({
     replaceQuestion,
     loadAndQueryQuestion,
     updateQuestion,
+    updateParameterValues,
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
@@ -144,6 +147,7 @@ export const SdkQuestionProvider = ({
     queryQuestion,
     replaceQuestion,
     updateQuestion,
+    updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
         ? userNavigateToNewCard
@@ -151,6 +155,7 @@ export const SdkQuestionProvider = ({
     plugins,
     question,
     originalQuestion,
+    parameterValues,
     queryResults,
     mode,
     onSave: handleSave,
@@ -160,6 +165,7 @@ export const SdkQuestionProvider = ({
     withDownloads,
     onRun,
     backToDashboard,
+    hiddenParameters,
     onVisualizationChange,
   };
 
