@@ -421,7 +421,7 @@ describe("command palette", () => {
       cy.findByRole("button", { name: /search/i }).click();
 
       H.commandPalette().within(() => {
-        H.commandPaletteInput().should("exist").type("new document");
+        H.commandPaletteInput().should("be.visible").type("new document");
         cy.findByText("New document").should("be.visible").click();
         cy.location("pathname").should("eq", "/document/new");
       });
