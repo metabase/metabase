@@ -14,6 +14,7 @@ import {
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { parseHashOptions } from "metabase/lib/browser";
 import type { DisplayTheme } from "metabase/public/lib/types";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
@@ -123,20 +124,32 @@ const getColorSchemeOverride = ({ hash }: Location) => {
   return getColorSchemeFromDisplayTheme(parseHashOptions(hash).theme);
 };
 
-export const ThemeProvider = (props: ThemeProviderProps) => {
-  const [hashThemeParam, setHashThemeParam] =
-    useState<ResolvedColorScheme | null>(() =>
-      getColorSchemeOverride(location),
-    );
+const useColorSchemeFromHash = ({
+  enabled = true,
+}: {
+  enabled?: boolean;
+}): ResolvedColorScheme | null => {
+  const [hashScheme, setHashScheme] = useState<ResolvedColorScheme | null>(() =>
+    getColorSchemeOverride(location),
+  );
   useEffect(() => {
-    const onHashChange = () =>
-      setHashThemeParam(getColorSchemeOverride(location));
+    if (!enabled) {
+      return;
+    }
+    const onHashChange = () => setHashScheme(getColorSchemeOverride(location));
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
+  }, [enabled]);
+  return enabled ? hashScheme : null;
+};
+
+export const ThemeProvider = (props: ThemeProviderProps) => {
+  const schemeFromHash = useColorSchemeFromHash({
+    enabled: getIsEmbeddingIframe(),
+  });
   const forceColorScheme = props.displayTheme
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
-    : hashThemeParam;
+    : schemeFromHash;
 
   return (
     <ColorSchemeProvider forceColorScheme={forceColorScheme}>
