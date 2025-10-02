@@ -10,7 +10,10 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -58,9 +61,10 @@ type TransformQueryPageBodyProps = {
 export function TransformQueryPageBody({
   transform,
 }: TransformQueryPageBodyProps) {
-  const [updateTransform, { isLoading }] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading: isSaving }] =
+    useUpdateTransformMutation();
   const dispatch = useDispatch();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const initialSource = transform.source;
   const [source, setSource] = useState(initialSource);
@@ -86,19 +90,34 @@ export function TransformQueryPageBody({
     dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
   };
 
-  const handleSourceSave = async (source: TransformSource) => {
-    const { error } = await updateTransform({
+  const {
+    checkData,
+    isCheckingDependencies,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCloseConfirmation,
+  } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
+    onSave: async (request) => {
+      const { error } = await updateTransform(request);
+      if (error) {
+        sendErrorToast(t`Failed to update transform query`);
+      } else {
+        sendSuccessToast(t`Transform query updated`);
+        dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+        dispatch(push(getTransformUrl(transform.id)));
+      }
+    },
+    onError: () => {
+      sendErrorToast(t`Failed to update transform query`);
+    },
+  });
+
+  const handleSaveSource = async (source: TransformSource) => {
+    await handleInitialSave({
       id: transform.id,
       source,
     });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-      dispatch(push(getTransformUrl(transform.id)));
-    }
   };
 
   const handleCancel = () => {
@@ -114,8 +133,8 @@ export function TransformQueryPageBody({
             proposedSource?.type === "python" ? proposedSource : undefined
           }
           isNew={false}
-          isSaving={isLoading}
-          onSave={handleSourceSave}
+          isSaving={isSaving}
+          onSave={handleSaveSource}
           onCancel={handleCancel}
           onRejectProposed={onRejectProposed}
           onAcceptProposed={onAcceptProposed}
@@ -130,8 +149,8 @@ export function TransformQueryPageBody({
         initialSource={transform.source}
         transform={transform}
         isNew={false}
-        isSaving={isLoading}
-        onSave={handleSourceSave}
+        isSaving={isSaving || isCheckingDependencies}
+        onSave={handleSaveSource}
         onChange={setSource}
         onCancel={handleCancel}
         proposedSource={
@@ -140,6 +159,14 @@ export function TransformQueryPageBody({
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />
+      {isConfirmationShown && checkData != null && (
+        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+          checkData={checkData}
+          opened
+          onSave={handleSaveAfterConfirmation}
+          onClose={handleCloseConfirmation}
+        />
+      )}
     </AdminSettingsLayout>
   );
 }

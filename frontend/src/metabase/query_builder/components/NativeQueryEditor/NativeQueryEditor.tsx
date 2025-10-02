@@ -11,7 +11,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Modal from "metabase/common/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
@@ -21,7 +20,7 @@ import {
   setIsNativeEditorOpen,
   setUIControls,
 } from "metabase/query_builder/actions";
-import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
@@ -419,8 +418,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           canSaveSnippets={canSaveSnippets}
         />
 
-        {this.props.modalSnippet && (
-          <Modal onClose={this.props.closeSnippetModal}>
+        {this.props.modalSnippet &&
+          this.props.insertSnippet &&
+          this.props.closeSnippetModal && (
             <SnippetFormModal
               snippet={this.props.modalSnippet}
               onCreate={this.props.insertSnippet}
@@ -434,8 +434,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               }}
               onClose={this.props.closeSnippetModal}
             />
-          </Modal>
-        )}
+          )}
       </div>
     );
   }

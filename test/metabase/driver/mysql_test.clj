@@ -313,7 +313,7 @@
                    (mt/first-row
                     (qp/process-query
                      (assoc (mt/native-query
-                              {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
+                             {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
                             ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
                             ;; our driver is actually doing the right thing
                             :middleware {:format-rows? false})))))))))))

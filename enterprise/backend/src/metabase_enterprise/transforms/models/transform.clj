@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.ingestion :as search]
@@ -24,7 +25,7 @@
   (derive ::mi/write-policy.superuser))
 
 (t2/deftransforms :model/Transform
-  {:source      mi/transform-json
+  {:source      mi/transform-transform-source
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
@@ -67,6 +68,18 @@
                                         tag-associations)]
       (for [transform transforms]
         (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+
+(t2/define-after-insert :model/Transform [transform]
+  (events/publish-event! :event/create-transform {:object transform})
+  transform)
+
+(t2/define-after-update :model/Transform [transform]
+  (events/publish-event! :event/update-transform {:object transform})
+  transform)
+
+(t2/define-before-delete :model/Transform [transform]
+  (events/publish-event! :event/delete-transform {:id (:id transform)})
+  transform)
 
 (defn update-transform-tags!
   "Update the tags associated with a transform using smart diff logic.
@@ -141,7 +154,7 @@
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
   {:copy [:name :description :entity_id]
-   :skip []
+   :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
                :source {:export serdes/export-mbql :import serdes/import-mbql}

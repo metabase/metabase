@@ -488,15 +488,15 @@
     (mt/dataset test-data
       (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                 :template-tags {"NAME"
-                                                                                                 {:name         "NAME"
-                                                                                                  :display-name "Name"
-                                                                                                  :id           "_name_"
-                                                                                                  :type         :dimension
-                                                                                                  :dimension    [:field (mt/id :people :name) nil]
-                                                                                                  :widget-type  :string/=
-                                                                                                  :default      nil}}})
+                                                                               {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                :template-tags {"NAME"
+                                                                                                {:name         "NAME"
+                                                                                                 :display-name "Name"
+                                                                                                 :id           "_name_"
+                                                                                                 :type         :dimension
+                                                                                                 :dimension    [:field (mt/id :people :name) nil]
+                                                                                                 :widget-type  :string/=
+                                                                                                 :default      nil}}})
                                                             :enable_embedding true
                                                             :embedding_params {"NAME" "enabled"}}]
           (testing "Card"
