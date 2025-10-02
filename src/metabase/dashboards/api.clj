@@ -25,6 +25,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
+   [metabase.parameters.core :as parameters]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -120,11 +121,12 @@
    {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
    :- [:map
        [:name                ms/NonBlankString]
-       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+       [:parameters          {:optional true} [:maybe ::parameters.schema/parameters]]
        [:description         {:optional true} [:maybe :string]]
        [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+  (println "(pr-str parameters):" (pr-str parameters)) ; NOCOMMIT
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -200,11 +202,14 @@
   run.
 
   Returns nil if `:dataset_query` isn't set, eg. for a markdown card."
-  [{:keys [dataset_query]}]
-  (when dataset_query
-    (u/ignore-exceptions
-      [(qp.util/query-hash dataset_query)
-       (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))])))
+  [{query :dataset_query, :as _card}]
+  (when query
+    (try
+      [(qp.util/query-hash query)
+       (qp.util/query-hash (assoc query :constraints (qp.constraints/default-query-constraints)))]
+      (catch Throwable e
+        (log/errorf e "Error hashing query %s: %s" (pr-str query) (ex-message e))
+        nil))))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
@@ -689,7 +694,7 @@
   [dashboard-id dashcards]
   (let [dashcard-id->existing-mappings (existing-parameter-mappings dashboard-id)
         existing-mapping?              (fn [dashcard-id mapping]
-                                         (let [[mapping]         (mi/normalize-parameters-list [mapping])
+                                         (let [mapping (parameters/normalize-parameter-mapping mapping)
                                                existing-mappings (get dashcard-id->existing-mappings dashcard-id)]
                                            (contains? existing-mappings (select-keys mapping [:target :parameter_id]))))
         new-mappings                   (for [{mappings :parameter_mappings, dashcard-id :id} dashcards
@@ -759,7 +764,7 @@
    [:size_y                              ms/PositiveInt]
    [:row                                 ms/IntGreaterThanOrEqualToZero]
    [:col                                 ms/IntGreaterThanOrEqualToZero]
-   [:parameter_mappings {:optional true} [:maybe [:sequential [:ref ::parameters.schema/parameter-mapping]]]]
+   [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:inline_parameters  {:optional true} [:maybe [:sequential ms/NonBlankString]]]
    [:series             {:optional true} [:maybe [:sequential map?]]]])
 
@@ -990,7 +995,7 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:enable_embedding        {:optional true} [:maybe :boolean]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
-   [:parameters              {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+   [:parameters              {:optional true} [:maybe ::parameters.schema/parameters]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]

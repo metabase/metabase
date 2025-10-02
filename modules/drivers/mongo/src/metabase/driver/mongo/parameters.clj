@@ -5,7 +5,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]

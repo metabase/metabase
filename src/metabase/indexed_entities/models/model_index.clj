@@ -29,8 +29,11 @@
 #_(derive :model/ModelIndex :hook/search-index)
 
 (t2/deftransforms :model/ModelIndex
-  {:pk_ref    mi/transform-field-ref
-   :value_ref mi/transform-field-ref})
+  ;; TODO (Cam 10/1/25) -- update these to normalize to MBQL 5 Field refs (or stop storing field refs like this in the
+  ;; first place!) on the way out
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  {:pk_ref    mi/transform-legacy-field-ref
+   :value_ref mi/transform-legacy-field-ref})
 
 (t2/define-before-delete :model/ModelIndex
   [model-index]

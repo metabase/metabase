@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -16,23 +15,6 @@
 
 ;; Let's make sure `transform-metric-segment-definition`/`transform-parameters-list` normalization functions respond
 ;; gracefully to invalid stuff when pulling them out of the Database. See #8914
-
-(deftest handle-errors-gracefully-test
-  (testing (str "Cheat and override the `normalization-tokens` function to always throw an Exception so we can make "
-                "sure the Toucan type fn handles the error gracefully")
-    (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-      (is (= nil
-             ((:out mi/transform-parameters-list)
-              (json/encode
-               [{:target [:dimension [:field "ABC" nil]]}])))))))
-
-(deftest do-not-eat-exceptions-test
-  (testing "should not eat Exceptions if normalization barfs when saving"
-    (is (thrown?
-         Exception
-         (with-redefs [mbql.normalize/normalize-tokens (fn [& _] (throw (Exception. "BARF")))]
-           ((:in mi/transform-parameters-list)
-            [{:target [:dimension [:field "ABC" nil]]}]))))))
 
 (deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"

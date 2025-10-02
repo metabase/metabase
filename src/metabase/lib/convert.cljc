@@ -767,7 +767,7 @@
     stage-number :- :int
     legacy-ref   :- some?]
    (let [legacy-ref                  (->> #?(:clj legacy-ref :cljs (js->clj legacy-ref :keywordize-keys true))
-                                          (mbql.normalize/normalize-fragment nil))
+                                          mbql.normalize/normalize-field-ref)
          {aggregations :aggregation} (lib.util/query-stage query stage-number)]
      (with-aggregation-list aggregations
        (try

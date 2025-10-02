@@ -1476,7 +1476,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
-      (->> (mbql.normalize/normalize-fragment nil))
+      mbql.normalize/normalize-field-ref
       lib.convert/->pMBQL
       (->> (lib.normalize/normalize ::lib.schema.ref/ref))))
 

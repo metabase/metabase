@@ -90,48 +90,51 @@
             (assoc-in [:target 2 :stage-number] -2)))
         parameters))
 
-(mu/defn query-for-card :- ::lib.schema/query
+(mu/defn query-for-card :- [:maybe ::lib.schema/query]
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
     :as           card} :- [:map
-                            [:dataset_query ::lib.schema/query]]
+                            [:dataset_query [:or
+                                             [:= {:description "empty map"} {}]
+                                             ::lib.schema/query]]]
    parameters  :- [:maybe [:sequential :map]]
    constraints :- [:maybe :map]
    middleware  :- [:maybe :map]
    & [ids]]
-  (let [stage-numbers (explict-stage-references parameters)
-        explicit-stage-numbers? (boolean (seq stage-numbers))
-        parameters (cond-> parameters
-                     ;; models are not transparent (questions and metrics are)
-                     (and explicit-stage-numbers? (= card-type :model))
-                     point-parameters-to-last-stage)
-        ;; The FE might have "added" a stage so that a question with breakouts
-        ;; at the last stage can be filtered on the summary results. We know
-        ;; this happened if we get a reference to one above the last stage.
-        filter-stage-added? (and explicit-stage-numbers?
-                                 (= (inc (last-stage-number dataset-query))
-                                    (apply max stage-numbers)))
-        query (cond-> dataset-query
-                (and explicit-stage-numbers?
-                     (or
-                      ;; stage-number 0 means filtering the results of models and metrics
-                      (not= card-type :question)
-                      ;; the FE assumed an extra stage, so we add it
-                      filter-stage-added?))
-                lib/append-stage)
-        query (-> query
-                  ;; don't want default constraints overridding anything that's already there
-                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                  (m/assoc-some :constraints (not-empty constraints)
-                                :parameters  (not-empty (cond-> parameters
-                                                          filter-stage-added? add-stage-to-temporal-unit-parameters))
-                                :middleware  (not-empty middleware)))
-        cs    (-> (cache-strategy card (:dashboard-id ids))
-                  (enrich-strategy query))]
-    (-> query
-        (assoc :cache-strategy cs)
-        (->> (lib/normalize ::lib.schema/query)))))
+  (when (seq dataset-query)
+    (let [stage-numbers           (explict-stage-references parameters)
+          explicit-stage-numbers? (boolean (seq stage-numbers))
+          parameters              (cond-> parameters
+                       ;; models are not transparent (questions and metrics are)
+                                    (and explicit-stage-numbers? (= card-type :model))
+                                    point-parameters-to-last-stage)
+          ;; The FE might have "added" a stage so that a question with breakouts
+          ;; at the last stage can be filtered on the summary results. We know
+          ;; this happened if we get a reference to one above the last stage.
+          filter-stage-added?     (and explicit-stage-numbers?
+                                   (= (inc (last-stage-number dataset-query))
+                                      (apply max stage-numbers)))
+          query                   (cond-> dataset-query
+                                    (and explicit-stage-numbers?
+                                         (or
+                                          ;; stage-number 0 means filtering the results of models and metrics
+                                          (not= card-type :question)
+                                          ;; the FE assumed an extra stage, so we add it
+                                          filter-stage-added?))
+                                    lib/append-stage)
+          query                   (-> query
+                    ;; don't want default constraints overridding anything that's already there
+                    (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                    (m/assoc-some :constraints (not-empty constraints)
+                                  :parameters  (not-empty (cond-> parameters
+                                                            filter-stage-added? add-stage-to-temporal-unit-parameters))
+                                  :middleware  (not-empty middleware)))
+          cs                      (-> (cache-strategy card (:dashboard-id ids))
+                    (enrich-strategy query))]
+      (-> query
+          (assoc :cache-strategy cs)
+          (->> (lib/normalize ::lib.schema/query))))))
 
 (def ^:dynamic *allow-arbitrary-mbql-parameters*
   "In 0.41.0+ you can no longer add arbitrary `:parameters` to a query for a saved question -- only parameters for

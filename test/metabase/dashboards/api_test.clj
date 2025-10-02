@@ -45,7 +45,8 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
-   [toucan2.protocols :as t2.protocols]))
+   [toucan2.protocols :as t2.protocols]
+   [metabase.lib.test-metadata :as meta]))
 
 (set! *warn-on-reflection* true)
 
@@ -2647,60 +2648,63 @@
                      form))
                  x))
 
+(defn- fake-query [x]
+  (lib/native-query meta/metadata-provider (format "SELECT %s" (pr-str x))))
+
 (deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
-          [[{:card {:dataset_query {:database 1}}}
-            ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
-             "I6mv3dlN4xat/6R+KQVTLDqNe8/B0oymcDnW/aKppwY="]]
+          [[{:card {:dataset_query (fake-query 1)}}
+            ["FInNxTueC4de1kXkFclz6BIsu/4aslUrNql6oQhgw2c="
+             "ag3JTl9oSwQW1XlPjntogaoHODeOCcCPUUcfwUxSfpo="]]
 
-           [{:card   {:dataset_query {:database 2}}
-             :series [{:dataset_query {:database 3}}
-                      {:dataset_query {:database 4}}]}
-            ["WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
-             "ysJFZA3Gd0vKIlrZWJDYBLCIQBf10X6QjuFtV/8QzbE="
-             "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I="
-             "wf9reZSm1Pz+WDHRYtZXmfQ39U+17mq7u28MqPR8fQI="
-             "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
-             "r+C7dsdRXBN32GK+QHLA/n9pr1hzjteFzDCVezLzImQ="]]]]
+           [{:card   {:dataset_query (fake-query 2)}
+             :series [{:dataset_query (fake-query 3)}
+                      {:dataset_query (fake-query 4)}]}
+            ["JE98Au7aw+dgofxNiyYuwtiFzOQemOiJraw+c5fHk8I="
+             "pWJ2D+RkoGkEDdge2cTDHuyobYsCAXj5hj8B5NEdrg0="
+             "Iu+K7AsJiNumvjDbzEd4DYEnHfEEyu3OeSvsgUbS7g4="
+             "YmZRD4uUdSmgVnkB9phGpGvJ8TN220YOzot3C7s2yXU="
+             "SxRFTHhqGIpd7gIlplQFrne20q/zllnnoNDwiQkzXeU="
+             "EXlam+/+qwupZW2i2JMzg/WTQAJKb4RytkEvJoLg2BQ="]]]]
     (testing (pr-str dashcard)
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
 (deftest ^:parallel dashcards->query-hashes-test
-  (is (= ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
-          "I6mv3dlN4xat/6R+KQVTLDqNe8/B0oymcDnW/aKppwY="
-          "WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I="
-          "ysJFZA3Gd0vKIlrZWJDYBLCIQBf10X6QjuFtV/8QzbE="
-          "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I="
-          "wf9reZSm1Pz+WDHRYtZXmfQ39U+17mq7u28MqPR8fQI="
-          "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
-          "r+C7dsdRXBN32GK+QHLA/n9pr1hzjteFzDCVezLzImQ="]
+  (is (= ["FInNxTueC4de1kXkFclz6BIsu/4aslUrNql6oQhgw2c="
+          "ag3JTl9oSwQW1XlPjntogaoHODeOCcCPUUcfwUxSfpo="
+          "JE98Au7aw+dgofxNiyYuwtiFzOQemOiJraw+c5fHk8I="
+          "pWJ2D+RkoGkEDdge2cTDHuyobYsCAXj5hj8B5NEdrg0="
+          "Iu+K7AsJiNumvjDbzEd4DYEnHfEEyu3OeSvsgUbS7g4="
+          "YmZRD4uUdSmgVnkB9phGpGvJ8TN220YOzot3C7s2yXU="
+          "SxRFTHhqGIpd7gIlplQFrne20q/zllnnoNDwiQkzXeU="
+          "EXlam+/+qwupZW2i2JMzg/WTQAJKb4RytkEvJoLg2BQ="]
          (base-64-encode-byte-arrays
           (#'api.dashboard/dashcards->query-hashes
-           [{:card {:dataset_query {:database 1}}}
-            {:card   {:dataset_query {:database 2}}
-             :series [{:dataset_query {:database 3}}
-                      {:dataset_query {:database 4}}]}])))))
+           [{:card {:dataset_query (fake-query 1)}}
+            {:card   {:dataset_query (fake-query 2)}
+             :series [{:dataset_query (fake-query 3)}
+                      {:dataset_query (fake-query 4)}]}])))))
 
-(deftest add-query-average-duration-to-dashcards-test
-  (is (= [{:card   {:dataset_query {:database 1}, :query_average_duration 111}
+(deftest ^:parallel add-query-average-duration-to-dashcards-test
+  (is (= [{:card   {:dataset_query (fake-query 1), :query_average_duration 111}
            :series []}
-          {:card   {:dataset_query {:database 2}, :query_average_duration 333}
-           :series [{:dataset_query {:database 3}, :query_average_duration 555}
-                    {:dataset_query {:database 4}, :query_average_duration 777}]}]
+          {:card   {:dataset_query (fake-query 2), :query_average_duration 333}
+           :series [{:dataset_query (fake-query 3), :query_average_duration 555}
+                    {:dataset_query (fake-query 4), :query_average_duration 777}]}]
          (#'api.dashboard/add-query-average-duration-to-dashcards
-          [{:card {:dataset_query {:database 1}}}
-           {:card   {:dataset_query {:database 2}}
-            :series [{:dataset_query {:database 3}}
-                     {:dataset_query {:database 4}}]}]
-          (into {} (for [[k v] {"k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs=" 111
-                                "K6A0F7tRxQ+2xa33kigBwIvUvU+F95UUccWjGTx8kuI=" 222
-                                "WbWqdd3zu9zvVCVWh8X9ASWLqtaB1rZlU0gKLEuCK0I=" 333
-                                "NzgQC4fjR52npCkZV7IiZDb9NfcmKbWHP4krFzkLPyA=" 444
-                                "pjdBPUgWnbVvMf0VsETyeB6smRC8SYejyTZIVPh2m3I=" 555
-                                "dEXUTWQI2L0Z/Bvrb2LTVVPl2Qg/56hKIPb+I2a4mG8=" 666
-                                "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk=" 777
-                                "Wn9nubTcKZX5862pHFaibkqqbsqAfGa3gVhN3D4FrJw=" 888}]
+          [{:card {:dataset_query (fake-query 1)}}
+           {:card   {:dataset_query (fake-query 2)}
+            :series [{:dataset_query (fake-query 3)}
+                     {:dataset_query (fake-query 4)}]}]
+          (into {} (for [[k v] {"FInNxTueC4de1kXkFclz6BIsu/4aslUrNql6oQhgw2c=" 111
+                                "ag3JTl9oSwQW1XlPjntogaoHODeOCcCPUUcfwUxSfpo=" 222
+                                "JE98Au7aw+dgofxNiyYuwtiFzOQemOiJraw+c5fHk8I=" 333
+                                "pWJ2D+RkoGkEDdge2cTDHuyobYsCAXj5hj8B5NEdrg0=" 444
+                                "Iu+K7AsJiNumvjDbzEd4DYEnHfEEyu3OeSvsgUbS7g4=" 555
+                                "YmZRD4uUdSmgVnkB9phGpGvJ8TN220YOzot3C7s2yXU=" 666
+                                "SxRFTHhqGIpd7gIlplQFrne20q/zllnnoNDwiQkzXeU=" 777
+                                "EXlam+/+qwupZW2i2JMzg/WTQAJKb4RytkEvJoLg2BQ=" 888}]
                      [(mapv int (codec/base64-decode k)) v]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3093,61 +3097,63 @@
                 :values          [["African"] ["American"] ["Asian"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category param-keys)))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"] ["American" "Am"] ["Asian" "As"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-values-url (:id dashboard) (:static-category-label param-keys))))))
-
       (testing "we could search the values"
         (is (= {:has_more_values false
                 :values          [["African"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category param-keys) "af"))))
-
         (is (= {:has_more_values false
                 :values          [["African" "Af"]]}
                (mt/user-http-request :rasta :get 200
                                      (chain-filter-search-url (:id dashboard) (:static-category-label param-keys) "f")))))
-
       (testing "we could edit the values list"
-        ;; TODO add tests for schema check
         (let [dashboard (mt/user-http-request :rasta :put 200 (str "dashboard/" (:id dashboard))
-                                              {:parameters [{:name                  "Static Category"
-                                                             :slug                  "static_category"
-                                                             :id                    "_STATIC_CATEGORY_"
-                                                             :type                  "category"
-                                                             :values_query_type     "search"
-                                                             :values_source_type    "static-list"
+                                              {:parameters [{:name                 "Static Category"
+                                                             :slug                 "static_category"
+                                                             :id                   "_STATIC_CATEGORY_"
+                                                             :type                 "category"
+                                                             :values_query_type    "search"
+                                                             :values_source_type   "static-list"
                                                              :values_source_config {"values" ["BBQ" "Bakery" "Bar"]}}]})]
-          (is (= [{:name                  "Static Category"
-                   :slug                  "static_category"
-                   :id                    "_STATIC_CATEGORY_"
-                   :type                  "category"
-                   :values_query_type     "search"
-                   :values_source_type    "static-list"
+          (is (= [{:name                 "Static Category"
+                   :slug                 "static_category"
+                   :id                   "_STATIC_CATEGORY_"
+                   :type                 "category"
+                   :values_query_type    "search"
+                   :values_source_type   "static-list"
                    :values_source_config {:values ["BBQ" "Bakery" "Bar"]}}]
-                 (:parameters dashboard))))))
+                 (:parameters dashboard))))))))
 
-    (testing "source-options must be a map and sourcetype must be `card` or `static-list` must be a string"
+(deftest ^:parallel dashboard-with-static-list-parameters-test-2
+  (testing "A dashboard that has parameters that has static values"
+    (testing "`values_source_config` must be a map and `values_source_type` must be `card` or `static-list` must be a string"
       (is (= "nullable sequence of parameter must be a map with :id and :type keys"
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
-                                            :parameters [{:id                    "_value_"
-                                                          :name                  "value"
-                                                          :type                  "category"
-                                                          :values_source_type    "random-type"
+                                            :parameters [{:id                   "_value_"
+                                                          :name                 "value"
+                                                          :type                 "category"
+                                                          :values_source_type   "random-type"
                                                           :values_source_config {"values" [1 2 3]}}]})
-                     [:errors :parameters])))
-      (is (= "nullable sequence of parameter must be a map with :id and :type keys"
-             (get-in (mt/user-http-request :rasta :post 400 "dashboard"
-                                           {:name       "a dashboard"
-                                            :parameters [{:id                    "_value_"
-                                                          :name                  "value"
-                                                          :type                  "category"
-                                                          :values_source_type    "static-list"
-                                                          :values_source_config []}]})
                      [:errors :parameters]))))))
+
+(deftest ^:parallel dashboard-with-static-list-parameters-test-2b
+  (testing "A dashboard that has parameters that has static values"
+    (testing "`values_source_config` must be a map and `values_source_type` must be `card` or `static-list` must be a string"
+      ;; actually, this works now because normalization will remove `values_source_config` when it's not a map.
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (is (=? {:parameters [{:values_source_config nil}]}
+                (mt/user-http-request :rasta :post 200 "dashboard"
+                                      {:name       "a dashboard"
+                                       :parameters [{:id                   "_value_"
+                                                     :name                 "value"
+                                                     :type                 "category"
+                                                     :values_source_type   "static-list"
+                                                     :values_source_config []}]})))))))
 
 (deftest native-query-get-params-test
   (testing "GET /api/dashboard/:id/params/:param-key/values works for native queries"
@@ -3163,7 +3169,7 @@
         (let [metadata (-> (:dataset_query native-card)
                            qp/process-query :data :results_metadata :columns)]
           (is (seq metadata) "Did not get metadata")
-          (t2/update! 'Card {:id model-id}
+          (t2/update! :model/Card {:id model-id}
                       {:result_metadata (assoc-in metadata [0 :id]
                                                   (mt/id :products :category))}))
         ;; ...so instead we create a question on top of this model (note that
@@ -3205,13 +3211,11 @@
             (is (= {:values          [["Bar"] ["Gay Bar"] ["Juice Bar"]]
                     :has_more_values false}
                    (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))
-
       (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) "house" (:price param-keys) 4)]
         (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
           (is (= {:values          [["Steakhouse"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
-
       (testing "Should require a non-empty query"
         (doseq [query ["   " "\n"]]
           (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
@@ -3220,8 +3224,10 @@
         (doseq [query [nil ""]]
           (mt/let-url [url (chain-filter-search-url dashboard (:category-name param-keys) query)]
             (is (= "API endpoint does not exist."
-                   (mt/user-http-request :rasta :get 404 url)))))))
+                   (mt/user-http-request :rasta :get 404 url)))))))))
 
+(deftest chain-filter-search-test-2
+  (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
     (testing "Should require perms for the Dashboard"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection]
@@ -3235,7 +3241,6 @@
   (mt/with-temp [:model/Dashboard {dashboard-id :id}]
     (testing "GET /api/dashboard/:id/params/:param-key/values returns 400 if param not found"
       (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/values" dashboard-id)))
-
     (testing "GET /api/dashboard/:id/params/:param-key/search/:query returns 400 if param not found"
       (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/search/bar" dashboard-id)))))
 
@@ -3288,7 +3293,6 @@
                                     [16 "Pacific Dining Car - Santa Monica"]]
                   :has_more_values false}
                  (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
-
       (testing "GET /api/dashboard/:id/params/:param-key/search/:query"
         (mt/let-url [url (chain-filter-search-url dashboard "_ID_" "fish")]
           (is (= {:values          [[90 "Señor Fish"]]
@@ -3421,7 +3425,6 @@
                                                                                                   :value_field (mt/$ids $venues.name)}}]}]
             (mt/let-url [url (chain-filter-values-url dashboard "abc")]
               (is (= mock-chain-filter-result (mt/user-http-request :rasta :get 200 url))))))
-
         (testing "if card is archived"
           (mt/with-temp [:model/Card       {card-id :id} {:archived true}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -3621,7 +3624,6 @@
                 (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                 (is (malli= (dashboard-card-query-expected-results-schema)
                             (mt/user-http-request :rasta :post 202 (url)))))))
-
           (testing "Validation"
             (testing "404s"
               (testing "Should return 404 if Dashboard doesn't exist"
@@ -3630,7 +3632,6 @@
               (testing "Should return 404 if Card doesn't exist"
                 (is (= "Not found."
                        (mt/user-http-request :rasta :post 404 (url :card-id Integer/MAX_VALUE))))))
-
             (testing "perms"
               (mt/with-temp [:model/Collection {collection-id :id}]
                 (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
@@ -3992,7 +3993,7 @@
                    {:query (format "insert into types (%s) values ({{%s}})"
                                    (u/upper-case-en field-name)
                                    field-name)
-                    :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
+                    :template-tags {field-name {:id field-name :name field-name :type :text :display-name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
@@ -5078,14 +5079,16 @@
       (is (not (t2/select-one-fn :archived :model/Dashboard dash-id)))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
 
-(deftest dashboard-questions-are-archived-when-unused-and-vice-versa
+(deftest ^:parallel dashboard-questions-are-archived-when-unused-and-vice-versa
   (testing "The dashboard question is archived when it's removed from the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
       (mt/user-http-request :rasta :put 200 (str "dashboard/" dash-id) {:dashcards []})
       (is (not (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id)))
-      (is (t2/select-one-fn :archived :model/Card card-id))))
+      (is (t2/select-one-fn :archived :model/Card card-id)))))
+
+(deftest ^:parallel dashboard-questions-are-archived-when-unused-and-vice-versa-2
   (testing "The dashboard question is unarchived when it's re-added to the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}]
@@ -5097,13 +5100,15 @@
       (is (t2/exists? :model/DashboardCard :card_id card-id :dashboard_id dash-id))
       (is (not (t2/select-one-fn :archived :model/Card card-id))))))
 
-(deftest dashboard-items-works
+(deftest ^:parallel dashboard-items-works
   (testing "Dashboard items is empty when the dashboard is a normal dashboard w/o DQs"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {}
                    :model/DashboardCard _ {:card_id card-id :dashboard_id dash-id}]
       (is (= {:total 0 :data [] :models [] :limit nil :offset nil}
-             (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))
+             (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items")))))))
+
+(deftest ^:parallel dashboard-items-works-2
   (testing "Dashboard items is present when the dashboard has DQs"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
@@ -5115,7 +5120,9 @@
               :models ["card"]}
              (update (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))
                      :data
-                     #(map (fn [card] (select-keys card [:id])) %))))))
+                     #(map (fn [card] (select-keys card [:id])) %)))))))
+
+(deftest ^:parallel dashboard-items-works-3
   (testing "DQs don't appear twice even if they appear multiple times in the dashboard"
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
                    :model/Card {card-id :id} {:dashboard_id dash-id}
@@ -5130,7 +5137,7 @@
                      :data
                      #(map (fn [card] (select-keys card [:id])) %)))))))
 
-(deftest dashboard-items-is-the-same-as-collection-items
+(deftest ^:parallel dashboard-items-is-the-same-as-collection-items
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Dashboard {dash-id :id} {}
                  :model/Card _ {:collection_id coll-id}

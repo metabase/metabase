@@ -74,7 +74,7 @@
   [dashboard-card]
   (t2/instance :model/DashboardCard
                (-> dashboard-card
-                   (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+                   (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields :model/DashboardCard

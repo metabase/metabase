@@ -538,14 +538,15 @@
 (defn fully-parameterized-query?
   "Given a Card, returns `true` if its query is fully parameterized."
   [{query :dataset_query, :as _card}]
-  (let [template-tags    (not-empty (lib/all-template-tags query))
-        raw-native-query (when (lib/native-only-query? query)
-                           (let [query (lib/raw-native-query query)]
-                             (when (string? query)
-                               query)))]
-    (if (and template-tags raw-native-query)
-      (fully-parameterized-text? raw-native-query template-tags)
-      true)))
+  (when (seq query)
+    (let [template-tags    (not-empty (lib/all-template-tags query))
+          raw-native-query (when (lib/native-only-query? query)
+                             (let [query (lib/raw-native-query query)]
+                               (when (string? query)
+                                 query)))]
+      (if (and template-tags raw-native-query)
+        (fully-parameterized-text? raw-native-query template-tags)
+        true))))
 
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)

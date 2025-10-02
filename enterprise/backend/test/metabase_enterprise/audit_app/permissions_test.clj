@@ -47,7 +47,7 @@
 
         (testing "A non-native query can be run on views in the audit DB"
           (let [audit-view (t2/select-one :model/Table :db_id audit/audit-db-id {:where [:like [:lower :name] "v_%"]})]
-            (when-not (str/starts-with? (u/lower-case-en (:name audit-view)) "v_")
+            (when-not (some-> audit-view :name u/lower-case-en (str/starts-with? "v_"))
               (sync/sync-database! (t2/select-one :model/Database audit/audit-db-id)))
             (is (partial=
                  {:status :completed}

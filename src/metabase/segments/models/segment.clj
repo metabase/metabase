@@ -50,7 +50,8 @@
   "Segment `definition`s are just the inner MBQL query."
   [definition]
   (when (seq definition)
-    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
+    ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
+    (u/prog1 #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query] definition)
       (validate-segment-definition <>))))
 
 (def ^:private transform-segment-definition

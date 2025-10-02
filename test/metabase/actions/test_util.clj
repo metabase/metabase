@@ -169,7 +169,7 @@
               (is (= [[74]]
                      (row-count))))))))))
 
-(defn do-with-action
+(defn create-action!
   "Impl for [[with-action]]."
   [options-map model-id]
   (let [options-map (merge options-map {:created_at (t/zoned-date-time)
@@ -231,10 +231,10 @@
                                                    :headers "{\"x-test\": \"{{id}}\"}"}
                                         :parameters [{:id "id"
                                                       :type "number"
-                                                      :target [:template-tag "id"]}
+                                                      :target [:dimension [:template-tag "id"]]}
                                                      {:id "fail"
                                                       :type "text"
-                                                      :target [:template-tag "fail"]}]
+                                                      :target [:dimension [:template-tag "fail"]]}]
                                         :response_handle ".body"
                                         :model_id model-id
                                         :public_uuid (str (random-uuid))
@@ -291,7 +291,7 @@
       (fn [~model]
         (let [~model-binding ~model
               ~@(mapcat (fn [[action-binding action]]
-                          [action-binding `(do-with-action ~(merge {:type :query} action) (:id ~model))])
+                          [action-binding `(create-action! (merge {:type :query} ~action) (:id ~model))])
                         (partition 2 action-bindings))]
           ~@body)))))
 

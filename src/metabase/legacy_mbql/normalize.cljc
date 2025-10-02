@@ -1185,6 +1185,6 @@
   {:deprecated "0.57.0"}
   [path :- [:maybe [:sequential :keyword]]
    x]
-  (if-not (seq path)
+  (if (empty? path)
     (normalize x)
     (get (normalize-fragment (butlast path) {(last path) x}) (last path))))

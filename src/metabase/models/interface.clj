@@ -203,56 +203,7 @@
         (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
         nil))))
 
-(defn normalize-parameters-list
-  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request.
-
-  DEPRECATED: This normalized parameters to legacy MBQL, and will be removed soon.
-  Prefer [[metabase.parameters.core/normalize-parameters]]
-  or [[metabase.parameters.core/normalize-parameter-mappings]] going forward."
-  {:deprecated "0.57.0"}
-  [parameters]
-  ;; TODO (Cam 9/24/25) -- change this to do
-  ;;
-  ;;    (lib/normalize ::lib.schema.parameter/parameters x)
-  ;;
-  ;; This should probably also get moved into the `parameters` module, and we need to differentiate parameters and
-  ;; parameter mappings properly. See
-  ;; https://github.com/metabase/metabase/blob/2068111d887d54828cf5f18407535621f3ed074b/src/metabase/parameters/models/transforms.clj
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
-      []))
-
-(defn- keywordize-temporal_units
-  {:deprecated "0.57.0"}
-  [parameter]
-  (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
-
-(defn  normalize-card-parameters-list
-  "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
-  {:deprecated "0.57.0"}
-  [parameters]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (->> parameters
-       normalize-parameters-list
-       (mapv keywordize-temporal_units)))
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(def ^{:deprecated "0.57.0"} transform-parameters-list
-  "Transform for parameters list.
-
-  DEPRECATED: Use [[metabase.parameters.schema/transform-parameter-mappings]] going forward."
-  {:in  (comp json-in normalize-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
-
-#_{:clj-kondo/ignore [:deprecated-var]}
-(def ^{:deprecated "0.57.0"} transform-card-parameters-list
-  "Transform for parameters list.
-
-  DEPRECATED: Use [[metabase.parameters.schema/transform-parameters]] going forward."
-  {:in  (comp json-in normalize-card-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
-
-(def ^{:deprecated "0.57.0"} transform-field-ref
+(def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
    :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})

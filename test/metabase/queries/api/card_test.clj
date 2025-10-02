@@ -2485,7 +2485,7 @@
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
                                                             "my_awesome_card_<timestamp>$1")))))
 
-(deftest download-response-headers-test
+(deftest ^:parallel download-response-headers-test
   (testing "Make sure CSV/etc. download requests come back with the correct headers"
     (mt/with-temp [:model/Card card {:name "My Awesome Card"}]
       (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"

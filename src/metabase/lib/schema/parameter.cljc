@@ -275,17 +275,29 @@
    :string])
 
 (mr/def ::target
-  [:multi {:dispatch lib.schema.common/mbql-clause-tag
+  [:multi {:dispatch (fn [x]
+                       (if (pos-int? x)
+                         :field
+                         (lib.schema.common/mbql-clause-tag x)))
            :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
-                            (pr-str value)))}
+                       (str "Invalid parameter :target, must be either :field, :dimension, :variable, or :text-tag; got: "
+                            (pr-str value)))
+           ;; you're not allowed to have a `:template-tag` here unless it's wrapped in `:variable` or `:dimension`...
+           ;; not sure which one is supposed to be correct TBH
+           :decode/normalize (fn [x]
+                               (if (= (lib.schema.common/mbql-clause-tag x) :template-tag)
+                                 [:variable x]
+                                 x))}
    ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
    ;; know if we actually did allow that in practice.
-   [:dimension    [:ref ::dimension]]
-   [:variable     [:ref ::variable]]
-   [:text-tag     [:ref ::text-tag]]
+   [:dimension     [:ref ::dimension]]
+   [:variable      [:ref ::variable]]
+   [:text-tag      [:ref ::text-tag]]
+   [:field         [:ref ::target.legacy-field-ref]]
    ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
-   [::mc/default  [:ref ::target.legacy-field-ref]]])
+   [:field-id      [:ref ::target.legacy-field-ref]]
+   [:field-literal [:ref ::target.legacy-field-ref]]
+   [:fk->          [:ref ::target.legacy-field-ref]]])
 
 (defn- normalize-parameter
   [param]
