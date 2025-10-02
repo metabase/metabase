@@ -133,11 +133,9 @@ const _StaticQuestion = ({
             )}
 
             {isStaticEmbedding && (
-              <Group>
-                <Box w="100%">
-                  <SdkQuestion.SqlParametersList />
-                </Box>
-              </Group>
+              <Box w="100%">
+                <SdkQuestion.SqlParametersList />
+              </Box>
             )}
 
             <SdkQuestion.QuestionVisualization
