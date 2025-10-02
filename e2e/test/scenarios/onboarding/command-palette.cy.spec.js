@@ -470,7 +470,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "create-new-collection",
     });
     H.openCommandPalette();
-    H.commandPaletteInput().should("exist").type("new dashboard");
+    H.commandPaletteInput().should("be.visible").type("new dashboard");
     H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
