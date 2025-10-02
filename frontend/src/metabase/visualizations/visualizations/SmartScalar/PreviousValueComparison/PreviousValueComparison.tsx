@@ -1,12 +1,12 @@
 import cx from "classnames";
-import type { PropsWithChildren } from "react";
 import innerText from "react-innertext";
 
 import DashboardS from "metabase/css/dashboard.module.css";
+import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Flex, Title, Tooltip } from "metabase/ui";
+import { Flex, Tooltip, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -16,6 +16,7 @@ import { formatChangeAutoPrecision, getChangeWidth } from "../utils";
 import { DetailCandidate } from "./DetailCandidate";
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import { Separator } from "./Separator";
+import { VariationDetails } from "./VariationDetails";
 import { VariationPercent } from "./VariationPercent";
 
 interface PreviousValueComparisonProps {
@@ -31,6 +32,7 @@ export function PreviousValueComparison({
   fontFamily,
   formatOptions,
 }: PreviousValueComparisonProps) {
+  const theme = useMantineTheme();
   const fontSize = "0.875rem";
 
   const { changeType, percentChange, comparisonValue, display } = comparison;
@@ -49,7 +51,7 @@ export function PreviousValueComparison({
     4 * SPACING -
     ICON_SIZE -
     ICON_MARGIN_RIGHT -
-    measureTextWidth(innerText(<Separator />), {
+    measureTextWidth(innerText(<Separator color="irrelevant" />), {
       size: fontSize,
       family: fontFamily,
       weight: 700,
@@ -71,7 +73,11 @@ export function PreviousValueComparison({
   const detailCandidates = valueCandidates.map((valueFormatted) => {
     // intentionally calling the component as a function
     // since otherwise measurements don't work as expected
-    return DetailCandidate({ comparison, valueFormatted });
+    return DetailCandidate({
+      color: "var(--mb-color-text-secondary)",
+      comparison,
+      valueFormatted,
+    });
   });
   const fullDetailDisplay = detailCandidates[0];
   const fittedDetailDisplay = detailCandidates.find(
@@ -82,26 +88,6 @@ export function PreviousValueComparison({
         weight: 700,
       }) <= availableComparisonWidth,
   );
-
-  const VariationDetails = ({
-    inTooltip,
-    children,
-  }: PropsWithChildren<{ inTooltip?: boolean }>) => {
-    if (!children) {
-      return null;
-    }
-
-    const detailColor = inTooltip
-      ? "var(--mb-color-tooltip-text-secondary)"
-      : "var(--mb-color-text-secondary)";
-
-    return (
-      <Title order={5} style={{ whiteSpace: "pre", color: detailColor }}>
-        <Separator inTooltip={inTooltip} />
-        {children}
-      </Title>
-    );
-  };
 
   return (
     <Tooltip
@@ -132,7 +118,12 @@ export function PreviousValueComparison({
         <VariationPercent comparison={comparison} iconSize={ICON_SIZE}>
           {fittedChangeDisplay}
         </VariationPercent>
-        <VariationDetails>{fittedDetailDisplay}</VariationDetails>
+        <VariationDetails
+          color="var(--mb-color-text-secondary)"
+          separatorColor={lighten(theme.fn.themeColor("text-light"), 0.25)}
+        >
+          {fittedDetailDisplay}
+        </VariationDetails>
       </Flex>
     </Tooltip>
   );

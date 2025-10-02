@@ -1,14 +1,13 @@
-import type { PropsWithChildren } from "react";
-
+import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { Flex, Title } from "metabase/ui";
+import { Flex, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
 import { TOOLTIP_ICON_SIZE } from "../constants";
 
 import { DetailCandidate } from "./DetailCandidate";
-import { Separator } from "./Separator";
+import { VariationDetails } from "./VariationDetails";
 import { VariationPercent } from "./VariationPercent";
 
 interface PreviousValueComparisonProps {
@@ -20,6 +19,7 @@ export function PreviousValueComparisonTooltip({
   comparison,
   formatOptions,
 }: PreviousValueComparisonProps) {
+  const theme = useMantineTheme();
   const { changeType, comparisonValue, display } = comparison;
 
   const valueCandidates = [
@@ -30,26 +30,6 @@ export function PreviousValueComparisonTooltip({
     "",
   ];
 
-  const VariationDetails = ({
-    inTooltip,
-    children,
-  }: PropsWithChildren<{ inTooltip?: boolean }>) => {
-    if (!children) {
-      return null;
-    }
-
-    const detailColor = inTooltip
-      ? "var(--mb-color-tooltip-text-secondary)"
-      : "var(--mb-color-text-secondary)";
-
-    return (
-      <Title order={5} style={{ whiteSpace: "pre", color: detailColor }}>
-        <Separator inTooltip={inTooltip} />
-        {children}
-      </Title>
-    );
-  };
-
   return (
     <Flex align="center">
       <VariationPercent
@@ -59,10 +39,13 @@ export function PreviousValueComparisonTooltip({
       >
         {display.percentChange}
       </VariationPercent>
-      <VariationDetails inTooltip>
+      <VariationDetails
+        color="var(--mb-color-tooltip-text-secondary)"
+        separatorColor={lighten(theme.fn.themeColor("text-medium"), 0.15)}
+      >
         <DetailCandidate
+          color="var(--mb-color-tooltip-text-secondary)"
           comparison={comparison}
-          inTooltip
           valueFormatted={valueCandidates[0]}
         />
       </VariationDetails>
