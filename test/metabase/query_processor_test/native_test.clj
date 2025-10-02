@@ -35,7 +35,7 @@
           (qp.test-util/rows-and-cols
            (qp/process-query
             (mt/native-query
-              {:query "select name from users;"}))))))
+             {:query "select name from users;"}))))))
 
 (deftest ^:parallel native-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
