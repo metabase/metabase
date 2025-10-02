@@ -124,6 +124,14 @@
     :transform [:name]
     []))
 
+(defn- expanded-entity-keys [entity-type]
+  (case entity-type
+    :table [:id :name :display_name :description :db_id :schema]
+    :card [:id :name :description :type :display :collection_id :dashboard_id]
+    :snippet [:id :name :description]
+    :transform [:id :name :description]
+    []))
+
 (defn- entity-model [entity-type]
   (case entity-type
     :table :model/Table
@@ -186,6 +194,35 @@
                                    :usage_stats (usages [entity-type entity-id])}))))
                     nodes-by-type)
      :edges edges}))
+
+(api.macros/defendpoint :get "/graph/node"
+  "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
+  or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched
+  recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
+  depends on the node type. For :table, there should be :display_name. For :card, there should be :name
+  and :type. For :snippet -> :name. For :transform -> :name."
+  [_route-params
+   {:keys [id type]} :- [:map
+                         [:id ms/PositiveInt]
+                         [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
+  (let [starting-node [type id]
+        downstream-graph (dependency/graph-dependents)
+        _ (prn starting-node)
+        children ((graph/children-of downstream-graph [starting-node]) starting-node)
+        all-nodes (conj children starting-node)
+        nodes-by-type (->> (group-by first all-nodes)
+                           (m/map-vals #(map second %)))
+        node-info (into {}
+                        (mapcat (fn [[entity-type entity-ids]]
+                                  (->> (t2/select (entity-model entity-type) :id [:in entity-ids])
+                                       (map (fn [{entity-id :id :as entity}]
+                                              [[entity-type entity-id]
+                                               {:id entity-id
+                                                :type entity-type
+                                                :data (select-keys entity (expanded-entity-keys entity-type))}])))))
+                        nodes-by-type)]
+    (assoc (node-info [type id])
+           :usages (map node-info children))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
