@@ -9,13 +9,9 @@ import { useLocation } from "react-use";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useGetDashboardQuery,
-  useSearchQuery,
-} from "metabase/api";
+import { useSearchQuery } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
+import { useGetCurrentResource } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-current-resource";
 
 import { trackEmbedWizardSettingsUpdated } from "../analytics";
 import {
@@ -130,16 +126,7 @@ export const SdkIframeEmbedSetupProvider = ({
     return rawSettings;
   }, [modelCount, rawSettings]);
 
-  const { data: dashboard, isLoading: isDashboardLoading } =
-    useGetDashboardQuery(
-      settings.dashboardId ? { id: settings.dashboardId } : skipToken,
-    );
-
-  const { data: card, isLoading: isCardLoading } = useGetCardQuery(
-    settings.questionId ? { id: settings.questionId as number } : skipToken,
-  );
-
-  const isLoading = isDashboardLoading || isCardLoading;
+  const { resource, isLoading } = useGetCurrentResource(settings);
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -155,11 +142,9 @@ export const SdkIframeEmbedSetupProvider = ({
     [settings],
   );
 
-  // Use parameter list hook for dynamic parameter loading
   const { availableParameters } = useParameterList({
     experience,
-    dashboard,
-    card,
+    resource,
   });
 
   const updateSettings = useCallback(
@@ -192,8 +177,8 @@ export const SdkIframeEmbedSetupProvider = ({
     currentStep,
     setCurrentStep,
     experience,
-    dashboard,
-    card,
+    resource,
+    isLoading,
     settings,
     replaceSettings,
     updateSettings,
@@ -202,7 +187,6 @@ export const SdkIframeEmbedSetupProvider = ({
     recentCollections,
     addRecentItem,
     isEmbedSettingsLoaded,
-    isLoading,
     availableParameters,
   };
 

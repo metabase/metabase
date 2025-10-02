@@ -18,8 +18,8 @@ export interface SdkIframeEmbedSetupContextType {
   experience: SdkIframeEmbedSetupExperience;
 
   // Loaded resources
-  dashboard: Dashboard | undefined;
-  card: Card | undefined;
+  resource: Dashboard | Card | null;
+  isLoading: boolean;
 
   // Embed settings
   settings: SdkIframeEmbedSetupSettings;
@@ -37,7 +37,6 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
-  isLoading: boolean;
 
   isEmbedSettingsLoaded: boolean;
 }

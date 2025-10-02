@@ -12,14 +12,12 @@ import type { SdkIframeEmbedSetupExperience } from "../types";
 
 interface UseParameterListProps {
   experience: SdkIframeEmbedSetupExperience;
-  dashboard: Dashboard | undefined;
-  card: Card | undefined;
+  resource: Dashboard | Card | null;
 }
 
 export const useParameterList = ({
   experience,
-  dashboard,
-  card,
+  resource,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -31,31 +29,31 @@ export const useParameterList = ({
 
   // Extract parameters from the loaded dashboard/card
   const availableParameters = useMemo((): Parameter[] => {
-    if (experience === "dashboard" && dashboard) {
+    if (experience === "dashboard" && resource) {
+      const dashboard = resource as Dashboard;
       return getSavedDashboardUiParameters(
         dashboard.dashcards,
         dashboard.parameters,
         dashboard.param_fields,
         metadata,
       );
-    } else if (experience === "chart" && card) {
+    } else if (experience === "chart" && resource) {
+      const card = resource as Card;
       return getCardUiParameters(card as Card, metadataRef.current) || [];
     }
 
     return [];
-  }, [experience, dashboard, card, metadata, metadataRef]);
+  }, [experience, resource, metadata, metadataRef]);
 
   useEffect(() => {
-    if (dashboard?.param_fields) {
+    if (resource && "param_fields" in resource && resource.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
       // otherwise they will use a normal text input
-      dispatch(addFields(Object.values(dashboard.param_fields).flat()));
+      dispatch(addFields(Object.values(resource.param_fields).flat()));
     }
-  }, [dashboard?.param_fields, dispatch]);
+  }, [resource, dispatch]);
 
   return {
     availableParameters,
-    dashboard,
-    card,
   };
 };

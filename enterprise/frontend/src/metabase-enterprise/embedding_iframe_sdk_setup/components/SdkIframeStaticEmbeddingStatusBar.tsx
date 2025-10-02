@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useMount } from "react-use";
 
 import {
@@ -8,34 +8,29 @@ import {
   useUpdateDashboardEnableEmbeddingMutation,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { EmbedModalContentStatusBar } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
 import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-settings-changes";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import { useStaticEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
 import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getInitialResourceParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-initial-resource-parameters";
 import { getStaticEmbeddingResourceType } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-static-embedding-resource-type";
 
-type Props = Pick<
-  StaticEmbedSetupPaneProps,
-  "resource" | "resourceType" | "resourceParameters"
->;
+type Props = Pick<StaticEmbedSetupPaneProps, "resource" | "resourceType">;
 
 const SdkIframeStaticEmbeddingStatusBarInner = ({
   resource,
   resourceType,
-  resourceParameters: initialResourceParameters,
 }: Props) => {
   const exampleDashboardId = useSetting("example-dashboard-id");
   const { availableParameters: resourceParameters, isLoading } =
     useSdkIframeEmbedSetupContext();
   const { buildEmbeddedParameters, setEmbeddingParameters } =
     useStaticEmbeddingParameters();
+
+  const initialResourceParametersRef = useRef(resourceParameters);
 
   const [updateDashboardEmbeddingParams] =
     useUpdateDashboardEmbeddingParamsMutation();
@@ -46,7 +41,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
 
   const initialEmbeddingParameters = getDefaultEmbeddingParams(
     resource,
-    initialResourceParameters,
+    initialResourceParametersRef.current,
   );
   const embeddingParameters = useMemo(
     () => buildEmbeddedParameters(resourceParameters),
@@ -115,29 +110,15 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
 };
 
 export const SdkIframeStaticEmbeddingStatusBar = () => {
-  const { currentStep, settings, dashboard, card } =
-    useSdkIframeEmbedSetupContext();
-  const metadata = useSelector(getMetadata);
+  const { currentStep, settings, resource } = useSdkIframeEmbedSetupContext();
 
   const isStaticEmbedding = !!settings.isStatic;
-  const resource = dashboard ?? card;
   const resourceType = getStaticEmbeddingResourceType(settings);
-  const resourceParameters = getInitialResourceParameters({
-    dashboard,
-    card,
-    metadata,
-  });
 
   const shouldShowForStep =
     currentStep === "select-embed-options" || currentStep === "get-code";
 
-  if (
-    !isStaticEmbedding ||
-    !resource ||
-    !resourceType ||
-    !resourceParameters ||
-    !shouldShowForStep
-  ) {
+  if (!isStaticEmbedding || !resource || !resourceType || !shouldShowForStep) {
     return null;
   }
 
@@ -145,7 +126,6 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
     <SdkIframeStaticEmbeddingStatusBarInner
       resource={resource}
       resourceType={resourceType}
-      resourceParameters={resourceParameters}
     />
   );
 };
