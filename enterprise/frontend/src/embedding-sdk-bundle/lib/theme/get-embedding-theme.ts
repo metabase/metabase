@@ -6,6 +6,7 @@ import type {
   MetabaseColor,
   MetabaseComponentTheme,
   MetabaseTheme,
+  MetabaseTooltipComponentTheme,
 } from "metabase/embedding-sdk/theme";
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -13,7 +14,10 @@ import {
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import {
+  SDK_TO_MAIN_APP_COLORS_MAPPING,
+  SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
+} from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import { colorTuple } from "./color-tuple";
@@ -82,32 +86,18 @@ export function getEmbeddingThemeOverride(
   }
 
   if (theme.components?.tooltip) {
-    const { tooltip } = theme.components;
-
     if (!override.colors) {
       override.colors = {};
     }
 
-    if (tooltip.textColor) {
-      override.colors["tooltip-text"] = colorTuple(tooltip.textColor);
-    }
+    for (const _tooltipKey in SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING) {
+      const tooltipKey = _tooltipKey as keyof MetabaseTooltipComponentTheme;
+      const colorKey = SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING[tooltipKey];
+      const tooltipColor = theme.components.tooltip[tooltipKey];
 
-    if (tooltip.secondaryTextColor) {
-      override.colors["tooltip-text-secondary"] = colorTuple(
-        tooltip.secondaryTextColor,
-      );
-    }
-
-    if (tooltip.backgroundColor) {
-      override.colors["tooltip-background"] = colorTuple(
-        tooltip.backgroundColor,
-      );
-    }
-
-    if (tooltip.focusedBackgroundColor) {
-      override.colors["tooltip-background-focused"] = colorTuple(
-        tooltip.focusedBackgroundColor,
-      );
+      if (tooltipColor && colorKey) {
+        override.colors[colorKey] = colorTuple(tooltipColor);
+      }
     }
   }
 
