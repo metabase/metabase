@@ -1,21 +1,15 @@
 import type { PropsWithChildren } from "react";
 
-import { getIsNightMode } from "metabase/dashboard/selectors";
-import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { useSelector } from "metabase/lib/redux";
-import { Flex, Title, useMantineTheme } from "metabase/ui";
+import { Flex, Title } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
 import { TOOLTIP_ICON_SIZE } from "../constants";
 
 import { DetailCandidate } from "./DetailCandidate";
-import {
-  VariationIcon,
-  VariationValue,
-} from "./PreviousValueComparison.styled";
 import { Separator } from "./Separator";
+import { VariationPercent } from "./VariationPercent";
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
@@ -26,16 +20,7 @@ export function PreviousValueComparisonTooltip({
   comparison,
   formatOptions,
 }: PreviousValueComparisonProps) {
-  const {
-    changeType,
-    comparisonValue,
-    changeArrowIconName,
-    changeColor,
-    display,
-  } = comparison;
-
-  const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
+  const { changeType, comparisonValue, display } = comparison;
 
   const valueCandidates = [
     display.comparisonValue,
@@ -44,26 +29,6 @@ export function PreviousValueComparisonTooltip({
       : []),
     "",
   ];
-
-  const VariationPercent = ({
-    inTooltip,
-    iconSize,
-    children,
-  }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
-    const noChangeColor =
-      inTooltip || isNightMode
-        ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-        : "text-light";
-
-    return (
-      <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
-        {changeArrowIconName && (
-          <VariationIcon name={changeArrowIconName} size={iconSize} />
-        )}
-        <VariationValue showTooltip={false}>{children}</VariationValue>
-      </Flex>
-    );
-  };
 
   const VariationDetails = ({
     inTooltip,
@@ -87,7 +52,11 @@ export function PreviousValueComparisonTooltip({
 
   return (
     <Flex align="center">
-      <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
+      <VariationPercent
+        comparison={comparison}
+        iconSize={TOOLTIP_ICON_SIZE}
+        inTooltip
+      >
         {display.percentChange}
       </VariationPercent>
       <VariationDetails inTooltip>

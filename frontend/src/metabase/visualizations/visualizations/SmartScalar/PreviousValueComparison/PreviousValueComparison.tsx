@@ -3,13 +3,10 @@ import type { PropsWithChildren } from "react";
 import innerText from "react-innertext";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { getIsNightMode } from "metabase/dashboard/selectors";
-import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Flex, Title, Tooltip, useMantineTheme } from "metabase/ui";
+import { Flex, Title, Tooltip } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -17,12 +14,9 @@ import { ICON_MARGIN_RIGHT, ICON_SIZE, SPACING } from "../constants";
 import { formatChangeAutoPrecision, getChangeWidth } from "../utils";
 
 import { DetailCandidate } from "./DetailCandidate";
-import {
-  VariationIcon,
-  VariationValue,
-} from "./PreviousValueComparison.styled";
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
 import { Separator } from "./Separator";
+import { VariationPercent } from "./VariationPercent";
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
@@ -39,17 +33,7 @@ export function PreviousValueComparison({
 }: PreviousValueComparisonProps) {
   const fontSize = "0.875rem";
 
-  const {
-    changeType,
-    percentChange,
-    comparisonValue,
-    changeArrowIconName,
-    changeColor,
-    display,
-  } = comparison;
-
-  const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
+  const { changeType, percentChange, comparisonValue, display } = comparison;
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
@@ -99,26 +83,6 @@ export function PreviousValueComparison({
       }) <= availableComparisonWidth,
   );
 
-  const VariationPercent = ({
-    inTooltip,
-    iconSize,
-    children,
-  }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
-    const noChangeColor =
-      inTooltip || isNightMode
-        ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-        : "text-light";
-
-    return (
-      <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
-        {changeArrowIconName && (
-          <VariationIcon name={changeArrowIconName} size={iconSize} />
-        )}
-        <VariationValue showTooltip={false}>{children}</VariationValue>
-      </Flex>
-    );
-  };
-
   const VariationDetails = ({
     inTooltip,
     children,
@@ -165,7 +129,7 @@ export function PreviousValueComparison({
           EmbedFrameS.fullscreenNightText,
         )}
       >
-        <VariationPercent iconSize={ICON_SIZE}>
+        <VariationPercent comparison={comparison} iconSize={ICON_SIZE}>
           {fittedChangeDisplay}
         </VariationPercent>
         <VariationDetails>{fittedDetailDisplay}</VariationDetails>
