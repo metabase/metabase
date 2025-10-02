@@ -27,6 +27,21 @@
     - If a key is found in the graph, and it has no children, its value is `#{}`.
     - If the input `key-seq` is empty, return `{}`."))
 
+(p/deftype+ CachedGraph [graph cache]
+  Graph
+  (children-of [_this key-seq]
+    (let [new-cache (swap! cache (fn [current-cache]
+                                   (let [current-keys (into #{} (keys current-cache))
+                                         missing-keys (remove current-keys key-seq)]
+                                     (->> (children-of graph missing-keys)
+                                          (merge current-cache)))))]
+      (select-keys new-cache key-seq))))
+
+(defn cached-graph
+  "Wraps a graph with an implementation that automatically caches results."
+  [graph]
+  (->CachedGraph graph (atom {})))
+
 (defn- stable-iteration-set []
   ;; Both of these sets explicitly have stable iteration order: values are returned in the order of (first) insertion.
   #?(:clj  (let [s (LinkedHashSet.)]
@@ -60,21 +75,19 @@
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
 
-(defn bidirectional-tree-with-edges
-  [upstream-graph downstream-graph key-seq]
-  (let [all-nodes (-> (into #{} key-seq)
-                      (into (transitive upstream-graph key-seq))
-                      (into (transitive downstream-graph key-seq)))
-        all-children (children-of downstream-graph all-nodes)
+(defn calc-edges
+  "Calculates the edges within `nodes`, based on `graph`."
+  [graph nodes]
+  (let [node-set (into #{} nodes)
+        all-children (children-of graph nodes)
         edges (for [[[parent-type parent-id] children] all-children
                     [child-type child-id] children
-                    :when (all-nodes [child-type child-id])]
+                    :when (node-set [child-type child-id])]
                 {:from_entity_type child-type
                  :from_entity_id   child-id
                  :to_entity_type   parent-type
                  :to_entity_id     parent-id})]
-    {:nodes all-nodes
-     :edges edges}))
+    edges))
 
 (defn graph?
   "Whether `x` is a valid `Graph`."

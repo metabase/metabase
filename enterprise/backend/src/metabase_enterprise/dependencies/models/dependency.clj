@@ -80,7 +80,6 @@
   (children-of [_this key-seq]
     (children-fn key-seq)))
 
-;; NOTE: We can easily construct a graph of upstream dependencies too, if it's useful.
 (defn graph-dependents []
   (->DependencyGraph key-dependents))
 
@@ -106,10 +105,6 @@
                     [entity-type (:id entity)])]
      (->> (graph/transitive graph starters) ; This returns a flat list.
           (u/group-by first second conj #{})))))
-
-(defn bidirectional-tree-with-edges
-  [key-seq]
-  (graph/bidirectional-tree-with-edges (graph-dependencies) (graph-dependents) key-seq))
 
 (defn replace-dependencies
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
