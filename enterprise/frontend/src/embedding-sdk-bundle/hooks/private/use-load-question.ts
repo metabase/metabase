@@ -132,6 +132,7 @@ export function useLoadQuestion({
         question: questionState.question,
         isStaticEmbedding,
         originalQuestion: questionState.originalQuestion,
+        parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
       });
 
