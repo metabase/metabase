@@ -11,7 +11,6 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
   beforeEach(() => {
     jest.resetModules();
-    // @ts-expect-error -- test cleanup
     delete window.metabaseConfig;
     require("./embed"); // we do things when the script is loaded
 

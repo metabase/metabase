@@ -7,6 +7,7 @@ import type {
   TransformSource,
   TransformTag,
   TransformTarget,
+  UpdateTransformRequest,
 } from "metabase-types/api";
 
 import { createMockStructuredDatasetQuery } from "./query";
@@ -97,6 +98,15 @@ export function createMockTransformJob(
     ui_display_type: "cron/builder",
     created_at: "2000-01-01T00:00:00Z",
     updated_at: "2000-01-01T00:00:00Z",
+    ...opts,
+  };
+}
+
+export function createMockUpdateTransformRequest(
+  opts?: Partial<UpdateTransformRequest>,
+): UpdateTransformRequest {
+  return {
+    id: 1,
     ...opts,
   };
 }

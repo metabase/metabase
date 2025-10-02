@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.lib.schema.common :as schema.common]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -32,6 +33,7 @@
            {driver :engine :as database} (t2/select-one :model/Database db)
            feature (transforms.util/required-database-feature transform)
            transform-details {:db-id db
+                              :transform-id   id
                               :transform-type (keyword (:type target))
                               :query (transforms.util/compile-source source)
                               :target target
@@ -51,7 +53,9 @@
           run-id driver transform-details
           (fn [_cancel-chan] (driver/run-transform! driver transform-details)))
          (transforms.instrumentation/with-stage-timing [run-id :table-sync]
-           (transforms.util/sync-target! target database run-id))))
+           (transforms.util/sync-target! target database run-id)
+         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+           (events/publish-event! :event/transform-run-complete {:object transform-details}))))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

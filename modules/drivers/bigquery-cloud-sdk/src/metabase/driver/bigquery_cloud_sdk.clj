@@ -15,6 +15,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.normalize :as driver.sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
@@ -995,7 +996,7 @@
         transforms (t2/select [:model/Transform :id :target])]
     (into #{} (comp
                (map :component)
-               (map #(assoc % :table (driver.sql/normalize-name driver (:table %))))
+               (map #(assoc % :table (driver.sql.normalize/normalize-name driver (:table %))))
                (map #(let [parts (str/split (:table %) #"\.")]
                        {:schema (first parts) :table (second parts)}))
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))

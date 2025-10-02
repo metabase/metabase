@@ -581,7 +581,8 @@
                   :database-id   false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description]
+   :search-terms {:name        search.spec/explode-camel-case
+                  :description true}
    :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 
