@@ -1,6 +1,4 @@
 import type { ExportFormatType } from "metabase/embedding/components/PublicLinkPopover/types";
-import { isEEBuild } from "metabase/lib/utils";
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
 import { LegaleseStep } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep";
 import type {
   EmbedModalStep,
@@ -62,18 +60,6 @@ export const EmbedModalContent = (
 
   if (embedType === "legalese") {
     return <LegaleseStep goToNextStep={goToNextStep} />;
-  }
-
-  if (isEEBuild()) {
-    return (
-      <PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeStaticEmbedSetup
-        resource={resource}
-        resourceType={resourceType}
-        resourceParameters={resourceParameters}
-        onUpdateEmbeddingParams={onUpdateEmbeddingParams}
-        onUpdateEnableEmbedding={onUpdateEnableEmbedding}
-      />
-    );
   }
 
   return (

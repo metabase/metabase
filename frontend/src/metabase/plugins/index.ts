@@ -44,7 +44,6 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-import type { StaticEmbedSetupPaneProps } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/StaticEmbedSetupPane";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
@@ -583,8 +582,6 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   isFeatureEnabled: () => false,
   shouldShowEmbedInNewItemMenu: () => false,
   SdkIframeEmbedSetup: (): ReactNode => null,
-  SdkIframeStaticEmbedSetup: (_props: StaticEmbedSetupPaneProps): ReactNode =>
-    null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
