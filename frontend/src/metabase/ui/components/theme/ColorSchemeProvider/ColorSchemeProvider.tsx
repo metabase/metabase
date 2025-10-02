@@ -6,9 +6,9 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useMedia } from "react-use";
 import { noop } from "underscore";
 
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 
@@ -38,24 +38,23 @@ interface ColorSchemeProviderProps {
   forceColorScheme?: ResolvedColorScheme | null;
 }
 
-function getSystemColorScheme(): ResolvedColorScheme {
-  if (typeof window === "undefined") {
-    return "light";
+const getNextScheme = (scheme: ResolvedColorScheme) => {
+  switch (scheme) {
+    case "light":
+      return "dark";
+    case "dark":
+      return "light";
   }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
-}
-
-function resolveColorScheme(scheme: ColorScheme): ResolvedColorScheme {
-  return scheme === "auto" ? getSystemColorScheme() : scheme;
-}
+};
 
 export function ColorSchemeProvider({
   children,
-  defaultColorScheme = "light",
+  defaultColorScheme = "auto",
   forceColorScheme,
 }: ColorSchemeProviderProps) {
+  const systemColorScheme = useMedia("(prefers-color-scheme: dark)")
+    ? "dark"
+    : "light";
   const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
     // Try to get saved preference from localStorage
     if (typeof window !== "undefined") {
@@ -73,24 +72,12 @@ export function ColorSchemeProvider({
     if (getIsEmbeddingIframe()) {
       return "light";
     }
-    return resolveColorScheme(colorScheme);
-  }, [colorScheme, forceColorScheme]);
+    return colorScheme === "auto" ? systemColorScheme : colorScheme;
+  }, [colorScheme, forceColorScheme, systemColorScheme]);
 
   useEffect(() => {
     localStorage.setItem("metabase-color-scheme", colorScheme);
   }, [colorScheme]);
-
-  const forceUpdate = useForceUpdate();
-  useEffect(() => {
-    if (colorScheme === "auto") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-      const handleChange = () => forceUpdate();
-
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-  }, [colorScheme, forceUpdate]);
 
   const value: ColorSchemeContextType = isEmbeddingSdk()
     ? defaultValue
@@ -99,15 +86,10 @@ export function ColorSchemeProvider({
         resolvedColorScheme,
         setColorScheme,
         toggleColorScheme: () => {
-          setColorScheme((current) => {
-            switch (current) {
-              case "light":
-                return "dark";
-              case "dark":
-              default:
-                return "light";
-            }
-          });
+          const nextScheme = getNextScheme(resolvedColorScheme);
+          setColorScheme(
+            nextScheme === systemColorScheme ? "auto" : nextScheme,
+          );
         },
       };
 

@@ -13,32 +13,23 @@ export function ColorSchemeToggle({
   size = "md",
   variant = "subtle",
 }: ColorSchemeToggleProps) {
-  const { colorScheme, resolvedColorScheme, toggleColorScheme } =
-    useColorScheme();
+  const { resolvedColorScheme, toggleColorScheme } = useColorScheme();
 
   const getIcon = () => {
-    switch (colorScheme) {
+    switch (resolvedColorScheme) {
       case "light":
         return "sun";
       case "dark":
         return "moon";
-      case "auto":
-        return resolvedColorScheme === "dark" ? "moon" : "sun";
-      default:
-        return "sun";
     }
   };
 
   const getTooltipText = () => {
-    switch (colorScheme) {
+    switch (resolvedColorScheme) {
       case "light":
         return t`Switch to dark mode`;
       case "dark":
-        return t`Switch to system preference`;
-      case "auto":
         return t`Switch to light mode`;
-      default:
-        return t`Toggle theme`;
     }
   };
 
