@@ -118,17 +118,23 @@ async function executePython(code, context = {}) {
     pyodide.globals.set(key, value);
   }
 
-  // Capture output
-  await pyodide.runPythonAsync(`
-import sys
-import io
-_stdout = io.StringIO()
-_stderr = io.StringIO()
-_original_stdout = sys.stdout
-_original_stderr = sys.stderr
-sys.stdout = _stdout
-sys.stderr = _stderr
-  `);
+  pyodide.setStdin({ error: true });
+
+  let stdout = "";
+  pyodide.setStdout({
+    isatty: false,
+    batched(out) {
+      stdout += out;
+    },
+  });
+
+  let stderr = "";
+  pyodide.setStderr({
+    isatty: false,
+    batched(out) {
+      stderr += out;
+    },
+  });
 
   let result;
   let error = null;
@@ -147,15 +153,6 @@ sys.stderr = _stderr
     console.error("Python execution error:", err);
     error = err;
   }
-
-  // Get captured output
-  const stdout = await pyodide.runPythonAsync(`
-sys.stdout = _original_stdout
-sys.stderr = _original_stderr
-_stdout.getvalue()
-  `);
-
-  const stderr = await pyodide.runPythonAsync(`_stderr.getvalue()`);
 
   console.log("Captured stdout:", stdout);
   console.log("Captured stderr:", stderr);
