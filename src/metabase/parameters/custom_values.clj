@@ -8,6 +8,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -61,6 +62,30 @@
   It's 1000 because it matches with the limit for chain-filter.
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
+
+(defn- query-and-value-column
+  "Search through `card*`'s query stages (in -1 to 0 order) for column corresponding to `value-field-ref`. For a stage
+  probe returned columns, removing aggregations if searched column is not found.
+  Return map of form
+  {:query ...
+   :value-column ...}.
+  The `:query` key contains card's query with stages -1..n+1 removed, where n is the stage containing the column.
+  The `:value-column` key contains the column."
+  [card* value-field-ref]
+  (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card*))
+        card (lib.metadata/card mp (:id card*))
+        full-query (lib/card->underlying-query mp card)
+        drop-clauses #(lib/update-query-stage % -1 dissoc :aggregation :breakout)]
+    (loop [query full-query]
+      (if-some [value-column (lib/find-column-for-legacy-ref
+                              query -1 value-field-ref
+                              (lib/returned-columns query))]
+        {:query query
+         :value-column value-column}
+        (recur (if (or (seq (lib/aggregations query))
+                       (seq (lib/breakouts query)))
+                 (drop-clauses query)
+                 (lib/drop-stage query)))))))
 
 (mr/def ::values-from-card-query.options
   [:map
