@@ -24,20 +24,13 @@ async function initPyodide() {
     // @ts-ignore - loadPyodide is available after importScripts
     pyodide = await loadPyodide({
       indexURL: "/app/assets/pyodide/",
+      packages: ["micropip", "numpy", "pandas"],
     });
 
     sendResponse({
       type: "log",
       id: "init",
       data: "Pyodide loaded successfully",
-    });
-
-    // Load essential packages
-    await pyodide.loadPackage(["micropip", "numpy", "pandas"]);
-    sendResponse({
-      type: "log",
-      id: "init",
-      data: "Essential packages loaded",
     });
 
     return true;
