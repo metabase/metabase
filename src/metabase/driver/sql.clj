@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [some])
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
