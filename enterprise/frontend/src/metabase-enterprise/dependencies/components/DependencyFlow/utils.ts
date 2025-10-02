@@ -78,3 +78,13 @@ export function getNodesWithPositions(nodes: Node[], edges: Edge[]): Node[] {
     };
   });
 }
+
+export function getSelectedNode(
+  nodes: Node<DependencyNode>[],
+): Node<DependencyNode> | undefined {
+  return nodes.find((node) => node.selected);
+}
+
+export function getNodeLabel(node: DependencyNode) {
+  return node.type === "table" ? node.data.display_name : node.data.name;
+}

@@ -1,17 +1,61 @@
 import type { Card, CardType } from "./card";
+import type { DatabaseId } from "./database";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
-export type DependencyType = "card" | "table" | "transform" | "snippet";
 
-export type DependencyNode = {
-  id: DependencyId;
-  type: DependencyType;
-  name: string;
-  card_type?: CardType;
+type BaseDependencyNode<TType, TData> = {
+  id: DatabaseId;
+  type: TType;
+  data: TData;
   usage_stats?: DependencyUsageStats;
 };
+
+export type CardDependencyData = {
+  type: CardType;
+  name: string;
+};
+
+export type TableDependencyData = {
+  name: string;
+  display_name: string;
+  db_id: DatabaseId;
+  schema: string | null;
+};
+
+export type TransformDependencyData = {
+  name: string;
+};
+
+export type SnippetDependencyData = {
+  name: string;
+};
+
+export type CardDependencyNode = BaseDependencyNode<"card", CardDependencyData>;
+
+export type TableDependencyNode = BaseDependencyNode<
+  "table",
+  TableDependencyData
+>;
+
+export type TransformDependencyNode = BaseDependencyNode<
+  "transform",
+  TransformDependencyData
+>;
+
+export type SnippetDependencyNode = BaseDependencyNode<
+  "snippet",
+  SnippetDependencyData
+>;
+
+export type DependencyNode =
+  | CardDependencyNode
+  | TableDependencyNode
+  | TransformDependencyNode
+  | SnippetDependencyNode;
+
+export type DependencyType = DependencyNode["type"];
 
 export type DependencyUsageStats = {
   questions?: number;

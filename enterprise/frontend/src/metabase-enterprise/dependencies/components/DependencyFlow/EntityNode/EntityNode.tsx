@@ -10,6 +10,8 @@ import { memo } from "react";
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import { getNodeLabel } from "../utils";
+
 import { getNodeGroupLabel, getNodeGroups, getNodeIcon } from "./utils";
 
 type EntityNodeProps = NodeProps<Node<DependencyNode>>;
@@ -29,7 +31,7 @@ export const EntityNode = memo(function EntityNode({
       <Stack gap="sm">
         <Group gap="sm" lh="1rem">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
-          {node.name}
+          {getNodeLabel(node)}
         </Group>
         {groups.map((group) => (
           <Group key={group.type} gap="sm" fz="sm" lh="1rem">

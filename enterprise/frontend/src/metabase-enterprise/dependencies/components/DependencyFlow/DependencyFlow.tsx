@@ -1,6 +1,7 @@
 import {
   Background,
   Controls,
+  Panel,
   ReactFlow,
   useEdgesState,
   useNodesInitialized,
@@ -12,7 +13,13 @@ import { useLayoutEffect } from "react";
 import type { DependencyGraph } from "metabase-types/api";
 
 import { EntityNode } from "./EntityNode";
-import { getEdges, getNodes, getNodesWithPositions } from "./utils";
+import { EntityPanel } from "./EntityPanel";
+import {
+  getEdges,
+  getNodes,
+  getNodesWithPositions,
+  getSelectedNode,
+} from "./utils";
 
 const NODE_TYPES = {
   entity: EntityNode,
@@ -23,40 +30,91 @@ const GRAPH: DependencyGraph = {
     {
       id: 1,
       type: "table",
-      name: "some_intermediate_table",
-      usage_stats: { questions: 10, transforms: 1 },
+      data: {
+        name: "Some intermediate table",
+        display_name: "some_intermediate_table",
+        db_id: 1,
+        schema: "public",
+      },
+      usage_stats: {
+        questions: 10,
+        transforms: 1,
+      },
     },
     {
       id: 2,
       type: "table",
-      name: "nice_table",
-      usage_stats: { transforms: 2 },
+      data: {
+        name: "Nice table",
+        display_name: "nice_table",
+        db_id: 1,
+        schema: "public",
+      },
+      usage_stats: {
+        transforms: 2,
+      },
     },
     {
       id: 3,
       type: "table",
-      name: "ugly_table_here",
-      usage_stats: { transforms: 1 },
+      data: {
+        name: "Ugly table here",
+        display_name: "ugly_table_here",
+        db_id: 1,
+        schema: "public",
+      },
+      usage_stats: {
+        transforms: 1,
+      },
     },
-    { id: 4, type: "transform", name: "Good transform" },
-    { id: 5, type: "transform", name: "Better transform" },
+    {
+      id: 4,
+      type: "transform",
+      data: {
+        name: "Good transform",
+      },
+    },
+    {
+      id: 5,
+      type: "transform",
+      data: {
+        name: "Better transform",
+      },
+    },
     {
       id: 6,
       type: "table",
-      name: "interesting_facts",
-      usage_stats: { questions: 100, models: 5 },
+      data: {
+        name: "Interesting facts",
+        display_name: "interesting_facts",
+        db_id: 1,
+        schema: "public",
+      },
+      usage_stats: {
+        questions: 100,
+        models: 5,
+      },
     },
     {
       id: 7,
       type: "table",
-      name: "another_thing",
-      usage_stats: { models: 1 },
+      data: {
+        name: "Another thing",
+        display_name: "another_thing",
+        db_id: 1,
+        schema: "public",
+      },
+      usage_stats: {
+        models: 1,
+      },
     },
     {
       id: 8,
       type: "card",
-      name: "Amazing Accounts",
-      card_type: "model",
+      data: {
+        name: "Amazing Accounts",
+        type: "model",
+      },
       usage_stats: { questions: 1000 },
     },
   ],
@@ -113,6 +171,7 @@ export function DependencyFlow() {
   const [edges, _setEdges, onEdgesChange] = useEdgesState(
     getEdges(GRAPH.edges),
   );
+  const selectedNode = getSelectedNode(nodes);
 
   return (
     <ReactFlow
@@ -126,6 +185,11 @@ export function DependencyFlow() {
       <Background />
       <Controls />
       <NodeLayout />
+      {selectedNode != null && (
+        <Panel position="top-right">
+          <EntityPanel node={selectedNode.data} />
+        </Panel>
+      )}
     </ReactFlow>
   );
 }
