@@ -6,7 +6,7 @@ import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 
 export const createMockTokenState = ({
   ...opts
-}: Partial<LoginStatus> = {}): EmbeddingSessionTokenState => {
+}: Partial<EmbeddingSessionTokenState> = {}): EmbeddingSessionTokenState => {
   return { error: null, loading: false, token: null, ...opts };
 };
 

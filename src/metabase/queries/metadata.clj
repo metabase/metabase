@@ -49,16 +49,6 @@
     (t2/select-fn-set :table_id :model/Field :id [:in field-ids])
     #{}))
 
-(defn- split-tables-and-legacy-card-refs [source-ids]
-  (-> (reduce (fn [m src]
-                (if-let [card-id (lib.util/legacy-string-table-id->card-id src)]
-                  (update m :cards conj! card-id)
-                  (update m :tables conj! src)))
-              {:cards  (transient #{})
-               :tables (transient #{})}
-              source-ids)
-      (update-vals persistent!)))
-
 (defn- query->template-tags
   [query]
   (-> query :native :template-tags vals))
@@ -124,13 +114,8 @@
 (defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
-  (let [source-ids                (into #{}
-                                        ;; existing usage -- do not use in new code
-                                        #_{:clj-kondo/ignore [:deprecated-var]}
-                                        (mapcat #(lib.util/collect-source-tables (:query %)))
-                                        queries)
-        {source-table-ids :tables
-         source-card-ids  :cards} (split-tables-and-legacy-card-refs source-ids)
+  (let [{source-table-ids :table
+         source-card-ids  :card}  (lib.util/source-tables-and-cards queries)
         source-tables             (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids)
                                           (schema.table/batch-fetch-card-query-metadatas source-card-ids
                                                                                          {:include-database? false}))
