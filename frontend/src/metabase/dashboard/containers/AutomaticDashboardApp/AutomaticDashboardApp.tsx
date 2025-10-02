@@ -116,18 +116,19 @@ const AutomaticDashboardAppInner = () => {
                   py="md"
                   wrap={{ base: "wrap", sm: "nowrap" }}
                 >
-                  <Group
+                  <FixedWidthContainer
                     data-testid="fixed-width-dashboard-header"
-                    gap={0}
-                    wrap="nowrap"
+                    className={cx(CS.flex, CS.alignCenter)}
+                    isFixedWidth={dashboard?.width === "fixed"}
                   >
                     <XrayIcon />
                     <Dashboard.Title className={cx(CS.textWrap, CS.h2)} />
-                  </Group>
+                  </FixedWidthContainer>
                   <Group
                     align="center"
                     gap="md"
                     justify="flex-end"
+                    w={{ base: "auto", md: SIDEBAR_W }}
                     wrap="nowrap"
                   >
                     {savedDashboardUrl ? (

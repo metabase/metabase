@@ -5,14 +5,18 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useListModelIndexesQuery } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import ActionButton, {
+  type ActionButtonHandle,
+} from "metabase/common/components/ActionButton";
 import Button from "metabase/common/components/Button";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import EditBar from "metabase/common/components/EditBar";
@@ -21,6 +25,7 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
   setUIControls,
@@ -474,6 +479,28 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
   };
 
+  const saveButtonRef = useRef<ActionButtonHandle>(null);
+  const {
+    checkData,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCloseConfirmation,
+  } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
+    onSave: async (question) => {
+      await onSave(question, { rerunQuery: true });
+      await setQueryBuilderMode("view");
+      runQuestionQuery();
+    },
+    onError: (error) => {
+      throw error;
+    },
+  });
+
+  useLayoutEffect(() => {
+    saveButtonRef.current?.resetState();
+  }, [isConfirmationShown]);
+
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
@@ -495,9 +522,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
       });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithMetadata, { rerunQuery: true });
-      await setQueryBuilderMode("view");
-      runQuestionQuery();
+      await handleInitialSave(questionWithMetadata);
     } else {
       onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
       throw new Error(t`Variables in models aren't supported yet`);
@@ -510,9 +535,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     dispatch,
     updateQuestion,
     onOpenModal,
-    onSave,
-    setQueryBuilderMode,
-    runQuestionQuery,
+    handleInitialSave,
   ]);
 
   const handleColumnSelect = useCallback(
@@ -670,6 +693,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
             disabled={!saveButtonTooltipLabel}
           >
             <ActionButton
+              ref={saveButtonRef}
               key="save"
               disabled={!canSaveChanges}
               actionFn={handleSave}
@@ -744,6 +768,15 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
         onConfirm={handleCancelEdit}
         onClose={closeModal}
       />
+
+      {isConfirmationShown && checkData != null && (
+        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+          checkData={checkData}
+          opened
+          onSave={handleSaveAfterConfirmation}
+          onClose={handleCloseConfirmation}
+        />
+      )}
     </>
   );
 };

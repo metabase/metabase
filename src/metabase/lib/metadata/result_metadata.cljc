@@ -381,6 +381,11 @@
       (seq model-metadata)
       (lib.card/merge-model-metadata model-metadata))))
 
+(defn- add-source-and-desired-aliases [query cols]
+  (into []
+        (lib.field.util/add-source-and-desired-aliases-xform query)
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -407,7 +412,8 @@
            add-legacy-source
            deduplicate-names
            (add-legacy-field-refs query)
-           (merge-model-metadata query)))))
+           (merge-model-metadata query)
+           (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
   (merge
@@ -450,7 +456,11 @@
   (mapv col->legacy-metadata cols))
 
 (mu/defn returned-columns :- [:and
-                              [:sequential ::kebab-cased-map]
+                              [:sequential
+                               [:merge
+                                ::kebab-cased-map
+                                [:map
+                                 [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
                               [:fn
                                {:error/message "columns should have unique :name(s)"}
                                (fn [cols]
