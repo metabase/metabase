@@ -129,10 +129,10 @@
    (ensure-pmbql #'qp.auto-bucket-datetimes/auto-bucket-datetimes)
    (ensure-pmbql #'ensure-joins-use-source-query/ensure-joins-use-source-query)
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
-   (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
    (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
+   (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
    ;; this needs to be done twice, once before adding remaps (since we want to add remaps inside joins) and then again
