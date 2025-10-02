@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -175,26 +175,9 @@ export function useTestPythonTransform(
   const [executionResult, setData] =
     useState<ExecutePythonTransformResponse | null>(null);
   const [isPyodideRunning, setIsPyodideRunning] = useState(false);
-  const [pyodideStatus, setPyodideStatus] = useState<
-    "idle" | "loading" | "loaded" | "error"
-  >("idle");
 
   const isRunning = isBackendRunning || isPyodideRunning;
   const isDirty = originalArgs?.code !== source.body;
-
-  // Initialize Pyodide Web Worker when component mounts
-  useEffect(() => {
-    if (pyodideStatus === "idle") {
-      setPyodideStatus("loading");
-      pyodideWorkerManager
-        .initialize()
-        .then(() => setPyodideStatus("loaded"))
-        .catch((error) => {
-          console.error("Failed to initialize Pyodide Web Worker:", error);
-          setPyodideStatus("error");
-        });
-    }
-  }, [pyodideStatus]);
 
   const runWithPyodide = useCallback(async () => {
     if (source["source-database"] === undefined) {

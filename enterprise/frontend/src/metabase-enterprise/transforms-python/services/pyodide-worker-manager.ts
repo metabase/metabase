@@ -27,45 +27,11 @@ type WorkerMessage = ReadyMessage | ResultsMessage;
 
 class PyodideWorkerManager {
   private worker: Worker;
+  private ready: Promise<ReadyMessage>;
 
   constructor() {
     this.worker = new Worker("/app/assets/pyodide.worker.js");
-  }
-
-  async initialize(): Promise<void> {
-    await this.waitFor("ready", 10000);
-  }
-
-  waitFor<T extends WorkerMessage["type"]>(
-    type: T,
-    timeout: number,
-  ): Promise<Extract<WorkerMessage, { type: T }>> {
-    return new Promise((resolve, reject) => {
-      const handler = ({ data }: MessageEvent<WorkerMessage>) => {
-        if (data.type === type) {
-          unsubscribe();
-          resolve(data as Extract<WorkerMessage, { type: T }>);
-        }
-      };
-
-      const errHandler = (evt: ErrorEvent) => {
-        reject(evt.error);
-      };
-
-      const unsubscribe = () => {
-        clearTimeout(t);
-        this.worker.removeEventListener("message", handler);
-        this.worker.removeEventListener("error", errHandler);
-      };
-
-      this.worker.addEventListener("message", handler);
-      this.worker.addEventListener("error", errHandler);
-
-      const t = setTimeout(() => {
-        unsubscribe();
-        reject(new Error(`Timeout waiting for ${type}`));
-      }, timeout);
-    });
+    this.ready = waitFor(this.worker, "ready", 10000);
   }
 
   async executePython(
@@ -73,14 +39,14 @@ class PyodideWorkerManager {
     sources: PyodideTableSource[],
   ): Promise<any> {
     try {
-      await this.initialize();
+      await this.ready;
 
       this.worker.postMessage({
         type: "execute",
         data: { code: getPythonScript(code, sources) },
       });
 
-      const evt = await this.waitFor("results", 30000);
+      const evt = await waitFor(this.worker, "results", 30000);
 
       return {
         output: evt.result,
@@ -94,6 +60,39 @@ class PyodideWorkerManager {
 }
 
 export const pyodideWorkerManager = new PyodideWorkerManager();
+
+function waitFor<T extends WorkerMessage["type"]>(
+  worker: Worker,
+  type: T,
+  timeout: number,
+): Promise<Extract<WorkerMessage, { type: T }>> {
+  return new Promise((resolve, reject) => {
+    const handler = ({ data }: MessageEvent<WorkerMessage>) => {
+      if (data.type === type) {
+        unsubscribe();
+        resolve(data as Extract<WorkerMessage, { type: T }>);
+      }
+    };
+
+    const errHandler = (evt: ErrorEvent) => {
+      reject(evt.error);
+    };
+
+    const unsubscribe = () => {
+      clearTimeout(t);
+      worker.removeEventListener("message", handler);
+      worker.removeEventListener("error", errHandler);
+    };
+
+    worker.addEventListener("message", handler);
+    worker.addEventListener("error", errHandler);
+
+    const t = setTimeout(() => {
+      unsubscribe();
+      reject(new Error(`Timeout waiting for ${type}`));
+    }, timeout);
+  });
+}
 
 function getPythonScript(code: string, sources: PyodideTableSource[]) {
   return `
