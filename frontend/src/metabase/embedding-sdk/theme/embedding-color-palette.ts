@@ -1,6 +1,7 @@
 import type {
   MetabaseColor,
   MetabaseColors,
+  MetabaseTooltipComponentTheme,
 } from "metabase/embedding-sdk/theme";
 import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
@@ -59,13 +60,18 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   positive: ["success"],
   negative: ["danger"],
   "text-white": ["text-white"],
-  "tooltip-background": ["tooltip-background"],
-  "tooltip-text": ["tooltip-text"],
-  "tooltip-background-focused": ["tooltip-background-focused"],
-  "tooltip-text-secondary": ["tooltip-text-secondary"],
-
   error: ["error"],
   "background-error": ["bg-error"],
+};
+
+export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
+  keyof MetabaseTooltipComponentTheme,
+  ColorName
+> = {
+  textColor: "tooltip-text",
+  secondaryTextColor: "tooltip-text-secondary",
+  backgroundColor: "tooltip-background",
+  focusedBackgroundColor: "tooltip-background-focused",
 };
 
 const originalColors = { ...colors };
