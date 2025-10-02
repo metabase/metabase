@@ -789,9 +789,12 @@
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))
                                              (let [revision (t2/select-one :model/Revision :model "Transform"
-                                                                           :model_id transform-id :most_recent true)]
-                                               (is (= (:object revision)
-                                                      (dissoc transform :id :entity_id :created_at :updated_at))))
+                                                                           :model_id transform-id :most_recent true)
+                                                   rev-transform (:object revision)]
+                                               (is (every? #(not (contains? rev-transform %))
+                                                           #{:id :entity_id :created_at :updated_at}))
+                                               (is (=? rev-transform
+                                                       transform)))
                                              transform-id))
                 gadget-req {:name   "Gadget Products"
                             :description "The gadget products"
