@@ -216,7 +216,19 @@ export type MetabaseComponentTheme = {
   };
 
   /** Tooltip */
-  tooltip?: MetabaseTooltipComponentTheme;
+  tooltip?: {
+    /** Tooltip text color. */
+    textColor?: string;
+
+    /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
+    secondaryTextColor?: string;
+
+    /** Tooltip background color. */
+    backgroundColor?: string;
+
+    /** Tooltip background color for focused rows. */
+    focusedBackgroundColor?: string;
+  };
 
   /** Popover */
   popover: {
@@ -248,23 +260,6 @@ export type MetabaseComponentTheme = {
     };
   };
 };
-
-/**
- * Theme for the tooltip component.
- */
-export interface MetabaseTooltipComponentTheme {
-  /** Tooltip text color. */
-  textColor?: string;
-
-  /** Secondary text color shown in the tooltip, e.g. for tooltip headers and percentage changes. */
-  secondaryTextColor?: string;
-
-  /** Tooltip background color. */
-  backgroundColor?: string;
-
-  /** Tooltip background color for focused rows. */
-  focusedBackgroundColor?: string;
-}
 
 /**
  * @inline

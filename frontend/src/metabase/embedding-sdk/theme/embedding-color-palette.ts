@@ -1,7 +1,7 @@
 import type {
   MetabaseColor,
   MetabaseColors,
-  MetabaseTooltipComponentTheme,
+  MetabaseComponentTheme,
 } from "metabase/embedding-sdk/theme";
 import { colorConfig, colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
@@ -65,7 +65,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
 };
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
-  keyof MetabaseTooltipComponentTheme,
+  keyof NonNullable<MetabaseComponentTheme["tooltip"]>,
   ColorName
 > = {
   textColor: "tooltip-text",

@@ -6,7 +6,6 @@ import type {
   MetabaseColor,
   MetabaseComponentTheme,
   MetabaseTheme,
-  MetabaseTooltipComponentTheme,
 } from "metabase/embedding-sdk/theme";
 import {
   DEFAULT_EMBEDDED_COMPONENT_THEME,
@@ -91,7 +90,8 @@ export function getEmbeddingThemeOverride(
     }
 
     for (const _tooltipKey in SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING) {
-      const tooltipKey = _tooltipKey as keyof MetabaseTooltipComponentTheme;
+      type TooltipKey = keyof NonNullable<MetabaseComponentTheme["tooltip"]>;
+      const tooltipKey = _tooltipKey as TooltipKey;
       const colorKey = SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING[tooltipKey];
       const tooltipColor = theme.components.tooltip[tooltipKey];
 
