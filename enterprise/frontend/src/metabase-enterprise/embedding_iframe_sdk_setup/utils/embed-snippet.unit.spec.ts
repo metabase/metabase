@@ -40,15 +40,13 @@ describe("formatAttributeValue", () => {
   });
 
   it("should format object values correctly", () => {
-    expect(formatAttributeValue({ key: "value" })).toBe('\'{"key":"value"}\'');
-    expect(formatAttributeValue({ a: 1, b: true })).toBe(
-      '\'{"a":1,"b":true}\'',
-    );
+    expect(formatAttributeValue({ key: "value" })).toBe(`'{"key":"value"}'`);
+    expect(formatAttributeValue({ a: 1, b: true })).toBe(`'{"a":1,"b":true}'`);
   });
 
   it("should handle nested arrays and objects", () => {
     expect(formatAttributeValue([{ a: 1 }, { b: 2 }])).toBe(
-      '\'[{"a":1},{"b":2}]\'',
+      `'[{"a":1},{"b":2}]'`,
     );
     expect(
       formatAttributeValue([
