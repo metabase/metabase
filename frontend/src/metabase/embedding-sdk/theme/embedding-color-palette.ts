@@ -3,7 +3,7 @@ import type {
   MetabaseColors,
   MetabaseTooltipComponentTheme,
 } from "metabase/embedding-sdk/theme";
-import { colors } from "metabase/lib/colors";
+import { colorConfig, colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
 import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
@@ -123,6 +123,12 @@ export function setGlobalEmbeddingColors(
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colors[key as ColorName] = value;
+  });
+
+  // Also set overrides on the color config, this way when we
+  // set up the mantine theme colors, we will grab apropriate app palette colors as well
+  Object.entries(combinedThemeColors).forEach(([key, value]) => {
+    colorConfig[key as ColorName] = { light: value, dark: value };
   });
 
   /**
