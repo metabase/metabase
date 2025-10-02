@@ -113,6 +113,8 @@ async function executePython(code, context = {}) {
     throw new Error("Pyodide not initialized");
   }
 
+  pyodide.globals.clear();
+
   // Set up context variables
   for (const [key, value] of Object.entries(context)) {
     pyodide.globals.set(key, value);
