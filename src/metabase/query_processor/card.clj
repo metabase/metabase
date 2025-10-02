@@ -295,10 +295,13 @@
     :embedded-question :question
     :csv-download nil
     :public-csv-download nil
+    :embedded-csv-download nil
     :json-download nil
     :public-json-download nil
+    :embedded-json-download nil
     :xlsx-download nil
     :public-xlsx-download nil
+    :embedded-xlsx-download nil
     :dashboard-subscription nil
     :pulse nil
     :map-tiles nil
