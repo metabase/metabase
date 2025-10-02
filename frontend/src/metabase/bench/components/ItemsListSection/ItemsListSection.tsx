@@ -27,13 +27,7 @@ export const ItemsListSection = ({
 
   return (
     <Box w="100%" h="100%" style={{ display: "flex", flexDirection: "column" }}>
-      <Flex
-        direction="row"
-        justify="space-between"
-        align="center"
-        mb="md"
-        p="md"
-      >
+      <Flex direction="row" justify="space-between" align="center" p="md">
         <Menu
           // filters
           opened={isFiltersMenuOpen}
@@ -124,7 +118,9 @@ export const ItemsListSection = ({
           />
         </Group>
       </Flex>
-      <Box p="md" style={{ overflow: "auto" }}>{listItems}</Box>
+      <Box p="md" style={{ overflow: "auto" }}>
+        {listItems}
+      </Box>
     </Box>
   );
 };
