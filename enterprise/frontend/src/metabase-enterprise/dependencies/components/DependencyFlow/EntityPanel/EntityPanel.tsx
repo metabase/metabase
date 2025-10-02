@@ -28,7 +28,7 @@ const INFO: DependencyInfo = {
     },
     dashboard: null,
   },
-  usage: {
+  usages: {
     questions: [
       {
         id: 1,

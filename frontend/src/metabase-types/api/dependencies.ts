@@ -81,7 +81,7 @@ type BaseDependencyInfo<TType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  usage?: DependencyUsage;
+  usages?: DependencyUsages;
 };
 
 export type TableDependencyMetadata = {
@@ -117,7 +117,7 @@ export type SnippetDependencyMetadata = {
   description: string | null;
 };
 
-export type DependencyUsage = {
+export type DependencyUsages = {
   questions?: CardDependencyMetadata[];
   models?: CardDependencyMetadata[];
   metrics?: CardDependencyMetadata[];
