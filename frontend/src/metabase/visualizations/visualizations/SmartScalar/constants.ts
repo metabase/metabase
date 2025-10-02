@@ -10,7 +10,7 @@ export const VALUE_MIN_HEIGHT = 20;
 
 export const PERIOD_LINE_HEIGHT = 16;
 
-export const PREVIOUS_VALUE_SIZE = 27;
+export const PREVIOUS_VALUE_SIZE = 19;
 
 export const PERIOD_HIDE_HEIGHT_THRESHOLD = 70; // determined empirically
 
