@@ -64,7 +64,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof MetabaseTooltipComponentTheme,
-  string | undefined
+  ColorName
 > = {
   textColor: "tooltip-text",
   secondaryTextColor: "tooltip-text-secondary",
