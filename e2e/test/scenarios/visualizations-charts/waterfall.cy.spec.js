@@ -416,7 +416,7 @@ describe("scenarios > visualizations > waterfall", () => {
       },
     });
 
-    const totalBarColor = "#03D46";
+    const totalBarColor = "#303D46";
 
     H.chartPathWithFillColor(totalBarColor).realHover();
 
