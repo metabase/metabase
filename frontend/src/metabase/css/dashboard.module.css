@@ -225,7 +225,7 @@
 }
 
 .Dashboard .DashboardChartLegend {
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-primary);
   font-size: 0.8125rem;
   font-weight: 400;
 }
