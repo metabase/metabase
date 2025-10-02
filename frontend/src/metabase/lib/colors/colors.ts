@@ -554,9 +554,6 @@ export const colorConfig = {
     light: "#7172AD",
     dark: "#7172AD",
   },
-  // ...whitelabelColors, // TODO: Figure out where/how to define this
-
-  // TODO: These were newly added in `dark-mode` branch. Fold these in above, and replace their hardcoded values with variables.
   "bg-primary": {
     light: baseColors.white,
     dark: baseColors.black,
@@ -578,7 +575,7 @@ export const colorConfig = {
   overlay: {
     //see the other color above where I mentioned it should be called overlay
     light: baseColors.orionAlpha[60],
-    dark: baseColors.orionAlpha[70],
+    dark: "hsla(255, 0%, 0%, 0.8)", // FIXME: should be part of palette
   },
   "text-inverse": {
     //should be text-primary-inverse
@@ -597,12 +594,11 @@ export const colorConfig = {
   },
 };
 
-// TODO: Use theme-aware colors instead of this export
 export const colors: Record<keyof typeof colorConfig, string> = {
   ...Object.fromEntries(
     Object.entries(colorConfig).map(([k, v]) => [k, v.light]),
   ),
-  ...whitelabelColors, // TODO: Figure out where/how to define this
+  ...whitelabelColors,
 };
 
 export const staticVizOverrides = {
