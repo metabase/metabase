@@ -6,7 +6,9 @@ export const TOOLTIP_ICON_SIZE = 11;
 
 export const ICON_MARGIN_RIGHT = SPACING;
 
-export const SCALAR_TITLE_LINE_HEIGHT = 23;
+export const VALUE_MIN_HEIGHT = 20;
+
+export const PERIOD_LINE_HEIGHT = 16;
 
 export const PREVIOUS_VALUE_SIZE = 27;
 

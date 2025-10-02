@@ -23,9 +23,10 @@ import {
   ICON_MARGIN_RIGHT,
   ICON_SIZE,
   PERIOD_HIDE_HEIGHT_THRESHOLD,
+  PERIOD_LINE_HEIGHT,
   PREVIOUS_VALUE_SIZE,
-  SCALAR_TITLE_LINE_HEIGHT,
   SPACING,
+  VALUE_MIN_HEIGHT,
 } from "./constants";
 import type { ComparisonMenuOption } from "./types";
 
@@ -72,14 +73,27 @@ const getWidthWithoutSpacing = (width: number) => {
 export const getValueHeight = (
   height: number,
   comparisonsCount: number,
-): number => {
+): {
+  valueHeight: number;
+  comparisonsCount: number;
+} => {
   const valueHeight =
     height -
-    (isPeriodVisible(height) ? SCALAR_TITLE_LINE_HEIGHT : 0) -
+    (isPeriodVisible(height) ? PERIOD_LINE_HEIGHT : 0) -
     PREVIOUS_VALUE_SIZE * comparisonsCount -
     4 * SPACING;
 
-  return Math.max(valueHeight, 0);
+  if (valueHeight < VALUE_MIN_HEIGHT && comparisonsCount > 1) {
+    // Show only 1 comparison if more don't fit.
+    // We could try to show 1 fewer comparison, but then it'd be unclear
+    // in tooltip of which visible comparison the hidden one should be shown.
+    return getValueHeight(height, 1);
+  }
+
+  return {
+    valueHeight: Math.max(valueHeight, 0),
+    comparisonsCount,
+  };
 };
 
 export const getChangeWidth = (width: number): number => {
