@@ -204,8 +204,6 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         H.getDashboardCard(0).findByText("39.72").click();
         popover().should("contain.text", "Filter by this value");
 
-        cy.pause;
-
         // Line chart with internal dashboard click behavior should NOT navigate (disabled)
         // Instead, drill-through should work
         H.getDashboardCard(2).within(() => {
