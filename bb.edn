@@ -180,7 +180,8 @@
    :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :task       (let [{:keys  [options]
                       [test] :arguments} (cli/parse! (current-task))
-                     test                (if (or (str/starts-with? test "test/"))
+                     test                (if (or (str/starts-with? test "test/")
+                                                 (str/starts-with? test "enterprise/"))
                                            ;; paths should come in as strings
                                            (format "\"%s\"" test)
                                            ;; ns or var should be a symbol
