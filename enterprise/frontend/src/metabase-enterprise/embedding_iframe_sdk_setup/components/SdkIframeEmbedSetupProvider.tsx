@@ -130,15 +130,16 @@ export const SdkIframeEmbedSetupProvider = ({
     return rawSettings;
   }, [modelCount, rawSettings]);
 
-  // Fetch dashboard/question data for parameter extraction
-  const { data: dashboard, isFetching: isDashboardLoading } =
+  const { data: dashboard, isLoading: isDashboardLoading } =
     useGetDashboardQuery(
       settings.dashboardId ? { id: settings.dashboardId } : skipToken,
     );
 
-  const { data: card, isFetching: isCardLoading } = useGetCardQuery(
+  const { data: card, isLoading: isCardLoading } = useGetCardQuery(
     settings.questionId ? { id: settings.questionId as number } : skipToken,
   );
+
+  const isLoading = isDashboardLoading || isCardLoading;
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -155,12 +156,10 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   // Use parameter list hook for dynamic parameter loading
-  const { availableParameters, isLoadingParameters } = useParameterList({
+  const { availableParameters } = useParameterList({
     experience,
     dashboard,
-    isDashboardLoading,
     card,
-    isCardLoading,
   });
 
   const updateSettings = useCallback(
@@ -194,9 +193,7 @@ export const SdkIframeEmbedSetupProvider = ({
     setCurrentStep,
     experience,
     dashboard,
-    isDashboardLoading,
     card,
-    isCardLoading,
     settings,
     replaceSettings,
     updateSettings,
@@ -205,7 +202,7 @@ export const SdkIframeEmbedSetupProvider = ({
     recentCollections,
     addRecentItem,
     isEmbedSettingsLoaded,
-    isLoadingParameters,
+    isLoading,
     availableParameters,
   };
 

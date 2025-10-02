@@ -32,7 +32,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
   resourceParameters: initialResourceParameters,
 }: Props) => {
   const exampleDashboardId = useSetting("example-dashboard-id");
-  const { availableParameters: resourceParameters, isLoadingParameters } =
+  const { availableParameters: resourceParameters, isLoading } =
     useSdkIframeEmbedSetupContext();
   const { buildEmbeddedParameters, setEmbeddingParameters } =
     useStaticEmbeddingParameters();
@@ -84,7 +84,7 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
   };
 
   const hasSettingsChanges =
-    !isLoadingParameters &&
+    !isLoading &&
     getHasSettingsChanges({
       initialEmbeddingParams: initialEmbeddingParameters,
       embeddingParams: embeddingParameters,

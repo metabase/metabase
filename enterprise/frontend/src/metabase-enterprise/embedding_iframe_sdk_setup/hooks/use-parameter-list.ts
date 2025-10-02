@@ -13,17 +13,13 @@ import type { SdkIframeEmbedSetupExperience } from "../types";
 interface UseParameterListProps {
   experience: SdkIframeEmbedSetupExperience;
   dashboard: Dashboard | undefined;
-  isDashboardLoading: boolean;
   card: Card | undefined;
-  isCardLoading: boolean;
 }
 
 export const useParameterList = ({
   experience,
   dashboard,
-  isDashboardLoading,
   card,
-  isCardLoading,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -57,11 +53,8 @@ export const useParameterList = ({
     }
   }, [dashboard?.param_fields, dispatch]);
 
-  const isLoadingParameters = isDashboardLoading || isCardLoading;
-
   return {
     availableParameters,
-    isLoadingParameters,
     dashboard,
     card,
   };

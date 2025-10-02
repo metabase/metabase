@@ -26,7 +26,7 @@ export const ParameterSettings = () => {
     settings,
     updateSettings,
     availableParameters,
-    isLoadingParameters,
+    isLoading,
   } = useSdkIframeEmbedSetupContext();
 
   const { parameterValuesById } = useParameters();
@@ -95,7 +95,7 @@ export const ParameterSettings = () => {
     return null;
   }
 
-  if (isLoadingParameters) {
+  if (isLoading) {
     return (
       <Text size="sm" c="text-medium">
         {t`Loading parameters...`}
