@@ -387,11 +387,11 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("click on brand color picker");
-    cy.findByLabelText("#509EE3").click();
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
 
     cy.log("change brand color to red");
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3")
+      cy.findByDisplayValue("#509EE2")
         .should("be.visible")
         .clear()
         .type("rgb(255, 0, 0)");
@@ -433,7 +433,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
-      .should("have.css", "color", "rgb(80, 158, 227)");
+      .should("have.css", "color", "rgb(80, 158, 226)");
 
     cy.log("reset button should be hidden again");
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
@@ -449,20 +449,21 @@ H.describeWithSnowplow(suiteTitle, () => {
       resourceName: DASHBOARD_NAME,
     });
 
-    cy.log("change brand color");
-    cy.findByLabelText("#509EE3").click();
+    cy.log("click on brand color picker");
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
+
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3").clear().type("#BD51FD");
+      cy.findByDisplayValue("#509EE2").clear().type("#BD51FD");
     });
 
     cy.log("change primary text color");
-    cy.findByLabelText("#4C5773").click();
+    cy.findByTestId("text-primary-color-picker").findByRole("button").click();
     H.popover().within(() => {
-      cy.findByDisplayValue("#4C5773").clear().type("#F1F1F1");
+      cy.findByDisplayValue("#303D46").clear().type("#F1F1F1");
     });
 
     cy.log("change background color");
-    cy.findByLabelText("#FFFFFF").click();
+    cy.findByTestId("background-color-picker").findByRole("button").click();
     H.popover().within(() => {
       cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
     });

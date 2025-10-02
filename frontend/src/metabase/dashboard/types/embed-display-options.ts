@@ -1,4 +1,7 @@
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 type EmbedBackground = boolean;
@@ -12,6 +15,10 @@ export type EmbedHideParametersControls = {
 
 export type EmbedFont = string | null;
 
+export type EmbedThemeControls = {
+  theme: DisplayTheme;
+};
+
 export type EmbedDisplayParams = {
   background: EmbedBackground;
   bordered: boolean;
@@ -19,6 +26,7 @@ export type EmbedDisplayParams = {
   cardTitled: EmbedTitle;
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
+  theme: DisplayTheme;
   getClickActionMode: ClickActionModeGetter | undefined;
   downloadsEnabled: EmbedResourceDownloadOptions;
   withFooter: boolean;

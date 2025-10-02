@@ -1,17 +1,18 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import Color from "color";
 import { Component } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
 import {
   formatChangeWithSign,
   formatNumber,
   formatValue,
 } from "metabase/lib/formatting";
 import { formatNullable } from "metabase/lib/formatting/nullable";
-import { color } from "metabase/ui/utils/colors";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -274,7 +275,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={1 - index * (0.9 / (infos.length + 1))}
-          fill={color("brand")}
+          fill={Color(color("brand")).hex()}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

@@ -300,6 +300,7 @@ const SdkDashboardInner = ({
       hideParameters={displayOptions.hideParameters}
       titled={displayOptions.titled}
       cardTitled={displayOptions.cardTitled}
+      theme={displayOptions.theme}
       onLoad={handleLoad}
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
