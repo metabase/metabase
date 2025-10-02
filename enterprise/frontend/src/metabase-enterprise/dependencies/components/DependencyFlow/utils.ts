@@ -15,7 +15,7 @@ function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
-export function getNodes(nodes: DependencyNode[]): Node[] {
+export function getNodes(nodes: DependencyNode[]): Node<DependencyNode>[] {
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
 
