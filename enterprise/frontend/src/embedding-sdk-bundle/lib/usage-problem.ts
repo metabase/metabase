@@ -1,7 +1,9 @@
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-package";
 import { P, match } from "ts-pattern";
 
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import type {
+  MetabaseAuthConfig,
+  MetabaseEmbeddingSessionToken,
+} from "embedding-sdk-bundle/types";
 import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
