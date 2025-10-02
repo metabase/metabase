@@ -138,7 +138,7 @@ function getTotalGraphicOption(
           fontWeight: "700",
           textAlign: "center",
           fontFamily: renderingContext.fontFamily,
-          fill: renderingContext.getColor("text-light"),
+          fill: renderingContext.getColor("text-secondary"),
           text: labelText,
         },
       },
