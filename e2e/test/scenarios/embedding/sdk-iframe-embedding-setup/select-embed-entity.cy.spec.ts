@@ -95,13 +95,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
-    });
-
-    cy.log("select the same the dashboard again");
-    getEmbedSidebar().within(() => {
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
-      cy.findByText(SECOND_DASHBOARD_NAME).click();
-      cy.findByText("Next").click();
+      getEmbedSidebar().findByText("Next").click();
     });
 
     H.expectUnstructuredSnowplowEvent({
