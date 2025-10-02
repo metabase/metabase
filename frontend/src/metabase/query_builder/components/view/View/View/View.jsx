@@ -104,6 +104,8 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
 
+  console.log({ queryBuilderMode, isMetric, question });
+
   if ((isModel || isMetric) && queryBuilderMode === "dataset") {
     return (
       <>

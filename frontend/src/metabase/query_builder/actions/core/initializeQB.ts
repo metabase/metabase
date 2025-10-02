@@ -274,6 +274,7 @@ async function handleQBInit(
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
   const currentUser = getUser(getState());
+  const isBench = location?.pathname?.includes("/bench/");
 
   if (uiControls.queryBuilderMode === "notebook") {
     const databases = await loadDatabases(dispatch);
@@ -403,13 +404,15 @@ async function handleQBInit(
         0,
       );
     }
-    dispatch(
-      updateUrl(question, {
-        replaceState: true,
-        preserveParameters: hasCard,
-        objectId,
-      }),
-    );
+    if (!isBench) {
+      dispatch(
+        updateUrl(question, {
+          replaceState: true,
+          preserveParameters: hasCard,
+          objectId,
+        }),
+      );
+    }
   }
 }
 
