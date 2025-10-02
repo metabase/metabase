@@ -201,8 +201,8 @@ describe("command palette", () => {
         const results = response.body.data;
 
         results.forEach((result, index) => {
-          // eslint-disable-next-line no-unsafe-element-filtering
           cy.findAllByRole("option")
+            .should("have.length", 7)
             .eq(index + 1)
             .should("contain.text", result.name);
         });
