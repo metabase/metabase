@@ -58,39 +58,29 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
   });
 
   const handleEnableEmbedding = async (enableEmbedding: boolean) => {
-    switch (resourceType) {
-      case "dashboard":
-        await updateDashboardEnableEmbedding({
-          id: resource.id,
-          enable_embedding: enableEmbedding,
-        });
-        break;
-      case "question":
-        await updateCardEnableEmbedding({
-          id: resource.id as number,
-          enable_embedding: enableEmbedding,
-        });
-        break;
-    }
+    const handlersMap = {
+      dashboard: updateDashboardEnableEmbedding,
+      question: updateCardEnableEmbedding,
+    } as const;
+
+    await handlersMap[resourceType]?.({
+      id: resource.id as number,
+      enable_embedding: enableEmbedding,
+    });
   };
 
   const handleUpdateEmbeddingParams = async (
     embeddingParams: EmbeddingParameters,
   ) => {
-    switch (resourceType) {
-      case "dashboard":
-        await updateDashboardEmbeddingParams({
-          id: resource.id,
-          embedding_params: embeddingParams,
-        });
-        break;
-      case "question":
-        await updateCardEmbeddingParams({
-          id: resource.id as number,
-          embedding_params: embeddingParams,
-        });
-        break;
-    }
+    const handlersMap = {
+      dashboard: updateDashboardEmbeddingParams,
+      question: updateCardEmbeddingParams,
+    } as const;
+
+    await handlersMap[resourceType]?.({
+      id: resource.id as number,
+      embedding_params: embeddingParams,
+    });
   };
 
   const hasSettingsChanges =
