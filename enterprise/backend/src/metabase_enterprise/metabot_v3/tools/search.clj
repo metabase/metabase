@@ -107,6 +107,7 @@
         use-verified-content? (if metabot-id
                                 (:use_verified_content metabot)
                                 false)
+        limit (or limit 50)
         search-fn (fn [query]
                     (let [search-context (search/search-context
                                           (merge
@@ -131,5 +132,5 @@
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
-        fused-results (reciprocal-rank-fusion result-lists)]
+        fused-results (take limit (reciprocal-rank-fusion result-lists))]
     (map transform-search-result fused-results)))
