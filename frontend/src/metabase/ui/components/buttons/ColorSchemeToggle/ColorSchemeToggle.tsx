@@ -13,7 +13,8 @@ export function ColorSchemeToggle({
   size = "md",
   variant = "subtle",
 }: ColorSchemeToggleProps) {
-  const { resolvedColorScheme, toggleColorScheme } = useColorScheme();
+  const { resolvedColorScheme, systemColorScheme, toggleColorScheme } =
+    useColorScheme();
 
   const getIcon = () => {
     switch (resolvedColorScheme) {
@@ -24,7 +25,7 @@ export function ColorSchemeToggle({
     }
   };
 
-  const getTooltipText = () => {
+  const getTooltipBaseText = () => {
     switch (resolvedColorScheme) {
       case "light":
         return t`Switch to dark mode`;
@@ -32,14 +33,19 @@ export function ColorSchemeToggle({
         return t`Switch to light mode`;
     }
   };
+  const tooltipBaseText = getTooltipBaseText();
+  const tooltipText =
+    systemColorScheme !== resolvedColorScheme
+      ? `${tooltipBaseText} ${t`(system preference)`}`
+      : tooltipBaseText;
 
   return (
-    <Tooltip label={getTooltipText()}>
+    <Tooltip label={tooltipText}>
       <ActionIcon
         onClick={toggleColorScheme}
         size={size}
         variant={variant}
-        aria-label={getTooltipText()}
+        aria-label={tooltipText}
       >
         <Icon name={getIcon()} />
       </ActionIcon>

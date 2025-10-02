@@ -19,6 +19,7 @@ export type ColorScheme = "auto" | ResolvedColorScheme;
 interface ColorSchemeContextType {
   colorScheme: ColorScheme;
   resolvedColorScheme: ResolvedColorScheme;
+  systemColorScheme: ResolvedColorScheme;
   setColorScheme: (scheme: ColorScheme) => void;
   toggleColorScheme: () => void;
 }
@@ -26,6 +27,7 @@ interface ColorSchemeContextType {
 const defaultValue: ColorSchemeContextType = {
   colorScheme: "light",
   resolvedColorScheme: "light",
+  systemColorScheme: "light",
   setColorScheme: noop,
   toggleColorScheme: noop,
 };
@@ -85,6 +87,7 @@ export function ColorSchemeProvider({
         colorScheme,
         resolvedColorScheme,
         setColorScheme,
+        systemColorScheme,
         toggleColorScheme: () => {
           const nextScheme = getNextScheme(resolvedColorScheme);
           setColorScheme(
