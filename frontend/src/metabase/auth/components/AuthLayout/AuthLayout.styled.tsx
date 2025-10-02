@@ -43,7 +43,7 @@ export const LayoutIllustration = styled.div<{
   height: 100%;
   background-image: ${({ backgroundImageSrc }) =>
     `url("${backgroundImageSrc}")`};
-  background-size: "100% auto";
+  background-size: 100% auto;
   background-repeat: no-repeat;
   background-position: right bottom;
 `;
