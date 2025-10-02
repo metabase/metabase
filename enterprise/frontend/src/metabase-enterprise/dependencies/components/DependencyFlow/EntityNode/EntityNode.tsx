@@ -21,7 +21,7 @@ export const EntityNode = memo(function EntityNode({
   isConnectable,
 }: EntityNodeProps) {
   const { node, sources, targets } = data;
-  const groups = getNodeGroups(targets);
+  const groups = getNodeGroups(node, targets);
 
   return (
     <>
