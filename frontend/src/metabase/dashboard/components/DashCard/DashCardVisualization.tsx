@@ -313,8 +313,8 @@ export function DashCardVisualization({
     );
     const card = extendCardWithDashcardSettings(
       {
+        ...dashcard.card,
         display,
-        name: settings["card.title"],
         visualization_settings: settings,
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
@@ -326,15 +326,7 @@ export function DashCardVisualization({
 
     const series: RawSeries = [
       {
-        card: extendCardWithDashcardSettings(
-          {
-            display,
-            name: settings["card.title"],
-            visualization_settings: settings,
-          } as Card,
-          _.omit(dashcard.visualization_settings, "visualization"),
-        ) as Card,
-
+        card,
         data: mergeVisualizerData({
           columns,
           columnValuesMapping,
