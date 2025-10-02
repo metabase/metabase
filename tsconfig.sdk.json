@@ -11,10 +11,7 @@
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
     "paths": {
-      "*": [
-        "./frontend/src/*",
-        "./enterprise/frontend/src/*"
-      ],
+      "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_release/*"]
     },
@@ -28,15 +25,15 @@
   ],
   "exclude": [
     "node_modules",
-    "**/*.unit.spec.*",
+    "**/*.spec.*",
     "**/mocks/*",
     "**/tests/*",
     "**/test/*",
     "**/__support__/*",
-    "**/test-utils.ts",
-    "**/test-utils.tsx",
-    "**/test-helpers.ts",
-    "**/testMocks.ts",
-    "**/*.stories.tsx"
+    "**/test-utils.*",
+    "**/test-utils.*",
+    "**/test-helpers.*",
+    "**/testMocks.*",
+    "**/*.stories.*"
   ]
 }

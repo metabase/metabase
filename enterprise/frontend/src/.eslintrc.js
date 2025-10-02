@@ -1,8 +1,8 @@
 /* eslint-disable no-undef,import/no-commonjs */
 const path = require("path");
 
-const baseRestrictredConfig = {
-  patterns: ["cljs/metabase.lib*"],
+const baseRestrictedConfig = {
+  patterns: [{ group: ["cljs/metabase.lib*"] }],
   paths: [
     {
       name: "@mantine/core",
@@ -45,7 +45,20 @@ module.exports = {
     // Note: adding this rule to a eslint config file in a subfolder will remove
     // *not* carry over the restricted imports from parent folders, you will
     // need to copy them over
-    "no-restricted-imports": ["error", baseRestrictredConfig],
+    "no-restricted-imports": [
+      "error",
+      {
+        ...baseRestrictedConfig,
+        patterns: [
+          ...baseRestrictedConfig.patterns,
+          {
+            group: ["__support__/**"],
+            message:
+              "Please name your test setup and utils files with a `.spec.*` in the filename, e.g. `setup.spec.ts` or `MyComponent.setup.spec.ts`, so that they aren't imported in the SDK build.",
+          },
+        ],
+      },
+    ],
     "ttag/no-module-declaration": 2,
   },
   overrides: [
@@ -55,9 +68,16 @@ module.exports = {
         "no-restricted-imports": [
           "error",
           {
-            ...baseRestrictredConfig,
+            patterns: [
+              ...baseRestrictedConfig.patterns,
+              {
+                group: ["**/__support__/**"],
+                message:
+                  "Please name your test setup and utils files with a `.spec.*` in the filename, e.g. `setup.spec.ts` or `MyComponent.setup.spec.ts`, so that they aren't imported in the SDK build.",
+              },
+            ],
             paths: [
-              ...baseRestrictredConfig.paths,
+              ...baseRestrictedConfig.paths,
               {
                 name: "metabase/lib/redux",
                 importNames: ["useStore", "useDispatch"],
@@ -66,6 +86,17 @@ module.exports = {
             ],
           },
         ],
+      },
+    },
+    {
+      files: [
+        "**/*.spec.*",
+        "**/test-utils.*",
+        "**/tests/**/*",
+        "**/test/**/*",
+      ],
+      rules: {
+        "no-restricted-imports": ["error", baseRestrictedConfig],
       },
     },
     {
