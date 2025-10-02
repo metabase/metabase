@@ -1,25 +1,25 @@
 import * as MetabaseError from "embedding-sdk-bundle/errors";
 
-export function validateSessionToken(token: any) {
-  if (!token || typeof token !== "object") {
+export function validateSession(session: any) {
+  if (!session || typeof session !== "object") {
     throw MetabaseError.INVALID_SESSION_OBJECT({
       expected: "{ jwt: string }",
-      actual: JSON.stringify(token, null, 2),
+      actual: JSON.stringify(session, null, 2),
     });
   }
 
-  if ("status" in token && token.status !== "ok") {
-    if ("message" in token && typeof token.message === "string") {
+  if ("status" in session && session.status !== "ok") {
+    if ("message" in session && typeof session.message === "string") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
         expected: "{ jwt: string }",
-        actual: token.message,
+        actual: session.message,
       });
     }
 
-    if (typeof token.status === "string") {
+    if (typeof session.status === "string") {
       throw MetabaseError.INVALID_SESSION_OBJECT({
         expected: "{ jwt: string }",
-        actual: token.status,
+        actual: session.status,
       });
     }
   }
@@ -31,16 +31,10 @@ export function validateSessionToken(token: any) {
    * (EMB-829) Temporarily allow `exp` to be null or undefined while we're deprecating token without it
    * after we disallow token without expiration, we will re-add this check.
    */
-  if (typeof token.id !== "string") {
+  if (typeof session.id !== "string") {
     throw MetabaseError.INVALID_SESSION_SCHEMA({
       expected: "{ id: string, exp: number, iat: number }",
-      actual: JSON.stringify(token, null, 2),
+      actual: JSON.stringify(session, null, 2),
     });
   }
-}
-
-export function shouldRefreshToken(token?: any) {
-  return (
-    !token || (typeof token?.exp === "number" && token.exp * 1000 < Date.now())
-  );
 }

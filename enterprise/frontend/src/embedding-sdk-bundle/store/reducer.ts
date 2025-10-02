@@ -4,7 +4,7 @@ import {
   createReducer,
 } from "@reduxjs/toolkit";
 
-import { samlTokenStorage, shouldRefreshToken } from "embedding/auth-common";
+import { samlTokenStorage } from "embedding/auth-common";
 import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
@@ -59,10 +59,18 @@ export const getOrRefreshSession = createAsyncThunk(
     // refreshes the page
     const storedAuthToken = samlTokenStorage.get();
     const state = getSessionTokenState(getState() as SdkStoreState);
-    const token = storedAuthToken ?? state?.token;
+    /**
+     * @see {@link https://github.com/metabase/metabase/pull/64238#discussion_r2394229266}
+     *
+     * TODO: I think this should be called session overall e.g. state.session
+     */
+    const session = storedAuthToken ?? state?.token;
 
-    if (!shouldRefreshToken(token)) {
-      return token;
+    const shouldRefreshToken =
+      !session ||
+      (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
+    if (!shouldRefreshToken) {
+      return session;
     }
 
     if (refreshTokenPromise) {
