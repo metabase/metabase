@@ -1022,6 +1022,10 @@
 (defmethod driver/rename-table! :bigquery-cloud-sdk
   [driver db old-name new-name]
   (let [old-name (str (namespace old-name) "." (name old-name))
+        ;; String formatting with backquotes here is okay because bigquery
+        ;; dataset and table names cannot contains backticks (`) or dots (.)
+        ;; https://cloud.google.com/bigquery/docs/datasets#dataset-naming
+        ;; https://cloud.google.com/bigquery/docs/tables#table_naming
         sql (format "ALTER TABLE `%s` RENAME TO `%s`;" old-name (name new-name))]
     (driver/execute-raw-queries! driver (:details db) [sql])))
 
