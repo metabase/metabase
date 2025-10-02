@@ -2,6 +2,7 @@ import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -291,16 +292,15 @@ export const useCommandPaletteBasicActions = ({
     hasModels,
   ]);
 
-  const { toggleColorScheme } = useColorScheme();
-
+  const colorSchemeRef = useLatest(useColorScheme());
   useRegisterShortcut([
     {
       id: "toggle-dark-mode",
-      perform: toggleColorScheme,
+      perform: () => colorSchemeRef.current.toggleColorScheme(),
     },
     {
       id: "toggle-dark-mode-2",
-      perform: toggleColorScheme,
+      perform: () => colorSchemeRef.current.toggleColorScheme(),
     },
   ]);
 };
