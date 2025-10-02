@@ -1,7 +1,6 @@
 import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
 
-import { isNotNull } from "metabase/lib/types";
 import type {
   DependencyEdge,
   DependencyEntityId,
@@ -10,21 +9,55 @@ import type {
 } from "metabase-types/api";
 
 import S from "./DependencyFlow.module.css";
-import type { NodeData, NodeId } from "./types";
+import type { NodeId } from "./types";
 
 function getNodeId(id: DependencyEntityId, type: DependencyEntityType): NodeId {
   return `${type}-${id}`;
 }
 
-export function getNodes(nodes: DependencyNode[]): Node<NodeData>[] {
+function getNodeBydId(nodes: DependencyNode[]) {
+  const nodeById = new Map<NodeId, DependencyNode>();
+  nodes.forEach((node) => nodeById.set(getNodeId(node.id, node.type), node));
+  return nodeById;
+}
+
+function getSourceIdsByTargetId(edges: DependencyEdge[]) {
+  const sourceIdsByTargetId = new Map<NodeId, NodeId[]>();
+
+  edges.forEach((edge) => {
+    const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
+    const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
+
+    let sourceIds = sourceIdsByTargetId.get(targetId);
+    if (sourceIds == null) {
+      sourceIds = [];
+      sourceIdsByTargetId.set(targetId, sourceIds);
+    }
+
+    sourceIds.push(sourceId);
+  });
+
+  return sourceIdsByTargetId;
+}
+
+export function getNodes(
+  nodes: DependencyNode[],
+  edges: DependencyEdge[],
+): Node[] {
+  const nodeById = getNodeBydId(nodes);
+  const sourceIdsByTargetId = getSourceIdsByTargetId(edges);
+
   return nodes.map((node) => {
+    const nodeId = getNodeId(node.id, node.type);
+    const sourceIds = sourceIdsByTargetId.get(nodeId) ?? [];
+
     return {
-      id: getNodeId(node.id, node.type),
+      id: nodeId,
       className: S.node,
       type: "entity",
       data: {
         node,
-        sources: [],
+        sources: sourceIds.map((nodeId) => nodeById.get(nodeId)),
       },
       position: { x: 0, y: 0 },
       connectable: false,
@@ -45,49 +78,6 @@ export function getEdges(edges: DependencyEdge[]): Edge[] {
       source: sourceId,
       target: targetId,
       deletable: false,
-    };
-  });
-}
-
-function getNodeBydId(nodes: Node<NodeData>[]) {
-  const nodeById = new Map<NodeId, Node<NodeData>>();
-  nodes.forEach((node) => nodeById.set(node.id, node));
-  return nodeById;
-}
-
-function getSourceIdsByTargetId(edges: Edge[]) {
-  const sourceIdsByTargetId = new Map<NodeId, NodeId[]>();
-
-  edges.forEach((edge) => {
-    let sourceIds = sourceIdsByTargetId.get(edge.target);
-    if (sourceIds == null) {
-      sourceIds = [];
-      sourceIdsByTargetId.set(edge.target, sourceIds);
-    }
-    sourceIds.push(edge.source);
-  });
-
-  return sourceIdsByTargetId;
-}
-
-export function getNodesWithSources(
-  nodes: Node<NodeData>[],
-  edges: Edge[],
-): Node<NodeData>[] {
-  const nodeById = getNodeBydId(nodes);
-  const sourceIdsByTargetId = getSourceIdsByTargetId(edges);
-
-  return nodes.map((node) => {
-    const sourceIds = sourceIdsByTargetId.get(node.id) ?? [];
-    const sources = sourceIds
-      .map((nodeId) => nodeById.get(nodeId)?.data.node)
-      .filter(isNotNull);
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        sources,
-      },
     };
   });
 }

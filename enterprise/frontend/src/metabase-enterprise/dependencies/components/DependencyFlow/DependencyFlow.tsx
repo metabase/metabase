@@ -12,12 +12,7 @@ import { useLayoutEffect } from "react";
 import type { DependencyGraph } from "metabase-types/api";
 
 import { EntityNode } from "./EntityNode";
-import {
-  getEdges,
-  getNodes,
-  getNodesWithPositions,
-  getNodesWithSources,
-} from "./utils";
+import { getEdges, getNodes, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
   entity: EntityNode,
@@ -39,17 +34,12 @@ const GRAPH: DependencyGraph = {
 };
 
 export function DependencyFlow() {
-  const initialNodes = getNodes(GRAPH.nodes);
-  const initialEdges = getEdges(GRAPH.edges);
-  const initialNodesWithSources = getNodesWithSources(
-    initialNodes,
-    initialEdges,
-  );
-
   const [nodes, _setNodes, onNodesChange] = useNodesState(
-    initialNodesWithSources,
+    getNodes(GRAPH.nodes, GRAPH.edges),
   );
-  const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [edges, _setEdges, onEdgesChange] = useEdgesState(
+    getEdges(GRAPH.edges),
+  );
 
   return (
     <ReactFlow
