@@ -173,9 +173,14 @@
   recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
   depends on the node type. For :table, there should be :display_name. For :card, there should be :name
   and :type. For :snippet -> :name. For :transform -> :name."
-  [_route-params _query-params]
-  (let [starting-nodes (-> (fetch-all-entities :card :type [:in [:metric :model]] :archived false)
-                           (into (fetch-all-entities :transform)))
+  [_route-params
+   {:keys [id type]} :- [:map
+                         [:id {:optional true} ms/PositiveInt]
+                         [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
+  (let [starting-nodes (if (and id type)
+                         [[type id]]
+                         (-> (fetch-all-entities :card :type [:in [:metric :model]] :archived false)
+                             (into (fetch-all-entities :transform))))
         upstream-graph (dependency/graph-dependencies)
         ;; cache the downstream graph specifically, because between calculating edges and calculating usages, we'll
         ;; call this multiple times on the same nodes.
