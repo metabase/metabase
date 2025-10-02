@@ -1,7 +1,7 @@
 import * as Urls from "metabase/lib/urls";
-import type { DependencyNode } from "metabase-types/api";
+import type { DependencyInfo } from "metabase-types/api";
 
-export function getNodeUrl(node: DependencyNode) {
+export function getNodeUrl(node: DependencyInfo) {
   switch (node.type) {
     case "card":
       return Urls.question({

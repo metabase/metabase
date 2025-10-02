@@ -84,7 +84,3 @@ export function getSelectedNode(
 ): Node<DependencyNode> | undefined {
   return nodes.find((node) => node.selected);
 }
-
-export function getNodeLabel(node: DependencyNode) {
-  return node.type === "table" ? node.data.display_name : node.data.name;
-}

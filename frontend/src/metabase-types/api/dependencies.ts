@@ -1,9 +1,9 @@
-import type { Card, CardDashboardInfo, CardType } from "./card";
+import type { Card, CardDashboardInfo, CardId, CardType } from "./card";
 import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
-import type { NativeQuerySnippet } from "./snippets";
-import type { Transform } from "./transform";
+import type { NativeQuerySnippet, NativeQuerySnippetId } from "./snippets";
+import type { Transform, TransformId } from "./transform";
 import type { CardDisplayType } from "./visualization";
 
 export type DependencyId = number;
@@ -17,9 +17,6 @@ type BaseDependencyNode<TType, TData> = {
 
 export type TableDependencyData = {
   name: string;
-  display_name: string;
-  db_id: DatabaseId;
-  schema: string | null;
 };
 
 export type TransformDependencyData = {
@@ -84,7 +81,7 @@ type BaseDependencyInfo<TType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  usages?: DependencyUsage;
+  usage?: DependencyUsage;
 };
 
 export type TableDependencyMetadata = {
@@ -96,11 +93,13 @@ export type TableDependencyMetadata = {
 };
 
 export type TransformDependencyMetadata = {
+  id: TransformId;
   name: string;
   description: string | null;
 };
 
 export type CardDependencyMetadata = {
+  id: CardId;
   name: string;
   description: string | null;
   type: CardType;
@@ -113,14 +112,16 @@ export type CardDependencyMetadata = {
 };
 
 export type SnippetDependencyMetadata = {
+  id: NativeQuerySnippetId;
   name: string;
   description: string | null;
 };
 
 export type DependencyUsage = {
-  tables?: TableDependencyMetadata[];
+  questions?: CardDependencyMetadata[];
+  models?: CardDependencyMetadata[];
+  metrics?: CardDependencyMetadata[];
   transforms?: TransformDependencyMetadata[];
-  cards?: CardDependencyMetadata[];
   snippets?: SnippetDependencyMetadata[];
 };
 

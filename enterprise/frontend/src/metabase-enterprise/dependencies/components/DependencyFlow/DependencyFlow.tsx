@@ -32,9 +32,6 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "some_intermediate_table",
-        display_name: "Some intermediate table",
-        db_id: 1,
-        schema: "public",
       },
       usage_stats: {
         questions: 10,
@@ -46,9 +43,6 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "nice_table",
-        display_name: "Nice table",
-        db_id: 1,
-        schema: "public",
       },
       usage_stats: {
         transforms: 2,
@@ -59,9 +53,6 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "ugly_table_here",
-        display_name: "Ugly table here",
-        db_id: 1,
-        schema: "public",
       },
       usage_stats: {
         transforms: 1,
@@ -86,9 +77,6 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "interesting_facts",
-        display_name: "Interesting facts",
-        db_id: 1,
-        schema: "public",
       },
       usage_stats: {
         questions: 100,
@@ -100,9 +88,6 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "another_thing",
-        display_name: "Another thing",
-        db_id: 1,
-        schema: "public",
       },
       usage_stats: {
         models: 1,
