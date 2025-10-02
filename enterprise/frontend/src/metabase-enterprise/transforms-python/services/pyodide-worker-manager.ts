@@ -72,24 +72,24 @@ class PyodideWorkerManager {
     code: string,
     sources: PyodideTableSource[],
   ): Promise<any> {
-    await this.initialize();
+    try {
+      await this.initialize();
 
-    this.worker.postMessage({
-      type: "execute",
-      data: { code: getPythonScript(code, sources) },
-    });
+      this.worker.postMessage({
+        type: "execute",
+        data: { code: getPythonScript(code, sources) },
+      });
 
-    const evt = await this.waitFor("results", 30000);
+      const evt = await this.waitFor("results", 30000);
 
-    return {
-      output: evt.result,
-      stdout: evt.stdout,
-      stderr: evt.stderr,
-    };
-  }
-
-  terminate() {
-    this.worker.terminate();
+      return {
+        output: evt.result,
+        stdout: evt.stdout,
+        stderr: evt.stderr,
+      };
+    } finally {
+      this.worker.terminate();
+    }
   }
 }
 
