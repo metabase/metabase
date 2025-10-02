@@ -12,7 +12,7 @@ import type {
 } from "metabase-types/api";
 
 import { DataFetcher } from "../../services/data-fetcher";
-import { PyodideWorkerManager } from "../../services/pyodide-worker-manager";
+import { PyodideWorkerPool } from "../../services/pyodide-worker-pool";
 
 import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
@@ -166,7 +166,7 @@ type TestPythonScriptState = {
   cancel: () => void;
 };
 
-const pyodideWorkerManager = new PyodideWorkerManager(["numpy", "pandas"]);
+const pyodideWorkerManager = new PyodideWorkerPool(["numpy", "pandas"]);
 
 export function useTestPythonTransform(
   source: PythonTransformSourceDraft,

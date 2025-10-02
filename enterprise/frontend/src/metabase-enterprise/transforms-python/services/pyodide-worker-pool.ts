@@ -29,7 +29,7 @@ type ResultsMessage = {
 
 type WorkerMessage = ReadyMessage | ResultsMessage;
 
-export class PyodideWorkerManager {
+export class PyodideWorkerPool {
   workers: PyodideWorker[];
   packages: string[];
 
