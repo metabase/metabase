@@ -234,7 +234,7 @@ describe("SdkUsageProblemDisplay", () => {
     );
   });
 
-  it('should a warning when JWT token does not contain the "exp" claim', async () => {
+  it('should show a warning when JWT token does not contain the "exp" claim', async () => {
     setup({
       authConfig: createMockSdkConfig(),
       isEmbeddingSdkEnabled: true,
