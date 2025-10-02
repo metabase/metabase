@@ -28,10 +28,17 @@ async function init() {
   self.importScripts("/app/assets/pyodide/pyodide.js");
 
   // @ts-ignore - loadPyodide is available after importScripts
-  return loadPyodide({
+  const pyodide = await loadPyodide({
     indexURL: "/app/assets/pyodide/",
     packages: PACKAGES,
   });
+
+  // import the packages on initialization since that is slow
+  await pyodide.runPythonAsync(
+    PACKAGES.map((pkg) => `import ${pkg}`).join("\n"),
+  );
+
+  return pyodide;
 }
 
 async function execute(pyodide, code) {
