@@ -58,7 +58,7 @@ export function DependencyFlow() {
 }
 
 function NodeLayout() {
-  const { getNodes, getEdges, setNodes } = useReactFlow();
+  const { getNodes, getEdges, setNodes, fitView } = useReactFlow();
   const isInitialized = useNodesInitialized();
 
   useLayoutEffect(() => {
@@ -67,8 +67,9 @@ function NodeLayout() {
       const edges = getEdges();
       const nodesWithPositions = getNodesWithPositions(nodes, edges);
       setNodes(nodesWithPositions);
+      fitView({ nodes: nodesWithPositions });
     }
-  }, [isInitialized, getNodes, getEdges, setNodes]);
+  }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
 
   return null;
 }
