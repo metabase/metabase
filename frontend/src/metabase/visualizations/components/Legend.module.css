@@ -8,6 +8,23 @@ fullscreen dashboard mode
   opacity: 1;
 }
 
+.LegendItem:not(:first-of-type) {
+  margin-top: 0.25rem;
+}
+
+.DashCard .LegendItem:not(:first-of-type) {
+  margin-top: 0.25rem;
+}
+
+/* Target li elements in vertical legends for map charts */
+.Legend.vertical li:not(:first-of-type) {
+  margin-top: 0.25rem;
+}
+
+.DashCard .Legend.vertical li:not(:first-of-type) {
+  margin-top: 0.25rem;
+}
+
 .LegendHeader {
   margin-top: 0.25em;
   margin-bottom: 0.25em;
@@ -37,5 +54,11 @@ fullscreen dashboard mode
 .DashCard.LegendItem {
   font-weight: normal;
   color: var(--mb-color-text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* Ensure percentage spans in pie chart legends align with their labels */
+.Legend.vertical li span[class*="alignCenter"] {
+  margin-top: 0;
+  align-self: flex-start;
 }

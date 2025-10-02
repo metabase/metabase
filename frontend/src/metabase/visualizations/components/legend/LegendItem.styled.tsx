@@ -7,7 +7,7 @@ export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   min-width: 0;
 
   &:not(:first-of-type) {
-    margin-top: ${({ isVertical }) => (isVertical ? "0.5rem" : "")};
+    margin-top: ${({ isVertical }) => (isVertical ? "0.25rem" : "")};
     margin-left: ${({ isVertical }) => (isVertical ? "" : "0.75rem")};
   }
 `;
