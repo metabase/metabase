@@ -2,21 +2,21 @@ import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import type { Transform } from "metabase-types/api";
 
 export function transforms() {
-  return `/admin/transforms`;
+  return PLUGIN_TRANSFORMS.ROOT_URL;
 }
 
 export function newNativeTransform() {
-  return `${ROOT_URL}/new/native`;
+  return `${PLUGIN_TRANSFORMS.ROOT_URL}/new/native`;
 }
 
 export function newPythonTransform() {
-  return `${ROOT_URL}/new/python`;
+  return `${PLUGIN_TRANSFORMS.ROOT_URL}/new/python`;
 }
 
 export function transform(id: Transform["id"]) {
-  return `${ROOT_URL}/${id}`;
+  return `${PLUGIN_TRANSFORMS.ROOT_URL}/${id}`;
 }
 
 export function transformEdit(id: Transform["id"]) {
-  return `${ROOT_URL}/${id}/query`;
+  return `${PLUGIN_TRANSFORMS.ROOT_URL}/${id}/query`;
 }
