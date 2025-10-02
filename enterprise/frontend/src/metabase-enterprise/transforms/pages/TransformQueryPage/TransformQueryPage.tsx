@@ -1,14 +1,11 @@
-import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
@@ -18,10 +15,7 @@ import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import {
-  deactivateSuggestedTransform,
-  getMetabotSuggestedTransform,
-} from "metabase-enterprise/metabot/state";
+import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -66,29 +60,8 @@ export function TransformQueryPageBody({
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const initialSource = transform.source;
-  const [source, setSource] = useState(initialSource);
-
-  const suggestedTransform = useSelector(
-    (state) => getMetabotSuggestedTransform(state, transform.id) as any,
-  ) as ReturnType<typeof getMetabotSuggestedTransform>;
-
-  // TODO: should getMetabotSuggestedTransform selector do this?
-  const isPropsedSame = _.isEqual(suggestedTransform?.source, initialSource);
-  const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
-
-  useRegisterMetabotContextProvider(async () => {
-    const viewedTransform = suggestedTransform ?? { ...transform, source };
-    return { user_is_viewing: [{ type: "transform", ...viewedTransform }] };
-  }, [transform, source, suggestedTransform]);
-
-  const onRejectProposed = () => {
-    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-  };
-  const onAcceptProposed = async (source: TransformSource) => {
-    setSource(source);
-    dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
-  };
+  const { setSource, proposedSource, acceptProposed, clearProposed } =
+    useSourceState(transform.id, transform.source);
 
   const {
     checkData,
@@ -104,7 +77,7 @@ export function TransformQueryPageBody({
         sendErrorToast(t`Failed to update transform query`);
       } else {
         sendSuccessToast(t`Transform query updated`);
-        dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
+        clearProposed();
         dispatch(push(getTransformUrl(transform.id)));
       }
     },
@@ -121,6 +94,7 @@ export function TransformQueryPageBody({
   };
 
   const handleCancel = () => {
+    clearProposed();
     dispatch(push(getTransformUrl(transform.id)));
   };
 
@@ -136,8 +110,8 @@ export function TransformQueryPageBody({
           isSaving={isSaving}
           onSave={handleSaveSource}
           onCancel={handleCancel}
-          onRejectProposed={onRejectProposed}
-          onAcceptProposed={onAcceptProposed}
+          onRejectProposed={clearProposed}
+          onAcceptProposed={acceptProposed}
         />
       </AdminSettingsLayout>
     );
@@ -156,8 +130,8 @@ export function TransformQueryPageBody({
         proposedSource={
           proposedSource?.type === "query" ? proposedSource : undefined
         }
-        onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={clearProposed}
+        onAcceptProposed={acceptProposed}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal

@@ -35,7 +35,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   targetSchema: Yup.string().nullable(),
 });
 
-type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
+export type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
 
 type CreateTransformModalProps = {
   source: TransformSource;

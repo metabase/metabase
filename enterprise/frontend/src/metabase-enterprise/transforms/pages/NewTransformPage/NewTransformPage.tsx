@@ -1,8 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { match } from "ts-pattern";
-import _ from "underscore";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
@@ -10,10 +9,8 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import {
-  deactivateSuggestedTransform,
-  getMetabotSuggestedTransform,
-} from "metabase-enterprise/metabot/state";
+import { getMetabotSuggestedTransform } from "metabase-enterprise/metabot/state";
+import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import type {
   CardId,
   DatasetQuery,
@@ -24,7 +21,10 @@ import type {
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 
-import { CreateTransformModal } from "./CreateTransformModal";
+import {
+  CreateTransformModal,
+  type NewTransformValues,
+} from "./CreateTransformModal";
 import {
   type InitialTransformSource,
   getInitialTransformSource,
@@ -88,10 +88,14 @@ export function NewTransformPageInner({
 }: {
   initialSource: InitialTransformSource;
 }) {
-  // TODO: fix type
-  const [source, setSource] = useState<TransformSource | undefined>(
-    initialSource as any,
-  );
+  const {
+    source,
+    setSource,
+    suggestedTransform,
+    proposedSource,
+    acceptProposed,
+    clearProposed,
+  } = useSourceState(undefined, initialSource);
 
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
@@ -106,43 +110,25 @@ export function NewTransformPageInner({
     openModal();
   };
 
-  const handleAcceptProposed = (newSource: TransformSource) => {
-    setSource(newSource);
-    dispatch(deactivateSuggestedTransform(undefined));
-  };
-  const handleRejectProposed = () =>
-    dispatch(deactivateSuggestedTransform(undefined));
-
   const handleCancel = () => {
     dispatch(push(getTransformListUrl()));
-    dispatch(deactivateSuggestedTransform(undefined));
-    handleRejectProposed();
+    clearProposed();
   };
 
-  const suggestedTransform = useSelector(
-    getMetabotSuggestedTransform as any,
-  ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const proposedSource = useMemo(
-    () =>
-      _.isEqual(suggestedTransform?.source, initialSource)
-        ? undefined
-        : suggestedTransform?.source,
-    [suggestedTransform, initialSource],
-  );
+  const [createTransformInitValues, setCreateTransformInitValues] = useState<
+    Partial<NewTransformValues> | undefined
+  >(undefined);
 
-  const createTransformInitValues = useMemo(
-    () =>
-      suggestedTransform
-        ? {
-            name: suggestedTransform.name,
-            description: suggestedTransform.description,
-            targetName: suggestedTransform.target.name,
-            // TODO: enabling this breaks the UI for some reason...
-            // targetSchema: suggestedTransform.target.schema,
-          }
-        : undefined,
-    [suggestedTransform],
-  );
+  const handleAcceptProposed = (source: TransformSource) => {
+    if (suggestedTransform) {
+      setCreateTransformInitValues({
+        name: suggestedTransform.name,
+        description: suggestedTransform.description,
+        targetName: suggestedTransform.target.name,
+      });
+    }
+    acceptProposed(source);
+  };
 
   return (
     <>
@@ -151,12 +137,12 @@ export function NewTransformPageInner({
         proposedSource={proposedSource}
         onSave={handleSave}
         onCancel={handleCancel}
-        onRejectProposed={handleRejectProposed}
+        onRejectProposed={clearProposed}
         onAcceptProposed={handleAcceptProposed}
       />
       {isModalOpened && source && (
         <CreateTransformModal
-          source={source}
+          source={source as TransformSource}
           initValues={createTransformInitValues}
           onCreate={handleCreate}
           onClose={closeModal}

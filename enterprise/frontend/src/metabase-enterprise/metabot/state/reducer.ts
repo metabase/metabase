@@ -251,9 +251,11 @@ export const metabot = createSlice({
       { payload: transform }: PayloadAction<MetabotSuggestedTransform>,
     ) => {
       // mark all other transform w/ same id as inactive before adding new one
-      state.reactions.suggestedTransforms.map((t) =>
-        t.id === transform.id ? { ...t, active: false } : t,
-      );
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === transform.id) {
+          t.active = false;
+        }
+      });
       // transform type caused flaky "possible infinite type definition" errorj
       // ts-expect-error fails when it doesn't fail, so casting to any
       state.reactions.suggestedTransforms.push(transform as any);
@@ -266,17 +268,22 @@ export const metabot = createSlice({
       }>,
     ) => {
       const { id, suggestionId } = action.payload;
-      state.reactions.suggestedTransforms.map((t) =>
-        t.id === id ? { ...t, active: t.suggestionId === suggestionId } : t,
-      );
+
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === id) {
+          t.active = t.suggestionId === suggestionId;
+        }
+      });
     },
     deactivateSuggestedTransform: (
       state,
       action: PayloadAction<SuggestedTransform["id"] | undefined>,
     ) => {
-      state.reactions.suggestedTransforms.map((t) =>
-        t.id === action.payload ? { ...t, active: false } : t,
-      );
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === action.payload) {
+          t.active = false;
+        }
+      });
     },
   },
   extraReducers: (builder) => {

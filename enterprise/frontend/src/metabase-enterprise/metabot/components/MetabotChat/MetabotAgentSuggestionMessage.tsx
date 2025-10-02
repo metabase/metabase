@@ -4,11 +4,11 @@ import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
-import { useLocation, useMount } from "react-use";
+import { useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
-import { skipToken } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -23,10 +23,7 @@ import {
   Paper,
   Text,
 } from "metabase/ui";
-import {
-  useGetTransformQuery,
-  useLazyGetTransformQuery,
-} from "metabase-enterprise/api";
+import { useLazyGetTransformQuery } from "metabase-enterprise/api";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   activateSuggestedTransform,
@@ -47,18 +44,17 @@ const PreviewContent = ({
 }) => {
   const extensions = useMemo(
     () =>
-      oldSource
-        ? [
-            unifiedMergeView({
-              original: oldSource,
-              mergeControls: false,
-              collapseUnchanged: {
-                margin: 1,
-                minSize: 1,
-              },
-            }),
-          ]
-        : [],
+      _.compact([
+        oldSource &&
+          unifiedMergeView({
+            original: oldSource,
+            mergeControls: false,
+            collapseUnchanged: {
+              margin: 1,
+              minSize: 1,
+            },
+          }),
+      ]),
     [oldSource],
   );
 
@@ -107,32 +103,20 @@ export const AgentSuggestionMessage = ({
   const { suggestedTransform } = message.payload;
   const isNew = !suggestedTransform.id;
 
-  const url = useLocation();
-  const transformUrl = getTransformUrl(suggestedTransform);
-  const isViewing = !!url.pathname?.startsWith(transformUrl);
-
-  const [opened, { toggle }] = useDisclosure(!isViewing);
+  const [opened, { toggle }] = useDisclosure(true);
 
   const {
     data: originalTransform,
     isLoading,
     error,
   } = useGetOldTransform(message.payload);
-  const { data: latestTransform } = useGetTransformQuery(
-    suggestedTransform.id || skipToken,
-  );
 
   const oldSource = originalTransform ? getSourceCode(originalTransform) : "";
   const newSource = getSourceCode(suggestedTransform);
-  const latestSource = latestTransform
-    ? getSourceCode(latestTransform)
-    : undefined;
 
-  const isStale = latestSource && oldSource !== latestSource;
-
-  const handleFocus = () => {
+  const handleApply = () => {
     dispatch(activateSuggestedTransform(suggestedTransform));
-    dispatch(push(transformUrl) as UnknownAction);
+    dispatch(push(getTransformUrl(suggestedTransform)) as UnknownAction);
   };
 
   return (
@@ -206,19 +190,16 @@ export const AgentSuggestionMessage = ({
             h="1.375rem"
             gap="sm"
           >
-            {!isStale && (
-              <Button
-                size="compact-xs"
-                disabled={isViewing}
-                variant="subtle"
-                fw="normal"
-                fz="sm"
-                c={isViewing ? "text-lighter" : "text-secondary"}
-                onClick={() => handleFocus()}
-              >
-                {isViewing ? t`Focused` : t`Focus`}
-              </Button>
-            )}
+            <Button
+              size="compact-xs"
+              variant="subtle"
+              fw="normal"
+              fz="sm"
+              c="success"
+              onClick={handleApply}
+            >
+              {isNew ? t`Create` : t`Apply`}
+            </Button>
           </Flex>
         </Group>
       </Collapse>
