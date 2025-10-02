@@ -217,10 +217,11 @@ self.addEventListener("message", async (event) => {
         sendResponse({ type: "success", id, data: "Pyodide initialized" });
         break;
 
-      case "execute":
+      case "execute": {
         const result = await executePython(data.code, data.context);
         sendResponse({ type: "success", id, data: result });
         break;
+      }
 
       default:
         sendResponse({
