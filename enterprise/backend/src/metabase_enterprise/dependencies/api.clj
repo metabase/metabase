@@ -207,7 +207,6 @@
                          [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
   (let [starting-node [type id]
         downstream-graph (dependency/graph-dependents)
-        _ (prn starting-node)
         children ((graph/children-of downstream-graph [starting-node]) starting-node)
         all-nodes (conj children starting-node)
         nodes-by-type (->> (group-by first all-nodes)
