@@ -224,22 +224,22 @@ width: fixed
         files-atom (atom (or initial-files default-files))]
     (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom)))
 
-(defn clean-change-log
-  "Reset the change-log table before running tests to prevent existing extries from affecting dirty state checks"
+(defn clean-object
+  "Reset the object table before running tests to prevent existing extries from affecting dirty state checks"
   [f]
-  (let [old-models (t2/select :model/RemoteSyncChangeLog)]
+  (let [old-models (t2/select :model/RemoteSyncObject)]
     (try
-      (t2/delete! :model/RemoteSyncChangeLog)
+      (t2/delete! :model/RemoteSyncObject)
       (f)
       (finally
-        (t2/delete! :model/RemoteSyncChangeLog)
+        (t2/delete! :model/RemoteSyncObject)
         (when (seq old-models)
-          (t2/insert! :model/RemoteSyncChangeLog old-models))))))
+          (t2/insert! :model/RemoteSyncObject old-models))))))
 
-(defmacro with-clean-change-log
+(defmacro with-clean-object
   "Macro to wrap a body to execute in a clean change log table"
   [& body]
-  `(clean-change-log (fn [] ~@body)))
+  `(clean-object (fn [] ~@body)))
 
 (defn clean-task-table
   "Reset the task table to an empty state before running tests."
@@ -255,4 +255,4 @@ width: fixed
 
 (def clean-remote-sync-state
   "Fixture to make sure sync state is clean"
-  (t/compose-fixtures clean-change-log clean-task-table))
+  (t/compose-fixtures clean-object clean-task-table))

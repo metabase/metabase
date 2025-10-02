@@ -1402,99 +1402,49 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-09-11T16:00:00
       author: johnswanson
-      comment: Create remote_sync_change_log table to track when syncs occur
+      comment: Create remote_sync_object table to track remote sync objects
       preConditions:
         - onFail: MARK_RAN
         - not:
             - tableExists:
-                tableName: remote_sync_change_log
+                tableName: remote_sync_object
       changes:
         - createTable:
-            tableName: remote_sync_change_log
-            remarks: Track when remote_sync syncs occur for detecting unsynced changes
+            tableName: remote_sync_object
+            remarks: Track remote sync objects
             columns:
               - column:
                   name: id
                   type: int
-                  remarks: Unique ID
                   autoIncrement: true
+                  remarks: Primary key identifier for remote-sync objects
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: sync_type
-                  type: varchar(50)
-                  remarks: Type of sync operation (import, export)
+                  name: model_type
+                  type: varchar(32)
+                  remarks: Type of model
                   constraints:
                     nullable: false
               - column:
-                  name: source_branch
-                  type: varchar(255)
-                  remarks: Git branch that was synced from
+                  name: model_id
+                  type: int
+                  remarks: ID of the model
                   constraints:
-                    nullable: true
-              - column:
-                  name: target_branch
-                  type: varchar(255)
-                  remarks: Git branch that was synced to
-                  constraints:
-                    nullable: true
+                    nullable: false
               - column:
                   name: status
-                  type: varchar(50)
-                  remarks: Status of sync operation (success, error)
+                  type: varchar(32)
+                  remarks: Status of the object
                   constraints:
                     nullable: false
               - column:
-                  name: message
-                  type: ${text.type}
-                  remarks: Optional message or error details
-                  constraints:
-                    nullable: true
-              - column:
-                  name: model_type
-                  type: varchar(50)
-                  remarks: Type of model that was changed (card, dashboard, collection, etc.)
-                  constraints:
-                    nullable: true
-              - column:
-                  name: model_entity_id
-                  type: char(21)
-                  remarks: Entity ID of the model that was changed
-                  constraints:
-                    nullable: true
-              - column:
-                  name: created_at
+                  name: status_changed_at
                   type: ${timestamp_type}
-                  remarks: When the sync occurred
-                  defaultValueComputed: current_timestamp
+                  remarks: When the status changed
                   constraints:
                     nullable: false
-              - column:
-                  name: most_recent
-                  type: ${boolean.type}
-                  remarks: tracking if this is the most recent change log entry
-                  defaultValue: false
-                  constraints:
-                    nullable: false
-              - column:
-                  name: version
-                  type: ${text.type}
-                  remarks: Version that was imported or exported (ex the Git SHA)
-                  constraints:
-                    nullable: true
-
-  - changeSet:
-      id: v57.2025-09-11T16:01:00
-      author: jds
-      comment: Add index on remote_sync_change_log.created_at for efficient sync time queries
-      changes:
-        - createIndex:
-            tableName: remote_sync_change_log
-            indexName: idx_remote_sync_change_log_created_at
-            columns:
-              - column:
-                  name: created_at
 
   - changeSet:
       id: v57.2025-09-12T16:08:00
@@ -1828,49 +1778,16 @@ databaseChangeLog:
   - changeSet:
       id: v57.2025-09-30T10:00:00
       author: edpaget
-      comment: Add composite index on remote_sync_change_log for dirty detection queries
+      comment: Add composite index on remote_sync_object for dirty detection queries
       changes:
         - createIndex:
-            tableName: remote_sync_change_log
-            indexName: idx_remote_sync_change_log_model_lookup
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_model_lookup
             columns:
               - column:
                   name: model_type
               - column:
-                  name: model_entity_id
-              - column:
-                  name: most_recent
-
-  - changeSet:
-      id: v57.2025-09-30T10:01:00
-      author: edpaget
-      comment: Add composite index on remote_sync_change_log for last sync queries
-      changes:
-        - createIndex:
-            tableName: remote_sync_change_log
-            indexName: idx_remote_sync_change_log_last_sync
-            columns:
-              - column:
-                  name: status
-              - column:
-                  name: sync_type
-              - column:
-                  name: created_at
-                  descending: true
-
-  - changeSet:
-      id: v57.2025-09-30T10:02:00
-      author: edpaget
-      comment: Add index on remote_sync_change_log for after-insert updates
-      changes:
-        - createIndex:
-            tableName: remote_sync_change_log
-            indexName: idx_remote_sync_change_log_entity_lookup
-            columns:
-              - column:
-                  name: model_entity_id
-              - column:
-                  name: model_type
+                  name: model_id
 
   - changeSet:
       id: v57.2025-09-30T10:03:00

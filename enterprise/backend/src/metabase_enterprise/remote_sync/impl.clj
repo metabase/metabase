@@ -9,7 +9,6 @@
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -17,13 +16,9 @@
 
 (defn- affected-collections
   "Get all collections that are descendants of those in the sync and the ones synced"
-  [collections]
-  (if (seq collections)
-    (let [col-models (t2/select :model/Collection :entity_id [:in collections])]
-      (concat (map :id col-models)
-              (mapcat collection/collection->descendant-ids col-models)))
-              ;; Otherwise get all remote-synced collections
-    (t2/select-pks-vec :model/Collection :type "remote-synced")))
+  []
+  ;; Otherwise get all remote-synced collections
+  (t2/select-pks-vec :model/Collection :type "remote-synced"))
 
 (defn- clean-synced!
   "Delete any remote sync content that was NOT part of the import"
@@ -51,7 +46,7 @@
                                  :entity_id))))))
 
 (defn- handle-import-exception
-  [e source collections sync-timestamp branch]
+  [e source]
   (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
   (analytics/inc! :metabase-remote-sync/imports-failed)
   (let [error-msg (cond
@@ -70,28 +65,14 @@
 
                     :else
                     (format "Failed to reload from git repository: %s" (ex-message e)))]
-    (if (seq collections)
-      (doseq [collection collections]
-        (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                         {:source-branch branch
-                                          :collection-id collection
-                                          :version (source.p/version source)
-                                          :timestamp sync-timestamp
-                                          :status  "error"
-                                          :message (ex-message e)}))
-      (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                       {:source-branch branch
-                                        :version (source.p/version source)
-                                        :timestamp sync-timestamp
-                                        :status  "error"
-                                        :message (ex-message e)}))
     {:status  :error
      :message error-msg
+     :version (source.p/version source)
      :details {:error-type (type e)}}))
 
 (defn import!
   "Reloads the Metabase entities from the git repo"
-  [source task-id branch & [collections]]
+  [source task-id]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
@@ -99,12 +80,10 @@
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [load-result (u/prog1 (serdes/with-cache
-                                     (->> (cond-> {:task-id task-id}
-                                            (seq collections) (assoc :root-dependencies (map #(vector {:id % :model "Collection"}) collections)
-                                                                     :path-filters (map #(re-pattern (str "collections/" % ".*")) collections))
-                                            (empty? collections) (assoc :path-filters [#"collections/.*"]))
-                                          (source.p/->ingestable source)
-                                          serialization/load-metabase!)))
+                                     (->>  {:task-id task-id
+                                            :path-filters [#"collections/.*"]}
+                                           (source.p/->ingestable source)
+                                           serialization/load-metabase!)))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)
@@ -114,24 +93,15 @@
                                      (into {}))]
 
           (remote-sync.task/update-progress! task-id 0.8)
-          (clean-synced! (affected-collections collections) imported-entities)
-          (remote-sync.task/update-progress! task-id 0.9)
-          (let [collection-entity-ids (get imported-entities "Collection")
-                root-collections (when (seq collection-entity-ids)
-                                   (t2/select :model/Collection :entity_id [:in collection-entity-ids] :location "/"))]
-            (doseq [{:keys [entity_id]} root-collections]
-              (lib.events/publish-remote-sync! "import" nil api/*current-user-id*
-                                               {:source-branch branch
-                                                :collection-id entity_id
-                                                :timestamp sync-timestamp
-                                                :version (source.p/version source)
-                                                :status "success"}))))
+          (clean-synced! (affected-collections) imported-entities)
+          (remote-sync.task/update-progress! task-id 0.95))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
+         :version (source.p/version source)
          :message "Successfully reloaded from git repository"}
 
         (catch Exception e
-          (handle-import-exception e source collections sync-timestamp branch))
+          (handle-import-exception e source))
         (finally
           (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))
       {:status  :error
@@ -139,50 +109,36 @@
 
 (defn export!
   "Exports the synced collections to the source repo"
-  ([source task-id branch message]
-   (export! source task-id branch message nil))
-  ([source task-id branch message collections]
-   (if source
-     (let [sync-timestamp (t/instant)
-           collections (or (seq collections) (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/"))]
-       (try
-         (analytics/inc! :metabase-remote-sync/exports)
-         (serdes/with-cache
-           (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
-                                                :no-collections           false
-                                                :no-data-model            true
-                                                :no-settings              true
-                                                :no-transforms            true
-                                                :include-field-values     false
-                                                :include-database-secrets false
-                                                :continue-on-error        false})]
-             (remote-sync.task/update-progress! task-id 0.3)
-             (source/store! models source task-id message))
-           (doseq [collection collections]
-             (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                              {:target-branch branch
-                                               :collection-id collection
-                                               :version (source.p/version source)
-                                               :status  "success"
-                                               :message message})))
-         {:status :success}
+  [source task-id message]
+  (if source
+    (let [sync-timestamp (t/instant)
+          collections (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/")]
+      (try
+        (analytics/inc! :metabase-remote-sync/exports)
+        (serdes/with-cache
+          (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
+                                               :no-collections           false
+                                               :no-data-model            true
+                                               :no-settings              true
+                                               :no-transforms            true
+                                               :include-field-values     false
+                                               :include-database-secrets false
+                                               :continue-on-error        false})]
+            (remote-sync.task/update-progress! task-id 0.3)
+            (source/store! models source task-id message)))
+        {:status :success
+         :version (source.p/version source)}
 
-         (catch Exception e
-           (analytics/inc! :metabase-remote-sync/imports-failed)
-           (remote-sync.task/fail-sync-task! task-id (ex-message e))
-           (doseq [collection collections]
-             (lib.events/publish-remote-sync! "export" nil api/*current-user-id*
-                                              {:target-branch  branch
-                                               :collection-id collection
-                                               :version (source.p/version source)
-                                               :status  "error"
-                                               :message (ex-message e)}))
-           {:status  :error
-            :message (format "Failed to export to git repository: %s" (ex-message e))})
-         (finally
-           (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
-     {:status  :error
-      :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."})))
+        (catch Exception e
+          (analytics/inc! :metabase-remote-sync/imports-failed)
+          (remote-sync.task/fail-sync-task! task-id (ex-message e))
+          {:status  :error
+           :version (source.p/version source)
+           :message (format "Failed to export to git repository: %s" (ex-message e))})
+        (finally
+          (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
+    {:status  :error
+     :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
 (def cluster-lock
   "Shared cluster lock name for remote-sync tasks"

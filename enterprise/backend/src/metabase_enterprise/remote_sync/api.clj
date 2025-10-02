@@ -4,7 +4,7 @@
    [diehard.core :as dh]
    [medley.core :as m]
    [metabase-enterprise.remote-sync.impl :as impl]
-   [metabase-enterprise.remote-sync.models.remote-sync-change-log :as change-log]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
@@ -15,8 +15,7 @@
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -42,15 +41,13 @@
 
 (defn- async-import!
   [branch]
-  (run-async! "import" branch (fn [task-id] (impl/import! (source/source-from-settings branch) task-id branch))))
+  (run-async! "import" branch (fn [task-id] (impl/import! (source/source-from-settings branch) task-id))))
 
 (defn- async-export!
-  [branch message collection]
+  [branch message]
   (run-async! "export" branch (fn [task-id] (impl/export! (source/source-from-settings branch)
                                                           task-id
-                                                          branch
-                                                          message
-                                                          collection))))
+                                                          message))))
 
 (api.macros/defendpoint :post "/import"
   "Reload Metabase content from Git repository source of truth.
@@ -62,8 +59,7 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]
-                        [:collection_id {:optional true} pos-int?]]]
+   {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
@@ -75,14 +71,7 @@
   "Check if any collection has remote sync changes that are not saved."
   []
   (api/check-superuser)
-  {:is_dirty (change-log/dirty-global?)})
-
-(api.macros/defendpoint :get "/:collection-id/is-dirty"
-  "Check if this instance or a specific collection has remote sync changes that are not saved."
-  [{:keys [collection-id]} :- [:map
-                               [:collection-id {:optional true} pos-int?]]]
-  (api/check-superuser)
-  {:is_dirty (change-log/dirty-collection? collection-id)})
+  {:is_dirty (remote-sync.object/dirty-global?)})
 
 (api.macros/defendpoint :get "/dirty"
   "Return dirty models from a any remote-sync collection"
@@ -90,16 +79,7 @@
   (api/check-superuser)
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
-                (change-log/dirty-for-global))})
-
-(api.macros/defendpoint :get "/:collection-id/dirty"
-  "Return dirty models from a given collection"
-  [{:keys [collection-id]} :- [:map
-                               [:collection-id {:optional true} pos-int?]]]
-  (api/check-superuser)
-  {:dirty (into []
-                (m/distinct-by (juxt :id :model))
-                (change-log/dirty-for-collection collection-id))})
+                (remote-sync.object/dirty-for-global))})
 
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Remote Sync collection to a Source
@@ -114,11 +94,10 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [message branch collection_id _force-sync]}] :- [:map
-                                                           [:message {:optional true} ms/NonBlankString]
-                                                           [:branch {:optional true} ms/NonBlankString]
-                                                           [:collection_id {:optional true} pos-int?]
-                                                           [:force-sync {:optional true} :boolean]]
+   {:keys [message branch _force-sync]}] :- [:map
+                                             [:message {:optional true} ms/NonBlankString]
+                                             [:branch {:optional true} ms/NonBlankString]
+                                             [:force-sync {:optional true} :boolean]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform export operations."
@@ -127,8 +106,7 @@
     (throw (ex-info "Exports are only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
   {:message "Export task started"
    :task_id (async-export! (or branch (settings/remote-sync-branch))
-                           (or message "Exported from Metabase")
-                           (if (some? collection_id) [(t2/select-one-fn :entity_id [:model/Collection :entity_id] :id collection_id)] nil))})
+                           (or message "Exported from Metabase"))})
 
 (api.macros/defendpoint :get "/current-task"
   "Get the current sync task"
