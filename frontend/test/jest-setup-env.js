@@ -3,12 +3,11 @@ import fetchMock from "fetch-mock";
 
 beforeEach(() => {
   fetchMock.mockGlobal();
-  fetchMock.catch((url, opts) => {
-    const requestUrl = url?.url || url;
-    const method = opts?.method || "GET";
+  fetchMock.catch((request) => {
+    const { url, options } = request;
 
-    console.error(`Unmocked ${method} request to: ${requestUrl}`);
-    throw new Error(`Unmocked ${method} request to: ${requestUrl}`);
+    console.error(`Unmocked ${options.method} request to: ${url}`);
+    throw new Error(`Unmocked ${options.method} request to: ${url}`);
   });
 });
 
