@@ -90,16 +90,10 @@ export const SdkIframeEmbedPreview = () => {
       instanceUrl,
       theme: derivedTheme,
       ...(localeOverride ? { locale: localeOverride } : {}),
-      useExistingUserSession: settings.useExistingUserSession,
+      useExistingUserSession: true,
       isStatic: settings.isStatic,
     }),
-    [
-      instanceUrl,
-      derivedTheme,
-      localeOverride,
-      settings.useExistingUserSession,
-      settings.isStatic,
-    ],
+    [instanceUrl, derivedTheme, localeOverride, settings.isStatic],
   );
 
   // initial configuration, needed so that the element finds the config on first render
