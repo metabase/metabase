@@ -22,16 +22,7 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import {
-  Badge,
-  Box,
-  Flex,
-  Group,
-  Radio,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Badge, Box, Flex, Radio, Stack, Text, Title } from "metabase/ui";
 import {
   type GitSyncSettingsSet,
   useUpdateGitSyncSettingsMutation,
@@ -56,10 +47,13 @@ export const GitSyncSettings = (): JSX.Element => {
 
   const initialValues = useMemo(() => {
     const values = GIT_SYNC_SCHEMA.cast(settingValues, { stripUnknown: true });
+    const tokenValue =
+      settingDetails?.[TOKEN_KEY]?.value ?? settingValues?.[TOKEN_KEY];
     return {
       ...values,
+      [TOKEN_KEY]: tokenValue,
     };
-  }, [settingValues]);
+  }, [settingValues, settingDetails]);
 
   // eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
@@ -88,16 +82,15 @@ export const GitSyncSettings = (): JSX.Element => {
     <SettingsPageWrapper>
       <SettingsSection>
         <Box flex={1} maw="52rem">
-          <Flex align="flex-end" gap="md" mb="xs">
-            <Group gap="sm">
-              <Title order={2}>{t`Git Sync`}</Title>
-              {isGitSyncEnabled && (
-                <Badge
-                  style={{ textTransform: "none" }}
-                  px="sm"
-                >{t`Enabled`}</Badge>
-              )}
-            </Group>
+          <Flex align="flex-end" gap="sm" mb="xs">
+            <Title order={2}>{t`Git Sync`}</Title>
+            {isGitSyncEnabled && (
+              <Badge
+                style={{ textTransform: "none" }}
+                py={10}
+                px="sm"
+              >{t`Enabled`}</Badge>
+            )}
           </Flex>
           <Text c="text-dark" size="sm" mb="md" maw="40rem" lh="1.5rem">
             {t`Keep your dashboards, questions, and collections safely backed up in Git.`}
