@@ -53,7 +53,7 @@ Some tips:
 Hover over Metabot's response to:
 
 - Copy the response.
-- Give thumbs-up/thumbs-down [feedback on responses](#giving-feedback-on-metabot-responses). If you downvote a response, you can optionally contribute a bug report to help us improve Metabot.
+- Give thumbs-up/thumbs-down [feedback on responses](#giving-feedback-on-metabot-responses). If you upvote a response, you can optionally add some feedback. If you downvote a response, you can optionally contribute a bug report to help us improve Metabot.
 - Re-run the prompt with Metabot. This is useful if you've updated the chart or just want to have Metabot take another pass (since AI responses aren't deterministic, Metabot may give a different response on another run).
 
 ## Analyze charts with Metabot

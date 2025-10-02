@@ -91,9 +91,9 @@ Under the hood, Metabase powers Metabot with a variety of generative models. For
 
 To get the best results, we (the Metabase team) use internal benchmarks to determine which AI models Metabot should use for different tasks. And we are constantly iterating on performance, so Metabot will continue to improve over time.
 
-## We don't collect or store the prompts you send to Metabot
+## Unless you submit feedback, we don't collect or store the prompts you send to Metabot
 
-We've intentionally limited what Metabot can do. Metabot lacks access to API keys, and it can't create assets, write data, or send your data outside of your Metabase. Your questions and conversations remain private to your Metabase (unless you submit feedback). We do collect some metadata to gauge and improve usage, but we don't train Metabot on your prompts or your data—because we can't see them!
+We've intentionally limited what Metabot can do. Metabot lacks access to API keys, and it can't create assets, write data, or send your data outside of your Metabase. Your questions and conversations remain private to your Metabase (unless you submit feedback). We do collect some metadata to gauge and improve usage.
 
 ### What Metabot can see
 
