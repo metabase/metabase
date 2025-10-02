@@ -6,7 +6,6 @@ import React, {
   type ReactNode,
   type SetStateAction,
   useCallback,
-  useMemo,
 } from "react";
 import { t } from "ttag";
 
@@ -38,7 +37,6 @@ import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/compo
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
-import type { PaletteAction } from "metabase/palette/types";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -709,7 +707,6 @@ type PLUGIN_METABOT_TYPE = {
   defaultMetabotContextValue: MetabotContext;
   MetabotContext: React.Context<MetabotContext>;
   getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
-  useMetabotPalletteActions: (searchText: string) => PaletteAction[];
   getAdminPaths: () => AdminPath[];
   getAdminRoutes: () => React.ReactElement;
   getMetabotRoutes: () => React.ReactElement | null;
@@ -732,7 +729,6 @@ export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
         children,
       );
   },
-  useMetabotPalletteActions: () => useMemo(() => [], []),
   getAdminPaths: () => [],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null,

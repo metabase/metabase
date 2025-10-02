@@ -15,7 +15,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CACHING, PLUGIN_METABOT } from "metabase/plugins";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -24,7 +24,7 @@ import {
 } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Icon, type IconName } from "metabase/ui";
+import { Group, Icon } from "metabase/ui";
 import {
   type RecentItem,
   isRecentCollectionItem,
@@ -36,8 +36,10 @@ import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
 export const useCommandPalette = ({
+  disabled,
   locationQuery,
 }: {
+  disabled: boolean;
   locationQuery: Query;
 }) => {
   const dispatch = useDispatch();
@@ -84,17 +86,17 @@ export const useCommandPalette = ({
       limit: 20,
     },
     {
-      skip: !debouncedSearchText || !isSearchTypeaheadEnabled,
+      skip: !debouncedSearchText || !isSearchTypeaheadEnabled || disabled,
       refetchOnMountOrArgChange: true,
     },
   );
 
   const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery();
   useEffect(() => {
-    if (isVisible) {
+    if (isVisible && !disabled) {
       refetchRecents();
     }
-  }, [isVisible, refetchRecents]);
+  }, [isVisible, refetchRecents, disabled]);
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
@@ -120,17 +122,18 @@ export const useCommandPalette = ({
     return ret;
   }, [debouncedSearchText, docsUrl]);
 
-  const showDocsAction = showMetabaseLinks && hasQuery;
+  const showDocsAction = showMetabaseLinks && hasQuery && !disabled;
 
   useRegisterActions(showDocsAction ? docsAction : [], [
     docsAction,
     showDocsAction,
   ]);
 
-  const metabotActions = PLUGIN_METABOT.useMetabotPalletteActions(trimmedQuery);
-  useRegisterActions(metabotActions, [metabotActions]);
-
   const searchResultActions = useMemo<PaletteAction[]>(() => {
+    if (disabled) {
+      return [];
+    }
+
     const searchLocation = {
       pathname: "search",
       query: {
@@ -173,63 +176,37 @@ export const useCommandPalette = ({
       ];
     } else if (debouncedSearchText) {
       if (searchResults?.data.length) {
-        return [
-          {
-            id: `search-results-metadata`,
-            name: t`View and filter all ${searchResults?.total} results`,
+        return searchResults.data.map((result, index) => {
+          const wrappedResult = Search.wrapEntity(result, dispatch);
+          const icon = getIcon(wrappedResult);
+          return {
+            id: `search-result-${result.model}-${result.id}`,
+            name: result.name,
+            subtitle: result.description || "",
+            icon: icon.name,
             section: "search",
             keywords: debouncedSearchText,
-            icon: "link" as IconName,
+            priority: Priority.NORMAL - index,
             perform: () => {
               trackSearchClick({
-                itemType: "view_more",
-                position: 0,
+                itemType: "item",
+                position: index,
                 context: "command-palette",
                 searchEngine: searchResults?.engine || "unknown",
                 requestId: searchRequestId,
-                entityModel: null,
-                entityId: null,
+                entityModel: result.model,
+                entityId: typeof result.id === "number" ? result.id : null,
                 searchTerm: debouncedSearchText,
               });
             },
-            priority: Priority.HIGH,
             extra: {
-              href: searchLocation,
+              moderatedStatus: result.moderated_status,
+              href: wrappedResult.getUrl(),
+              iconColor: icon.color,
+              subtext: getSearchResultSubtext(wrappedResult),
             },
-          },
-        ].concat(
-          searchResults.data.map((result, index) => {
-            const wrappedResult = Search.wrapEntity(result, dispatch);
-            const icon = getIcon(wrappedResult);
-            return {
-              id: `search-result-${result.model}-${result.id}`,
-              name: result.name,
-              subtitle: result.description || "",
-              icon: icon.name,
-              section: "search",
-              keywords: debouncedSearchText,
-              priority: Priority.NORMAL - index,
-              perform: () => {
-                trackSearchClick({
-                  itemType: "item",
-                  position: index,
-                  context: "command-palette",
-                  searchEngine: searchResults?.engine || "unknown",
-                  requestId: searchRequestId,
-                  entityModel: result.model,
-                  entityId: typeof result.id === "number" ? result.id : null,
-                  searchTerm: debouncedSearchText,
-                });
-              },
-              extra: {
-                moderatedStatus: result.moderated_status,
-                href: wrappedResult.getUrl(),
-                iconColor: icon.color,
-                subtext: getSearchResultSubtext(wrappedResult),
-              },
-            };
-          }),
-        );
+          };
+        });
       } else {
         return [
           {
@@ -244,6 +221,7 @@ export const useCommandPalette = ({
     }
     return [];
   }, [
+    disabled,
     dispatch,
     debouncedSearchText,
     searchQuery,
@@ -258,6 +236,10 @@ export const useCommandPalette = ({
   useRegisterActions(searchResultActions, [searchResultActions]);
 
   const recentItemsActions = useMemo<PaletteAction[]>(() => {
+    if (disabled) {
+      return [];
+    }
+
     return (
       filterRecentItems(recentItems ?? []).map((item) => {
         const icon = getIcon(item);
@@ -278,7 +260,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [recentItems]);
+  }, [disabled, recentItems]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
@@ -286,6 +268,10 @@ export const useCommandPalette = ({
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
+    if (disabled) {
+      return [];
+    }
+
     // Subpaths - i.e. paths to items within the main Admin tabs - are needed
     // in the command palette but are not part of the main list of admin paths
     const adminSubpaths = isAdmin
@@ -303,10 +289,10 @@ export const useCommandPalette = ({
         href: adminPath.path,
       },
     }));
-  }, [isAdmin, adminPaths]);
+  }, [disabled, isAdmin, adminPaths]);
 
   const settingsActions = useMemo<PaletteAction[]>(() => {
-    if (!canUserAccessSettings) {
+    if (disabled || !canUserAccessSettings) {
       return [];
     }
 
@@ -332,19 +318,26 @@ export const useCommandPalette = ({
           href: `/admin/settings/${slug}`,
         },
       }));
-  }, [canUserAccessSettings, isAdmin, settingValues]);
+  }, [disabled, canUserAccessSettings, isAdmin, settingValues]);
 
   useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
     adminActions,
     settingsActions,
     hasQuery,
   ]);
+
+  return {
+    searchRequestId,
+    searchResults,
+    searchTerm: debouncedSearchText,
+  };
 };
 
 export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   if (wrappedSearchResult.model === "indexed-entity") {
     return jt`a record in ${(
       <Icon
+        flex="0 0 auto"
         key="icon"
         name="model"
         style={{
@@ -364,6 +357,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
     return (
       <>
         <Icon
+          flex="0 0 auto"
           name="dashboard"
           style={{
             verticalAlign: "bottom",
@@ -385,24 +379,24 @@ export const getRecentItemSubtext = (item: RecentItem) => {
       : item.database.name;
   } else if (item.dashboard) {
     return (
-      <>
-        <Icon name="dashboard" size={12} style={{ marginInline: "0.25rem" }} />
+      <Group align="center" gap="xs" wrap="nowrap">
+        <Icon flex="0 0 auto" name="dashboard" size={12} />
         {item.dashboard.name}
-      </>
+      </Group>
     );
   } else if (item.parent_collection.id === null) {
     return (
-      <>
-        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+      <Group align="center" gap="xs" wrap="nowrap">
+        <Icon flex="0 0 auto" name="collection" size={12} />
         {ROOT_COLLECTION.name}
-      </>
+      </Group>
     );
   } else {
     return (
-      <>
-        <Icon name="collection" size={12} style={{ marginInline: "0.25rem" }} />
+      <Group align="center" gap="xs" wrap="nowrap">
+        <Icon flex="0 0 auto" name="collection" size={12} />
         {item.parent_collection.name}
-      </>
+      </Group>
     );
   }
 };

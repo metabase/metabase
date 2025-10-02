@@ -11,21 +11,27 @@ import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
 
 interface ResponsiveParametersListProps {
+  className?: string;
   cardId?: CardId;
   dashboardId?: DashboardId;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
-  setParameterIndex: (parameterId: string, parameterIndex: number) => void;
+  setParameterIndex?: (parameterId: string, parameterIndex: number) => void;
   enableParameterRequiredBehavior: boolean;
+  commitImmediately?: boolean;
+  isSortable?: boolean;
 }
 
 export const ResponsiveParametersList = ({
+  className,
   cardId,
   dashboardId,
   parameters,
   setParameterValue,
   setParameterIndex,
   enableParameterRequiredBehavior,
+  commitImmediately = true,
+  isSortable,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
   const isSmallScreen = useIsSmallScreen();
@@ -79,7 +85,10 @@ export const ResponsiveParametersList = ({
           </Flex>
         )}
         <SyncedParametersList
-          className={ResponsiveParametersListS.StyledParametersList}
+          className={cx(
+            ResponsiveParametersListS.StyledParametersList,
+            className,
+          )}
           cardId={cardId}
           dashboardId={dashboardId}
           parameters={parameters}
@@ -87,7 +96,8 @@ export const ResponsiveParametersList = ({
           setParameterIndex={setParameterIndex}
           enableParameterRequiredBehavior={enableParameterRequiredBehavior}
           isEditing
-          commitImmediately
+          isSortable={isSortable}
+          commitImmediately={commitImmediately}
         />
       </Box>
     </Box>
