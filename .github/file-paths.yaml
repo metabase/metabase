@@ -132,9 +132,14 @@ e2e_embedding_sdk_compatibility:
   - *default
   - *frontend_embedding_sdk_ci
   - *frontend_sources
+  - *backend_sources
   - "e2e/embedding-sdk-host-apps/**"
   - "e2e/runner/embedding-sdk/**"
   - "e2e/test-host-app/**/*.cy.*.{js,ts}"
+
+snowplow: &snowplow
+  - ".github/workflows/snowplow.yml"
+  - "snowplow/**"
 
 e2e_all:
   - *default
@@ -142,10 +147,7 @@ e2e_all:
   - *sources
   - *e2e_specs
   - "e2e/**"
-
-snowplow:
-  - ".github/workflows/snowplow.yml"
-  - "snowplow/**"
+  - *snowplow
 
 documentation:
   - "docs/**"

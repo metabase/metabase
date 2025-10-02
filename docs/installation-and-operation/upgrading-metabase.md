@@ -8,7 +8,7 @@ redirect_from:
 
 This page covers how to upgrade to a new Metabase release.
 
-- [Announcement posts for major releases](https://www.)
+- [Announcement posts for major releases](https://www.metabase.com/releases)
 - [Changelogs](https://www.metabase.com/changelog).
 - [Release notes on GitHub](https://github.com/metabase/metabase/releases).
 
@@ -25,7 +25,7 @@ Cloud customers can request an early upgrade by emailing support at help@metabas
 
 ### Instances using the Embedded analtyics SDK on Metabase Cloud must request an upgrade
 
-If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading. 
+If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
 
 To upgrade your Metabase, you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
 
@@ -132,13 +132,15 @@ During a **major version** upgrade (e.g., 53.1 or 54.1), Metabase will:
 - Perform all the migrations needed to upgrade to the new version, such as any schema changes to the application database between the two versions.
 - Keep all the metadata it needs to work on the application database.
 
-Metabase will do all this automatically. 
+Metabase will do all this automatically.
 
 If you need to downgrade after a major version upgrade, you'll either need to restore from a backup, or manually migrate to a lower version, otherwise Metabase may refuse to start (see the next section).
 
 Durning a **minor version upgrade** (e.g., 54.1 to 54.2), the new Metabase container or Jar will just work. Only in rare cases will it have to perform a migration, but, like with major version upgrades, Metabase will perform the migration automatically. And of course, you're backing up your application database each time you upgrade, right?
 
 ## Rolling back an upgrade or to an older version
+
+> **The downgrade command must be run on the JAR with the higher version number.**
 
 In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade.
 

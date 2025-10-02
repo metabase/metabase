@@ -21,6 +21,8 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
+    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -85,17 +87,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       cy.log("set default value for id");
-      getEmbedSidebar().findByLabelText("ID").type("123").blur();
+      getEmbedSidebar().findByLabelText("ID").type("123");
+      H.popover().findByText("Add filter").click();
 
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("ID")
         .should("contain", "123");
 
       cy.log("set default value for product id");
-      getEmbedSidebar().findByLabelText("Product ID").type("456").blur();
+      getEmbedSidebar().findByLabelText("Product ID").type("456");
+      H.popover().findByText("Add filter").click();
 
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .findByLabelText("Product ID")
         .should("contain", "456");
@@ -112,9 +116,18 @@ H.describeWithSnowplow(suiteTitle, () => {
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
         codeBlock().should("contain", "initial-parameters=");
-        codeBlock().should("contain", '"id":"123"');
-        codeBlock().should("contain", '"product_id":"456"');
+        codeBlock().should("contain", '"id":[123]');
+        codeBlock().should("contain", '"product_id":[456]');
       });
+
+      cy.get("metabase-dashboard")
+        .invoke("attr", "initial-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.deep.equal({
+            id: [123],
+            product_id: [456],
+          });
+        });
     });
 
     it("can hide dashboard parameters", () => {
@@ -130,7 +143,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       cy.log("parameter widget container should not exist");
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
 
@@ -149,6 +162,12 @@ H.describeWithSnowplow(suiteTitle, () => {
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
       });
+
+      cy.get("metabase-dashboard")
+        .invoke("attr", "hidden-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.have.members(["id", "product_id"]);
+        });
     });
   });
 
@@ -182,15 +201,16 @@ H.describeWithSnowplow(suiteTitle, () => {
         cy.findByLabelText("ID").should("be.visible");
       });
 
-      H.getIframeBody()
+      H.getSimpleEmbedIframeContent()
         .findByText(/missing required parameters/)
         .should("exist");
 
       getEmbedSidebar().within(() => {
-        cy.findByLabelText("ID").type("123").blur();
+        cy.findByLabelText("ID").type("123");
+        cy.press("Tab"); //.blur() doesn't easily work here
       });
 
-      H.getIframeBody().within(() => {
+      H.getSimpleEmbedIframeContent().within(() => {
         cy.findByText(/missing required parameters/).should("not.exist");
         cy.findByText("123").should("be.visible");
 
@@ -209,6 +229,12 @@ H.describeWithSnowplow(suiteTitle, () => {
         codeBlock().should("not.contain", "hidden-parameters="); // not supported for questions yet
         codeBlock().should("contain", '"id":"123"');
       });
+
+      cy.get("metabase-question")
+        .invoke("attr", "initial-sql-parameters")
+        .then((attr) => {
+          expect(JSON.parse(attr!)).to.deep.equal({ id: "123" });
+        });
     });
   });
 

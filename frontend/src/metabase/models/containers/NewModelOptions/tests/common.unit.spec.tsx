@@ -24,7 +24,6 @@ describe("NewModelOptions (OSS)", () => {
         delay(2000).then(() => {
           return [createMockDatabase()];
         }),
-        { overwriteRoutes: true },
       );
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();

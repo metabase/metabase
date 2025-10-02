@@ -2,7 +2,12 @@ import "@testing-library/jest-dom";
 import fetchMock from "fetch-mock";
 
 beforeEach(() => {
-  fetchMock.restore();
+  fetchMock.mockGlobal();
+});
+
+afterEach(() => {
+  fetchMock.removeRoutes();
+  fetchMock.callHistory.clear();
   fetchMock.catch((url, request) => {
     const errorMessage = `Caught unmocked ${request.method} request to: ${url}`;
 

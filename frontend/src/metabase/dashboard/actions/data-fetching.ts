@@ -228,8 +228,13 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboardType = getDashboardType(dashcard.dashboard_id);
 
-    const { dashboardId, dashboards, parameterValues, dashcardData } =
-      getState().dashboard;
+    const {
+      dashboardId,
+      dashboards,
+      editingDashboard,
+      parameterValues,
+      dashcardData,
+    } = getState().dashboard;
 
     if (!dashboardId) {
       return;
@@ -237,10 +242,22 @@ export const fetchCardDataAction = createAsyncThunk<
 
     const dashboard = dashboards[dashboardId];
 
+    // if the dashboard is being edited, ignore parameters that do not exist in
+    // the saved dashboard to avoid query errors
+    const savedParameterIds = new Set(
+      editingDashboard?.parameters?.map((parameter) => parameter.id),
+    );
+    const savedParameters =
+      editingDashboard != null
+        ? dashboard.parameters?.filter((parameter) =>
+            savedParameterIds.has(parameter.id),
+          )
+        : dashboard.parameters;
+
     // if we have a parameter, apply it to the card query before we execute
     const datasetQuery = applyParameters(
       card,
-      dashboard.parameters,
+      savedParameters,
       parameterValues,
       dashcard?.parameter_mappings ?? undefined,
     );
@@ -399,7 +416,10 @@ export const fetchCardDataAction = createAsyncThunk<
       );
     }
 
-    setFetchCardDataCancel(card.id, dashcard.id, null);
+    // If the request was not previously cancelled, then clear the defer for the card
+    if (!cancelled) {
+      setFetchCardDataCancel(card.id, dashcard.id, null);
+    }
     clearTimeout(slowCardTimer);
 
     return {

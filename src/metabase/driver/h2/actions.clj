@@ -87,18 +87,18 @@
   [_driver error-type _database action-type error-message]
   (when-let [[_match column]
              (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
-    (let  [column (db-identifier->name column)]
+    (let [column (db-identifier->name column)]
       (merge {:type error-type}
              (case action-type
-               :row/create
+               (:table.row/create :model.row/create)
                {:message (tru "Unable to create a new record.")
                 :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
 
-               :row/delete
+               (:table.row/delete :model.row/delete)
                {:message (tru "Other tables rely on this row so it cannot be deleted.")
                 :errors  {}}
 
-               :row/update
+               (:table.row/update :model.row/update)
                {:message (tru "Unable to update the record.")
                 :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
 
@@ -108,4 +108,12 @@
              (re-find #"Data conversion error converting .*" error-message)]
     {:type    error-type
      :message (tru "Some of your values aren’t of the correct type for the database.")
+     :errors  {}}))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (when-let [[_match constraint-name]
+             (re-find #"Check constraint violation: \"([^\"]+)\"" error-message)]
+    {:type    error-type
+     :message (tru "Some of your values violate the constraint: {0}" constraint-name)
      :errors  {}}))

@@ -27,6 +27,14 @@ title: Driver interface changelog
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
 
+- Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
+
+
+## Metabase 0.55.9
+
+- Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
+
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
@@ -90,17 +98,15 @@ title: Driver interface changelog
 
 - The function `metabase.driver.sql-jdbc.sync/describe-table-fields-xf` now takes a table instead of a database
 
-
 ## Metabase 0.54.11
 
 - The multimethods `metabase.driver.sql-jdbc.sync.interface/active-tables` and `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas`, aswell as the functions
-`metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
+  `metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
 
 ## Metabase 0.54.10
 
 - Add `metabase.driver/table-known-to-not-exist?` for drivers to test if an exception is due to a query on a table that no longer exists
 - Add `metabase.driver.sql-jdbc/impl-table-known-to-not-exist?` for JDBC drivers. This is the implemenation of table-known-to-not-exist for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
-
 
 ## Metabase 0.54.0
 

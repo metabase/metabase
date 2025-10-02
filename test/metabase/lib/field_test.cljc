@@ -558,22 +558,22 @@
 
 (deftest ^:parallel fieldable-columns-test
   (testing "query with no :fields"
-    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
-             {:lib/desired-column-alias "NAME", :selected? true}
-             {:lib/desired-column-alias "CATEGORY_ID", :selected? true}
-             {:lib/desired-column-alias "LATITUDE", :selected? true}
-             {:lib/desired-column-alias "LONGITUDE", :selected? true}
-             {:lib/desired-column-alias "PRICE", :selected? true}]
+    (is (=? [{:lib/source-column-alias "ID", :selected? true}
+             {:lib/source-column-alias "NAME", :selected? true}
+             {:lib/source-column-alias "CATEGORY_ID", :selected? true}
+             {:lib/source-column-alias "LATITUDE", :selected? true}
+             {:lib/source-column-alias "LONGITUDE", :selected? true}
+             {:lib/source-column-alias "PRICE", :selected? true}]
             (lib/fieldable-columns (lib.tu/venues-query))))))
 
 (deftest ^:parallel fieldable-columns-query-with-fields-test
   (testing "query with :fields"
-    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
-             {:lib/desired-column-alias "NAME", :selected? true}
-             {:lib/desired-column-alias "CATEGORY_ID", :selected? false}
-             {:lib/desired-column-alias "LATITUDE", :selected? false}
-             {:lib/desired-column-alias "LONGITUDE", :selected? false}
-             {:lib/desired-column-alias "PRICE", :selected? false}]
+    (is (=? [{:lib/source-column-alias "ID", :selected? true}
+             {:lib/source-column-alias "NAME", :selected? true}
+             {:lib/source-column-alias "CATEGORY_ID", :selected? false}
+             {:lib/source-column-alias "LATITUDE", :selected? false}
+             {:lib/source-column-alias "LONGITUDE", :selected? false}
+             {:lib/source-column-alias "PRICE", :selected? false}]
             (-> (lib.tu/venues-query)
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
@@ -598,7 +598,7 @@
              :semantic-type :type/Name
              :lib/source :source/previous-stage
              :effective-type :type/Text
-             :lib/desired-column-alias "Categories__NAME"}
+             :lib/source-column-alias "Categories__NAME"}
             joined-col))
     (testing "Metadata should not contain inherited join information"
       (is (not-any? :metabase.lib.join/join-alias (lib/returned-columns query))))
@@ -844,7 +844,6 @@
                   (-> query
                       (lib/add-field -1 (nth implicit-columns 6))
                       fields-of)))))
-
       (testing "with explicit :fields list"
         (let [field-query (->> table-columns
                                (take 4)
@@ -872,6 +871,17 @@
                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                       (lib/append-stage))
           columns (lib/fieldable-columns query)]
+      (is (=? [{:name                    "CREATED_AT"
+                :lib/source-column-alias "CREATED_AT"
+                :inherited-temporal-unit :year}
+               {:name                    "CREATED_AT"
+                :lib/source-column-alias "CREATED_AT_2"
+                :inherited-temporal-unit :month}
+               {:name "count"}]
+              columns))
+      (testing (str "Sanity check: initial query should have no `:fields` in the last stage (i.e., it should return"
+                    " everything from the stage before that)")
+        (is (nil? (fields-of query))))
       (testing "removing the column coming from the first breakout"
         (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
                 (-> query
@@ -1009,9 +1019,14 @@
           viz-columns      (lib/visible-columns query)
           table-columns    (lib/fieldable-columns query -1)
           implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)
+          _                (is (>= (count implicit-columns) 2)
+                               "Not sure how many it should have but it should have at least the two we use")
           implied-query    (-> query
                                (lib/add-field -1 (first implicit-columns))
                                (lib/add-field -1 (second implicit-columns)))
+          _                (is (= 11
+                                  (count (get-in implied-query [:stages 0 :fields])))
+                               "Sanity check: implied-query should now have 11 :fields")
           table-fields     (map clean-ref table-columns)
           implied1         (clean-ref (first implicit-columns))
           implied2         (clean-ref (second implicit-columns))]
@@ -1290,7 +1305,6 @@
                :lib/source-column-alias "USER_ID"
                :effective-type :type/Integer
                :id (meta/id :checkins :user-id)
-               :lib/desired-column-alias "USER_ID"
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
 
@@ -1315,14 +1329,12 @@
                         :table-id                 (meta/id :orders)
                         :id                       (meta/id :orders :id)
                         :lib/source               :source/table-defaults
-                        :lib/desired-column-alias "ID"
                         :display-name             "ID"}
           exp-src-tax  {:lib/type                 :metadata/column
                         :lib/source-column-alias  "TAX"
                         :table-id                 (meta/id :orders)
                         :id                       (meta/id :orders :tax)
                         :lib/source               :source/table-defaults
-                        :lib/desired-column-alias "TAX"
                         :display-name             "Tax"}
           exp-join-id  {:lib/type                     :metadata/column
                         :lib/source-column-alias      "ID"
@@ -1330,7 +1342,6 @@
                         :table-id                     (meta/id :orders)
                         :id                           (meta/id :orders :id)
                         :lib/source                   :source/joins
-                        :lib/desired-column-alias     "Orders__ID"
                         :metabase.lib.join/join-alias "Orders"
                         :display-name                 "ID"}
           exp-join-tax {:lib/type                     :metadata/column
@@ -1338,18 +1349,18 @@
                         :table-id                     (meta/id :orders)
                         :id                           (meta/id :orders :tax)
                         :lib/source                   :source/joins
-                        :lib/desired-column-alias     "Orders__TAX"
                         :metabase.lib.join/join-alias "Orders"
                         :display-name                 "Tax"}
           columns      (lib.metadata.calculation/returned-columns query)]
       (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
               (lib.metadata.calculation/returned-columns query)))
-      (doseq [[label column-alias] [["original ID column"  "ID"]
-                                    ["original TAX column" "TAX"]
-                                    ["joined ID column"    "Orders__ID"]
-                                    ["joined TAX column"   "Orders__TAX"]]]
+      (doseq [[label join-alias column-alias] [["original ID column"  nil      "ID"]
+                                               ["original TAX column" nil      "TAX"]
+                                               ["joined ID column"    "Orders" "ID"]
+                                               ["joined TAX column"   "Orders" "TAX"]]]
         (testing (str "when hiding the " label)
-          (let [col-pred   #(= (:lib/desired-column-alias %) column-alias)
+          (let [col-pred   #(and (= (:metabase.lib.join/join-alias %) join-alias)
+                                 (= (:lib/source-column-alias %) column-alias))
                 to-hide    (first (filter col-pred columns))
                                         ;_ (prn "to hide" to-hide)
                                         ;_ (prn "query" query)
@@ -1907,10 +1918,10 @@
                     :fields   [$title $category]
                     :order-by [[:asc $id]]
                     :limit    3}))]
-      (is (= [["TITLE"    "Title"]                         ; products.title
-              ["CATEGORY" "Category"]                      ; products.category
-              ["TITLE_2"  "Orders → Title"]                ; orders.title
-              ["sum"      "Orders → Sum of Quantity"]]     ; sum(orders.quantity)
+      (is (= [["TITLE"    "Title"]                     ; products.title
+              ["CATEGORY" "Category"]                  ; products.category
+              ["TITLE_2"  "Orders → Title"]            ; orders.title
+              ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
              (map (juxt :lib/deduplicated-name :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 
@@ -1925,7 +1936,7 @@
                                                :aggregation  [[:sum $orders.quantity]]}
                                 :alias        "Orders"
                                 :condition    [:= $id &Orders.orders.product-id]
-                                ;; we can get title since product-id is remapped to title
+                                ;; we can get products.title since orders.product-id is remapped to title
                                 :fields       [&Orders.title
                                                &Orders.*sum/Integer]}]
                     :fields   [$title
@@ -1933,11 +1944,11 @@
                                [:field "sum" {:base-type :type/Integer, :join-alias "Orders"}]]
                     :order-by [[:asc $id]]
                     :limit    3}))]
-      (is (= [["TITLE"    "Title"]                    ; products.title
-              ["CATEGORY" "Category"]                 ; products.category
-              ["sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
-              ["TITLE_2"  "Orders → Title"]]          ; orders.title
-             (map (juxt :lib/deduplicated-name :display-name)
+      (is (= [[nil      "TITLE"    "Title"]                    ; products.title
+              [nil      "CATEGORY" "Category"]                 ; products.category
+              ["Orders" "sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
+              ["Orders" "TITLE"    "Orders → Title"]]          ; orders.product-id remap to products.title
+             (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 
 (deftest ^:parallel propagate-binning-display-names-test
@@ -2152,7 +2163,7 @@
                                 refs))
               "expected ref should be present")
           (is (=? [:field {:join-alias "question b - Product"} "TITLE"]
-                  (lib.equality/find-matching-ref b-title refs {:match-type ::lib.equality/match-type.same-stage}))
+                  (lib.equality/find-matching-ref b-title refs))
               "should find match"))))
     (is (=? {:stages [{:joins [{:alias  "question b - Product"
                                 :fields (for [col   (map :name b-cols)

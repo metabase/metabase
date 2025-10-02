@@ -1,6 +1,7 @@
 (ns metabase.app-db.cluster-lock
   "Utility for taking a cluster wide lock using the application database"
   (:require
+   [clojure.string :as str]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.query-cancelation :as app-db.query-cancelation]
@@ -22,6 +23,8 @@
   ;; was cancelled via timeout waiting to get the SELECT FOR UPDATE lock
   (or (instance? SQLIntegrityConstraintViolationException e)
       (instance? SQLIntegrityConstraintViolationException (ex-cause e))
+      ;; Postgres does just uses PSQLException, so we need to fall back to checking the message.
+      (str/includes? (ex-message e) "duplicate key value violates unique constraint \"metabase_cluster_lock_pkey\"")
       (app-db.query-cancelation/query-canceled-exception? (mdb.connection/db-type) e)))
 
 (def ^:private default-retry-config
@@ -32,7 +35,7 @@
    :max-interval-millis 1000
    :retry-on-exception-pred retryable?})
 
-(defn prepare-statement
+(defn- prepare-statement
   "Create a prepared statement to query cache"
   ^PreparedStatement [^Connection conn lock-name-str timeout]
   (let [stmt (.prepareStatement conn ^String (first (mdb.query/compile {:select [:lock.lock_name]
@@ -54,6 +57,8 @@
     (with-open [stmt (prepare-statement conn lock-name-str timeout-seconds)
                 result-set (.executeQuery stmt)]
       (when-not (.next result-set)
+        ;; this record will not be visible until the tx commits, so there's no need to lock it
+        ;; we instead rely on concurrent threads having constraint violation trying to insert their own record
         (t2/query-one {:insert-into [:metabase_cluster_lock]
                        :columns [:lock_name]
                        :values [[lock-name-str]]})))
@@ -71,7 +76,9 @@
              [:retry-config    {:optional true} [:ref ::retry/retry-overrides]]]]
    thunk :- ifn?]
   (cond
-    (= (mdb.connection/db-type) :h2) (thunk) ;; h2 does not respect the query timeout when taking the lock
+    ;; h2 does not respect the query timeout when taking the lock
+    ;; we do not support multiple instances for h2 however, so an in-process lock is sufficient.
+    (= (mdb.connection/db-type) :h2) (locking do-with-cluster-lock (thunk))
     (keyword? opts) (do-with-cluster-lock {:lock-name opts} thunk)
     :else (let [{:keys [timeout-seconds retry-config lock-name] :or {timeout-seconds cluster-lock-timeout-seconds}} opts
                 lock-name-str (str (namespace lock-name) "/" (name lock-name))

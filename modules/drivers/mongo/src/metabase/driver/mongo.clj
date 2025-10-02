@@ -14,6 +14,7 @@
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -158,11 +159,6 @@
   ;;  > And that would be definitely ok for most.
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
-
-(def ^:private leaf-fields-limit
-  "Consider at most 1K leaf paths to sync. That combined with [[describe-table-query-depth]] (= 7) gives at most 
-  7K app-db fields per collection."
-  1000)
 
 (defn ^:dynamic *sample-stages*
   "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
@@ -362,9 +358,9 @@
   Reason for doing this in 2 steps is that for adding database-position the structure has to be fully constructed
   first.
 
-  The resulting structure will hold at most [[leaf-fields-limit]] leaf fields. That translates to at most
-  [[leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the time of writing hence safe
-  to reside in memory for further operation."
+  The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
+  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the 
+  time of writing hence safe to reside in memory for further operation."
   [dbfields]
   (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
 
@@ -401,7 +397,7 @@
   (let [pipeline (describe-table-pipeline {:collection-name (:name table)
                                            :sample-size (* table-rows-sample/nested-field-sample-limit 2)
                                            :document-sample-depth describe-table-query-depth
-                                           :leaf-limit leaf-fields-limit})
+                                           :leaf-limit (driver.settings/sync-leaf-fields-limit)})
         query {:database (:id database)
                :type     "native"
                :native   {:collection (:name table)

@@ -110,7 +110,11 @@ export const setup = ({
 
   const onSubmit = jest.fn();
   renderWithProviders(
-    <DatabaseForm config={{ isAdvanced: true }} onSubmit={onSubmit} />,
+    <DatabaseForm
+      config={{ isAdvanced: true }}
+      onSubmit={onSubmit}
+      location="admin"
+    />,
     {
       storeInitialState: state,
     },

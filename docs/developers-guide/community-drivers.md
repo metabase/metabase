@@ -15,10 +15,10 @@ In addition to our [Officially supported drivers](../databases/connecting.md#con
 
 To use a Community driver on a self-hosted Metabase:
 
-1. Download the latest jar file from the driver's repository (see the repo's Releases section for the JAR files).
+1. Download the latest JAR file from the driver's repository (see the repo's Releases section for the JAR files).
 2. Copy the JAR file into the plugins directory in your Metabase directory (the directory where you run the Metabase JAR).
 
-You can change the location of the plugins directory by setting the environment variable `MB_PLUGINS_DIR`.
+You can change the location of the plugins directory by setting the environment variable [`MB_PLUGINS_DIR`](../configuring-metabase/environment-variables.md#mb_plugins_dir).
 
 ## Community drivers
 
@@ -38,6 +38,7 @@ Anyone can build a community driver. These are the currently known third-party d
 | [GreptimeDB](https://github.com/greptimeteam/greptimedb-metabase-driver)              | ![GitHub stars](https://img.shields.io/github/stars/greptimeteam/greptimedb-metabase-driver)       | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/greptimeteam/greptimedb-metabase-driver)       |
 | [Hydra](https://www.hydra.so/blog-posts/2022-09-28-metabase-and-hydra)                | Hydra connections use the official [Postgres driver](../databases/connections/postgresql.md).      | Not applicable.                                                                                                            |
 | [Impala](https://github.com/brenoae/metabase-impala-driver)                           | ![GitHub stars](https://img.shields.io/github/stars/brenoae/metabase-impala-driver)                | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/brenoae/metabase-impala-driver)                |
+| [InterSystems IRIS](https://github.com/Siddardar/metabase-iris-driver/tree/main)      | ![GitHub stars](https://img.shields.io/github/stars/Siddardar/metabase-iris-driver)                | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/Siddardar/metabase-iris-driver)                |
 | [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)          | ![GitHub stars](https://img.shields.io/github/stars/MaterializeInc/metabase-materialize-driver)    | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/MaterializeInc/metabase-materialize-driver)    |
 | [Neo4j](https://github.com/StronkMan/metabase-neo4j-driver)                           | ![GitHub stars](https://img.shields.io/github/stars/StronkMan/metabase-neo4j-driver)               | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/StronkMan/metabase-neo4j-driver)               |
 | [Netsuite SuiteAnalytics Connect](https://github.com/ericcj/metabase-netsuite-driver) | ![GitHub stars](https://img.shields.io/github/stars/ericcj/metabase-netsuite-driver)               | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ericcj/metabase-netsuite-driver)               |

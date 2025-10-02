@@ -79,7 +79,6 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       ? props
       : { dismissible: false, onDismiss: () => {} };
   const gemSize = large ? 24 : undefined;
-  const contentAlignment = large ? "flex-start" : "center";
 
   return (
     <Box
@@ -88,8 +87,9 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       bg="bg-white"
       {...domProps}
     >
-      <Flex align={contentAlignment} gap="md" wrap="nowrap">
-        <UpsellGem size={gemSize} />
+      <Flex align="flex-start" gap="sm" wrap="nowrap">
+        <UpsellGem size={gemSize} mt="1px" />
+
         <Stack gap="xs">
           <Title lh={1.25} order={3} size="md">
             {title}

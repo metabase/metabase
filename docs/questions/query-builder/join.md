@@ -45,7 +45,7 @@ Your joins can also include multiple conditions to refine your results. Metabase
 You can join tables on comparison conditions like:
 
 - `=` (equals)
-- `≠` (not equals) 
+- `≠` (not equals)
 - `>` (greater than)
 - `≥` (greater than or equal to)
 - `<` (less than)
@@ -71,10 +71,10 @@ To use a custom expression to define a join key:
 4. Click **Done**.
 
 Another example: Let's say you have:
- 
- - A `customers` table that stores names under `first_name` and `last_name`
- - An `accounts` table that stores first and last names in a single column, `full_name`
- 
+
+- A `customers` table that stores names under `first_name` and `last_name`
+- An `accounts` table that stores first and last names in a single column, `full_name`
+
 You could join those tables using a custom expression. The join key for the `customers` table would look something like:
 
 ```

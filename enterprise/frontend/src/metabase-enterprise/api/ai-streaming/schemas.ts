@@ -28,15 +28,11 @@ export const finishPartSchema = Yup.object({
     .oneOf([
       "stop",
       "length",
-      "content-filter",
-      "tool-calls",
+      "content_filter",
+      "tool_calls",
       "error",
       "other",
       "unknown",
     ])
     .required(),
-  usage: Yup.object({
-    promptTokens: Yup.number().required(),
-    completionTokens: Yup.number().required(),
-  }),
 });

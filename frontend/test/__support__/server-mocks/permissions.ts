@@ -35,12 +35,9 @@ export const setupCollectionPermissionsGraphEndpoint = (
   permissionsGraph: CollectionPermissionsGraph,
 ) => {
   fetchMock.get("path:/api/collection/graph", permissionsGraph);
-  fetchMock.put(
-    "path:/api/collection/graph",
-    (url: string, opts: any, req: { body: any }) => {
-      const body = JSON.parse(req.body);
-      body.revision += 1;
-      return body;
-    },
-  );
+  fetchMock.put("path:/api/collection/graph", (call) => {
+    const body = JSON.parse(call.options?.body as string);
+    body.revision += 1;
+    return body;
+  });
 };

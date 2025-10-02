@@ -120,6 +120,8 @@ export const SaveQuestionProvider = ({
   const initialDashboardId =
     question.type() === "question" &&
     !isAnalytics &&
+    // `userTargetCollection` comes from the `targetCollection` sdk prop and should take precedence over the recent dashboards
+    userTargetCollection === undefined &&
     lastSelectedDashboard?.can_write
       ? lastSelectedDashboard?.id
       : undefined;
@@ -168,9 +170,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
-  const saveToDashboard = originalQuestion
-    ? undefined
-    : (question.dashboardId() ?? undefined);
+  const saveToDashboard =
+    originalQuestion || !question.creationType()
+      ? undefined
+      : (question.dashboardId() ?? undefined);
 
   return (
     <FormProvider

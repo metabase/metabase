@@ -1,6 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -704,3 +708,49 @@
                                ExceptionInfo
                                #"You do not have permissions to run this query"
                                (qp/process-query join-query))))))))))))))))
+
+(deftest e2e-mismatch-cards-result-metadata-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (let [mp (mt/metadata-provider)
+              query (as-> mp $
+                      (lib/query $ (lib.metadata/table $ (mt/id :orders)))
+                      (lib/limit $ 1)
+                      (lib/with-fields $ [(m/find-first (comp  #{(mt/id :orders :id)} :id)
+                                                        (lib/fieldable-columns $))]))]
+          (mt/with-temp
+            [:model/Card card {:dataset_query (lib.convert/->legacy-MBQL query)}]
+            (let [results-metadata (-> (qp/process-query query) :data :results_metadata :columns)
+                  results-metadata-mismatched (update results-metadata 0
+                                                      assoc
+                                                      :description nil
+                                                      :table_id (mt/id :products)
+                                                      :id (mt/id :products :id))
+                  card-based-query (lib/query mp (lib.metadata/card mp (:id card)))]
+              (perms/set-table-permission! (perms/all-users-group)
+                                           (mt/id :orders) :perms/view-data :unrestricted)
+              (perms/set-table-permission! (perms/all-users-group)
+                                           (mt/id :orders) :perms/create-queries :query-builder)
+              (testing "POST /dataset: Base: Rasta can query the card"
+                (is (=? {:data {:results_metadata {:columns [{:id (mt/id :orders :id)
+                                                              :table_id (mt/id :orders)}]}}}
+                        (mt/user-http-request :rasta :post "/dataset"
+                                              (lib.convert/->legacy-MBQL card-based-query)))))
+              (testing "PUT /card/:id: returns 403 for mismatched result_metadata"
+                (is (=? {:message (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")
+                         :required-permissions {(mt/id) {:perms/view-data {(mt/id :products) "unrestricted"}}}}
+                        (mt/user-http-request :rasta :put (str "/card/" (:id card))
+                                              {:result_metadata results-metadata-mismatched}))))
+              (testing "Result_metadata of a card can be updated freely using toucan"
+                (is (= 1 (t2/update! :model/Card :id (:id card)
+                                     {:result_metadata results-metadata-mismatched}))))
+              (testing "POST /dataset: query referencing card with mismatched result_metadata fails"
+                (is (=? {:status "failed"
+                         :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}
+                        (mt/user-http-request :rasta :post "/dataset"
+                                              (lib.convert/->legacy-MBQL card-based-query)))))
+              (testing "POST /card/query: card with mismatched result_metadtata can not be executed"
+                (is (=? {:status "failed"
+                         :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}
+                        (mt/user-http-request :rasta :post (str "/card/" (:id card) "/query") {})))))))))))

@@ -115,11 +115,11 @@
 
 (defmulti do-after-notification-sent
   "Performs post-notification actions based on the notification type."
-  {:arglists '([notification-info notification-payload])}
-  (fn [notification-info _notification-payload]
+  {:arglists '([notification-info notification-payload skipped?])}
+  (fn [notification-info _notification-payload _skipped?]
     (:payload_type notification-info)))
 
-(defmethod do-after-notification-sent :default [_notification-info _notification-payload] nil)
+(defmethod do-after-notification-sent :default [_notification-info _notification-payload _skipped?] nil)
 
 (def ^:private payload-labels         (for [payload-type (keys (methods notification.payload/payload))]
                                         {:payload-type payload-type}))
@@ -153,9 +153,10 @@
           (task-history/with-task-history {:task          "notification-send"
                                            :task_details {:notification_id       id
                                                           :notification_handlers (map #(select-keys % [:id :channel_type :channel_id :template_id]) handlers)}}
-            (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))]
-              (if-let [reason (notification.payload/skip-reason notification-payload)]
-                (log/info "Skipping" {:reason reason})
+            (let [notification-payload (notification.payload/notification-payload (dissoc hydrated-notification :handlers))
+                  skip-reason          (notification.payload/skip-reason notification-payload)]
+              (if skip-reason
+                (log/info "Skipping" {:skip-reason skip-reason})
                 (do
                   (log/debugf "Found %d handlers" (count handlers))
                   (doseq [handler handlers]
@@ -166,8 +167,7 @@
                               messages     (channel/render-notification
                                             channel-type
                                             notification-payload
-                                            (:template handler)
-                                            (:recipients handler))]
+                                            handler)]
                           (log/debugf "Got %d messages for channel %s with template %d"
                                       (count messages)
                                       (handler->channel-name handler)
@@ -175,9 +175,9 @@
                           (doseq [message messages]
                             (channel-send-retrying! id payload_type handler message)))
                         (catch Exception e
-                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))))
-              (do-after-notification-sent hydrated-notification notification-payload)
-              (log/info "Sent successfully")
+                          (log/warnf e "Error sending to channel %s" (handler->channel-name handler))))))
+                  (log/info "Sent successfully")))
+              (do-after-notification-sent hydrated-notification notification-payload (some? skip-reason))
               (prometheus/inc! :metabase-notification/send-ok {:payload-type payload_type}))))
         (catch Exception e
           (log/error e "Failed to send")
@@ -369,7 +369,8 @@
                                                              (pos? (queue-size queue))))
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
-                                                   (send-notification-sync! notification))
+                                                   (log/with-restored-context-from-meta notification
+                                                     (send-notification-sync! notification)))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -385,7 +386,7 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue notification)
+                          (put-notification! queue (log/with-context-meta notification))
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))

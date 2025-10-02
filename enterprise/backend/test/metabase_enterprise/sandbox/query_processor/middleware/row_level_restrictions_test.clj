@@ -223,13 +223,10 @@
 
                    ::row-level-restrictions/original-metadata [{:base_type :type/Integer
                                                                 :semantic_type :type/Quantity
-                                                                :name "count"
-                                                                :display_name "Count"
-                                                                :source :aggregation
-                                                                :field_ref [:aggregation 0]}]
-                   :query-permissions/perms {:gtaps {:perms/view-data {(mt/id :checkins) :unrestricted}
-                                                     :perms/create-queries {(mt/id :checkins) :query-builder
-                                                                            (mt/id :venues) :query-builder}}}})
+                                                                :name          "count"
+                                                                :display_name  "Count"
+                                                                :source        :aggregation
+                                                                :field_ref     [:aggregation 0]}]})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -255,11 +252,10 @@
 
                    ::row-level-restrictions/original-metadata [{:base_type :type/Integer
                                                                 :semantic_type :type/Quantity
-                                                                :name "count"
-                                                                :display_name "Count"
-                                                                :source :aggregation
-                                                                :field_ref [:aggregation 0]}]
-                   :query-permissions/perms {:gtaps {:perms/create-queries :query-builder-and-native}}})
+                                                                :name          "count"
+                                                                :display_name  "Count"
+                                                                :source        :aggregation
+                                                                :field_ref     [:aggregation 0]}]})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))

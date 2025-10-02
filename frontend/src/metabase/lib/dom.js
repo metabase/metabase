@@ -15,13 +15,13 @@ export const getScrollY = () =>
 // Storybook also uses an iframe to display story content, so we want to ignore it
 export const isWithinIframe = function () {
   try {
-    if (isCypressActive || isStorybookActive) {
-      return false;
-    }
-
-    // Mock that we're embedding, so we could visual test embed components
+    // Mock that we're embedding, so we could test embed components
     if (window.overrideIsWithinIframe) {
       return true;
+    }
+
+    if (isCypressActive || isStorybookActive) {
+      return false;
     }
 
     return window.self !== window.top;

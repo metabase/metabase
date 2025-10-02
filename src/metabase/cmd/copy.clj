@@ -50,8 +50,9 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
-  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
+  "Entities in the order they should be serialized/deserialized in `load-from-h2`. This is done so we make sure that
+   we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
+   `Fields`."
   (concat
    [:model/Channel
     :model/ChannelTemplate
@@ -116,7 +117,8 @@
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation
       :model/Metabot
-      :model/MetabotEntity
+      :model/MetabotConversation
+      :model/MetabotMessage
       :model/MetabotPrompt])))
 
 (defn- objects->colums+values
@@ -349,6 +351,7 @@
     :model/HTTPAction
     :model/FieldUserSettings
     :model/QueryAction
+    :model/MetabotConversation
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name

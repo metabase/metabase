@@ -12,6 +12,7 @@
    [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -20,6 +21,8 @@
 (comment
   ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
   (round-trip-test/add-to-baseline!))
+
+(use-fixtures :each (fn [f] (search.tu/with-index-disabled (f))))
 
 (defn- by-model [model-name extraction]
   (->> extraction
@@ -673,37 +676,42 @@
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/User
-                       {ann-id       :id}
-                       {:first_name "Ann"
-                        :last_name  "Wilson"
-                        :email      "ann@heart.band"}
+    (ts/with-temp-dpc [:model/User               {ann-id :id}           {:first_name "Ann"
+                                                                         :last_name  "Wilson"
+                                                                         :email      "ann@heart.band"}
+                       :model/Collection         {coll-id  :id
+                                                  coll-eid :entity_id}  {:name              "Shared Collection"
+                                                                         :personal_owner_id nil
+                                                                         :namespace         :snippets}
+                       :model/Collection         {coll2-id  :id}        {:name              "Card Collection"
+                                                                         :personal_owner_id nil}
+                       :model/NativeQuerySnippet {s1-id  :id
+                                                  s1-eid :entity_id}    {:name          "Snippet 1"
+                                                                         :collection_id coll-id
+                                                                         :creator_id    ann-id}
 
-                       :model/Collection
-                       {coll-id     :id
-                        coll-eid    :entity_id}
-                       {:name              "Shared Collection"
-                        :personal_owner_id nil
-                        :namespace         :snippets}
-
-                       :model/NativeQuerySnippet
-                       {s1-id       :id
-                        s1-eid      :entity_id}
-                       {:name          "Snippet 1"
-                        :collection_id coll-id
-                        :creator_id    ann-id}
-
-                       :model/NativeQuerySnippet
-                       {s2-id       :id
-                        s2-eid      :entity_id}
-                       {:name          "Snippet 2"
-                        :collection_id nil
-                        :creator_id    ann-id}]
+                       :model/NativeQuerySnippet {s2-id  :id
+                                                  s2-eid :entity_id}    {:name          "Snippet 2"
+                                                                         :collection_id nil
+                                                                         :creator_id    ann-id}
+                       :model/Card               {card-id :id}          {:name          "Card using Snippet 1"
+                                                                         :creator_id    ann-id
+                                                                         :collection_id coll2-id
+                                                                         :dataset_query
+                                                                         (mt/native-query
+                                                                           {:query         "select {{snippet}}"
+                                                                            :template-tags {"snippet"
+                                                                                            {:display-name "Snippet 1",
+                                                                                             :id           s1-eid,
+                                                                                             :name         "snippet 1",
+                                                                                             :snippet-id   s1-id,
+                                                                                             :snippet-name "snip",
+                                                                                             :type         "snippet"}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]
             (is (=? {:serdes/meta   [{:model "NativeQuerySnippet"
-                                      :id s1-eid
+                                      :id    s1-eid
                                       :label "snippet_1"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
@@ -713,7 +721,11 @@
 
             (testing "and depend on the Collection"
               (is (= #{[{:model "Collection" :id coll-eid}]}
-                     (set (serdes/dependencies ser)))))))
+                     (set (serdes/dependencies ser)))))
+
+            (testing "and will bring collection to extraction"
+              (is (= {["Collection" coll-id] {"NativeQuerySnippet" s1-id}}
+                     (serdes/required "NativeQuerySnippet" s1-id))))))
 
         (testing "or can be outside collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s2-id))]
@@ -728,7 +740,14 @@
             (is (not (contains? ser :id)))
 
             (testing "and has no deps"
-              (is (empty? (serdes/dependencies ser))))))))))
+              (is (empty? (serdes/dependencies ser))))))
+
+        (testing "Snippet collection is exported when snippet is exported as a card dep (#51901)"
+          (is (= {["Collection" coll2-id]      nil
+                  ["Card" card-id]             {"Collection" coll2-id}
+                  ["NativeQuerySnippet" s1-id] {"Card" card-id}
+                  ["Collection" coll-id]       {"NativeQuerySnippet" s1-id}}
+                 (#'extract/resolve-targets [["Collection" coll2-id]] nil))))))))
 
 (deftest timelines-and-events-test
   (mt/with-empty-h2-app-db!
@@ -1304,8 +1323,7 @@
 
       (testing "selecting a collection includes settings metabot and data model by default"
         (is (= #{"Card" "Collection" "Dashboard" "Database" "Setting"}
-               (->> {:targets [["Collection" coll1-id]]}
-                    extract/extract
+               (->> (extract/extract {:targets [["Collection" coll1-id]]})
                     (map (comp :model first serdes/path))
                     set))))
 
@@ -1737,16 +1755,16 @@
                     model-eid :entity_id} {:name "AI Model"
                                            :type :model}
 
+       :model/Collection {coll-id :id
+                          coll-eid :entity_id} {:name "Metabot Collection"}
+
        :model/Metabot {metabot-id :id
                        metabot-eid :entity_id} {:name "Test Metabot"
-                                                :description "A test metabot"}
+                                                :description "A test metabot"
+                                                :use_verified_content false
+                                                :collection_id coll-id}
 
-       :model/MetabotEntity {metabot-entity-id :id
-                             metabot-entity-eid :entity_id} {:metabot_id metabot-id
-                                                             :model :dataset
-                                                             :model_id model-id}
-
-       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_entity_id metabot-entity-id
+       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_id metabot-id
                                                              :prompt "A sample prompt"
                                                              :model :model
                                                              :card_id model-id}]
@@ -1757,20 +1775,15 @@
                    :name "Test Metabot"
                    :description "A test metabot"
                    :entity_id metabot-eid
-                   :entities [{:model "dataset"
-                               :model_id model-eid
-                               :entity_id metabot-entity-eid
-                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                             {:model "MetabotEntity" :id metabot-entity-eid}]
-                               :prompts [{:prompt "A sample prompt"
-                                          :model "model"
-                                          :entity_id metabot-prompt-eid
-                                          :card_id model-eid
-                                          :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                                        {:model "MetabotEntity" :id metabot-entity-eid}
-                                                        {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                                          :created_at string?}]
-                               :created_at string?}]
+                   :collection_id coll-eid
+                   :use_verified_content false
+                   :prompts [{:prompt "A sample prompt"
+                              :model "model"
+                              :entity_id metabot-prompt-eid
+                              :card_id model-eid
+                              :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
+                              :created_at string?}]
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
@@ -1782,24 +1795,23 @@
 (deftest metabot-collection-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
-      [:model/Collection {model-id :id
-                          model-eid :entity_id} {:name "AI Model"}
+      [:model/Collection {model-id :id} {:name "AI Model"}
 
        :model/Card {card-id :id
                     card-eid :entity_id} {:name "AI Model"
                                           :type :model
                                           :collection_id model-id}
 
+       :model/Collection {coll-id :id
+                          coll-eid :entity_id} {:name "Metabot Collection"}
+
        :model/Metabot {metabot-id :id
                        metabot-eid :entity_id} {:name "Test Metabot"
-                                                :description "A test metabot"}
+                                                :description "A test metabot"
+                                                :use_verified_content false
+                                                :collection_id coll-id}
 
-       :model/MetabotEntity {metabot-entity-id :id
-                             metabot-entity-eid :entity_id} {:metabot_id metabot-id
-                                                             :model :collection
-                                                             :model_id model-id}
-
-       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_entity_id metabot-entity-id
+       :model/MetabotPrompt {metabot-prompt-eid :entity_id} {:metabot_id metabot-id
                                                              :prompt "A sample prompt"
                                                              :model :model
                                                              :card_id card-id}]
@@ -1810,26 +1822,21 @@
                    :name "Test Metabot"
                    :description "A test metabot"
                    :entity_id metabot-eid
-                   :entities [{:model "collection"
-                               :model_id model-eid
-                               :entity_id metabot-entity-eid
-                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                             {:model "MetabotEntity" :id metabot-entity-eid}]
-                               :prompts [{:prompt "A sample prompt"
-                                          :model "model"
-                                          :entity_id metabot-prompt-eid
-                                          :card_id card-eid
-                                          :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                                        {:model "MetabotEntity" :id metabot-entity-eid}
-                                                        {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                                          :created_at string?}]
-                               :created_at string?}]
+                   :collection_id coll-eid
+                   :use_verified_content false
+                   :prompts [{:prompt "A sample prompt"
+                              :model "model"
+                              :entity_id metabot-prompt-eid
+                              :card_id card-eid
+                              :serdes/meta [{:model "Metabot" :id metabot-eid}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
+                              :created_at string?}]
                    :created_at string?}
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "metabot depends on its model entities and their prompts"
-            (is (= #{[{:model "Collection" :id model-eid}] [{:model "Card" :id card-eid}]}
+          (testing "metabot depends on its prompts' cards"
+            (is (= #{[{:model "Card" :id card-eid}]}
                    (set (serdes/dependencies ser))))))))))
 
 (deftest visualizer-dashboard-card-settings-test

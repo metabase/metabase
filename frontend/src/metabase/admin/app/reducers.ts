@@ -22,6 +22,7 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/databases",
       key: "databases",
     },
+    ...PLUGIN_METABOT.getAdminPaths(),
     {
       name: t`Table Metadata`,
       path: "/admin/datamodel",
@@ -47,7 +48,6 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/tools",
       key: "tools",
     },
-    ...PLUGIN_METABOT.adminNavItem,
   ];
 
   return items;

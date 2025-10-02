@@ -20,16 +20,9 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
-   (java.sql
-    Connection
-    DatabaseMetaData
-    Date
-    ResultSet
-    Time
-    Timestamp
-    Types)
+   (java.sql Connection DatabaseMetaData Date ResultSet Time Types)
    (java.time OffsetDateTime ZonedDateTime)
-   [java.util UUID]))
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,7 +40,7 @@
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false
-                              :database-routing              false}]
+                              :database-routing              true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -151,29 +144,24 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn []
-    ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
-    (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
-      (let [timestamp-instant (.toInstant timestamp)
-            results-timezone (driver-api/results-timezone-id)]
+  (let [results-timezone (driver-api/results-timezone-id)]
+    (fn []
+      ;; always get the timestamp as a string because the underlying JDBC implementation parses strings to
+      ;; `java.sql.Timestamp` anyway and it barfs if it has a nanosecond component.
+      (when-some [t (some-> (.getString rs i) u.date/parse)]
+        ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
         (try
-          (t/zoned-date-time timestamp-instant (t/zone-id results-timezone))
+          (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
             (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str timestamp-instant)
+                       (pr-str t)
                        (pr-str results-timezone))
-            (try
-              (t/offset-date-time timestamp-instant results-timezone)
-              (catch Throwable _
-                (log/warnf "Failed to construct OffsetDateTime from `%s` using `%s` offset. Using `Z` fallback."
-                           (pr-str timestamp-instant)
-                           (pr-str results-timezone))
-                (t/offset-date-time timestamp-instant "Z")))))))))
+            t))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn [] (some-> ^Timestamp (.getObject rs i Timestamp)
-                 (t/local-date-time))))
+  (fn []
+    (some-> (.getString rs i) u.date/parse)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/DATE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -288,8 +276,25 @@
   (sql.qp/adjust-day-of-week driver [:day_of_week expr]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
-  [_driver _seconds-or-milliseconds expr]
-  [:from_unixtime expr])
+  [_driver _precision expr]
+  (-> [:from_unixtime expr]
+      (h2x/with-database-type-info "timestamp")))
+
+(defn- from-unixtime-nanos [expr]
+  (-> [:from_unixtime_nanos expr]
+      (h2x/with-database-type-info "timestamp")))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :milliseconds]
+  [_driver _precision expr]
+  (from-unixtime-nanos (h2x/* expr 1000000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :microseconds]
+  [_driver _precision expr]
+  (from-unixtime-nanos (h2x/* expr 1000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :nanoseconds]
+  [_driver _precision expr]
+  (from-unixtime-nanos expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :athena
   [_driver hsql-form amount unit]
@@ -417,13 +422,22 @@
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
   (try
-    (let [columns (get-columns metadata catalog schema table-name)]
+    (let [columns (get-columns metadata catalog schema table-name)
+          duplicates? (and (seq columns)
+                           (not (apply distinct? (map :column_name columns))))]
       (when (empty? columns)
         (log/trace "Falling back to DESCRIBE due to #43980"))
+      (when duplicates?
+        (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
+                   (into {} (keep (fn [[col-name cols]]
+                                    (when (next cols)
+                                      [col-name (mapv :type_name cols)])))
+                         (group-by :column_name columns))))
       (if (or (table-has-nested-fields? columns)
                 ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                 ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
-              (empty? columns))
+              (empty? columns)
+              duplicates?)
         (describe-table-fields-with-nested-fields database schema table-name)
         (describe-table-fields-without-nested-fields driver schema table-name columns)))
     (catch Throwable e
@@ -445,6 +459,7 @@
                         (describe-table-fields metadata database driver table catalog)
                         (catch Throwable _
                           (set nil))))))))
+
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables

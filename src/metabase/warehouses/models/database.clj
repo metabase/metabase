@@ -322,6 +322,9 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
+  ;; This is a temporary hack to hide these cards from most searches.
+  ;; Once search supports deletion, we should revisit this.
+  (t2/update! :model/Card :database_id id {:archived true})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -375,6 +378,14 @@
         (when (and (:database-enable-actions (or new-settings existing-settings))
                    (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))
+        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+          (throw (ex-info (trs "The database does not support table editing.")
                           {:status-code     400
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
@@ -556,7 +567,8 @@
                   :database-id   false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description]
+   :search-terms {:name        search.spec/explode-camel-case
+                  :description true}
    :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 

@@ -16,7 +16,9 @@ import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
 import type { DashboardTab } from "metabase-types/api";
+import { createMockDashboardCard } from "metabase-types/api/mocks/dashboard";
 import type { DashboardState, State } from "metabase-types/store";
 
 import { DashboardTabs } from "./DashboardTabs";
@@ -27,13 +29,16 @@ function setup({
   tabs,
   slug = undefined,
   isEditing = true,
+  dashcards,
 }: {
   tabs?: DashboardTab[];
   slug?: string | undefined;
   isEditing?: boolean;
+  dashcards?: DashboardState["dashcards"];
 } = {}) {
   const dashboard: DashboardState = {
     ...TEST_DASHBOARD_STATE,
+    dashcards: dashcards ?? TEST_DASHBOARD_STATE.dashcards,
     dashboards: {
       1: {
         ...TEST_DASHBOARD_STATE.dashboards[1],
@@ -80,9 +85,11 @@ function setup({
               dashboardId={1}
               dashboard={{
                 ...TEST_DASHBOARD_STATE.dashboards[1],
-                dashcards: TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
-                  (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
-                ),
+                dashcards: dashcards
+                  ? Object.values(dashcards)
+                  : TEST_DASHBOARD_STATE.dashboards[1].dashcards.map(
+                      (dcId) => TEST_DASHBOARD_STATE.dashcards[dcId],
+                    ),
                 tabs: tabs ?? TEST_DASHBOARD_STATE.dashboards[1].tabs,
               }}
               navigateToNewCardFromDashboard={null}
@@ -391,6 +398,87 @@ describe("DashboardTabs", () => {
         await deleteTab(2);
 
         expect(screen.getByText("Selected tab id is -1")).toBeInTheDocument();
+      });
+
+      it("should show confirmation modal when deleting a tab with all dashboard questions", async () => {
+        setup({
+          dashcards: {
+            1: createMockDashboardCard({
+              id: 1,
+              dashboard_id: 1,
+              dashboard_tab_id: 2,
+              card: {
+                ...TEST_CARD,
+                id: 1,
+                dashboard_id: 1, // Dashboard question
+              },
+            }),
+            2: createMockDashboardCard({
+              id: 2,
+              dashboard_id: 1,
+              dashboard_tab_id: 2,
+              card: {
+                ...TEST_CARD,
+                id: 2,
+                dashboard_id: 1, // Dashboard question
+              },
+            }),
+          },
+        });
+        await deleteTab(2);
+
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(
+          screen.getByText("Delete this tab and its charts?"),
+        ).toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Delete tab" }),
+        );
+
+        expect(queryTab(2)).not.toBeInTheDocument();
+      });
+
+      it("should show confirmation modal with a list of the affected questions when deleting a tab with a mix of saved and dashboard questions", async () => {
+        setup({
+          dashcards: {
+            1: createMockDashboardCard({
+              id: 1,
+              dashboard_id: 1,
+              dashboard_tab_id: 2,
+              card: {
+                ...TEST_CARD,
+                id: 1,
+                name: "Dashboard question",
+                dashboard_id: 1,
+              },
+            }),
+            2: createMockDashboardCard({
+              id: 2,
+              dashboard_id: 1,
+              dashboard_tab_id: 2,
+              card: {
+                ...TEST_CARD,
+                id: 2,
+                name: "Saved question",
+                dashboard_id: null,
+              },
+            }),
+          },
+        });
+
+        await deleteTab(2);
+
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(screen.getByText("Dashboard question")).toBeInTheDocument();
+        expect(screen.queryByText("Saved question")).not.toBeInTheDocument();
+        expect(screen.getByText("Delete this tab?")).toBeInTheDocument();
+
+        await userEvent.click(
+          screen.getByRole("button", { name: "Delete tab" }),
+        );
+
+        expect(queryTab(2)).not.toBeInTheDocument();
       });
     });
 

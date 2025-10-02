@@ -147,7 +147,9 @@
                  {:ssl true
                   :host "server.clickhouseconnect.test"
                   :port 8443
-                  :dbname "default system"
+                  :enable-multiple-db true
+                  :db-filters-patterns "default, system"
+                  :db-filters-type "inclusion"
                   :additional-options additional-options}))))))))
 
 (deftest ^:parallel clickhouse-nippy
@@ -229,9 +231,6 @@
                (mt/rows (qp/process-query q))))))))
 
 (deftest ^:parallel comment-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query with a question mark in the comment and has a variable should work correctly"
       (let [query "SELECT *
@@ -252,9 +251,6 @@
                                 :value  "African"}]}))))))))
 
 (deftest ^:parallel select-question-mark-test
-  ;; broken in 0.8.3, fixed in 0.8.4
-  ;; https://github.com/metabase/metabase/issues/56690
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
   (mt/test-driver :clickhouse
     (testing "a query that selects a question mark and has a variable should work correctly"
       (let [query "SELECT *, '?'
@@ -277,11 +273,8 @@
                                 :target [:dimension [:template-tag "category_name"]]
                                 :value  ["African"]}]}))))))))
 
+;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
 #_(deftest ^:parallel ternary-with-variable-test
-    ;; TODO(rileythomp): enable these tests once the jdbc driver has been fixed
-    ;; broken in 0.8.4, waiting for fix
-    ;; https://github.com/metabase/metabase/issues/56690
-    ;; https://github.com/ClickHouse/clickhouse-java/issues/2348
     (mt/test-driver :clickhouse
       (testing "a query with a ternary and a variable should work correctly"
         (is (= [[1 "African" 1]]
@@ -299,11 +292,8 @@
                                 :target [:variable [:template-tag "category_name"]]
                                 :value  "African"}]})))))))
 
+;; TODO(rileythomp, 2025-09-23): Enable when ClickHouse JDBC driver has been fixed
 #_(deftest ^:parallel line-comment-block-comment-test
-    ;; TODO(rileythomp): enable these tests once the jdbc driver has been fix
-    ;; broken in  0.8.4, waiting for fix
-    ;; https://github.com/metabase/metabase/issues/57149
-    ;; https://github.com/ClickHouse/clickhouse-java/issues/2338
     (mt/test-driver :clickhouse
       (testing "a query with a line comment followed by a block comment should work correctly"
         (is (= [[1]]
@@ -315,9 +305,6 @@
                             select 1;"}))))))))
 
 (deftest ^:parallel subquery-with-cte-test
-  ;; broken in 0.8.6, waiting for fix
-  ;; https://github.com/metabase/metabase/issues/59166
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
   (mt/test-driver :clickhouse
     (testing "a query with a CTE in a subquery should work correctly"
       (is (= [[9]]
@@ -327,10 +314,6 @@
                  {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
 
 (deftest ^:parallel casted-params-test
-  ;; broken in 0.8.6, waiting for fix
-  ;; https://github.com/metabase/metabase/issues/58992
-  ;; https://github.com/metabase/metabase/issues/59002
-  ;; https://github.com/ClickHouse/clickhouse-java/issues/2422
   (mt/test-driver :clickhouse
     (testing "a query with a with multiple params and one of the casted should work correctly"
       (is (= [[1 "African"] [2 "American"]]
@@ -354,3 +337,19 @@
                               :target [:variable [:template-tag "category_id_2"]]
                               :value  "2"}]
                 :middleware {:format-rows? false}})))))))
+
+(deftest ^:parallel query-with-cte-subquery-and-param-test
+  (mt/test-driver :clickhouse
+    (testing "a query with a CTE in a subquery and a parameter should work correctly"
+      (is (= [[1 "abc"]]
+             (mt/rows
+              (qp/process-query
+               {:database (mt/id)
+                :type :native
+                :native {:query "SELECT id, val FROM ( WITH foo AS ( SELECT 1 id, 'abc' val ) SELECT * FROM foo ) WHERE val = {{val}} LIMIT 1048575"
+                         :template-tags {"val" {:type :text
+                                                :name "val"
+                                                :display-name "Val"}}}
+                :parameters [{:type "string/="
+                              :target [:variable [:template-tag "val"]]
+                              :value ["abc"]}]})))))))

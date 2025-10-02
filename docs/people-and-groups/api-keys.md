@@ -110,7 +110,7 @@ async function getGroups() {
   return response.json();
 }
 
-getGroups().then(groups => console.log("Groups in your Metabase:", groups));
+getGroups().then((groups) => console.log("Groups in your Metabase:", groups));
 ```
 
 ## Further reading

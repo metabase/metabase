@@ -89,10 +89,10 @@
      query-modified stage-number
      #(lib.util.match/replace
         %
-        #{:field}
+        :field
         (let [old-matching-column (lib.equality/find-matching-column &match old-columns)]
           (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
-            (assoc &match 2 ((some-fn :lib/desired-column-alias :name) new-column))
+            (assoc &match 2 ((some-fn :lib/source-column-alias :name) new-column))
             (do
               (log/warnf "Failed to match downstream ref %s against visible columns, ref is on stage %d at %s"
                          &match stage-number &parents)
@@ -112,7 +112,7 @@
   in stage 1.
 
   These aggregation columns have same `:name`. Field refs, intended for use in stage 1, generated out of those
-  columns, are then identified by `:lib/desired-column-alias`. Stage 1 will be using ref
+  columns, are then identified by `:lib/source-column-alias`. Stage 1 will be using ref
   `[:field <opts> \"sum_2\"]` for the second aggregation.
 
   Removing the first from the stage 0, will remove clauses refeencing it in further stages. So far so good.
@@ -180,8 +180,8 @@
                             (keep (fn [clause]
                                     (lib.util.match/match-lite-recursive clause
                                       [(op :guard (= op target-op))
-                                       (_ :guard #(or (empty? target-opts)
-                                                      (set/subset? (set target-opts) (set %))))
+                                       (opts :guard (or (empty? target-opts)
+                                                        (set/subset? (set target-opts) (set opts))))
                                        (id :guard (= id target-ref-id))] [location clause]))))))
                    (stage-paths query stage-number))
         dead-joins (volatile! (transient []))]
@@ -194,7 +194,7 @@
                 (catch #?(:clj Exception :cljs js/Error) e
                   (let [{:keys [error join]} (ex-data e)]
                     (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                        ;; Return the stage unchanged, but keep track of the dead joins.
+                      ;; Return the stage unchanged, but keep track of the dead joins.
                       (do (vswap! dead-joins conj! join)
                           %1)
                       (throw e)))))))
@@ -209,7 +209,7 @@
           target-ref-id (->> (lib.metadata.calculation/visible-columns unmodified-query-for-stage stage-number stage)
                              (some (fn [{:keys [lib/source lib/source-uuid] :as column}]
                                      (when (and (= :source/previous-stage source) (= target-uuid source-uuid))
-                                       (:lib/desired-column-alias column)))))]
+                                       (:lib/source-column-alias column)))))]
       (cond-> query
         ;; We are moving to the next stage, so pass the current query as the unmodified-query-for-stage
         target-ref-id
@@ -262,8 +262,17 @@
                           (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
                           (normalize-fields-clauses location))
                       new-query)
-          new-stage (lib.util/query-stage new-query stage-number)]
-      (if (or (not changing-breakout?) (lib.schema.util/distinct-refs? (:breakout new-stage)))
+          new-stage (lib.util/query-stage new-query stage-number)
+          valid-change? (if changing-breakout?
+                          (or
+                           ;; breakout was removed
+                           (not (contains? new-stage :breakout))
+                           ;; breakout updated -- check for distinct refs. We can actually just use normalization to
+                           ;; clean this up -- why don't we do that?
+                           (lib.schema.util/distinct-mbql-clauses? (:breakout new-stage)))
+                          ;; any change to something other than breakouts is always considered valid
+                          true)]
+      (if valid-change?
         new-query
         query))))
 
@@ -563,19 +572,22 @@
      removed-cols)))
 
 (defn- remove-invalidated-refs
+  "Remove refs that are now invalid because a join has been removed."
   [query-after query-before stage-number]
   (let [query-without-local-refs (remove-matching-missing-columns
                                   query-after
                                   query-before
                                   stage-number
                                   (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
-    ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at the next stage as well
-    (if-let [stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
+    ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at
+    ;; the next stage as well
+    (if-let [next-stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
       (remove-matching-missing-columns
        query-without-local-refs
        query-before
-       stage-number
-       (fn [column] [:field {} (:lib/desired-column-alias column)]))
+       next-stage-number
+       (fn [column]
+         [:field {} (:lib/source-column-alias column)]))
       query-without-local-refs)))
 
 (defn- join-spec->alias

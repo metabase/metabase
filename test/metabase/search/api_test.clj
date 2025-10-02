@@ -18,6 +18,7 @@
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -35,7 +36,8 @@
 
 (def ^:private default-collection {:id false :name nil :authority_level nil :type nil})
 
-(use-fixtures :each (fn [thunk] (search.tu/with-new-search-if-available (thunk))))
+(use-fixtures :each (fn [thunk] (binding [search.ingestion/*force-sync* true]
+                                  (search.tu/with-new-search-if-available (thunk)))))
 
 (def ^:private default-search-row
   {:archived                   false
@@ -454,7 +456,7 @@
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}
                    :model/DashboardCard _               {:card_id card-id-5 :dashboard_id dash-id}]
       ;; We do not synchronously update dashboard count
-      (search/reindex!)
+      (search/reindex! {:async? false :in-place? true})
       (is (= (sort-by :dashboardcard_count (cleaned-results dashboard-count-results))
              (sort-by :dashboardcard_count (unsorted-search-request-data :rasta :q "dashboard-count")))))))
 
@@ -647,7 +649,7 @@
                (search-request-data :crowberto :q "test"))))))
 
   ;; TODO need to isolate these two tests properly, they're sharing  temp index
-  (search/reindex!)
+  (search/reindex! {:async? false :in-place? true})
 
   (testing "Basic search, should find 1 of each entity type and include bookmarks when available"
     (with-search-items-in-collection {:keys [card dashboard]} "test"
@@ -1380,7 +1382,7 @@
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
 
        ;; TODO investigate why the actions don't get indexed automatically
-        (search/reindex!)
+        (search/reindex! {:async? false :in-place? true})
 
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
@@ -1826,7 +1828,7 @@
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
 
         (testing "Bad request (400)"
-          (mt/user-http-request :crowberto :get 400 "/search" :q " ")
+          (mt/user-http-request :crowberto :get 400 "/search" :archived "meow")
           (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
           ;; We do not treat client side errors as errors for our alerts.
           (is (= 0 (count (filter #{:metabase-search/response-error} @calls)))))
@@ -1848,3 +1850,27 @@
                            :data count)]
       (is (>= total-count result-count))
       (is (= 1 result-count)))))
+
+(deftest ^:synchronized delete-database-hides-cards-from-search-test
+  (testing "When deleting a database, cards referring to that database should be hidden from search"
+    (let [card-name (str (random-uuid))]
+      (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
+                     :model/Table {table-id :id} {:db_id db-id :name "Test Table"}
+                     :model/Card {card-id :id} {:name card-name
+                                                :database_id db-id
+                                                :table_id table-id
+                                                :dataset_query {:database db-id
+                                                                :type :query
+                                                                :query {:source-table table-id}}}]
+        (search/reindex! {:async? false :in-place? true})
+        (testing "Card should be visible in search before database deletion"
+          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+            (is (some #(= (:id %) card-id) (:data search-results))
+                "Card should be found in search results before database deletion")))
+
+        (testing "Card should be hidden from search after database deletion"
+          (t2/delete! :model/Database :id db-id)
+          (is (not (t2/exists? :model/Card :id card-id)))
+          (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
+            (is (not (some #(= (:id %) card-id) (:data search-results)))
+                "Card should not be found in search results after database deletion")))))))

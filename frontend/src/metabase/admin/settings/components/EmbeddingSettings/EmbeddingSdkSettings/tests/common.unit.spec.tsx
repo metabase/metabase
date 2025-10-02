@@ -25,7 +25,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
       expect(
         alertInfo.getByText("upgrade to Metabase Pro"),
       ).toBeInTheDocument();
-      expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
+      expect(
+        alertInfo.getByText("implement JWT or SAML SSO"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -38,7 +40,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Agree and continue"));
@@ -61,7 +65,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         assertLegaleseModal();
 
         await userEvent.click(screen.getByText("Decline and go back"));
@@ -81,7 +87,9 @@ describe("EmbeddingSdkSettings (OSS)", () => {
         });
 
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-        await userEvent.click(screen.getByRole("switch"));
+        await userEvent.click(
+          screen.getByRole("switch", { name: "SDK for React toggle" }),
+        );
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
         const puts = await findRequests("PUT");

@@ -499,6 +499,43 @@
     queries                  :- [:sequential {:min 1} :map]]
    (lib.tu/metadata-provider-with-cards-for-queries parent-metadata-provider queries)))
 
+(mu/defn metadata-provider-with-cards-with-transformed-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
+  "Like [[metadata-provider-with-cards-for-queries]], but includes the results
+  of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
+  provider is built up progressively, meaning metadata for previous Cards is available when calculating metadata for
+  subsequent Cards.
+   `transforms` can be a map of `card-id` to a function that accepts `metadata-provider` and `result-metadata`"
+  ([queries :- [:sequential {:min 1} :map]
+    transforms]
+   (metadata-provider-with-cards-with-transformed-metadata-for-queries
+    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    queries
+    transforms))
+  ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
+    queries :- [:sequential {:min 1} :map]
+    transforms :- [:maybe :map]]
+   (transduce
+    (map-indexed (fn [i {database-id :database, :as query}]
+                   {:id            (inc i)
+                    :database-id   (or (when (pos-int? database-id)
+                                         database-id)
+                                       (u/the-id (lib.metadata/database parent-metadata-provider)))
+                    :name          (format "Card %d" (inc i))
+                    :entity-id     (u/generate-nano-id)
+                    :dataset-query query}))
+    (completing
+     (fn [metadata-provider {query :dataset-query, card-id :id :as card}]
+       (qp.store/with-metadata-provider metadata-provider
+         (let [result-metadata (if (= (:type query) :query)
+                                 (qp.preprocess/query->expected-cols query)
+                                 (actual-query-results query))
+               transform       (get transforms card-id)
+               card            (assoc card :result-metadata (cond->> result-metadata
+                                                              transform (transform metadata-provider)))]
+           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
+    parent-metadata-provider
+    queries)))
+
 (mu/defn metadata-provider-with-cards-with-metadata-for-queries :- ::lib.schema.metadata/metadata-provider
   "Like [[metadata-provider-with-cards-for-queries]], but includes the results
   of [[metabase.query-processor.preprocess/query->expected-cols]] as `:result-metadata` for each Card. The metadata
@@ -511,25 +548,7 @@
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
     queries                  :- [:sequential {:min 1} :map]]
-   (transduce
-    (map-indexed (fn [i {database-id :database, :as query}]
-                   {:id            (inc i)
-                    :database-id   (or (when (pos-int? database-id)
-                                         database-id)
-                                       (u/the-id (lib.metadata/database parent-metadata-provider)))
-                    :name          (format "Card %d" (inc i))
-                    :entity-id     (u/generate-nano-id)
-                    :dataset-query query}))
-    (completing
-     (fn [metadata-provider {query :dataset-query, :as card}]
-       (qp.store/with-metadata-provider metadata-provider
-         (let [result-metadata (if (= (:type query) :query)
-                                 (qp.preprocess/query->expected-cols query)
-                                 (actual-query-results query))
-               card            (assoc card :result-metadata result-metadata)]
-           (lib.tu/mock-metadata-provider metadata-provider {:cards [card]})))))
-    parent-metadata-provider
-    queries)))
+   (metadata-provider-with-cards-with-transformed-metadata-for-queries parent-metadata-provider queries nil)))
 
 (deftest ^:parallel metadata-provider-with-cards-with-metadata-for-queries-test
   (let [provider (metadata-provider-with-cards-with-metadata-for-queries

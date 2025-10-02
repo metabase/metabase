@@ -62,11 +62,14 @@ async function baseSetup({
 }: BaseSetupOpts) {
   jest.useFakeTimers();
 
-  const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
+  const databases = hasDataPermissions ? [createSampleDatabase()] : [];
+  const dispatch = jest
+    .fn()
+    .mockReturnValue({ unwrap: () => ({ data: databases }) });
 
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases: hasDataPermissions ? [createSampleDatabase()] : [],
+      databases,
       segments: [SEGMENT],
     }),
     currentUser: user === undefined ? createMockUser() : user,

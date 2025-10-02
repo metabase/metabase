@@ -29,6 +29,7 @@
   model-supports-implicit-actions?
   model?
   sole-dashboard-id
+  starting-card-schema-version
   update-card!
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]

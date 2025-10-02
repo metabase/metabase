@@ -510,7 +510,11 @@
                    [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
                     {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
                     {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled true}
-                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}]}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :categories :name) {:join-alias "Categories"}], :enabled true}
+                    {:name "LATITUDE", :fieldRef [:field (mt/id :venues :latitude) nil], :enabled false}
+                    {:name "LONGITUDE", :fieldRef [:field (mt/id :venues :longitude) nil], :enabled false}
+                    {:name "PRICE", :fieldRef [:field (mt/id :venues :price) nil], :enabled false}
+                    {:name "ID_2", :fieldRef [:field (mt/id :categories :id)], :enabled false}]}
 
     :assertions {:csv (fn [results]
                         (is (= [["ID" "Name" "Category ID" "Categories → Name"]
@@ -550,7 +554,13 @@
                    :table.columns
                    [{:name "ID", :fieldRef [:field (mt/id :venues :id) nil], :enabled true}
                     {:name "NAME", :fieldRef [:field (mt/id :venues :name) nil], :enabled true}
-                    {:name "NAME_2", :fieldRef [:field (mt/id :venues :name) {:join-alias "Venues"}], :enabled true}]}
+                    {:name "NAME_2", :fieldRef [:field (mt/id :venues :name) {:join-alias "Venues"}], :enabled true}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) nil], :enabled false}
+                    {:name "CATEGORY_ID", :fieldRef [:field (mt/id :venues :category_id) {:join-alias "Venues"}], :enabled false}
+                    {:name "LATITUDE", :fieldRef [:field (mt/id :venues :latitude) {:join-alias "Venues"}], :enabled false}
+                    {:name "LONGITUDE", :fieldRef [:field (mt/id :venues :longitude) {:join-alias "Venues"}], :enabled false}
+                    {:name "ID", :fieldRef [:field (mt/id :venues :id) {:join-alias "Venues"}], :enabled false}
+                    {:name "PRICE", :fieldRef [:field (mt/id :venues :price) {:join-alias "Venues"}], :enabled false}]}
 
     :assertions {:csv (fn [results]
                         (is (= [["ID" "Left Name" "Right Name"]
@@ -590,6 +600,29 @@
                                    [1.0 1.0 "Red Medicine"]]
                                   (xlsx-test/parse-xlsx-results results))))}})))
 
+(deftest native-query-with-viz-settings-test
+  (mt/with-full-data-perms-for-all-users!
+    (do-test!
+     "A native query can be exported successfully with columns that don't appear in viz settings"
+     {:query (mt/native-query {:query "SELECT id, category_id, name FROM venues LIMIT 1;"})
+      :viz-settings {:column_settings {},
+                     :table.columns
+                     [{:name "ID", :enabled true}
+                      {:name "CATEGORY_ID", :enabled true}]}
+      :assertions {:csv (fn [results]
+                          (is (= [["ID" "CATEGORY_ID" "NAME"]
+                                  ["1" "4" "Red Medicine"]]
+                                 (parse-csv-results results))))
+                   :json (fn [results]
+                           (is (= [["ID" "CATEGORY_ID" "NAME"]
+                                   ["1" "4" "Red Medicine"]]
+                                  (parse-json-results results))))
+
+                   :xlsx (fn [results]
+                           (is (= [["ID" "CATEGORY_ID" "NAME"]
+                                   [1.0 4.0 "Red Medicine"]]
+                                  (xlsx-test/parse-xlsx-results results))))}})))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Streaming logic unit tests                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -606,6 +639,33 @@
             [{:id 0, :name "Col1" :field_ref [:field 0 nil]}, {:id 1, :name "Col2" :field_ref [:field 1 nil]}]
             [{::mb.viz/table-column-field-ref [:field 1 nil], ::mb.viz/table-column-enabled true}
              {::mb.viz/table-column-field-ref [:field 0 nil], ::mb.viz/table-column-enabled true}])))))
+
+(defn- col [name id]
+  {:id 0 :name name :field_ref [:field id nil]})
+
+(defn- table
+  ([name id] (table name id true))
+  ([name id enabled?]
+   {::mb.viz/table-column-field-ref [:field id nil]
+    ::mb.viz/table-column-name name
+    ::mb.viz/table-column-enabled enabled?}))
+
+(deftest ^:parallel export-column-order-includes-unspecified-columns-test
+  (testing "columns without corresponding viz-settings are included"
+    ;; first two have order respected, then we include the rest of the columns
+    (is (= [1 0 4 5 6]
+           (#'qp.streaming/export-column-order
+            [(col "Col1" 1)
+             (col "Col2" 2)
+             (col "Col3" 3)
+             (col "Col4" 4)
+             (col "Col5" 5)
+             (col "Col6" 6)
+             (col "Col7" 7)]
+            [(table "Col2" 2)
+             (table "Col1" 1)
+             (table "Col3" 3 false)
+             (table "Col4" 4 false)])))))
 
 (deftest ^:parallel export-column-order-test-2
   (testing "correlation of columns by name"
@@ -675,6 +735,16 @@
            (@#'qp.streaming/export-column-order
             [{:name "Col1" :remapped_to "Col2"}, {:name "Col2" :remapped_from "Col1"}]
             nil)))))
+
+(deftest ^:parallel export-column-order-includes-unexcluded-columns
+  (testing "if a column is not explicitly included it's splatted onto the end"
+    (is (= [1 0 2]
+           (@#'qp.streaming/export-column-order
+            [{:id 0, :name "Col1", :field_ref [:field 0 nil]}
+             {:id 1, :name "Col2", :field_ref [:field 1 nil]}
+             {:id 2, :name "Col3", :field_ref [:field 2 nil]}]
+            [{::mb.viz/table-column-name "Col2" , ::mb.viz/table-column-enabled true}
+             {::mb.viz/table-column-name "Col1" , ::mb.viz/table-column-enabled true}])))))
 
 ;; QP Nil Fix Tests
 ;; These tests verify that query cancellation returns proper results instead of nil

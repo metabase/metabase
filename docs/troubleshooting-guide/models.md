@@ -72,5 +72,4 @@ If you can’t solve your problem using the troubleshooting guides:
 [replicate-database-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#replicate-your-database
 [sql-explain-learn]: https://www.metabase.com/learn/sql/working-with-sql/sql-best-practices#explain
 [summary-tables-learn]: https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#aggregate-data-ahead-of-time-with-summary-tables
-[troubleshooting-sandboxing]: ./sandboxing.md
 [model-persistence]: ../data-modeling/model-persistence.md

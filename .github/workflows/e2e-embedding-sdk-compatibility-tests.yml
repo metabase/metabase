@@ -196,7 +196,7 @@ jobs:
   # - starts it
   # - runs its Cypress tests against the local metabase.jar and local @metabase/embedding-sdk-react package.
   # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
-  # For more details see `Sample Apps compatibility with Embedding SDK tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
+  # For more details see `Sample Apps compatibility with Embedding SDK tests` in `enterprise/frontend/src/embedding-sdk-bundle/dev.md`
   e2e-sample-apps-tests:
     needs: [get-build-requirements, get-sample-apps-data, build]
     strategy:
@@ -320,7 +320,7 @@ jobs:
   # - starts an app
   # - runs its Cypress tests against the e2e test metabase instance and local @metabase/embedding-sdk-react package.
   # The job is not required, though if it's failing better to be sure that it's not caused by a breaking change.
-  # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk/dev.md`
+  # For more details see `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk-bundle/dev.md`
   e2e-host-apps-tests:
     needs: [get-build-requirements, build]
     strategy:

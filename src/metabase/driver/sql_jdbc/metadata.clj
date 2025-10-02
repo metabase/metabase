@@ -34,5 +34,6 @@
                     {:lib/type      :metadata/column
                      :name          (.getColumnLabel rsmeta i)
                      :database-type database-type
-                     :base-type     (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))}))
+                     :base-type     (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
+                                        :type/*)}))
                 (range 1 (inc (.getColumnCount rsmeta))))))))))

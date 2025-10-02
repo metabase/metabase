@@ -139,4 +139,14 @@
           result (#'pivot.postprocess/build-full-pivot get-row-section left-headers top-headers measure-count)]
       (is (= [["" "Col X"]
               ["Row A"]]
+             result))))
+
+  (testing "handles zero measure-count with no error"
+    (let [get-row-section (constantly [])
+          left-headers []
+          top-headers [["" "Col X"]]
+          measure-count 0
+          result (#'pivot.postprocess/build-full-pivot get-row-section left-headers top-headers measure-count)]
+      (is (= [["" "Col X"]
+              []]
              result)))))

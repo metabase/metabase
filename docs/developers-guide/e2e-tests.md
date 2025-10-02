@@ -6,7 +6,7 @@ title: End-to-end tests with Cypress
 
 Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
 
-*Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed.*
+_Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed._
 
 ## Getting Started
 
@@ -164,7 +164,7 @@ We have a few helpers for dealing with tests involving snowplow
    partial-match the payload provided. This is simply a convenience function for comparing
    `event.unstruct_event.data.data` rather than the entire `event`. Most of our events are unstructured events, so this is handy.
 1. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
-   *no* unstructured events match the payload.
+   _no_ unstructured events match the payload.
 1. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
@@ -190,7 +190,7 @@ Cypress._.times(N, () => {
 
 ### Embedding SDK tests
 
-See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md)
+See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-bundle/dev.md)
 
 ## DB Snapshots
 
@@ -216,15 +216,17 @@ Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITI
 
 **Enterprise instance will start without a premium token!**
 
-If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
-You should provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/). (note: only a few tests require the no features token)
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests.
+You should provide 4 tokens:
 
-- `CYPRESS_ALL_FEATURES_TOKEN`
-- `CYPRESS_NO_FEATURES_TOKEN`
+- MB_ALL_FEATURES_TOKEN: all feature enabled, including new feature not released yet to customers
+- MB_STARTER_CLOUD_TOKEN: only 'hosting' feature enabled to simulate the starter plan on cloud
+- MB_PRO_CLOUD_TOKEN: PRO features enabled + 'hosting' to simulate the pro plan on cloud
+- MB_PRO_SELF_HOSTED_TOKEN: PRO features but no 'hosting' to simulate the pro self-hosted plan
 
-```
-MB_EDITION=ee ENTERPRISE_TOKEN=xxxxxx yarn test-cypress
-```
+You can configure these via ENVs or via the `cypress.env.json` file (see `cypress.env.json.example` for an example).
+
+For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
 
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 

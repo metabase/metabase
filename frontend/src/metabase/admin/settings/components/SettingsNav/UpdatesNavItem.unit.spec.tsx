@@ -4,7 +4,7 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { SettingKey, UpdateChannel } from "metabase-types/api";
+import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -13,10 +13,7 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
-const setup = async (props: {
-  updateChannel: UpdateChannel;
-  versionTag: string;
-}) => {
+const setup = async (props: { versionTag: string }) => {
   const versionNoticeSettings = {
     version: {
       date: "2025-03-19",
@@ -24,7 +21,6 @@ const setup = async (props: {
       tag: props.versionTag,
       hash: "4742ea1",
     },
-    "update-channel": props.updateChannel,
   };
 
   const settings = createMockSettings(versionNoticeSettings);
@@ -32,20 +28,10 @@ const setup = async (props: {
   setupSettingEndpoint({
     settingKey: "version-info",
     settingValue: {
-      beta: {
-        version: "v1.54.0-beta",
-        released: "2025-03-24",
-        highlights: [],
-      },
       latest: {
-        version: "v1.53.8",
+        version: "v1.60.0",
         released: "2025-03-25",
         patch: true,
-        highlights: [],
-      },
-      nightly: {
-        version: "v1.52.3",
-        released: "2024-12-16",
         highlights: [],
       },
     },
@@ -68,7 +54,7 @@ const setup = async (props: {
 
 describe("UpdatesNavItem", () => {
   it("should not show badge if there are no updates available", async () => {
-    await setup({ versionTag: "v1.53.8", updateChannel: "latest" });
+    await setup({ versionTag: "v1.60.0" });
 
     await waitFor(() => {
       const indicatorDot = document.querySelector(
@@ -78,8 +64,8 @@ describe("UpdatesNavItem", () => {
     });
   });
 
-  it("should show badge updates are available", async () => {
-    await setup({ versionTag: "v1.53.8", updateChannel: "beta" });
+  it("should show badge when updates are available", async () => {
+    await setup({ versionTag: "v1.40.8" });
     await waitFor(() => {
       const indicatorDot = document.querySelector(
         '[class*="Indicator-indicator"]',

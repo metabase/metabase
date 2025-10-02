@@ -39,6 +39,7 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
+   [metabase.embedding.util :as embed.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
@@ -135,7 +136,7 @@
   [req]
   (let [redirect (get-in req [:params :redirect])
         origin (get-in req [:headers "origin"])
-        embedding-sdk-header? (or (sso-utils/is-react-sdk-header? req) (sso-utils/is-simple-embed-header? req))]
+        embedding-sdk-header? (embed.util/is-modular-embedding-request? req)]
 
     (cond
       ;; Case 1: Embedding SDK header is present - use ACS URL with token and origin
@@ -163,7 +164,7 @@
   (premium-features/assert-has-feature :sso-saml (tru "SAML-based authentication"))
   (check-saml-enabled)
   (let [redirect (get-in req [:params :redirect])
-        embedding-sdk-header? (or (sso-utils/is-react-sdk-header? req) (sso-utils/is-simple-embed-header? req))
+        embedding-sdk-header? (embed.util/is-modular-embedding-request? req)
         redirect-url (construct-redirect-url req)]
     (sso-utils/check-sso-redirect redirect)
     (try
@@ -289,7 +290,7 @@
                             :last-name       last-name
                             :email           email
                             :group-names     groups
-                            :user-attributes attrs
+                            :user-attributes (sso-utils/filter-non-stringable-attributes attrs)
                             :device-info     (request/device-info request)})
             response      (response/redirect (or continue-url (system/site-url)))]
         (if token-value

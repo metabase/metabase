@@ -70,6 +70,25 @@
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :table_id (:id table)))
 
+(t2/define-before-update :model/Table
+  [table]
+  (let [changes (t2/changes table)
+        original-table (t2/original table)
+        current-active (:active original-table)
+        new-active (:active changes)]
+    (cond
+      ;; active: true -> false (table being deactivated)
+      (and (true? current-active) (false? new-active))
+      (assoc changes :deactivated_at (mi/now))
+
+      ;; active: false -> true (table being reactivated)
+      (and (false? current-active) (true? new-active))
+      (assoc changes
+             :deactivated_at nil
+             :archived_at nil)
+
+      :else table)))
+
 (defn- set-new-table-permissions!
   [table]
   (t2/with-transaction [_conn]
@@ -301,6 +320,8 @@
                :database_require_filter :is_defective_duplicate :unique_table_helper]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
+               :archived_at (serdes/date)
+               :deactivated_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
@@ -320,7 +341,9 @@
                   :view-count    true
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :display_name :description]
+   :search-terms {:name         search.spec/explode-camel-case
+                  :display_name true
+                  :description  true}
    :render-terms {:initial-sync-status true
                   :table-id            :id
                   :table-description   :description

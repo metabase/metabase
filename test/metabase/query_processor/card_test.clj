@@ -1,6 +1,7 @@
 (ns metabase.query-processor.card-test
   "There are more e2e tests in [[metabase.queries.api.card-test]]."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
@@ -13,8 +14,12 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
 
 (defn run-query-for-card
   "Run query for Card synchronously."
@@ -240,7 +245,7 @@
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
 ;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
-(deftest preserve-model-metadata-test
+(deftest ^:parallel preserve-model-metadata-test
   (testing "Cards preserve their edited metadata"
     (letfn [(base-type->semantic-type [base-type]
               (condp #(isa? %2 %1) base-type
@@ -284,3 +289,45 @@
                        {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                       (mt/cols (run-query-for-card card-id)))))))))))
+
+(def card-download-filename-cases
+  [["My Public Report" "my_public_report"]
+   ["Sales Report!@#$%" "sales_report_____"]
+   ["Vendas São Paulo" "vendas_sao_paulo"]
+   ["Q1/Q2 Comparison" "q1_q2_comparison"]
+   ["   Trimmed   " "trimmed"]
+   ;; Long
+   [(apply str (repeat 150 "a")) (apply str (repeat 150 "a"))]
+   [(apply str (repeat 254 "a")) (apply str (repeat 200 "a"))]
+   ;; Greek
+   ["ναφρά Πωλήσεων" "%CE%BD%CE%B1%CF%86%CF%81%CE%B1_%CF%80%CF%89%CE%BB%CE%B7%CF%83%CE%B5%CF%89%CE%BD"]
+   ;; Chinese
+   ["销售报告" "%E9%94%80%E5%94%AE%E6%8A%A5%E5%91%8A"]
+   ;; Japanese
+   ["レポート分析" "%E3%83%AC%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88%E5%88%86%E6%9E%90"]
+   ;; Emojis
+   ["📊 Dashboard Metrics 📈" "%3F%3F_dashboard_metrics_%3F%3F"]
+   ;; Cyrillic
+   ["тчёт п пджм" "%D1%82%D1%87%D0%B5%D1%82_%D0%BF_%D0%BF%D0%B4%D0%B6%D0%BC"]
+   ;; Arabic
+   ["تقرير المبيعات" "%D8%AA%D9%82%D8%B1%D9%8A%D8%B1_%D8%A7%D9%84%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA"]
+   ;; Mixed
+   ["混合 Report αβγ" "%E6%B7%B7%E5%90%88_report_%CE%B1%CE%B2%CE%B3"]])
+
+(deftest ^:parallel downloaded-card-filenames-test
+  (testing "Card downloads generate correct filenames"
+    (doseq [[card-name expected-slug] card-download-filename-cases]
+      (testing (str "card name: " card-name)
+        (mt/with-temp [:model/Card card {:name card-name
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (doseq [export-format [:csv :json :xlsx]]
+            (testing (str "format: " export-format)
+              (let [response (client/client-full-response
+                              (test.users/username->token :crowberto)
+                              :post 200
+                              (format "card/%d/query/%s" (:id card) (name export-format))
+                              {})]
+                (is (str/includes?
+                     (get-in response [:headers "Content-Disposition"])
+                     (str expected-slug "_"))
+                    (str "Expected filename to contain: " expected-slug))))))))))

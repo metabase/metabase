@@ -10,13 +10,12 @@ on:
         required: true
         default: "master"
         options:
-          - master
-          - release-x.51.x
-          - release-x.52.x
-          - release-x.53.x
-          - release-x.54.x
-          - release-x.55.x
-          - esbuild-main
+          - release-x.56.x
+      tag-as-latest:
+        description: "Tag this release as 'latest' on npm"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -36,6 +35,7 @@ jobs:
           **Inputs:**
 
           - \`branch\`: ${{ inputs.branch }}
+          - \`tag-as-latest\`: ${{ inputs.tag-as-latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
@@ -186,7 +186,7 @@ jobs:
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk/package.template.json)
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-bundle/package.template.json)
           echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Get next SDK patch version
@@ -349,8 +349,8 @@ jobs:
 
       - name: Update changelog
         run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
+          cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
+          mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
 
       - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
         run: |
@@ -393,10 +393,18 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable", "release-x.54.x": "54-stable", "release-x.55.x": "55-stable", "esbuild-main": "56-esbuild"}')[inputs.branch]}}
+          npm publish --tag ${{fromJson('{
+           "master": "nightly",
+           "release-x.51.x": "51-stable",
+           "release-x.52.x": "52-stable",
+           "release-x.53.x": "53-stable",
+           "release-x.54.x": "54-stable",
+           "release-x.55.x": "55-stable",
+           "release-x.56.x": "56-stable"
+           }')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.55.x' }}
+      - name: Add `latest` tag to the latest release branch (`release-x.56.x`) deployment
+        if: ${{ inputs.branch == 'release-x.56.x' && inputs.tag-as-latest }}
         working-directory: sdk
         run: |
           npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest

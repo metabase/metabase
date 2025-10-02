@@ -20,8 +20,9 @@ import type {
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
+import { HiddenFieldEmptyStateBlock } from "./EmptyStateBlock";
 import { Error } from "./Error";
-import { getDataErrorMessage, is403Error } from "./utils";
+import { getDataErrorMessage, is403Error, isFieldHidden } from "./utils";
 
 const PREVIEW_ROW_COUNT = 5;
 
@@ -39,11 +40,7 @@ const TablePreviewBase = (props: Props) => {
   const data = rawSeries?.[0]?.data?.rows;
 
   if (isFieldHidden(field)) {
-    return (
-      <Stack h="100%" justify="center" p="md">
-        <EmptyState message={t`This field is hidden`} />
-      </Stack>
-    );
+    return <HiddenFieldEmptyStateBlock />;
   }
 
   if (isFetching) {
@@ -162,13 +159,6 @@ function getPreviewQuery(
       "order-by": pkFieldRefs.map((pkFieldRef) => ["asc", pkFieldRef]),
     },
   };
-}
-
-function isFieldHidden(field: Field) {
-  return (
-    field.visibility_type === "sensitive" ||
-    field.visibility_type === "details-only"
-  );
 }
 
 export const TablePreview = memo(TablePreviewBase);

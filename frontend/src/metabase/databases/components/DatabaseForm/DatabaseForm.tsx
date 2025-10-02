@@ -9,7 +9,7 @@ import { Form, FormProvider } from "metabase/forms";
 import { FormErrorMessage } from "metabase/forms/components/FormErrorMessage";
 import { FormSubmitButton } from "metabase/forms/components/FormSubmitButton";
 import { useSelector } from "metabase/lib/redux";
-import { Button, Flex, Text } from "metabase/ui";
+import { Box, Button, Flex, Text } from "metabase/ui";
 import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { getEngines } from "../../selectors";
@@ -19,10 +19,11 @@ import {
   getValidationSchema,
   getVisibleFields,
 } from "../../utils/schema";
+import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
 import DatabaseDetailField from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
-import DatabaseNameField from "../DatabaseNameField";
+import { DatabaseNameField } from "../DatabaseNameField";
 
 export type EngineFieldState = "default" | "hidden" | "disabled";
 
@@ -51,6 +52,7 @@ interface DatabaseFormProps {
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
   config?: DatabaseFormConfig;
+  location: "admin" | "setup" | "embedding_setup";
   /**
    * Whether to show the sample database indicator in the engine list and change the "I'll add my data later" button to "Continue with sample data"
    */
@@ -66,6 +68,7 @@ export const DatabaseForm = ({
   onCancel,
   onEngineChange,
   setIsDirty,
+  location,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
   config = {},
@@ -124,6 +127,7 @@ export const DatabaseForm = ({
         config={config}
         showSampleDatabase={showSampleDatabase}
         ContinueWithoutDataSlot={ContinueWithoutDataSlot}
+        location={location}
       />
     </FormProvider>
   );
@@ -142,6 +146,7 @@ interface DatabaseFormBodyProps {
   config: DatabaseFormConfig;
   showSampleDatabase?: boolean;
   ContinueWithoutDataSlot?: ContinueWithoutDataComponent;
+  location: "admin" | "setup" | "embedding_setup";
 }
 
 const DatabaseFormBody = ({
@@ -157,8 +162,9 @@ const DatabaseFormBody = ({
   config,
   showSampleDatabase = false,
   ContinueWithoutDataSlot,
+  location,
 }: DatabaseFormBodyProps): JSX.Element => {
-  const { values, dirty } = useFormikContext<DatabaseData>();
+  const { values, dirty, setValues } = useFormikContext<DatabaseData>();
 
   useEffect(() => {
     setIsDirty?.(dirty);
@@ -170,38 +176,50 @@ const DatabaseFormBody = ({
 
   return (
     <Form data-testid="database-form" className="database-form">
-      {engineFieldState !== "hidden" && (
-        <>
-          <DatabaseEngineField
-            engineKey={engineKey}
-            engines={engines}
-            isAdvanced={isAdvanced}
-            onChange={onEngineChange}
-            disabled={engineFieldState === "disabled"}
-            showSampleDatabase={showSampleDatabase}
-          />
-          <DatabaseEngineWarning
-            engineKey={engineKey}
-            engines={engines}
-            onChange={onEngineChange}
-          />
-        </>
-      )}
-      {engine && (
-        <DatabaseNameField
-          engine={engine}
-          config={config}
-          autoFocus={autofocusFieldName === "name"}
+      <Box
+        mah="calc(100vh - 20rem)"
+        style={{ overflowY: "auto" }}
+        px={location === "setup" ? "sm" : "xl"}
+        mb="md"
+      >
+        {engineFieldState !== "hidden" && (
+          <>
+            <DatabaseEngineField
+              engineKey={engineKey}
+              engines={engines}
+              isAdvanced={isAdvanced}
+              onChange={onEngineChange}
+              disabled={engineFieldState === "disabled"}
+              showSampleDatabase={showSampleDatabase}
+            />
+            <DatabaseEngineWarning
+              engineKey={engineKey}
+              engines={engines}
+              onChange={onEngineChange}
+            />
+          </>
+        )}
+        <DatabaseConnectionStringField
+          engineKey={engineKey}
+          location={location}
+          setValues={setValues}
         />
-      )}
-      {fields.map((field) => (
-        <DatabaseDetailField
-          key={field.name}
-          field={field}
-          autoFocus={autofocusFieldName === field.name}
-          data-kek={field.name}
-        />
-      ))}
+        {engine && (
+          <DatabaseNameField
+            engine={engine}
+            config={config}
+            autoFocus={autofocusFieldName === "name"}
+          />
+        )}
+        {fields.map((field) => (
+          <DatabaseDetailField
+            key={field.name}
+            field={field}
+            autoFocus={autofocusFieldName === field.name}
+            data-kek={field.name}
+          />
+        ))}
+      </Box>
       <DatabaseFormFooter
         isDirty={dirty}
         isAdvanced={isAdvanced}
@@ -236,11 +254,9 @@ const DatabaseFormFooter = ({
 
   const hasSampleDatabase = useSetting("has-sample-database?");
 
-  const className = "database-form-footer";
-
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer" className={className}>
+      <FormFooter data-testid="form-footer" px="xl">
         <FormErrorMessage />
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
@@ -270,7 +286,7 @@ const DatabaseFormFooter = ({
 
   if (values.engine) {
     return (
-      <FormFooter className={className}>
+      <FormFooter>
         <FormErrorMessage inline />
         <Button onClick={onCancel}>{t`Skip`}</Button>
         <FormSubmitButton variant="filled" label={t`Connect database`} />

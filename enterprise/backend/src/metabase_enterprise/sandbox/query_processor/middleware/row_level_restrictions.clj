@@ -18,9 +18,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
@@ -31,7 +29,6 @@
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouses.models.database :as database]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -240,80 +237,6 @@
       preprocess-source-query
       (source-query-form-ensure-metadata table-id card-id)))
 
-(defn- sandbox->table-ids
-  "Returns the set of table IDs which are used by the given sandbox. These are the sandboxed table itself, as well as
-  any linked tables referenced via fields in the attribute remappings. This is the set of tables which need to be
-  excluded from subsequent permission checks in order to run the sandboxed query."
-  [{table-id :table_id, attribute-remappings :attribute_remappings}]
-  (->>
-   (for [target-field-clause (vals attribute-remappings)]
-     (lib.util.match/match-one target-field-clause
-       [:field (field-id :guard integer?) _]
-       (:table-id (lib.metadata.protocols/field (qp.store/metadata-provider) field-id))))
-   (cons table-id)
-   (remove nil?)
-   set))
-
-(mu/defn- sandbox->required-perms
-  "Calculate the permissions needed to run the query associated with a sandbox, which are implitly granted to the
-  current user during the normal QP perms check.
-
-  Background: when applying sandboxing, we don't want the QP perms check middleware to throw an Exception if the Current
-  User doesn't have permissions to run the underlying sandboxed query, which will likely be greater than what they
-  actually have. (For example, a User might have sandboxed query perms for Table 15, which is why we're applying a
-  sandbox in the first place; the actual perms required to normally run the underlying sandbox query is more likely
-  something like *full* query perms for Table 15.) The QP perms check middleware subtracts this set from the set of
-  required permissions, allowing the user to run their sandboxed query."
-  [{card-id :card_id :as sandbox}]
-  (if card-id
-    (qp.store/cached card-id
-      (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                                            :throw-exceptions? true))
-
-    (let [table-ids (sandbox->table-ids sandbox)
-          table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
-          unblocked-table-ids (filter (fn [table-id] (perms/user-has-permission-for-table?
-                                                      api/*current-user-id*
-                                                      :perms/view-data
-                                                      :unrestricted
-                                                      (get table-id->db-id table-id)
-                                                      table-id))
-                                      table-ids)]
-      ;; Here, we grant view-data to only unblocked table ids. Otherwise sandboxed users with a joined table that's
-      ;; _blocked_ can be queried against from the query builder
-      {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
-       :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
-
-(defn- merge-perms
-  "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
-  In particular, if we need query-builder-and-native at the *database* level, but :query-builder at the *table* level,
-  the permissions maps will look like:
-
-  - `{:perms/create-queries :query-builder-and-native}`
-  - `{:perms/create-queries {1 :query-builder}}`
-
-  Currently, we never require a *lower* level permission at the database level, so it's ok to just say that the
-  db-level permissions always win. If we ever wanted to merge something like `{:perms/create-queries
-  {1 :query-builder-and-native}}` with `{:perms/create-queries :query-builder}`, this would break down and we'd
-  probably want to modify the shape of the permissions-maps themselves."
-  ([perms-a] perms-a)
-  ([perms-a perms-b]
-   (reduce (fn [merged [k v]]
-             (update merged k (fn [old-v]
-                                (cond
-                                  (keyword? old-v) old-v
-                                  (keyword? v) v
-                                  (and (map? old-v) (map? v))
-                                  (merge old-v v)
-                                  :else v))))
-           (or perms-a {})
-           (seq perms-b)))
-  ([perms-a perms-b & more]
-   (reduce merge-perms perms-a (cons perms-b more))))
-
-(defn- sandboxes->required-perms [sandboxes]
-  (apply merge-perms (map sandbox->required-perms sandboxes)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -368,11 +291,7 @@
   (let [sandboxed-query (apply-gtaps original-query table-id->gtap)]
     (if (= sandboxed-query original-query)
       original-query
-      (-> sandboxed-query
-          (assoc ::original-metadata (expected-cols original-query))
-          (update-in [:query-permissions/perms :gtaps]
-                     (fn [required-perms] (merge required-perms
-                                                 (sandboxes->required-perms (vals table-id->gtap)))))))))
+      (assoc sandboxed-query ::original-metadata (expected-cols original-query)))))
 
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
@@ -421,7 +340,7 @@
   :feature :sandboxes
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
-    (let [metadata (assoc metadata :is_sandboxed (some? (get-in query [:query-permissions/perms :gtaps])))
+    (let [metadata (assoc metadata :is_sandboxed (some? (lib.util.match/match-one query (m :guard (every-pred map? :query-permissions/gtapped-table)))))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

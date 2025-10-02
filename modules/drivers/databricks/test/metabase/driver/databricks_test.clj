@@ -351,6 +351,43 @@
                                 :active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1}))))))))))))
 
+(deftest multi-level-changes-inactive-table-schemas-too
+  (mt/test-driver
+    :databricks
+    ;; skip if running in multi-level since we are manipulating it in this test
+    (when-not (tx/db-test-env-var :databricks :multi-level-schema false)
+      (let [details (get (mt/db) :details)
+            ;; metabase_ci_multicatalog.test_schema.test (id, name)
+            multicatalog (tx/db-test-env-var :databricks :multicatalog-catalog "metabase_ci_multicatalog")
+            multicatalog-schema (tx/db-test-env-var :databricks :multicatalog-schema "test_schema")
+            multi-pattern (format "%s.%s,%s.%s"
+                                  (:catalog details)
+                                  (:schema-filters-patterns details)
+                                  multicatalog
+                                  multicatalog-schema)]
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
+          ;; First sync with multi-level-schema off
+          (mt/with-db
+            db
+            (testing "With multi-level-schema default (off)"
+              (sync/sync-database! (mt/db))
+              ;; originally we have unqualified schemas, only in one catalog
+              (is (= #{"test-data"}
+                     (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))
+          (testing "With multi-level-schema on, schemas are qualified"
+            (t2/update! :model/Database db-id {:details (assoc details
+                                                               :multi-level-schema true
+                                                               :schema-filters-patterns multi-pattern)})
+            ;; Deactivate its tables for testing
+            (t2/update! :model/Table {:db_id db-id} {:active false})
+            (mt/with-db
+              (t2/select-one :model/Database db-id)
+              (sync/sync-database! (mt/db))
+              (is (= #{(format "%s.%s" (:catalog details) "test-data")
+                       (format "%s.%s" multicatalog multicatalog-schema)}
+                     ;; active` *and* inactive tables both have their schemas changed.
+                     (t2/select-fn-set :schema :model/Table :db_id (mt/id)))))))))))
+
 (deftest multi-level-schema-wanted-catalogs-test
   (mt/test-driver
     :databricks
@@ -418,6 +455,12 @@
                      (mt/rows (qp/process-query fk-query))))
               (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1 "toucan" 1 1]]
                      (mt/rows (qp/process-query manual-query)))))))))))
+
+(deftest ^:parallel array-test
+  (mt/test-driver :databricks
+    (let [query (mt/native-query {:query "select array(1,2,3)"})]
+      (is (= [["[1,2,3]"]]
+             (mt/rows (qp/process-query query)))))))
 
 (deftest can-connect-test
   (mt/test-driver

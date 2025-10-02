@@ -160,7 +160,7 @@
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
 
 (deftest sync-enabled-test
-  (mt/with-premium-features #{:embedding :embedding-sdk :embedding-iframe-sdk}
+  (mt/with-premium-features #{:embedding :embedding-sdk :embedding-simple}
     ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
     (test-enabled-sync! {} :no-op)
     (test-enabled-sync! {:mb-enable-embedding-static true} :no-op)
@@ -199,7 +199,7 @@
 (deftest sync-origins-test
   ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't
   ;; test syncing for them.
-  (mt/with-premium-features #{:embedding :embedding-sdk :embedding-iframe-sdk}
+  (mt/with-premium-features #{:embedding :embedding-sdk :embedding-simple}
     (mt/with-temporary-setting-values [enable-embedding true
                                        enable-embedding-sdk true
                                        enable-embedding-interactive true

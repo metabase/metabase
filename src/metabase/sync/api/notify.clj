@@ -50,7 +50,7 @@
 (defn- find-and-sync-new-table
   [database table-name schema-name]
   (let [driver (driver.u/database->driver database)
-        {db-tables :tables} (driver/describe-database driver database)]
+        {db-tables :tables} (driver/do-with-resilient-connection driver database driver/describe-database)]
     (if-let [table (some (fn [table-in-db]
                            (when (and (= schema-name (:schema table-in-db))
                                       (= table-name (:name table-in-db)))

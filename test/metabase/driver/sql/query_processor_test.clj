@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -23,6 +24,7 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.test.data.interface :as tx]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]))
@@ -1363,3 +1365,122 @@
              (h2x/unwrap-typed-honeysql-form
               (sql.qp/coerce-integer :sql
                                      (h2x/with-database-type-info value type))))))))
+
+(defmulti native-nested-array-query
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-nested-array-query :default
+  [_driver]
+  "select array[array[array['a', 'b'], array['c', 'd'] ], array[array['w', 'x'], array['y', 'z'] ]];")
+
+(doseq [driver [:mysql :sqlite]]
+  (defmethod native-nested-array-query driver
+    [_driver]
+    "select json_array(json_array(json_array('a', 'b'), json_array('c', 'd')), json_array(json_array('w', 'x'), json_array('y', 'z')));"))
+
+(doseq [driver [:redshift :databricks]]
+  (defmethod native-nested-array-query driver
+    [_driver]
+    "select array(array(array('a', 'b'), array('c', 'd')), array(array('w', 'x'), array('y', 'z')));"))
+
+(defmethod native-nested-array-query :snowflake
+  [_driver]
+  "select array_construct(array_construct(array_construct('a', 'b'), array_construct('c', 'd')), array_construct(array_construct('w', 'x'), array_construct('y', 'z')));")
+
+(defmulti native-nested-array-results
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-nested-array-results :default
+  [_driver]
+  [[["a" "b"] ["c" "d"]] [["w" "x"] ["y" "z"]]])
+
+(doseq [driver [:sqlite :databricks :redshift]]
+  (defmethod native-nested-array-results driver
+    [_driver]
+    "[[[\"a\",\"b\"],[\"c\",\"d\"]],[[\"w\",\"x\"],[\"y\",\"z\"]]]"))
+
+(defmethod native-nested-array-results :mysql
+  [_driver]
+  "[[[\"a\", \"b\"], [\"c\", \"d\"]], [[\"w\", \"x\"], [\"y\", \"z\"]]]")
+
+(defmethod native-nested-array-results :snowflake
+  [_driver]
+  "[\n  [\n    [\n      \"a\",\n      \"b\"\n    ],\n    [\n      \"c\",\n      \"d\"\n    ]\n  ],\n  [\n    [\n      \"w\",\n      \"x\"\n    ],\n    [\n      \"y\",\n      \"z\"\n    ]\n  ]\n]")
+
+(doseq [driver [:postgres :vertica :mysql :sqlite :redshift :databricks :snowflake]]
+  (defmethod driver/database-supports? [driver :test/nested-arrays]
+    [_driver _feature _database]
+    true))
+
+(deftest ^:parallel nested-array-query-test
+  (testing "A nested array query should be returned in a readable format"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:test/nested-arrays]})
+      (mt/dataset test-data
+        (is (= [[(native-nested-array-results driver/*driver*)]]
+               (->> (mt/native-query {:query (native-nested-array-query driver/*driver*)})
+                    mt/process-query
+                    mt/rows)))))))
+
+(deftest ^:parallel no-double-coercion-when-joining-coerced-fields-test
+  (testing "Should generate correct SQL when joining a field that has coercion applied (#62099)"
+    (let [mp    (lib.tu/merged-mock-metadata-provider
+                 meta/metadata-provider
+                 {:fields [(merge (meta/field-metadata :products :id)
+                                  {:coercion-strategy :Coercion/UNIXSeconds->DateTime})]})
+          query {:type       :query
+                 :database   (meta/id)
+                 :query      {:source-table (meta/id :orders)
+                              :joins        [{:source-table (meta/id :products)
+                                              :fields       :all
+                                              :alias        "Products__CREATED_AT"
+                                              :condition
+                                              [:=
+                                               [:field (meta/id :orders :created-at) {:temporal-unit :month}]
+                                               [:field (meta/id :products :created-at) {:temporal-unit :month}]]}]}}]
+      (qp.store/with-metadata-provider mp
+        (is (= {:query  ["SELECT"
+                         "  \"PUBLIC\".\"ORDERS\".\"ID\" AS \"ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"USER_ID\" AS \"USER_ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" AS \"PRODUCT_ID\","
+                         "  \"PUBLIC\".\"ORDERS\".\"SUBTOTAL\" AS \"SUBTOTAL\","
+                         "  \"PUBLIC\".\"ORDERS\".\"TAX\" AS \"TAX\","
+                         "  \"PUBLIC\".\"ORDERS\".\"TOTAL\" AS \"TOTAL\","
+                         "  \"PUBLIC\".\"ORDERS\".\"DISCOUNT\" AS \"DISCOUNT\","
+                         "  \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" AS \"CREATED_AT\","
+                         "  \"PUBLIC\".\"ORDERS\".\"QUANTITY\" AS \"QUANTITY\","
+                         "  \"Products__CREATED_AT\".\"ID\" AS \"Products__CREATED_AT__ID\","
+                         "  \"Products__CREATED_AT\".\"EAN\" AS \"Products__CREATED_AT__EAN\","
+                         "  \"Products__CREATED_AT\".\"TITLE\" AS \"Products__CREATED_AT__TITLE\","
+                         "  \"Products__CREATED_AT\".\"CATEGORY\" AS \"Products__CREATED_AT__CATEGORY\","
+                         "  \"Products__CREATED_AT\".\"VENDOR\" AS \"Products__CREATED_AT__VENDOR\","
+                         "  \"Products__CREATED_AT\".\"PRICE\" AS \"Products__CREATED_AT__PRICE\","
+                         "  \"Products__CREATED_AT\".\"RATING\" AS \"Products__CREATED_AT__RATING\","
+                         "  \"Products__CREATED_AT\".\"CREATED_AT\" AS \"Products__CREATED_AT__CREATED_AT\""
+                         "FROM"
+                         "  \"PUBLIC\".\"ORDERS\""
+                         "  LEFT JOIN ("
+                         "    SELECT"
+                         "      TIMESTAMPADD("
+                         "        'second',"
+                         "        \"PUBLIC\".\"PRODUCTS\".\"ID\","
+                         "        timestamp '1970-01-01T00:00:00Z'"
+                         "      ) AS \"ID\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                         "      \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                         "    FROM"
+                         "      \"PUBLIC\".\"PRODUCTS\""
+                         "  ) AS \"Products__CREATED_AT\" ON DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = DATE_TRUNC('month', \"Products__CREATED_AT\".\"CREATED_AT\")"
+                         "LIMIT"
+                         "  1048575"]
+                :params nil}
+               (-> (qp.compile/compile query)
+                   (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))

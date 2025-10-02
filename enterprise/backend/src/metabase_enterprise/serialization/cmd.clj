@@ -80,7 +80,8 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
-            [:continue-on-error {:optional true} [:maybe :boolean]]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]
+            [:reindex? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
              require-initialized-db?]
@@ -269,8 +270,8 @@
                                                 (u/strip-error @err nil))})
     (when @err
       (if (:full-stacktrace opts)
-        (log/error @err "Error during serialization")
-        (log/error (u/strip-error @err "Error during deserialization")))
+        (log/error @err "Error during serialization export")
+        (log/error (u/strip-error @err "Error during serialization export")))
       (throw (ex-info (ex-message @err) {:cmd/exit true})))
     (log/info (format "Export to '%s' complete!" path) (u/emoji "🚛💨 📦"))
     report))

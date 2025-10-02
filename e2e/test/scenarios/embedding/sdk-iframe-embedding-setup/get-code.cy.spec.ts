@@ -22,10 +22,13 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+
+    H.mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -44,7 +47,7 @@ H.describeWithSnowplow(suiteTitle, () => {
         "be.visible",
       );
 
-      cy.findByLabelText("Existing Metabase Session")
+      cy.findByLabelText("Existing Metabase session")
         .should("be.visible")
         .should("be.checked");
 
@@ -110,7 +113,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("Existing Metabase Session").should("be.checked");
+      cy.findByLabelText("Existing Metabase session").should("be.checked");
       codeBlock().should("contain", '"useExistingUserSession": true');
     });
   });
@@ -164,6 +167,50 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       codeBlock().should("contain", "metabase-question");
+    });
+  });
+
+  it("should not include entity-types when model count is 1", () => {
+    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
+      data: [],
+      total: 1,
+    }).as("searchModels");
+
+    navigateToGetCodeStep({ experience: "exploration" });
+
+    cy.wait("@searchModels");
+
+    getEmbedSidebar().within(() => {
+      codeBlock().should("not.contain", "entity-types");
+    });
+
+    H.waitForSimpleEmbedIframesToLoad();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders", { timeout: 20_000 }).should("be.visible");
+      cy.findByText("Orders Model").should("be.visible");
+    });
+  });
+
+  it("should include entity-types when model count is 3", () => {
+    cy.intercept("GET", "/api/search?limit=0&models=dataset", {
+      data: [],
+      total: 3,
+    }).as("searchModels");
+
+    navigateToGetCodeStep({ experience: "exploration" });
+
+    cy.wait("@searchModels");
+
+    getEmbedSidebar().within(() => {
+      codeBlock().should("contain", "entity-types='[\"model\"]'");
+    });
+
+    H.waitForSimpleEmbedIframesToLoad();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders Model", { timeout: 20_000 }).should("be.visible");
+      cy.findByText("Orders").should("not.exist");
     });
   });
 });

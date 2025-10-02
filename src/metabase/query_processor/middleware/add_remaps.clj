@@ -139,8 +139,7 @@
             (keep (fn [{:keys [id], :as col}]
                     (when-let [dimension (when (pos-int? id)
                                            (field-id->remapping-dimension query id))]
-                      (let [original-ref (or (:lib/original-ref col)
-                                             (lib/ref col))]
+                      (let [original-ref (lib/ref col)]
                         {:original-field-clause original-ref
                          :new-field-clause      [:field
                                                  (merge
@@ -274,13 +273,31 @@
 
 (mu/defn- add-fk-remaps-to-join :- [:maybe ::lib.schema.join/join]
   "Update Join `:fields` to add entries for remapped columns. Update the join's last stage "
-  [query                       :- ::lib.schema/query
+  [original-query              :- ::lib.schema/query
+   updated-query               :- ::lib.schema/query
    path                        :- ::lib.walk/path
    {:keys [fields], :as join}  :- ::lib.schema.join/join]
-  (when (and (sequential? fields) ; `:fields :all` should have already been resolved by this point.
+  (when (and (sequential? fields)       ; `:fields :all` should have already been resolved by this point.
              (seq fields))
-    (let [join-last-stage-path (into (vec path) [:stages (dec (count (:stages join)))])]
-      (when-let [last-stage-infos (remap-column-infos query join-last-stage-path)]
+    (let [original-join-field-ids               (into #{}
+                                                      (keep :id)
+                                                      (lib.walk/apply-f-for-stage-at-path
+                                                       lib/join-fields-to-add-to-parent-stage
+                                                       original-query path join {:include-remaps? false}))
+          original-join-fields-includes-source? (fn [remap-info]
+                                                  (some (fn [path]
+                                                          (contains? original-join-field-ids (get-in remap-info path)))
+                                                        [[:dimension :field-id]
+                                                         ;; (not sure this is really something we want to support,
+                                                         ;; but [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+                                                         ;; alleges that you can include just the remapped column in
+                                                         ;; join `:fields` and it's supposed to work)
+                                                         [:dimension :human-readable-field-id]]))
+          join-last-stage-path                  (into (vec path) [:stages (dec (count (:stages join)))])]
+      (if-let [last-stage-infos (->> (remap-column-infos updated-query join-last-stage-path)
+                                     (filter original-join-fields-includes-source?)
+                                     not-empty)]
+        ;; we have remaps to add, add them to join `:fields`
         (let [infos      (for [info last-stage-infos]
                            (-> info
                                (update :original-field-clause lib/with-join-alias (:alias join))
@@ -298,18 +315,21 @@
                                                simplify-ref-options
                                                (lib/update-options dissoc :source-field))))
                           (add-fk-remaps-to-fields infos fields))]
-          (assoc join :fields new-fields))))))
+          (assoc join :fields new-fields))
+        ;; there are no remaps to add, discard any changes that happen inside of the join (such as adding additional
+        ;; joins to power remaps that we're not using)
+        (get-in original-query path)))))
 
 (mu/defn- add-fk-remaps :- ::query-and-remaps
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by` and
   `breakout` clauses as needed. Returns a map with `:query` (the updated query) and `:remaps` (a sequence
   of [[:sequential ::external-remapping]] information maps)."
-  [query :- ::lib.schema/query]
-  (let [query' (lib.walk/walk query
+  [original-query :- ::lib.schema/query]
+  (let [query' (lib.walk/walk original-query
                               (fn [query path-type path stage-or-join]
                                 (case path-type
                                   :lib.walk/stage (add-fk-remaps-to-stage query path stage-or-join)
-                                  :lib.walk/join  (add-fk-remaps-to-join query path stage-or-join))))
+                                  :lib.walk/join  (add-fk-remaps-to-join original-query query path stage-or-join))))
         remaps (::remaps (lib/query-stage query' -1))]
     {:query  (lib.walk/walk-stages
               query'

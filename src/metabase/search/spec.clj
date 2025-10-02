@@ -13,8 +13,8 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
+  ["collection" "dashboard" "segment" "database" "action" "table" "indexed-entity" "metric" "card" "dataset"])
 
 (def ^:private search-model->toucan-model
   (into {}
@@ -36,7 +36,7 @@
   [:union :boolean :keyword vector? :map
    [:map
     [:fn fn?]
-    [:req-fields {:optional true} [:vector :keyword]]]])
+    [:fields {:optional true} [:vector :keyword]]]])
 
 (defn function-attr?
   "Attributes populate by clojure functions"
@@ -49,7 +49,7 @@
   (->> (:attrs spec)
        vals
        (filter function-attr?)
-       (mapcat :req-fields)
+       (mapcat :fields)
        distinct))
 
 (def attr-types
@@ -139,7 +139,9 @@
    [:visibility [:enum :all :app-user]]
    [:model :keyword]
    [:attrs Attrs]
-   [:search-terms [:sequential {:min 1} :keyword]]
+   [:search-terms [:or
+                   [:sequential {:min 1} :keyword]
+                   [:map-of :keyword [:or fn? true?]]]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -201,7 +203,10 @@
     (find-fields-kw expr)
 
     (and (vector? expr) (> (count expr) 1))
-    (into [] (mapcat find-fields-expr) (subvec expr 1))))
+    (into [] (mapcat find-fields-expr) (subvec expr 1))
+
+    (and (map? expr) (:fields expr))
+    (into [] (mapcat find-fields-expr) (:fields expr))))
 
 (defn- find-fields-attr [[k v]]
   (when v
@@ -209,33 +214,24 @@
       [[:this (keyword (u/->snake_case_en (name k)))]]
       (find-fields-expr v))))
 
-(defn- find-fields-select-item [x]
-  (cond
-    (keyword? x)
-    (find-fields-kw x)
+(defn- find-fields-search [item]
+  (let [x (if (map-entry? item) (key item) item)]
+    (cond
+      (keyword? x)
+      (find-fields-kw x)
 
-    (vector? x)
-    (find-fields-expr (first x))))
-
-(defn- find-fields-top [x]
-  (cond
-    (map? x)
-    (into [] (mapcat find-fields-attr) x)
-
-    (sequential? x)
-    (into [] (mapcat find-fields-select-item) x)
-
-    :else
-    (throw (ex-info "Unexpected format for fields" {:x x}))))
+      (vector? x)
+      (find-fields-expr (first x)))))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
   (u/group-by #(nth % 0) #(nth % 1) conj #{}
               (-> []
-                  (into (mapcat find-fields-top)
-                        ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-                        (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
+                  ;; select fields that will influence content
+                  (into (mapcat find-fields-attr (:attrs spec)))
+                  (into (mapcat find-fields-search (:search-terms spec)))
+                  (into (mapcat find-fields-attr (:render-terms spec)))
                   (into (find-fields-expr (:where spec))))))
 
 (defn- replace-qualification [expr from to]
@@ -332,7 +328,22 @@
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
-  "Define a spec for a search model."
+  "Define a search specification for indexing and searching a Metabase model.
+
+   Spec keys:
+   - `:model` - Toucan model keyword (required)
+   - `:attrs` - Map of search index attributes (required)
+   - `:search-terms` - Vector of searchable text fields (required)
+   - `:render-terms` - Additional attributes needed for display (required)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:where` - HoneySQL where clause to filter indexed records
+   - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
+   - `:joins` - Map of join aliases to [model join-condition] tuples
+
+   Attribute value formats:
+   - `true` - Use column with same name (snake_case)
+   - `:column_name` - Use specified database column
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure funtion at index time with the given fields"
   [search-model spec]
   `(let [spec# (-> ~spec
                    (assoc :name ~search-model)
@@ -387,3 +398,10 @@
 
   (let [where (-> (:model/ModelIndexValue (model-hooks)) first :where)]
     (insert-values where :updated {:model_index_id 1 :model_pk 5})))
+
+;;;; indexing helpers
+
+(defn explode-camel-case
+  "Transform CamelCase into 'CamelCase Camel Case' so that every word can be searchable"
+  [s]
+  (str s " " (str/replace s #"([a-z])([A-Z])" "$1 $2")))

@@ -136,7 +136,6 @@
                                                                          {:base_type :type/Number}]
                                                                   :rows [["A" 2]
                                                                          ["B" 3]]}))
-      :row
       :funnel
       :progress
       :table)))

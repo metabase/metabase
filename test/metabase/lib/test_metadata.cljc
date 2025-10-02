@@ -3047,9 +3047,3 @@
   [table-name :- :keyword
    field-name :- :keyword]
   (field-metadata-method table-name field-name))
-
-(mu/defn ^:deprecated ident :- :string
-  "Convenience to get the `:ident` string for a given field, by its table and field keys."
-  [_table-name :- :keyword
-   _field-name :- :keyword]
-  nil)

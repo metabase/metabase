@@ -635,7 +635,8 @@
                     :let {"let__id___1" "$_id",
                           "let_name___2" "$name"}
                     :pipeline
-                    [{"$match"
+                    [{"$project" {"_id" "$_id", "date" "$date", "user_id" "$user_id", "venue_id" "$venue_id"}}
+                     {"$match"
                       {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
                                {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
                   {"$unwind" {:path "$join_alias_c"
@@ -657,17 +658,17 @@
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo
       (mt/dataset (mt/dataset-definition "multi-join-db"
-                                         ["table_a"
-                                          [{:field-name "a_id" :base-type :type/Text}
-                                           {:field-name "b_id" :base-type :type/Text}]
-                                          [["a_id" "b_id"]]]
-                                         ["table_b"
-                                          [{:field-name "b_id" :base-type :type/Text}
-                                           {:field-name "c_id" :base-type :type/Text}]
-                                          [["b_id" "c_id"]]]
-                                         ["table_c"
-                                          [{:field-name "c_id" :base-type :type/Text}]
-                                          [["c_id"]]])
+                                         [["table_a"
+                                           [{:field-name "a_id" :base-type :type/Text}
+                                            {:field-name "b_id" :base-type :type/Text}]
+                                           [["a_id" "b_id"]]]
+                                          ["table_b"
+                                           [{:field-name "b_id" :base-type :type/Text}
+                                            {:field-name "c_id" :base-type :type/Text}]
+                                           [["b_id" "c_id"]]]
+                                          ["table_c"
+                                           [{:field-name "c_id" :base-type :type/Text}]
+                                           [["c_id"]]]])
         (let [mp (mt/metadata-provider)
               table-a (lib.metadata/table mp (mt/id :table_a))
               table-b (lib.metadata/table mp (mt/id :table_b))

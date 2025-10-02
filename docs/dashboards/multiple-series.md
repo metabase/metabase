@@ -45,7 +45,7 @@ You can layer multiple questions on a single dashboard card. You can even layer 
 
 ![Edit visualization](./images/edit-visualization.png)
 
-4. **Add more data**. In the Manage data sidebar on the left, click on **Add more data**. 
+4. **Add more data**. In the Manage data sidebar on the left, click on **Add more data**.
 
 ![Manage data sidebar](./images/add-data.png)
 

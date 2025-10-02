@@ -18,6 +18,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time
@@ -526,15 +527,15 @@
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :microseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :nanoseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000.0)))
 
 (defmulti cast-temporal-byte
   "Cast a byte field"
@@ -748,7 +749,7 @@
        driver
        "metabase.driver.sql.query-processor/cast-field-id-needed with a legacy (snake_cased) :model/Field"
        "0.48.0")
-      (recur driver (update-keys field u/->kebab-case-en) honeysql-form))
+      (recur driver (perf/update-keys field u/->kebab-case-en) honeysql-form))
     (u/prog1 (match [base-type coercion-strategy]
                [(:isa? :type/Number) (:isa? :Coercion/UNIXTime->Temporal)]
                (unix-timestamp->honeysql driver
@@ -891,6 +892,8 @@
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
           allow-casting?       (and field-metadata
+                                    (or (pos-int? (driver-api/qp.add.source-table options))
+                                        (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field

@@ -60,6 +60,11 @@
   [_original-model _k]
   :model/Card)
 
+(def starting-card-schema-version
+  "The default schema version assigned to all cards that existed before the `:card_schema` column was added in v0.55.
+  This value is used when loading old revision records that predate the schema versioning system."
+  20)
+
 (def ^:private current-schema-version
   "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
   It is used to guide `after-select` logic in how to modernize a card correctly.
@@ -1263,15 +1268,19 @@
   "Extract dimensions (non-aggregation columns) from a dataset query."
   [dataset-query-str]
   (when dataset-query-str
-    (lib.metadata.jvm/with-metadata-provider-cache
-      (let [dataset-query     ((:out mi/transform-metabase-query) dataset-query-str)
-            metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
-            lib-query         (lib/query metadata-provider dataset-query)
-            columns           (lib/returned-columns lib-query)]
-        ;; Dimensions are columns that are not aggregations
-        (remove (comp #{:source/aggregations} :lib/source) columns)))))
+    ;; In production the :database should be always present and correct. That is not the case for some test mocks.
+    ;; As e.g. in [[metabase-enterprise.semantic-search.test-util/do-with-indexable-documents!]]. Hence the thorough
+    ;; checking.
+    (when-some [dataset-query (not-empty ((:out mi/transform-metabase-query) dataset-query-str))]
+      (when (pos-int? (:database dataset-query))
+        (lib.metadata.jvm/with-metadata-provider-cache
+          (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (:database dataset-query))
+                lib-query         (lib/query metadata-provider dataset-query)
+                columns           (lib/returned-columns lib-query)]
+            ;; Dimensions are columns that are not aggregations
+            (remove (comp #{:source/aggregations} :lib/source) columns)))))))
 
-(defn extract-non-temporal-dimension-ids
+(defn- extract-non-temporal-dimension-ids
   "Extract list of nontemporal dimension field IDs, stored as JSON string. See PR 60912"
   [{:keys [dataset_query]}]
   (let [dimensions (dataset-query->dimensions dataset_query)
@@ -1281,11 +1290,20 @@
                         sort)]
     (json/encode (or dim-ids []))))
 
-(defn has-temporal-dimension?
+(defn- has-temporal-dimension?
   "Return true if the query has any temporal dimensions. See PR 60912"
   [{:keys [dataset_query]}]
   (let [dimensions (dataset-query->dimensions dataset_query)]
     (boolean (some lib.types/temporal? dimensions))))
+
+(defn- maybe-extract-native-query
+  "Return the native SQL text (truncated to `max-searchable-value-length`) if `dataset_query` is native; else nil."
+  [{:keys [dataset_query]}]
+  (let [query ((:out mi/transform-metabase-query) dataset_query)
+        query-text (when (= :native (:type query))
+                     (get-in query [:native :query]))]
+    (when query-text
+      (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
 (defn ^:private base-search-spec
   []
@@ -1299,7 +1317,8 @@
                                          :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id          true
                   :last-viewed-at       :last_used_at
-                  :native-query         (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :native-query         {:fn maybe-extract-native-query
+                                         :fields [:dataset_query]}
                   :official-collection  [:= "official" :collection.authority_level]
                   :last-edited-at       :r.timestamp
                   :last-editor-id       :r.user_id
@@ -1310,9 +1329,9 @@
                   :updated-at           true
                   :display-type         :this.display
                   :non-temporal-dim-ids {:fn extract-non-temporal-dimension-ids
-                                         :req-fields [:dataset_query]}
+                                         :fields [:dataset_query]}
                   :has-temporal-dim     {:fn has-temporal-dimension?
-                                         :req-fields [:dataset_query]}}
+                                         :fields [:dataset_query]}}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level

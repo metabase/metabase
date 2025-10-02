@@ -119,7 +119,7 @@ describe("PaletteResults", () => {
     ).toHaveTextContent("lame collection");
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
-    expect(fetchMock.calls("path:/api/search").length).toBe(2);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
   });
 
   it("should provide links to settings pages for admins", async () => {
@@ -159,7 +159,7 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
-    expect(fetchMock.calls("path:/api/search").length).toBe(1);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(1);
   });
 
   it("should provide a link to docs with the proper url param", async () => {
@@ -169,7 +169,7 @@ describe("PaletteResults", () => {
     ).toHaveAttribute("href", expect.stringContaining("?query=model"));
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
-    expect(fetchMock.calls("path:/api/search").length).toBe(2);
+    expect(fetchMock.callHistory.calls("path:/api/search").length).toBe(2);
   });
 
   it("should not allow you to select or click disabled items", async () => {

@@ -74,4 +74,15 @@ describe("HomeXraySection", () => {
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.queryByText("People")).not.toBeInTheDocument();
   });
+
+  it("should not render a caption when there are no x-rays", async () => {
+    await setup({
+      database: createMockDatabase(),
+      candidates: [],
+    });
+
+    expect(
+      screen.queryByText(/Here are some explorations/),
+    ).not.toBeInTheDocument();
+  });
 });

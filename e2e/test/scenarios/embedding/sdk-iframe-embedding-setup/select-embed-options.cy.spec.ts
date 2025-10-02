@@ -1,3 +1,5 @@
+import { mockEmbedJsToDevServer } from "e2e/support/helpers";
+
 import {
   codeBlock,
   getEmbedSidebar,
@@ -19,9 +21,12 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+    H.updateSetting("enable-embedding-simple", true);
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+    mockEmbedJsToDevServer();
   });
 
   afterEach(() => {
@@ -35,28 +40,28 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked");
 
     cy.log("drill-through should be enabled in the preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("110.93").click();
       cy.findByText("Filter by this value").should("be.visible");
     });
 
     cy.log("turn off drill-through");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isDrillThroughEnabled",
+      event_detail: "drills",
     });
 
     cy.log("drill-through should be disabled in the preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("110.93").click();
       cy.findByText("Filter by this value").should("not.exist");
     });
@@ -76,7 +81,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
 
-    H.getIframeBody().findByTestId("export-as-pdf-button").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("export-as-pdf-button")
+      .should("not.exist");
 
     cy.log("turn on downloads");
     getEmbedSidebar()
@@ -89,7 +96,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withDownloads",
     });
 
-    H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("export-as-pdf-button")
+      .should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
@@ -106,7 +115,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Show dashboard title")
       .should("be.checked");
 
-    H.getIframeBody().findByText("Orders in a dashboard").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders in a dashboard")
+      .should("be.visible");
 
     cy.log("turn off title");
     getEmbedSidebar()
@@ -119,7 +130,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withTitle",
     });
 
-    H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders in a dashboard")
+      .should("not.exist");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
@@ -133,31 +146,34 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked");
 
     cy.log("drill-through should be disabled by default in chart preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("18,760").click();
       cy.findByText("See these Orders").should("exist");
     });
 
     cy.log("turn off drill-through");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isDrillThroughEnabled",
+      event_detail: "drills",
     });
 
     cy.log("drill-through should be disabled in chart preview");
-    H.getIframeBody().within(() => {
+    H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("18,760").click();
       cy.findByText("See these Orders").should("not.exist");
     });
+
+    cy.log("allow downloads should be visible when drills are off (EMB-712)");
+    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
@@ -174,7 +190,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
 
-    H.getIframeBody()
+    H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("not.exist");
 
@@ -189,7 +205,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withDownloads",
     });
 
-    H.getIframeBody()
+    H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("be.visible");
 
@@ -206,7 +222,9 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
-    H.getIframeBody().findByText("Orders, Count").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("be.visible");
 
     cy.log("turn off title");
     getEmbedSidebar()
@@ -220,11 +238,13 @@ H.describeWithSnowplow(suiteTitle, () => {
       event_detail: "withTitle",
     });
 
-    H.getIframeBody().findByText("Orders, Count").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("not.exist");
 
     cy.log("set drills to false");
     getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
+      .findByLabelText("Allow people to drill through on data points")
       .should("be.checked")
       .click()
       .should("not.be.checked");
@@ -235,7 +255,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.be.checked");
 
     cy.log("chart title should remain hidden");
-    H.getIframeBody().findByText("Orders, Count").should("not.exist");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("not.exist");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
@@ -252,7 +274,9 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.checked");
 
     cy.log("chart title should be visible again");
-    H.getIframeBody().findByText("Orders, Count").should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders, Count")
+      .should("be.visible");
 
     H.expectUnstructuredSnowplowEvent(
       {
@@ -263,40 +287,92 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  it("toggles save button for exploration", () => {
-    navigateToEmbedOptionsStep({ experience: "exploration" });
+  ["exploration", "chart"].forEach((experience) => {
+    it(`toggles save button for ${experience}`, () => {
+      navigateToEmbedOptionsStep({
+        experience,
+        ...(experience === "chart" && { resourceName: QUESTION_NAME }),
+      });
 
-    H.getIframeBody().within(() => {
-      cy.findByText("Orders").click();
-      cy.findByText("Visualize").click();
+      if (experience === "exploration") {
+        cy.log("visualize a question to enable the save button");
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Orders").click();
+          cy.findByText("Visualize").click();
+        });
+      }
+
+      getEmbedSidebar()
+        .findByLabelText("Allow people to save new questions")
+        .should("not.be.checked");
+
+      cy.log("save button should be hidden by default");
+      H.getSimpleEmbedIframeContent().findByText("Save").should("not.exist");
+
+      cy.log("turn on save option");
+      getEmbedSidebar()
+        .findByLabelText("Allow people to save new questions")
+        .click()
+        .should("be.checked");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_option_changed",
+        event_detail: "isSaveEnabled",
+      });
+
+      if (experience === "chart") {
+        cy.log("select a different visualization to enable the save button");
+        H.getSimpleEmbedIframeContent().within(() => {
+          cy.findByText("Table").click();
+          H.popover().findByText("Number").click();
+        });
+      }
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.findByText("Save").should("be.visible");
+      });
+
+      cy.log("snippet should be updated");
+      getEmbedSidebar().findByText("Get Code").click();
+      codeBlock().should("contain", 'is-save-enabled="true"');
+    });
+  });
+
+  it("can toggle read-only setting for browser", () => {
+    navigateToEmbedOptionsStep({
+      experience: "browser",
+      resourceName: "First collection",
     });
 
     getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .should("be.checked");
-
-    cy.log("save button should be visible by default");
-    H.getIframeBody().findByText("Save").should("be.visible");
-
-    cy.log("turn off save option");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to save new questions")
-      .click()
+      .findByLabelText("Allow editing dashboards and questions")
       .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New dashboard").should("not.exist");
+    });
+
+    cy.log("turn on editing (set read-only to false)");
+    getEmbedSidebar()
+      .findByLabelText("Allow editing dashboards and questions")
+      .click()
+      .should("be.checked");
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_option_changed",
-      event_detail: "isSaveEnabled",
+      event_detail: "readOnly",
     });
 
-    H.getIframeBody().findByText("Save").should("not.exist");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New dashboard").should("be.visible");
+    });
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
-    codeBlock().should("contain", 'is-save-enabled="false"');
+    codeBlock().should("contain", 'read-only="false"');
   });
 
-  it("can change brand color", () => {
+  it("can change brand color and reset colors", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -304,8 +380,11 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
-      cy.findByText("Brand Color").should("be.visible");
+      cy.findByText("Brand color").should("be.visible");
     });
+
+    cy.log("reset button should not be visible initially");
+    getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("click on brand color picker");
     cy.findByLabelText("#509EE3").click();
@@ -324,10 +403,13 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("table header cell should now be red");
-    H.getIframeBody()
+    H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
       .should("have.css", "color", "rgb(255, 0, 0)");
+
+    cy.log("reset button should now be visible");
+    getEmbedSidebar().findByLabelText("Reset colors").should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get Code").click();
@@ -335,5 +417,68 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", '"theme": {');
     codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
+
+    cy.log("go back to embed options step");
+    getEmbedSidebar().findByText("Back").click();
+
+    cy.log("click reset button");
+    getEmbedSidebar().findByLabelText("Reset colors").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_option_changed",
+      event_detail: "theme",
+    });
+
+    cy.log("table header should be back to default blue");
+    H.getSimpleEmbedIframeContent()
+      .findAllByTestId("cell-data")
+      .first()
+      .should("have.css", "color", "rgb(80, 158, 227)");
+
+    cy.log("reset button should be hidden again");
+    getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
+
+    cy.log("snippet should not contain theme colors");
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("not.contain", '"theme": {');
+  });
+
+  it("derives colors for dark theme palette", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    cy.log("change brand color");
+    cy.findByLabelText("#509EE3").click();
+    H.popover().within(() => {
+      cy.findByDisplayValue("#509EE3").clear().type("#BD51FD");
+    });
+
+    cy.log("change primary text color");
+    cy.findByLabelText("#4C5773").click();
+    H.popover().within(() => {
+      cy.findByDisplayValue("#4C5773").clear().type("#F1F1F1");
+    });
+
+    cy.log("change background color");
+    cy.findByLabelText("#FFFFFF").click();
+    H.popover().within(() => {
+      cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
+    });
+
+    cy.log("verify the preview reflects the dark theme");
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("dashboard")
+      .should("have.css", "background-color", "rgb(18, 18, 18)");
+
+    cy.log("check that derived colors are applied to snippet");
+    getEmbedSidebar().findByText("Get Code").click();
+
+    // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
+    cy.log("dark mode colors should be derived");
+    codeBlock().should("contain", '"background-hover": "rgb(27, 27, 27)"');
+    codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
+    codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
   });
 });

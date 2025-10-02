@@ -107,7 +107,7 @@ export const createMockTokenFeatures = (
   content_verification: false,
   embedding: false,
   embedding_sdk: false,
-  embedding_iframe_sdk: false,
+  embedding_simple: false,
   etl_connections: false,
   etl_connections_pg: false,
   hosting: false,
@@ -132,8 +132,10 @@ export const createMockTokenFeatures = (
   ai_entity_analysis: false,
   ai_sql_fixer: false,
   ai_sql_generation: false,
+  offer_metabase_ai: false,
   database_routing: false,
   development_mode: false,
+  semantic_search: false,
   ...opts,
 });
 
@@ -151,6 +153,7 @@ export const createMockSettingDefinition = <
 export const createMockSettings = (
   opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
+  "analytics-uuid": "eefb3320-1d3f-4686-a22a-1d30ae729525",
   "admin-email": "admin@metabase.test",
   "airgap-enabled": false,
   "allowed-iframe-hosts": "*",
@@ -275,6 +278,7 @@ export const createMockSettings = (
   "jwt-attribute-email": null,
   "jwt-attribute-firstname": null,
   "jwt-attribute-lastname": null,
+  "jwt-attribute-groups": null,
   "jwt-group-sync": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
@@ -331,6 +335,7 @@ export const createMockSettings = (
   "scim-enabled": false,
   "scim-base-url": "http://localhost:3000/api/ee/scim/v2/",
   "snowplow-url": "",
+  "search-engine": "appdb",
   "search-typeahead-enabled": true,
   "setup-token": null,
   "session-cookies": null,
@@ -376,7 +381,6 @@ export const createMockSettings = (
   "notebook-native-preview-sidebar-width": null,
   "query-analysis-enabled": false,
   "check-for-updates": true,
-  "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
   "license-token-missing-banner-dismissal-timestamp": [],
   "sdk-iframe-embed-setup-settings": null,

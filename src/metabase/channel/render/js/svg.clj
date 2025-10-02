@@ -218,17 +218,6 @@
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
 
-(defn row-chart
-  "Clojure entrypoint to render a row chart."
-  [settings data]
-  (let [svg-string (with-static-viz-context context
-                     (.asString (js.engine/execute-fn-name context "row_chart"
-                                                           (json/encode settings)
-                                                           (json/encode data)
-                                                           (json/encode (appearance/application-colors))
-                                                           (json/encode (premium-features/token-features)))))]
-    (svg-string->bytes svg-string)))
-
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]

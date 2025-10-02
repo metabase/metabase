@@ -107,6 +107,13 @@
 
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
 
+(defn- get-dbref-part [dbref part-name]
+  (case part-name
+    "$ref" (.getCollectionName ^com.mongodb.DBRef dbref)
+    "$id" (.getId ^com.mongodb.DBRef dbref)
+    "$db" (.getDatabaseName ^com.mongodb.DBRef dbref)
+    nil))
+
 (defn- row->vec [row-col-names]
   (fn [^org.bson.Document row]
     (mapv (fn [col-name]
@@ -114,7 +121,15 @@
                         (reduce
                          (fn [^org.bson.Document object ^String part-name]
                            (when object
-                             (.get object part-name)))
+                             (cond
+                               (instance? org.bson.Document object)
+                               (.get ^org.bson.Document object part-name)
+
+                               (instance? com.mongodb.DBRef object)
+                               (get-dbref-part object part-name)
+
+                               :else
+                               nil)))
                          row
                          (str/split col-name #"\."))
                         (.get row col-name))]

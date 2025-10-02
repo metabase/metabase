@@ -41,7 +41,7 @@ const TestComponent = ({
   );
 };
 
-const setup = ({
+const setup = async ({
   hasPublicLink = true,
   isAdmin = true,
 }: {
@@ -73,19 +73,21 @@ const setup = ({
   renderWithProviders(<TestComponent question={question} onClose={onClose} />, {
     storeInitialState: state,
   });
+
+  await screen.findByText("Public link");
 };
 
 describe("QuestionPublicLinkPopover", () => {
   it("should display a question-specific public url", async () => {
-    setup();
+    await setup();
 
     expect(
       await screen.findByDisplayValue(`${SITE_URL}/public/question/mock-uuid`),
     ).toBeInTheDocument();
   });
 
-  it("should display extensions for the public link", () => {
-    setup();
+  it("should display extensions for the public link", async () => {
+    await setup();
 
     const extensionOptions = screen.getAllByTestId("extension-option");
 
@@ -97,28 +99,34 @@ describe("QuestionPublicLinkPopover", () => {
     ]);
   });
 
-  it("should call Card public link API when creating link", () => {
-    setup({ hasPublicLink: false });
+  it("should call Card public link API when creating link", async () => {
+    await setup({ hasPublicLink: false });
 
     expect(
-      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
-        method: "POST",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/card/${TEST_CARD_ID}/public_link`,
+        {
+          method: "POST",
+        },
+      ),
     ).toHaveLength(1);
   });
 
   it("should call the Card public link API when deleting link", async () => {
-    setup({ hasPublicLink: true });
+    await setup({ hasPublicLink: true });
     await userEvent.click(screen.getByText("Remove public link"));
     expect(
-      fetchMock.calls(`path:/api/card/${TEST_CARD_ID}/public_link`, {
-        method: "DELETE",
-      }),
+      fetchMock.callHistory.calls(
+        `path:/api/card/${TEST_CARD_ID}/public_link`,
+        {
+          method: "DELETE",
+        },
+      ),
     ).toHaveLength(1);
   });
 
-  it("should not show non-admins the option to remove a public link", () => {
-    setup({ isAdmin: false });
+  it("should not show non-admins the option to remove a public link", async () => {
+    await setup({ isAdmin: false });
 
     expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
   });

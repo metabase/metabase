@@ -84,6 +84,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 - [Authentication](./authentication.md)
 - [Questions](./questions.md)
+- [AI chat](./ai-chat.md)
 - [Dashboards](./dashboards.md)
 - [Appearance](./appearance.md)
 - [Collections](./collections.md)
@@ -100,7 +101,8 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 
 View the SDK's changelog:
 
-- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
+- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
 - [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 - [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 - [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)

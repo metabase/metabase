@@ -14,14 +14,6 @@
       ]
     },
     {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "lbrdnk",
-        "bronsa"
-      ]
-    },
-    {
       "name": "Drivers",
       "label": ".Team/Drivers",
       "members": [
@@ -60,18 +52,10 @@
       "members": [
         "npfitz",
         "johnswanson",
-        "rafpaf",
         "iethree",
         "nvoxland",
-        "fraserdrops",
         "edpaget",
-        "deniskaber"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
+        "deniskaber",
         "alxnddr",
         "bpander"
       ]
@@ -94,19 +78,32 @@
         "sloansparger",
         "somtom",
         "wotbrew",
-        "tsplude"
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac", "chodorowicz"]
+      "members": [
+        "nemanjaglumac",
+        "chodorowicz",
+        "andsalves"
+      ]
     },
     {
       "name": "Cloud",
       "label": "cloud",
       "members": [
         "filipesilva"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "eliotmetabase"
       ]
     }
   ]

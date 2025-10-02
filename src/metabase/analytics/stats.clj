@@ -136,6 +136,7 @@
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
+   :enable_embedding_simple              (setting/get :enable-embedding-simple)
    :enable_embedding_interactive         (setting/get :enable-embedding-interactive)
    :enable_embedding_static              (setting/get :enable-embedding-static)
    :embedding_app_origin_set             (boolean
@@ -296,9 +297,10 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:collections              (count collections)
+  (let [collections (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where
+                                                                          [:and (mi/exclude-internal-content-hsql :model/Card)]})]
+    {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
      :num_cards_per_collection (medium-histogram cards :collection_id)}))
@@ -345,6 +347,11 @@
   "Get metrics based on Segments."
   []
   {:segments (t2/count :model/Segment)})
+
+(defn- metric-metrics
+  "Get metrics based on Metrics."
+  []
+  {:metrics (t2/count :model/Card :type :metric :archived false)})
 
 ;;; Execution Metrics
 
@@ -473,6 +480,7 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
+                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -735,7 +743,7 @@
 
 (defn- ee-snowplow-features-data'
   []
-  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list]]
+  (let [features [:sso-jwt :sso-saml :scim :sandboxes :email-allow-list :semantic-search]]
     (map
      (fn [feature]
        {:name      feature
@@ -864,7 +872,10 @@
     :available true
     :enabled   (->> (t2/select-fn-set (comp :impersonation :details) :model/Database :engine "starburst")
                     (some identity)
-                    boolean)}])
+                    boolean)}
+   {:name      :table-data-editing
+    :available (premium-features/table-data-editing?)
+    :enabled   (premium-features/table-data-editing?)}])
 
 (defn- snowplow-features
   []

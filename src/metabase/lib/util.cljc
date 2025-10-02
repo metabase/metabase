@@ -24,7 +24,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -216,7 +217,7 @@
         (update :columns (fn [columns]
                            (mapv (fn [column]
                                    (-> column
-                                       (update-keys u/->kebab-case-en)
+                                       (perf/update-keys u/->kebab-case-en)
                                        (assoc :lib/type :metadata/column)))
                                  columns)))
         (assoc :lib/type :metadata/results))))
@@ -629,9 +630,7 @@
           (update-query-stage
            stage-number
            (fn [stage]
-             (-> stage
-                 (dissoc :order-by :fields)
-                 (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+             (dissoc stage :order-by)))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
 

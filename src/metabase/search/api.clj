@@ -83,7 +83,7 @@
     ;; The job appears to wait on the main thread when run from tests, so, unfortunately, testing this branch is hard.
     (if (and (task/job-exists? task.search-index/reindex-job-key) (or (not ingestion/*force-sync*) config/is-test?))
       (do (task/trigger-now! task.search-index/reindex-job-key) {:message "task triggered"})
-      (do (search/reindex!) {:message "done"}))
+      (do (search/reindex!) {:message "reindex triggered"}))
 
     (throw (ex-info "Search index is not supported for this installation." {:status-code 501}))))
 
@@ -171,7 +171,7 @@
     non-temporal-dim-ids                :non_temporal_dim_ids
     has-temporal-dim                    :has_temporal_dim}
    :- [:map
-       [:q                                   {:optional true} [:maybe ms/NonBlankString]]
+       [:q                                   {:optional true} [:maybe :string]]
        [:context                             {:optional true} [:maybe :keyword]]
        [:archived                            {:default false} [:maybe :boolean]]
        [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
@@ -214,7 +214,7 @@
                 :offset                              (request/offset)
                 :search-engine                       search-engine
                 :search-native-query                 search-native-query
-                :search-string                       q
+                :search-string                       (some-> q str/trim not-empty)
                 :table-db-id                         table-db-id
                 :verified                            verified
                 :ids                                 (set ids)

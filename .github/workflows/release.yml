@@ -17,8 +17,6 @@ on:
         options:
           - none
           - latest
-          - beta
-          - nightly
         required: true
         default: 'none'
       auto:
@@ -41,8 +39,6 @@ on:
         # options:
         #   - none
         #   - latest
-        #   - beta
-        #   - nightly
         required: true
         default: 'none'
       auto:
@@ -403,7 +399,9 @@ jobs:
             });
 
   trigger-ee-extra-pr:
-    needs: verify-s3-download
+    needs:
+      - containerize-ee
+      - verify-s3-download
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:

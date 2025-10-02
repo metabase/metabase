@@ -291,7 +291,7 @@
   (expression-clause-with-in operator (into [column] values)
                              (if (#{:is-empty :not-empty := :!=} operator)
                                {}
-                               options)))
+                               {:case-sensitive (:case-sensitive options false)})))
 
 (mu/defn string-filter-parts :- [:maybe StringFilterParts]
   "Destructures a string filter clause created by [[string-filter-clause]]. Returns `nil` if the clause does not match
@@ -336,7 +336,7 @@
     (value :guard number?)
     value
 
-    [:value (_ :guard #(= (:base-type %) :type/BigInteger)) (value :guard string?)]
+    [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
     (u.number/parse-bigint value)))
 
 (def ^:private NumberFilterParts
@@ -554,7 +554,7 @@
       [:time-interval
        opts
        (col-ref :guard date-col?)
-       (value :guard #(or (number? %) (= :current %)))
+       (value :guard (or (number? value) (= :current value)))
        (unit :guard keyword?)]
       {:column       (ref->col col-ref)
        :value        (if (= value :current) 0 value)
@@ -728,9 +728,10 @@
   (lib.util/clause-of-type? lhs-or-rhs :value))
 
 (mu/defn join-condition-lhs-or-rhs-column? :- :boolean
-  "Whether this LHS or RHS expression is a `:field` reference."
+  "Whether this LHS or RHS expression is a `:field` or `:expression` reference."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
-  (lib.util/field-clause? lhs-or-rhs))
+  (or (lib.util/clause-of-type? lhs-or-rhs :field)
+      (lib.util/clause-of-type? lhs-or-rhs :expression)))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.

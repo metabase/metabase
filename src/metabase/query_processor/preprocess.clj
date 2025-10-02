@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [metabase.config.core :as config]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -20,6 +21,7 @@
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
+   [metabase.query-processor.middleware.drop-fields-in-summaries :as drop-fields-in-summaries]
    [metabase.query-processor.middleware.ensure-joins-use-source-query :as ensure-joins-use-source-query]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.expand-aggregations :as expand-aggregations]
@@ -49,6 +51,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
+
+(set! *warn-on-reflection* true)
 
 ;;; the following helper functions are temporary, to aid in the transition from a legacy MBQL QP to a pMBQL QP. Each
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
@@ -120,6 +124,7 @@
    (ensure-pmbql #'qp.constraints/maybe-add-default-userland-constraints)
    (ensure-pmbql #'validate/validate-query)
    (ensure-pmbql #'fetch-source-query/resolve-source-cards)
+   (ensure-pmbql #'drop-fields-in-summaries/drop-fields-in-summaries)
    (ensure-pmbql #'expand-aggregations/expand-aggregations)
    (ensure-pmbql #'metrics/adjust)
    (ensure-pmbql #'expand-macros/expand-macros)
@@ -141,13 +146,13 @@
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-pmbql #'qp.add-remaps/add-remapped-columns)
    #'qp.resolve-fields/resolve-fields ; this middleware actually works with either MBQL 5 or legacy
-   (ensure-legacy #'binning/update-binning-strategy)
+   (ensure-pmbql #'binning/update-binning-strategy)
    (ensure-legacy #'desugar/desugar)
    (ensure-legacy #'qp.add-default-temporal-unit/add-default-temporal-unit)
    (ensure-pmbql #'qp.add-implicit-joins/add-implicit-joins)
    (ensure-legacy #'resolve-joins/resolve-joins)
-   (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
-   (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
+   (ensure-pmbql #'resolve-joined-fields/resolve-joined-fields)
+   (ensure-pmbql #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
@@ -167,6 +172,12 @@
       fn-name)
     middleware-fn))
 
+(def ^:private ^Long slow-middleware-warning-threshold-ms
+  "Warn about slow middleware if it takes longer than this many milliseconds."
+  (if config/is-prod?
+    1000 ; this is egregious but we don't want to spam the logs with stuff like this in prod
+    100))
+
 (mu/defn preprocess :- [:map
                         [:database ::lib.schema.id/database]]
   "Fully preprocess a query, but do not compile it to a native query or execute it."
@@ -182,22 +193,26 @@
        ([query middleware-fn]
         (try
           (assert (ifn? middleware-fn))
-          ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-          (u/prog1 (middleware-fn query)
-            (qp.debug/debug>
-              (when-not (= <> query)
-                (let [middleware-fn-name (middleware-fn-name middleware-fn)]
-                  (list middleware-fn-name '=> <>
-                        ^{:portal.viewer/default :portal.viewer/diff}
-                        [(or (-> <> meta :converted-form) query)
-                         <>]))))
+          (let [start-timer (u/start-timer)]
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
-            (when-not (map? <>)
-              (throw (ex-info (format "Middleware did not return a valid query.")
-                              {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp}))))
+            (u/prog1 (middleware-fn query)
+              (let [duration-ms (u/since-ms start-timer)]
+                (when (> duration-ms slow-middleware-warning-threshold-ms)
+                  (log/warnf "Slow middleware: %s took %s" (middleware-fn-name middleware-fn) (u/format-milliseconds duration-ms))))
+              (qp.debug/debug>
+                (when-not (= <> query)
+                  (let [middleware-fn-name (middleware-fn-name middleware-fn)]
+                    (list middleware-fn-name '=> <>
+                          ^{:portal.viewer/default :portal.viewer/diff}
+                          [(or (-> <> meta :converted-form) query)
+                           <>]))))
+              ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
+              (when-not (map? <>)
+                (throw (ex-info (format "Middleware did not return a valid query.")
+                                {:fn (middleware-fn-name middleware-fn), :query query, :result <>, :type qp.error-type/qp})))))
           (catch Throwable e
             (let [middleware-fn (middleware-fn-name middleware-fn)]
-              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
+              (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn ((some-fn ex-message class) e))
                               {:fn middleware-fn, :query query, :type qp.error-type/qp}
                               e)))))))
      query

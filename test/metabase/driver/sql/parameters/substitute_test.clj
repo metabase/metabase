@@ -1254,3 +1254,18 @@
                 {:card-id 1
                  :query   "SELECT * FROM table WHERE x LIKE ?"
                  :params  ["G%"]})}))))))
+
+(deftest ^:parallel offset-as-filter-variable-value-test
+  (let [query "select 1 where {{variable}} is not null"]
+    (is (= [[1]]
+           (mt/rows
+            (qp/process-query
+             {:database (mt/id)
+              :type :native
+              :native {:query query
+                       :template-tags {"variable" {:name         "variable"
+                                                   :display_name "Variable"
+                                                   :type         "text"}}}
+              :parameters [{:type   :string/=
+                            :value  ["offset"]
+                            :target [:variable [:template-tag "variable"]]}]}))))))

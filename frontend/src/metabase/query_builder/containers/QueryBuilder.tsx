@@ -229,7 +229,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
-    runQuestionOrSelectedQuery,
+    runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -237,6 +237,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     allLoaded,
     showTimelinesForCollection,
     card,
+    isAdmin,
     isLoadingComplete,
     closeQB,
     route,
@@ -252,6 +253,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     (series: Series) => {
       const isNonTable = series[0].card.display !== "table";
       if (
+        isAdmin &&
         !didFirstNonTableChartGenerated &&
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
@@ -260,7 +262,12 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
-    [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender],
+    [
+      isAdmin,
+      card,
+      didFirstNonTableChartGenerated,
+      setDidFirstNonTableChartRender,
+    ],
   );
 
   const forceUpdate = useForceUpdate();
@@ -432,7 +439,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const handleCmdEnter = () => {
     if (queryBuilderMode !== "notebook") {
-      runQuestionOrSelectedQuery();
+      runOrCancelQuestionOrSelectedQuery();
     }
   };
 

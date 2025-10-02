@@ -57,16 +57,14 @@ function setup({
   selectedTable,
   entityTypes,
 }: SetupOpts = {}) {
-  fetchMock.get(
-    {
-      url: "path:/api/search",
-      query: {
-        calculate_available_models: true,
-        limit: 0,
-        models: ["dataset"],
-      },
+  fetchMock.get({
+    url: "path:/api/search",
+    query: {
+      calculate_available_models: true,
+      limit: 0,
+      models: ["dataset"],
     },
-    {
+    response: {
       data: [],
       limit: 0,
       models: ["dataset"],
@@ -76,7 +74,7 @@ function setup({
       total: 1,
       available_models: AVAILABLE_MODELS[availableModels],
     },
-  );
+  });
 
   setupDatabasesEndpoints(
     databases,

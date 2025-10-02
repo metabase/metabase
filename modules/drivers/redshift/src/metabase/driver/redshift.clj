@@ -42,7 +42,7 @@
                               :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false
-                              :database-routing          false}]
+                              :database-routing          true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -272,12 +272,13 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
+     (let [db (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
+                                                  (driver-api/database (driver-api/metadata-provider)))
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec)]
+       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
-       (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (driver-api/with-metadata-provider db-or-id-or-spec
-                                                                                                (driver-api/database (driver-api/metadata-provider)))
-                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -457,15 +458,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db], :as opts}]
+  [_ {:keys [host port db dbname], :as opts}]
+  (when (and db dbname)
+    (throw (ex-info "Redshift connection details cannot contain both 'db' and 'dbname' options" {})))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" db)
+     :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}
-    (dissoc opts :host :port :db))))
+    (dissoc opts :host :port :db :dbname))))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk

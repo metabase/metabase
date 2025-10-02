@@ -11,8 +11,8 @@ export const setupListNotificationEndpoints = (
 ) => {
   fetchMock.get("path:/api/notification", notifications, {
     query: {
-      card_id,
-      include_inactive: false,
+      card_id: card_id ? card_id.toString() : "",
+      include_inactive: false.toString(),
     },
   });
 };

@@ -487,7 +487,7 @@ describe("Cloud settings section", () => {
     cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
     cy.findByTestId("admin-layout-content")
       .findByText("Go to the Metabase Store")
-      .should("have.attr", "href", "https://store.metabase.com/");
+      .should("have.attr", "href", "https://test-store.metabase.com/");
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
@@ -1431,10 +1431,6 @@ describe("admin > settings > updates", () => {
       .findByText("Check for updates")
       .should("be.visible");
 
-    cy.findByTestId("update-channel-setting")
-      .findByText("Types of releases to check for")
-      .should("be.visible");
-
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
       cy.findByText("Some old feature").should("be.visible");
@@ -1447,36 +1443,48 @@ describe("admin > settings > updates", () => {
       .click();
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Types of releases to check for").should("not.exist");
       cy.findByText("Some old feature").should("not.exist");
     });
   });
+});
 
-  it("should change release notes based on the selected update channel", () => {
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
-      cy.findByText("Some old feature").should("be.visible");
-      cy.findByText("New latest feature").should("be.visible");
-      cy.findByDisplayValue("Stable releases").click();
-    });
+describe("admin > settings > nav", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.visit("/admin/settings");
+  });
 
-    H.popover().findByText("Beta releases").click();
+  it("should navigate properly", () => {
+    // sadly we can't test this in unit tests with the current state of react-router and redux 😭
+    cy.log("clicking sidebar nav links should navigate there");
 
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.309 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New beta feature").should("be.visible");
-      cy.findByDisplayValue("Beta releases").click();
-    });
+    cy.url().should("include", "/admin/settings/general");
+    cy.findByTestId("admin-layout-sidebar").findByText(/email/i).click();
+    cy.findByTestId("admin-layout-content").findByText(/email/i);
+    cy.url().should("include", "/admin/settings/email");
 
-    H.popover().findByText("Nightly builds").click();
+    cy.log(
+      "clicking folders should expand and collapse them, but not navigate",
+    );
 
-    cy.findByTestId("settings-updates").within(() => {
-      cy.findByText(/Metabase 1\.86\.75\.311 is available/).should(
-        "be.visible",
-      );
-      cy.findByText("New nightly feature").should("be.visible");
-    });
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .should("not.be.visible");
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/authentication/i)
+      .click();
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .should("be.visible");
+    // still on email page
+    cy.findByTestId("admin-layout-content").findByText(/email/i);
+    cy.url().should("include", "/admin/settings/email");
+    // navigate to sub-item
+    cy.findByTestId("admin-layout-sidebar")
+      .findByText(/api keys/i)
+      .click();
+    cy.findByTestId("admin-layout-content").findByText(/No API keys here yet/i);
+    cy.url().should("include", "/admin/settings/authentication/api-keys");
   });
 });

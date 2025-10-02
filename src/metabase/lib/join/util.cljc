@@ -8,9 +8,10 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
-(def JoinWithOptionalAlias
+(mr/def ::join-with-optional-alias
   "A Join that may not yet have an `:alias`, which is normally required; [[join]] accepts this and will add a default
   alias if one is not present."
   [:merge
@@ -18,33 +19,38 @@
    [:map
     [:alias {:optional true} [:ref ::lib.schema.join/alias]]]])
 
-(def PartialJoin
+(mr/def ::partial-join
   "A join that may not yet have an `:alias` or `:conditions`."
   [:merge
-   JoinWithOptionalAlias
+   [:ref ::join-with-optional-alias]
    [:map
     [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
-(def Field
+(mr/def ::column-or-field-ref
   "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."
-  [:or
-   [:ref ::lib.schema.metadata/column]
-   [:ref :mbql.clause/field]])
+  [:multi {:dispatch lib.dispatch/dispatch-value}
+   [:field              [:ref :mbql.clause/field]]
+   [:metadata/column    [:ref ::lib.schema.metadata/column]]
+   [:malli.core/default [:fn
+                         {:error/message "Should be a :field ref or column metadata"}
+                         (constantly false)]]])
 
-(def FieldOrPartialJoin
+(mr/def ::column-or-field-ref-or-partial-join
   "A field or a partial join."
-  [:or Field PartialJoin])
+  [:multi {:dispatch lib.dispatch/dispatch-value}
+   [:mbql/join          [:ref ::partial-join]]
+   [:malli.core/default [:ref ::column-or-field-ref]]])
 
-(mu/defn current-join-alias :- [:maybe ::lib.schema.common/non-blank-string]
+(mu/defn current-join-alias :- [:maybe ::lib.schema.join/alias]
   "Get the current join alias associated with something, if it has one."
-  [field-or-join :- [:maybe FieldOrPartialJoin]]
+  [field-or-join]
   (case (lib.dispatch/dispatch-value field-or-join)
-    :dispatch-type/nil nil
     :field             (:join-alias (lib.options/options field-or-join))
     :metadata/column   (:metabase.lib.join/join-alias field-or-join)
-    :mbql/join         (:alias field-or-join)))
+    :mbql/join         (:alias field-or-join)
+    nil))
 
-(mu/defn joined-field-desired-alias :- ::lib.schema.common/non-blank-string
+(mu/defn joined-field-desired-alias :- ::lib.schema.metadata/desired-column-alias
   "Desired alias for a Field that comes from a join, e.g.
 
     MyJoin__my_field
@@ -55,7 +61,7 @@
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
 
-(mu/defn format-implicit-join-name :- ::lib.schema.common/non-blank-string
+(mu/defn format-implicit-join-name :- ::lib.schema.join/alias
   "Name for an implicit join against `table-name` via an FK field, e.g.
 
     CATEGORIES__via__CATEGORY_ID
@@ -80,7 +86,7 @@
             fk-field-name (or fk-field-name (:name (lib.metadata/field metadata-providerable fk-field-id)))]
         (format-implicit-join-name table-name fk-field-name fk-join-alias)))))
 
-(mu/defn desired-alias :- :string
+(mu/defn desired-alias :- ::lib.schema.metadata/desired-column-alias
   "Desired alias for a Field e.g.
 
     my_field

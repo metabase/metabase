@@ -58,51 +58,138 @@ describe("suggestAggregations", () => {
     const RESULTS = {
       from: 0,
       to: 4,
-      filter: false,
       options: [
         {
-          apply: expect.any(Function),
+          type: "aggregation",
+          label: "Count",
           displayLabel: "Count",
           icon: "function",
-          label: "Count",
           matches: [[0, 3]],
-          type: "aggregation",
+          apply: expect.any(Function),
         },
         {
-          apply: expect.any(Function),
+          type: "aggregation",
+          label: "CountIf",
           displayLabel: "CountIf",
           icon: "function",
-          label: "CountIf",
           matches: [[0, 3]],
-          type: "aggregation",
+          apply: expect.any(Function),
         },
         {
-          apply: expect.any(Function),
+          type: "aggregation",
+          label: "CumulativeCount",
           displayLabel: "CumulativeCount",
           icon: "function",
-          label: "CumulativeCount",
           matches: [
             [0, 1],
             [3, 3],
             [10, 13],
           ],
-          type: "aggregation",
+          apply: expect.any(Function),
         },
         {
-          displayLabel: "CumulativeSum",
+          type: "aggregation",
+          label: "concat",
+          displayLabel: "concat",
+          icon: "function",
+          matches: [[0, 3]],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "contains",
+          displayLabel: "contains",
+          icon: "function",
+          matches: [
+            [0, 2],
+            [6, 6],
+          ],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "second",
+          displayLabel: "second",
+          icon: "function",
+          matches: [[2, 4]],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "doesNotContain",
+          displayLabel: "doesNotContain",
+          icon: "function",
+          matches: [
+            [1, 1],
+            [4, 5],
+            [7, 9],
+            [13, 13],
+          ],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "coalesce",
+          displayLabel: "coalesce",
+          icon: "function",
+          matches: [
+            [0, 1],
+            [6, 6],
+          ],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
           label: "CumulativeSum",
+          displayLabel: "CumulativeSum",
+          icon: "function",
           matches: [
             [0, 1],
             [3, 3],
             [11, 11],
           ],
-          icon: "function",
+          apply: expect.any(Function),
+        },
+        {
           type: "aggregation",
+          label: "hour",
+          displayLabel: "hour",
+          icon: "function",
+          matches: [[1, 2]],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "month",
+          displayLabel: "month",
+          icon: "function",
+          matches: [[1, 2]],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "monthName",
+          displayLabel: "monthName",
+          icon: "function",
+          matches: [
+            [1, 2],
+            [5, 5],
+          ],
+          apply: expect.any(Function),
+        },
+        {
+          type: "aggregation",
+          label: "notNull",
+          displayLabel: "notNull",
+          icon: "function",
+          matches: [
+            [0, 1],
+            [3, 4],
+          ],
           apply: expect.any(Function),
         },
       ],
     };
-
     const RESULTS_NO_TEMPLATE = {
       ...RESULTS,
       options: RESULTS.options.map((option) => ({
@@ -124,7 +211,6 @@ describe("suggestAggregations", () => {
         from: 0,
         to: 11,
         options: [],
-        filter: false,
       });
     });
 
@@ -137,7 +223,6 @@ describe("suggestAggregations", () => {
       expect(results).toEqual({
         from: 0,
         to: 11,
-        filter: false,
         options: [
           {
             label: "StandardDeviation",

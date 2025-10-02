@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, within } from "__support__/ui";
-import { BUY_STORAGE_URL } from "metabase/admin/upsells";
 
 import { setupHostedInstance, setupProUpload } from "./setup";
 
@@ -109,6 +108,9 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "error",
     });
+    expect(
+      await screen.findByRole("tab", { name: /CSV$/ }),
+    ).toBeInTheDocument();
     await assertSheetsOpened();
 
     const connectButton = await screen.findByRole("button", {
@@ -150,7 +152,10 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
 
     const upsellLink = within(alert).getByRole("link", { name: "Add storage" });
     expect(upsellLink).toBeInTheDocument();
-    expect(upsellLink).toHaveAttribute("href", BUY_STORAGE_URL);
+    expect(upsellLink).toHaveAttribute(
+      "href",
+      "https://store.metabase.com/account/storage",
+    );
 
     const driveLink = within(alert).getByRole("link", {
       name: "Go to Google Drive",

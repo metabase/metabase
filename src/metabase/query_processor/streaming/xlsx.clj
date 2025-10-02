@@ -27,6 +27,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util UUID)
    (org.apache.poi.ss.usermodel
     Cell
     DataConsolidateFunction
@@ -315,6 +316,10 @@
   {:arglists '([cell value styles typed-styles])}
   (fn [^Cell _cell value _styles _typed-styles]
     (type value)))
+
+(defmethod set-cell! UUID
+  [^Cell cell ^UUID uuid _styles _typed-styles]
+  (.setCellValue cell (str uuid)))
 
 ;; Temporal values in Excel are just NUMERIC cells that are stored in a floating-point format and have some cell
 ;; styles applied that dictate how to format them

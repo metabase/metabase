@@ -94,6 +94,7 @@ export const DatabaseEditConnectionForm = withRouter(
               onCancel={onCancel}
               onSubmit={handleSubmit}
               setIsDirty={setIsDirty}
+              location="admin"
             />
           ) : (
             <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>

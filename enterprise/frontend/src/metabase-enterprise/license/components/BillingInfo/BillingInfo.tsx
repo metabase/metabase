@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import Alert from "metabase/common/components/Alert";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
-import { getStoreUrl } from "metabase/selectors/settings";
+import { useStoreUrl } from "metabase/common/hooks";
 import { Anchor, Box, Icon, Text } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 
@@ -65,7 +65,7 @@ const BillingInfoError = () => {
 };
 
 const BillingGoToStore = () => {
-  const url = getStoreUrl();
+  const url = useStoreUrl();
 
   return (
     <>

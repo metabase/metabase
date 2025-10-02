@@ -81,7 +81,7 @@ Then the number of user accounts would total 8 for that day.
 
 If you're on Metabase Cloud, counting active users works the same: each day we count the maxium number of user accounts at any one time over the previous 36 hours.
 
-We refresh the user count you see in your [Metabase Store account page](http://store.metabase.com) every day. Since the refresh only happens once a day, there might be a delay between when you adjust the number of user accounts in your Metabase and when your accounts sync with your Store page.
+We refresh the user count you see in your [Metabase Store account page](https://store.metabase.com) every day. Since the refresh only happens once a day, there might be a delay between when you adjust the number of user accounts in your Metabase and when your accounts sync with your Store page.
 
 Metabase counts each user account as unique, even if that account uses the same email for multiple Metabases. For example, if person@example.com has an account in both instance A and instance B, the total will double count person@example.com (the tallying works like `COUNT`, not `COUNT DISTINCT`).
 

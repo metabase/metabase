@@ -2,12 +2,13 @@
   "API client for interfacing with Harbormaster on store-api-url."
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [martian.clj-http :as martian-http]
    [martian.core :as martian]
    [medley.core :as m]
    [metabase.api.settings :as api.auth]
-   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -44,7 +45,7 @@
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
   []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api/store-api-url)
         _ (when (str/blank? store-api-url)
             (log/error "Missing store-api-url. Cannot create hm client config.")
             (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
@@ -135,10 +136,11 @@
    {:headers {"Authorization" (str "Bearer " api-key)}}))
 
 (def ^:private create-client-memo
-  (memoize create-client))
+  (memoize/ttl create-client
+               :ttl/threshold (m.util/minutes->ms 5)))
 
 (defn- client []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api/store-api-url)
         api-key       (api.auth/api-key)]
     (when (str/blank? store-api-url)
       (log/error "Missing store-api-url. Cannot create hm client config.")
@@ -213,6 +215,5 @@
   ;;     :as :text}
 
   ;; Call the :list-connections operation.
-  (call :list-connections)
+  (call :list-connections))
   ;; => ()
-  )

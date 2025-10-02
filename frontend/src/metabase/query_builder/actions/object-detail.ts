@@ -28,7 +28,8 @@ import { zoomInRow } from "./zoom";
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 export const resetRowZoom = () => (dispatch: Dispatch) => {
   dispatch({ type: RESET_ROW_ZOOM });
-  dispatch(updateUrl());
+
+  dispatch(updateUrl(null, { preserveParameters: false }));
 };
 
 function filterByFk(

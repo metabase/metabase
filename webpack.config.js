@@ -2,12 +2,12 @@
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
 const fs = require("fs");
+const path = require("path");
 
 const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-const path = require("path");
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const WebpackNotifierPlugin = require("webpack-notifier");
@@ -19,7 +19,8 @@ const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
 const ENTERPRISE_SRC_PATH =
   __dirname + "/enterprise/frontend/src/metabase-enterprise";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
 const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
 const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
@@ -232,7 +233,7 @@ const config = {
           ? ENTERPRISE_SRC_PATH + "/overrides"
           : SRC_PATH + "/lib/noop",
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_SRC_PATH,
       "sdk-specific-imports": SRC_PATH + "/lib/noop",
       "sdk-iframe-embedding-ee-plugins":
         process.env.MB_EDITION === "ee"

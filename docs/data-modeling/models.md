@@ -40,10 +40,14 @@ Models you create are automatically [pinned to the current collection](../explor
 
 ### Create a model from scratch
 
-1. In the upper right, click **New +** > **Model**.
-2. Choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
-3. Select your data.
-4. Create and save your query.
+- Navigate to the Models tab in the sidebar. You might have to open it using the button in the top left, then scroll down to the section labeled **Data**, and pick **Models**. Then click on the **+** button in the top right.
+- Or open the [command palette](https://www.metabase.com/docs/latest/exploration-and-organization/exploration#command-palette) and type "model." Then click on the **New model** action.
+
+Now choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
+
+Next, select your data, create your query, and save it.
+
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
 
 ### Create a model from a saved question
 

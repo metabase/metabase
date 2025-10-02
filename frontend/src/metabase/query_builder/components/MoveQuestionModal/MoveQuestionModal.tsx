@@ -4,6 +4,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/collections/components/CollectionBulkActions/QuestionMoveConfirmModal";
 import type { MoveDestination } from "metabase/collections/types";
 import { canonicalCollectionId } from "metabase/collections/utils";
@@ -12,7 +13,6 @@ import { MoveModal } from "metabase/common/components/MoveModal";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import Dashboards from "metabase/entities/dashboards";
 import { INJECT_RTK_QUERY_QUESTION_VALUE } from "metabase/entities/questions";
-import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { API_UPDATE_QUESTION } from "metabase/query_builder/actions";
@@ -51,7 +51,7 @@ export const MoveQuestionModal = ({
 
   const [errorMessage, setErrorMessage] = useState<string>();
 
-  const handleMove = async (
+  const handleMove = (
     destination: MoveDestination,
     deleteOldDashcards?: boolean | undefined,
   ) => {
@@ -63,7 +63,7 @@ export const MoveQuestionModal = ({
             collection_id: canonicalCollectionId(destination.id),
           };
 
-    await updateQuestion({
+    return updateQuestion({
       id: question.id(),
       delete_old_dashcards: deleteOldDashcards,
       ...update,
@@ -116,13 +116,18 @@ export const MoveQuestionModal = ({
         onClose();
       })
       .catch((e) => {
-        setErrorMessage(getResponseErrorMessage(e));
+        setErrorMessage(getErrorMessage(e));
+        if (destination.model !== "dashboard") {
+          // we want this error to bubble up to the modal if we're not
+          // showing the dashboard confirm modal
+          throw new Error(getErrorMessage(e));
+        }
       });
   };
 
-  const handleMoveConfirm = () => {
+  const handleMoveConfirm = async () => {
     if (confirmMoveState?.destination) {
-      handleMove(confirmMoveState?.destination, true);
+      await handleMove(confirmMoveState?.destination, true);
     }
   };
 
@@ -142,7 +147,7 @@ export const MoveQuestionModal = ({
         destination,
       });
     } else {
-      handleMove(destination);
+      await handleMove(destination);
     }
   };
 
@@ -233,7 +238,7 @@ export const MoveQuestionModal = ({
         ]}
         onConfirm={handleMoveConfirm}
         onClose={onClose}
-        destination={confirmMoveState.destination}
+        destination={confirmMoveState?.destination}
         errorMessage={errorMessage}
       />
     );

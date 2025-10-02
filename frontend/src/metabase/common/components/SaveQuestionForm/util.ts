@@ -48,7 +48,7 @@ export const createQuestion = async (options: CreateQuestionOptions) => {
     : undefined;
 
   const displayName = details.name.trim();
-  const description = details.description ? details.description.trim() : null;
+  const description = details.description?.trim() || null;
 
   const newQuestion = question
     .setDisplayName(displayName)

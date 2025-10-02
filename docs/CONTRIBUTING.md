@@ -85,7 +85,7 @@ It is helpful if you understand our [prioritization framework](https://github.co
 
 ### Tell your friends
 
-Let your friends know about Metabase. Start a user group in your area. [Tweet about us](http://twitter.com/metabase). Blog about how you're using Metabase, and share what you've learned.
+Let your friends know about Metabase. Start a user group in your area. [Tweet about us](https://twitter.com/metabase). Blog about how you're using Metabase, and share what you've learned.
 
 ### Fix bugs
 

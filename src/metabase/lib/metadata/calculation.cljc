@@ -445,7 +445,8 @@
           :visibility-type (:visibility-type table)}))
 
 (mr/def ::column-metadata-with-source
-  "Schema for the column metadata that should be returned by [[metadata]]."
+  "Schema for the column metadata that should be returned by [[metadata]]. A column metadata that is also required to
+  have `:lib/source`."
   [:merge
    [:ref ::lib.schema.metadata/column]
    [:map
@@ -503,9 +504,22 @@
 (mu/defn returned-columns :- [:maybe ::returned-columns]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
-  in the results; DOES NOT include 'expected' columns that are not 'exported' to subsequent stages.
+  in the results; DOES NOT include 'visible' columns that are not 'exported' to subsequent stages.
 
-  See [[::returned-columns.options]] for allowed options."
+  See [[::returned-columns.options]] for allowed options.
+
+  `returned-columns` always returns metadata relative to the source `x`, not subsequent stages or parent stages (for
+  joins)!!!! Take a moment and make sure you understand this concept clearly, it's SUPER IMPORTANT <3
+
+ Examples:
+
+ * `returned-columns` for a join is the same as `returned-columns` for the last stage of the join -- the columns have
+   source and desired aliases appropriate for the join's `:stages` if they were an entirely independent query, and do
+   not include join aliases!
+
+ * `returned-columns` for a stage have source and desired aliases relative to that stage!
+
+ * `returned-columns` for a Card has the same source and desired aliases you'd see in that Card's `:result-metadata`!!"
   ([query]
    (returned-columns query (lib.util/query-stage query -1)))
 
@@ -524,6 +538,13 @@
        (returned-columns-method query stage-number x options)))))
 
 (mr/def ::visible-column
+  "Schema for a column that should be returned by [[visible-columns]]. A visible column is a column metadata that is
+  required to also have `:lib/source` and `:lib/source-column-alias`.
+
+  `:lib/desired-column-alias` should not be returned by [[visible-columns]] since it needs to be calculated in the
+  context of the columns RETURNED by the stage! Do not expect it to be present. You should probably be using
+  `:lib/source-column-alias` for whatever purpose you think you need `:lib/desired-column-alias` for (field refs,
+  etc.)"
   [:merge
    [:ref ::column-metadata-with-source]
    [:map
@@ -540,10 +561,10 @@
    [:ref ::returned-columns.options]
    [:map
     ;; these all default to true
-    [:include-joined?                              {:optional true} :boolean]
-    [:include-expressions?                         {:optional true} :boolean]
-    [:include-implicitly-joinable?                 {:optional true} :boolean]
-    [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
+    [:include-joined?                              {:optional true, :default true} :boolean]
+    [:include-expressions?                         {:optional true, :default true} :boolean]
+    [:include-implicitly-joinable?                 {:optional true, :default true} :boolean]
+    [:include-implicitly-joinable-for-source-card? {:optional true, :default true} :boolean]]])
 
 (mu/defn- default-visible-columns-options :- ::visible-columns.options
   []
@@ -573,6 +594,9 @@
   [query _stage-number stage-number options]
   (visible-columns-method query stage-number (lib.util/query-stage query stage-number) options))
 
+;; TODO (Cam 8/7/25) -- Braden and I are in agreement that `visible-columns` fundamentally does not make sense for
+;; anything other than a specific query stage, and we should probably remove it entirely in the near future and leave
+;; just the stage implementation. See https://github.com/metabase/metabase/pull/61767#discussion_r2260558780
 (mu/defn visible-columns :- ::visible-columns
   "Return a sequence of columns that should be visible *within* a given stage of something, e.g. a query stage or a
   join query. This includes not just the columns that get returned (ones present in [[metadata]], but other columns
@@ -616,10 +640,15 @@
       (for [column source-cols
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
+                        (not (false? (:active remapped)))
                         (not (existing-ids (:id remapped))))]
-        (assoc remapped
-               :lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
-               :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped))))))
+        (merge
+         remapped
+         {:lib/source              (:lib/source column) ; TODO: What's the right source for a remap?
+          :lib/source-column-alias ((some-fn :lib/source-column-alias :name) remapped)}
+         ;; if a remap is of a joined column then we should do the remap in the join itself; columns with
+         ;; `:lib/source` `:source/joins` need to have a join alias.
+         (select-keys column [:metabase.lib.join/join-alias]))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
@@ -689,4 +718,4 @@
   (let [no-fields (lib.util/update-query-stage query stage-number dissoc :fields)]
     (into [] (remove (comp #{:source/joins :source/implicitly-joinable}
                            :lib/source))
-          (returned-columns no-fields stage-number (lib.util/query-stage no-fields stage-number)))))
+          (returned-columns no-fields stage-number))))

@@ -223,6 +223,11 @@
   (partial user-request client/client))
 
 (def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-http-request-full-response
+  "Like user-http-request but uses the full-response client so will return the http response instead of the body"
+  (partial user-request client/client-full-response))
+
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
                     request-options? http-body-map? & {:as query-params}])} user-real-request
   "Like [[user-http-request]] but instead of calling the app handler, this makes an actual http request."
   (partial user-request client/real-client))

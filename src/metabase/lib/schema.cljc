@@ -91,16 +91,12 @@
 (mr/def ::breakouts
   [:and
    [:sequential {:min 1} ::breakout]
-   [:fn
-    {:error/message "Breakouts must be distinct"}
-    #'lib.schema.util/distinct-refs?]])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
-   [:fn
-    {:error/message ":fields must be distinct"}
-    #'lib.schema.util/distinct-refs?]])
+   [:ref ::lib.schema.util/distinct-mbql-clauses]])
 
 (mr/def ::filterable
   [:ref ::expression/boolean])
@@ -228,16 +224,36 @@
   (when (map? x)
     (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
+(defn- normalize-stage [stage]
+  (when (map? stage)
+    (let [stage (common/normalize-map stage)]
+      ;; infer stage type
+      (cond
+        (:lib/type stage)
+        stage
+
+        ((some-fn :source-table :source-card) stage)
+        (assoc stage :lib/type :mbql.stage/mbql)
+
+        (:native stage)
+        (assoc stage :lib/type :mbql.stage/native)
+
+        :else
+        stage))))
+
 ;;; TODO -- enforce all kebab-case keys
 (mr/def ::stage
   [:and
-   {:default          {}
-    :decode/normalize common/normalize-map
+   {:default          {:lib/type :mbql.stage/mbql}
+    :decode/normalize normalize-stage
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
                                :params
                                :parameters
                                :lib/stage-metadata
+                               ;; TODO (Cam 8/7/25) -- wait a minute, `:middleware` is not supposed to be added here,
+                               ;; it's supposed to be added to the top level. Investigate whether this was just a
+                               ;; mistake or what.
                                :middleware)}
    [:map
     [:lib/type [:ref ::stage.type]]]
@@ -320,9 +336,26 @@
                      (ref-error-for-stages stages))}
    (complement ref-error-for-stages)])
 
+(defn- normalize-stages [stages]
+  (when (sequential? stages)
+    (if (every? :lib/type stages)
+      stages
+      (into [(first stages)]
+            (comp
+             ;; make sure stage has keywordized keys so we can check `:lib/type`
+             (map normalize-stage)
+             ;; subsequent stages have to be MBQL, so add `:lib/type` if it is missing.
+             (map (fn [subsequent-stage]
+                    (cond-> subsequent-stage
+                      (not (:lib/type subsequent-stage)) (assoc :lib/type :mbql.stage/mbql)))))
+            (rest stages)))))
+
 (mr/def ::stages
   [:and
-   [:sequential {:min 1} [:ref ::stage]]
+   [:sequential {:min              1
+                 :decode/normalize normalize-stages
+                 :default          []}
+    [:ref ::stage]]
    [:cat
     [:schema [:ref ::stage.initial]]
     [:* [:schema [:ref ::stage.additional]]]]
@@ -401,4 +434,5 @@
    [:ref ::lib.schema.util/unique-uuids]
    [:fn
     {:error/message ":expressions is not allowed in the top level of a query -- it is only allowed in MBQL stages"}
-    #(not (contains? % :expressions))]])
+    #(not (when (map? %)
+            (contains? % :expressions)))]])

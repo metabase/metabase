@@ -14,10 +14,13 @@ const SCRIPT_TAG_PATH = path.resolve(
 
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
+const SDK_SRC_PATH =
+  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
 
 const OUT_FILE_NAME = "embed.js";
 const OUT_TEMP_PATH = path.resolve(BUILD_PATH, "tmp-embed-js");
+
+const DEV_PORT = process.env.PORT || 8080;
 
 module.exports = {
   name: "iframe_sdk_embed_v1",
@@ -30,6 +33,7 @@ module.exports = {
     library: "metabase.embed",
     libraryTarget: "umd",
     globalObject: "this",
+    publicPath: `http://localhost:${DEV_PORT}/app`,
   },
   devServer: { hot: false },
   module: {
@@ -79,7 +83,7 @@ module.exports = {
     extensions: [".js", ".ts"],
     alias: {
       embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk": SDK_SRC_PATH,
+      "embedding-sdk-bundle": SDK_SRC_PATH,
     },
   },
 };

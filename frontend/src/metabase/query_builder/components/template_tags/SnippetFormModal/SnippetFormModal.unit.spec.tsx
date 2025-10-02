@@ -32,30 +32,32 @@ async function setup({
   withDefaultFoldersList = true,
   onClose = jest.fn(),
 }: SetupOpts = {}) {
-  fetchMock.get(
-    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
-    TOP_SNIPPETS_FOLDER,
-  );
+  fetchMock.get({
+    url: "path:/api/collection/root",
+    query: { namespace: "snippets" },
+    response: TOP_SNIPPETS_FOLDER,
+  });
 
   if (withDefaultFoldersList) {
-    fetchMock.get(
-      { url: "path:/api/collection", query: { namespace: "snippets" } },
-      [TOP_SNIPPETS_FOLDER],
-    );
+    fetchMock.get({
+      url: "path:/api/collection",
+      query: { namespace: "snippets" },
+      response: [TOP_SNIPPETS_FOLDER],
+    });
   }
 
-  fetchMock.post("path:/api/native-query-snippet", async (url) => {
+  fetchMock.post("path:/api/native-query-snippet", async (call) => {
     return createMockNativeQuerySnippet(
-      await fetchMock.lastCall(url)?.request?.json(),
+      await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
     );
   });
 
   if (snippet.id) {
     fetchMock.put(
       `path:/api/native-query-snippet/${snippet.id}`,
-      async (url) => {
+      async (call) => {
         return createMockNativeQuerySnippet(
-          await fetchMock.lastCall(url)?.request?.json(),
+          await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
         );
       },
     );
@@ -112,10 +114,11 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      fetchMock.get(
-        { url: "path:/api/collection", query: { namespace: "snippets" } },
-        [TOP_SNIPPETS_FOLDER, createMockCollection()],
-      );
+      fetchMock.get({
+        url: "path:/api/collection",
+        query: { namespace: "snippets" },
+        response: [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      });
 
       await setup({ withDefaultFoldersList: false });
 
@@ -212,10 +215,11 @@ describe("SnippetFormModal", () => {
     });
 
     it("shows folder picker if there are many folders", async () => {
-      fetchMock.get(
-        { url: "path:/api/collection", query: { namespace: "snippets" } },
-        [TOP_SNIPPETS_FOLDER, createMockCollection()],
-      );
+      fetchMock.get({
+        url: "path:/api/collection",
+        query: { namespace: "snippets" },
+        response: [TOP_SNIPPETS_FOLDER, createMockCollection()],
+      });
 
       await setupEditing({ withDefaultFoldersList: false });
 

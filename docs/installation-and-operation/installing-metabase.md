@@ -49,9 +49,9 @@ See [Upgrading Metabase](upgrading-metabase.md).
 - [Running on Podman](running-metabase-on-podman.md)
 - [Building Metabase from source](../developers-guide/start.md)
 - [Running on Azure Web Apps](running-metabase-on-azure.md)
-- [Running on Debian as a service](running-metabase-on-debian.md)
+- [Running Metabase as a systemd service](running-metabase-as-service.md)
 
-We currently do not distribute Metabase on AWS Marketplace or Azure Marketplace. 
+We currently do not distribute Metabase on AWS Marketplace or Azure Marketplace.
 
 Metabase doesn't have an officially supported helm chart.
 

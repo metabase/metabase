@@ -589,7 +589,7 @@
                                                         ::add/position      1}]]
                          :limit        1})
                       (-> (lib.tu.macros/mbql-query venues
-                            {:expressions {"test" ["*" 1 1]}
+                            {:expressions {"test" [:* 1 1]}
                              :breakout    [$price
                                            [:expression "test"]]
                              :limit       1})
@@ -910,6 +910,9 @@
                      ::add/position 4}]]}}
                 (->> (lib.tu.macros/mbql-query orders
                        {:expressions {"double_total" [:* $total 2]}
+                        ;; this is a broken field ref! It should use the join alias `p`. Luckily
+                        ;; the [[metabase.query-processor.middleware.resolve-joined-fields]] middleware should fix it
+                        ;; for us.
                         :breakout    [!hour-of-day.people.created-at
                                       [:expression "double_total"]]
                         :aggregation [[:count]]

@@ -14,6 +14,10 @@ Metabase supports the oldest supported version of SQL Server through the latest 
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -94,6 +98,8 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 To connect to Azure SQL, you'll need to set the port to 1433.
 
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
 See [Database routing](../../permissions/database-routing.md).
 

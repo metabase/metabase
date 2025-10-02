@@ -3,12 +3,12 @@ import cx from "classnames";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
 import { renderLinkTextForClick, renderLinkURLForClick } from "./link";
+import { removeNewLines } from "./strings";
 import type { OptionsType } from "./types";
 import { formatValue, getRemappedValue } from "./value";
 
@@ -34,18 +34,13 @@ export function getUrlProtocol(url: string) {
 }
 
 export function formatUrl(value: string, options: OptionsType = {}) {
-  const { jsx, rich, column } = options;
+  const { jsx, rich, column, collapseNewlines } = options;
 
   const url = getLinkUrl(value, options);
 
   if (jsx && rich && url) {
     const text = getLinkText(value, options);
     const className = cx(CS.link, CS.linkWrappable);
-
-    // (metabase#51099) prevent url from being rendered as a link when in sdk
-    if (isEmbeddingSdk()) {
-      return url;
-    }
 
     if (isSameOrSiteUrlOrigin(url)) {
       return (
@@ -63,27 +58,29 @@ export function formatUrl(value: string, options: OptionsType = {}) {
     // Even when no URL is found, return a formatted value
     return formatValue(value, { ...options, view_as: null });
   } else {
-    return value;
+    return collapseNewlines ? removeNewLines(value) : value;
   }
 }
 
 function getLinkText(value: string, options: OptionsType) {
-  const { view_as, link_text, clicked } = options;
+  const { view_as, link_text, clicked, collapseNewlines } = options;
 
   const isExplicitLink = view_as === "link";
   const hasCustomizedText = link_text && clicked;
 
+  let text;
   if (isExplicitLink && hasCustomizedText) {
-    return renderLinkTextForClick(
+    text = renderLinkTextForClick(
       link_text,
       getDataFromClicked(clicked) as any,
     );
+  } else {
+    text =
+      getRemappedValue(value, options) ||
+      formatValue(value, { ...options, view_as: null });
   }
 
-  return (
-    getRemappedValue(value, options) ||
-    formatValue(value, { ...options, view_as: null })
-  );
+  return collapseNewlines ? removeNewLines(text) : text;
 }
 
 function getLinkUrl(

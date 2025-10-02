@@ -290,6 +290,34 @@
           (is (= [[39]]
                  (mt/formatted-rows [int] (qp/process-query query)))))))))
 
+(deftest ^:parallel aggregation-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding an aggregation to a query with fields works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[100]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :venues :name)))])
+                   (lib/aggregate (lib/count))
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
+(deftest ^:parallel aggregation-and-join-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "adding an aggregation to a query with fields from joins works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[18760]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :orders :total)))])
+                   (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                              [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                      (-> (lib.metadata/field mp (mt/id :products :id))
+                                                          (lib/with-join-alias "Products")))]))
+                   (lib/aggregate (lib/count))
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !
 ;; !                    tests for named aggregations can be found in `expression-aggregations-test`                    !

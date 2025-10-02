@@ -276,6 +276,73 @@
         {:output (str "No model found with model_id " model-id)}
         (metabot-v3.tools.u/handle-agent-error e)))))
 
+(defn- resolve-datasource
+  "Resolve datasource parameters to [field-id-prefix base-query] tuple.
+   Accepts either {:table-id id} or {:model-id id}."
+  [{:keys [table-id model-id]}]
+  (cond
+    model-id
+    [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+
+    table-id
+    [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+
+    :else
+    (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
+
+(defn- query-datasource*
+  [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
+  (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
+        visible-cols (lib/visible-columns base-query)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
+        projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
+                                                             (let [column (cond-> column
+                                                                            bucket (assoc :unit bucket))]
+                                                               (lib/display-name base-query -1 column :long))))
+                              resolve-visible-column)
+                        fields)
+        reduce-query (fn [query f coll] (reduce f query coll))
+        query (-> base-query
+                  (reduce-query (fn [query [expr-or-column expr-name]]
+                                  (lib/expression query expr-name expr-or-column))
+                                (filter (comp expression? first) projection))
+                  (add-fields projection)
+                  (reduce-query add-filter (map resolve-visible-column filters))
+                  (reduce-query add-aggregation (map resolve-visible-column aggregations))
+                  (reduce-query add-breakout (map resolve-visible-column group-by))
+                  (reduce-query add-order-by (map resolve-order-by-column order-by))
+                  (add-limit limit))
+        query-id (u/generate-nano-id)
+        query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
+        returned-cols (lib/returned-columns query)]
+    {:type :query
+     :query-id query-id
+     ;; existing usage, don't do this going forward -- use Lib instead and persist MBQL 5 to the app DB
+     :query #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query)
+     :result-columns (into []
+                           (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
+                           returned-cols)}))
+
+(defn query-datasource
+  "Create a query based on a datasource (table or model)."
+  [{:keys [table-id model-id] :as arguments}]
+  (try
+    (cond
+      (and table-id model-id) (throw (ex-info "Cannot provide both table_id and model_id" {:agent-error? true}))
+      (int? model-id) {:structured-output (query-datasource* arguments)}
+      (int? table-id) {:structured-output (query-datasource* arguments)}
+      model-id        {:output (str "Invalid model_id " model-id)}
+      table-id        {:output (str "Invalid table_id " table-id)}
+      :else           {:output "Either table_id or model_id must be provided"})
+    (catch Exception e
+      (if (= (:status-code (ex-data e)) 404)
+        {:output (cond
+                   table-id (str "No table found with table_id " table-id)
+                   model-id (str "No model found with model_id " model-id)
+                   :else "Resource not found")}
+        (metabot-v3.tools.u/handle-agent-error e)))))
+
 (defn- base-query
   [data-source]
   (let [{:keys [table-id query query-id report-id]} data-source

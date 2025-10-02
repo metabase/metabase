@@ -368,7 +368,7 @@
             :message "Ranking must have values."
             :errors  {"RANKING" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-not-null-constraint nil :row/created
+            :h2 actions.error/violate-not-null-constraint nil :model.row/created
             "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")))))
 
 (deftest actions-maybe-parse-sql-error-test-2
@@ -397,7 +397,7 @@
             :message "Other tables rely on this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/delete
             "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
@@ -406,7 +406,7 @@
             :message "Unable to create a new record.",
             :errors {"GROUP-ID" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/create
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
@@ -415,5 +415,14 @@
             :message "Unable to update the record.",
             :errors {"GROUP-ID" "This Group-id does not exist."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/update
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/update
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
+
+(deftest ^:parallel actions-maybe-parse-sql-violate-check-constraint-test
+  (testing "violate check constraint"
+    (is (= {:type :metabase.actions.error/violate-check-constraint,
+            :message "Some of your values violate the constraint: users_email_check"
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-check-constraint nil :model.row/create
+            "Check constraint violation: \"users_email_check\"")))))

@@ -1,32 +1,74 @@
 ---
 title: Set up email
+summary: Learn how to set up email in Metabase to enable dashboard subscriptions and alerts.
 redirect_from:
   - /docs/latest/administration-guide/02-setting-up-email
 ---
 
 # Set up email
 
-Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
+Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users. Metabase uses email to reset passwords, onboard new users, and notify you when something happens (see [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md)).
 
-To edit email settings:
+Both admins and people with [settings access](../permissions/application.md#settings-access) can set up email.
 
-1. Click on the **gear** icon in the upper right.
-2. Select **Admin Settings**.
-3. From the default **Settings** tab, click on **Notification channels** in the left sidebar.
-4. Select **Email**.
+## Email on Metabase Cloud
 
-## Metabase Cloud
+_Admin settings > Settings > Email_
 
-Metabase Cloud manages an email server for you, so you don't need to set up email (and you won't see SMTP settings in your Admin console).
+On Metabase Cloud, you can use the default SMTP server, or set up a custom server.
+
+### Default SMTP server on Metabase Cloud
+
+By default, Metabase Cloud will manage an email server for you, so you don't need to set up email.
 
 If you like, you can still set up:
 
-- A name for your Cloud email account (from name)
-- An email address to receive email replies (reply-to address)
+- A display name for your Cloud email account (the "from" name). The email will still be sent from a Metabase address, however.
+- An email address to receive email replies (reply-to address).
+
+When Metabase manages the SMTP server, you can't change the from address. If you want Metabase to send emails from a different domain, you'll need to bring your own SMTP server. See below.
+
+### Custom SMTP Server on Metabase Cloud
+
+{% include plans-blockquote.html feature="Custom SMTP server on Metabase Cloud" %}
+
+_Admin settings > Settings > Email > Set up a custom SMTP server_
+
+By default, Metabase Cloud manages an SMTP server for you. But if you want to use your own SMTP server, you can bring your own.
+
+You may want to use your own SMTP server if you want to:
+
+- Customize the From domain (for example, if you're [white-labeling Metabase](./appearance.md)).
+- Avoid having emails pass through 3rd-party services.
+- Own IP reputation, logs, monitoring.
+- Own auditing.
+
+When setting up a custom SMTP server on Metabase Cloud, you'll configure these fields:
+
+- **SMTP HOST**: The address of the SMTP server that handles your emails (e.g., smtp.yourservice.com).
+- **SMTP PORT**: The port your SMTP server uses for outgoing emails. Only encrypted email ports are supported:
+  - 465 (SSL)
+  - 587 (TLS)
+  - 2525 (STARTTLS)
+- **SMTP SECURITY**: Choose the security protocol for your connection:
+  - SSL
+  - TLS
+  - STARTTLS
+- **SMTP USERNAME**: Your SMTP account username.
+- **SMTP PASSWORD**: Your SMTP account password.
+
+You'll also need to specify:
+
+- **From address**: The email address you want to use for the sender of emails.
+- **Reply-to address**: The email address you want replies to go to, if different from the From address.
+
+You can edit these settings at any time. You can also toggle between this custom SMTP server and the server managed by Metabase Cloud.
 
 ## Configuring your email account
 
-For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
+_Admin settings > Settings > Email_
+
+For Metabase to send messages to people, you'll need to set up an email account to send emails via **SMTP** (simple mail transfer protocol). SMTP is an email standard that, when combined with SSL/TLS, provides security protection for emails.
 
 To start, go to the Admin Panel from the dropdown menu in the top right of Metabase, then from the Settings page, click on **Email** in the left menu.
 
@@ -43,13 +85,13 @@ Here you'll set:
   - SSL
   - TLS
   - STARTTLS
-- **SMTP Username**.
-- **SMTP Password**.
+- **SMTP USERNAME**: Your SMTP account username.
+- **SMTP PASSWORD**: Your SMTP account password.
 
 You'll also need to specify your:
 
 - **From address**: The email address you want to use for the sender of emails.
-- **Reply-to address**: The email address you want the replies to go to, if different from the from address.
+- **Reply-to address**: The email address you want replies to go to, if different from the From address.
 
 ## Add recipients as CC or BCC
 
@@ -57,8 +99,8 @@ By default, Metabase will hide email recipients by including them in the BCC lis
 
 ### Recommended email settings
 
-- SSL is strongly recommended because it’s more secure and gives your account extra protection from threats.
-- If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From Address** field to ensure you and your teammates receive all emails from Metabase.
+- SSL is strongly recommended because it's more secure and gives your account extra protection from threats.
+- If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From address** field to ensure you and your teammates receive all emails from Metabase.
 
 ## Notes for common email services
 
@@ -68,12 +110,12 @@ By default, Metabase will hide email recipients by including them in the BCC lis
 
 ### Google Apps
 
-1. In the **SMTP host** field, enter smtp.gmail.com
-2. Fill in 465 for the **SMTP port** field
-3. For the **SMTP Security** field, enter **SSL**
-4. In the **SMTP username** field, enter your Google Apps email address (e.g. hello@yourdomain.com)
-5. Enter your Google Apps password in the **SMTP password** field
-6. Enter the email address you would like to be used as the sender of system notifications in the \*_From Address_ field.
+1. In the **SMTP HOST** field, enter smtp.gmail.com
+2. Fill in 465 for the **SMTP PORT** field
+3. For the **SMTP SECURITY** field, enter **SSL**
+4. In the **SMTP USERNAME** field, enter your Google Apps email address (e.g. hello@yourdomain.com)
+5. Enter your Google Apps password in the **SMTP PASSWORD** field
+6. Enter the email address you would like to be used as the sender of system notifications in the **From address** field.
 
 ### Amazon SES
 
@@ -99,7 +141,7 @@ Check if [email quotas](https://docs.aws.amazon.com/ses/latest/dg/quotas.html) a
 
 Allowed email address domain(s) for new [dashboard subscriptions](../dashboards/subscriptions.md) and [alerts](../questions/alerts.md).
 
-Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with accounts in a Metabase who aren't [sandboxed](../permissions/data-sandboxes.md) will be able to email any other person with an account in that same Metabase.
+Adding approved domains allows you to restrict which email addresses people can send alerts and subscriptions to. This restriction only applies to sending email to people who lack an account with that Metabase. People with Metabase accounts who aren't [restricted by row or column security](../permissions/row-and-column-security.md) will be able to email any other person with an account in that same Metabase.
 
 To allow all domains, leave the field empty (allowing all domains is the default).
 
@@ -121,7 +163,7 @@ Options include:
 - Only suggest users in the same groups
 - Don't show suggestions
 
-People who are sandboxed won't see suggestions.
+People with [row or column restrictions](../permissions/row-and-column-security.md) won't see suggestions.
 
 ## Further reading
 

@@ -15,3 +15,7 @@
 (def incorrect-value-type
   "Error type for SQL incorrect value type."
   ::incorrect-value-type)
+
+(def violate-check-constraint
+  "Error type for SQL check constraint violation."
+  ::violate-check-constraint)

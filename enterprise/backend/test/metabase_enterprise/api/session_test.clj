@@ -23,7 +23,7 @@
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
-                              :embedding-iframe-sdk
+                              :embedding-simple
                               :hosting
                               :llm-autodescription
                               :metabot-v3
@@ -31,10 +31,12 @@
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
+                              :offer-metabase-ai
                               :official-collections
                               :query-reference-validation
                               :sandboxes
                               :scim
+                              :semantic-search
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -63,17 +65,19 @@
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
-            :embedding_iframe_sdk           true
+            :embedding_simple               true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
             :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
+            :offer_metabase_ai              true
             :official_collections           true
             :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
+            :semantic_search                true
             :serialization                  true
             :session_timeout_config         true
             :snippet_collections            true
@@ -81,6 +85,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :table_data_editing             false
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true

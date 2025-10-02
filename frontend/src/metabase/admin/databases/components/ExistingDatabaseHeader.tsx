@@ -4,6 +4,7 @@ import { getEngines } from "metabase/databases/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { Database } from "metabase-types/api";
+import { isEngineKey } from "metabase-types/guards";
 
 export const ExistingDatabaseHeader = ({
   database,
@@ -11,7 +12,10 @@ export const ExistingDatabaseHeader = ({
   database: Database;
 }) => {
   const engines = useSelector(getEngines);
-  const driverName = engines[database.engine ?? ""]?.["driver-name"];
+  const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
+  const driverName = engineKey
+    ? engines[engineKey]?.["driver-name"]
+    : undefined;
 
   return (
     <Flex mb="2.75rem" gap="1.25rem" data-testid="database-header-section">

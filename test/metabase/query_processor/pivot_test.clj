@@ -10,11 +10,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
@@ -338,26 +340,30 @@
                           (assoc :info {:visualization-settings viz-settings})
                           qp.pivot/run-pivot-query))))))))))
 
-(deftest nested-models-with-expressions-pivot-breakout-names-test
+(deftest ^:parallel nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
-    (mt/with-temp [:model/Card model1 {:type :model
-                                       :dataset_query
-                                       (mt/mbql-query products
-                                         {:source-table $$products
-                                          :expressions  {"Rating Bucket" [:floor $products.rating]}})}
-                   :model/Card model2 {:type :model
-                                       :dataset_query
-                                       (mt/mbql-query orders
-                                         {:source-table $$orders
-                                          :joins        [{:source-table (str "card__" (u/the-id model1))
-                                                          :alias        "model A - Product"
-                                                          :fields       :all
-                                                          :condition    [:= $orders.product_id
-                                                                         [:field %products.id
-                                                                          {:join-alias "model A - Product"}]]}]})}]
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (mt/application-database-metadata-provider (mt/id))
+                                      {:cards [{:id            1
+                                                :type          :model
+                                                :name          "Model A"
+                                                :dataset-query (mt/mbql-query products
+                                                                 {:source-table $$products
+                                                                  :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                                               {:id            2
+                                                :type          :model
+                                                :dataset-query (mt/mbql-query orders
+                                                                 {:source-table $$orders
+                                                                  :joins        [{:source-table "card__1"
+                                                                                  :alias        "model A - Product"
+                                                                                  :fields       :all
+                                                                                  :condition    [:=
+                                                                                                 $orders.product_id
+                                                                                                 [:field %products.id
+                                                                                                  {:join-alias "model A - Product"}]]}]})}]})
       (testing "Column aliasing works when joining an expression in an inner model"
         (let [query        (mt/mbql-query
-                             orders {:source-table (str "card__" (u/the-id model2))
+                             orders {:source-table "card__2"
                                      :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
                                      :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
                                                                              :join-alias "model A - Product"}]]})
@@ -489,30 +495,24 @@
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (mt/dataset test-data
-    (let [query (assoc (mt/mbql-query orders
-                         {:aggregation [[:count]]
-                          :breakout    [$user_id->people.source $product_id->products.category]})
-                       :pivot-rows [0]
-                       :pivot-cols [1])]
-      (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
-        ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
-        ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
-        ;; `:fields` at all, which was a clear bug -- while returning expressions that are referenced in `:fields` is
-        ;; how the QP normally works in non-pivot-mode.
-        ;;
-        ;; I do not think there are any situations where the frontend actually explicitly specifies `:fields` in a
-        ;; pivot query, so we can revisit this behavior at a later date if needed.
-        (let [results (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))]
+    (let [query (->> (assoc (mt/mbql-query orders
+                              {:aggregation [[:count]]
+                               :breakout    [$user_id->people.source $product_id->products.category]})
+                            :pivot-rows [0]
+                            :pivot-cols [1])
+                     (lib/query (mt/metadata-provider)))]
+      (testing "If the expression is *explicitly* included in `:fields`, we still shouldn't see it"
+        ;; In general, if an aggregation has :fields set, those are "if we ever remove this aggregation, we should use
+        ;; these fields again", not "these fields should be added to the aggregation query".  As a result, if fields
+        ;; are set here, we shouldn't see them.
+        (let [results (qp.pivot/run-pivot-query (lib/expression query "test-expr" (lib/ltrim "wheeee")))]
           (is (= ["User → Source"
                   "Product → Category"
                   "pivot-grouping"
-                  "Count"
-                  "test-expr"]
+                  "Count"]
                  (map :display_name (mt/cols results))))
           (testing "expression value should get returned"
-            (is (= ["Affiliate" "Doohickey" 0 783 "wheeee"]
+            (is (= ["Affiliate" "Doohickey" 0 783]
                    (mt/first-row results)))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-3

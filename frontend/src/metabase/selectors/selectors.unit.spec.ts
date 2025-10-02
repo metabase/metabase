@@ -10,7 +10,7 @@ import {
 import {
   getDocsUrl,
   getIsPaidPlan,
-  getStoreUrlFromState,
+  getStoreUrl,
   getUpgradeUrl,
 } from "./settings";
 
@@ -146,12 +146,29 @@ describe("getStoreUrlFromState", () => {
       }),
     });
 
-    expect(getStoreUrlFromState(state)).toBe(
-      "https://test-store.metabase.com/",
-    );
+    expect(getStoreUrl(state)).toBe("https://test-store.metabase.com/");
 
-    expect(getStoreUrlFromState(state, "account/manage/plans")).toBe(
+    expect(getStoreUrl(state, "account/manage/plans")).toBe(
       "https://test-store.metabase.com/account/manage/plans",
+    );
+  });
+
+  it("should return for falsey values", () => {
+    const stateUndefined = createMockState({
+      settings: createMockSettingsState({
+        "store-url": undefined,
+      }),
+    });
+
+    const stateCorruptedString = createMockState({
+      settings: createMockSettingsState({
+        "store-url": "false",
+      }),
+    });
+
+    expect(getStoreUrl(stateUndefined)).toBe("https://store.metabase.com/");
+    expect(getStoreUrl(stateCorruptedString)).toBe(
+      "https://store.metabase.com/",
     );
   });
 });

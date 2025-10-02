@@ -28,7 +28,11 @@ export function SettingsNav() {
   return (
     <AdminNavWrapper>
       <SettingsNavItem path="general" label={t`General`} icon="gear" />
-      <SettingsNavItem label={t`Authentication`} path="auth" icon="lock">
+      <SettingsNavItem
+        label={t`Authentication`}
+        icon="lock"
+        folderPattern="auth"
+      >
         <SettingsNavItem path="authentication" label={t`Overview`} />
         {hasScim && (
           <SettingsNavItem
@@ -58,7 +62,8 @@ export function SettingsNav() {
       />
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
-        path="whitelabel"
+        path={!hasWhitelabel ? "whitelabel" : undefined}
+        folderPattern="whitelabel"
         label={
           <Flex gap="sm" align="center">
             <span>{t`Appearance`}</span>
@@ -88,7 +93,11 @@ export function SettingsNav() {
         label={t`Public sharing`}
         icon="share"
       />
-      <SettingsNavItem path="embedding" label={t`Embedding`} icon="embed">
+      <SettingsNavItem
+        label={t`Embedding`}
+        icon="embed"
+        folderPattern="embedding"
+      >
         <SettingsNavItem
           path="embedding-in-other-applications"
           label={t`Overview`}
@@ -105,7 +114,7 @@ export function SettingsNav() {
         )}
         <SettingsNavItem
           path="embedding-in-other-applications/sdk"
-          label={t`Embedding SDK`}
+          label={t`Modular embedding`}
         />
       </SettingsNavItem>
       <NavDivider />
@@ -130,13 +139,17 @@ const hasActiveChild = (children: ReactElement[], pathname: string) =>
     (child) => child?.props?.path && pathname.includes(child.props.path),
   );
 
-export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
+export function SettingsNavItem({
+  path,
+  folderPattern,
+  ...navItemProps
+}: AdminNavItemProps) {
   const children = React.Children.toArray(
     navItemProps.children,
   ) as ReactElement[];
   const currentPath: string = useSelector(getLocation)?.pathname ?? "";
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
-    currentPath.includes(path),
+    folderPattern ? currentPath.includes(folderPattern) : false,
   );
 
   const showActive =
@@ -146,7 +159,8 @@ export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
   return (
     <AdminNavItem
       data-testid={`settings-sidebar-link`}
-      path={`/admin/settings/${path}`}
+      path={path ? `/admin/settings/${path}` : ""}
+      folderPattern={folderPattern}
       opened={isOpen}
       active={showActive}
       onClick={toggleOpen}

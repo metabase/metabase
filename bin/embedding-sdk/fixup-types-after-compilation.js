@@ -19,13 +19,13 @@ const REPLACES_MAP = {
   "metabase-lib": "frontend/src/metabase-lib",
   "metabase-types": "frontend/src/metabase-types",
   metabase: "frontend/src/metabase",
-  "embedding-sdk": "enterprise/frontend/src/embedding-sdk",
+  "embedding-sdk-bundle": "enterprise/frontend/src/embedding-sdk-bundle",
   cljs: "target/cljs_release",
 };
 
 const API_EXTRACTOR_CONFIG_PATH = path.join(
   __dirname,
-  "../../enterprise/frontend/src/embedding-sdk/embedding-sdk-api-extractor.json",
+  "../../enterprise/frontend/src/embedding-sdk-bundle/embedding-sdk-api-extractor.json",
 );
 
 const getLogger = (prefix) => {
@@ -131,7 +131,7 @@ const generateDtsRollup = () => {
   const dtsRollupEntryPointPath = path.resolve(
     path.join(
       __dirname,
-      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-bundle/index.d.ts",
     ),
   );
   const dtsRollupEntryPointPathExist = fs.existsSync(dtsRollupEntryPointPath);

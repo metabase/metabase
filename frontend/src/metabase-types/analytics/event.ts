@@ -214,7 +214,8 @@ export type DashboardFilterMovedEvent = ValidateEvent<{
 export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
-  | "exploration";
+  | "exploration"
+  | "browser";
 
 export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
   event: "embed_wizard_experience_selected";
@@ -241,12 +242,45 @@ export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
 }>;
 
+export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
+  event: "connection_string_parsed_success";
+  triggered_from: "admin" | "setup" | "embedding_setup";
+}>;
+
+export type ConnectionStringParsedFailedEvent = ValidateEvent<{
+  event: "connection_string_parsed_failed";
+  triggered_from: "admin" | "setup" | "embedding_setup";
+}>;
+
 export type EmbedWizardEvent =
   | EmbedWizardExperienceSelectedEvent
   | EmbedWizardResourceSelectedEvent
   | EmbedWizardOptionChangedEvent
   | EmbedWizardAuthSelectedEvent
   | EmbedWizardCodeCopiedEvent;
+
+export type MetabotChatOpenedEvent = ValidateEvent<{
+  event: "metabot_chat_opened";
+  triggered_from: "search" | "command_palette" | "keyboard_shortcut";
+}>;
+
+export type MetabotRequestSentEvent = ValidateEvent<{
+  event: "metabot_request_sent";
+}>;
+
+export type MetabotFixQueryClickedEvent = ValidateEvent<{
+  event: "metabot_fix_query_clicked";
+}>;
+
+export type MetabotExplainChartClickedEvent = ValidateEvent<{
+  event: "metabot_explain_chart_clicked";
+}>;
+
+export type MetabotEvent =
+  | MetabotChatOpenedEvent
+  | MetabotRequestSentEvent
+  | MetabotFixQueryClickedEvent
+  | MetabotExplainChartClickedEvent;
 
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
@@ -277,4 +311,7 @@ export type SimpleEvent =
   | AddDataModalTabEvent
   | DashboardFilterCreatedEvent
   | DashboardFilterMovedEvent
-  | EmbedWizardEvent;
+  | EmbedWizardEvent
+  | ConnectionStringParsedSuccessEvent
+  | ConnectionStringParsedFailedEvent
+  | MetabotEvent;

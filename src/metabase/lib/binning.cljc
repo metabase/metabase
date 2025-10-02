@@ -67,7 +67,7 @@
   [_query _stage-number _x]
   nil)
 
-(mu/defn available-binning-strategies :- [:sequential [:ref ::lib.schema.binning/binning-option]]
+(mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
   "Get a set of available binning strategies for `x`. Returns nil if none are available."
   ([query x]
    (available-binning-strategies query -1 x))

@@ -1,6 +1,5 @@
 (ns metabase.search.appdb.core
   (:require
-   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -16,6 +15,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
+   [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -41,33 +41,24 @@
   #{:postgres :h2})
 
 (defmethod search.engine/supported-engine? :search.engine/appdb [_]
-  (and (or (not config/is-prod?)
-           (= "appdb" (some-> (search.settings/search-engine) name)))
+  (and (or config/is-dev?
+           ;; if the default engine is semantic we want appdb to be available,
+           ;; as we want to mix results
+           (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
-(defn- collapse-id [{:keys [id] :as row}]
-  (assoc row :id (if (number? id) id (parse-long (last (str/split (:id row) #":"))))))
-
 (defn- rehydrate [weights active-scorers index-row]
   (-> (json/decode+kw (:legacy_input index-row))
-      collapse-id
+      search.util/collapse-id
       (assoc
        ;; this relies on the corresponding scorer, which is not great coupling.
        ;; ideally we would make per-user computed attributes part of the spec itself.
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
-       :all-scores (mapv (fn [k]
-                           ;; we shouldn't get null scores, but just in case (i.e., because there are bugs)
-                           (let [score  (or (get index-row k) 0)
-                                 weight (or (weights k) 0)]
-                             {:score        score
-                              :name         k
-                              :weight       weight
-                              :contribution (* weight score)}))
-                         active-scorers))
+       :all-scores (search.scoring/all-scores weights active-scorers index-row))
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
@@ -102,7 +93,7 @@
       true (sql.helpers/where (or-null permitted-clause))
       personal-clause (sql.helpers/where (or-null personal-clause)))))
 
-(defmethod search.engine/results :search.engine/appdb
+(defn- results
   [{:keys [search-engine search-string] :as search-ctx}]
   ;; Check whether there is a query-able index.
   (when-not (search.index/active-table)
@@ -153,6 +144,10 @@
       (#'search.index/sync-tracking-atoms!)
       (throw e))))
 
+(defmethod search.engine/results :search.engine/appdb
+  [search-ctx]
+  (results search-ctx))
+
 (defmethod search.engine/model-set :search.engine/appdb
   [search-ctx]
   ;; We ignore any current models filter
@@ -173,13 +168,13 @@
   (let [index-created (search.index/when-index-created)]
     (if (and index-created (< 3 (t/time-between (t/instant index-created) (t/instant) :days)))
       (do
-        (log/debug "Forcing early reindex because existing index is old")
+        (log/info "Forcing early reindex because existing index is old")
         (search.engine/reindex! :search.engine/appdb {}))
 
       (let [created? (search.index/ensure-ready! opts)]
         (when (or created? re-populate?)
-          (log/debug "Populating index")
-          (populate-index! :search/updating))))))
+          (log/info "Populating index")
+          (populate-index! (if created? :search/reindexing :search/updating)))))))
 
 (defmethod search.engine/reindex! :search.engine/appdb
   [_ {:keys [in-place?]}]
@@ -198,4 +193,6 @@
   [_topic event]
   (when (and (= :site-locale (-> event :details :key)) (= :postgres (mdb/db-type)))
     (log/info "Reindexing appdb index because the site locale changed.")
-    (search.engine/reindex! :search.engine/appdb {})))
+    (if search.ingestion/*force-sync*
+      (search.engine/reindex! :search.engine/appdb {})
+      (future (search.engine/reindex! :search.engine/appdb {})))))

@@ -36,7 +36,6 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
-   "MetabotEntity"
    "MetabotPrompt"
    "TimelineEvent"])
 
@@ -61,6 +60,8 @@
    "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
+   "MetabotConversation"
+   "MetabotMessage"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"
@@ -88,6 +89,7 @@
    "Revision"
    "SearchIndexMetadata"
    "Secret"
+   "SemanticSearchTokenTracking"
    "Session"
    "TaskHistory"
    "User"

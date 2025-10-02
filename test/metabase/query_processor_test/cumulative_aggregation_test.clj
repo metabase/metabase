@@ -491,7 +491,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-different-temporal-fields-test
-  (testing "day is finer than day-of-year"
+  (testing "month-of-year is finer than year (GROUP BY should preserve breakout order; add ORDER BY year, month-of-year)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
@@ -521,7 +521,7 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-offset-day-of-year-test
-  (testing "day is finer than day-of-year"
+  (testing "day is finer than day-of-year (GROUP BY should preserve breakout order; add ORDER BY day-of-year, day)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
       (let [metadata-provider   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders              (lib.metadata/table metadata-provider (mt/id :orders))

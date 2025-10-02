@@ -296,16 +296,15 @@
     (with-jwt-default-setup!
       (is
        (= "Token is older than max-age (180)"
-          (:message
-           (client/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
-                          :return_to default-redirect-uri
-                          :jwt
-                          (jwt/sign
-                           {:email      "test@metabase.com",
-                            :first_name "Test"
-                            :last_name  "User"
-                            :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
-                           default-jwt-secret))))))))
+          (client/client :get 401 "/auth/sso" {:request-options {:redirect-strategy :none}}
+                         :return_to default-redirect-uri
+                         :jwt
+                         (jwt/sign
+                          {:email      "test@metabase.com",
+                           :first_name "Test"
+                           :last_name  "User"
+                           :iat        (- (buddy-util/now) (u/minutes->seconds 5))}
+                          default-jwt-secret)))))))
 
 (defmacro with-users-with-email-deleted {:style/indent 1} [user-email & body]
   `(try
@@ -453,18 +452,18 @@
            jwt-attribute-groups
            "GrOuPs"]
           (with-users-with-email-deleted "newuser@metabase.com"
-            (let [response    (client/client-real-response :get 302 "/auth/sso"
-                                                           {:request-options {:redirect-strategy :none}}
-                                                           :return_to default-redirect-uri
-                                                           :jwt
-                                                           (jwt/sign
-                                                            {:email      "newuser@metabase.com"
-                                                             :first_name "New"
-                                                             :last_name  "User"
-                                                             :more       "stuff"
-                                                             :GrOuPs     ["my_group"]
-                                                             :for        "the new user"}
-                                                            default-jwt-secret))]
+            (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email      "newuser@metabase.com"
+                                                          :first_name "New"
+                                                          :last_name  "User"
+                                                          :more       "stuff"
+                                                          :GrOuPs     ["my_group"]
+                                                          :for        "the new user"}
+                                                         default-jwt-secret))]
               (is (saml-test/successful-login? response))
               (is
                (=
@@ -472,6 +471,37 @@
                   ":metabase-enterprise.sso.integrations.jwt-test/my-group"}
                 (group-memberships
                  (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com"))))))))))))
+
+(deftest login-sync-group-memberships-no-mappings-test
+  (testing "login should sync group memberships by name when no mappings are defined"
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/PermissionsGroup _ {:name "developers"}
+                     :model/PermissionsGroup _ {:name "analysts"}
+                     :model/PermissionsGroup _ {:name "admins"}]
+        (mt/with-temporary-setting-values
+          [jwt-group-sync true
+           jwt-group-mappings nil  ; No mappings defined
+           jwt-attribute-groups "groups"]
+          (with-users-with-email-deleted "newuser@metabase.com"
+            (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                        {:request-options {:redirect-strategy :none}}
+                                                        :return_to default-redirect-uri
+                                                        :jwt
+                                                        (jwt/sign
+                                                         {:email      "newuser@metabase.com"
+                                                          :first_name "New"
+                                                          :last_name  "User"
+                                                          :groups     ["developers" "analysts"]}
+                                                         default-jwt-secret))]
+              (is (saml-test/successful-login? response))
+              (testing "user is assigned to groups matching the names from JWT claims"
+                (is (= #{"All Users" "developers" "analysts"}
+                       (group-memberships
+                        (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com"))))))
+              (testing "user is not assigned to groups not mentioned in JWT claims"
+                (is (not (contains? (group-memberships
+                                     (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com")))
+                                    "admins")))))))))))
 
 (deftest login-as-existing-user-test
   (testing "login as an existing user works"
@@ -500,7 +530,45 @@
                                                            :first_name "New"
                                                            :last_name  "User"}
                                                           default-jwt-secret))]
-            (is (saml-test/successful-login? response))))))))
+            (is (saml-test/successful-login? response))))))
+
+    (testing "Existing user login attributes are not changed on subsequent logins"
+      (with-jwt-default-setup!
+        (with-users-with-email-deleted "existinguser@metabase.com"
+          ;; Create user with initial login attributes
+          (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri
+                                                      :jwt
+                                                      (jwt/sign
+                                                       {:email      "existinguser@metabase.com"
+                                                        :first_name "Existing"
+                                                        :last_name  "User"
+                                                        :department "Engineering"
+                                                        :role       "Developer"}
+                                                       default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "initial login attributes are stored"
+              (is (= nil
+                     (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com")))))
+
+          ;; Log in again with different attributes
+          (let [response (client/client-real-response :get 302 "/auth/sso"
+                                                      {:request-options {:redirect-strategy :none}}
+                                                      :return_to default-redirect-uri
+                                                      :jwt
+                                                      (jwt/sign
+                                                       {:email      "existinguser@metabase.com"
+                                                        :first_name "Existing"
+                                                        :last_name  "User"
+                                                        :department "Marketing"
+                                                        :role       "Manager"
+                                                        :location   "Remote"}
+                                                       default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "login attributes remain unchanged from initial login"
+              (is (= nil
+                     (t2/select-one-fn :login_attributes :model/User :email "existinguser@metabase.com"))))))))))
 
 (deftest login-update-account-test
   (testing "An existing user will be reactivated upon login"
@@ -555,6 +623,41 @@
           clojure.lang.ExceptionInfo
           #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
           (#'mt.jwt/fetch-or-create-user! "Test" "User" "test1234@metabase.com" nil)))))))
+
+(deftest non-string-jwt-claims-dropped-test
+  (testing "JWT claims with non-string values are dropped and warning is logged"
+    (with-jwt-default-setup!
+      (mt/with-log-messages-for-level [jwt-log-messages [metabase-enterprise :warn]]
+        (let [response (client/client-full-response :get 302 "/auth/sso"
+                                                    {:request-options {:redirect-strategy :none}}
+                                                    :return_to default-redirect-uri
+                                                    :jwt
+                                                    (jwt/sign
+                                                     {:email      "rasta@metabase.com"
+                                                      :first_name "Rasta"
+                                                      :last_name  "Toucan"
+                                                      :string_attr "valid-string"
+                                                      :number_attr 42
+                                                      :boolean_attr false
+                                                      :array_attr ["item1" "item2"]
+                                                      :object_attr {:nested "value"}
+                                                      :null_attr nil}
+                                                     default-jwt-secret))]
+          (is (saml-test/successful-login? response))
+
+          (testing "only string attributes are saved to jwt_attributes"
+            (is (= {"string_attr" "valid-string"
+                    "number_attr" 42
+                    "boolean_attr" false}
+                   (t2/select-one-fn :jwt_attributes :model/User :email "rasta@metabase.com"))))
+
+          (testing "warning messages are logged for non-stringable values"
+            (is (some #(re-find #"Dropping attribute 'array_attr' with non-stringable value: \[\"item1\" \"item2\"\]" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'object_attr' with non-stringable value: \{:nested \"value\"\}" %) (map :message (jwt-log-messages))))
+            (is (some #(re-find #"Dropping attribute 'null_attr' with non-stringable value: null" %) (map :message (jwt-log-messages)))))
+
+          (testing "no warning for valid string attribute"
+            (is (not (some #(re-find #"string_attr" %) (map :message (jwt-log-messages)))))))))))
 
 (deftest jwt-token-test
   (testing "should return IdP URL when embedding SDK header is present but no JWT token is provided"

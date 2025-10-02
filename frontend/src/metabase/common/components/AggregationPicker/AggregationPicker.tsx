@@ -360,7 +360,6 @@ export function AggregationPicker({
       maxHeight={Infinity}
       itemTestId="dimension-list-item"
       globalSearch
-      fuzzySearch
     />
   );
 }

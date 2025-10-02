@@ -83,7 +83,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
     getSdkRoot().within(() => {
       cy.findByText(
-        "Unable to connect to instance at http://localhost:4000",
+        "Embedding SDK for React is disabled. Enable it in the embedding settings.",
       ).should("be.visible");
     });
   });

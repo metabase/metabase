@@ -201,14 +201,12 @@ describe("DatabaseConnectionModal", () => {
       );
 
       // need to add an id to the mocked db result so redirect can go the the correct location
-      fetchMock.post(
-        "path:/api/database",
-        async (url) => {
-          const lastCall = fetchMock.lastCall(url);
+      fetchMock.modifyRoute("database-post", {
+        response: async (call) => {
+          const lastCall = fetchMock.callHistory.lastCall(call.url);
           return { ...(await lastCall?.request?.json()), id: 1 };
         },
-        { overwriteRoutes: true },
-      );
+      });
 
       await userEvent.click(await screen.findByText("Save"));
 

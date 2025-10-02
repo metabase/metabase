@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
@@ -938,14 +937,14 @@
   [{:keys [num-fields]}]
   (mt/dataset-definition
    (format "no-laziness-%d" num-fields)
-   ["lots-of-fields"
-    (concat
-     [{:field-name "a", :base-type :type/Integer}
-      {:field-name "b", :base-type :type/Integer}]
-     (for [field (no-laziness-dataset-definition-field-names num-fields)]
-       {:field-name (name field), :base-type :type/Integer}))
-    ;; one row
-    [(range (+ num-fields 2))]]))
+   [["lots-of-fields"
+     (concat
+      [{:field-name "a", :base-type :type/Integer}
+       {:field-name "b", :base-type :type/Integer}]
+      (for [field (no-laziness-dataset-definition-field-names num-fields)]
+        {:field-name (name field), :base-type :type/Integer}))
+     ;; one row
+     [(range (+ num-fields 2))]]]))
 
 (defn- no-laziness-dataset-definition [num-fields]
   (->NoLazinessDatasetDefinition num-fields))
@@ -1187,10 +1186,30 @@
                     [u.date/temporal-str->iso8601-str int int]
                     (qp/process-query query))))))))))
 
-(deftest ^:parallel null-array-test
-  (testing "a null array should be handled gracefully and return nil"
-    (mt/test-drivers (mt/normal-drivers-with-feature :test/null-arrays)
-      (is (= [[nil]]
-             (-> (mt/native-query {:query (tx/native-null-array-query driver/*driver*)})
-                 mt/process-query
-                 mt/rows))))))
+(deftest ^:parallel invalid-field-ref-for-an-expression-test
+  (testing "#62663"
+    (is (= [[1
+             "1018947080336"
+             "Rustic Paper Wallet"
+             "Gizmo"
+             "Swaniawski, Casper and Hilll"
+             29.46
+             4.6
+             "2017-07-19T19:44:56.582Z"
+             "Gizmo111"]
+            [10
+             "1807963902339"
+             "Mediocre Wooden Table"
+             "Gizmo"
+             "Larson, Pfeffer and Klocko"
+             31.79
+             4.3
+             "2017-01-09T09:51:20.352Z"
+             "Gizmo111"]]
+           (mt/rows
+            (qp/process-query
+             (mt/mbql-query products
+               {:expressions {"Cat_1" [:concat $category "111"]}
+                :filter      [:= [:field "Cat_1" {:base-type :type/Text}] "Gizmo111"]
+                :order-by    [[:asc $id]]
+                :limit       2})))))))

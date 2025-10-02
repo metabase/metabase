@@ -4,7 +4,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor.store :as qp.store]))
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.performance :as perf]))
 
 (defn- normalize-field-settings
   [id settings]
@@ -36,7 +37,7 @@
         ;; The field-ids that are in the merged settings
         viz-field-ids           (set (map ::mb.viz/field-id (keys merged-settings)))
         ;; Keep any field settings that aren't in the merged settings and have settings
-        distinct-field-settings (update-keys
+        distinct-field-settings (perf/update-keys
                                  (remove (comp viz-field-ids first) field-id->settings)
                                  (fn [k] {::mb.viz/field-id k}))]
     (merge merged-settings distinct-field-settings)))

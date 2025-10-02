@@ -111,25 +111,24 @@
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
   ([query :- :map]
-   (query->source-ids query nil))
+   (query->source-ids query nil false))
   ([query :- :map
-    parent-source-card-id :- [:maybe :any]]
+    parent-source-card-id :- [:maybe :any]
+    in-sandbox? :- :boolean]
    (apply merge-with merge-source-ids
           (lib.util.match/match query
             (m :guard (every-pred map? :qp/stage-is-from-source-card))
             (merge-with merge-source-ids
                         (when-not parent-source-card-id
                           {:card-ids #{(:qp/stage-is-from-source-card m)}})
-                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m)))
+                        (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m) in-sandbox?))
 
             (m :guard (every-pred map? :query-permissions/gtapped-table))
             (merge-with merge-source-ids
                         {:table-ids #{(:query-permissions/gtapped-table m)}}
-                        (when-not parent-source-card-id
+                        (when-not (or parent-source-card-id in-sandbox?)
                           {:table-query-ids #{(:query-permissions/gtapped-table m)}})
-                        ;; Remove any :native sibling queries since they will be ones supplied by the gtap and we don't
-                        ;; want to mark the whole query as native? if they exist
-                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id))
+                        (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id true))
 
             (m :guard (every-pred map? :native))
             (when-not parent-source-card-id
@@ -138,9 +137,9 @@
             (m :guard (every-pred map? #(pos-int? (:source-table %))))
             (merge-with merge-source-ids
                         {:table-ids #{(:source-table m)}}
-                        (when-not parent-source-card-id
+                        (when-not (or parent-source-card-id in-sandbox?)
                           {:table-query-ids #{(:source-table m)}})
-                        (query->source-ids (dissoc m :source-table) parent-source-card-id))))))
+                        (query->source-ids (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
@@ -292,6 +291,43 @@
                                     (perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
     (every? true? (vals table-id->has-perm?))))
 
+(defn- card
+  [database-id card-id]
+  (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
+              (update-keys u/->snake_case_en)
+              (vary-meta assoc :type :model/Card))
+      ;; In the case of SQL actions, the query being executed might not act on the same database as that
+      ;; used by the model upon which the action is defined. In this case, the underlying model whose
+      ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
+      ;; -- Noah
+      (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
+      (throw (ex-info (tru "Card {0} does not exist." card-id)
+                      {:type    qp.error-type/invalid-query
+                       :card-id card-id}))))
+
+(defn check-result-metadata-data-perms
+  "Check current user has view-data perms on all columns of `result-metadata`."
+  [database-id result-metadata]
+  (let [field-ids (keep :id result-metadata)
+        table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
+                        (when (seq field-ids)
+                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
+    (run! #(when-not (perms/user-has-permission-for-table?
+                      api/*current-user-id*
+                      :perms/view-data
+                      :unrestricted
+                      database-id
+                      %)
+             (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
+                                     {database-id {:perms/view-data {% :unrestricted}}})))
+          table-ids)))
+
+(defn check-card-result-metadata-data-perms
+  "Using `card-id` check current user has view data perms on all of card's result_metadata elements."
+  [database-id card-id]
+  (let [result-metadata (:result_metadata (card database-id card-id))]
+    (check-result-metadata-data-perms database-id result-metadata)))
+
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
@@ -317,16 +353,7 @@
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
   (qp.store/with-metadata-provider database-id
-    (let [card (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
-                           (update-keys u/->snake_case_en)
-                           (vary-meta assoc :type :model/Card))
-                   ;; In the case of SQL actions, the query being executed might not act on the same database as that
-                   ;; used by the model upon which the action is defined. In this case, the underlying model whose
-                   ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
-                   (t2/select-one :model/Card :id card-id :database_id [:!= database-id])
-                   (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                   {:type    qp.error-type/invalid-query
-                                    :card-id card-id})))]
+    (let [card (card database-id card-id)]
       (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
       (when-not (mi/can-read? card)
         (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))

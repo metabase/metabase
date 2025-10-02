@@ -335,7 +335,7 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
-                                     ;; we can get title since product_id is remapped to title
+                                     ;; we can get products.title since orders.product_id is remapped to title
                                      :fields       [&Orders.title
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]
@@ -343,18 +343,20 @@
                          :limit    3})]
             (is (= ["Title"                     ; products.title
                     "Category"                  ; products.category
-                    "Orders → Title"            ; orders.title
+                    ;; when generating the display name for Product ID -> Orders Title we take the name of the FK
+                    ;; column and strip off ID (`Product`) which results in `Product → Title`.
+                    "Product → Title"           ; product.title, remapped from orders.product_id
                     "Orders → Sum of Quantity"] ; sum(orders.quantity)
                    (map :display_name (qp.preprocess/query->expected-cols query))))
             (mt/with-native-query-testing-context query
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
                   (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]          ; products.title
-                            ["CATEGORY" "Category"]       ; products.category
-                            ["TITLE_2"  "Orders → Title"] ; Orders.title (remapped from orders.product-id => products.title)
-                            ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-                           (map (juxt :name :display_name) (mt/cols results))))))
+                    (is (= [["TITLE"    nil      "Title"]                     ; products.title
+                            ["CATEGORY" nil      "Category"]                  ; products.category
+                            ["TITLE_2"  "Orders" "Product → Title"]           ; product.title, remapped from orders.product_id
+                            ["sum"      "Orders" "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+                           (map (juxt :name :metabase.lib.join/join-alias :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                         ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
@@ -467,22 +469,100 @@
               ;; The order of remaps is not important to the FE. If it changes in the future that is ok.
               ;;
               ;; 2 remaps from the join against `VENUES`
-              "J__NAME_2"
-              "J__NAME_3"
+              "J__CATEGORIES__via__ID__NAME"
+              "J__CATEGORIES__via__CATEGORY_ID__NAME"
               ;; 2 remaps for the top-level query
               "CATEGORIES__via__CATEGORY_ID__NAME"
               "CATEGORIES__via__ID__NAME"
               ;; BROKEN! This is a duplicate and should not be returned. Interestingly enough, both Lib and QP
               ;; incorrectly calculate the set of returned columns and both include this. (Probably because Lib and QP
               ;; use mostly the same code these days.)
-              "J__NAME_2_2"]
+              "J__CATEGORIES__via__ID__NAME_2"]
              (map :lib/desired-column-alias (mt/cols results))))
       ;; The extra incorrect duplicate column seems to be sorta indetermiate? I've seen it match the value of
-      ;; `J__NAME_2` and `J__NAME_3` in different test runs and I'm not sure why. Not bothering to debug since it's not
-      ;; even supposed to be returned anyway.
+      ;; `J__CATEGORIES__via__ID__NAME` and `J__CATEGORIES__via__CATEGORY_ID__NAME` in different test runs and I'm not
+      ;; sure why. Not bothering to debug since it's not even supposed to be returned anyway.
       ;;
       ;;      <top-level :fields>          <join>                                           <join remaps>       <fields remaps>     <incorrect duplicate>
       (is (=? [[11 2 "Stout Burgers & Beers" 1 "Red Medicine"          4  10.0646 -165.374 3 "African"  "Asian"  "Burger" "American" string?]
                [11 3 "The Apple Pan"         2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "American" "Burger" "Burger" "Artisan"  string?]
                [29 4 "Wurstküche"            3 "The Apple Pan"         11 34.0406 -118.428 2 "Artisan"  "Burger" "German" "Asian"    string?]]
               (mt/rows results))))))
+
+(deftest ^:parallel explicit-join-with-fields-and-implicitly-joined-remaps-test
+  (testing "#62591"
+    (let [query (let [mp (-> (mt/metadata-provider)
+                             (lib.tu/remap-metadata-provider
+                              (mt/id :orders :user_id)    (mt/id :people :name)
+                              (mt/id :orders :product_id) (mt/id :products :title)))]
+                  (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                      (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :orders)))
+                                    (lib/with-join-alias "Orders")))
+                      (lib/remove-field -1 (-> (lib.metadata/field mp (mt/id :orders :id))
+                                               (lib/with-join-alias "Orders")))
+                      (lib/order-by (lib.metadata/field mp (mt/id :people :id)))
+                      (lib/limit 2)))]
+      (is (=? {:stages [{:joins [{:alias      "Orders"
+                                  :stages     [{:source-table (mt/id :orders)}]
+                                  :fields     [[:field {:join-alias "Orders"} (mt/id :orders :user_id)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :product_id)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :subtotal)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :tax)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :total)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :discount)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :created_at)]
+                                               [:field {:join-alias "Orders"} (mt/id :orders :quantity)]]
+                                  :conditions [[:= {}
+                                                [:field {} (mt/id :people :id)]
+                                                [:field {:join-alias "Orders"} (mt/id :orders :user_id)]]]}]}]}
+              query))
+      (doseq [f [#'lib/returned-columns
+                 #'qp.preprocess/query->expected-cols]]
+        (testing f
+          (is (= (concat
+                  ["ID"
+                   "ADDRESS"
+                   "EMAIL"
+                   "PASSWORD"
+                   "NAME"
+                   "CITY"
+                   "LONGITUDE"
+                   "STATE"
+                   "SOURCE"
+                   "BIRTH_DATE"
+                   "ZIP"
+                   "LATITUDE"
+                   "CREATED_AT"
+                   "Orders__USER_ID"
+                   "Orders__PRODUCT_ID"
+                   "Orders__SUBTOTAL"
+                   "Orders__TAX"
+                   "Orders__TOTAL"
+                   "Orders__DISCOUNT"
+                   "Orders__CREATED_AT"
+                   "Orders__QUANTITY"]
+                  (condp = f
+                    #'lib/returned-columns
+                    ["Orders__NAME"
+                     "Orders__TITLE"]
+
+                    #'qp.preprocess/query->expected-cols
+                    ["Orders__PEOPLE__via__USER_ID__NAME"
+                     "Orders__PRODUCTS__via__PRODUCT_ID__TITLE"]))
+                 (map :lib/desired-column-alias
+                      (condp = f
+                        #'lib/returned-columns
+                        (lib/returned-columns query -1 -1 {:include-remaps? true})
+
+                        #'qp.preprocess/query->expected-cols
+                        (qp.preprocess/query->expected-cols query)))))))
+      (mt/with-native-query-testing-context query
+        (is (= [[1 "9611-9809 West Rosedale Road" "borer-hudson@yahoo.com" "ccca881f-3e4b-4e5c-8336-354103604af6"
+                 "Hudson Borer" "Wood River" -98.53 "NE" "Twitter" "1986-12-12T00:00:00Z" "68883" 40.71 "2017-10-07T01:34:35.462Z"
+                 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Hudson Borer" "Awesome Concrete Shoes"]
+                [1 "9611-9809 West Rosedale Road" "borer-hudson@yahoo.com" "ccca881f-3e4b-4e5c-8336-354103604af6"
+                 "Hudson Borer" "Wood River" -98.53 "NE" "Twitter" "1986-12-12T00:00:00Z" "68883" 40.71 "2017-10-07T01:34:35.462Z"
+                 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3 "Hudson Borer" "Mediocre Wooden Bench"]]
+               (mt/formatted-rows [int str str str str str 2.0 str str str str 2.0 str
+                                   int int 2.0 2.0 2.0 2.0 str int str str]
+                                  (qp/process-query query))))))))

@@ -22,7 +22,6 @@ import { SaveQuestionProvider, useSaveQuestionContext } from "./context";
 
 const TestComponent = () => {
   const { values, saveToDashboard } = useSaveQuestionContext();
-
   return (
     <div>
       {values.collection_id && (
@@ -138,13 +137,14 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question(
-            createMockCard({
+          question: new Question({
+            ...createMockCard({
               collection_id: 11,
               collection: createMockCollection({ id: 11 }),
               dashboard_id: 20,
             }),
-          ),
+            creationType: "custom_question",
+          }),
         });
 
         expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();

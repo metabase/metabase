@@ -63,16 +63,14 @@
   ([value decimal]
    (if (zero? value)
      0
-     (let [val-string (-> (condp = (type value)
-                            java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                            java.lang.Double     (format "%.20f" value)
-                            java.lang.Float      (format "%.20f" value)
+     (let [val-string (-> (if (instance? java.math.BigDecimal value)
+                            (.toPlainString ^BigDecimal value)
                             (str value))
                           (strip-trailing-zeroes (str decimal)))
            decimal-idx (str/index-of val-string decimal)]
-       (if decimal-idx
-         (- (count val-string) decimal-idx 1)
-         0)))))
+       (min 20 (if decimal-idx
+                 (- (count val-string) decimal-idx 1)
+                 0))))))
 
 (defn- sig-figs-after-decimal
   "Count the number of significant figures after the decimal point in a number.
@@ -117,7 +115,8 @@
   format string once and then apply it over many values."
   [{:keys  [semantic_type effective_type base_type]
     col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
-   viz-settings]
+   viz-settings
+   & [scalar?]]
   (let [global-type-settings (try
                                (streaming.common/global-type-settings col viz-settings)
                                (catch Exception _e
@@ -191,7 +190,9 @@
                                       fmtr))]
           (->NumericWrapper
            (let [inline-currency? (and currency?
-                                       (false? (::mb.viz/currency-in-header column-settings)))
+                                       (or
+                                        scalar?
+                                        (false? (::mb.viz/currency-in-header column-settings))))
                  sb               (StringBuilder.)]
              ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
              (when prefix (.append sb prefix))
@@ -214,7 +215,7 @@
            value))
         value))))
 
-(mu/defn format-number :- (ms/InstanceOfClass NumericWrapper)
+(mu/defn format-scalar-number :- (ms/InstanceOfClass NumericWrapper)
   "Format a number `n` and return it as a NumericWrapper; this type is used to do special formatting in other
   `pulse.render` namespaces."
   ([n :- number?]
@@ -222,7 +223,7 @@
                          :num-value n}))
 
   ([value column viz-settings]
-   (let [fmttr (number-formatter column viz-settings)]
+   (let [fmttr (number-formatter column viz-settings true)]
      (fmttr value))))
 
 (defn graphing-column-row-fns

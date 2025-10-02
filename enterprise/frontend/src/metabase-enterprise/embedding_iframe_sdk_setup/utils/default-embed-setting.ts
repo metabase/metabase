@@ -1,6 +1,7 @@
 import { match } from "ts-pattern";
 
 import type {
+  BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
@@ -19,8 +20,9 @@ export const getDefaultSdkIframeEmbedSettings = (
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
+        componentName: "metabase-dashboard",
         dashboardId: defaultResourceId,
-        isDrillThroughEnabled: true,
+        drills: true,
         withDownloads: false,
         withTitle: true,
       }),
@@ -28,17 +30,28 @@ export const getDefaultSdkIframeEmbedSettings = (
     .with(
       "chart",
       (): QuestionEmbedOptions => ({
+        componentName: "metabase-question",
         questionId: defaultResourceId,
-        isDrillThroughEnabled: true,
+        drills: true,
         withDownloads: false,
         withTitle: true,
+        isSaveEnabled: false,
       }),
     )
     .with(
       "exploration",
       (): ExplorationEmbedOptions => ({
+        componentName: "metabase-question",
         template: "exploration",
-        isSaveEnabled: true,
+        isSaveEnabled: false,
+      }),
+    )
+    .with(
+      "browser",
+      (): BrowserEmbedOptions => ({
+        componentName: "metabase-browser",
+        initialCollection: "root",
+        readOnly: true,
       }),
     )
     .exhaustive();

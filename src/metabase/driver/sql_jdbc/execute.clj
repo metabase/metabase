@@ -60,7 +60,9 @@
     [:session-timezone {:optional true} [:maybe [:ref driver-api/schema.expression.temporal.timezone-id]]]
     ;; whether this Connection should NOT be read-only, e.g. for DDL stuff or inserting data or whatever.
     [:write? {:optional true} [:maybe :boolean]]
-    [:download? {:optional true} [:maybe :boolean]]]])
+    [:download? {:optional true} [:maybe :boolean]]
+    ;; don't autoclose the connection
+    [:keep-open? {:optional true} [:maybe :boolean]]]])
 
 (defmulti do-with-connection-with-options
   "Fetch a [[java.sql.Connection]] from a `driver`/`db-or-id-or-spec`, and invoke
@@ -82,6 +84,9 @@
   * If `:write?` is NOT passed or otherwise falsey, make the connection read-only if possible; if it is truthy, make
     the connection read-write. Note that this current does not run things inside a transaction automatically; you'll
     have to do that yourself if you want it
+
+  * If `:keep-open?` is passed, the connection will NOT be closed after `(f connection)`. The caller is responsible for
+    closing it.
 
   The normal 'happy path' is more or less
 
@@ -343,8 +348,11 @@
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (if-let [conn (:connection db-or-id-or-spec)]
       (f conn)
-      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
-        (f conn)))))
+      (let [get-conn (^:once fn* [] (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options)))]
+        (if (:keep-open? options)
+          (f (get-conn))
+          (with-open [conn ^Connection (get-conn)]
+            (f conn)))))))
 
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
@@ -354,21 +362,25 @@
    db-or-id-or-spec
    ^Connection conn                                       :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
+  (when-let [db (cond
+                  ;; id?
+                  (integer? db-or-id-or-spec)
+                  (driver-api/with-metadata-provider db-or-id-or-spec
+                    (driver-api/database (driver-api/metadata-provider)))
+                  ;; db?
+                  (u/id db-or-id-or-spec)     db-or-id-or-spec
+                  ;; otherwise it's a spec and we can't get the db
+                  :else nil)]
+    (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (when-let [db (cond
-                    ;; id?
-                    (integer? db-or-id-or-spec)
-                    (driver-api/with-metadata-provider db-or-id-or-spec
-                      (driver-api/database (driver-api/metadata-provider)))
-                    ;; db?
-                    (u/id db-or-id-or-spec)     db-or-id-or-spec
-                    ;; otherwise it's a spec and we can't get the db
-                    :else nil)]
-      (set-role-if-supported! driver conn db))
-    (let [read-only? (not write?)]
+    (let [read-only? (not (or write?
+                              ;; we need to set autoCommit to false which causes postgresql
+                              ;; to enforce readOnly which will break queries that rely on
+                              ;; ddl statements, etc (#61892)
+                              (and (-> options :download?) (= driver :postgres))))]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
         ;; to be a hint to the driver to enable database optimizations
@@ -608,11 +620,17 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.LocalDateTime))
 
+(defn- arrays->vectors
+  [obj]
+  (if (some-> obj class .isArray)
+    (mapv arrays->vectors obj)
+    obj))
+
 (defmethod read-column-thunk [:sql-jdbc Types/ARRAY]
   [_driver ^java.sql.ResultSet rs _rsmeta ^Integer i]
   (fn []
-    (when-let [obj (.getObject rs i)]
-      (vec (.getArray ^java.sql.Array obj)))))
+    (when-let [sql-arr (.getObject rs i)]
+      (arrays->vectors (.getArray ^java.sql.Array sql-arr)))))
 
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE]
   [_ rs _ i]
@@ -845,3 +863,82 @@
  [sql-jdbc.execute.old
   connection-with-timezone
   set-timezone-sql])
+
+(def ^:private ^:dynamic
+  ^{:doc "Dynamic context for resilient connection management. Contains a map with:
+          - :db - the database instance, used to create new connections
+          - :conn - the current resilient connection (if any)
+          Used to enable connection recovery and reuse within [[driver/do-with-resilient-connection]]"}
+  *resilient-connection-ctx*
+  nil)
+
+(defmethod driver/do-with-resilient-connection :sql-jdbc
+  [driver db f]
+  (binding [*resilient-connection-ctx* {:db db}]
+    (try
+      (f driver db)
+      (finally
+        (when-let [conn ^Connection (:conn *resilient-connection-ctx*)]
+          (try (.close conn)
+               (catch Throwable _)))))))
+
+(defn is-conn-open?
+  "Checks if the conn is open.
+   If `:check-valid?` is passed, ensures the connection is actually usable. If it isn't, closes it"
+  [^Connection conn & {:keys [check-valid?]}]
+  (let [is-open (not (.isClosed conn))]
+    (if (and is-open check-valid?)
+      (try
+        (if (.isValid conn 5)
+          is-open
+          ;; if the connection is not valid anymore but hasn't been closed by the driver,
+          ;; we close it so that [[sql-jdbc.execute/try-ensure-open-conn!]] can attempt to reopen it.
+          ;; we've observed the snowflake driver hit this case
+          (do (.close conn) false))
+        (catch Throwable _ is-open))
+      is-open)))
+
+(defn try-ensure-open-conn!
+  "Ensure that a connection is open and usable, reconnecting if necessary and possible.
+
+  If the given connection is already open, just returns it. If the connection
+  is closed and we're in [[driver/do-with-resilient-connection]] context,
+  attempts to reuse an existing reconnection or establish a new one.
+  The connection will automatically be closed when exiting the [[driver/do-with-resilient-connection]]
+  context.
+
+  The `:force-context-local?` option forces creation of a new context-local
+  connection even if the outer connection is still open.
+
+  ConnectionOptions can be passed as `opts`, but `:keep-open?` will always be
+  overridden to `true`.
+
+  Not thread-safe."
+
+  ^Connection [driver ^Connection connection & {:keys [force-context-local?] :as opts}]
+  (cond
+    (and (not force-context-local?) (is-conn-open? connection))
+    connection
+
+    (not (thread-bound? #'*resilient-connection-ctx*))
+    (do
+      (log/warn "Requesting a resilient connection, but we're not in a resilient context")
+      connection)
+
+    (some-> *resilient-connection-ctx* :conn is-conn-open?)
+    (:conn *resilient-connection-ctx*)
+
+    :else
+    ;; we locally reset `*connection-recursion-depth*` so that the new connection
+    ;; gets all the options set as we'd expect, else we may be obtaining a badly
+    ;; configured connection (see: https://github.com/metabase/metabase/pull/59999)
+    (binding [*connection-recursion-depth* -1]
+      (try
+        (log/info "Obtaining a fresh resilient connection")
+        (let [{:keys [db]} *resilient-connection-ctx*
+              conn (do-with-connection-with-options driver db (merge opts {:keep-open? true}) identity)]
+          (set! *resilient-connection-ctx* {:db db :conn conn})
+          conn)
+        (catch Throwable e
+          (log/warn e "Failed obtaining a new resilient connection")
+          connection)))))

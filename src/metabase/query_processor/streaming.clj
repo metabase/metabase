@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming
   (:require
+   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -29,6 +30,16 @@
          qp.json/keep-me
          qp.xlsx/keep-me)
 
+(defn safe-filename-prefix
+  "Generate a safe filename prefix from a card name. Trims whitespace, slugifies the name,
+  and limits to 200 characters to respect filesystem limitations. Falls back to 'question' if empty."
+  [card-name]
+  (or (some-> card-name
+              str/trim
+              not-empty
+              (u/slugify {:max-length 200}))
+      "question"))
+
 (defn- deduplicate-col-names
   "Deduplicate column names that would otherwise conflict.
 
@@ -43,7 +54,7 @@
        cols
        (mbql.u/uniquify-names (map :name cols))))
 
-(defn- validate-table-columms
+(defn- validate-table-columns
   "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
   field ref or name. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
   Otherwise returns `table-columns`."
@@ -54,6 +65,29 @@
                                       (col-names (::mb.viz/table-column-name table-col))))
                   table-columns)
       table-columns)))
+
+(defn- not-explicitly-excluded-columns
+  "If a column is not explicitly excluded (it doesn't have a row in `table-columns` that marks it as disabled), we
+  should include it. This way, if e.g. the query has changed from `SELECT id FROM ...` to `SELECT id, created_at FROM
+  ...`, we'll include the new columns. (This is the same behavior as the UI.)"
+  [table-columns cols]
+  (let [{:keys [name->table field-ref->table]} (reduce (fn [m {n ::mb.viz/table-column-name
+                                                               fr ::mb.viz/table-column-field-ref
+                                                               :as table}]
+                                                         (cond-> m
+                                                           true (assoc-in [:name->table n] table)
+                                                           fr (assoc-in [:field-ref->table fr] table)))
+                                                       {}
+                                                       table-columns)]
+    (for [col cols
+          :when (and (not (get name->table (:name col)))
+                     (not (get field-ref->table (:field_ref col))))
+          :let [col-name (:name col)
+                id-or-name (or (:id col) col-name)
+                field-ref (:field_ref col)]]
+      {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
+       ::mb.viz/table-column-enabled   true
+       ::mb.viz/table-column-name      col-name})))
 
 (defn- pivot-grouping-exists?
   "Returns `true` if there's a column with the :name \"pivot-grouping\",
@@ -71,7 +105,10 @@
     ;; If the columns contain a pivot-grouping, we're exporting a pivot and the cols order is not used,
     ;; so we can just pass the indices in order.
     (range (count cols))
-    (let [table-columns'     (or (validate-table-columms table-columns cols)
+    (let [table-columns'     (or (when-let [tcs (seq (validate-table-columns table-columns cols))]
+                                   (concat
+                                    (filter ::mb.viz/table-column-enabled tcs)
+                                    (not-explicitly-excluded-columns table-columns cols)))
                                  ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                  ;; that retains the original column ordering in `cols`
                                  (for [col cols]
@@ -81,7 +118,6 @@
                                      {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
                                       ::mb.viz/table-column-enabled   true
                                       ::mb.viz/table-column-name      col-name})))
-          enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
           cols-vector        (into [] cols)
           ;; cols-index is a map from keys representing fields to their indices into `cols`
           cols-index         (reduce-kv (fn [m i col]
@@ -106,7 +142,7 @@
 
                   (not remapped-from-name)
                   index)))
-            enabled-table-cols)
+            table-columns')
            (remove nil?)))))
 
 (defn order-cols

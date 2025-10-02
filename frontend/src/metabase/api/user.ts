@@ -51,7 +51,8 @@ export const userApi = Api.injectEndpoints({
         url: "/api/user",
         body,
       }),
-      invalidatesTags: (_, error) => invalidateTags(error, [listTag("user")]),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("user"), listTag("permissions-group")]),
       onQueryStarted: async (request, { dispatch, queryFulfilled }) => {
         if (request.password) {
           const { data: user } = await queryFulfilled;

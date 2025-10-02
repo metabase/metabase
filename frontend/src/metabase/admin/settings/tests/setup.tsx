@@ -70,7 +70,7 @@ export const ossRoutes: RouteMap = {
   },
   embeddingSdk: {
     path: "/embedding-in-other-applications/sdk",
-    testPattern: /Embedded analytics SDK for React/i,
+    testPattern: /SDK for React/i,
   },
   license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
@@ -164,7 +164,7 @@ export const setup = async ({
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
-    setupTokenStatusEndpoint(hasTokenFeatures);
+    setupTokenStatusEndpoint({ valid: hasTokenFeatures });
   }
 
   renderWithProviders(

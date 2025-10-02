@@ -2,12 +2,11 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
-  CollectionId,
   DashboardId,
   DatasetQuery,
   PaginationResponse,
   RowValue,
-  SearchModel,
+  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -142,6 +141,7 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   metabot_id?: string;
+  profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
@@ -189,6 +189,20 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
+export interface MetabotFeedback {
+  metabot_id: MetabotId;
+  feedback: {
+    positive: boolean;
+    message_id: string;
+    issue_type?: string | undefined;
+    freeform_feedback: string;
+  };
+  conversation_data: any;
+  version: Version;
+  submission_time: string;
+  is_admin: boolean;
+}
+
 /* Metabot v3 - Entity Types */
 
 export type MetabotId = number;
@@ -196,17 +210,17 @@ export type MetabotName = string;
 
 export type MetabotInfo = {
   id: MetabotId;
+  entity_id: string;
   name: MetabotName;
+  description: string;
+  use_verified_content: boolean;
+  collection_id: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
-export type MetabotEntity = {
-  name: string;
-  id: CollectionId;
-  model: Extract<SearchModel, "collection">;
-  collection_id: CollectionId;
-  collection_name: string;
-};
+/* Metabot v3 - Add-on Purchase Types */
 
-export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
-  model_id: MetabotEntity["id"];
-};
+export interface PurchaseMetabotAddOnRequest {
+  terms_of_service: boolean;
+}

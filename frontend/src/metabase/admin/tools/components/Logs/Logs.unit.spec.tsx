@@ -57,7 +57,6 @@ describe("Logs", () => {
 
     afterEach(() => {
       utilSpy.mockClear();
-      fetchMock.restore();
       jest.useRealTimers();
     });
 

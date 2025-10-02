@@ -854,7 +854,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
       cy.findByText("See these People").should("be.visible");
-      cy.findByText("Zoom in").should("be.visible");
+      cy.findByText("Zoom in: State").should("be.visible");
 
       cy.findByText("Break out by…").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");

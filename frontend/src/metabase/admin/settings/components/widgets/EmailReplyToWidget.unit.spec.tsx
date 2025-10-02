@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -79,8 +79,8 @@ describe("EmailReplyToWidget", () => {
     const inputChanged = await screen.findByRole("textbox");
     expect(inputChanged).toHaveValue("responses@metatest.com");
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/email-reply-to");
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/email-reply-to");
     expect(body).toStrictEqual({ value: ["responses@metatest.com"] });
   });
 
@@ -99,13 +99,3 @@ describe("EmailReplyToWidget", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

@@ -55,10 +55,10 @@ const setup = async ({
   ]);
 
   setupPropertiesEndpoints(settings);
-  setupTokenStatusEndpoint(
-    !!token && token !== "invalid",
-    Object.keys(features),
-  );
+  setupTokenStatusEndpoint({
+    valid: !!token && token !== "invalid",
+    features: Object.keys(features),
+  });
   setupUpdateSettingEndpoint();
 
   renderWithProviders(<LicenseAndBillingSettings />, {

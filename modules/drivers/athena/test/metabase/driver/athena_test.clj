@@ -263,7 +263,21 @@
                              (let [metadata (.getMetaData conn)]
                                (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))
+            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
+              (let [get-columns-called (volatile! false)]
+                (with-redefs [athena/get-columns (fn [& _]
+                                                   (vreset! get-columns-called true)
+                                                   [{:column_name "c" :type_name "bigint"}
+                                                    {:column_name "c" :type_name "string"}])]
+                  (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
+                           {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
+                           {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
+                           {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
+                           {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
+                           {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
+                         (:fields (driver/describe-table :athena db table))))
+                  (is (true? @get-columns-called)))))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"

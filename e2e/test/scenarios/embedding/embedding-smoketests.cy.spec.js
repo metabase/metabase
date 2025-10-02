@@ -107,11 +107,24 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       cy.findByRole("article", { name: /Interactive embedding/ }).within(() => {
         cy.findByText("Interactive embedding");
 
-        cy.findByRole("link", { name: "Learn More" })
+        cy.findByRole("link", { name: "Try for free" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=embedding-page&source_plan=oss",
+          );
+      });
+    });
+
+    it("should show the sdk upsell link in oss", () => {
+      cy.visit("/admin/settings/embedding-in-other-applications/sdk");
+
+      mainPage().within(() => {
+        cy.findByRole("link", { name: "Try for free" })
+          .should("have.attr", "href")
+          .and(
+            "eq",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=embedding-page&source_plan=oss",
           );
       });
     });

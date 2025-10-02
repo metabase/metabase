@@ -1,11 +1,13 @@
 (ns metabase.lib.schema.common
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.memoize :as u.memo]))
+   [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :as perf]))
 
 (comment metabase.types.core/keep-me)
 
@@ -30,34 +32,22 @@
 (defn normalize-map-no-kebab-case
   "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
   [m]
-  ;; check to make sure we actually need to update anything before we do it. [[update-keys]] always creates new maps
-  ;; even if nothing has changed, this way we can avoid creating a bunch of garbage for already-normalized maps
-  (let [m (cond-> m
-            (and (map? m)
-                 (some string? (keys m)))
-            (update-keys keyword))]
-    (cond-> m
-      (string? (:lib/type m)) (update :lib/type keyword))))
-
-(def HORRIBLE-keys
-  "TODO (Cam 6/13/25) -- MEGA HACK -- keys that live in MLv2 that aren't SUPPOSED to be kebab-cased. We can and should
-  remove these keys altogether."
-  #{:model/inner_ident})
+  (when (map? m)
+    (let [m (perf/update-keys m keyword)]
+      (cond-> m
+        (string? (:lib/type m)) (update :lib/type keyword)))))
 
 (def ^:private ^{:arglists '([k])} memoized-kebab-key
   "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
   [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
   get a nice performance boost."
-  (u.memo/fast-memo (fn [k]
-                      (if (contains? HORRIBLE-keys k)
-                        k
-                        (u/->kebab-case-en k)))))
+  (u.memo/fast-memo u/->kebab-case-en))
 
 (defn map->kebab-case
   "Convert a map to kebab case, for use with `:decode/normalize`."
   [m]
   (when (map? m)
-    (update-keys m memoized-kebab-key)))
+    (perf/update-keys m memoized-kebab-key)))
 
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
@@ -154,10 +144,30 @@
 (defn- base-type? [x]
   (isa? x :type/*))
 
+;;; only support fixing really broken types like `:type/creationtime` to `:type/CreationTime` in prod... Malli checks
+;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
+
+(mu/defn- normalize-base-type* :- [:ref ::base-type]
+  [x]
+  (normalize-keyword x))
+
+(defn- normalize-base-type [x]
+  (when-let [k (normalize-base-type* x)]
+    (or (cond
+          (isa? k :type/*)
+          k
+
+          (and (= (namespace k) "type")
+               (= (u/lower-case-en (name k)) (name k)))
+          (m/find-first (fn [base-type]
+                          (= (u/lower-case-en (name base-type)) (name k)))
+                        (descendants :type/*)))
+        k)))
+
 (mr/def ::base-type
   [:and
    [:keyword
-    {:decode/normalize normalize-keyword}]
+    {:decode/normalize #'normalize-base-type}]
    [:fn
     {:error/message "valid base type"
      :error/fn      (fn [{:keys [value]} _]

@@ -110,7 +110,7 @@ describe("ModelCacheManagementSection", () => {
     fireEvent.click(await screen.findByLabelText("refresh icon"));
 
     // get, post, get
-    await waitFor(() => expect(fetchMock.calls().length).toBe(3));
+    await waitFor(() => expect(fetchMock.callHistory.calls().length).toBe(3));
   });
 
   it("displays 'error' state correctly", async () => {
@@ -131,7 +131,7 @@ describe("ModelCacheManagementSection", () => {
     fireEvent.click(await screen.findByLabelText("refresh icon"));
 
     // get, post, get
-    await waitFor(() => expect(fetchMock.calls().length).toBe(3));
+    await waitFor(() => expect(fetchMock.callHistory.calls().length).toBe(3));
   });
 
   it("disables refresh when DB management is not available to the user", async () => {

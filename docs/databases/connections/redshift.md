@@ -19,6 +19,10 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 
 To access or modify your database connection settings, click the **Edit connection details** button.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -103,6 +107,12 @@ Choose whether to enable features related to Metabase models. These will often r
 You can enable model persistence to allow Metabase to create tables with model data and refresh them on a schedule. This requires write permissions to a designated schema.
 
 Check out [Model persistence](../../data-modeling/model-persistence.md).
+
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

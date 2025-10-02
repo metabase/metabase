@@ -1108,7 +1108,7 @@
                                      "/"
                                      (collection/children-location
                                       (t2/select-one :model/Collection :personal_owner_id api/*current-user-id*)))))
-        dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
+        dashboard (dashboard/save-transient-dashboard! (assoc dashboard :creator_id api/*current-user-id*) parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))
 

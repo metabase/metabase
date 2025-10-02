@@ -4,7 +4,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -32,7 +31,7 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential ::mbql.s/OrderBy]))]
+    [:order-by        {:optional true} [:ref ::mbql.s/OrderBys]]
     [:rff             {:optional true} fn?]]])
 
 (defn- table-rows-sample-query

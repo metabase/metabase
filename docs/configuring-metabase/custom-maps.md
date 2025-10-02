@@ -30,7 +30,7 @@ Currently, Metabase uses a single tile server per instance. You can't specify di
 
 Metabase comes with two built-in [region maps](../questions/visualizations/map.md#region-maps): world map with countries and United States map with states.
 
-If you need a map of other regions - like EU countries or NYC neighborhoods - you can specify a GeoJSON file containing region information. You can often find GeoJSON maps by searching online for "[Your region] + geojson", like "NYC neighborhoods GeoJSON." Many community members and government organizations have already developed map files for common regions. You can also create your own GeoJSON with a tool like [MapShaper](https://mapshaper.org/) or [GeoJSON.io](http://geojson.io/).
+If you need a map of other regions - like EU countries or NYC neighborhoods - you can specify a GeoJSON file containing region information. You can often find GeoJSON maps by searching online for "[Your region] + geojson", like "NYC neighborhoods GeoJSON." Many community members and government organizations have already developed map files for common regions. You can also create your own GeoJSON with a tool like [MapShaper](https://mapshaper.org/) or [GeoJSON.io](https://geojson.io/).
 
 Your GeoJSON file should:
 

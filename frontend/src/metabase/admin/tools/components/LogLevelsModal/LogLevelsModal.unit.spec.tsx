@@ -51,7 +51,7 @@ const setup = ({ error, presets = [PRESET_A, PRESET_B] }: SetupOpts = {}) => {
   setupDeleteLoggerAdjustmentEndpoint();
 
   if (error) {
-    setupLoggerPresetsEndpoint({ status: 500 }, { overwriteRoutes: true });
+    fetchMock.modifyRoute("logger-presets", { response: { status: 500 } });
   }
 
   return renderWithProviders(
@@ -121,7 +121,9 @@ describe("LogLevelsModal", () => {
     await userEvent.click(screen.getByText("Reset to defaults"));
 
     expect(
-      fetchMock.calls("path:/api/logger/adjustment", { method: "DELETE" }),
+      fetchMock.callHistory.calls("path:/api/logger/adjustment", {
+        method: "DELETE",
+      }),
     ).toHaveLength(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -140,12 +142,13 @@ describe("LogLevelsModal", () => {
     await userEvent.click(within(popover).getByText(PRESET_B.display_name));
     await userEvent.click(screen.getByText("Save"));
 
-    const calls = fetchMock.calls("path:/api/logger/adjustment", {
+    const calls = fetchMock.callHistory.calls("path:/api/logger/adjustment", {
       method: "POST",
     });
 
     expect(calls).toHaveLength(1);
-    const [_url, options] = calls[0];
+    const call = calls[0];
+    const options = call.options;
     const body = await checkNotNull(options).body;
 
     if (typeof body !== "string") {

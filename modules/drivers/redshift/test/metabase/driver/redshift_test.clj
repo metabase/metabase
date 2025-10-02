@@ -190,7 +190,7 @@
 
 (defn- execute! [format-string & args]
   (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift @redshift.tx/db-connection-details)]
+        spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))]
     (log/info (u/format-color 'blue "[redshift] %s" sql))
     (try
       (jdbc/execute! spec sql)
@@ -519,3 +519,13 @@
     (testing (format "database-type %s" (pr-str database-type))
       (is (= exp-base-type
              (sql-jdbc.sync/database-type->base-type :redshift database-type))))))
+
+(deftest ^:parallel alternate-config-options-test
+  (testing "Can configure with either db or dbname"
+    (let [options {:host "test.example.com"}]
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :db "test-db"))))
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-db"))))
+      (is (thrown-with-msg? Exception #"Redshift connection details cannot contain both 'db' and 'dbname' options"
+                            (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))))))

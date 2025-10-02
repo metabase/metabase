@@ -476,6 +476,24 @@
                          :collection_id coll-id})]
                       (fetch "indexed-entity" :model_id [:in [(model-id miv) (model-id miv2)]]))))))))))
 
+(deftest indexed-entity-last-test
+  (search.tu/with-temp-index-table
+    (mt/with-temp [:model/Collection      {coll-id :id} {}
+                   :model/Card            model         (assoc (mt/card-with-source-metadata-for-query
+                                                                (mt/mbql-query products {:fields [$id $title]
+                                                                                         :limit  1}))
+                                                               :type          "model"
+                                                               :database_id   (mt/id)
+                                                               :collection_id coll-id)
+                   :model/ModelIndex      model-index   {:model_id   (:id model)
+                                                         :pk_ref     (mt/$ids :products $id)
+                                                         :value_ref  (mt/$ids :products $title)
+                                                         :schedule   "0 0 0 * * *"
+                                                         :state      "initial"
+                                                         :creator_id (mt/user->id :rasta)}]
+      (model-index/add-values! model-index)
+      (is (= "dataset" (last (into [] (map :model) (search.ingestion/searchable-documents))))))))
+
 (deftest ^:synchronized table-cleanup-test
   (when (search/supports-index?)
     ;; this test destroys the actual current index, regrettably

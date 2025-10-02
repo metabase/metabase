@@ -141,7 +141,6 @@
                  :additional-options nil
                  :db "v3_sample-dataset"
                  :password "passwd"
-                 :quote-db-name false
                  :let-user-control-scheduling false
                  :private-key-options "uploaded"
                  :private-key-source nil
@@ -157,12 +156,9 @@
                  :user "SNOWFLAKE_DEVELOPER"
                  :private-key-created-at "2024-01-05T19:10:30.861839Z"
                  :host ""}]
-    (testing "Database name is quoted if quoting is requested (#27856)"
-      (are [quote? result] (=? {:db result}
-                               (let [details (assoc details :quote-db-name quote?)]
-                                 (sql-jdbc.conn/connection-details->spec :snowflake details)))
-        true "\"v3_sample-dataset\""
-        false "v3_sample-dataset"))
+    (testing "Database name is always quoted in jdbc spec"
+      (is (=? "\"v3_sample-dataset\""
+              (:db (sql-jdbc.conn/connection-details->spec :snowflake details)))))
     (testing "Subname is replaced if hostname is provided (#22133)"
       (are [use-hostname alternative-host expected-subname] (=? expected-subname
                                                                 (:subname (let [details (-> details
@@ -177,7 +173,10 @@
         false nil "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
-        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
+        false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))
+    (testing "Application parameter is set to identify Metabase connections"
+      (is (= "Metabase_Metabase"
+             (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
 (deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
@@ -238,7 +237,7 @@
                                         {:database (assoc (mt/db)
                                                           :details {:db     " "
                                                                     :dbname "dbname"})})
-        (is (= ["SELECT TRUE AS \"_\" FROM \"dbname\".\"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
+        (is (= ["SELECT TRUE AS \"_\" FROM \"PUBLIC\".\"table\" WHERE 1 <> 1 LIMIT 0"]
                (sql-jdbc.describe-database/simple-select-probe-query :snowflake "PUBLIC" "table")))))))
 
 (deftest ^:parallel have-select-privilege?-test
@@ -256,7 +255,6 @@
     (qp.store/with-metadata-provider (mt/id)
       (let [schema "INFORMATION_SCHEMA"
             details (-> (mt/db)
-                        (assoc-in [:details :quote-db-name] true)
                         (assoc-in [:details :additional-options] (format "schema=%s" schema))
                         :details)]
         (sql-jdbc.conn/with-connection-spec-for-testing-connection [spec [:snowflake details]]
@@ -376,9 +374,9 @@
   [thunk]
   (mt/dataset (mt/dataset-definition
                "dynamic-db"
-               ["metabase_users"
-                [{:field-name "name" :base-type :type/Text}]
-                [["mb_qnkhuat"]]])
+               [["metabase_users"
+                 [{:field-name "name" :base-type :type/Text}]
+                 [["mb_qnkhuat"]]]])
     (let [details (:details (mt/db))]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS

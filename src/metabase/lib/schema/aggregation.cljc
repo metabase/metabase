@@ -17,12 +17,19 @@
 (mbql-clause/define-tuple-mbql-clause :avg :- :type/Float
   [:schema [:ref ::expression/number]])
 
+(mr/def ::distinct.arg
+  [:and
+   [:ref ::expression/expression]
+   ;; you're not allowed to do distinct values of nil
+   [:some
+    {:error/message "You're not allowed to do distinct values of nil"}]])
+
 ;;; number of distinct values of something.
 (mbql-clause/define-tuple-mbql-clause :distinct :- :type/Integer
-  [:schema [:ref ::expression/expression]])
+  [:schema [:ref ::distinct.arg]])
 
 (mbql-clause/define-tuple-mbql-clause :distinct-where :- :type/Integer
-  [:schema [:ref ::expression/expression]]
+  [:schema [:ref ::distinct.arg]]
   [:schema [:ref ::expression/boolean]])
 
 (mbql-clause/define-tuple-mbql-clause :count-where :- :type/Integer

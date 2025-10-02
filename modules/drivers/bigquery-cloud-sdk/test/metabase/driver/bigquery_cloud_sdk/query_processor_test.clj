@@ -318,10 +318,10 @@
       [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
       (meta/field-metadata :checkins :date)                                 :date)))
 
-(deftest reconcile-temporal-types-test
+(deftest ^:parallel reconcile-temporal-types-test
   (doseq [test-case (bigquery.qp.reconciliation-tu/test-cases)]
-    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case)))
-      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case))))
+    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case)))
+      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case))))
 
 (deftest reconcile-temporal-types-date-extraction-filters-test
   (mt/with-report-timezone-id! nil

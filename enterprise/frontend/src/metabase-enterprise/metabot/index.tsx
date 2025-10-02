@@ -3,11 +3,14 @@ import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { Route } from "metabase/hoc/Title";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { trackMetabotChatOpened } from "./analytics";
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
@@ -20,17 +23,16 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.isEnabled = () => true;
   PLUGIN_METABOT.Metabot = Metabot;
 
-  PLUGIN_METABOT.adminNavItem = [
+  PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
+
+  PLUGIN_METABOT.getAdminPaths = () => [
     {
       name: t`AI`,
       path: "/admin/metabot",
       key: "metabot",
     },
   ];
-
-  PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
-
-  PLUGIN_METABOT.AdminRoute = (
+  PLUGIN_METABOT.getAdminRoutes = () => (
     <Route
       key="metabot"
       path="metabot"
@@ -48,7 +50,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { startNewConversation } = useMetabotAgent();
+    const { startNewConversation, visible } = useMetabotAgent();
 
     return useMemo(() => {
       const ret: PaletteAction[] = [
@@ -60,16 +62,36 @@ if (hasPremiumFeature("metabot_v3")) {
           section: "metabot",
           keywords: searchText,
           icon: "metabot",
-          perform: () => startNewConversation(searchText),
+          perform: () => {
+            if (!visible) {
+              trackMetabotChatOpened("command_palette");
+            }
+            startNewConversation(searchText);
+          },
         },
       ];
       return ret;
-    }, [searchText, startNewConversation]);
+    }, [searchText, startNewConversation, visible]);
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
+} else if (hasPremiumFeature("offer_metabase_ai")) {
+  PLUGIN_METABOT.getAdminPaths = () => [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
+  PLUGIN_METABOT.getAdminRoutes = () => (
+    <Route path="metabot" component={createAdminRouteGuard("metabot")}>
+      <Route component={AdminSettingsLayout}>
+        <IndexRoute component={MetabotPurchasePage} />
+      </Route>
+    </Route>
+  );
 }
 
 /**

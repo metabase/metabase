@@ -1,12 +1,16 @@
 import type {
+  CollectionBrowserListColumns,
+  EmbeddingEntityType,
   EntityTypeFilterKeys,
   MetabaseTheme,
   SqlParameterValues,
-} from "embedding-sdk";
-import type { MetabaseError } from "embedding-sdk/errors";
-import type { MetabaseAuthMethod } from "embedding-sdk/types";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+} from "embedding-sdk-bundle";
+import type { MetabaseError } from "embedding-sdk-bundle/errors";
+import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
+import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -30,16 +34,24 @@ export type SdkIframeEmbedMessage =
   | {
       type: "metabase.embed.reportAuthenticationError";
       data: {
-        error: MetabaseError<string, unknown>;
+        error: MetabaseError<MetabaseErrorCode, unknown>;
+      };
+    }
+  | {
+      type: "metabase.embed.reportAnalytics";
+      data: {
+        usageAnalytics: EmbeddedAnalyticsJsEventSchema;
+        embedHostUrl: string;
       };
     };
 
 // --- Embed Option Interfaces ---
 
 export interface DashboardEmbedOptions {
+  componentName: "metabase-dashboard";
   dashboardId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
 
@@ -53,11 +65,15 @@ export interface DashboardEmbedOptions {
 }
 
 export interface QuestionEmbedOptions {
+  componentName: "metabase-question";
   questionId: number | string;
 
-  isDrillThroughEnabled?: boolean;
+  drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  targetCollection?: CollectionId;
+  entityTypes?: EntityTypeFilterKeys[];
+  isSaveEnabled?: boolean;
 
   // parameters
   initialSqlParameters?: SqlParameterValues;
@@ -68,6 +84,7 @@ export interface QuestionEmbedOptions {
 }
 
 export interface ExplorationEmbedOptions {
+  componentName: "metabase-question";
   template: "exploration";
 
   isSaveEnabled?: boolean;
@@ -75,26 +92,38 @@ export interface ExplorationEmbedOptions {
   entityTypes?: EntityTypeFilterKeys[];
 
   // incompatible options
-  questionId?: never;
   dashboardId?: never;
+  questionId?: never;
 }
 
-export interface CurateContentEmbedOptions {
-  template: "curate-content";
+export interface BrowserEmbedOptions {
+  componentName: "metabase-browser";
+
+  /** Which collection to start from? */
   initialCollection: CollectionId;
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Whether the content manager is in read-only mode. Defaults to true. */
+  readOnly?: boolean;
 
-  questionId?: never;
-  dashboardId?: never;
-}
+  /** Which columns to show on the collection browser */
+  collectionVisibleColumns?: CollectionBrowserListColumns[];
 
-export interface ViewContentEmbedOptions {
-  template: "view-content";
-  initialCollection: CollectionId;
+  /** How many items to show per page in the collection browser */
+  collectionPageSize?: number;
 
-  entityTypes?: CollectionBrowserEntityTypes[];
+  /** Which entities to show on the collection browser */
+  collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
+  /** Which entities to show on the question's data picker */
+  dataPickerEntityTypes?: EmbeddingEntityType[];
+
+  /** Whether to show the "New exploration" button. Defaults to true. */
+  withNewQuestion?: boolean;
+
+  /** Whether to show the "New dashboard" button. Defaults to true. Only applies when readOnly is false. */
+  withNewDashboard?: boolean;
+
+  template?: never;
   questionId?: never;
   dashboardId?: never;
 }
@@ -123,18 +152,19 @@ export type SdkIframeEmbedTemplateSettings =
   | DashboardEmbedOptions
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
-  | CurateContentEmbedOptions
-  | ViewContentEmbedOptions;
+  | BrowserEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = SdkIframeEmbedBaseSettings &
   SdkIframeEmbedTemplateSettings;
 
-/** Settings used by the embed.js constructor */
-export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
-  target: string | HTMLElement;
-  iframeClassName?: string;
-};
+export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
+  (
+    | DashboardEmbedOptions
+    | QuestionEmbedOptions
+    | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
+    | BrowserEmbedOptions
+  );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
 
@@ -146,5 +176,4 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof CurateContentEmbedOptions
-  | keyof ViewContentEmbedOptions;
+  | keyof BrowserEmbedOptions;

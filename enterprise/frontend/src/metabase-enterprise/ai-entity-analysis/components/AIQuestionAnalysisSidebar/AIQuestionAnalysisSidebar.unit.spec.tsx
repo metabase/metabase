@@ -134,7 +134,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       expect(screen.getByText("Filtered analysis")).toBeInTheDocument();
     });
 
-    const lastCallRequest = fetchMock.lastCall(
+    const lastCallRequest = fetchMock.callHistory.lastCall(
       "path:/api/ee/ai-entity-analysis/analyze-chart",
     )?.request;
     const body = await lastCallRequest?.json();

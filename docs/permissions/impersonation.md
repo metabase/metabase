@@ -14,15 +14,15 @@ This page covers the [View data](./data.md#view-data-permissions) permission lev
 
 **Impersonation access** allows admins to "outsource" View data permissions to roles in your database. Admins can associate user attributes with database-defined roles and their privileges. If someone is in a group with their View data permission set to Impersonation, the person will be able to view and query data based on the privileges granted to the role specified by their user attribute.
 
-## Impersonation vs sandboxing
+## Impersonation vs row and column security
 
 ### Impersonation sets permissions for questions written in both the SQL editor and the query builder
 
 Impersonation operates at the database level. In a database engine, setting the role before the query runs can alter the results of the query, as the role defines the permissions that your database should use when it executes the statements.
 
-### Sandboxing only sets permissions for query builder questions
+### Row and column security only sets permissions for query builder questions
 
-Sandboxing operates at the Metabase level. Since Metabase can't parse SQL queries to find out what data people are allowed to view, sandboxing only applies to questions composed in the query builder (where Metabase can interpret the queries).
+Row and column security operates at the Metabase level. Since Metabase can't parse SQL queries to find out what data people are allowed to view, row and column security only applies to questions composed in the query builder (where Metabase can interpret the queries).
 
 ## Example use case for impersonation
 
@@ -70,6 +70,16 @@ SELECT TO vermont_sales_team USING (state = 'VT');
 
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 ```
+
+### Snowflake connections should disable secondary roles when using impersonation
+
+For impersonation to work correctly with **Snowflake** databases, the user account Metabase uses to [connect to your Snowflake database](../databases/connections/snowflake.md) must have [secondary roles](https://docs.snowflake.com/en/user-guide/security-access-control-overview#authorization-through-primary-role-and-secondary-roles) disabled. You can disable secondary roles with:
+
+```sql
+ALTER USER metabase_user SET DEFAULT_SECONDARY_ROLES = ();
+```
+
+If you don't disable secondary roles, each impersonated role will also get permissions of all other roles you've granted to the Metabase user.
 
 ### Set up a Metabase group
 
@@ -141,7 +151,7 @@ Metabase will use whatever role you specify in the user attribute for each perso
 
 ## Use impersonation to set up row-level SQL access
 
-You can use impersonation to give people access to the SQL editor, while restricting their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively, you can use impersonation to set up data sandbox-like access to your data, while letting people use the SQL editor to query that data. The difference is that, _instead of setting up a data sandbox in Metabase, you need to set up that row-level security via the privileges granted to a role in your database._
+You can use impersonation to give people access to the SQL editor, while restricting their access to data based on a specific database role. And not just table-level access, but row-level access---or however you define access for that role in your database. Effectively, you can use impersonation to set up row and column security-like access to your data, while letting people use the SQL editor to query that data. The difference is that, _instead of setting up row and column security in Metabase, you need to set up that row-level security via the privileges granted to a role in your database._
 
 If instead you want to give a group SQL access to some, but not all, of the schemas or tables in that database, you can create an additional role in your database that only includes a subset of those tables---or even specific row-level access---and then use Metabase's impersonation feature to associate a user attribute with that role. Essentially what Metabase will do is take the user attribute and pass that attribute as a string into a `SET ROLE` or `USE ROLE` command for the database _before_ Metabase executes the query.
 

@@ -137,7 +137,7 @@ jobs:
         if: ${{ steps.docs-generation.outcome == 'failure' }}
         run: exit 1
 
-  # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
+  # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-bundle/dev.md`
   sdk-e2e-tests:
     name: "SDK e2e tests"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml

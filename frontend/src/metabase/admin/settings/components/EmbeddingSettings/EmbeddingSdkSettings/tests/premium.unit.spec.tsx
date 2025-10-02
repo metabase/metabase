@@ -32,7 +32,9 @@ describe("EmbeddingSdkSettings (EE with Embedding SDK token)", () => {
     expect(
       alertInfo.queryByText("upgrade to Metabase Pro"),
     ).not.toBeInTheDocument();
-    expect(alertInfo.getByText("implement JWT SSO")).toBeInTheDocument();
+    expect(
+      alertInfo.getByText("implement JWT or SAML SSO"),
+    ).toBeInTheDocument();
   });
 
   it("should allow users to update CORS settings", async () => {

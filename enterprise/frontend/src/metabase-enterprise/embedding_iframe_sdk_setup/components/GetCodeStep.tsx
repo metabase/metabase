@@ -6,6 +6,8 @@ import {
   Button,
   Card,
   CopyButton,
+  Flex,
+  HoverCard,
   Icon,
   Radio,
   Stack,
@@ -54,8 +56,28 @@ export const GetCodeStep = () => {
             <Stack gap="sm">
               <Radio
                 value="user-session"
-                // eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins.
-                label={t`Existing Metabase Session`}
+                label={
+                  <Flex align="center" gap="xs">
+                    {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                    <Text>{t`Existing Metabase session`}</Text>
+                    <HoverCard position="bottom">
+                      <HoverCard.Target>
+                        <Icon
+                          name="info"
+                          size={14}
+                          c="text-medium"
+                          cursor="pointer"
+                        />
+                      </HoverCard.Target>
+                      <HoverCard.Dropdown>
+                        <Text size="sm" p="md" style={{ width: 300 }}>
+                          {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                          {t`This option lets you test Embedded Analytics JS locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser. This may not work on Safari and Firefox. We recommend testing this in Chrome.`}
+                        </Text>
+                      </HoverCard.Dropdown>
+                    </HoverCard>
+                  </Flex>
+                }
               />
 
               <Radio
@@ -65,13 +87,6 @@ export const GetCodeStep = () => {
               />
             </Stack>
           </Radio.Group>
-
-          {authType === "user-session" && (
-            <Text size="sm" c="text-medium">
-              {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-              {t`This option lets you test iframe embedding locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser.`}
-            </Text>
-          )}
 
           {authType === "sso" && (
             <Text size="sm" c="text-medium">

@@ -13,7 +13,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getQuestion } from "metabase/query_builder/selectors";
 import type { Card, Settings, User } from "metabase-types/api";
 import {
   createMockCard,
@@ -57,15 +57,14 @@ export const setup = async ({
       questions: [card],
     }),
   });
-  const metadata = getMetadata(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = checkNotNull(getQuestion(state));
   const onSave = jest.fn();
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
 
-  setupTokenStatusEndpoint(hasEnterprisePlugins);
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

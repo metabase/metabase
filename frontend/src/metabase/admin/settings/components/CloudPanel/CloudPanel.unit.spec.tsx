@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock, { type MockResponse } from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
@@ -40,10 +40,6 @@ describe("CloudPanel", () => {
     fetchMock.get("path:/api/bug-reporting/details", {
       "metabase-info": { "run-mode": "prod" },
     });
-  });
-
-  afterEach(() => {
-    fetchMock.reset();
   });
 
   it("should be able to successfully go through migration flow", async () => {
@@ -102,7 +98,7 @@ describe("CloudPanel", () => {
 
     await waitFor(() => {
       expect(
-        fetchMock.called(`path:/api/cloud-migration/cancel`, {
+        fetchMock.callHistory.called(`path:/api/cloud-migration/cancel`, {
           method: "PUT",
         }),
       ).toBeTruthy();
@@ -128,7 +124,9 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a failed migration", async () => {
-    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE);
+    fetchMock.get(`path:/api/cloud-migration`, ERROR_RESPONSE, {
+      name: "cloud-migration-get",
+    });
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
     await expectErrorState();
@@ -149,7 +147,9 @@ describe("CloudPanel", () => {
   });
 
   it("should be able to start a new migration after a successful migration", async () => {
-    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE);
+    fetchMock.get(`path:/api/cloud-migration`, DONE_RESPONSE, {
+      name: "cloud-migration-get",
+    });
 
     const { mockMigrationStart, metabaseStoreLink } = setup();
 
@@ -271,7 +271,9 @@ const expectErrorState = async () => {
   ).toBeInTheDocument();
 };
 
-const startMigration = async (migrationResponses: MockResponse[]) => {
+const startMigration = async (
+  migrationResponses: UserRouteConfig["response"][],
+) => {
   fetchMockCloudMigrationGetSequence(migrationResponses);
   const { mockMigrationStart, store, metabaseStoreLink } = setup();
 
@@ -286,17 +288,17 @@ const startMigration = async (migrationResponses: MockResponse[]) => {
   return { store, metabaseStoreLink };
 };
 
-function fetchMockCloudMigrationGetSequence(responses: MockResponse[]) {
+function fetchMockCloudMigrationGetSequence(
+  responses: UserRouteConfig["response"][],
+) {
   let called = 0;
-
+  fetchMock.removeRoute("cloud-migration-get");
   return fetchMock.get(
     `path:/api/cloud-migration`,
     () => {
       // hold the last response
       return responses[Math.min(called++, responses.length - 1)];
     },
-    {
-      overwriteRoutes: true,
-    },
+    { name: "cloud-migration-get" },
   );
 }

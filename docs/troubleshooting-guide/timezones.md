@@ -49,11 +49,13 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 ## Are SQL queries not respecting the Reporting Time Zone setting?
 
-**Root cause:** We don't currently apply a reporting time zone to the results of SQL queries.
+**Root cause:** Database settings. Metabase sets a session time zone, but some databases ignore it.
 
 **Steps to take:**
 
-Set a reporting time zone explicitly in your SQL query.
+Contact your database administrator to allow setting the session time zone.
+
+Alternatively, you can also set a reporting time zone explicitly in your SQL query.
 
 For example, you can write something like this with PostgreSQL:
 

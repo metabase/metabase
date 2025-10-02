@@ -12,10 +12,10 @@ export const SDKContent = ({
   sdkQuickstartUrl,
   sdkDocsUrl,
 }: SDKContentProps) => (
-  <Box>
+  <Box component="section" aria-labelledby="sdk-title">
     <Group gap="sm" align="center" mb="sm">
-      <Text fw="bold" size="lg" color="text-medium">
-        {t`Embedded analytics SDK`}
+      <Text fw="bold" size="lg" color="text-medium" id="sdk-title">
+        {t`Embedded analytics SDK for React`}
       </Text>
     </Group>
     <Text mb="md">

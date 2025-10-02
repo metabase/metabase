@@ -1,13 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  findRequests,
   setupDashboardEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
-  setupUpdateSettingEndpoint,
-  setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDashboard } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -16,20 +13,14 @@ import {
 
 import { SdkIframeEmbedSetup } from "./SdkIframeEmbedSetup";
 
-const setup = (options?: {
-  showSimpleEmbedTerms?: boolean;
-  embeddingSdkEnabled?: boolean;
-}) => {
+const setup = (options?: { simpleEmbeddingEnabled?: boolean }) => {
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"]);
   setupDashboardEndpoints(createMockDashboard());
-  setupUpdateSettingsEndpoint();
-  setupUpdateSettingEndpoint();
 
   renderWithProviders(<SdkIframeEmbedSetup />, {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
-        "show-simple-embed-terms": options?.showSimpleEmbedTerms ?? true,
-        "enable-embedding-sdk": options?.embeddingSdkEnabled ?? false,
+        "enable-embedding-simple": options?.simpleEmbeddingEnabled ?? false,
       }),
     }),
   });
@@ -54,7 +45,7 @@ describe("Embed flow > initial setup", () => {
 
 describe("Embed flow > forward and backward navigation", () => {
   it("navigates forward through the embed flow", async () => {
-    setup();
+    setup({ simpleEmbeddingEnabled: true });
 
     expect(
       screen.getByText("Select your embed experience"),
@@ -84,7 +75,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("navigates backward to the previous step", async () => {
-    setup();
+    setup({ simpleEmbeddingEnabled: true });
 
     // Select embed type > select resource > select embed options
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
@@ -105,7 +96,7 @@ describe("Embed flow > forward and backward navigation", () => {
   });
 
   it("skips the 'select resource' step for exploration", async () => {
-    setup();
+    setup({ simpleEmbeddingEnabled: true });
 
     await userEvent.click(screen.getByRole("radio", { name: /Exploration/ }));
 
@@ -119,89 +110,3 @@ describe("Embed flow > forward and backward navigation", () => {
     ).not.toBeInTheDocument();
   });
 });
-
-describe("Embed flow > usage terms card", () => {
-  it("shows the simple embed terms card when show-simple-embed-terms is true", () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: false });
-
-    expect(screen.getByText("First, some legalese.")).toBeInTheDocument();
-    expect(screen.getByText(/When using simple embedding/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Got it" })).toBeInTheDocument();
-  });
-
-  it("does not show the simple embed terms card when show-simple-embed-terms is false", () => {
-    setup({ showSimpleEmbedTerms: false, embeddingSdkEnabled: false });
-
-    expect(screen.queryByText("First, some legalese.")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Got it" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows the simple embed terms card even when embedding SDK is already enabled", () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: true });
-
-    // The card should still be shown if show-simple-embed-terms is true
-    expect(screen.getByText("First, some legalese.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Got it" })).toBeInTheDocument();
-  });
-
-  it("handles accepting the terms by making PUT request to update settings", async () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: true });
-
-    const gotItButton = screen.getByRole("button", { name: "Got it" });
-    await userEvent.click(gotItButton);
-
-    // Verify that show-simple-embed-terms is set to false
-    const matchingRequest = await waitForUpdateSetting(
-      "show-simple-embed-terms",
-      false,
-    );
-
-    expect(matchingRequest).toBeDefined();
-  });
-
-  it("automatically enables embedding SDK when entering the flow", async () => {
-    setup({ showSimpleEmbedTerms: true, embeddingSdkEnabled: false });
-
-    // Verify that enable-embedding-sdk is set to true
-    // TODO: change this to "enable-embedding-simple" once we split the embed settings
-    const matchingRequest = await waitForUpdateSetting(
-      "enable-embedding-sdk",
-      true,
-    );
-
-    expect(matchingRequest).toBeDefined();
-  });
-});
-
-async function waitForPutRequests() {
-  return waitFor(async () => {
-    const puts = await findRequests("PUT");
-    expect(puts.length).toBeGreaterThan(0);
-    return puts;
-  });
-}
-
-async function waitForUpdateSetting(
-  settingName: string,
-  expectedValue?: unknown,
-) {
-  return waitForPutRequests().then((putRequests) => {
-    const settingRequests = putRequests.filter((req) =>
-      req.url.includes("/api/setting"),
-    );
-
-    const matchingRequest = settingRequests.find((req) => {
-      const body =
-        typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-
-      return (
-        settingName in body &&
-        (expectedValue === undefined || body[settingName] === expectedValue)
-      );
-    });
-
-    return matchingRequest;
-  });
-}

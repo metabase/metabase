@@ -178,6 +178,8 @@ describe("SearchResults", () => {
 
   it("should only call the /api/user/recipients endpoint once even if there are multiple search results", async () => {
     await setup();
-    expect(fetchMock.calls("path:/api/user/recipients").length).toBe(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/user/recipients").length,
+    ).toBe(1);
   });
 });

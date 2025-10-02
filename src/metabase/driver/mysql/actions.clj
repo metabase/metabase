@@ -82,11 +82,11 @@
               (re-find #"Cannot delete or update a parent row: a foreign key constraint fails \((.+), CONSTRAINT (.+) FOREIGN KEY \((.+)\) REFERENCES (.+) \((.+)\)\)" error-message)]
      (merge {:type error-type}
             (case action-type
-              :row/delete
+              (:table.row/delete :model.row/delete)
               {:message (tru "Other tables rely on this row so it cannot be deleted.")
                :errors  {}}
 
-              :row/update
+              :model.row/update
               (let [column (remove-backticks column)]
                 {:message (tru "Unable to update the record.")
                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}}))))
@@ -95,10 +95,10 @@
      (let [column (remove-backticks column)]
        {:type    error-type
         :message (case action-type
-                   :row/create
+                   (:table.row/create :model.row/create)
                    (tru "Unable to create a new record.")
 
-                   :row/update
+                   (:table.row/update :model.row/update)
                    (tru "Unable to update the record."))
         :errors  {(remove-backticks column) (tru "This {0} does not exist." (str/capitalize (remove-backticks column)))}}))))
 
@@ -110,6 +110,19 @@
       {:type    error-type
        :message (tru "Some of your values aren’t of the correct type for the database.")
        :errors  {column (tru "This value should be of type {0}." (str/capitalize expected-type))}})))
+
+(defmethod sql-jdbc.actions/maybe-parse-sql-error [:mysql driver-api/violate-check-constraint]
+  [_driver error-type _database _action-type error-message]
+  (or (when-let [[_match constraint-name]
+                 (re-find #"Check constraint '([^']+)' is violated" error-message)]
+        {:type    error-type
+         :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+         :errors  {}})
+      (when-let [[_match constraint-name]
+                 (re-find #"CONSTRAINT `([^']+)` failed for" error-message)]
+        {:type    error-type
+         :message (tru "Some of your values violate the constraint: {0}" constraint-name)
+         :errors  {}})))
 
 ;;; There is a huge discrepancy between the types used in DDL statements and
 ;;; types that can be used in CAST:

@@ -478,10 +478,22 @@
             "v45.00-001" legacy-migrations-file
             "v56.0000-00-00T00:00:00" update001-migrations-file]))))))
 
+(def ^:private special-case-migrations #{"v56.2025-06-05T16:48:48" "v56.2025-05-19T16:48:48"})
+
+(defn- handle-special-case-migrations
+  "This handles v56 migrations that were checked into the v55 branch to resolve an issue with
+  inadventently backported migrations in 55. We check if this or the bad backports are the most recent
+  available migration and explicitly return 55 as the available major version if so."
+  [s]
+  (when (contains? special-case-migrations s)
+    55))
+
 (defn- extract-numbers
   "Returns contiguous integers parsed from string s"
   [s]
-  (map #(Integer/parseInt %) (re-seq #"\d+" s)))
+  (if-let [special-cased (handle-special-case-migrations s)]
+    [special-cased]
+    (map #(Integer/parseInt %) (re-seq #"\d+" s))))
 
 (defn latest-available-major-version
   "Get the latest version that Liquibase would apply if we ran migrations right now."
@@ -518,8 +530,8 @@
              (format "target version must be a number between 44 and the previous major version (%d), inclusive"
                      (config/current-major-version)))))
    (with-scope-locked liquibase
-    ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need
-    ;; to be considered)
+     ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need
+     ;; to be considered)
      (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%'" (changelog-table-name liquibase))
            changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
            ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
@@ -544,7 +556,8 @@
                                                      [(AlreadyRanChangeSetFilter. ran-changesets)
                                                       (IgnoreChangeSetFilter.)
                                                       (DbmsChangeSetFilter. lb-db)
-                                                      changeset-filter])))]
+                                                      changeset-filter])))
+           error-ids (atom [])]
        (when (and (not force) (> latest-applied latest-available))
          (throw (ex-info
                  (format "Cannot downgrade a database at version %d from Metabase version %d. You must run 'migrate down' from Metabase version >= %d."
@@ -556,11 +569,25 @@
        (if (empty? ids-to-drop)
          (log/info "No changesets to roll back")
          (do
-           (AbstractRollbackCommandStep/doRollback lb-db changelog-file nil changelog-iterator (.getChangeLogParameters liquibase) changelog nil nil)
+           (let [change-listener (proxy [liquibase.changelog.visitor.AbstractChangeExecListener] []
+                                   (rollbackFailed [^ChangeSet change-set _dbchangelog _db ^Exception e]
+                                     (swap! error-ids conj (.getId change-set))
+                                     (log/errorf e "Error rolling back migration %s" (.getId change-set))))]
+             (AbstractRollbackCommandStep/doRollback lb-db
+                                                     changelog-file
+                                                     nil
+                                                     changelog-iterator
+                                                     (.getChangeLogParameters liquibase)
+                                                     changelog
+                                                     change-listener))
            (let [remaining-query (-> (sql.helpers/select :id)
                                      (sql.helpers/from (keyword (changelog-table-name liquibase)))
                                      (sql.helpers/where [:in :id ids-to-drop]))
                  formatted-sql (sql/format remaining-query)
                  remaining-ids   (map :id (t2/query conn formatted-sql))]
              (when (seq remaining-ids)
-               (log/warnf "The following changesets were not rolled back. Likely because they are not in the changelog file: %s" (str/join ", " remaining-ids))))))))))
+               (log/warnf "The following changesets were not rolled back. Likely because %s: %s"
+                          (if (seq @error-ids)
+                            (format "there were errors in rollback (%s)" (str/join ", " @error-ids))
+                            "they are not in the changelog file")
+                          (str/join ", " remaining-ids))))))))))

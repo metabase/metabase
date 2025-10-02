@@ -119,7 +119,6 @@
       (is (=? (->> (cols-of :orders)
                    sort-cols)
               (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
-
       (is (=? (->> (concat (from :source/card (cols-of :orders))
                            (implicitly-joined (cols-of :people))
                            (implicitly-joined (cols-of :products)))
@@ -234,8 +233,10 @@
           rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
           query (lib/join query join-clause)
-          filter-col (m/find-first (comp #{"Mock people card__ID"} :lib/desired-column-alias)
+          filter-col (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Mock people card")
+                                         (= (:lib/source-column-alias %) "ID"))
                                    (lib/filterable-columns query))
+          _ (assert (some? filter-col) "Failed to find filter column")
           query (-> query
                     (lib/filter (lib/= filter-col 1))
                     (lib/aggregate (lib/distinct filter-col))
@@ -526,12 +527,12 @@
                                :alias        "Products"
                                :fields       :all}]
                 :aggregation [[:distinct &Products.products.id]]
-                :breakout    [&Products.!month.created-at]})
+                :breakout    [&Products.!month.products.created-at]})
         mp   (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :dataset-query q1}]})
-        q2   (lib/query mp (meta/table-metadata :reviews))
-        card (lib.metadata/card mp 1)]
+        card (lib.metadata/card mp 1)
+        q2   (lib/query mp card)]
     (doseq [f [#'lib/returned-columns
                #'lib/visible-columns]]
       (testing (str f " for a card should NEVER return `:metabase.lib.join/join-alias`, because the join happened within the Card itself.")
@@ -559,3 +560,41 @@
             :lib/source    :source/card
             :lib/breakout? false}]
           (lib/returned-columns (lib.tu/query-with-source-card)))))
+
+(deftest ^:parallel card-returned-columns-propagate-inactive-test
+  (let [card-query (lib/query
+                    meta/metadata-provider
+                    (lib.tu.macros/mbql-query orders
+                      {:fields [$id $subtotal $tax $total $created-at $quantity]
+                       :joins  [{:source-table $$products
+                                 :alias        "Product"
+                                 :condition    [:=
+                                                $orders.product-id
+                                                [:field %products.id {:join-alias "Product"}]]
+                                 :fields       [[:field %products.id {:join-alias "Product"}]
+                                                [:field %products.title {:join-alias "Product"}]
+                                                [:field %products.vendor {:join-alias "Product"}]
+                                                [:field %products.price {:join-alias "Product"}]
+                                                [:field %products.rating {:join-alias "Product"}]]}]}))
+        mp         (-> meta/metadata-provider
+                       (lib.tu/mock-metadata-provider
+                        {:cards [{:id              1
+                                  :dataset-query   card-query
+                                  :result-metadata (lib/returned-columns card-query)}]})
+                       (lib.tu/merged-mock-metadata-provider
+                        {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                   {:id field-id, :active false})}))
+        query      (lib/query mp (lib.metadata/card mp 1))]
+    (is (= [["ID"              true]
+            ["SUBTOTAL"        true]
+            ["TAX"             false]
+            ["TOTAL"           true]
+            ["CREATED_AT"      true]
+            ["QUANTITY"        true]
+            ["Product__ID"     true]
+            ["Product__TITLE"  true]
+            ["Product__VENDOR" false]
+            ["Product__PRICE"  true]
+            ["Product__RATING" true]]
+           (map (juxt :lib/desired-column-alias :active)
+                (lib/returned-columns query))))))

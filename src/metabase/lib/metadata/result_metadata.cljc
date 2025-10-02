@@ -7,6 +7,8 @@
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
   (:require
+   #?@(:clj
+       ([metabase.config.core :as config]))
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -28,7 +30,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -54,11 +57,11 @@
   [:maybe [:sequential ::col]])
 
 (mu/defn- merge-col :- ::col
-  "Merge a map from `:cols` returned by the driver with the column metadata from MLv2. We'll generally prefer the values
-  from the driver to values calculated by MLv2."
+  "Merge a map from `:cols` returned by the driver with the column metadata from Lib. We'll generally prefer the values
+  from the driver to values calculated by Lib."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (perf/update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -69,7 +72,7 @@
            ;; aggregations). Same for `:lib/source`
            (u/select-non-nil-keys lib-col [:name :lib/source])
            ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
-           ;; type calculated by MLv2
+           ;; type calculated by Lib
            {:effective-type (or (when-let [driver-base-type (:base-type driver-col)]
                                   (when-not (= driver-base-type :type/*)
                                     driver-base-type))
@@ -78,10 +81,10 @@
                                 :type/*)})))
 
 (mu/defn- merge-cols :- [:sequential ::kebab-cased-map]
-  "Merge our column metadata (`:cols`) from MLv2 with the `initial-cols` metadata returned by the driver.
+  "Merge our column metadata (`:cols`) from Lib with the `initial-cols` metadata returned by the driver.
 
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order (matching
-  the order supposed by MLv2)."
+  the order supposed by Lib)."
   [initial-cols :- [:maybe [:sequential ::kebab-cased-map]]
    lib-cols     :- [:maybe [:sequential ::kebab-cased-map]]]
   (cond
@@ -95,15 +98,26 @@
     initial-cols
 
     :else
-    (throw (ex-info (lib.util/format (str "column number mismatch between initial metadata columns returned by driver (%d) and"
-                                          " those expected by MLv2 (%d). Did the driver return the wrong number of columns? "
-                                          " Or is there a bug in MLv2 metadata calculation?")
-                                     (count initial-cols)
-                                     (count lib-cols))
-                    (letfn [(select-relevant-keys [m]
-                              (select-keys m [:id :metabase.lib.join/join-alias :lib/desired-column-alias :lib/deduplicated-name :lib/original-name :name]))]
-                      {:initial-cols (map select-relevant-keys initial-cols)
-                       :lib-cols     (map select-relevant-keys lib-cols)})))))
+    (let [e (ex-info (lib.util/format (str "column number mismatch between initial metadata columns returned by driver (%d) and"
+                                           " those expected by Lib (%d). Did the driver return the wrong number of columns? "
+                                           " Or is there a bug in Lib metadata calculation?")
+                                      (count initial-cols)
+                                      (count lib-cols))
+                     (letfn [(select-relevant-keys [m]
+                               (select-keys m [:id :metabase.lib.join/join-alias :lib/desired-column-alias :lib/deduplicated-name :lib/original-name :name]))]
+                       {:initial-cols (map select-relevant-keys initial-cols)
+                        :lib-cols     (map select-relevant-keys lib-cols)}))]
+      (if #?(:clj config/is-prod? :cljs false)
+        ;; in prod rather than throwing an Exception just log an error message and take the number of columns we got
+        ;; back from the results. This is still a bug we need to fix but we don't need to break queries in the
+        ;; meantime -- see
+        ;; https://metaboat.slack.com/archives/C0645JP1W81/p1757457633926199?thread_ts=1757457374.178329&cid=C0645JP1W81
+        (do
+          (log/error e)
+          (mapv merge-col
+                initial-cols
+                (concat lib-cols (repeat nil))))
+        (throw e)))))
 
 (mu/defn- legacy-source :- ::lib.schema.metadata/column.legacy-source
   [{source :lib/source, breakout? :lib/breakout?, :as _col} :- [:maybe ::lib.schema.metadata/column]]
@@ -179,14 +193,24 @@
       aliases)))
 
 (defn- remove-implicit-join-aliases
+  "If an implicit join was reified by the QP preprocessor, we need to remove traces of that reification from result
+  metadata, so anyone using it in combination with the un-preprocessed query doesn't accidentally introduce field refs
+  that include generated join aliases for joins that don't exist yet."
   [query cols]
-  (let [implicit-aliases (implicit-join-aliases query -1)]
-    (map (fn [col]
-           (cond-> col
-             (when-let [join-alias (any-join-alias col)]
-               (contains? implicit-aliases join-alias))
-             (dissoc :metabase.lib.join/join-alias :lib/original-join-alias :source-alias)))
-         cols)))
+  (let [implicit-aliases    (implicit-join-aliases query -1)
+        maybe-update-source (fn [col]
+                              (cond-> col
+                                (= (:lib/source col) :source/joins)
+                                (assoc :lib/source :source/implicitly-joinable)))
+        remove-aliases      (fn [col]
+                              (dissoc col :metabase.lib.join/join-alias :lib/original-join-alias :source-alias))
+        implicitly-joined?  (fn [col]
+                              (when-let [join-alias (any-join-alias col)]
+                                (contains? implicit-aliases join-alias)))
+        maybe-update-col    (fn [col]
+                              (cond-> col
+                                (implicitly-joined? col) (-> remove-aliases maybe-update-source)))]
+    (map maybe-update-col cols)))
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
@@ -201,7 +225,7 @@
         cols))
 
 (mu/defn- fe-friendly-expression-ref :- ::mbql.s/Reference
-  "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
+  "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' Lib
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
   don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
   will see."
@@ -264,7 +288,7 @@
                        col
                        (when-not remove-join-alias?
                          (when-let [previous-join-alias (:lib/original-join-alias col)]
-                           {:metabase.lib.join/join-alias previous-join-alias})))
+                           {:metabase.lib.join/join-alias previous-join-alias, :lib/source :source/joins})))
                       lib.ref/ref))))
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
@@ -338,7 +362,7 @@
                      lib-cols)]
       (->> initial-cols
            (map (fn [col]
-                  (update-keys col u/->kebab-case-en)))
+                  (perf/update-keys col u/->kebab-case-en)))
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
@@ -375,7 +399,7 @@
   (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
-  "Convert MLv2-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love
+  "Convert Lib-style `:metadata/column` column metadata to the `snake_case` legacy format we've come to know and love
   in QP results metadata (`data.cols`)."
   [col :- ::kebab-cased-map]
   (-> col
@@ -384,7 +408,7 @@
       remove-lib-uuids))
 
 (mu/defn- cols->legacy-metadata :- [:sequential ::kebab-cased-map]
-  "Convert MLv2-style `kebab-case` metadata to legacy QP metadata results `snake_case`-style metadata. Keys are slightly
+  "Convert Lib-style `kebab-case` metadata to legacy QP metadata results `snake_case`-style metadata. Keys are slightly
   different as well. This is mostly for backwards compatibility with old FE code. See this thread
   https://metaboat.slack.com/archives/C0645JP1W81/p1749077302448169?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- [:sequential ::kebab-cased-map]]

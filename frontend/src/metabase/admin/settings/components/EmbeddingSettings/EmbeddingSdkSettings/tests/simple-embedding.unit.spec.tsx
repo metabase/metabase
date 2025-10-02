@@ -10,7 +10,7 @@ const setup = (opts: SetupOpts = {}) =>
     hasEnterprisePlugins: true,
     tokenFeatures: {
       embedding_sdk: true,
-      embedding_iframe_sdk: true,
+      embedding_simple: true,
     },
     ...opts,
   });
@@ -21,18 +21,14 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: false,
     });
 
     const toggles = screen.getAllByRole("switch");
     expect(toggles).toHaveLength(2);
 
-    expect(
-      screen.getByText("Embedded analytics SDK for React"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("SDK for React")).toBeInTheDocument();
 
-    expect(screen.getByText("Simple SDK Embedding")).toBeInTheDocument();
-    expect(screen.queryAllByText("Beta")).toHaveLength(1);
+    expect(screen.getByText("Embedded Analytics JS")).toBeInTheDocument();
   });
 
   it("should show legalese modal when Simple Embedding toggle is enabled", async () => {
@@ -40,7 +36,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: true,
     });
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -61,7 +56,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
       isEmbeddingSdkEnabled: false,
       isEmbeddingSimpleEnabled: false,
       showSdkEmbedTerms: false,
-      showSimpleEmbedTerms: true,
     });
 
     const toggles = screen.getAllByRole("switch");
@@ -85,7 +79,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
         isEmbeddingSdkEnabled: false,
         isEmbeddingSimpleEnabled: false,
         showSdkEmbedTerms: false,
-        showSimpleEmbedTerms: false,
       });
 
       expect(
@@ -122,7 +115,6 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
           isEmbeddingSdkEnabled,
           isEmbeddingSimpleEnabled,
           showSdkEmbedTerms: false,
-          showSimpleEmbedTerms: false,
         });
 
         const originInput = screen.getByPlaceholderText(

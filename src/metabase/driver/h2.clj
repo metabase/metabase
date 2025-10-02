@@ -58,6 +58,7 @@
 
 (doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
+                              :actions/data-editing      true
                               :datetime-diff             true
                               :expression-literals       true
                               :full-join                 false

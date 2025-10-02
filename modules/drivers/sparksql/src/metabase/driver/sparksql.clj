@@ -18,7 +18,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
-   (java.sql Connection ResultSet)))
+   (java.sql Connection ResultSet Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,19 +37,19 @@
   (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
         field-clause  (driver-api/update-field-options
                        field-clause
-                       update
-                       driver-api/qp.add.source-table
-                       (fn [source-table]
-                         (cond
-                            ;; DO NOT qualify fields from field filters with `t1`, that won't
-                            ;; work unless the user-written SQL query is doing the same
-                            ;; thing.
-                           compiling-field-filter? driver-api/qp.add.none
-                            ;; for all other fields from the source table qualify them with
-                            ;; `t1`
-                           (integer? source-table) source-table-alias
-                            ;; no changes for anyone else.
-                           :else                   source-table)))]
+                       (fn [{source-table driver-api/qp.add.source-table, :as options}]
+                         (-> options
+                             (cond-> (pos-int? source-table) (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
+                             (assoc driver-api/qp.add.source-table (cond
+                                                                     ;; DO NOT qualify fields from field filters with `t1`, that won't
+                                                                     ;; work unless the user-written SQL query is doing the same
+                                                                     ;; thing.
+                                                                     compiling-field-filter? driver-api/qp.add.none
+                                                                     ;; for all other fields from the source table qualify them with
+                                                                     ;; `t1`
+                                                                     (pos-int? source-table) source-table-alias
+                                                                     ;; no changes for anyone else.
+                                                                     :else                   source-table)))))]
     (parent-method driver field-clause)))
 
 (defn- format-over
@@ -260,3 +260,8 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sparksql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:sparksql Types/ARRAY]
+  [_ ^ResultSet rs _rsmeta ^Integer i]
+  (fn []
+    (.getObject rs i)))
