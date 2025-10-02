@@ -2,7 +2,6 @@
 
 const url = new URL(self.location.href);
 const packages = url.searchParams.getAll("packages");
-console.log("packages", packages);
 
 run();
 
@@ -29,7 +28,8 @@ async function init() {
   // Import pyodide from local assets
   self.importScripts("/app/assets/pyodide/pyodide.js");
 
-  // @ts-ignore - loadPyodide is available after importScripts
+  // @ts-expect-error - loadPyodide is available after importScripts
+  // eslint-disable-next-line no-undef
   const pyodide = await loadPyodide({
     indexURL: "/app/assets/pyodide/",
     packages,
