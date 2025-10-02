@@ -6,7 +6,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -50,22 +53,38 @@ type TransformQueryPageBodyProps = {
 export function TransformQueryPageBody({
   transform,
 }: TransformQueryPageBodyProps) {
-  const [updateTransform, { isLoading }] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading: isSaving }] =
+    useUpdateTransformMutation();
   const dispatch = useDispatch();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const handleSourceSave = async (source: TransformSource) => {
-    const { error } = await updateTransform({
+  const {
+    checkData,
+    isCheckingDependencies,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCloseConfirmation,
+  } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
+    onSave: async (request) => {
+      const { error } = await updateTransform(request);
+      if (error) {
+        sendErrorToast(t`Failed to update transform query`);
+      } else {
+        sendSuccessToast(t`Transform query updated`);
+        dispatch(push(getTransformUrl(transform.id)));
+      }
+    },
+    onError: () => {
+      sendErrorToast(t`Failed to update transform query`);
+    },
+  });
+
+  const handleSaveSource = async (source: TransformSource) => {
+    await handleInitialSave({
       id: transform.id,
       source,
     });
-
-    if (error) {
-      sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
-    }
   };
 
   const handleCancel = () => {
@@ -77,19 +96,29 @@ export function TransformQueryPageBody({
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
         initialSource={transform.source}
         isNew={false}
-        isSaving={isLoading}
-        onSave={handleSourceSave}
+        isSaving={isSaving}
+        onSave={handleSaveSource}
         onCancel={handleCancel}
       />
     );
   }
   return (
-    <QueryEditor
-      initialSource={transform.source}
-      isNew={false}
-      isSaving={isLoading}
-      onSave={handleSourceSave}
-      onCancel={handleCancel}
-    />
+    <>
+      <QueryEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isSaving || isCheckingDependencies}
+        onSave={handleSaveSource}
+        onCancel={handleCancel}
+      />
+      {isConfirmationShown && checkData != null && (
+        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+          checkData={checkData}
+          opened
+          onSave={handleSaveAfterConfirmation}
+          onClose={handleCloseConfirmation}
+        />
+      )}
+    </>
   );
 }

@@ -14,6 +14,7 @@ import {
   QuestionSettings,
   QuestionSettingsDropdown,
   QuestionVisualization,
+  SqlParametersList,
   Summarize,
   SummarizeDropdown,
   Title,
@@ -46,6 +47,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "className"
     | "style"
     | "initialSqlParameters"
+    | "hiddenParameters"
     | "withDownloads"
     | "title"
   >
@@ -70,6 +72,7 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  SqlParametersList: typeof SqlParametersList;
 };
 
 const _StaticQuestion = ({
@@ -80,6 +83,7 @@ const _StaticQuestion = ({
   className,
   style,
   initialSqlParameters,
+  hiddenParameters,
   withDownloads,
   title = false, // Hidden by default for backwards-compatibility.
   children,
@@ -104,6 +108,7 @@ const _StaticQuestion = ({
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
+      hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
     >
       {children ?? (
@@ -152,6 +157,7 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  SqlParametersList: SqlParametersList,
 };
 
 export const StaticQuestion = Object.assign(_StaticQuestion, subComponents, {
