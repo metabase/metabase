@@ -48,12 +48,18 @@ class PyodideWorkerManager {
         }
       };
 
+      const errHandler = (evt: ErrorEvent) => {
+        reject(evt.error);
+      };
+
       const unsubscribe = () => {
         clearTimeout(t);
         this.worker.removeEventListener("message", handler);
+        this.worker.removeEventListener("error", errHandler);
       };
 
       this.worker.addEventListener("message", handler);
+      this.worker.addEventListener("error", errHandler);
 
       const t = setTimeout(() => {
         unsubscribe();
