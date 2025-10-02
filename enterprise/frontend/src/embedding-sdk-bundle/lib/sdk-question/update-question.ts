@@ -125,6 +125,7 @@ export const updateQuestionSdk =
       return runQuestionQuerySdk({
         question: nextQuestion,
         originalQuestion,
+        parameterValues: nextParameterValues,
         cancelDeferred,
         isStaticEmbedding,
       });

@@ -24,6 +24,8 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -88,6 +90,8 @@ const _StaticQuestion = ({
   title = false, // Hidden by default for backwards-compatibility.
   children,
 }: StaticQuestionProps): JSX.Element | null => {
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
   const getClickActionMode: ClickActionModeGetter = ({
     question,
   }: {
@@ -128,11 +132,13 @@ const _StaticQuestion = ({
               </Group>
             )}
 
-            <Group>
-              <Box w="100%">
-                <SdkQuestion.ParametersList />
-              </Box>
-            </Group>
+            {isStaticEmbedding && (
+              <Group>
+                <Box w="100%">
+                  <SdkQuestion.SqlParametersList />
+                </Box>
+              </Group>
+            )}
 
             <SdkQuestion.QuestionVisualization
               height={height}

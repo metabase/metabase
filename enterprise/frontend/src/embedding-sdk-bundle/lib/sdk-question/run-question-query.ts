@@ -5,19 +5,26 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { ParameterValuesMap } from "metabase-types/api";
 
 interface RunQuestionQueryParams {
   question: Question;
   isStaticEmbedding: boolean;
   originalQuestion?: Question;
+  parameterValues?: ParameterValuesMap;
   cancelDeferred?: Deferred;
 }
 
 export async function runQuestionQuerySdk(
   params: RunQuestionQueryParams,
 ): Promise<SdkQuestionState> {
-  let { question, isStaticEmbedding, originalQuestion, cancelDeferred } =
-    params;
+  let {
+    question,
+    isStaticEmbedding,
+    originalQuestion,
+    parameterValues,
+    cancelDeferred,
+  } = params;
 
   if (question.isSaved()) {
     const type = question.type();
@@ -36,7 +43,7 @@ export async function runQuestionQuerySdk(
   if (shouldRunCardQuery(question, isStaticEmbedding)) {
     const parameters = getParameterValuesBySlug(
       question.card().parameters,
-      question._parameterValues,
+      parameterValues,
     );
     const filteredParameters = Object.fromEntries(
       Object.entries(parameters).filter(([_key, value]) => value !== null),

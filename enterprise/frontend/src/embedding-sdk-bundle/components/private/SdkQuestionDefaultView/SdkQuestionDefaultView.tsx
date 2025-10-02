@@ -12,9 +12,9 @@ import {
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
+import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
-import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -38,7 +38,6 @@ import { DownloadWidgetDropdown } from "../SdkQuestion/components/DownloadWidget
 import { Editor } from "../SdkQuestion/components/Editor";
 import { EditorButton } from "../SdkQuestion/components/EditorButton/EditorButton";
 import { FilterDropdown } from "../SdkQuestion/components/Filter/FilterDropdown";
-import { QuestionParametersList } from "../SdkQuestion/components/ParametersList";
 import { QuestionSettingsDropdown } from "../SdkQuestion/components/QuestionSettings";
 import {
   SaveButton,
@@ -90,7 +89,7 @@ export const SdkQuestionDefaultView = ({
   } = useSdkQuestionContext();
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
-  const isStaticEmbedding = useLazySelector(getIsStaticEmbedding);
+  const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
   const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
@@ -250,14 +249,6 @@ export const SdkQuestionDefaultView = ({
             </Group>
           </Group>
         )}
-      </Stack>
-
-      <Stack gap="sm" px="md">
-        <Group>
-          <Box w="100%">
-            <QuestionParametersList />
-          </Box>
-        </Group>
       </Stack>
 
       <Box

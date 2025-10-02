@@ -73,13 +73,7 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const {
-    question,
-    originalQuestion,
-    token,
-    queryResults,
-    parameterValues,
-  } =
+  const { question, originalQuestion, token, queryResults, parameterValues } =
     questionState;
 
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
@@ -190,13 +184,20 @@ export function useLoadQuestion({
       question,
       isStaticEmbedding,
       originalQuestion,
+      parameterValues,
       cancelDeferred: deferred(),
     });
 
     mergeQuestionState(state);
 
     return state.question;
-  }, [dispatch, question, isStaticEmbedding, originalQuestion]);
+  }, [
+    dispatch,
+    question,
+    isStaticEmbedding,
+    originalQuestion,
+    parameterValues,
+  ]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {
@@ -223,13 +224,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [
-      dispatch,
-      question,
-      originalQuestion,
-      parameterValues,
-      isStaticEmbedding,
-    ],
+    [dispatch, question, originalQuestion, parameterValues, isStaticEmbedding],
   );
 
   const [updateParameterValuesState, updateParameterValues] = useAsyncFn(
@@ -259,13 +254,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [
-      dispatch,
-      question,
-      originalQuestion,
-      parameterValues,
-      isStaticEmbedding,
-    ],
+    [dispatch, question, originalQuestion, parameterValues, isStaticEmbedding],
   );
 
   const [navigateToNewCardState, navigateToNewCard] = useAsyncFn(
@@ -275,6 +264,7 @@ export function useLoadQuestion({
           ...params,
           isStaticEmbedding,
           originalQuestion,
+          parameterValues,
           cancelDeferred: deferred(),
           onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
@@ -287,7 +277,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [dispatch, originalQuestion, isStaticEmbedding],
+    [dispatch, originalQuestion, isStaticEmbedding, parameterValues],
   );
 
   const isQueryRunning =

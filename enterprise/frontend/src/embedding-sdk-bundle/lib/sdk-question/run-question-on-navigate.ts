@@ -9,10 +9,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import Question from "metabase-lib/v1/Question";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
+import type { ParameterValuesMap } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
+  parameterValues?: ParameterValuesMap;
   isStaticEmbedding: boolean;
   onQuestionChange: (question: Question) => void;
   onClearQueryResults: () => void;
@@ -29,6 +31,7 @@ export const runQuestionOnNavigateSdk =
       nextCard,
       previousCard,
       originalQuestion,
+      parameterValues,
       cancelDeferred,
       onQuestionChange,
       onClearQueryResults,
@@ -55,6 +58,7 @@ export const runQuestionOnNavigateSdk =
     const state = await runQuestionQuerySdk({
       question: new Question(nextCard, getMetadata(getState())),
       originalQuestion,
+      parameterValues,
       cancelDeferred,
       isStaticEmbedding,
     });

@@ -13,7 +13,6 @@ import {
   EditorButton,
   Filter,
   FilterDropdown,
-  QuestionParametersList,
   QuestionResetButton,
   QuestionSettings,
   QuestionSettingsDropdown,
