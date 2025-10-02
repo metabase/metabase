@@ -54,8 +54,9 @@ const GRAPH: DependencyGraph = {
     },
     {
       id: 8,
-      type: "model",
+      type: "card",
       name: "Amazing Accounts",
+      card_type: "model",
       usage_stats: { questions: 1000 },
     },
   ],
@@ -92,13 +93,13 @@ const GRAPH: DependencyGraph = {
     },
     {
       from_entity_id: 8,
-      from_entity_type: "model",
+      from_entity_type: "card",
       to_entity_id: 6,
       to_entity_type: "table",
     },
     {
       from_entity_id: 8,
-      from_entity_type: "model",
+      from_entity_type: "card",
       to_entity_id: 7,
       to_entity_type: "table",
     },

@@ -3,12 +3,13 @@ import type { NativeQuerySnippet } from "./snippets";
 import type { Transform } from "./transform";
 
 export type DependencyId = number;
-export type DependencyType = CardType | "table" | "transform" | "snippet";
+export type DependencyType = "card" | "table" | "transform" | "snippet";
 
 export type DependencyNode = {
   id: DependencyId;
   type: DependencyType;
   name: string;
+  card_type?: CardType;
   usage_stats?: DependencyUsageStats;
 };
 

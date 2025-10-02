@@ -5,20 +5,29 @@ import type { DependencyNode } from "metabase-types/api";
 
 import type { NodeGroup } from "./types";
 
-export function getNodeIcon({ type }: DependencyNode): IconName {
+export function getNodeIcon({ type, card_type }: DependencyNode): IconName {
+  if (card_type != null) {
+    switch (card_type) {
+      case "question":
+        return "table2";
+      case "model":
+        return "model";
+      case "metric":
+        return "metric";
+    }
+  }
+
   switch (type) {
-    case "question":
+    case "card":
       return "table2";
-    case "model":
-      return "model";
-    case "metric":
-      return "metric";
     case "table":
       return "table";
     case "snippet":
       return "snippet";
     case "transform":
       return "refresh_downstream";
+    default:
+      return "unknown";
   }
 }
 

@@ -1,6 +1,6 @@
-import type { CardType, DependencyEntityType } from "metabase-types/api";
+import type { CardType, DependencyType } from "metabase-types/api";
 
-export type NodeType = CardType | Exclude<DependencyEntityType, "card">;
+export type NodeType = CardType | Exclude<DependencyType, "card">;
 
 export type NodeGroup = {
   type: NodeType;
