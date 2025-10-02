@@ -1,29 +1,22 @@
-import cx from "classnames";
 import type { PropsWithChildren } from "react";
-import innerText from "react-innertext";
 import { jt } from "ttag";
 
-import DashboardS from "metabase/css/dashboard.module.css";
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
+import { Flex, Text, Title, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
-import { Separator } from "./Separator";
-import { VariationIcon, VariationValue } from "./SmartScalar.styled";
-import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "./compute";
+import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
+import { TOOLTIP_ICON_SIZE } from "../constants";
+
 import {
-  ICON_MARGIN_RIGHT,
-  ICON_SIZE,
-  SPACING,
-  TOOLTIP_ICON_SIZE,
-} from "./constants";
-import { formatChangeAutoPrecision, getChangeWidth } from "./utils";
+  VariationIcon,
+  VariationValue,
+} from "./PreviousValueComparison.styled";
+import { Separator } from "./Separator";
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
@@ -32,17 +25,12 @@ interface PreviousValueComparisonProps {
   formatOptions: ColumnSettings;
 }
 
-export function PreviousValueComparison({
+export function PreviousValueComparisonTooltip({
   comparison,
-  width,
-  fontFamily,
   formatOptions,
 }: PreviousValueComparisonProps) {
-  const fontSize = "0.875rem";
-
   const {
     changeType,
-    percentChange,
     comparisonDescStr,
     comparisonValue,
     changeArrowIconName,
@@ -52,31 +40,6 @@ export function PreviousValueComparison({
 
   const theme = useMantineTheme();
   const isNightMode = useSelector(getIsNightMode);
-
-  const fittedChangeDisplay =
-    changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
-      ? formatChangeAutoPrecision(percentChange as number, {
-          fontFamily,
-          fontWeight: 900,
-          width: getChangeWidth(width),
-        })
-      : display.percentChange;
-
-  const availableComparisonWidth =
-    width -
-    4 * SPACING -
-    ICON_SIZE -
-    ICON_MARGIN_RIGHT -
-    measureTextWidth(innerText(<Separator />), {
-      size: fontSize,
-      family: fontFamily,
-      weight: 700,
-    }) -
-    measureTextWidth(fittedChangeDisplay, {
-      size: fontSize,
-      family: fontFamily,
-      weight: 900,
-    });
 
   const valueCandidates = [
     display.comparisonValue,
@@ -117,19 +80,6 @@ export function PreviousValueComparison({
       </Text>
     )}`;
   };
-
-  const detailCandidates = valueCandidates.map((valueStr) =>
-    getDetailCandidate(valueStr),
-  );
-  const fullDetailDisplay = detailCandidates[0];
-  const fittedDetailDisplay = detailCandidates.find(
-    (e) =>
-      measureTextWidth(innerText(e), {
-        size: fontSize,
-        family: fontFamily,
-        weight: 700,
-      }) <= availableComparisonWidth,
-  );
 
   const tooltipFullDetailDisplay = getDetailCandidate(valueCandidates[0], {
     inTooltip: true,
@@ -176,40 +126,11 @@ export function PreviousValueComparison({
   };
 
   return (
-    <Tooltip
-      // this tooltip's label does not support text wrapping (it could though)
-      // so we're just letting it take as much space as it needs to prevent overflow
-      maw="100%"
-      disabled={fullDetailDisplay === fittedDetailDisplay}
-      position="bottom"
-      label={
-        <Flex align="center">
-          <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
-            {display.percentChange}
-          </VariationPercent>
-          <VariationDetails inTooltip>
-            {tooltipFullDetailDisplay}
-          </VariationDetails>
-        </Flex>
-      }
-    >
-      <Flex
-        wrap="wrap"
-        align="center"
-        justify="center"
-        mx="sm"
-        lh="1.2rem"
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
-      >
-        <VariationPercent iconSize={ICON_SIZE}>
-          {fittedChangeDisplay}
-        </VariationPercent>
-        <VariationDetails>{fittedDetailDisplay}</VariationDetails>
-      </Flex>
-    </Tooltip>
+    <Flex align="center">
+      <VariationPercent iconSize={TOOLTIP_ICON_SIZE} inTooltip>
+        {display.percentChange}
+      </VariationPercent>
+      <VariationDetails inTooltip>{tooltipFullDetailDisplay}</VariationDetails>
+    </Flex>
   );
 }
