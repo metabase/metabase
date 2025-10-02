@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useAsync } from "react-use";
+import { useMemo, useState } from "react";
+import { useDeepCompareEffect } from "react-use";
 
 import { useSetting } from "metabase/common/hooks";
 import { checkNotNull } from "metabase/lib/types";
@@ -14,20 +14,17 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
   const siteUrl = useSetting("site-url");
   const secretKey = checkNotNull(useSetting("embedding-secret-key"));
 
+  const [signedToken, setSignedToken] = useState("");
+
   const { settings, availableParameters } = useSdkIframeEmbedSetupContext();
 
-  const { getParameterValuesById } = useParameters();
+  const { parameterValuesById: parameterValues } = useParameters();
   const { buildEmbeddedParameters } = useStaticEmbeddingParameters();
 
   const resourceType = getStaticEmbeddingResourceType(settings);
   const embeddingParams = useMemo(
     () => buildEmbeddedParameters(availableParameters),
     [availableParameters, buildEmbeddedParameters],
-  );
-
-  const parameterValues = useMemo(
-    () => getParameterValuesById(),
-    [getParameterValuesById],
   );
 
   const previewParamsBySlug = useMemo(
@@ -40,27 +37,31 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
     [availableParameters, embeddingParams, parameterValues],
   );
 
-  const { value: signedToken = "" } = useAsync(
-    async () =>
-      resourceType
-        ? getSignedToken(
+  useDeepCompareEffect(() => {
+    const generate = async () => {
+      const token = resourceType
+        ? await getSignedToken(
             resourceType,
             settings.dashboardId ?? settings.questionId ?? "",
             previewParamsBySlug,
             secretKey,
             embeddingParams,
           )
-        : "",
-    [
-      siteUrl,
-      previewParamsBySlug,
-      resourceType,
-      settings.dashboardId,
-      settings.questionId,
-      secretKey,
-      embeddingParams,
-    ],
-  );
+        : "";
+
+      setSignedToken(token);
+    };
+
+    generate();
+  }, [
+    siteUrl,
+    previewParamsBySlug,
+    resourceType,
+    settings.dashboardId,
+    settings.questionId,
+    secretKey,
+    embeddingParams,
+  ]);
 
   return { signedToken };
 };

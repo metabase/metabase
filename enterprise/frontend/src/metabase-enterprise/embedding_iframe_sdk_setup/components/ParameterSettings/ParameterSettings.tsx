@@ -29,7 +29,7 @@ export const ParameterSettings = () => {
     isLoadingParameters,
   } = useSdkIframeEmbedSetupContext();
 
-  const { getParameterValuesById } = useParameters();
+  const { parameterValuesById } = useParameters();
   const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
   const { buildEmbeddedParameters, setEmbeddingParameters } =
     useStaticEmbeddingParameters();
@@ -78,11 +78,6 @@ export const ParameterSettings = () => {
       }
     },
     [settings, updateSettings],
-  );
-
-  const parameterValuesById = useMemo(
-    () => getParameterValuesById(),
-    [getParameterValuesById],
   );
 
   const uiParameters = useMemo(
