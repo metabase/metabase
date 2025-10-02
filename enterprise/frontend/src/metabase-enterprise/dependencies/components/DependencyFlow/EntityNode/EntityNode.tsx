@@ -32,7 +32,9 @@ export const EntityNode = memo(function EntityNode({
         </Group>
         {groups.map((group) => (
           <Group key={group.type} gap="sm">
-            <Box bg="bg-medium">{group.count}</Box>
+            <Box px="xs" bg="bg-medium" bdrs="xs">
+              {group.count}
+            </Box>
             <Box c="text-secondary">{getNodeGroupLabel(group)}</Box>
           </Group>
         ))}
