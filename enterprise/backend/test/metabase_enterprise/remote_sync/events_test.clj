@@ -294,29 +294,75 @@
                      :sync_type "delete"}
                     (first entries)))))))))
 
-(deftest collection-touch-events-test
-  (testing "collection touch events create remote-sync change log entries"
+(deftest collection-create-event-test
+  (testing "collection-create events create remote-sync change log entries"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}]
       (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
-        (testing "collection-touch event creates change log entry for remote-sync collections"
+        (testing "collection-create event creates change log entry with sync-type create"
           (t2/delete! :model/RemoteSyncChangeLog)
 
-          (events/publish-event! :event/collection-touch
+          (events/publish-event! :event/collection-create
                                  {:object remote-sync-collection :user-id (mt/user->id :rasta)})
 
           (let [entries (t2/select :model/RemoteSyncChangeLog)]
             (is (= 1 (count entries)))
             (is (=? {:model_type "Collection"
                      :model_entity_id (:entity_id remote-sync-collection)
-                     :sync_type "update"}
+                     :sync_type "create"
+                     :status "success"
+                     :most_recent true}
                     (first entries)))))
 
-        (testing "collection-touch event with archived=true creates delete entry"
+        (testing "collection-create event doesn't create entry for non-remote-synced collections"
           (t2/delete! :model/RemoteSyncChangeLog)
 
-          (events/publish-event! :event/collection-touch
+          (events/publish-event! :event/collection-create
+                                 {:object normal-collection :user-id (mt/user->id :rasta)})
+
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 0 (count entries)))))
+
+        (testing "collection-create event with archived=true creates delete entry"
+          (t2/delete! :model/RemoteSyncChangeLog)
+
+          (events/publish-event! :event/collection-create
+                                 {:object (assoc remote-sync-collection :archived true)
+                                  :user-id (mt/user->id :rasta)})
+
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Collection"
+                     :model_entity_id (:entity_id remote-sync-collection)
+                     :sync_type "delete"}
+                    (first entries)))))))))
+
+(deftest collection-update-event-test
+  (testing "collection-update events create remote-sync change log entries"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
+                                                             :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal"}]
+      (mt/with-model-cleanup [:model/RemoteSyncChangeLog]
+        (testing "collection-update event creates change log entry with sync-type update"
+          (t2/delete! :model/RemoteSyncChangeLog)
+
+          (events/publish-event! :event/collection-update
+                                 {:object remote-sync-collection :user-id (mt/user->id :rasta)})
+
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Collection"
+                     :model_entity_id (:entity_id remote-sync-collection)
+                     :sync_type "update"
+                     :status "success"
+                     :most_recent true}
+                    (first entries)))))
+
+        (testing "collection-update event with archived=true creates delete entry"
+          (t2/delete! :model/RemoteSyncChangeLog)
+
+          (events/publish-event! :event/collection-update
                                  {:object (assoc remote-sync-collection :archived true)
                                   :user-id (mt/user->id :rasta)})
 
@@ -327,14 +373,44 @@
                      :sync_type "delete"}
                     (first entries)))))
 
-        (testing "collection-touch event doesn't create entry for non-remote-sync collections"
+        (testing "collection-update event with archived=false creates update entry"
           (t2/delete! :model/RemoteSyncChangeLog)
 
-          (events/publish-event! :event/collection-touch
+          (events/publish-event! :event/collection-update
+                                 {:object (assoc remote-sync-collection :archived false)
+                                  :user-id (mt/user->id :rasta)})
+
+          (let [entries (t2/select :model/RemoteSyncChangeLog)]
+            (is (= 1 (count entries)))
+            (is (=? {:model_type "Collection"
+                     :model_entity_id (:entity_id remote-sync-collection)
+                     :sync_type "update"}
+                    (first entries)))))
+
+        (testing "collection-update event doesn't create entry for non-remote-synced collections"
+          (t2/delete! :model/RemoteSyncChangeLog)
+
+          (events/publish-event! :event/collection-update
                                  {:object normal-collection :user-id (mt/user->id :rasta)})
 
           (let [entries (t2/select :model/RemoteSyncChangeLog)]
-            (is (= 0 (count entries)))))))))
+            (is (= 0 (count entries)))))
+
+        (testing "collection-update marks previous entries as not most_recent"
+          (t2/delete! :model/RemoteSyncChangeLog)
+
+          ;; First update
+          (events/publish-event! :event/collection-update
+                                 {:object remote-sync-collection :user-id (mt/user->id :rasta)})
+
+          ;; Second update
+          (events/publish-event! :event/collection-update
+                                 {:object remote-sync-collection :user-id (mt/user->id :rasta)})
+
+          (let [entries (t2/select :model/RemoteSyncChangeLog :model_entity_id (:entity_id remote-sync-collection))]
+            (is (= 2 (count entries)))
+            (is (= 1 (count (filter :most_recent entries))))
+            (is (= "update" (:sync_type (first (filter :most_recent entries)))))))))))
 
 (deftest create-remote-sync-change-log-entry!-test
   (testing "create-remote-sync-change-log-entry! creates correct entries"
@@ -431,5 +507,6 @@
       (is (isa? :event/document-delete ::lib.events/document-change-event)))
 
     (testing "collection events"
-      (is (isa? ::lib.events/collection-touch-event :metabase/event))
-      (is (isa? :event/collection-touch ::lib.events/collection-touch-event)))))
+      (is (isa? ::lib.events/collection-change-event :metabase/event))
+      (is (isa? :event/collection-create ::lib.events/collection-change-event))
+      (is (isa? :event/collection-update ::lib.events/collection-change-event)))))

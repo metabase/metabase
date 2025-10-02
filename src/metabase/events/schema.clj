@@ -44,6 +44,16 @@
    [:user-id  pos-int?]
    [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
+ ;; collection write events
+
+(mr/def ::collection
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object [:fn #(t2/instance-of? :model/Collection %)]]])
+
+(mr/def :event/collection-create ::collection)
+(mr/def :event/collection-update ::collection)
+
 ;; dashboard events
 
 (mr/def ::dashboard

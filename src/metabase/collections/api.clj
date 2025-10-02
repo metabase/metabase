@@ -1264,6 +1264,7 @@
                 :namespace       effective-namespace}
                (when parent-collection
                  {:location (collection/children-location parent-collection)})))
+      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
       (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/"
@@ -1461,7 +1462,9 @@
               (collection/check-non-remote-synced-dependencies (t2/select-one :model/Collection :id id)))))))
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
-    (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
+    (let [updated-collection (t2/select-one :model/Collection :id id)]
+      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
+      (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
 

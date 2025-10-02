@@ -189,17 +189,19 @@
       (log/infof "Creating remote sync change log entry for document %s (action: %s)" (:id object) sync-type)
       (create-remote-sync-change-log-entry! "Document" (:entity_id object) sync-type user-id))))
 
-;; Collection touch events
-(derive ::collection-touch-event :metabase/event)
-(derive :event/collection-touch ::collection-touch-event)
+;; Collection create/update events - derive from common parent for shared handling
+(derive ::collection-change-event :metabase/event)
+(derive :event/collection-create ::collection-change-event)
+(derive :event/collection-update ::collection-change-event)
 
-(methodical/defmethod events/publish-event! ::collection-touch-event
+(methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object user-id]} event
         sync-type (if (:archived object)
                     "delete"
                     (case topic
-                      :event/collection-touch "update"))]
+                      :event/collection-create "create"
+                      :event/collection-update "update"))]
     (when (collections/remote-synced-collection? object)
-      (log/infof "Creating remote sync change log entry for collection touch %s" (:id object))
+      (log/infof "Creating remote sync change log entry for collection %s (action: %s)" (:id object) sync-type)
       (create-remote-sync-change-log-entry! "Collection" (:entity_id object) sync-type user-id))))
