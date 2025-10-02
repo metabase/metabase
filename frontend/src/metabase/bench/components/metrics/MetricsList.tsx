@@ -1,17 +1,11 @@
 import type React from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
 
-import { skipToken, useGetCardQuery, useGetDatabaseQuery, useListDatabasesQuery } from "metabase/api";
 import { getIcon } from "metabase/browse/models/utils";
-import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
-import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { View } from "metabase/query_builder/components/view/View";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { Box, Center, FixedSizeIcon, Flex, Icon, Loader , Text } from "metabase/ui";
+import { Box, Center, FixedSizeIcon, Flex, Loader , Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -68,27 +62,8 @@ export const MetricsLayout = ({ children }: { children: React.ReactNode }) => {
   )
 };
 
-export const MetricEditor = (props) => {
-  const { data: metric, isLoading } = useGetCardQuery(props.params.id ? { id: props.params.id }: skipToken);
-
-  if (!metric || isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
-  }
-
+export const MetricEditor = (props: { location: unknown, params: unknown }) => {
   return (
-    <Box p="lg">
-      <Flex mb="md" align="center" fw="bold">
-        <Icon name="metric" c="brand" mr="sm" size={24} />
-        <Text size="lg">
-          {metric.name}
-        </Text>
-      </Flex>
-      <Box>
-        <CodeMirror
-          value={JSON.stringify(metric?.dataset_query.query, null, 2) || ""}
-          height="100%"
-        />
-      </Box>
-    </Box>
-  )
+    <QueryBuilder {...props} />
+  );
 };
