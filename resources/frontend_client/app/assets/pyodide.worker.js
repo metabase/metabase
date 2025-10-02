@@ -12,7 +12,11 @@ function sendResponse(response) {
 // Initialize Pyodide
 async function initPyodide() {
   try {
-    sendResponse({ type: "log", id: "init", data: "Loading Pyodide in Web Worker..." });
+    sendResponse({
+      type: "log",
+      id: "init",
+      data: "Loading Pyodide in Web Worker...",
+    });
 
     // Import pyodide from local assets
     self.importScripts("/app/assets/pyodide/pyodide.js");
@@ -22,11 +26,19 @@ async function initPyodide() {
       indexURL: "/app/assets/pyodide/",
     });
 
-    sendResponse({ type: "log", id: "init", data: "Pyodide loaded successfully" });
+    sendResponse({
+      type: "log",
+      id: "init",
+      data: "Pyodide loaded successfully",
+    });
 
     // Load essential packages
     await pyodide.loadPackage(["micropip", "numpy", "pandas"]);
-    sendResponse({ type: "log", id: "init", data: "Essential packages loaded" });
+    sendResponse({
+      type: "log",
+      id: "init",
+      data: "Essential packages loaded",
+    });
 
     return true;
   } catch (error) {
@@ -37,12 +49,12 @@ async function initPyodide() {
 
 // Deep serialization function to handle nested complex objects
 function deepSerialize(obj) {
-  if (obj === null || typeof obj !== 'object') {
+  if (obj === null || typeof obj !== "object") {
     return obj;
   }
 
   // Handle PyProxy objects first (from Pyodide)
-  if (obj.toJs && typeof obj.toJs === 'function') {
+  if (obj.toJs && typeof obj.toJs === "function") {
     try {
       return deepSerialize(obj.toJs());
     } catch (e) {
@@ -123,13 +135,16 @@ sys.stderr = _stderr
 
   try {
     // Execute the code
-    console.log('About to execute Python code:', code);
+    console.log("About to execute Python code:", code);
     result = await pyodide.runPythonAsync(code);
-    console.log('Python execution result:', result);
-    console.log('Result type:', typeof result);
-    console.log('Result is null/undefined:', result === null || result === undefined);
+    console.log("Python execution result:", result);
+    console.log("Result type:", typeof result);
+    console.log(
+      "Result is null/undefined:",
+      result === null || result === undefined,
+    );
   } catch (err) {
-    console.error('Python execution error:', err);
+    console.error("Python execution error:", err);
     error = err;
   }
 
@@ -142,8 +157,8 @@ _stdout.getvalue()
 
   const stderr = await pyodide.runPythonAsync(`_stderr.getvalue()`);
 
-  console.log('Captured stdout:', stdout);
-  console.log('Captured stderr:', stderr);
+  console.log("Captured stdout:", stdout);
+  console.log("Captured stderr:", stderr);
 
   if (error) {
     throw error;
@@ -152,12 +167,12 @@ _stdout.getvalue()
   // Convert result to JSON-serializable format
   let serializedResult;
   try {
-    console.log('Raw result type:', typeof result);
-    console.log('Raw result constructor:', result?.constructor?.name);
-    console.log('Raw result:', result);
+    console.log("Raw result type:", typeof result);
+    console.log("Raw result constructor:", result?.constructor?.name);
+    console.log("Raw result:", result);
 
     // Always use deep serialization for objects
-    if (result && typeof result === 'object') {
+    if (result && typeof result === "object") {
       serializedResult = deepSerialize(result);
     } else {
       serializedResult = result;
@@ -165,23 +180,25 @@ _stdout.getvalue()
 
     // Final safety check - try to JSON stringify to test serializability
     JSON.stringify(serializedResult);
-    console.log('Serialization successful');
+    console.log("Serialization successful");
   } catch (e) {
-    console.error('Serialization failed:', e);
+    console.error("Serialization failed:", e);
     // If serialization fails, convert to string representation
     try {
-      serializedResult = JSON.parse(JSON.stringify(result, (key, value) => {
-        if (value instanceof Map) {
-          return Object.fromEntries(value);
-        }
-        if (value instanceof Set) {
-          return Array.from(value);
-        }
-        if (value && typeof value === 'object' && value.toJs) {
-          return value.toJs();
-        }
-        return value;
-      }));
+      serializedResult = JSON.parse(
+        JSON.stringify(result, (key, value) => {
+          if (value instanceof Map) {
+            return Object.fromEntries(value);
+          }
+          if (value instanceof Set) {
+            return Array.from(value);
+          }
+          if (value && typeof value === "object" && value.toJs) {
+            return value.toJs();
+          }
+          return value;
+        }),
+      );
     } catch (e2) {
       serializedResult = String(result);
     }
@@ -193,7 +210,7 @@ _stdout.getvalue()
     stderr: stderr,
   };
 
-  console.log('Final result being returned:', finalResult);
+  console.log("Final result being returned:", finalResult);
   return finalResult;
 }
 
@@ -233,12 +250,16 @@ self.addEventListener("message", async (event) => {
         break;
 
       default:
-        sendResponse({ type: "error", id, error: `Unknown message type: ${type}` });
+        sendResponse({
+          type: "error",
+          id,
+          error: `Unknown message type: ${type}`,
+        });
     }
   } catch (error) {
     let errorMessage;
     try {
-      if (error && typeof error === 'object' && error.toJs) {
+      if (error && typeof error === "object" && error.toJs) {
         // Convert PyProxy error to JavaScript object
         errorMessage = error.toJs();
       } else if (error instanceof Error) {
@@ -253,7 +274,7 @@ self.addEventListener("message", async (event) => {
     sendResponse({
       type: "error",
       id,
-      error: errorMessage
+      error: errorMessage,
     });
   }
 });
