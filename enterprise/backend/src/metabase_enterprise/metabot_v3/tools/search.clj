@@ -123,7 +123,7 @@
                                             :current-user-perms @api/*current-user-permissions-set*
                                             :context :metabot
                                             :archived false
-                                            :limit (or limit 50)
+                                            :limit limit
                                             :offset 0}
                                            (when use-verified-content?
                                              {:verified true})))
