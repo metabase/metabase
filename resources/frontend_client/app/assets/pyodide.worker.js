@@ -213,20 +213,6 @@ async function executePython(code, context = {}) {
   return finalResult;
 }
 
-// Load additional packages
-async function loadPackages(packages) {
-  if (!pyodide) {
-    throw new Error("Pyodide not initialized");
-  }
-
-  await pyodide.loadPackage("micropip");
-  await pyodide.runPythonAsync(`
-import micropip
-for pkg in ${JSON.stringify(packages)}:
-    await micropip.install(pkg)
-  `);
-}
-
 // Handle messages from main thread
 self.addEventListener("message", async (event) => {
   const { type, id, data } = event.data;
@@ -241,11 +227,6 @@ self.addEventListener("message", async (event) => {
       case "execute":
         const result = await executePython(data.code, data.context);
         sendResponse({ type: "success", id, data: result });
-        break;
-
-      case "loadPackages":
-        await loadPackages(data.packages);
-        sendResponse({ type: "success", id, data: "Packages loaded" });
         break;
 
       default:

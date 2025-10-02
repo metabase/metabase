@@ -11,7 +11,7 @@ export interface PyodideTableSource {
 }
 
 interface WorkerMessage {
-  type: "init" | "execute" | "loadPackages";
+  type: "init" | "execute";
   id: string;
   data?: any;
 }
@@ -187,17 +187,6 @@ _result_json
       stdout: result.stdout,
       stderr: result.stderr,
     };
-  }
-
-  async loadPackages(packages: string[]): Promise<void> {
-    await this.initialize();
-
-    const messageId = `load-${Date.now()}`;
-    await this.sendMessage({
-      type: "loadPackages",
-      id: messageId,
-      data: { packages },
-    });
   }
 
   terminate(): void {
