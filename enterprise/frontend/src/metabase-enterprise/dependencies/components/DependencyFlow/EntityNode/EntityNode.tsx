@@ -26,13 +26,13 @@ export const EntityNode = memo(function EntityNode({
   return (
     <>
       <Stack gap="sm">
-        <Group gap="sm">
+        <Group gap="sm" lh="1rem">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
           {getNodeLabel(node)}
         </Group>
         {groups.map((group) => (
-          <Group key={group.type} gap="sm">
-            <Box px="xs" bg="bg-medium" bdrs="xs">
+          <Group key={group.type} gap="sm" fz="sm" lh="1rem">
+            <Box px="xs" py="0.125rem" bg="bg-medium" bdrs="xs">
               {group.count}
             </Box>
             <Box c="text-secondary">{getNodeGroupLabel(group)}</Box>
