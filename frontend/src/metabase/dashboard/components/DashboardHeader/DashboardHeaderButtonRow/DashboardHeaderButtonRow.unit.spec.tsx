@@ -77,7 +77,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
     icon: "sun",
-    tooltip: "Daytime mode",
+    tooltip: "Switch to dark mode",
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     icon: "expand",

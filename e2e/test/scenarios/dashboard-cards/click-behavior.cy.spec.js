@@ -241,7 +241,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         .parent()
         .parent()
         .should("have.attr", "aria-selected", "true")
-        .should("have.css", "background-color", "rgb(80, 158, 227)");
+        .should("have.css", "background-color", "rgb(80, 158, 226)");
 
       addDashboardDestination();
       cy.get("aside").findByText("Select a dashboard tab").should("not.exist");
