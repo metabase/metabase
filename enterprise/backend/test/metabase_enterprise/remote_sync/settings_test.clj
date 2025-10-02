@@ -37,12 +37,12 @@
         (testing "Updating with an obfuscated token does not update it"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token obfuscated-token))
           (is (= full-token (settings/remote-sync-token))))
-        (testing "Updating with nil token does not change it (the UI doesn't send the token back if it doesn't change)"
-          (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
-          (is (= full-token (settings/remote-sync-token))))
         (testing "Updating with a different full token saves it"
           (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token other-token))
-          (is (= other-token (settings/remote-sync-token))))))))
+          (is (= other-token (settings/remote-sync-token))))
+        (testing "Updating with nil token clears it out"
+          (settings/check-and-update-remote-settings! (assoc default-settings :remote-sync-token nil))
+          (is (= nil (settings/remote-sync-token))))))))
 
 (deftest cannot-set-remote-sync-type-to-invalid-value
   (is (thrown-with-msg? clojure.lang.ExceptionInfo

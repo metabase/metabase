@@ -94,8 +94,7 @@
    A nil value will clear it out"
   [{:keys [remote-sync-token] :as settings}]
   (let [current-token (setting/get :remote-sync-token)
-        obfuscated? (or (not (some? remote-sync-token))
-                        (= remote-sync-token (setting/obfuscate-value current-token)))
+        obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
         token-to-check (if obfuscated? current-token remote-sync-token)]
     (check-git-settings (assoc settings :remote-sync-token token-to-check))
     (t2/with-transaction [_conn]
