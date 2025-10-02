@@ -1,69 +1,29 @@
 import dagre from "@dagrejs/dagre";
-import type { Edge, HandleType, Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type {
   DependencyEdge,
-  DependencyEntityId,
-  DependencyEntityType,
+  DependencyId,
   DependencyNode,
+  DependencyType,
 } from "metabase-types/api";
 
 import S from "./DependencyFlow.module.css";
 import type { NodeId } from "./types";
 
-function getNodeId(id: DependencyEntityId, type: DependencyEntityType): NodeId {
+function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
-function getNodeBydId(nodes: DependencyNode[]) {
-  const nodeById = new Map<NodeId, DependencyNode>();
-  nodes.forEach((node) => nodeById.set(getNodeId(node.id, node.type), node));
-  return nodeById;
-}
-
-function getEdgeIdById(edges: DependencyEdge[], type: HandleType) {
-  const startIdsByEndId = new Map<NodeId, NodeId[]>();
-
-  edges.forEach((edge) => {
-    const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
-    const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
-    const startId = type === "source" ? sourceId : targetId;
-    const endId = type === "source" ? targetId : sourceId;
-
-    let startIds = startIdsByEndId.get(endId);
-    if (startIds == null) {
-      startIds = [];
-      startIdsByEndId.set(endId, startIds);
-    }
-
-    startIds.push(startId);
-  });
-
-  return startIdsByEndId;
-}
-
-export function getNodes(
-  nodes: DependencyNode[],
-  edges: DependencyEdge[],
-): Node[] {
-  const nodeById = getNodeBydId(nodes);
-  const sourceIdsByTargetId = getEdgeIdById(edges, "target");
-  const targetIdsBySourceId = getEdgeIdById(edges, "source");
-
+export function getNodes(nodes: DependencyNode[]): Node[] {
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
-    const sourceIds = sourceIdsByTargetId.get(nodeId) ?? [];
-    const targetIds = targetIdsBySourceId.get(nodeId) ?? [];
 
     return {
       id: nodeId,
       className: S.node,
       type: "entity",
-      data: {
-        node,
-        sources: sourceIds.map((nodeId) => nodeById.get(nodeId)),
-        targets: targetIds.map((nodeId) => nodeById.get(nodeId)),
-      },
+      data: node,
       position: { x: 0, y: 0 },
       connectable: false,
       draggable: false,

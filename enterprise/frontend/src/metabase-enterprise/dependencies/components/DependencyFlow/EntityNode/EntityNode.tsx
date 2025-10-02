@@ -1,34 +1,35 @@
-import { Handle, type Node, type NodeProps, Position } from "@xyflow/react";
+import {
+  Handle,
+  type Node,
+  type NodeProps,
+  Position,
+  useNodeConnections,
+} from "@xyflow/react";
 import { memo } from "react";
 
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import type { DependencyNode } from "metabase-types/api";
 
-import type { NodeData } from "../types";
+import { getNodeGroupLabel, getNodeGroups, getNodeIcon } from "./utils";
 
-import {
-  getNodeGroupLabel,
-  getNodeGroups,
-  getNodeIcon,
-  getNodeLabel,
-} from "./utils";
-
-type EntityNodeProps = NodeProps<Node<NodeData>>;
+type EntityNodeProps = NodeProps<Node<DependencyNode>>;
 
 export const EntityNode = memo(function EntityNode({
-  data,
+  data: node,
   sourcePosition = Position.Left,
   targetPosition = Position.Right,
   isConnectable,
 }: EntityNodeProps) {
-  const { node, sources, targets } = data;
-  const groups = getNodeGroups(node, targets);
+  const groups = getNodeGroups(node);
+  const sources = useNodeConnections({ handleType: "source" });
+  const targets = useNodeConnections({ handleType: "target" });
 
   return (
     <>
       <Stack gap="sm">
         <Group gap="sm" lh="1rem">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
-          {getNodeLabel(node)}
+          {node.name}
         </Group>
         {groups.map((group) => (
           <Group key={group.type} gap="sm" fz="sm" lh="1rem">

@@ -20,14 +20,44 @@ const NODE_TYPES = {
 
 const GRAPH: DependencyGraph = {
   nodes: [
-    { id: 1, type: "table", data: { display_name: "some_intermediate_table" } },
-    { id: 2, type: "table", data: { display_name: "nice_table" } },
-    { id: 3, type: "table", data: { display_name: "ugly_table_here" } },
-    { id: 4, type: "transform", data: { name: "Good transform" } },
-    { id: 5, type: "transform", data: { name: "Better transform" } },
-    { id: 6, type: "table", data: { display_name: "interesting_facts" } },
-    { id: 7, type: "table", data: { display_name: "another_thing" } },
-    { id: 8, type: "card", data: { name: "Amazing Accounts", type: "model" } },
+    {
+      id: 1,
+      type: "table",
+      name: "some_intermediate_table",
+      usage_stats: { questions: 10, transforms: 1 },
+    },
+    {
+      id: 2,
+      type: "table",
+      name: "nice_table",
+      usage_stats: { transforms: 2 },
+    },
+    {
+      id: 3,
+      type: "table",
+      name: "ugly_table_here",
+      usage_stats: { transforms: 1 },
+    },
+    { id: 4, type: "transform", name: "Good transform" },
+    { id: 5, type: "transform", name: "Better transform" },
+    {
+      id: 6,
+      type: "table",
+      name: "interesting_facts",
+      usage_stats: { questions: 100, models: 5 },
+    },
+    {
+      id: 7,
+      type: "table",
+      name: "another_thing",
+      usage_stats: { models: 1 },
+    },
+    {
+      id: 8,
+      type: "model",
+      name: "Amazing Accounts",
+      usage_stats: { questions: 1000 },
+    },
   ],
   edges: [
     {
@@ -62,13 +92,13 @@ const GRAPH: DependencyGraph = {
     },
     {
       from_entity_id: 8,
-      from_entity_type: "card",
+      from_entity_type: "model",
       to_entity_id: 6,
       to_entity_type: "table",
     },
     {
       from_entity_id: 8,
-      from_entity_type: "card",
+      from_entity_type: "model",
       to_entity_id: 7,
       to_entity_type: "table",
     },
@@ -77,7 +107,7 @@ const GRAPH: DependencyGraph = {
 
 export function DependencyFlow() {
   const [nodes, _setNodes, onNodesChange] = useNodesState(
-    getNodes(GRAPH.nodes, GRAPH.edges),
+    getNodes(GRAPH.nodes),
   );
   const [edges, _setEdges, onEdgesChange] = useEdgesState(
     getEdges(GRAPH.edges),

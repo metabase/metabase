@@ -3,20 +3,16 @@ import { msgid, ngettext } from "ttag";
 import type { IconName } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import type { NodeGroup, NodeType } from "./types";
+import type { NodeGroup } from "./types";
 
-export function getNodeIcon(node: DependencyNode): IconName {
-  switch (node.type) {
-    case "card":
-      switch (node.data.type) {
-        case "question":
-          return "table2";
-        case "model":
-          return "model";
-        case "metric":
-          return "metric";
-      }
-      break;
+export function getNodeIcon({ type }: DependencyNode): IconName {
+  switch (type) {
+    case "question":
+      return "table2";
+    case "model":
+      return "model";
+    case "metric":
+      return "metric";
     case "table":
       return "table";
     case "snippet":
@@ -26,39 +22,29 @@ export function getNodeIcon(node: DependencyNode): IconName {
   }
 }
 
-export function getNodeLabel(node: DependencyNode) {
-  switch (node.type) {
-    case "card":
-    case "snippet":
-    case "transform":
-      return node.data.name;
-    case "table":
-      return node.data.display_name;
-  }
-}
-
-function getNodeType(node: DependencyNode): NodeType {
-  return node.type === "card" ? node.data.type : node.type;
-}
-
-export function getNodeGroups(
-  node: DependencyNode,
-  targets: DependencyNode[],
-): NodeGroup[] {
-  if (node.type === "transform") {
+export function getNodeGroups({
+  type,
+  usage_stats = {},
+}: DependencyNode): NodeGroup[] {
+  if (type === "transform") {
     return [];
   }
 
-  const countByType = new Map<NodeType, number>();
-  targets.forEach((node) => {
-    const type = getNodeType(node);
-    const count = countByType.get(type) ?? 0;
-    countByType.set(type, count + 1);
-  });
+  const {
+    questions = 0,
+    models = 0,
+    metrics = 0,
+    transforms = 0,
+    snippets = 0,
+  } = usage_stats;
 
   const groups: NodeGroup[] = [];
-  countByType.forEach((count, type) => groups.push({ type, count }));
-  return groups;
+  groups.push({ type: "question", count: questions });
+  groups.push({ type: "model", count: models });
+  groups.push({ type: "metric", count: metrics });
+  groups.push({ type: "transform", count: transforms });
+  groups.push({ type: "snippet", count: snippets });
+  return groups.filter((group) => group.count > 0);
 }
 
 export function getNodeGroupLabel({ type, count }: NodeGroup) {

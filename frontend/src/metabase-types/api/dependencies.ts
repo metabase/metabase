@@ -1,78 +1,35 @@
-import type { Card, CardId, CardType } from "./card";
-import type { NativeQuerySnippet, NativeQuerySnippetId } from "./snippets";
-import type { ConcreteTableId } from "./table";
-import type { Transform, TransformId } from "./transform";
+import type { Card, CardType } from "./card";
+import type { NativeQuerySnippet } from "./snippets";
+import type { Transform } from "./transform";
 
-export type DependencyNode =
-  | TableDependencyNode
-  | CardDependencyNode
-  | SnippetDependencyNode
-  | TransformDependencyNode;
-export type DependencyEntityId = DependencyNode["id"];
-export type DependencyEntityType = DependencyNode["type"];
+export type DependencyId = number;
+export type DependencyType = CardType | "table" | "transform" | "snippet";
 
-type BaseDependencyNode<TId, TType, TData> = {
-  id: TId;
-  type: TType;
-  data: TData;
-};
-
-export type TableDependencyNode = BaseDependencyNode<
-  ConcreteTableId,
-  "table",
-  TableDependencyData
->;
-
-export type CardDependencyNode = BaseDependencyNode<
-  CardId,
-  "card",
-  CardDependencyData
->;
-
-export type SnippetDependencyNode = BaseDependencyNode<
-  NativeQuerySnippetId,
-  "snippet",
-  SnippetDependencyData
->;
-
-export type TransformDependencyNode = BaseDependencyNode<
-  TransformId,
-  "transform",
-  TransformDependencyData
->;
-
-export type TableDependencyData = {
-  display_name: string;
-};
-
-export type CardDependencyData = {
+export type DependencyNode = {
+  id: DependencyId;
+  type: DependencyType;
   name: string;
-  type: CardType;
+  usage_stats?: DependencyUsageStats;
 };
 
-export type SnippetDependencyData = {
-  name: string;
-};
-
-export type TransformDependencyData = {
-  name: string;
+export type DependencyUsageStats = {
+  questions?: number;
+  models?: number;
+  metrics?: number;
+  transforms?: number;
+  snippets?: number;
 };
 
 export type DependencyEdge = {
-  from_entity_id: DependencyEntityId;
-  from_entity_type: DependencyEntityType;
-  to_entity_id: DependencyEntityId;
-  to_entity_type: DependencyEntityType;
+  from_entity_id: DependencyId;
+  from_entity_type: DependencyType;
+  to_entity_id: DependencyId;
+  to_entity_type: DependencyType;
 };
 
 export type DependencyGraph = {
   nodes: DependencyNode[];
   edges: DependencyEdge[];
-};
-
-export type GetDependencyGraphRequest = {
-  id: DependencyEntityId;
-  type: DependencyEntityType;
 };
 
 export type CheckDependenciesResponse = {
