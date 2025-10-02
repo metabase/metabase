@@ -211,7 +211,10 @@ export const SdkIframeEmbedPreview = () => {
         )
         .exhaustive()}
 
-      <EmbedPreviewLoadingOverlay isVisible={isLoading} />
+      <EmbedPreviewLoadingOverlay
+        isVisible={isLoading}
+        bg={settings.theme?.colors?.background}
+      />
     </Card>
   );
 };
