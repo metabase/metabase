@@ -63,6 +63,9 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "tooltip-text": ["tooltip-text"],
   "tooltip-background-focused": ["tooltip-background-focused"],
   "tooltip-text-secondary": ["tooltip-text-secondary"],
+
+  error: ["error"],
+  "background-error": ["bg-error"],
 };
 
 const originalColors = { ...colors };
