@@ -23,7 +23,7 @@ export function getNodeIcon({ type, card_type }: DependencyNode): IconName {
     case "table":
       return "table";
     case "snippet":
-      return "snippet";
+      return "sql";
     case "transform":
       return "refresh_downstream";
     default:
