@@ -93,7 +93,7 @@ To get the best results, we (the Metabase team) use internal benchmarks to deter
 
 ## Unless you submit feedback, we don't collect or store the prompts you send to Metabot
 
-We've intentionally limited what Metabot can do. Metabot lacks access to API keys, and it can't create assets, write data, or send your data outside of your Metabase. Your questions and conversations remain private to your Metabase (unless you submit feedback). We do collect some metadata to gauge and improve usage.
+We've intentionally limited what Metabot can do. Metabot lacks access to API keys, and it can't create assets, write data, or send your data outside of your Metabase. Your questions and conversations remain private to your Metabase (unless you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses)). We do collect some metadata to gauge and improve usage.
 
 ### What Metabot can see
 
