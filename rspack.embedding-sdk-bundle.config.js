@@ -130,12 +130,15 @@ const config = {
         ],
       },
 
-      {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        enforce: "pre",
-        use: ["source-map-loader"],
-      },
+      // Only include source-map-loader in development mode to avoid warnings in production builds
+      ...(IS_DEV_MODE
+        ? {
+            test: /\.js$/,
+            exclude: /node_modules/,
+            enforce: "pre",
+            use: ["source-map-loader"],
+          }
+        : undefined),
 
       {
         test: /\.svg/,

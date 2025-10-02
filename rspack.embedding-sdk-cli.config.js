@@ -27,6 +27,7 @@ const config = {
   entry: `${SDK_CLI_PATH}/cli.ts`,
   target: "node",
   context: SDK_CLI_PATH,
+  devtool: false,
   output: {
     path: SDK_CLI_DIST_PATH,
     filename: "cli.js",
