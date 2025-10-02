@@ -31,7 +31,7 @@ export const LegendItemTitle = styled.div<{
   isInsidePopover?: boolean;
 }>`
   color: var(--mb-color-text-primary);
-  font-size: 0.85em;
+  font-size: 0.928em;
   font-weight: 700;
   margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
