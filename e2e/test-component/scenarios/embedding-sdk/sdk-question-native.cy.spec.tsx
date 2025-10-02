@@ -37,24 +37,9 @@ const ensureParameterColumnValue = ({
   columnValue: string;
 }) => {
   tableInteractiveBody().within(() => {
-    cy.findAllByRole("row")
-      .its("length")
-      .then((rowsLength) => {
-        cy.get(
-          `[data-column-id="${columnName}"] [data-testid="cell-data"]`,
-        ).should(($cells) => {
-          expect($cells).to.have.length(rowsLength);
-
-          const mismatches = Cypress.$($cells).filter(
-            (_, el) => el.textContent.trim() !== columnValue,
-          );
-
-          expect(
-            mismatches,
-            `cells with non-${columnValue} content`,
-          ).to.have.length(0);
-        });
-      });
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
   });
 };
 
