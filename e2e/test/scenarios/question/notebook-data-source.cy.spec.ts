@@ -436,6 +436,8 @@ describe("issue 28106", () => {
           .findByTestId("scroll-container")
           .as("schemasList");
 
+        H.entityPickerModalLevel(2).should("contain", "Animals");
+
         cy.get("@schemasList").scrollTo("bottom");
 
         // assert scrolling worked and the last item is visible
