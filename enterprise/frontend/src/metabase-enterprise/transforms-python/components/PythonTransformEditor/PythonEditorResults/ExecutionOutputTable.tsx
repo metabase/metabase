@@ -1,19 +1,23 @@
-import { useMemo } from "react";
-
 import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting";
+import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker-manager";
+import type { RowValue } from "metabase-types/api";
 
-import { type Row, parseOutput } from "./utils";
+export type Row = Record<string, RowValue>;
 
-export function ExecutionOutputTable({ output }: { output?: string }) {
-  const { headers, rows } = useMemo(() => parseOutput(output ?? ""), [output]);
+export function ExecutionOutputTable({
+  output,
+}: {
+  output?: PythonExecutionResult;
+}) {
+  const { columns = [], data = [] } = output ?? {};
 
   const tableProps = useDataGridInstance<Row, unknown>({
-    data: rows,
-    columnsOptions: headers.map((header) => ({
-      id: header,
-      name: header,
-      accessorFn: (row) => row[header],
+    data,
+    columnsOptions: columns.map((column) => ({
+      id: column,
+      name: column,
+      accessorFn: (row) => row[column],
       formatter: (value) => {
         return formatValue(value, {
           type: "cell",
@@ -24,7 +28,7 @@ export function ExecutionOutputTable({ output }: { output?: string }) {
     })),
   });
 
-  if (!output || headers.length === 0) {
+  if (!output || columns.length === 0) {
     return null;
   }
 

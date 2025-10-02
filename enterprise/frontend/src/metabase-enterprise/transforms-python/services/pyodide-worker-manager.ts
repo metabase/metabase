@@ -1,108 +1,64 @@
-export interface PyodideTableSource {
+import type { RowValue } from "metabase-types/api";
+
+export type PyodideTableSource = {
   database_id: number;
-  table_name: string;
-  schema_name?: string;
   variable_name: string;
-  columns: Array<{
+  columns: {
     name: string;
     type: string;
-  }>;
-  rows: Array<Record<string, any>>;
-}
+  }[];
+  rows: Record<string, RowValue>[];
+};
 
-interface WorkerMessage {
-  type: "init" | "execute";
-  id: string;
-  data?: any;
-}
+export type PythonExecutionResult = {
+  columns: string[];
+  data: Record<string, RowValue>[];
+};
 
-interface WorkerResponse {
-  type: "success" | "error" | "log";
-  id: string;
-  data?: any;
-  error?: string;
-}
+type ReadyMessage = { type: "ready" };
+type ResultsMessage = {
+  type: "results";
+  stdout: string;
+  stderr: string;
+  result: PythonExecutionResult;
+};
 
-export class PyodideWorkerManager {
-  private static instance: PyodideWorkerManager;
-  private worker: Worker | null = null;
-  private messageHandlers: Map<
-    string,
-    { resolve: (value: any) => void; reject: (reason?: any) => void }
-  > = new Map();
-  private initialized = false;
-  private initializingPromise: Promise<void> | null = null;
+type WorkerMessage = ReadyMessage | ResultsMessage;
 
-  private constructor() {}
+class PyodideWorkerManager {
+  private worker: Worker;
 
-  static getInstance(): PyodideWorkerManager {
-    if (!PyodideWorkerManager.instance) {
-      PyodideWorkerManager.instance = new PyodideWorkerManager();
-    }
-    return PyodideWorkerManager.instance;
+  constructor() {
+    this.worker = new Worker("/app/assets/pyodide.worker.js");
   }
 
   async initialize(): Promise<void> {
-    if (this.initialized) {
-      return;
-    }
-
-    if (this.initializingPromise) {
-      return this.initializingPromise;
-    }
-
-    this.initializingPromise = this.initializeWorker();
-    await this.initializingPromise;
-    this.initialized = true;
+    await this.waitFor("ready", 10000);
   }
 
-  private async initializeWorker(): Promise<void> {
-    // Use the static worker file served from assets
-    this.worker = new Worker("/app/assets/pyodide.worker.js");
-
-    // Set up message handler
-    this.worker.addEventListener(
-      "message",
-      (event: MessageEvent<WorkerResponse>) => {
-        const { type, id, data, error } = event.data;
-
-        if (type === "log") {
-          return;
-        }
-
-        const handler = this.messageHandlers.get(id);
-        if (handler) {
-          if (type === "success") {
-            handler.resolve(data);
-          } else {
-            handler.reject(new Error(error || "Unknown error"));
-          }
-          this.messageHandlers.delete(id);
-        }
-      },
-    );
-
-    // Initialize Pyodide in the worker
-    await this.sendMessage({ type: "init", id: "init" });
-  }
-
-  private sendMessage(message: WorkerMessage): Promise<any> {
+  waitFor<T extends WorkerMessage["type"]>(
+    type: T,
+    timeout: number,
+  ): Promise<Extract<WorkerMessage, { type: T }>> {
     return new Promise((resolve, reject) => {
-      if (!this.worker) {
-        reject(new Error("Worker not initialized"));
-        return;
-      }
-
-      this.messageHandlers.set(message.id, { resolve, reject });
-      this.worker.postMessage(message);
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (this.messageHandlers.has(message.id)) {
-          this.messageHandlers.delete(message.id);
-          reject(new Error(`Operation timed out: ${message.type}`));
+      const handler = ({ data }: MessageEvent<WorkerMessage>) => {
+        if (data.type === type) {
+          unsubscribe();
+          resolve(data as Extract<WorkerMessage, { type: T }>);
         }
-      }, 30000);
+      };
+
+      const unsubscribe = () => {
+        clearTimeout(t);
+        this.worker.removeEventListener("message", handler);
+      };
+
+      this.worker.addEventListener("message", handler);
+
+      const t = setTimeout(() => {
+        unsubscribe();
+        reject(new Error(`Timeout waiting for ${type}`));
+      }, timeout);
     });
   }
 
@@ -112,18 +68,29 @@ export class PyodideWorkerManager {
   ): Promise<any> {
     await this.initialize();
 
-    // Prepare data for the worker
-    const context: Record<string, any> = {};
+    this.worker.postMessage({
+      type: "execute",
+      data: { code: getPythonScript(code, sources) },
+    });
 
-    // Convert sources to dataframes in the worker
-    for (const source of sources) {
-      if (source.rows && source.rows.length > 0) {
-        context[source.variable_name] = source.rows;
-      }
-    }
+    const evt = await this.waitFor("results", 30000);
 
-    // Create the Python code that sets up the environment and runs the transform
-    const fullCode = `
+    return {
+      output: evt.result,
+      stdout: evt.stdout,
+      stderr: evt.stderr,
+    };
+  }
+
+  terminate() {
+    this.worker.terminate();
+  }
+}
+
+export const pyodideWorkerManager = new PyodideWorkerManager();
+
+function getPythonScript(code: string, sources: PyodideTableSource[]) {
+  return `
 import pandas as pd
 import numpy as np
 import json
@@ -163,41 +130,5 @@ else:
     _result_json = None
 
 _result_json
-    `;
-
-    const messageId = `execute-${Date.now()}`;
-    const result = await this.sendMessage({
-      type: "execute",
-      id: messageId,
-      data: { code: fullCode },
-    });
-
-    // Transform the result to match ExecutionResult interface
-    // Convert the DataFrame result to JSON-lines format expected by parseOutput
-    let formattedOutput = "";
-    if (result.result && result.result.data) {
-      // Convert array of row objects to JSON-lines format
-      formattedOutput = result.result.data
-        .map((row: any) => JSON.stringify(row))
-        .join("\n");
-    }
-
-    return {
-      output: formattedOutput,
-      stdout: result.stdout,
-      stderr: result.stderr,
-    };
-  }
-
-  terminate(): void {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-      this.initialized = false;
-      this.initializingPromise = null;
-      this.messageHandlers.clear();
-    }
-  }
+  `;
 }
-
-export const pyodideWorkerManager = PyodideWorkerManager.getInstance();

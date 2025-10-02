@@ -1,46 +1,79 @@
 /// <reference lib="webworker" />
 
-// We'll use 'any' for pyodide since we're loading it via importScripts
-let pyodide = null;
+const PACKAGES = ["micropip", "numpy", "pandas"];
 
-// Message types for worker communication
-// Send response back to main thread
-function sendResponse(response) {
-  self.postMessage(response);
+run();
+
+async function run() {
+  const pyodide = await init();
+
+  self.addEventListener("message", async function (event) {
+    const { type, data } = event.data;
+
+    if (type === "execute") {
+      const result = await execute(pyodide, data.code, data.context);
+      self.postMessage({ type: "results", ...result });
+      return;
+    }
+
+    throw new Error(`Unknown message type: ${type}`);
+  });
+
+  // Signal that worker is ready to accept messages
+  self.postMessage({ type: "ready" });
 }
 
-// Initialize Pyodide
-async function initPyodide() {
+async function init() {
+  // Import pyodide from local assets
+  self.importScripts("/app/assets/pyodide/pyodide.js");
+
+  // @ts-ignore - loadPyodide is available after importScripts
+  return loadPyodide({
+    indexURL: "/app/assets/pyodide/",
+    packages: PACKAGES,
+  });
+}
+
+async function execute(pyodide, code, context = {}) {
+  pyodide.globals.clear();
+
+  // Set up context variables
+  for (const [key, value] of Object.entries(context)) {
+    pyodide.globals.set(key, value);
+  }
+
+  let stdout = "";
+  pyodide.setStdout({
+    batched(out) {
+      stdout += out;
+    },
+  });
+
+  let stderr = "";
+  pyodide.setStderr({
+    batched(out) {
+      stderr += out;
+    },
+  });
+
   try {
-    sendResponse({
-      type: "log",
-      id: "init",
-      data: "Loading Pyodide in Web Worker...",
-    });
-
-    // Import pyodide from local assets
-    self.importScripts("/app/assets/pyodide/pyodide.js");
-
-    // @ts-ignore - loadPyodide is available after importScripts
-    pyodide = await loadPyodide({
-      indexURL: "/app/assets/pyodide/",
-      packages: ["micropip", "numpy", "pandas"],
-    });
-
-    sendResponse({
-      type: "log",
-      id: "init",
-      data: "Pyodide loaded successfully",
-    });
-
-    return true;
+    const result = await pyodide.runPythonAsync(code);
+    return {
+      result: deepSerialize(result),
+      stdout,
+      stderr,
+    };
   } catch (error) {
-    console.error("Failed to initialize Pyodide:", error);
-    throw error;
+    return {
+      error,
+      stdout,
+      stderr,
+    };
   }
 }
 
 // Deep serialization function to handle nested complex objects
+// TODO: can we remove this?
 function deepSerialize(obj) {
   if (obj === null || typeof obj !== "object") {
     return obj;
@@ -99,159 +132,3 @@ function deepSerialize(obj) {
     return String(obj);
   }
 }
-
-// Execute Python code
-async function executePython(code, context = {}) {
-  if (!pyodide) {
-    throw new Error("Pyodide not initialized");
-  }
-
-  pyodide.globals.clear();
-
-  // Set up context variables
-  for (const [key, value] of Object.entries(context)) {
-    pyodide.globals.set(key, value);
-  }
-
-  pyodide.setStdin({ error: true });
-
-  let stdout = "";
-  pyodide.setStdout({
-    isatty: false,
-    batched(out) {
-      stdout += out;
-    },
-  });
-
-  let stderr = "";
-  pyodide.setStderr({
-    isatty: false,
-    batched(out) {
-      stderr += out;
-    },
-  });
-
-  let result;
-  let error = null;
-
-  try {
-    // Execute the code
-    console.log("About to execute Python code:", code);
-    result = await pyodide.runPythonAsync(code);
-    console.log("Python execution result:", result);
-    console.log("Result type:", typeof result);
-    console.log(
-      "Result is null/undefined:",
-      result === null || result === undefined,
-    );
-  } catch (err) {
-    console.error("Python execution error:", err);
-    error = err;
-  }
-
-  console.log("Captured stdout:", stdout);
-  console.log("Captured stderr:", stderr);
-
-  if (error) {
-    throw error;
-  }
-
-  // Convert result to JSON-serializable format
-  let serializedResult;
-  try {
-    console.log("Raw result type:", typeof result);
-    console.log("Raw result constructor:", result?.constructor?.name);
-    console.log("Raw result:", result);
-
-    // Always use deep serialization for objects
-    if (result && typeof result === "object") {
-      serializedResult = deepSerialize(result);
-    } else {
-      serializedResult = result;
-    }
-
-    // Final safety check - try to JSON stringify to test serializability
-    JSON.stringify(serializedResult);
-    console.log("Serialization successful");
-  } catch (e) {
-    console.error("Serialization failed:", e);
-    // If serialization fails, convert to string representation
-    try {
-      serializedResult = JSON.parse(
-        JSON.stringify(result, (key, value) => {
-          if (value instanceof Map) {
-            return Object.fromEntries(value);
-          }
-          if (value instanceof Set) {
-            return Array.from(value);
-          }
-          if (value && typeof value === "object" && value.toJs) {
-            return value.toJs();
-          }
-          return value;
-        }),
-      );
-    } catch (e2) {
-      serializedResult = String(result);
-    }
-  }
-
-  const finalResult = {
-    result: serializedResult,
-    stdout: stdout,
-    stderr: stderr,
-  };
-
-  console.log("Final result being returned:", finalResult);
-  return finalResult;
-}
-
-// Handle messages from main thread
-self.addEventListener("message", async (event) => {
-  const { type, id, data } = event.data;
-
-  try {
-    switch (type) {
-      case "init":
-        await initPyodide();
-        sendResponse({ type: "success", id, data: "Pyodide initialized" });
-        break;
-
-      case "execute": {
-        const result = await executePython(data.code, data.context);
-        sendResponse({ type: "success", id, data: result });
-        break;
-      }
-
-      default:
-        sendResponse({
-          type: "error",
-          id,
-          error: `Unknown message type: ${type}`,
-        });
-    }
-  } catch (error) {
-    let errorMessage;
-    try {
-      if (error && typeof error === "object" && error.toJs) {
-        // Convert PyProxy error to JavaScript object
-        errorMessage = error.toJs();
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      } else {
-        errorMessage = String(error);
-      }
-    } catch (e) {
-      errorMessage = String(error);
-    }
-
-    sendResponse({
-      type: "error",
-      id,
-      error: errorMessage,
-    });
-  }
-});
-
-// Signal that worker is ready
-sendResponse({ type: "log", id: "ready", data: "Worker ready" });
