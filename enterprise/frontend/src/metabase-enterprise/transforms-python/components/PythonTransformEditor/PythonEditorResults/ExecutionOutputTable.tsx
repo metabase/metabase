@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { DataGrid, useDataGridInstance } from "metabase/data-grid";
+import { formatValue } from "metabase/lib/formatting";
 
 import { type Row, parseOutput } from "./utils";
 
@@ -13,8 +14,14 @@ export function ExecutionOutputTable({ output }: { output?: string }) {
       id: header,
       name: header,
       accessorFn: (row) => row[header],
+      formatter: (value) => {
+        return formatValue(value, {
+          type: "cell",
+          jsx: true,
+          rich: true,
+        });
+      },
     })),
-    minGridWidth: 100,
   });
 
   if (!output || headers.length === 0) {
