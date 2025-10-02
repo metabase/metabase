@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { ReactNode } from "react";
 
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { lighten } from "metabase/lib/colors";
@@ -13,24 +13,24 @@ import {
 } from "./PreviousValueComparison.styled";
 
 interface Props {
+  children: ReactNode;
+  color: string;
   comparison: ComparisonResult;
   iconSize: string | number;
-  inTooltip?: boolean;
 }
 
 export const VariationPercent = ({
-  comparison,
-  inTooltip,
-  iconSize,
   children,
-}: PropsWithChildren<Props>) => {
+  color,
+  comparison,
+  iconSize,
+}: Props) => {
   const theme = useMantineTheme();
   const isNightMode = useSelector(getIsNightMode);
-  const noChangeColor =
-    inTooltip || isNightMode
-      ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-      : "text-light";
   const { changeArrowIconName, changeColor } = comparison;
+  const noChangeColor = isNightMode
+    ? lighten(theme.fn.themeColor("text-medium"), 0.3)
+    : color;
 
   return (
     <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>

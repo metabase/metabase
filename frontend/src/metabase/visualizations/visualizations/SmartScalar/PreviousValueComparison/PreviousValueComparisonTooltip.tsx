@@ -33,9 +33,9 @@ export function PreviousValueComparisonTooltip({
   return (
     <Flex align="center">
       <VariationPercent
+        color={lighten(theme.fn.themeColor("text-medium"), 0.3)}
         comparison={comparison}
         iconSize={TOOLTIP_ICON_SIZE}
-        inTooltip
       >
         {display.percentChange}
       </VariationPercent>

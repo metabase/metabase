@@ -115,7 +115,11 @@ export function PreviousValueComparison({
           EmbedFrameS.fullscreenNightText,
         )}
       >
-        <VariationPercent comparison={comparison} iconSize={ICON_SIZE}>
+        <VariationPercent
+          color={"text-light"}
+          comparison={comparison}
+          iconSize={ICON_SIZE}
+        >
           {fittedChangeDisplay}
         </VariationPercent>
         <VariationDetails
