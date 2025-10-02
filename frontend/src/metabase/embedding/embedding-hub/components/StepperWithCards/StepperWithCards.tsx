@@ -89,7 +89,7 @@ export const StepperWithCards = ({ steps }: { steps: StepperStep[] }) => {
             className={cx(S.step, isDone && S.stepDone)}
             icon={isDone ? <Icon name="check" /> : undefined}
             description={
-              <Grid spacing="md">
+              <Grid>
                 {step.cards.map((card) => {
                   const onClick =
                     card.clickAction?.type === "click"
