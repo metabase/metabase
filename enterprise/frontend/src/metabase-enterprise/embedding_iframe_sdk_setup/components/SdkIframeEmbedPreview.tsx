@@ -112,13 +112,6 @@ export const SdkIframeEmbedPreview = () => {
     [cleanupMetabaseConfig],
   );
 
-  useEffect(
-    () => () => {
-      cleanupMetabaseConfig();
-    },
-    [cleanupMetabaseConfig],
-  );
-
   // Show a "fake" loading indicator when componentName changes.
   // Embed JS has its own loading indicator, but it shows up after the iframe loads.
   useEffect(() => {
