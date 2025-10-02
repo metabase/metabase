@@ -3,6 +3,7 @@ import type { Collection, CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { NativeQuerySnippet, NativeQuerySnippetId } from "./snippets";
+import type { ConcreteTableId } from "./table";
 import type { Transform, TransformId } from "./transform";
 import type { CardDisplayType } from "./visualization";
 
@@ -85,6 +86,7 @@ type BaseDependencyInfo<TType, TData> = {
 };
 
 export type TableDependencyMetadata = {
+  id: ConcreteTableId;
   name: string;
   display_name: string;
   description: string | null;
