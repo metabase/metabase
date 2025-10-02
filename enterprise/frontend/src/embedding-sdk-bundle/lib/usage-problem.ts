@@ -15,7 +15,7 @@ interface SdkProblemOptions {
   isEnabled: boolean;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
-  tokenExpiration: MetabaseEmbeddingSessionToken["exp"];
+  session: MetabaseEmbeddingSessionToken | null;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
@@ -58,13 +58,8 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const {
-    isEnabled,
-    hasTokenFeature,
-    authConfig,
-    isDevelopmentMode,
-    tokenExpiration,
-  } = options;
+  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode, session } =
+    options;
   const { apiKey } = authConfig;
 
   const isSSO = !apiKey;
@@ -87,7 +82,7 @@ export function getSdkUsageProblem(
       isLocalhost,
       isEnabled,
       isDevelopmentMode,
-      tokenExpiration,
+      session,
     })
       .with({ isDevelopmentMode: true }, () =>
         toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
@@ -116,7 +111,7 @@ export function getSdkUsageProblem(
       .with({ isApiKey: true, hasTokenFeature: true }, () =>
         toError("API_KEYS_WITH_LICENSE"),
       )
-      .with({ tokenExpiration: P.nullish }, () => toWarning("JWT_EXP_NULL"))
+      .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
       .otherwise(() => null)
   );
 }

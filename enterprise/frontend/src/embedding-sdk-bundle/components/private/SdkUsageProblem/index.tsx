@@ -17,14 +17,12 @@ export const SdkUsageProblemDisplay = ({
   authConfig,
   allowConsoleLog,
 }: Props) => {
-  const tokenExpiration = useSdkSelector(
-    (state) => getSessionTokenState(state).token?.exp,
-  );
+  const session = useSdkSelector((state) => getSessionTokenState(state).token);
 
   const usageProblem = useSdkUsageProblem({
     authConfig,
     allowConsoleLog,
-    tokenExpiration,
+    session,
   });
 
   if (!usageProblem) {
