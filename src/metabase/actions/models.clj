@@ -123,14 +123,12 @@
     (let [action (first (t2/insert-returning-instances! :model/Action (select-keys action-data action-columns)))
           model  (type->model (:type action))]
       (t2/query-one {:insert-into (t2/table-name model)
-                     :values [(-> (apply dissoc action-data action-columns)
-                                  (assoc :action_id (:id action))
-                                  (cond-> (= (:type action) :implicit)
-                                    (dissoc :database_id)
-                                    (= (:type action) :http)
-                                    (update :template json/encode)
-                                    (= (:type action) :query)
-                                    (update :dataset_query json/encode)))]})
+                     :values      [(-> (apply dissoc action-data action-columns)
+                                       (assoc :action_id (:id action))
+                                       (cond->
+                                        (= (:type action) :implicit) (dissoc :database_id)
+                                        (= (:type action) :http)     (update :template json/encode)
+                                        (= (:type action) :query)    (update :dataset_query json/encode)))]})
       (:id action))))
 
 (defn update!

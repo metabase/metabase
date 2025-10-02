@@ -15,17 +15,31 @@
 
 (mr/def ::legacy-ref
   [:multi {:dispatch (fn [x]
-                       (if (and (vector? x)
+                       (if (and (sequential? x)
                                 (#{:expression "expression"} (first x)))
                          :expression
                          :field))}
    [:expression ::lib.schema.parameter/target.legacy-expression-ref]
    [:field      ::lib.schema.parameter/target.legacy-field-ref]])
 
+(defn- normalize-values-source-config [m]
+  (when (map? m)
+    ;; remove empty/nil values
+    (reduce-kv
+     (fn [m k v]
+       (cond-> m
+         (or (nil? v)
+             (and (sequential? v)
+                  (empty? v)))
+         (dissoc k)))
+     m
+     m)))
+
 (mr/def ::values-source-config
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   [:map
+   {:decode/normalize normalize-values-source-config}
    [:values      {:optional true} [:* :any]]
    [:card_id     {:optional true} ::lib.schema.id/card]
    [:value_field {:optional true} [:ref ::legacy-ref]]
@@ -46,12 +60,6 @@
                       [:values_source_config
                        [:map {:closed true}
                         [:values {:optional true} [:* :any]]]]]]]))
-
-(mr/def ::keyword-or-non-blank-string
-  [:or
-   {:json-schema {:type "string" :minLength 1}}
-   :keyword
-   ::lib.schema.common/non-blank-string])
 
 (mr/def ::values-source-type
   [:enum {:decode/normalize lib.schema.common/normalize-keyword} :static-list :card])

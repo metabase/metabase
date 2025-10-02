@@ -8,13 +8,13 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.lib.core :as lib]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]))
+   [toucan2.core :as t2]))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
@@ -1200,7 +1200,7 @@
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query {}
                                             :database_id   (:id db)})]
             (reset! serialized
                     (->> (serdes.extract/extract {})

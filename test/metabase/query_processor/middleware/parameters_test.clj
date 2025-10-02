@@ -174,7 +174,7 @@
 (defn- card-template-tag
   [card-id]
   (let [tag (str "#" card-id)]
-    {:id tag, :name tag, :display-name tag, :type "card", :card-id card-id}))
+    {:id tag, :name tag, :display-name tag, :type :card, :card-id card-id}))
 
 (defn card-template-tags
   "Generate the map representing card template tags (sub-queries) for the given `card-ids`."

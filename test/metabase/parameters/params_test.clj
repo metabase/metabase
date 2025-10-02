@@ -182,16 +182,18 @@
           (is (not (contains? param-fields "p7"))))))))
 
 (deftest ^:parallel card->template-tag-test
-  (let [card {:dataset_query (mt/native-query {:query "SELECT *"
+  (let [card {:dataset_query (mt/native-query {:query         "SELECT *"
                                                :template-tags {"id"   {:name         "id"
-                                                                       :display_name "ID"
+                                                                       :display-name "ID"
                                                                        :id           "11111111"
                                                                        :type         :dimension
+                                                                       :widget-type  :number
                                                                        :dimension    [:field (mt/id :venues :id) nil]}
                                                                "name" {:name         "name"
-                                                                       :display_name "Name"
+                                                                       :display-name "Name"
                                                                        :id           "aaaaaaaa"
                                                                        :type         :dimension
+                                                                       :widget-type  :number
                                                                        :dimension    [:field "name" {:base-type :type/Text}]}}})}]
     (testing "card->template-tag-param-id->field-ids"
       (is (= {"11111111" #{(mt/id :venues :id)}
@@ -246,14 +248,16 @@
       (let [card {:dataset_query (mt/native-query {:query "SELECT *"
                                                    :template-tags
                                                    {"tag1" {:name         "tag1"
-                                                            :display_name "Tag 1"
+                                                            :display-name "Tag 1"
                                                             :id           "11111111"
                                                             :type         :dimension
+                                                            :widget-type  :number
                                                             :dimension    [:field (mt/id :orders :id) nil]}
                                                     "tag2" {:name         "tag2"
-                                                            :display_name "Tag 2"
+                                                            :display-name "Tag 2"
                                                             :id           "aaaaaaaa"
                                                             :type         :dimension
+                                                            :widget-type  :number
                                                             :dimension    [:field (mt/id :products :id) nil]}}})}]
         (testing "card->template-tag-param-id->field-ids"
           (is (= {"11111111" #{(mt/id :orders :id)}

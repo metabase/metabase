@@ -23,16 +23,17 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
-(defmacro with-audit-db-restoration [& body]
+(defn do-with-audit-db-restoration! [thunk]
+  (mbc/ensure-audit-db-installed!)
+  (try
+    (thunk)
+    (finally
+      (mbc/ensure-audit-db-installed!))))
+
+(defmacro with-audit-db-restoration! [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
-  `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
-       (mbc/ensure-audit-db-installed!)
-       (try
-         ~@body
-         (finally
-           (mbc/ensure-audit-db-installed!))))))
+  `(do-with-audit-db-restoration! (fn [] ~@body)))
 
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
@@ -115,7 +116,7 @@
   (t2/delete! :model/Database :id audit/audit-db-id)
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
-    (with-audit-db-restoration
+    (with-audit-db-restoration!
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")

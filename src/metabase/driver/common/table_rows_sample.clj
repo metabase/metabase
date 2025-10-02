@@ -45,7 +45,7 @@
    {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
   (let [database             (lib.metadata/database mp)
         driver               (driver.u/database->driver database)
-        col->expression-name (when (and truncation-size (driver.u/supports? driver :expressions database))
+        col->expression-name (if (and truncation-size (driver.u/supports? driver :expressions database))
                                (into {}
                                      (comp (filter (fn [field]
                                                      ;; only do this for columns that are `:type/Text`, not for anything derived from
@@ -53,7 +53,8 @@
                                                      (= ((some-fn :effective-type :base-type) field) :type/Text)))
                                            (map (juxt identity (fn [_field]
                                                                  (str (gensym "substring"))))))
-                                     cols))]
+                                     cols)
+                               {})]
     (-> (lib/query mp table)
         (as-> $query (transduce
                       (filter col->expression-name)

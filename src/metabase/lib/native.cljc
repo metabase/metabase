@@ -302,8 +302,9 @@
        (assoc stage :template-tags
               (merge existing-tags (select-keys tags valid-tags)))))))
 
-(mu/defn raw-native-query :- ::common/non-blank-string
-  "Returns the native query string"
+(mu/defn raw-native-query :- some?
+  "Returns the native query. This is a SQL string for SQL-based drivers; for other drivers like MongoDB it might be a
+  Clojure map."
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 

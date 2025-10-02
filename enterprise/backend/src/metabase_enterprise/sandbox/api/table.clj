@@ -3,14 +3,14 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.table :as schema.table]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]))
+   [toucan2.core :as t2]))
 
 (mu/defn- find-sandbox-source-card :- [:maybe (ms/InstanceOf :model/Card)]
   "Find the associated sandboxing card (if there is one) for the given `table-or-table-id` and `user-or-user-id`.

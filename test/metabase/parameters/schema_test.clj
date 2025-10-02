@@ -1,6 +1,8 @@
 (ns metabase.parameters.schema-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]))

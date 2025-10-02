@@ -39,3 +39,9 @@
     "Hello World"
     "user@example.com"
     "<script>"))
+
+(deftest ^:parallel unfussy-sorted-map-test
+  (is (nil? (:lib/type (lib.schema.common/unfussy-sorted-map "a" 1))))
+  (is (nil? (get (lib.schema.common/unfussy-sorted-map :a 1) "lib/type")))
+  (is (= {"a" 1 :b 2}
+         (lib.schema.common/unfussy-sorted-map "a" 1 :b 2))))

@@ -304,12 +304,25 @@
    {:api/regex lib.schema.common/url-encoded-string-regex}
    [:ref ::lib.schema.common/non-blank-string]])
 
+(defn- sort-parameter-values
+  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence. Parameter values can
+  be of mixed types, as bigintegers are passed as strings to avoid precision loss."
+  [param-value]
+  (if (sequential? param-value)
+    (vec (sort-by str param-value))
+    param-value))
+
+(mr/def ::parameter.value
+  [:schema
+   {:encode/for-hashing #'sort-parameter-values}
+   :any])
+
 (mr/def ::parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
   part of the `:parameters` list in a query."
   [:and
    [:map
-    {:decode/normalize normalize-parameter}
+    {:decode/normalize #'normalize-parameter}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
@@ -317,7 +330,7 @@
     [:target   {:optional true} [:ref ::target]]
     ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
     ;; on the [[ParameterType]]
-    [:value    {:optional true} :any]
+    [:value    {:optional true} [:ref ::parameter.value]]
     ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
     ;; merged in appropriately
     [:name     {:optional true} ::lib.schema.common/non-blank-string]
@@ -330,6 +343,11 @@
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 
+(defn- encode-parameters-for-hashing [parameters]
+  (vec (sort-by (some-fn :id (constantly "")) parameters)))
+
 (mr/def ::parameters
   "Schema for a list of `:parameters` as passed in to a query."
-  [:sequential [:ref ::parameter]])
+  [:sequential
+   {:encode/for-hashing #'encode-parameters-for-hashing}
+   [:ref ::parameter]])

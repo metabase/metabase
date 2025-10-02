@@ -20,6 +20,7 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -536,11 +537,14 @@
 
 (defn fully-parameterized-query?
   "Given a Card, returns `true` if its query is fully parameterized."
-  [row]
-;; TODO TB handle pMBQL native queries
-  (let [native-query (-> row :dataset_query :native)]
-    (if-let [template-tags (:template-tags native-query)]
-      (fully-parameterized-text? (:query native-query) template-tags)
+  [{query :dataset_query, :as _card}]
+  (let [template-tags    (not-empty (lib/all-template-tags query))
+        raw-native-query (when (lib/native-only-query? query)
+                           (let [query (lib/raw-native-query query)]
+                             (when (string? query)
+                               query)))]
+    (if (and template-tags raw-native-query)
+      (fully-parameterized-text? raw-native-query template-tags)
       true)))
 
 (defn- post-process-card-row [row]

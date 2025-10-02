@@ -83,6 +83,7 @@
         pk-ref    (-> model-index :pk_ref (fix :type/Integer))]
     (try
       [nil (->> (qp/process-query
+                 ;; TODO (Cam 10/1/25) -- update this to generate the query using Lib
                  {:database (:database_id model)
                   :type     :query
                   :query    {:source-table (format "card__%d" (:id model))

@@ -85,11 +85,11 @@
 
   (values-from-card 1 [:field \"name\" nil] \"red\")
   ;; will execute a mbql that looks like
-  ;; {:source-table (format \"card__%d\" card-id)
-  ;;  :fields       [value-field]
-  ;;  :breakout     [value-field]
-  ;;  :filter       [:contains [:lower value-field] \"red\"]
-  ;;  :limit        *max-rows*}
+  ;; {:source-card card-id
+  ;;  :fields      [value-field]
+  ;;  :breakout    [value-field]
+  ;;  :filters     [[:contains {} [:lower {} value-field] \"red\"]]
+  ;;  :limit       *max-rows*}
   =>
   {:values          [[\"Red Medicine\"]]
   :has_more_values false}

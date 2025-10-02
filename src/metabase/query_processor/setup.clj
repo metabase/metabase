@@ -3,6 +3,7 @@
    [clojure.core.async :as a]
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [clojure.set :as set]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,6 +17,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -149,7 +151,17 @@
   (fn [query]
     (cond
       driver/*driver*
-      (f query)
+      (do
+        ;; dev mode: check that we're not doing something crazy like binding `driver/*driver*` to `:h2` and the
+        ;; running tests against the Audit App DB with a Postgres app DB. (This was a real test I had to fix.)
+        (when (or config/is-dev? config/is-test?)
+          (let [expected-driver (driver.u/database->driver (:database query))]
+            (when-not (= driver/*driver* expected-driver)
+              (log/warnf "driver/*driver* is bound to %s, but Database %d has engine %s. Query may not work as expected."
+                         driver/*driver*
+                         (:database query)
+                         expected-driver))))
+        (f query))
 
       (= (query-type query) :internal)
       (f query)

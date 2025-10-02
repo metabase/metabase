@@ -7,6 +7,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.api-test :as api.dashboard-test]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -174,9 +175,9 @@
       [:model/Card {card-id :id} {:database_id   (mt/id)
                                   :table_id      (mt/id :venues)
                                   :dataset_query (mt/mbql-query venues
-                                                   {:aggregation  [:count]
-                                                    :breakout     [$category_id
-                                                                   $price]})}
+                                                   {:aggregation [:count]
+                                                    :breakout    [$category_id
+                                                                  $price]})}
        :model/Dashboard {dashboard-id :id} {:parameters
                                             [{:slug      "venue_id"
                                               :id        "_VENUE_ID_"

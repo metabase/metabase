@@ -15,6 +15,9 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -22,10 +25,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some]]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.core :as lib]
-   [metabase.legacy-mbql.schema :as mbql.s])
+   [metabase.util.performance :refer [every? some]])
   (:import
    (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
@@ -176,7 +176,15 @@
   ^Parser [h2-database-or-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database-or-id))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
-    (let [inner (.unwrap conn java.sql.Connection) ;; May be a wrapper, get the innermost object that has session field
+    (let [^org.h2.jdbc.JdbcConnection inner (try
+                                              ;; May be a wrapper, get the innermost object that has session field
+                                              (u/prog1 (.unwrap conn org.h2.jdbc.JdbcConnection)
+                                                (assert (instance? org.h2.jdbc.JdbcConnection <>)))
+                                              (catch java.sql.SQLException e
+                                                (throw (ex-info "Not an H2 connection. Are we sure this is an H2 database?"
+                                                                {:database h2-database-or-id
+                                                                 :conn     conn}
+                                                                e))))
           session (get-field inner "session")]
       ;; Only SessionLocal represents a connection we can create a parser with. Remote sessions and other
       ;; session types are ignored.
@@ -197,8 +205,8 @@
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
   [database-or-id :- [:or
-                        ::lib.schema.id/database
-                        ::lib.schema.metadata/database]
+                      ::lib.schema.id/database
+                      ::lib.schema.metadata/database]
    ^String query  :- :string]
   (when-let [h2-parser (make-h2-parser database-or-id)]
     (try

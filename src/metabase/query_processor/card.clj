@@ -11,6 +11,7 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -18,6 +19,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -73,18 +75,13 @@
             (assoc-in [:target 2 :stage-number] -1)))
         parameters))
 
-(defn- last-stage-number
-  [outer-query]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (mbql.u/legacy-last-stage-number (:query outer-query)))
+(mu/defn- last-stage-number
+  [query :- ::lib.schema/query]
+  (dec (count (:stages query))))
 
-(defn- nest-query
-  [query]
-  (assoc query :query {:source-query (:query query)}))
-
-(defn- add-stage-to-temporal-unit-parameters
+(mu/defn- add-stage-to-temporal-unit-parameters :- ::lib.schema.parameter/parameters
   "Points temporal-unit parameters to the penultimate stage unless the stage is specified."
-  [parameters]
+  [parameters :- ::lib.schema.parameter/parameters]
   (mapv (fn [{param-type :type, :keys [target], :as parameter}]
           (cond-> parameter
             (and (= param-type :temporal-unit)
@@ -93,11 +90,12 @@
             (assoc-in [:target 2 :stage-number] -2)))
         parameters))
 
-(mu/defn query-for-card
+(mu/defn query-for-card :- ::lib.schema/query
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
-    :as           card}
+    :as           card} :- [:map
+                            [:dataset_query ::lib.schema/query]]
    parameters  :- [:maybe [:sequential :map]]
    constraints :- [:maybe :map]
    middleware  :- [:maybe :map]
@@ -121,17 +119,19 @@
                       (not= card-type :question)
                       ;; the FE assumed an extra stage, so we add it
                       filter-stage-added?))
-                nest-query)
+                lib/append-stage)
         query (-> query
                   ;; don't want default constraints overridding anything that's already there
                   (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                  (assoc :constraints constraints
-                         :parameters  (cond-> parameters
-                                        filter-stage-added? add-stage-to-temporal-unit-parameters)
-                         :middleware  middleware))
+                  (m/assoc-some :constraints (not-empty constraints)
+                                :parameters  (not-empty (cond-> parameters
+                                                          filter-stage-added? add-stage-to-temporal-unit-parameters))
+                                :middleware  (not-empty middleware)))
         cs    (-> (cache-strategy card (:dashboard-id ids))
                   (enrich-strategy query))]
-    (assoc query :cache-strategy cs)))
+    (-> query
+        (assoc :cache-strategy cs)
+        (->> (lib/normalize ::lib.schema/query)))))
 
 (def ^:dynamic *allow-arbitrary-mbql-parameters*
   "In 0.41.0+ you can no longer add arbitrary `:parameters` to a query for a saved question -- only parameters for
@@ -145,7 +145,7 @@
   here."
   false)
 
-(defn- card-template-tag-parameters
+(mu/defn- card-template-tag-parameters
   "Template tag parameters that have been specified for the query for Card with `card-id`, if any, returned as a map in
   the format
 
@@ -157,7 +157,7 @@
   Parameter type in this case is something like `:string` or `:number` or `:date/month-year`; parameters passed in as
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
-  [card-id]
+  [card-id :- ::lib.schema.id/card]
   (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
     (into
      {}
@@ -251,7 +251,7 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
-(defn combined-parameters-and-template-tags
+(mu/defn combined-parameters-and-template-tags
   "Enrich `card.parameters` to include parameters from template-tags.
 
   On native queries parameters exists in 2 forms:
@@ -262,7 +262,7 @@
   However, since card.parameters is a recently added feature, there may be instances where a template-tag
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
-  [{:keys [parameters] :as card}]
+  [{:keys [parameters] :as card} :- ::queries.schema/card]
   (let [template-tag-parameters     (queries/card-template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
         id->parameter               (m/index-by :id parameters)]
@@ -296,8 +296,8 @@
   `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
-  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
-  options."
+  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for
+  all valid options."
   [card-id :- ::lib.schema.id/card
    export-format
    & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]

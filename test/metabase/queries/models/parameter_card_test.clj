@@ -97,16 +97,16 @@
                  :model/Card {card-id-3 :id} {}]
     (testing "creates ParameterCards for valid card-sourced parameters"
       (let [parameters [{:id                   "param1"
-                         :type                 :test
-                         :values_source_type   "card"
+                         :type                 :number
+                         :values_source_type   :card
                          :values_source_config {:card_id card-id-1}}
                         {:id                   "param2"
-                         :type                 :test
-                         :values_source_type   "static-list"
+                         :type                 :number
+                         :values_source_type   :static-list
                          :values_source_config {:values ["a" "b" "c"]}}
                         {:id                   "param3"
-                         :type                 :test
-                         :values_source_type   "card"
+                         :type                 :number
+                         :values_source_type   :card
                          :values_source_config {:card_id card-id-2}}]]
         (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 parameters)
         (let [pcs (t2/select :model/ParameterCard
@@ -124,8 +124,8 @@
                                              :parameter_id              "old-param"
                                              :card_id                   card-id-3}]
         (let [parameters [{:id                   "param1"
-                           :type :test
-                           :values_source_type   "card"
+                           :type                 :number
+                           :values_source_type   :card
                            :values_source_config {:card_id card-id-1}}]]
           (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 parameters)
           (let [pcs (t2/select :model/ParameterCard
@@ -163,8 +163,8 @@
              (parameter-card/upsert-or-delete-from-parameters! "dashboard" 1 parameters)))))
     (testing "works with card parameterized objects"
       (let [parameters [{:id                   "param1"
-                         :type                 :test
-                         :values_source_type   "card"
+                         :type                 :number
+                         :values_source_type   :card
                          :values_source_config {:card_id card-id-1}}]]
         (parameter-card/upsert-or-delete-from-parameters! "card" 1 parameters)
         (let [pcs (t2/select :model/ParameterCard

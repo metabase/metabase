@@ -67,12 +67,13 @@
    [:merge
     ::stage.common
     [:map
-     {:decode/normalize #(->> %
-                              normalize-stage-common
-                              ;; filter out null :collection keys -- see #59675
-                              (m/filter-kv (fn [k v]
-                                             (not (and (= k :collection)
-                                                       (nil? v))))))}
+     {:decode/normalize   #(->> %
+                                normalize-stage-common
+                                ;; filter out null :collection keys -- see #59675
+                                (m/filter-kv (fn [k v]
+                                               (not (and (= k :collection)
+                                                         (nil? v))))))
+      :encode/for-hashing #'common/encode-map-for-hashing}
      [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
      ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
      ;; Only restriction is that, if present, it is non-nil.
@@ -209,16 +210,20 @@
    [:items pos-int?]])
 
 (defn- normalize-mbql-stage [m]
-  (when-let [m (normalize-stage-common m)]
-    ;; remove deprecated ident keys if they are present for some reason.
-    (dissoc m :aggregation-idents :breakout-idents :expression-idents)))
+  (normalize-stage-common m))
+
+(defn- encode-mbql-stage-for-hashing [stage]
+  (-> stage
+      common/encode-map-for-hashing
+      lib.schema.util/indexed-order-bys-for-stage))
 
 (mr/def ::stage.mbql
   [:and
    [:merge
     ::stage.common
     [:map
-     {:decode/normalize normalize-mbql-stage}
+     {:decode/normalize   #'normalize-mbql-stage
+      :encode/for-hashing #'encode-mbql-stage-for-hashing}
      [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
      [:joins              {:optional true} [:ref ::join/joins]]
      [:expressions        {:optional true} [:ref ::expression/expressions]]
@@ -395,8 +400,22 @@
 
 (defn- normalize-query [query]
   (when-let [query (common/normalize-map query)]
-    (cond-> query
-      (not (:lib/metadata query)) (dissoc :lib/metadata))))
+    (reduce-kv (fn [query k v]
+                 (case k
+                   :lib/metadata (cond-> query
+                                   (nil? v) (dissoc k))
+                   (:constraints
+                    :create-row
+                    :info
+                    :middleware
+                    :parameters
+                    :settings
+                    :update-row)
+                   (cond-> query
+                     (empty? v) (dissoc k))
+                   #_else query))
+               query
+               query)))
 
 (defn- serialize-query [query]
   ;; this stuff all gets added in when you actually run a query with one of the QP entrypoints, and is not considered
@@ -410,12 +429,27 @@
                               (= (namespace k) "lib"))))
                    query)))
 
+(defn- encode-query-for-hashing [query]
+  (let [keys-for-hashing #{:constraints
+                           :database
+                           :destination-database/id
+                           :impersonation/role
+                           :lib/type
+                           :parameters
+                           :stages}]
+    (reduce-kv (fn [m k v]
+                 (cond-> m
+                   (contains? keys-for-hashing k) (assoc k v)))
+               (common/unfussy-sorted-map)
+               query)))
+
 (mr/def ::query
   [:and
    [:map
-    {:description      "Valid MBQL 5 query."
-     :decode/normalize #'normalize-query
-     :encode/serialize #'serialize-query}
+    {:description        "Valid MBQL 5 query."
+     :decode/normalize   #'normalize-query
+     :encode/serialize   #'serialize-query
+     :encode/for-hashing #'encode-query-for-hashing}
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword, :default :mbql/query}
                 :mbql/query]]
@@ -427,28 +461,28 @@
                                  [true  ::id/saved-questions-virtual-database]
                                  [false ::id/database]]]
     [:stages   [:ref ::stages]]
-    [:parameters {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
+    [:parameters {:optional true} [:ref ::lib.schema.parameter/parameters]]
     ;;
     ;; OPTIONS
     ;;
     ;; These keys are used to tweak behavior of the Query Processor.
     ;;
-    [:settings    {:optional true} [:maybe [:ref ::lib.schema.settings/settings]]]
-    [:constraints {:optional true} [:maybe [:ref ::lib.schema.constraints/constraints]]]
-    [:middleware  {:optional true} [:maybe [:ref ::lib.schema.middleware-options/middleware-options]]]
+    [:settings    {:optional true} [:ref ::lib.schema.settings/settings]]
+    [:constraints {:optional true} [:ref ::lib.schema.constraints/constraints]]
+    [:middleware  {:optional true} [:ref ::lib.schema.middleware-options/middleware-options]]
     ;; TODO -- `:viz-settings` ?
     ;;
     ;; INFO
     ;;
     ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
     ;; User who ran it
-    [:info {:optional true} [:maybe [:ref ::info/info]]]
+    [:info {:optional true} [:ref ::info/info]]
     ;;
     ;; ACTIONS
     ;;
     ;; This stuff is only used for Actions.
-    [:create-row {:optional true} [:maybe [:ref ::actions/row]]]
-    [:update-row {:optional true} [:maybe [:ref ::actions/row]]]]
+    [:create-row {:optional true} [:ref ::actions/row]]
+    [:update-row {:optional true} [:ref ::actions/row]]]
    ;;
    ;; CONSTRAINTS
    [:ref ::lib.schema.util/unique-uuids]

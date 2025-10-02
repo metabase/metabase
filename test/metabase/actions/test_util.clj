@@ -8,7 +8,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib-be.core :as lib-be]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.dataset-definitions :as defs]
    [metabase.test.data.datasets :as datasets]
@@ -242,6 +244,12 @@
                                        options-map))]
         {:action-id action-id :model-id model-id}))))
 
+(defn do-with-actions! [model-def f]
+  (initialize/initialize-if-needed! :web-server)
+  (mt/with-temp [:model/Card model model-def]
+    (tu/with-model-cleanup [:model/Action]
+      (f model))))
+
 ;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-actions
@@ -249,7 +257,7 @@
   `binding-forms-and-options-maps` is a vector of even number of elements, binding and options-map,
   similar to a `let` form.
   The first two elements of `binding-forms-and-options-maps` can describe the model, for this the
-  first option-map should map :dataset to a truthy value and contain :dataset_query. In this case
+  first option-map should have `:type :model` `:dataset_query`. In this case
   the first binding is bound to the model card created.
   For actions, the binding form is bound to a map with :action-id and :model-id set to the ID of
   the created action and model card respectively. The options-map overrides the defaults in
@@ -260,30 +268,33 @@
                  {:keys [action-id model-id]} {:type :http :name \"Temp HTTP Action\"}]
     (assert (= model-card-id model-id))
     (something model-card-id id action-id model-id))"
-  {:style/indent 1}
-  [binding-forms-and-option-maps & body]
-  (assert (vector? binding-forms-and-option-maps)
+  {:style/indent 1, :arglists '([action-bindings & body]
+                                [[model-binding {:type :model, :as model} & action-bindings] & body])}
+  [[_maybe-model-bindings maybe-model-def :as bindings] & body]
+  (assert (vector? bindings)
           "binding-forms-and-option-maps should be a vector")
-  (assert (even? (count binding-forms-and-option-maps))
+  (assert (even? (count bindings))
           "binding-forms-and-option-maps should have an even number of elements")
-  (let [model (gensym "model-")
-        [_ maybe-model-def :as model-part] (subvec binding-forms-and-option-maps 0 2)
-        [[custom-binding model-def] binding-forms-and-option-maps]
+  (let [model
+        (gensym "model-")
+
+        [model-binding model-def & action-bindings]
         (if (and (map? maybe-model-def)
                  (= (:type maybe-model-def) :model)
                  (contains? maybe-model-def :dataset_query))
-          [model-part (drop 2 binding-forms-and-option-maps)]
-          ['[_ {:type :model, :dataset_query (mt/mbql-query categories)}]
-           binding-forms-and-option-maps])]
-    `(do
-       (initialize/initialize-if-needed! :web-server)
-       (mt/with-temp ~[:model/Card model model-def]
-         (tu/with-model-cleanup [:model/Action]
-           (let [~custom-binding ~model
-                 ~@(mapcat (fn [[binding-form option-map]]
-                             [binding-form `(do-with-action (merge {:type :query} ~option-map) (:id ~model))])
-                           (partition 2 binding-forms-and-option-maps))]
-             ~@body))))))
+          bindings
+          (list*
+           '_
+           {:type :model, :dataset_query (mt/mbql-query categories)}
+           bindings))]
+    `(do-with-actions!
+      ~model-def
+      (fn [~model]
+        (let [~model-binding ~model
+              ~@(mapcat (fn [[action-binding action]]
+                          [action-binding `(do-with-action ~(merge {:type :query} action) (:id ~model))])
+                        (partition 2 action-bindings))]
+          ~@body)))))
 
 (comment
   (with-actions [{id :action-id} {:type :implicit :kind "row/create"}

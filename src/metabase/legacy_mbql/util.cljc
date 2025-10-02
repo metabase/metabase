@@ -122,17 +122,6 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-;;; TODO (Cam 7/16/25) -- why does the LEGACY MBQL UTILS have STAGE STUFF IN IT!
-(defn legacy-last-stage-number
-  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
-  {:deprecated "0.57.0"}
-  [inner-query]
-  (loop [{:keys [source-query qp/stage-had-source-card]} inner-query, n 0]
-    (if (or (nil? source-query)
-            stage-had-source-card)
-      n
-      (recur source-query (inc n)))))
-
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
   {:deprecated "0.57.0"}

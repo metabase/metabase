@@ -219,29 +219,30 @@
                               (dissoc :lib.convert/converted?)
                               lib.normalize/normalize)
         stages (:stages query)]
-    (cond-> query
-      converted?
-      (assoc
-       :stages
-       (mapv (fn [[stage-number stage]]
-               (-> stage
-                   (add-types-to-fields metadata-provider)
-                   (lib.util.match/replace
-                     [:expression
-                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                      expression-name]
-                     (let [found-ref (try
-                                       (m/remove-vals
-                                        #(= :type/* %)
-                                        (-> (lib.expression/expression-ref query stage-number expression-name)
-                                            second
-                                            (select-keys [:base-type :effective-type])))
-                                       (catch #?(:clj Exception :cljs :default) _
-                                         ;; This currently does not find expressions defined in join stages
-                                         nil))]
-                       ;; Fallback if metadata is missing
-                       [:expression (merge found-ref opts) expression-name]))))
-             (m/indexed stages))))))
+    (-> query
+        (cond-> converted?
+          (assoc
+           :stages
+           (mapv (fn [[stage-number stage]]
+                   (-> stage
+                       (add-types-to-fields metadata-provider)
+                       (lib.util.match/replace
+                         [:expression
+                          (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                          expression-name]
+                         (let [found-ref (try
+                                           (m/remove-vals
+                                            #(= :type/* %)
+                                            (-> (lib.expression/expression-ref query stage-number expression-name)
+                                                second
+                                                (select-keys [:base-type :effective-type])))
+                                           (catch #?(:clj Exception :cljs :default) _
+                                             ;; This currently does not find expressions defined in join stages
+                                             nil))]
+                           ;; Fallback if metadata is missing
+                           [:expression (merge found-ref opts) expression-name]))))
+                 (m/indexed stages))))
+        (->> (lib.normalize/normalize ::lib.schema/query)))))
 
 (defmethod query-method :metadata/table
   [metadata-providerable table-metadata]

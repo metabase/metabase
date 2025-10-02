@@ -192,6 +192,41 @@
         ;; remove deprecated `:ident` key
         (dissoc :ident))))
 
+(defn- unfussy-sorted-map-compare [x y]
+  (cond
+    (= (type x) (type y))
+    (compare x y)
+
+    (keyword? x)
+    -1
+
+    (keyword? y)
+    1
+
+    :else
+    (compare (str x) (str y))))
+
+(defn unfussy-sorted-map
+  "Like [[clojure.core/sorted-map]] but unfussy if you try to [[get]] a keyword in a string-keyed map or [[get]] a
+  string in a keyword-keyed map."
+  [& kvs]
+  (apply sorted-map-by unfussy-sorted-map-compare kvs))
+
+(defn encode-map-for-hashing
+  "Base encoding for hashing for all MBQL 5 maps.
+
+  - Convert to a sorted map
+  - Remove all namespaced keywords"
+  [m]
+  (when (map? m)
+    (reduce-kv
+     (fn [m k v]
+       (cond-> m
+         (or (= k :lib/type)
+             (not (qualified-keyword? k))) (assoc k v)))
+     (unfussy-sorted-map)
+     m)))
+
 (mu/defn disallowed-keys
   "Helper for generating a schema to disallow certain keys in a map.
 
@@ -232,7 +267,8 @@
   [:and
    {:default {}}
    [:map
-    {:decode/normalize normalize-options-map}
+    {:decode/normalize   #'normalize-options-map
+     :encode/for-hashing #'encode-map-for-hashing}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]

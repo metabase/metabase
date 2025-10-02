@@ -127,6 +127,7 @@
                (mapcat all-field-ids))
          (all-template-tags query))))
 
+;;; TODO (Cam 10/1/25) -- overlapping responsibilities with [[metabase.lib.template-tags/template-tags->snippet-ids]]
 (mu/defn all-template-tag-snippet-ids :- [:maybe [:set {:min 1} ::lib.schema.id/snippet]]
   "Set of all Native Query Snippet IDs used in template tags."
   [query :- ::lib.schema/query]

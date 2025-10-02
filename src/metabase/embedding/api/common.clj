@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dashboards.schema :as dashboards.schema] ; NOCOMMIT
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]

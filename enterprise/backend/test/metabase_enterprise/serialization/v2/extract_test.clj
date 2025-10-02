@@ -229,15 +229,15 @@
 
                        :model/Card       {c4-id  :id
                                           c4-eid :entity_id}        {:name          "Referenced Question"
-                                          :database_id   db-id
-                                          :table_id      no-schema-id
-                                          :collection_id coll-id
-                                          :creator_id    mark-id
-                                          :dataset_query
-                                          {:query    {:source-table no-schema-id
-                                                      :filter       [:>= [:field field-id nil] 18]}
-                                           :database db-id
-                                           :type     :query}}
+                                                                     :database_id   db-id
+                                                                     :table_id      no-schema-id
+                                                                     :collection_id coll-id
+                                                                     :creator_id    mark-id
+                                                                     :dataset_query
+                                                                     {:query    {:source-table no-schema-id
+                                                                                 :filter       [:>= [:field field-id nil] 18]}
+                                                                      :database db-id
+                                                                      :type     :query}}
                        :model/Card
                        {c5-id  :id
                         c5-eid :entity_id}

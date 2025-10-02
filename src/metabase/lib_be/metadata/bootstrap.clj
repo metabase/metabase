@@ -55,7 +55,9 @@
 
   Once the *actual* Database ID is resolved, we will create a
   real [[metabase.lib-be.metadata.jvm/application-database-metadata-provider]]. (The App DB provider needs to be
-  initialized with an actual Database ID)."
+  initialized with an actual Database ID).
+
+  Note that the virtual DB ID is only allowed in legacy MBQL queries, and MBQL 5 queries do not use it."
   []
   (->BootstrapMetadataProvider))
 
@@ -122,7 +124,9 @@
                            [:map
                             ["database" ::maybe-unresolved-database-id]]]]]
    (when (seq query)
-     (let [query       (set/rename-keys query {"database" :database})
-           database-id (resolved-database-id metadata-provider query)]
-       (cond-> query
-         database-id (assoc :database database-id))))))
+     (if (pos-int? (:database query))
+       query
+       (let [query       (set/rename-keys query {"database" :database})
+             database-id (resolved-database-id metadata-provider query)]
+         (cond-> query
+           database-id (assoc :database database-id)))))))
