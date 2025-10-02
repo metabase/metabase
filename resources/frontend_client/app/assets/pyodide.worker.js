@@ -59,7 +59,7 @@ async function execute(pyodide, code, context = {}) {
   try {
     const result = await pyodide.runPythonAsync(code);
     return {
-      result: deepSerialize(result),
+      result: serialize(result),
       stdout,
       stderr,
     };
@@ -73,62 +73,6 @@ async function execute(pyodide, code, context = {}) {
 }
 
 // Deep serialization function to handle nested complex objects
-// TODO: can we remove this?
-function deepSerialize(obj) {
-  if (obj === null || typeof obj !== "object") {
-    return obj;
-  }
-
-  // Handle PyProxy objects first (from Pyodide)
-  if (obj.toJs && typeof obj.toJs === "function") {
-    try {
-      return deepSerialize(obj.toJs());
-    } catch (e) {
-      return String(obj);
-    }
-  }
-
-  // Handle Map objects
-  if (obj instanceof Map) {
-    try {
-      const entries = {};
-      for (const [key, value] of obj) {
-        entries[String(key)] = deepSerialize(value);
-      }
-      return entries;
-    } catch (e) {
-      return Object.fromEntries(obj);
-    }
-  }
-
-  // Handle Set objects
-  if (obj instanceof Set) {
-    return Array.from(obj, deepSerialize);
-  }
-
-  // Handle Date objects
-  if (obj instanceof Date) {
-    return obj.toISOString();
-  }
-
-  // Handle Arrays
-  if (Array.isArray(obj)) {
-    return obj.map(deepSerialize);
-  }
-
-  // Handle plain objects and other object types
-  try {
-    const result = {};
-    for (const [key, value] of Object.entries(obj)) {
-      try {
-        result[key] = deepSerialize(value);
-      } catch (e) {
-        result[key] = String(value);
-      }
-    }
-    return result;
-  } catch (e) {
-    // If we can't enumerate properties, convert to string
-    return String(obj);
-  }
+function serialize(obj) {
+  return JSON.parse(JSON.stringify(obj.toJs({ create_pyproxies: false })));
 }
