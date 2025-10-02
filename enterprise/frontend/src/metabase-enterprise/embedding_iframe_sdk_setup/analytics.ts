@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type {
   SdkIframeEmbedSettingKey,
@@ -14,10 +16,10 @@ import {
 } from "./utils/default-embed-setting";
 
 /**
- * Tracking every embed options would bloat Snowplow, so we only track
+ * Tracking every embed settings would bloat Snowplow, so we only track
  * the most relevant options that reveal usage patterns.
  */
-const EMBED_OPTIONS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
+const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
   "drills",
   "withTitle",
   "withDownloads",
@@ -28,7 +30,7 @@ const EMBED_OPTIONS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
 /**
  * When comparing settings to defaults, we ignore these options as they are already tracked in another step.
  */
-const EMBED_OPTIONS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
+const EMBED_SETTINGS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
   "componentName",
   "dashboardId",
   "questionId",
@@ -61,6 +63,9 @@ export const trackEmbedWizardResourceSelectionCompleted = (
   });
 };
 
+const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
+  _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
+
 export const trackEmbedWizardOptionsCompleted = (
   settings: Partial<SdkIframeEmbedSettings>,
   experience: SdkIframeEmbedSetupExperience,
@@ -68,7 +73,11 @@ export const trackEmbedWizardOptionsCompleted = (
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings(experience, 0);
 
-  const hasCustomOptions = hasEmbedOptionsChanged(settings, defaultSettings);
+  // Does the embed settings diverge from the experience defaults?
+  const hasCustomOptions = !_.isEqual(
+    getEmbedSettingsToCompare(settings),
+    getEmbedSettingsToCompare(defaultSettings),
+  );
 
   let options: string[] = [
     `settings=${hasCustomOptions ? "custom" : "default"}`,
@@ -86,7 +95,7 @@ export const trackEmbedWizardOptionsCompleted = (
     for (const _optionKey in settings) {
       const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
 
-      if (!EMBED_OPTIONS_TO_TRACK.includes(optionKey)) {
+      if (!EMBED_SETTINGS_TO_TRACK.includes(optionKey)) {
         continue;
       }
 
@@ -104,33 +113,6 @@ export const trackEmbedWizardOptionsCompleted = (
     event: "embed_wizard_options_completed",
     event_detail: options.join(","),
   });
-};
-
-/**
- * Check if the embed options have changed from the defaults.
- */
-const hasEmbedOptionsChanged = (
-  settings: Partial<SdkIframeEmbedSettings>,
-  defaultSettings: Partial<SdkIframeEmbedSettings>,
-): boolean => {
-  for (const _optionKey in settings) {
-    const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
-
-    if (
-      EMBED_OPTIONS_TO_IGNORE.includes(optionKey as SdkIframeEmbedSettingKey)
-    ) {
-      continue;
-    }
-
-    const settingsValue = settings[optionKey];
-    const defaultValue = defaultSettings[optionKey];
-
-    if (settingsValue !== defaultValue) {
-      return true;
-    }
-  }
-
-  return false;
 };
 
 export const trackEmbedWizardCodeCopied = (
