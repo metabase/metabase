@@ -790,11 +790,10 @@
                                                                             :model_id transform-id)))
                                              (let [revision (t2/select-one :model/Revision :model "Transform"
                                                                            :model_id transform-id :most_recent true)
-                                                   rev-transform (:object revision)]
-                                               (is (every? #(not (contains? rev-transform %))
-                                                           #{:id :entity_id :created_at :updated_at}))
-                                               (is (=? rev-transform
-                                                       transform)))
+                                                   rev-transform (:object revision)
+                                                   removed #{:id :entity_id :created_at :updated_at}]
+                                               (is (every? #(not (contains? rev-transform %)) removed))
+                                               (is (= rev-transform (apply dissoc transform removed))))
                                              transform-id))
                 gadget-req {:name   "Gadget Products"
                             :description "The gadget products"
