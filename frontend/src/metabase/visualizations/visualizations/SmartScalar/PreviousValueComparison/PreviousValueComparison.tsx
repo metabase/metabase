@@ -6,7 +6,7 @@ import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Flex, Tooltip, useMantineTheme } from "metabase/ui";
+import { Flex, Stack, Tooltip, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -21,16 +21,18 @@ import { VariationPercent } from "./VariationPercent";
 
 interface PreviousValueComparisonProps {
   comparison: ComparisonResult;
-  width: number;
   fontFamily: string;
   formatOptions: ColumnSettings;
+  tooltipComparisons: ComparisonResult[];
+  width: number;
 }
 
 export function PreviousValueComparison({
   comparison,
-  width,
   fontFamily,
   formatOptions,
+  tooltipComparisons,
+  width,
 }: PreviousValueComparisonProps) {
   const theme = useMantineTheme();
   const fontSize = "0.875rem";
@@ -94,13 +96,23 @@ export function PreviousValueComparison({
       // this tooltip's label does not support text wrapping (it could though)
       // so we're just letting it take as much space as it needs to prevent overflow
       maw="100%"
-      disabled={fullDetailDisplay === fittedDetailDisplay}
+      disabled={
+        fullDetailDisplay === fittedDetailDisplay &&
+        tooltipComparisons.length === 0
+      }
       position="bottom"
       label={
-        <PreviousValueComparisonTooltip
-          comparison={comparison}
-          formatOptions={formatOptions}
-        />
+        <Stack gap="xs" fz={14}>
+          {tooltipComparisons.map((comparison, index) => {
+            return (
+              <PreviousValueComparisonTooltip
+                comparison={comparison}
+                key={index}
+                formatOptions={formatOptions}
+              />
+            );
+          })}
+        </Stack>
       }
     >
       <Flex

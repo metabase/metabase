@@ -134,16 +134,31 @@ export function SmartScalar({
         </span>
       </ScalarContainer>
       {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
-      {comparisons.slice(0, comparisonsCount).map((comparison, index) => (
-        <Box maw="100%" key={index} data-testid="scalar-previous-value">
+
+      {comparisonsCount === 1 && (
+        <Box maw="100%" data-testid="scalar-previous-value">
           <PreviousValueComparison
-            comparison={comparison}
+            comparison={comparisons[0]}
             fontFamily={fontFamily}
             formatOptions={formatOptions}
+            tooltipComparisons={comparisons}
             width={width}
           />
         </Box>
-      ))}
+      )}
+
+      {comparisonsCount !== 1 &&
+        comparisons.map((comparison, index) => (
+          <Box maw="100%" key={index} data-testid="scalar-previous-value">
+            <PreviousValueComparison
+              comparison={comparison}
+              fontFamily={fontFamily}
+              formatOptions={formatOptions}
+              tooltipComparisons={[comparison]}
+              width={width}
+            />
+          </Box>
+        ))}
     </ScalarWrapper>
   );
 }
