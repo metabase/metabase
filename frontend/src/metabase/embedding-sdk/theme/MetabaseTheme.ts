@@ -90,11 +90,6 @@ export interface MetabaseColors {
 
   /** Color used for white text */
   "text-white"?: string;
-
-  "tooltip-background"?: string;
-  "tooltip-text"?: string;
-  "tooltip-background-focused"?: string;
-  "tooltip-text-secondary"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

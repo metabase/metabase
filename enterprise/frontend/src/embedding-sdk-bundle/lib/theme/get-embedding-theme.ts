@@ -81,5 +81,35 @@ export function getEmbeddingThemeOverride(
     }
   }
 
+  if (theme.components?.tooltip) {
+    const { tooltip } = theme.components;
+
+    if (!override.colors) {
+      override.colors = {};
+    }
+
+    if (tooltip.textColor) {
+      override.colors["tooltip-text"] = colorTuple(tooltip.textColor);
+    }
+
+    if (tooltip.secondaryTextColor) {
+      override.colors["tooltip-text-secondary"] = colorTuple(
+        tooltip.secondaryTextColor,
+      );
+    }
+
+    if (tooltip.backgroundColor) {
+      override.colors["tooltip-background"] = colorTuple(
+        tooltip.backgroundColor,
+      );
+    }
+
+    if (tooltip.focusedBackgroundColor) {
+      override.colors["tooltip-background-focused"] = colorTuple(
+        tooltip.focusedBackgroundColor,
+      );
+    }
+  }
+
   return override;
 }
