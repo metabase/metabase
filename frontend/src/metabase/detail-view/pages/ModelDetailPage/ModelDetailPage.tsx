@@ -11,7 +11,7 @@ import {
   filterByPk,
   getRowName,
   getTableQuery,
-} from "metabase/detail-view/utils";
+} from "metabase/detail-view/utils.spec";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { closeNavbar, setDetailView } from "metabase/redux/app";

@@ -11,7 +11,7 @@ import {
   getEntityIcon,
   getHeaderColumns,
   getRowName,
-} from "metabase/detail-view/utils";
+} from "metabase/detail-view/utils.spec";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { Box, Group, Stack, rem } from "metabase/ui";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
