@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import { Box, Checkbox, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Box, Checkbox, Flex, Icon, Stack } from "metabase/ui";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 import { getPythonLibraryUrl } from "metabase-enterprise/transforms-python/urls";
 
@@ -39,10 +39,6 @@ export function PythonEditorBody({
   isDirty,
   withDebugger,
 }: PythonEditorBodyProps) {
-  // Pyodide status is now managed internally by the Web Worker
-  const pyodideStatus = withDebugger ? "loaded" : "idle"; // Always ready when debugging
-  const pyodideError = null;
-
   return (
     <MaybeResizableBox resizable={withDebugger}>
       <Flex h="100%" align="end" bg="bg-light" pos="relative">
@@ -55,23 +51,13 @@ export function PythonEditorBody({
 
         {withDebugger && (
           <Stack p="md" gap="xs">
-            <PyodideStatusIndicator
-              status={pyodideStatus}
-              error={pyodideError}
-            />
             <RunButtonWithTooltip
-              disabled={!isRunnable || pyodideStatus !== "loaded"}
+              disabled={!isRunnable}
               isRunning={isRunning}
               isDirty={isDirty}
               onRun={onRun}
               onCancel={onCancel}
               getTooltip={() => {
-                if (pyodideStatus === "loading") {
-                  return t`Loading Python runtime...`;
-                }
-                if (pyodideStatus === "error") {
-                  return t`Python runtime failed to load`;
-                }
                 return t`Run Python script`;
               }}
             />
@@ -81,41 +67,6 @@ export function PythonEditorBody({
       </Flex>
     </MaybeResizableBox>
   );
-}
-
-function PyodideStatusIndicator({
-  status,
-  error,
-}: {
-  status: string;
-  error: string | null;
-}) {
-  if (status === "loading") {
-    return (
-      <Flex align="center" gap="xs">
-        <Loader size="xs" />
-        <Text size="xs" c="text-medium">{t`Loading Python runtime...`}</Text>
-      </Flex>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <Text size="xs" c="error">
-        {error || t`Failed to load Python runtime`}
-      </Text>
-    );
-  }
-
-  if (status === "loaded") {
-    return (
-      <Text size="xs" c="success">
-        {t`Python runtime ready (browser mode)`}
-      </Text>
-    );
-  }
-
-  return null;
 }
 
 function MaybeResizableBox({
