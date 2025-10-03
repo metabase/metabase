@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
@@ -38,6 +39,7 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
+  initialEmbeddingParameters: EmbeddingParameters | null;
 
   isEmbedSettingsLoaded: boolean;
 }

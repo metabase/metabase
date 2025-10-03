@@ -3,11 +3,10 @@ import { useCallback } from "react";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { useHideParameter } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-hide-parameter";
 import { useLockParameter } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-lock-parameter";
-import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
+import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import type { Parameter } from "metabase-types/api";
 
-export const useStaticEmbeddingParameters = () => {
-  const { updateSettings } = useSdkIframeEmbedSetupContext();
+export const useEmbeddingParameters = () => {
   const { isParameterHidden } = useHideParameter();
   const { isLockedParameter } = useLockParameter();
 
@@ -26,35 +25,9 @@ export const useStaticEmbeddingParameters = () => {
     [isLockedParameter, isParameterHidden],
   );
 
-  const setEmbeddingParameters = useCallback(
-    (nextEmbeddingParameters: EmbeddingParameters) => {
-      const { hiddenParameters, lockedParameters } = Object.entries(
-        nextEmbeddingParameters,
-      ).reduce(
-        (acc, [slug, state]) => {
-          if (state === "locked") {
-            acc.lockedParameters.push(slug);
-          }
-
-          if (state === "disabled") {
-            acc.hiddenParameters.push(slug);
-          }
-
-          return acc;
-        },
-        {
-          hiddenParameters: [] as string[],
-          lockedParameters: [] as string[],
-        },
-      );
-
-      updateSettings({
-        hiddenParameters,
-        lockedParameters,
-      });
-    },
-    [updateSettings],
-  );
-
-  return { buildEmbeddedParameters, setEmbeddingParameters };
+  return {
+    buildEmbeddedParameters,
+    getSettingsFromEmbeddingParameters:
+      getSdkIframeEmbedSettingsForEmbeddingParameters,
+  };
 };

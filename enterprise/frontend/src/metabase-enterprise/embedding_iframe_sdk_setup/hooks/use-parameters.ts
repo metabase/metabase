@@ -1,8 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
@@ -15,12 +16,16 @@ interface UseParameterListProps {
   resource: Dashboard | Card | null;
 }
 
-export const useParameterList = ({
+export const useParameters = ({
   experience,
   resource,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+
+  const [initialAvailableParameters, setInitialAvailableParameters] = useState<
+    Parameter[] | null
+  >(null);
 
   // This prevents `availableParameters` from being updated on every metadata change,
   // which would cause unnecessary re-renders in the component using this hook.
@@ -46,6 +51,16 @@ export const useParameterList = ({
   }, [experience, resource, metadata, metadataRef]);
 
   useEffect(() => {
+    if (!resource) {
+      return;
+    }
+
+    if (initialAvailableParameters === null) {
+      setInitialAvailableParameters(availableParameters);
+    }
+  }, [resource, availableParameters, initialAvailableParameters]);
+
+  useEffect(() => {
     if (resource && "param_fields" in resource && resource.param_fields) {
       // This is needed to make some parameter widget populate the dropdown list
       // otherwise they will use a normal text input
@@ -53,7 +68,16 @@ export const useParameterList = ({
     }
   }, [resource, dispatch]);
 
+  const initialEmbeddingParameters = useMemo(() => {
+    if (!resource || !initialAvailableParameters) {
+      return null;
+    }
+
+    return getDefaultEmbeddingParams(resource, initialAvailableParameters);
+  }, [initialAvailableParameters, resource]);
+
   return {
     availableParameters,
+    initialEmbeddingParameters,
   };
 };

@@ -8,7 +8,7 @@ import { ParametersSettings } from "metabase/public/components/EmbedModal/Static
 import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
-import { useStaticEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
+import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 import { getStaticEmbeddingResourceType } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-static-embedding-resource-type";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -31,8 +31,8 @@ export const ParameterSettings = () => {
 
   const { parameterValuesById } = useParameters();
   const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
-  const { buildEmbeddedParameters, setEmbeddingParameters } =
-    useStaticEmbeddingParameters();
+  const { buildEmbeddedParameters, getSettingsFromEmbeddingParameters } =
+    useEmbeddingParameters();
 
   const isStaticEmbedding = !!settings.isStatic;
   const isQuestionOrDashboardEmbed =
@@ -124,7 +124,11 @@ export const ParameterSettings = () => {
         lockedParameters={lockedParameters}
         parameterValues={parameterValuesById}
         withInitialValues
-        onChangeEmbeddingParameters={setEmbeddingParameters}
+        onChangeEmbeddingParameters={(embeddingParameters) => {
+          updateSettings(
+            getSettingsFromEmbeddingParameters(embeddingParameters),
+          );
+        }}
         onChangeParameterValue={({ slug, value }) =>
           updateInitialParameterValue(slug, value)
         }

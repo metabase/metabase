@@ -1,15 +1,16 @@
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 
 import { useSearchQuery } from "metabase/api";
 import { useGetCurrentResource } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-current-resource";
+import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
-import { useParameterList, useRecentItems } from "../hooks";
+import { useParameters, useRecentItems } from "../hooks";
 import { useSettings } from "../hooks/use-settings";
 import type {
   SdkIframeEmbedSetupExperience,
@@ -93,10 +94,22 @@ export const SdkIframeEmbedSetupProvider = ({
     [settings],
   );
 
-  const { availableParameters } = useParameterList({
+  const { availableParameters, initialEmbeddingParameters } = useParameters({
     experience,
     resource,
   });
+
+  useEffect(() => {
+    if (!initialEmbeddingParameters) {
+      return;
+    }
+
+    updateSettings(
+      getSdkIframeEmbedSettingsForEmbeddingParameters(
+        initialEmbeddingParameters,
+      ),
+    );
+  }, [initialEmbeddingParameters, updateSettings]);
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
@@ -114,6 +127,7 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
+    initialEmbeddingParameters,
   };
 
   return (
