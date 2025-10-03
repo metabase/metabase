@@ -27,7 +27,7 @@ type ReadyMessage = { type: "ready" };
 type ResultsMessage = {
   type: "results";
   error?: string;
-  result?: PythonExecutionResult;
+  result?: string;
   stdout: string;
   stderr: string;
 };
@@ -101,7 +101,9 @@ class PyodideWorker {
       const evt = await waitFor(this.worker, "results", 30000);
 
       return {
-        output: evt.result,
+        output: evt.result
+          ? (JSON.parse(evt.result) as PythonExecutionResult)
+          : null,
         error: evt.error,
         stdout: evt.stdout,
         stderr: evt.stderr,
@@ -156,37 +158,47 @@ function waitFor<T extends WorkerMessage["type"]>(
 }
 
 function getPythonScript(code: string, sources: PyodideTableSource[]) {
-  return `
-${code}
+  // add a random suffix to the main function to avoid it
+  // from being used in the transform function which would lead to
+  // unexpected results.
+  const random = Math.random().toString(36).slice(2);
 
-# Convert context data to DataFrames
-${sources
-  .map(
-    (source) => `
-${source.variable_name} = pd.DataFrame(${JSON.stringify(source.rows)})
-`,
+  // Encode the columns as base64 JSON to avoid issues with
+  // escaping
+  const encoded = btoa(JSON.stringify(sources.map((source) => source.rows)));
+
+  return [
+    // code should sit at the top of the script, so line numbers in errors
+    // are correct
+    code,
+    `
+def __run_transform_${random}():
+  import json
+  import base64
+
+  if 'transform' not in globals():
+    raise Exception('No transform function defined')
+
+  encoded = '${encoded}'
+  columns = json.loads(
+    base64.b64decode(encoded)
   )
-  .join("")}
 
-# Define a container for the result
-_transform_result = None
+  # run user-defind transform
+  result = transform(*columns)
 
-# Call the transform function
-if 'transform' in locals():
-    _transform_result = transform(${sources.map((s) => s.variable_name).join(", ")})
+  if result is None:
+    raise Exception('Transform function did not return a result')
 
-# Convert result to JSON-serializable format
-if _transform_result is not None:
-    if isinstance(_transform_result, pd.DataFrame):
-        _result_json = {
-            'columns': _transform_result.columns.tolist(),
-            'data': _transform_result.to_dict('records')
-        }
-    else:
-        _result_json = _transform_result
-else:
-    _result_json = None
+  if not isinstance(result, pd.DataFrame):
+    raise Exception('Transform function did not return a DataFrame')
 
-_result_json
-  `;
+  return json.dumps({
+    'columns': result.columns.tolist(),
+    'data': result.to_dict('records')
+  })
+
+__run_transform_${random}()
+`,
+  ].join("\n");
 }
