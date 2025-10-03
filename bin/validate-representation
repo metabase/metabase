@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <api-key> <path-to-yml-file>"
+    exit 1
+fi
+
+curl -X POST 'https://pr63598.coredev.metabase.com/api/ee/representation/validate' \
+    -H "X-API-KEY: $1" \
+    -H 'Content-Type: text/plain' \
+    --data-binary "@$2"

@@ -8,6 +8,8 @@ import { useListTransformTagsQuery } from "metabase-enterprise/api";
 import { CreateTransformMenu } from "./CreateTransformMenu";
 import { TransformFilterList } from "./TransformFilterList";
 import { TransformList } from "./TransformList";
+import { TransformRepresentationExport } from "./TransformRepresentationExport";
+import { TransformRepresentationImport } from "./TransformRepresentationImport";
 import { getParsedParams } from "./utils";
 
 type TransformListPageProps = {
@@ -29,6 +31,8 @@ export function TransformListPage({ location }: TransformListPageProps) {
           <Title order={1}>{t`Transforms`}</Title>
           <Box>{t`Create custom tables with transforms, and run them on a schedule.`}</Box>
         </Stack>
+        <TransformRepresentationExport />
+        <TransformRepresentationImport />
         <CreateTransformMenu />
       </Group>
       <TransformFilterList params={params} tags={tags} />
