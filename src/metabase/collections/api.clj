@@ -1457,7 +1457,7 @@
           (when (api/column-will-change? :type collection-before-update updates)
             (let [child-location (collection/children-location collection-before-update)]
               (t2/query-one {:update :collection
-                             :where [:like :location #p (str child-location "%")]
+                             :where [:like :location (str child-location "%")]
                              :set {:type (:type updates)}}))
             (when (= (:type updates) "remote-synced")
               (collection/check-non-remote-synced-dependencies (t2/select-one :model/Collection :id id)))))))
