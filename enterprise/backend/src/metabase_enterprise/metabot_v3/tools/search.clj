@@ -123,6 +123,7 @@
         use-verified-content? (if metabot-id
                                 (:use_verified_content metabot)
                                 false)
+        limit (or limit 50)
         search-fn (fn [query]
                     (let [search-context (search/search-context
                                           (merge
@@ -138,7 +139,7 @@
                                             :current-user-perms @api/*current-user-permissions-set*
                                             :context :metabot
                                             :archived false
-                                            :limit (or limit 50)
+                                            :limit limit
                                             :offset 0}
                                            ;; Don't include search-native-query key if nil so that we don't
                                            ;; inadvertently filter out search models that don't support it
@@ -156,10 +157,5 @@
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
-        fused-results (reciprocal-rank-fusion result-lists)
-        entity-type-counts (frequencies (map :model fused-results))
-        postprocessed-results (map postprocess-search-result fused-results)]
-    (log/infof "[METABOT-SEARCH] Entity type distribution: %s" entity-type-counts)
-    (log/infof "[METABOT-SEARCH] Fused results sample (first 3): %s"
-               (take 3 (map #(select-keys % [:id :model :name :table_name]) fused-results)))
-    postprocessed-results))
+        fused-results (take limit (reciprocal-rank-fusion result-lists))]
+    (map postprocess-search-result fused-results)))
