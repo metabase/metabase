@@ -130,7 +130,7 @@
   [id]
   (u/prog1 (api/check-404
             (api/read-check
-             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore)))
+             (t2/hydrate (t2/select-one :model/Document :id id) :creator :can_write :can_delete :can_restore :is_remote_synced)))
     (events/publish-event! :event/document-read
                            {:object-id id
                             :user-id api/*current-user-id*})))
@@ -142,7 +142,7 @@
   {:items (t2/hydrate (t2/select :model/Document {:where [:and
                                                           (collection/visible-collection-filter-clause)
                                                           [:= :archived false]]})
-                      :creator :can_write)})
+                      :creator :can_write :is_remote_synced)})
 
 (api.macros/defendpoint :post "/"
   "Create a new `Document`."

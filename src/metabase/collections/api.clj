@@ -145,7 +145,7 @@
         (cond->> collections
           (mi/can-read? root)
           (cons root))))
-    (t2/hydrate collections :can_write :is_personal :can_delete)
+    (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal collections we translate the name to user's locale
     (collection/personal-collections-with-ui-details  (for [collection collections]
@@ -342,7 +342,7 @@
                                          "/"))
                     (update :archived api/bit->boolean)
                     (update :archived_directly api/bit->boolean)))
-              :can_write :can_restore :can_delete))
+              :can_write :can_restore :can_delete :is_remote_synced))
 
 (defmethod collection-children-query :document
   [_ collection {:keys [archived? pinned-state]}]
@@ -565,6 +565,7 @@
                            :can_restore
                            :can_delete
                            :dashboard_count
+                           :is_remote_synced
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
     (lib.metadata.jvm/with-metadata-provider-cache
@@ -630,7 +631,7 @@
                            "/"))
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete)
+      (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced)
       (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
               :dataset_query :table_id :query_type :is_upload)))
 
@@ -745,7 +746,7 @@
 
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
-        (->> (t2/hydrate descendant-collections :effective_parent)
+        (->> (t2/hydrate descendant-collections :effective_parent :is_remote_synced)
              (reduce (fn [accu {:keys [effective_parent] :as _coll}]
                        (let [parent-id (:id effective_parent)]
                          (conj accu parent-id)))

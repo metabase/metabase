@@ -1170,6 +1170,16 @@
                                                          new-collection-id)
                 true))))))
 
+(methodical/defmethod t2/batched-hydrate [:model/Collection :is_remote_synced]
+  "Batch hydration for whether an item is remote synced"
+  [_model k items]
+  (mi/instances-with-hydrated-data items k
+                                   #(into {}
+                                          (map (juxt :id (fn [{:keys [type]}] (= type "remote-synced")))
+                                               items))
+                                   :id
+                                   {:default false}))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+

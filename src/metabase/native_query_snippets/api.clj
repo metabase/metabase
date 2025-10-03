@@ -17,7 +17,7 @@
 (mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one :model/NativeQuerySnippet :id id))
-      (t2/hydrate :creator)))
+      (t2/hydrate :creator :is_remote_synced))
 
 (api.macros/defendpoint :get "/"
   "Fetch all snippets"
@@ -27,7 +27,7 @@
   (let [snippets (t2/select :model/NativeQuerySnippet
                             :archived archived
                             {:order-by [[:%lower.name :asc]]})]
-    (t2/hydrate (filter mi/can-read? snippets) :creator)))
+    (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced)))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch native query snippet with ID."

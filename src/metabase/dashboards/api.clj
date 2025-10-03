@@ -110,6 +110,7 @@
                  :collection_authority_level
                  :can_write
                  :param_fields
+                 :is_remote_synced
                  [:moderation_reviews :moderator_details]
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)

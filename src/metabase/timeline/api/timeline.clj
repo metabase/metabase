@@ -53,7 +53,7 @@
                                               (collection/visible-collection-filter-clause)]
                                    :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
-    (cond->> (t2/hydrate timelines :creator [:collection :can_write])
+    (cond->> (t2/hydrate timelines :creator [:collection :can_write] :is_remote_synced)
       (= include :events)
       (map #(timeline-event/include-events-singular % {:events/all? archived?})))))
 
@@ -69,7 +69,7 @@
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
         timeline  (api/read-check (t2/select-one :model/Timeline :id id))]
-    (cond-> (t2/hydrate timeline :creator [:collection :can_write])
+    (cond-> (t2/hydrate timeline :creator [:collection :can_write] :is_remote_synced)
       ;; `collection_id` `nil` means we need to assoc 'root' collection
       ;; because hydrate `:collection` needs a proper `:id` to work.
       (nil? (:collection_id timeline))
@@ -102,7 +102,7 @@
                                     :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
-    (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write])))
+    (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
