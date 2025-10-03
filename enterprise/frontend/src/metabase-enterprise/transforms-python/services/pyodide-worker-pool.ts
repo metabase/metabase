@@ -1,17 +1,6 @@
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import type { RowValue } from "metabase-types/api";
-
-export type PyodideTableSource = {
-  database_id: number;
-  variable_name: string;
-  columns: {
-    name: string;
-    type: string;
-  }[];
-  rows: Record<string, RowValue>[];
-};
 
 type ExecutePythonOptions = {
   signal?: AbortSignal;
@@ -57,11 +46,10 @@ export class PyodideWorkerPool {
 
   async executePython<T>(
     code: string,
-    sources: PyodideTableSource[],
     options?: ExecutePythonOptions,
   ): Promise<PythonExecutionResult<T>> {
     const worker = this.getWorker();
-    return worker.executePython(code, sources, options);
+    return worker.executePython(code, options);
   }
 }
 
@@ -85,7 +73,6 @@ class PyodideWorker {
 
   async executePython<T>(
     code: string,
-    sources: PyodideTableSource[],
     options?: ExecutePythonOptions,
   ): Promise<PythonExecutionResult<T>> {
     options?.signal?.addEventListener("abort", () => {
@@ -97,7 +84,7 @@ class PyodideWorker {
 
       this.worker.postMessage({
         type: "execute",
-        data: { code: getPythonScript(code, sources) },
+        data: { code },
       });
 
       const evt = await waitFor(this.worker, "results", {
@@ -160,50 +147,4 @@ function waitFor<T extends WorkerMessage["type"]>(
       reject(new Error(`Timeout waiting for ${type}`));
     }, timeout);
   });
-}
-
-function getPythonScript(code: string, sources: PyodideTableSource[]) {
-  // add a random suffix to the main function to avoid it
-  // from being used in the transform function which would lead to
-  // unexpected results.
-  const random = Math.random().toString(36).slice(2);
-
-  // Encode the columns as base64 JSON to avoid issues with
-  // escaping
-  const encoded = btoa(JSON.stringify(sources.map((source) => source.rows)));
-
-  return [
-    // code should sit at the top of the script, so line numbers in errors
-    // are correct
-    code,
-    `
-def __run_transform_${random}():
-  import json
-  import base64
-
-  if 'transform' not in globals():
-    raise Exception('No transform function defined')
-
-  encoded = '${encoded}'
-  columns = json.loads(
-    base64.b64decode(encoded)
-  )
-
-  # run user-defind transform
-  result = transform(*columns)
-
-  if result is None:
-    raise Exception('Transform function did not return a result')
-
-  if not isinstance(result, pd.DataFrame):
-    raise Exception('Transform function did not return a DataFrame')
-
-  return json.dumps({
-    'columns': result.columns.tolist(),
-    'data': result.to_dict('records')
-  })
-
-__run_transform_${random}()
-`,
-  ].join("\n");
 }

@@ -13,7 +13,7 @@ export function useRunPython<T = unknown>(packages: string[] = []) {
   const [isRunning, setIsRunning] = useState(false);
   const [data, setData] = useState<PythonExecutionResult<T> | null>(null);
 
-  const executePython = async (code: string, sources: any[]) => {
+  const executePython = async (code: string) => {
     if (controller.current) {
       controller.current.abort();
     }
@@ -21,7 +21,7 @@ export function useRunPython<T = unknown>(packages: string[] = []) {
 
     try {
       setIsRunning(true);
-      const result = await pool.executePython<T>(code, sources, {
+      const result = await pool.executePython<T>(code, {
         signal: controller.current.signal,
       });
       setData(result);
