@@ -1,16 +1,17 @@
 import {
   Handle,
+  type Node,
   type NodeProps,
   Position,
   useNodeConnections,
 } from "@xyflow/react";
 import { memo } from "react";
 
-import type { GroupNodeType } from "../types";
+import type { DependencyGroup } from "../types";
 
 import { getNodeLabel } from "./utils";
 
-type GroupNodeProps = NodeProps<GroupNodeType>;
+type GroupNodeProps = NodeProps<Node<DependencyGroup>>;
 
 export const GroupNode = memo(function EntityNode({
   data: group,

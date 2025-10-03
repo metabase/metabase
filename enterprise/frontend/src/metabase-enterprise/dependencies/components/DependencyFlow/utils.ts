@@ -14,13 +14,7 @@ import {
   GROUP_NODE_TYPE,
   ITEM_NODE_TYPE,
 } from "./constants";
-import type {
-  EdgeId,
-  Graph,
-  GroupNodeType,
-  ItemNodeType,
-  NodeId,
-} from "./types";
+import type { DependencyGroup, EdgeId, NodeId } from "./types";
 
 function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
@@ -34,7 +28,7 @@ function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-function getItemNodes(nodes: DependencyNode[]): ItemNodeType[] {
+function getItemNodes(nodes: DependencyNode[]): Node<DependencyNode>[] {
   return nodes.map((node) => {
     const nodeId = getItemNodeId(node.id, node.type);
 
@@ -75,14 +69,14 @@ function getItemGraph(nodes: DependencyNode[], edges: DependencyEdge[]) {
   };
 }
 
-function getNodeByIdMap(nodes: ItemNodeType[]) {
-  const nodeBydId = new Map<NodeId, ItemNodeType>();
+function getNodeByIdMap(nodes: Node<DependencyNode>[]) {
+  const nodeBydId = new Map<NodeId, Node<DependencyNode>>();
   nodes.forEach((node) => nodeBydId.set(node.id, node));
   return nodeBydId;
 }
 
 function getEdgesByTypeAndTargetIdMap(
-  nodeById: Map<NodeId, ItemNodeType>,
+  nodeById: Map<NodeId, Node<DependencyNode>>,
   edges: Edge[],
 ) {
   const edgesByTypeAndTargetId = new Map<NodeId, Map<DependencyType, Edge[]>>();
@@ -115,7 +109,7 @@ function getEdgesByTypeAndTargetIdMap(
 function getGroupNodesAndEdges(
   edgesByTypeAndTargetId: Map<NodeId, Map<DependencyType, Edge[]>>,
 ) {
-  const groupNodes: GroupNodeType[] = [];
+  const groupNodes: Node<DependencyGroup>[] = [];
   const newEdges: Edge[] = [];
   const deletedEdgeIds = new Set<EdgeId>();
 
@@ -150,7 +144,7 @@ function getGroupNodesAndEdges(
   return { groupNodes, newEdges, deletedEdgeIds };
 }
 
-function getGroupGraph(nodes: ItemNodeType[], edges: Edge[]) {
+function getGroupGraph(nodes: Node<DependencyNode>[], edges: Edge[]) {
   const nodeById = getNodeByIdMap(nodes);
   const edgesByTypeAndTargetId = getEdgesByTypeAndTargetIdMap(nodeById, edges);
   const { groupNodes, newEdges, deletedEdgeIds } = getGroupNodesAndEdges(
@@ -166,10 +160,10 @@ function getGroupGraph(nodes: ItemNodeType[], edges: Edge[]) {
   };
 }
 
-export function getGraph(
+export function getNodesWithEdges(
   nodes: DependencyNode[],
   edges: DependencyEdge[],
-): Graph {
+) {
   const { nodes: itemNodes, edges: itemEdges } = getItemGraph(nodes, edges);
   return getGroupGraph(itemNodes, itemEdges);
 }

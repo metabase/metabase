@@ -1,5 +1,6 @@
 import {
   Handle,
+  type Node,
   type NodeProps,
   Position,
   useNodeConnections,
@@ -7,12 +8,11 @@ import {
 import { memo } from "react";
 
 import { Icon } from "metabase/ui";
-
-import type { ItemNodeType } from "../types";
+import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon } from "./utils";
 
-type ItemNodeProps = NodeProps<ItemNodeType>;
+type ItemNodeProps = NodeProps<Node<DependencyNode>>;
 
 export const ItemNode = memo(function EntityNode({
   data: node,
