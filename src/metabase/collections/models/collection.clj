@@ -1748,7 +1748,7 @@
                                                                                    [:= :collection_id id]
                                                                                    (when skip-archived [:not :archived])]})]
                                {["Card" card-id] {"Collection" id}}))
-        documents   (when (config/ee-available?)
+        documents   (when config/ee-available?
                       (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
                                                                                 [:and [:= :collection_id id]
                                                                                  (when skip-archived [:not :archived])]})]
