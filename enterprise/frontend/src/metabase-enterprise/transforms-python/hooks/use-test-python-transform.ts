@@ -5,6 +5,7 @@ import type { RowValue } from "metabase-types/api";
 import type { PythonTransformSourceDraft } from "../components/PythonTransformEditor";
 
 import { type SampleData, useSampleData } from "./use-data-sample";
+import { usePythonLibraries } from "./use-python-shared-libraries";
 import { useRunPython } from "./use-run-python";
 
 export type PyodideTableSource = {
@@ -23,6 +24,8 @@ type TransformData = {
 };
 
 export function useTestPythonTransform(source: PythonTransformSourceDraft) {
+  const { fetchLibraries, isRunning: isFetchingLibraries } =
+    usePythonLibraries();
   const { fetchSampleData, isRunning: isFetchingData } = useSampleData(source);
   const {
     isRunning: isRunningPython,
@@ -32,12 +35,17 @@ export function useTestPythonTransform(source: PythonTransformSourceDraft) {
   } = useRunPython<TransformData>(["numpy", "pandas"]);
 
   const run = useCallback(async () => {
-    const sampleData = await fetchSampleData();
-    executePython(getPythonScript(source.body, sampleData));
-  }, [source, executePython, fetchSampleData]);
+    const [sampleData, libraries] = await Promise.all([
+      fetchSampleData(),
+      fetchLibraries(),
+    ]);
+
+    const script = getPythonScript(source.body, sampleData);
+    executePython(script, libraries);
+  }, [source, executePython, fetchSampleData, fetchLibraries]);
 
   return {
-    isRunning: isRunningPython || isFetchingData,
+    isRunning: isRunningPython || isFetchingData || isFetchingLibraries,
     isDirty: true,
     cancel,
     run,
