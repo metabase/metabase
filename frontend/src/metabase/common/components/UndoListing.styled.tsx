@@ -9,7 +9,7 @@ import { alpha, color } from "metabase/lib/colors";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
 
-const LIST_H_MARGINS = space(2);
+const LIST_H_MARGINS = "var(--mantine-spacing-md)";
 
 export const UndoList = styled.ul`
   position: fixed;
