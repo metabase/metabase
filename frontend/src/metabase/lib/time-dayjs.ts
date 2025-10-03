@@ -2,6 +2,7 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { t } from "ttag";
 
+import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
@@ -72,6 +73,25 @@ export function parseTimestamp(
   let result: Dayjs;
   if (dayjs.isDayjs(value)) {
     result = value;
+  } else if (typeof value === "string" && /^\d{4}-W\d{2}$/.test(value)) {
+    // Parse ISO week format (e.g., "2019-W33")
+    const match = value.match(/^(\d{4})-W(\d{2})$/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const week = parseInt(match[2], 10);
+      // Validate week number (ISO weeks range from 1-53, most years have 52)
+      if (week >= 1 && week <= 53) {
+        // ISO week 1 is the week that contains January 4th
+        // Calculate the Monday of week 1
+        const jan4 = dayjs.utc().year(year).month(0).date(4);
+        const mondayOfWeek1 = jan4.startOf("isoWeek");
+        result = mondayOfWeek1.add(week - 1, "week");
+      } else {
+        result = dayjs.utc(value); // will be invalid
+      }
+    } else {
+      result = dayjs.utc(value);
+    }
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
@@ -130,4 +150,55 @@ export function parseTime(value: Dayjs | string) {
   }
 
   return dayjs.utc(value);
+}
+
+export function isValidISO8601(value: unknown): boolean {
+  const stringifiedDate = String(value);
+
+  const validISO8601Formats = [
+    // Special ISO 8601 formats
+    /^\d{4}-W\d{2}$/, // YYYY-W## (week format)
+    /^\d{4}-W\d{2}-\d$/, // YYYY-W##-# (week format with day)
+    /^\d{4}-\d{3}$/, // YYYY-DDD (ordinal date)
+    /^\d{8}T\d{6}Z$/, // YYYYMMDDTHHMMSSZ (compact ISO)
+    // Standard ISO 8601 formats
+    /^\d{4}-\d{2}-\d{2}$/, // YYYY-MM-DD
+    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/, // YYYY-MM-DD HH:mm:ss or YYYY-MM-DDTHH:mm:ss
+    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\.\d{3}$/, // YYYY-MM-DD HH:mm:ss.SSS or YYYY-MM-DDTHH:mm:ss.SSS
+    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/, // YYYY-MM-DD HH:mm:ss±HH:mm or YYYY-MM-DDTHH:mm:ss±HH:mm
+    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}Z$/, // YYYY-MM-DD HH:mm:ssZ or YYYY-MM-DDTHH:mm:ssZ
+    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/, // YYYY-MM-DD HH:mm:ss.SSS±HH:mm or YYYY-MM-DDTHH:mm:ss.SSS±HH:mm
+    /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\.\d{3}Z$/, // YYYY-MM-DD HH:mm:ss.SSSZ or YYYY-MM-DDTHH:mm:ss.SSSZ
+  ];
+
+  if (!validISO8601Formats.some((format) => format.test(stringifiedDate))) {
+    return false;
+  }
+
+  // For standard formats, also validate with dayjs to ensure it's a real date
+  // (e.g., not 2016-02-31 which matches the pattern but is invalid)
+  const isSpecialFormat =
+    /^\d{4}-(W\d{2}(-\d)?|\d{3})$/.test(stringifiedDate) ||
+    /^\d{8}T\d{6}Z$/.test(stringifiedDate);
+
+  if (!isSpecialFormat) {
+    const parsed = dayjs(stringifiedDate);
+    if (!parsed.isValid()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getTimeStyleFromSettings() {
+  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+  return customFormattingSettings?.["type/Temporal"]?.time_style;
+}
+
+const TIME_FORMAT_24_HOUR = "HH:mm";
+
+export function has24HourModeSetting() {
+  const timeStyle = getTimeStyleFromSettings();
+  return timeStyle === TIME_FORMAT_24_HOUR;
 }

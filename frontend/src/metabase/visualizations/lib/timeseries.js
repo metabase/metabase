@@ -1,5 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-
+import { isValidISO8601 } from "metabase/lib/time-dayjs";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 const TIMESERIES_UNITS = new Set([
@@ -32,7 +31,7 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
       return false;
     }
 
-    if (!moment(value, moment.ISO_8601).isValid()) {
+    if (!isValidISO8601(value)) {
       return false;
     }
   }
