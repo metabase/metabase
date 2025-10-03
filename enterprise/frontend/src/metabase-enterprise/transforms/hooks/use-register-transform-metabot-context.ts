@@ -1,6 +1,6 @@
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import type { PythonTransformSourceDraft } from "metabase-enterprise/transforms-python/components/PythonTransformEditor";
 import type {
+  PythonTransformSourceDraft,
   SuggestedTransform,
   Transform,
   TransformSource,

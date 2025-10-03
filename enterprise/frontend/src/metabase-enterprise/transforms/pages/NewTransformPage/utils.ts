@@ -1,10 +1,10 @@
 import { match } from "ts-pattern";
 
-import type { PythonTransformSourceDraft } from "metabase-enterprise/transforms-python/components/PythonTransformEditor";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DatasetQuery,
+  PythonTransformSourceDraft,
   QueryTransformSource,
   SuggestedTransform,
 } from "metabase-types/api";
