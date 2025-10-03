@@ -140,6 +140,8 @@ describe("Auth Flow - JWT", () => {
 
     setup({ authConfig });
 
+    await waitForLoaderToBeRemoved();
+
     expect(
       screen.queryByTestId("sdk-usage-problem-indicator"),
     ).not.toBeInTheDocument();
