@@ -115,11 +115,15 @@ function EmptyState() {
 
 function ErrorState({ error }: { error: string }) {
   return (
-    <Flex h="100%" align="center" justify="center">
-      <Stack maw="25rem" gap={0} ta="center" align="center">
+    <Stack gap="sm" h="100%" p="md" c="error" className={S.error}>
+      <Group fw="bold" gap="sm">
+        <Icon name="warning" />
+        {t`Error`}
+      </Group>
+      <Box className={S.traceback} fz="sm">
         {error}
-      </Stack>
-    </Flex>
+      </Box>
+    </Stack>
   );
 }
 
