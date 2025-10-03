@@ -45,6 +45,12 @@ export function getCurrencySymbol(currencyCode: string): string {
   return getCurrencyMapCache()[currencyCode]?.symbol || currencyCode || "$";
 }
 
+export function getCurrencySymbolNative(currencyCode: string): string {
+  return (
+    getCurrencyMapCache()[currencyCode]?.symbol_native || currencyCode || "$"
+  );
+}
+
 export const COMPACT_CURRENCY_OPTIONS: CompactCurrencyOptions = {
   // Currencies vary in how many decimals they display, so this is probably
   // wrong in some cases. Intl.NumberFormat has some of that data built-in, but
