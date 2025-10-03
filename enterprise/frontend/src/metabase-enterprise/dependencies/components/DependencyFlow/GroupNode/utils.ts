@@ -1,8 +1,8 @@
 import { msgid, ngettext } from "ttag";
 
-import type { GroupData } from "../types";
+import type { GroupNodeData } from "../types";
 
-export function getNodeLabel({ type, count }: GroupData) {
+export function getNodeLabel({ type, count }: GroupNodeData) {
   switch (type) {
     case "question":
       return ngettext(msgid`${count} question`, `${count} questions`, count);

@@ -1,12 +1,12 @@
-import type { Node, NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
 import { NodeControls } from "../NodeControls";
-import type { GroupData } from "../types";
+import type { GroupNodeType } from "../types";
 
 import { getNodeLabel } from "./utils";
 
-type GroupNodeProps = NodeProps<Node<GroupData>>;
+type GroupNodeProps = NodeProps<GroupNodeType>;
 
 export const GroupNode = memo(function EntityNode({
   id,
@@ -16,11 +16,7 @@ export const GroupNode = memo(function EntityNode({
   return (
     <>
       {getNodeLabel(data)}
-      <NodeControls
-        nodeId={id}
-        isExpanded={data.isExpanded}
-        isConnectable={isConnectable}
-      />
+      <NodeControls nodeId={id} isConnectable={isConnectable} />
     </>
   );
 });

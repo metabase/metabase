@@ -1,75 +1,68 @@
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge } from "@xyflow/react";
 
-import type { EdgeId, NodeId } from "../types";
+import type { NodeId, NodeType } from "../types";
 
-import { getEdgesByTargetIdMap } from "./common";
+import { getEdgesByTargetIdMap, getNodeByIdMap } from "./common";
+
+export function isNodeExpanded(
+  nodes: NodeType[],
+  edges: Edge[],
+  nodeId: NodeId,
+) {
+  const nodeById = getNodeByIdMap(nodes);
+  const edgesByTargetId = getEdgesByTargetIdMap(edges);
+  const targetEdges = edgesByTargetId.get(nodeId) ?? [];
+  const sourceNodes = targetEdges.map((edge) => nodeById.get(edge.source));
+  return sourceNodes.every((node) => node != null && !node.hidden);
+}
 
 function hideNodeSources(
   nodeId: NodeId,
   edgesByTargetId: Map<NodeId, Edge[]>,
   collapsedNodeIds: Set<NodeId>,
-  collapsedEdgeIds: Set<EdgeId>,
 ) {
   const edges = edgesByTargetId.get(nodeId);
   edges?.forEach((edge) => {
-    collapsedEdgeIds.add(edge.id);
     collapsedNodeIds.add(edge.source);
-    hideNodeSources(
-      edge.source,
-      edgesByTargetId,
-      collapsedNodeIds,
-      collapsedEdgeIds,
-    );
+    hideNodeSources(edge.source, edgesByTargetId, collapsedNodeIds);
   });
 }
 
 function getGraphWithCollapsedNode(
-  nodes: Node[],
+  nodes: NodeType[],
   edges: Edge[],
   nodeId: NodeId,
 ) {
   const edgesByTargetId = getEdgesByTargetIdMap(edges);
   const collapsedNodeIds = new Set<NodeId>();
-  const collapsedEdgeIds = new Set<EdgeId>();
-  hideNodeSources(nodeId, edgesByTargetId, collapsedNodeIds, collapsedEdgeIds);
+  hideNodeSources(nodeId, edgesByTargetId, collapsedNodeIds);
 
-  return {
-    nodes: nodes.map((node) =>
-      collapsedNodeIds.has(node.id) ? { ...node, hidden: true } : node,
-    ),
-    edges: edges.map((edge) =>
-      collapsedEdgeIds.has(edge.id) ? { ...edge, hidden: true } : edge,
-    ),
-  };
+  return nodes.map((node) =>
+    collapsedNodeIds.has(node.id) ? { ...node, hidden: true } : node,
+  );
 }
 
-function getGraphWithExpandedNode(
-  nodes: Node[],
+function getNodesWithExpandedNode(
+  nodes: NodeType[],
   edges: Edge[],
   nodeId: NodeId,
 ) {
   const edgesByTargetId = getEdgesByTargetIdMap(edges);
   const nodeEdges = edgesByTargetId.get(nodeId) ?? [];
   const expandedNodeIds = new Set(nodeEdges.map((edge) => edge.source));
-  const expandedEdgeIds = new Set(nodeEdges.map((edge) => edge.id));
 
-  return {
-    nodes: nodes.map((node) =>
-      expandedNodeIds.has(node.id) ? { ...node, hidden: false } : node,
-    ),
-    edges: edges.map((edge) =>
-      expandedEdgeIds.has(edge.id) ? { ...edge, hidden: false } : edge,
-    ),
-  };
+  return nodes.map((node) =>
+    expandedNodeIds.has(node.id) ? { ...node, hidden: false } : node,
+  );
 }
 
-export function getGraphWithToggledNode(
-  nodes: Node[],
+export function getNodesWithToggledNode(
+  nodes: NodeType[],
   edges: Edge[],
   nodeId: NodeId,
   isExpanded: boolean,
 ) {
   return isExpanded
     ? getGraphWithCollapsedNode(nodes, edges, nodeId)
-    : getGraphWithExpandedNode(nodes, edges, nodeId);
+    : getNodesWithExpandedNode(nodes, edges, nodeId);
 }

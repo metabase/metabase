@@ -1,14 +1,14 @@
-import type { Node, NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
 import { Icon } from "metabase/ui";
 
 import { NodeControls } from "../NodeControls";
-import type { ItemData } from "../types";
+import type { ItemNodeType } from "../types";
 
 import { getNodeIcon, getNodeLabel } from "./utils";
 
-type ItemNodeProps = NodeProps<Node<ItemData>>;
+type ItemNodeProps = NodeProps<ItemNodeType>;
 
 export const ItemNode = memo(function ItemNode({
   id,
@@ -17,13 +17,9 @@ export const ItemNode = memo(function ItemNode({
 }: ItemNodeProps) {
   return (
     <>
-      <Icon flex="0 0 auto" name={getNodeIcon(data.node)} c="brand" />
-      {getNodeLabel(data.node)}
-      <NodeControls
-        nodeId={id}
-        isExpanded={data.isExpanded}
-        isConnectable={isConnectable}
-      />
+      <Icon flex="0 0 auto" name={getNodeIcon(data)} c="brand" />
+      {getNodeLabel(data)}
+      <NodeControls nodeId={id} isConnectable={isConnectable} />
     </>
   );
 });

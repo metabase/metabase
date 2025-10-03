@@ -1,39 +1,36 @@
 import {
   Handle,
   Position,
+  useEdges,
   useNodeConnections,
+  useNodes,
   useReactFlow,
 } from "@xyflow/react";
+import cx from "classnames";
 
 import { ActionIcon, Icon } from "metabase/ui";
 
-import type { NodeId } from "../types";
-import { getGraphWithToggledNode } from "../utils/collapsing";
+import type { NodeId, NodeType } from "../types";
+import { getNodesWithToggledNode, isNodeExpanded } from "../utils/collapsing";
+
+import S from "./NodeControls.module.css";
 
 type NodeControlsProps = {
   nodeId: NodeId;
-  isExpanded: boolean;
   isConnectable?: boolean;
 };
 
-export function NodeControls({
-  nodeId,
-  isExpanded,
-  isConnectable,
-}: NodeControlsProps) {
-  const { getNodes, getEdges, setNodes, setEdges } = useReactFlow();
+export function NodeControls({ nodeId, isConnectable }: NodeControlsProps) {
+  const nodes = useNodes<NodeType>();
+  const edges = useEdges();
+  const { setNodes } = useReactFlow<NodeType>();
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
+  const isExpanded = isNodeExpanded(nodes, edges, nodeId);
 
   const handleToggle = () => {
-    const { nodes, edges } = getGraphWithToggledNode(
-      getNodes(),
-      getEdges(),
-      nodeId,
-      isExpanded,
-    );
-    setNodes(nodes);
-    setEdges(edges);
+    const newNodes = getNodesWithToggledNode(nodes, edges, nodeId, isExpanded);
+    setNodes(newNodes);
   };
 
   return (
@@ -52,6 +49,7 @@ export function NodeControls({
       )}
       {targets.length > 0 && (
         <Handle
+          className={cx({ [S.hidden]: !isExpanded })}
           type="target"
           position={Position.Right}
           isConnectable={isConnectable}
