@@ -404,3 +404,19 @@
             (and (get-method driver/type->database-type driver)
                  (every? #(driver/type->database-type driver %) should-be-supported-by-all))))
       (is (get-method driver/insert-from-source! [driver :jsonl-file])))))
+
+(driver/register! ::mock-no-deps-driver, :abstract? true)
+
+(deftest deps-ignores-invalid-drivers-test
+  (is (= #{}
+         (driver/native-query-deps ::mock-no-deps-driver nil nil))))
+
+(driver/register! ::mock-deps-driver, :abstract? true)
+
+(defmethod driver/database-supports? [::mock-deps-driver :dependencies/native]
+  [_driver _feature _database]
+  true)
+
+(deftest deps-flags-when-supported-driver-is-not-covered-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                        (driver/native-query-deps ::mock-deps-driver nil nil))))
