@@ -1,9 +1,10 @@
 (ns metabase.lib.parameters.parse-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is testing]]
    [metabase.lib.parameters.parse :as params.parse]
    [metabase.lib.parameters.parse.types :as lib.parms.parse.types]
-   [metabase.lib.parse :as lib.parse]))
+   [metabase.lib.parse :as lib.parse]
+   [metabase.lib.util :as lib.util]))
 
 (defn- param [field-name] (lib.parms.parse.types/param {:k field-name}))
 (defn- optional [& args] (lib.parms.parse.types/optional {:args (vec args)}))
@@ -36,7 +37,7 @@
            "/*SELECT {{foo}}*/" [:block-comment-begin "SELECT " :param-begin "foo" :param-end :block-comment-end]}]
     (is (= expected
            (normalize-tokens (#'lib.parse/tokenize query true)))
-        (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
+        (lib.util/format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
 (deftest ^:parallel tokenize-no-sql-comments-test
   (doseq [[query expected]
@@ -47,7 +48,7 @@
            ["/* " :optional-begin "AND num_toucans > " :param-begin "num_toucans" :param-end " --" :optional-end " */"]}]
     (is (= expected
            (normalize-tokens (#'lib.parse/tokenize query false)))
-        (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
+        (lib.util/format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
 (deftest ^:parallel parse-test
   (doseq [[group s->expected]
@@ -113,7 +114,7 @@
       (doseq [[s expected] s->expected]
         (is (= expected
                (normalize-tokens (params.parse/parse s)))
-            (format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
+            (lib.util/format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
 
   (testing "Testing that invalid/unterminated template lib.parms.parse.types/clauses throw an exception"
     (doseq [invalid ["select * from foo [[where bar = {{baz}} "
@@ -122,9 +123,9 @@
                      "select * from foo [[clause 1 {{bar}}]] [[clause 2"
                      "select * from foo where bar = {{baz]]"
                      "select * from foo [[where bar = {{baz}}}}"]]
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs :default)
                    (params.parse/parse invalid))
-          (format "Parsing %s should throw an exception" (pr-str invalid))))))
+          (lib.util/format "Parsing %s should throw an exception" (pr-str invalid))))))
 
 (deftest ^:parallel disable-comment-handling-test
   (testing "SQL comments are ignored when handle-sql-comments = false, e.g. in Mongo driver queries"
