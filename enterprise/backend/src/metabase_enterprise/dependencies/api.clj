@@ -119,18 +119,23 @@
 (defn- entity-keys [entity-type]
   (case entity-type
     :table [:name :display_name :db_id :schema]
-    :card [:name :type]
+    :card [:name :type :display :database_id]
     :snippet [:name]
     :transform [:name]
     []))
 
-(defn- expanded-entity-keys [entity-type]
-  (case entity-type
-    :table [:id :name :display_name :description :db_id :schema]
-    :card [:id :name :description :type :display :collection_id :dashboard_id]
-    :snippet [:id :name :description]
-    :transform [:id :name :description]
-    []))
+(defn- entity-value [entity-type {:keys [id] :as entity}]
+  {:id id
+   :type entity-type
+   :data (select-keys entity (entity-keys entity-type))})
+
+#_(defn- expanded-entity-keys [entity-type]
+    (case entity-type
+      :table [:id :name :display_name :description :db_id :schema]
+      :card [:id :name :description :type :display :collection_id :dashboard_id]
+      :snippet [:id :name :description]
+      :transform [:id :name :description]
+      []))
 
 (defn- entity-model [entity-type]
   (case entity-type
@@ -139,33 +144,33 @@
     :snippet :model/NativeQuerySnippet
     :transform :model/Transform))
 
-(defn- fetch-all-entities [entity-type & extra-conditions]
-  (apply t2/select-fn-vec
-         (fn [entity]
-           [entity-type (:id entity)])
-         [(entity-model entity-type) :id]
-         extra-conditions))
+#_(defn- fetch-all-entities [entity-type & extra-conditions]
+    (apply t2/select-fn-vec
+           (fn [entity]
+             [entity-type (:id entity)])
+           [(entity-model entity-type) :id]
+           extra-conditions))
 
-(defn- calc-usages
-  "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
-  [graph nodes]
-  (let [children-map (graph/children-of graph nodes)
-        all-cards (->> (vals children-map)
-                       (apply concat)
-                       distinct
-                       (keep #(when (= (first %) :card)
-                                (second %))))
-        card->type (when (seq all-cards)
-                     (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
-    (m/map-vals (fn [children]
-                  (->> children
-                       (map (fn [[entity-type entity-id]]
-                              (let [dependency-type (if (= entity-type :card)
-                                                      (card->type entity-id)
-                                                      entity-type)]
-                                {dependency-type 1})))
-                       (apply merge-with +)))
-                children-map)))
+#_(defn- calc-usages
+    "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
+    [graph nodes]
+    (let [children-map (graph/children-of graph nodes)
+          all-cards (->> (vals children-map)
+                         (apply concat)
+                         distinct
+                         (keep #(when (= (first %) :card)
+                                  (second %))))
+          card->type (when (seq all-cards)
+                       (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
+      (m/map-vals (fn [children]
+                    (->> children
+                         (map (fn [[entity-type entity-id]]
+                                (let [dependency-type (if (= entity-type :card)
+                                                        (card->type entity-id)
+                                                        entity-type)]
+                                  {dependency-type 1})))
+                         (apply merge-with +)))
+                  children-map)))
 
 (api.macros/defendpoint :get "/graph"
   "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
@@ -177,26 +182,22 @@
    {:keys [id type]} :- [:map
                          [:id {:optional true} ms/PositiveInt]
                          [:type {:optional true} (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
-  (let [starting-nodes (if (and id type)
-                         [[type id]]
-                         (-> (fetch-all-entities :card :type [:in [:metric :model]] :archived false)
-                             (into (fetch-all-entities :transform))))
+  (let [starting-nodes [[type id]]
         upstream-graph (dependency/graph-dependencies)
-        ;; cache the downstream graph specifically, because between calculating edges and calculating usages, we'll
-        ;; call this multiple times on the same nodes.
+        ;; cache the downstream graph specifically, because between calculating transitive children and calculating
+        ;; edges, we'll call this multiple times on the same nodes.
         downstream-graph (graph/cached-graph (dependency/graph-dependents))
-        nodes (into starting-nodes (graph/transitive upstream-graph starting-nodes))
+        nodes (-> (into #{} starting-nodes)
+                  (into (graph/transitive upstream-graph starting-nodes))
+                  (into (graph/transitive downstream-graph starting-nodes)))
         edges (graph/calc-edges downstream-graph nodes)
-        usages (calc-usages downstream-graph nodes)
+        ;; usages (calc-usages downstream-graph nodes)
         nodes-by-type (->> (group-by first nodes)
                            (m/map-vals #(map second %)))]
     {:nodes (mapcat (fn [[entity-type entity-ids]]
-                      (->> (t2/select (entity-model entity-type) :id [:in entity-ids])
-                           (map (fn [{entity-id :id :as entity}]
-                                  {:id entity-id
-                                   :type entity-type
-                                   :data (select-keys entity (entity-keys entity-type))
-                                   :usage_stats (usages [entity-type entity-id])}))))
+                      (t2/select-fn-vec #(entity-value entity-type %)
+                                        (entity-model entity-type)
+                                        :id [:in entity-ids]))
                     nodes-by-type)
      :edges edges}))
 
@@ -210,23 +211,7 @@
    {:keys [id type]} :- [:map
                          [:id ms/PositiveInt]
                          [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
-  (let [starting-node [type id]
-        downstream-graph (dependency/graph-dependents)
-        children ((graph/children-of downstream-graph [starting-node]) starting-node)
-        all-nodes (conj children starting-node)
-        nodes-by-type (->> (group-by first all-nodes)
-                           (m/map-vals #(map second %)))
-        node-info (into {}
-                        (mapcat (fn [[entity-type entity-ids]]
-                                  (->> (t2/select (entity-model entity-type) :id [:in entity-ids])
-                                       (map (fn [{entity-id :id :as entity}]
-                                              [[entity-type entity-id]
-                                               {:id entity-id
-                                                :type entity-type
-                                                :data (select-keys entity (expanded-entity-keys entity-type))}])))))
-                        nodes-by-type)]
-    (assoc (node-info [type id])
-           :usages (map node-info children))))
+  (t2/select-one-fn #(entity-value type %) (entity-model type) :id id))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
