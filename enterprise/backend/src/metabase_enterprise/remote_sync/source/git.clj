@@ -57,16 +57,15 @@
   (u/prog1 (call-remote-command (.fetch git) git-source))
   (log/info "Successfully fetched repository" {:repo (str git)}))
 
-(defn- existing-git-repo [^java.io.File dir {:keys [^String url ^String token]}]
+(defn- existing-git-repo [^java.io.File dir {:keys [^String token]}]
   (io/make-parents dir)
   (try
     (when (.exists dir)
       (u/prog1 (Git/open dir)
         (fetch! {:git <> :token token})))
     (catch Exception e
-      (log/warnf "Existing git repo at %s is not configured correctly. Error using: %s. Deleting it" dir e)
+      (log/warnf e "Existing git repo at %s is not configured correctly. Deleting it" dir)
       (FileUtils/deleteDirectory dir)
-
       nil)))
 
 (defn clone-repository!
