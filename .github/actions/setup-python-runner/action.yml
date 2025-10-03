@@ -28,12 +28,22 @@ runs:
         echo "Starting python-runner container..."
         docker run -d \
           --name python-runner \
-          --network host \
+          -p 5001:5001 \
           metabase/python-runner:${{ inputs.python-runner-version }}
 
         # Wait for container to be ready
         echo "Waiting for python-runner to be ready..."
-        sleep 5
+        for i in {1..30}; do
+          if docker ps --filter name=python-runner --filter status=running | grep -q python-runner; then
+            echo "Container is running"
+            if curl -s --max-time 2 http://localhost:5001/health > /dev/null 2>&1 || curl -s --max-time 2 http://localhost:5001/ > /dev/null 2>&1; then
+              echo "Python runner is ready and responding"
+              break
+            fi
+          fi
+          echo "Waiting for python-runner to be ready... (attempt $i/30)"
+          sleep 2
+        done
 
         # Stream logs to files in the background
         docker logs -f python-runner > python-runner.out.log 2> python-runner.err.log &
