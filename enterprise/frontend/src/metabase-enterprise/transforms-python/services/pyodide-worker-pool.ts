@@ -134,13 +134,6 @@ function getPythonScript(code: string, sources: PyodideTableSource[]) {
   return `
 ${code}
 
-import pandas as pd
-import numpy as np
-import json
-import sys
-import io
-from datetime import datetime, date, time, timedelta
-
 # Convert context data to DataFrames
 ${sources
   .map(
