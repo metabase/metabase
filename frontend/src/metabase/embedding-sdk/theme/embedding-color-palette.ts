@@ -62,6 +62,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-white": ["text-white"],
   error: ["error"],
   "background-error": ["bg-error"],
+  "text-hover": ["text-hover"],
 };
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<

@@ -96,6 +96,9 @@ export interface MetabaseColors {
 
   /** Color used for error backgrounds. Defaults to light red. */
   "background-error"?: string;
+
+  /** Color used for some button text on hover */
+  "text-hover"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;
