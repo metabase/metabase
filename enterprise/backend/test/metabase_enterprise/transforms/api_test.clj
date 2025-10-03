@@ -197,10 +197,10 @@
                                     :schema (get-test-schema)
                                     :name   table-name}}
                 resp (mt/user-http-request :crowberto :post 200 "ee/transform" body)]
-            (is (=? body
+            (is (=? (m/dissoc-in body [:source :query :lib/metadata])
                     (->
                      (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
-                     (update-in [:source :query] mbql.normalize/normalize))))))))))
+                     (update-in [:source :query] lib/normalize))))))))))
 
 (defn- ->transform [transform-name query]
   {:source {:type "query",

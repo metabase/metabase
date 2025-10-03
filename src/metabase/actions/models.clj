@@ -57,9 +57,6 @@
    :parameters             parameters/transform-parameters
    :visualization_settings transform-action-visualization-settings})
 
-(t2/deftransforms :model/HTTPAction
-  {:template mi/transform-json})
-
 (t2/deftransforms :model/QueryAction
   {:dataset_query lib-be/transform-query})
 

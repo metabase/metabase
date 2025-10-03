@@ -125,7 +125,7 @@
                   :source       :native
                   :field_ref    [:field "a_2" {:base-type :type/*}]}]
                 (column-info
-                 (lib/query meta/metadata-provider {:type :native})
+                 (lib/query meta/metadata-provider {:type :native, :native {:query "SELECT 1;"}})
                  {:cols [{:name "a"} {:name "a"}]
                   :rows rows})))))))
 
