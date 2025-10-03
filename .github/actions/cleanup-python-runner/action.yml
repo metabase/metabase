@@ -36,6 +36,9 @@ runs:
         else
           echo "localstack container not found"
         fi
+
+        echo "Removing Docker network..."
+        docker network rm python-runner-network || echo "WARNING: Failed to remove python-runner-network"
       shell: bash
 
     - name: Upload python-runner logs

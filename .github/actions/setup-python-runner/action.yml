@@ -20,11 +20,18 @@ runs:
         username: ${{ inputs.dockerhub-username }}
         password: ${{ inputs.dockerhub-token }}
 
+    - name: Create Docker network
+      run: |
+        echo "Creating Docker network for python-runner services..."
+        docker network create python-runner-network || true
+      shell: bash
+
     - name: Start LocalStack (S3 storage)
       run: |
         echo "Starting LocalStack container for S3 storage..."
         docker run -d \
           --name localstack \
+          --network python-runner-network \
           -p 4566:4566 \
           -e SERVICES=s3 \
           -e DEBUG=1 \
@@ -33,13 +40,39 @@ runs:
         # Wait for LocalStack to be ready
         echo "Waiting for LocalStack to be ready..."
         for i in {1..30}; do
-          if curl -s --max-time 2 http://localhost:4566/_localstack/health > /dev/null 2>&1; then
-            echo "LocalStack is ready"
+          if curl -s --max-time 2 http://localhost:4566/_localstack/health 2>&1 | grep -q "\"s3\": \"running\"" || \
+             curl -s --max-time 2 http://localhost:4566/_localstack/health 2>&1 | grep -q "\"s3\": \"available\""; then
+            echo "LocalStack S3 service is ready"
             break
           fi
-          echo "Waiting for LocalStack... (attempt $i/30)"
+          echo "Waiting for LocalStack S3... (attempt $i/30)"
           sleep 2
         done
+
+        # Verify LocalStack is accessible
+        echo "Testing LocalStack connectivity..."
+        curl -v http://localhost:4566/_localstack/health 2>&1 || true
+
+        # Create the S3 bucket that tests expect
+        echo "Creating S3 bucket for python-runner..."
+        docker run --rm \
+          --network python-runner-network \
+          -e AWS_ACCESS_KEY_ID=test \
+          -e AWS_SECRET_ACCESS_KEY=test \
+          -e AWS_DEFAULT_REGION=us-east-1 \
+          amazon/aws-cli \
+          --endpoint-url=http://localstack:4566 \
+          s3 mb s3://metabase-python-runner || echo "Bucket might already exist"
+
+        echo "Verifying S3 bucket..."
+        docker run --rm \
+          --network python-runner-network \
+          -e AWS_ACCESS_KEY_ID=test \
+          -e AWS_SECRET_ACCESS_KEY=test \
+          -e AWS_DEFAULT_REGION=us-east-1 \
+          amazon/aws-cli \
+          --endpoint-url=http://localstack:4566 \
+          s3 ls || true
       shell: bash
 
     - name: Pull and run python-runner
@@ -50,7 +83,7 @@ runs:
         echo "Starting python-runner container..."
         docker run -d \
           --name python-runner \
-          --link localstack:localstack \
+          --network python-runner-network \
           -p 5001:5001 \
           metabase/python-runner:${{ inputs.python-runner-version }}
 
@@ -61,12 +94,19 @@ runs:
             echo "Container is running"
             if curl -s --max-time 2 http://localhost:5001/health > /dev/null 2>&1 || curl -s --max-time 2 http://localhost:5001/ > /dev/null 2>&1; then
               echo "Python runner is ready and responding"
+              docker logs python-runner 2>&1 | tail -10
               break
             fi
           fi
           echo "Waiting for python-runner to be ready... (attempt $i/30)"
           sleep 2
         done
+
+        # Verify services are accessible
+        echo "Verifying python-runner connectivity..."
+        curl -v http://localhost:5001/ 2>&1 || true
+        echo "Verifying LocalStack connectivity from host..."
+        curl -v http://localhost:4566/_localstack/health 2>&1 || true
 
         # Stream logs to files in the background
         docker logs -f python-runner > python-runner.out.log 2> python-runner.err.log &
