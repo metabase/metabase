@@ -95,8 +95,9 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.wait("@dashboard");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
-      getEmbedSidebar().findByText("Next").click();
     });
+
+    getEmbedSidebar().findByText("Next").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_resource_selection_completed",
