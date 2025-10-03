@@ -17,7 +17,7 @@ async function run() {
     const { type, data } = event.data;
 
     if (type === "execute") {
-      const result = await execute(pyodide, data.code);
+      const result = await execute(pyodide, data.code, data.libraries);
       self.postMessage({ type: "results", ...result });
       return;
     }
@@ -61,7 +61,7 @@ def __format_exception():
   return pyodide;
 }
 
-async function execute(pyodide, code) {
+async function execute(pyodide, code, libraries = {}) {
   const stdout = [];
   pyodide.setStdout({
     batched(out) {
@@ -75,6 +75,10 @@ async function execute(pyodide, code) {
       stderr.push(out);
     },
   });
+
+  for (const [name, library] of Object.entries(libraries)) {
+    pyodide.FS.writeFile(name, library, { encoding: "utf8" });
+  }
 
   try {
     const result = await pyodide.runPythonAsync(code);

@@ -2,6 +2,8 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 
+export type PythonLibraries = Record<string, string>;
+
 type ExecutePythonOptions = {
   signal?: AbortSignal;
 };
@@ -46,10 +48,11 @@ export class PyodideWorkerPool {
 
   async executePython<T>(
     code: string,
+    libraries: PythonLibraries = {},
     options?: ExecutePythonOptions,
   ): Promise<PythonExecutionResult<T>> {
     const worker = this.getWorker();
-    return worker.executePython(code, options);
+    return worker.executePython(code, libraries, options);
   }
 }
 
@@ -73,6 +76,7 @@ class PyodideWorker {
 
   async executePython<T>(
     code: string,
+    libraries: PythonLibraries = {},
     options?: ExecutePythonOptions,
   ): Promise<PythonExecutionResult<T>> {
     options?.signal?.addEventListener("abort", () => {
@@ -84,7 +88,10 @@ class PyodideWorker {
 
       this.worker.postMessage({
         type: "execute",
-        data: { code },
+        data: {
+          code,
+          libraries,
+        },
       });
 
       const evt = await waitFor(this.worker, "results", {

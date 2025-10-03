@@ -5,6 +5,7 @@ import { getErrorMessage } from "metabase/api/utils";
 import {
   PyodideWorkerPool,
   type PythonExecutionResult,
+  type PythonLibraries,
 } from "../services/pyodide-worker-pool";
 
 export function useRunPython<T = unknown>(packages: string[] = []) {
@@ -13,7 +14,10 @@ export function useRunPython<T = unknown>(packages: string[] = []) {
   const [isRunning, setIsRunning] = useState(false);
   const [data, setData] = useState<PythonExecutionResult<T> | null>(null);
 
-  const executePython = async (code: string) => {
+  const executePython = async (
+    code: string,
+    libraries: PythonLibraries = {},
+  ) => {
     if (controller.current) {
       controller.current.abort();
     }
@@ -21,7 +25,7 @@ export function useRunPython<T = unknown>(packages: string[] = []) {
 
     try {
       setIsRunning(true);
-      const result = await pool.executePython<T>(code, {
+      const result = await pool.executePython<T>(code, libraries, {
         signal: controller.current.signal,
       });
       setData(result);
