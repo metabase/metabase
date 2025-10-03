@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -153,6 +154,7 @@
         base-query {:select [:report_card.*]
                     :from   [[:report_card]]
                     :where [:and
+                            [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter
                             [:in :type [:inline ["metric" "model"]]]
                             [:= :archived false]
