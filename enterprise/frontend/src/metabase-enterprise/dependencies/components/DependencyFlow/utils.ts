@@ -66,7 +66,10 @@ function getEdgesByTargetId(edges: Edge[]) {
   return edgesByTargetId;
 }
 
-function getItemNodes(nodes: DependencyNode[]): ItemNodeType[] {
+function getItemNodes(
+  nodes: DependencyNode[],
+  entry: DependencyEntry,
+): ItemNodeType[] {
   return nodes.map((node) => {
     const nodeId = getItemNodeId(node.id, node.type);
 
@@ -76,6 +79,7 @@ function getItemNodes(nodes: DependencyNode[]): ItemNodeType[] {
       type: "item",
       data: node,
       position: { x: 0, y: 0 },
+      selected: node.id === entry.id && node.type === entry.type,
       connectable: false,
       draggable: false,
       deletable: false,
@@ -103,9 +107,10 @@ function getItemEdges(edges: DependencyEdge[]): Edge[] {
 function getItemGraph(
   nodes: DependencyNode[],
   edges: DependencyEdge[],
+  entry: DependencyEntry,
 ): GraphData {
   return {
-    nodes: getItemNodes(nodes),
+    nodes: getItemNodes(nodes, entry),
     edges: getItemEdges(edges),
   };
 }
@@ -241,7 +246,11 @@ export function getInitialGraph(
   { nodes, edges }: DependencyGraph,
   entry: DependencyEntry,
 ): GraphData {
-  const { nodes: itemNodes, edges: itemEdges } = getItemGraph(nodes, edges);
+  const { nodes: itemNodes, edges: itemEdges } = getItemGraph(
+    nodes,
+    edges,
+    entry,
+  );
   return getGroupGraph(itemNodes, itemEdges, entry);
 }
 
