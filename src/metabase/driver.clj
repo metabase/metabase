@@ -1198,9 +1198,17 @@
   "Gets the table dependencies of a given sql string (or equivalent).
 
   Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver query] [driver query metadata-provider transforms])}
+  {:added "0.57.0" :arglists '([driver query] [driver query metadata-provider])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmethod native-query-deps :default
+  [driver & args]
+  (if (database-supports? driver :dependencies/native nil)
+    (throw (ex-info "Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                    {:driver driver
+                     :args args}))
+    #{}))
 
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
