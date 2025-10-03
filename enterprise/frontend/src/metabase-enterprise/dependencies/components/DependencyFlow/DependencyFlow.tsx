@@ -27,10 +27,11 @@ const NODE_TYPES = {
 };
 
 type DependencyFlowProps = {
-  entry?: DependencyEntry;
+  entry: DependencyEntry | undefined;
+  onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export function DependencyFlow({ entry }: DependencyFlowProps) {
+export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
   const { data: graph } = useGetDependencyGraphQuery(entry ? entry : skipToken);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -59,7 +60,7 @@ export function DependencyFlow({ entry }: DependencyFlowProps) {
       <Controls />
       <NodeLayout />
       <Panel position="top-left">
-        <NodePicker entry={entry} />
+        <NodePicker entry={entry} onEntryChange={onEntryChange} />
       </Panel>
     </ReactFlow>
   );
