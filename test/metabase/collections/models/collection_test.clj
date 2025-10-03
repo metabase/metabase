@@ -3043,3 +3043,82 @@
                 query (t2/select :model/Collection
                                  {:where [:and [:= :id (:id sample-collection)] hsql-clause]})]
             (is (empty? query))))))))
+
+(deftest serdes-descendants-skip-archived-test
+  (testing "Collection descendants with skip-archived: true excludes archived items"
+    (mt/with-temp [:model/Collection parent-coll {:name "Parent Collection"}
+                   :model/Collection child-coll  {:name     "Child Collection"
+                                                  :archived true
+                                                  :location (format "/%d/" (:id parent-coll))}
+                   :model/Card       card        {:name          "Card in parent"
+                                                  :archived      true
+                                                  :collection_id (:id parent-coll)}
+                   :model/Dashboard  dash        {:name          "Dashboard in parent"
+                                                  :archived      true
+                                                  :collection_id (:id parent-coll)}]
+      (testing "archived child collections are excluded"
+        (is (not (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived true})
+                            ["Collection" (:id child-coll)])))
+        (is (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived false})
+                       ["Collection" (:id child-coll)])))
+      (testing "archived cards are excluded"
+        (is (not (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived true})
+                            ["Card" (:id card)])))
+        (is (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived false})
+                       ["Card" (:id card)])))
+      (testing "archived dashboards are excluded"
+        (is (not (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived true})
+                            ["Dashboard" (:id dash)])))
+        (is (contains? (serdes/descendants "Collection" (:id parent-coll) {:skip-archived false})
+                       ["Dashboard" (:id dash)]))))))
+
+(deftest serdes-descendants-skip-archived-test-2
+  (testing "Collection descendants with skip-archived: true includes non-archived items"
+    (mt/with-temp [:model/Collection parent-coll      {:name "Parent Collection"}
+                   :model/Collection archived-child   {:name     "Archived Child"
+                                                       :archived true
+                                                       :location (format "/%d/" (:id parent-coll))}
+                   :model/Collection active-child     {:name     "Active Child"
+                                                       :archived false
+                                                       :location (format "/%d/" (:id parent-coll))}
+                   :model/Card       archived-card    {:name          "Archived Card"
+                                                       :archived      true
+                                                       :collection_id (:id parent-coll)}
+                   :model/Card       active-card      {:name          "Active Card"
+                                                       :archived      false
+                                                       :collection_id (:id parent-coll)}
+                   :model/Dashboard  archived-dash    {:name          "Archived Dashboard"
+                                                       :archived      true
+                                                       :collection_id (:id parent-coll)}
+                   :model/Dashboard  active-dash      {:name          "Active Dashboard"
+                                                       :archived      false
+                                                       :collection_id (:id parent-coll)}]
+      (let [descendants-with-skip    (serdes/descendants "Collection" (:id parent-coll) {:skip-archived true})
+            descendants-without-skip (serdes/descendants "Collection" (:id parent-coll) {:skip-archived false})]
+        (testing "only active items are included with skip-archived: true"
+          (is (contains? descendants-with-skip ["Collection" (:id active-child)]))
+          (is (contains? descendants-with-skip ["Card" (:id active-card)]))
+          (is (contains? descendants-with-skip ["Dashboard" (:id active-dash)]))
+          (is (not (contains? descendants-with-skip ["Collection" (:id archived-child)])))
+          (is (not (contains? descendants-with-skip ["Card" (:id archived-card)])))
+          (is (not (contains? descendants-with-skip ["Dashboard" (:id archived-dash)]))))
+        (testing "all items are included with skip-archived: false"
+          (is (contains? descendants-without-skip ["Collection" (:id active-child)]))
+          (is (contains? descendants-without-skip ["Card" (:id active-card)]))
+          (is (contains? descendants-without-skip ["Dashboard" (:id active-dash)]))
+          (is (contains? descendants-without-skip ["Collection" (:id archived-child)]))
+          (is (contains? descendants-without-skip ["Card" (:id archived-card)]))
+          (is (contains? descendants-without-skip ["Dashboard" (:id archived-dash)])))))))
+
+(deftest serdes-extract-query-skip-archived-test
+  (testing "Collection extract-query with skip-archived: true filters archived collections"
+    (mt/with-temp [:model/Collection active-coll   {:name "Active Collection" :archived false}
+                   :model/Collection archived-coll {:name "Archived Collection" :archived true}]
+      (let [active-ids   (into #{} (map :id) (serdes/extract-query "Collection" {:skip-archived true}))
+            all-ids      (into #{} (map :id) (serdes/extract-query "Collection" {:skip-archived false}))]
+        (testing "archived collections are excluded when skip-archived: true"
+          (is (contains? active-ids (:id active-coll)))
+          (is (not (contains? active-ids (:id archived-coll)))))
+        (testing "archived collections are included when skip-archived: false"
+          (is (contains? all-ids (:id active-coll)))
+          (is (contains? all-ids (:id archived-coll))))))))

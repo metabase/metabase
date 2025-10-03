@@ -113,12 +113,12 @@
 
 (defn- resolve-targets
   "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
-  [targets user-id]
+  [{:keys [targets] :as opts} user-id]
   (let [initial-targets (if (seq targets)
                           (mapv parse-target targets)
                           (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
         ;; a map of `{[model-name id] {source-model source-id ...}}`
-        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %)))]
+        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %) opts))]
     ;; due to traverse argument we'd lose original source entities, lets track them
     (merge-with into
                 targets
@@ -139,7 +139,7 @@
   `opts` are passed down to [[serdes/extract-all]] for each model."
   [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [nodes    (resolve-targets targets user-id)
+  (let [nodes    (resolve-targets opts user-id)
         ;; by model is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
         escaped  (escape-analysis by-model nodes)]
@@ -170,6 +170,6 @@
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
                (merge
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
-                (u/traverse colls #(serdes/descendants (first %) (second %))))))
+                (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
   (log-escape-report! escaped))

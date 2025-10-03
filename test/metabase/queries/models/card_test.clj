@@ -619,7 +619,7 @@
 (deftest ^:parallel descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp [:model/Card card {:name "some card"}]
-      (is (empty? (serdes/descendants "Card" (:id card)))))))
+      (is (empty? (serdes/descendants "Card" (:id card) {}))))))
 
 (deftest ^:parallel descendants-test-2
   (testing "cards which have another card as the source depend on that card"
@@ -628,9 +628,9 @@
                                       :dataset_query {:database (mt/id)
                                                       :type     :query
                                                       :query    {:source-table (str "card__" (:id card1))}}}]
-      (is (empty? (serdes/descendants "Card" (:id card1))))
+      (is (empty? (serdes/descendants "Card" (:id card1) {})))
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
-             (serdes/descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2) {}))))))
 
 (deftest ^:parallel descendants-test-3
   (testing "cards that has a native template tag"
@@ -646,7 +646,7 @@
                                                                          :snippet-id   (:id snippet)}}
                                                :query         "select * from products where {{snippet}}"}}}]
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
-             (serdes/descendants "Card" (:id card)))))))
+             (serdes/descendants "Card" (:id card) {}))))))
 
 (deftest ^:parallel descendants-test-4
   (testing "cards which have parameter's source is another card"
@@ -657,7 +657,55 @@
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
-             (serdes/descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2) {}))))))
+
+(deftest ^:parallel descendants-skip-archived-test
+  (testing "cards with skip-archived: true excludes archived source-table cards"
+    (mt/with-temp [:model/Card card1 {:name "base card" :archived true}
+                   :model/Card card2 {:name "derived card"
+                                      :dataset_query {:database (mt/id)
+                                                      :type     :query
+                                                      :query    {:source-table (str "card__" (:id card1))}}}]
+      (is (empty? (serdes/descendants "Card" (:id card2) {:skip-archived true}))
+          "archived card should not be in descendants when skip-archived is true")
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
+             (serdes/descendants "Card" (:id card2) {:skip-archived false}))
+          "archived card should be in descendants when skip-archived is false"))))
+
+(deftest ^:parallel descendants-skip-archived-test-2
+  (testing "cards with skip-archived: true excludes archived parameter source cards"
+    (mt/with-temp [:model/Card card1 {:name "base card" :archived true}
+                   :model/Card card2 {:name       "derived card"
+                                      :parameters [{:id                   "valid-id"
+                                                    :type                 "id"
+                                                    :values_source_type   "card"
+                                                    :values_source_config {:card_id (:id card1)}}]}]
+      (is (empty? (serdes/descendants "Card" (:id card2) {:skip-archived true}))
+          "archived parameter source card should not be in descendants when skip-archived is true")
+      (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
+             (serdes/descendants "Card" (:id card2) {:skip-archived false}))
+          "archived parameter source card should be in descendants when skip-archived is false"))))
+
+(deftest ^:parallel descendants-skip-archived-test-3
+  (testing "cards with skip-archived: true includes non-archived cards among multiple dependencies"
+    (mt/with-temp [:model/Card card1 {:name "base card 1" :archived true}
+                   :model/Card card2 {:name "base card 2" :archived false}
+                   :model/Card card3 {:name       "derived card"
+                                      :parameters [{:id                   "param-1"
+                                                    :type                 "id"
+                                                    :values_source_type   "card"
+                                                    :values_source_config {:card_id (:id card1)}}
+                                                   {:id                   "param-2"
+                                                    :type                 "id"
+                                                    :values_source_type   "card"
+                                                    :values_source_config {:card_id (:id card2)}}]}]
+      (is (= {["Card" (:id card2)] {"Card" (:id card3)}}
+             (serdes/descendants "Card" (:id card3) {:skip-archived true}))
+          "only non-archived cards should be in descendants when skip-archived is true")
+      (is (= {["Card" (:id card1)] {"Card" (:id card3)}
+              ["Card" (:id card2)] {"Card" (:id card3)}}
+             (serdes/descendants "Card" (:id card3) {:skip-archived false}))
+          "all cards should be in descendants when skip-archived is false"))))
 
 (deftest ^:parallel extract-test
   (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))

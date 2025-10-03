@@ -141,7 +141,8 @@
                                                :no-transforms            true
                                                :include-field-values     false
                                                :include-database-secrets false
-                                               :continue-on-error        false})]
+                                               :continue-on-error        false
+                                               :skip-archived            true})]
             (remote-sync.task/update-progress! task-id 0.3)
             (source/store! models source task-id message)
             (remote-sync.task/set-version! task-id (source.p/version source))
