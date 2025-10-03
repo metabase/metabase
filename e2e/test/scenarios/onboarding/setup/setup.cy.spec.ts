@@ -587,7 +587,7 @@ describe("scenarios > setup", () => {
       .findByText("Get started with Embedding Metabase in your app")
       .should("be.visible");
 
-    H.main().findByText("Hide these").realHover();
+    H.main().findByText("Hide these").scrollIntoView().realHover();
 
     H.popover().findByText("Embedding done, all good").click();
 
