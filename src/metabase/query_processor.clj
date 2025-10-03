@@ -7,7 +7,6 @@
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
   (:require
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.debug :as qp.debug]

@@ -231,6 +231,7 @@
   [inner-query :- :map
    expression  :- [:maybe ::mbql.s/FieldOrExpressionDef]]
   (when expression
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
       (lib/type-of mlv2-query (lib/->pMBQL expression)))))
 

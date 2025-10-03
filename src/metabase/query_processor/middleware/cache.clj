@@ -8,7 +8,6 @@
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
   about how the cache backends themselves."
   (:require
-   [buddy.core.codecs :as codecs]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core :as cache]

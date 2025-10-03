@@ -2,9 +2,7 @@
   (:refer-clojure :exclude [mapv select-keys])
   (:require
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]

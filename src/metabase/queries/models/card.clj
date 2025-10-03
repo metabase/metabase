@@ -247,7 +247,7 @@
                                            (keep (comp source-card-id :dataset_query))
                                            cards-with-non-empty-queries)]
     ;; Prefetching code should not propagate any exceptions.
-    (when lib-be/*metadata-provider-cache*
+    (when (lib-be/metadata-provider-cache)
       (try
         (prefetch-tables-for-cards! cards-with-non-empty-queries)
         (catch Throwable t

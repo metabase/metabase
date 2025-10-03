@@ -8,7 +8,6 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref every? some select-keys])
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
@@ -36,7 +35,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? some select-keys]]))
+   [metabase.util.performance :refer [every? select-keys some]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
