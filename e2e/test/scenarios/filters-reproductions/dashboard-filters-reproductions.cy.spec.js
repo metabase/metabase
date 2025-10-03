@@ -5196,7 +5196,7 @@ describe("Issue 60987", () => {
       cy.findByPlaceholderText("Find...").type("aa");
       cy.findByText("Didn't find any results")
         .should("be.visible")
-        .should("have.css", "color", "rgb(105, 110, 123)"); // the text should be grey
+        .should("have.css", "color", "rgba(7, 23, 34, 0.62)"); // the text "text-medium"
     });
   });
 });

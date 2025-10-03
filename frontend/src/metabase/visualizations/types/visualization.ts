@@ -132,7 +132,6 @@ export interface VisualizationProps {
   isVisualizerViz: boolean;
   isEditing: boolean;
   isMobile: boolean;
-  isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
   isRawTable?: boolean;
@@ -217,7 +216,6 @@ export type VisualizationPassThroughProps = {
   isEditing?: boolean;
   isEditingParameter?: boolean;
   isFullscreen?: boolean;
-  isNightMode?: boolean;
   isPreviewing?: boolean;
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;

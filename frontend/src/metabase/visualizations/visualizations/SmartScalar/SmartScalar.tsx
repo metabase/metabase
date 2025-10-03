@@ -1,15 +1,13 @@
-import cx from "classnames";
 import { useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
 import {
   ScalarValue,
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue/ScalarValue";
+import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -62,14 +60,12 @@ export function SmartScalar({
   onRenderError,
 }: VisualizationProps & VisualizationPassThroughProps) {
   const scalarRef = useRef(null);
+  const { getColor } = useBrowserRenderingContext({ fontFamily });
 
   const insights = rawSeries?.[0].data?.insights;
   const { trend, error } = useMemo(
-    () =>
-      computeTrend(series, insights, settings, {
-        getColor: color,
-      }),
-    [series, insights, settings],
+    () => computeTrend(series, insights, settings, { getColor }),
+    [series, insights, settings, getColor],
   );
 
   useEffect(() => {
@@ -107,11 +103,7 @@ export function SmartScalar({
   return (
     <ScalarWrapper>
       <ScalarContainer
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
+        className={DashboardS.fullscreenNormalText}
         data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}

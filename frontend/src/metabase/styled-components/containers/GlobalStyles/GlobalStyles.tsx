@@ -18,6 +18,7 @@ export const GlobalStyles = (): JSX.Element => {
 
   const sitePath = getSitePath();
   const theme = useMantineTheme();
+  const { colorScheme } = theme.other;
 
   // This can get expensive so we should memoize it separately
   const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
@@ -44,12 +45,13 @@ export const GlobalStyles = (): JSX.Element => {
     ${saveDomImageStyles}
     body {
         font-size: 0.875em;
+        color-scheme: ${colorScheme};
         ${rootStyle}
       }
 
       ${baseStyle}
     `;
-  }, [cssVariables, font, sitePath, fontFiles]);
+  }, [cssVariables, font, sitePath, fontFiles, colorScheme]);
 
   return <Global styles={styles} />;
 };

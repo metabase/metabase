@@ -2,9 +2,10 @@
 import styled from "@emotion/styled";
 
 import _LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 
@@ -31,7 +32,7 @@ export const InfoContainer = styled(Container)`
   padding: 1.1em;
 `;
 
-export const LabelContainer = styled.div`
+export const LabelContainer = styled.div<{ color?: ColorName }>`
   display: inline-flex;
   align-items: center;
   column-gap: 0.3em;

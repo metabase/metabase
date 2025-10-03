@@ -13,7 +13,10 @@ import {
   getEmbeddingComponentOverrides,
 } from "metabase/embedding-sdk/theme";
 import type { MappableSdkColor } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import {
+  SDK_TO_MAIN_APP_COLORS_MAPPING,
+  SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
+} from "metabase/embedding-sdk/theme/embedding-color-palette";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import { colorTuple } from "./color-tuple";
@@ -77,6 +80,23 @@ export function getEmbeddingThemeOverride(
         for (const themeColorName of themeColorNames) {
           override.colors[themeColorName] = colorTuple(color);
         }
+      }
+    }
+  }
+
+  if (theme.components?.tooltip) {
+    if (!override.colors) {
+      override.colors = {};
+    }
+
+    for (const _tooltipKey in SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING) {
+      type TooltipKey = keyof NonNullable<MetabaseComponentTheme["tooltip"]>;
+      const tooltipKey = _tooltipKey as TooltipKey;
+      const colorKey = SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING[tooltipKey];
+      const tooltipColor = theme.components.tooltip[tooltipKey];
+
+      if (tooltipColor && colorKey) {
+        override.colors[colorKey] = colorTuple(tooltipColor);
       }
     }
   }

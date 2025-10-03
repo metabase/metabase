@@ -78,9 +78,7 @@ const DropZone = ({ isOver, side, disabled }: DropZoneProps) => {
         width: "0.25rem",
         [side]: "-0.625rem",
         borderRadius: "0.125rem",
-        backgroundColor: isOver
-          ? "var(--mb-base-color-blue-30)"
-          : "transparent",
+        backgroundColor: isOver ? DROP_ZONE_COLOR : "transparent",
         zIndex: 10,
         pointerEvents: "all",
       }}

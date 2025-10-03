@@ -1,32 +1,38 @@
-import type { Ref } from "react";
-import { forwardRef } from "react";
+import cx from "classnames";
+import { type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import { LogoRoot } from "./MetabotLogo.styled";
+import happy from "assets/img/metabot-happy.svg?component";
+import sad from "assets/img/metabot-sad.svg?component";
+import cool from "assets/img/metabot-shades.svg?component";
 
 export type MetabotVariant = "happy" | "sad" | "cool";
+import Styles from "./MetabotLogo.module.css";
 
 const urlByVariant = {
-  happy: "app/assets/img/metabot-happy.svg",
-  sad: "app/assets/img/metabot-sad.svg",
-  cool: "app/assets/img/metabot-shades.svg",
+  happy,
+  sad,
+  cool,
 };
 
 export interface MetabotLogoProps {
   className?: string;
   variant?: MetabotVariant;
+  isCool?: boolean;
 }
 
 const MetabotLogo = forwardRef(function MetabotLogo(
-  { variant = "happy", ...rest }: MetabotLogoProps,
-  ref: Ref<HTMLImageElement>,
+  { variant = "happy", className, isCool, ...rest }: MetabotLogoProps,
+  ref: Ref<any>,
 ) {
+  const MetabotComponent = urlByVariant[variant];
   return (
-    <LogoRoot
+    <MetabotComponent
+      className={cx(Styles.MetabotLogo, className)}
       {...rest}
       ref={ref}
-      alt={t`Metabot`}
-      src={urlByVariant[variant]}
+      aria-label={t`Metabot`}
+      role="img"
     />
   );
 });

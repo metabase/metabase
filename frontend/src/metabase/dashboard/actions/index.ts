@@ -10,5 +10,4 @@ export * from "./sharing";
 export * from "./ui";
 export * from "./actions";
 export * from "./tabs";
-export * from "./theme";
 export * from "./trash";

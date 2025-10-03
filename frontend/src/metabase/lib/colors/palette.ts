@@ -113,10 +113,6 @@ export const shade = (c: string, f: number = 0.125) => {
   return value.lightness(value.lightness() - f * 100).hex();
 };
 
-export const hueRotate = (c: string) => {
-  return Color(color(c)).hue() - Color(color(c, originalColors)).hue();
-};
-
 export const isLight = (c: string) => {
   return Color(color(c)).isLight();
 };

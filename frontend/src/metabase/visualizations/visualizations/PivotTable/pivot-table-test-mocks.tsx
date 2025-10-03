@@ -94,7 +94,6 @@ export function PivotTableTestWrapper(props?: any) {
       onUpdateVisualizationSettings={(newSettings) =>
         setVizSettings({ ...vizSettings, ...newSettings })
       }
-      isNightMode={false}
       isDashboard={false}
       {...props}
     />

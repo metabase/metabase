@@ -377,7 +377,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.success).string(),
+      Color(colors.success).rgb().string(),
     );
 
     // style

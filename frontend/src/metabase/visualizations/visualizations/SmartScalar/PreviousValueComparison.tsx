@@ -1,16 +1,12 @@
-import cx from "classnames";
 import type { PropsWithChildren } from "react";
 import innerText from "react-innertext";
 import { jt } from "ttag";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { getIsNightMode } from "metabase/dashboard/selectors";
 import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Flex, Text, Title, Tooltip, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
@@ -51,7 +47,6 @@ export function PreviousValueComparison({
   } = comparison;
 
   const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
@@ -135,10 +130,9 @@ export function PreviousValueComparison({
     iconSize,
     children,
   }: PropsWithChildren<{ inTooltip?: boolean; iconSize: string | number }>) => {
-    const noChangeColor =
-      inTooltip || isNightMode
-        ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-        : "text-light";
+    const noChangeColor = inTooltip
+      ? lighten(theme.fn.themeColor("text-medium"), 0.3)
+      : "text-light";
 
     return (
       <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
@@ -191,11 +185,7 @@ export function PreviousValueComparison({
         justify="center"
         mx="sm"
         lh="1.2rem"
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
+        className={DashboardS.fullscreenNormalText}
       >
         <VariationPercent iconSize={ICON_SIZE}>
           {fittedChangeDisplay}

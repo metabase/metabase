@@ -39,7 +39,7 @@ describe("issue 29943", () => {
     getHeaderCell(columnIndex, name)
       .closest("[data-testid=model-column-header-content]")
       .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
+      .and("eq", "rgb(80, 158, 226)");
 
     cy.findByLabelText("Display name").should("have.value", name);
   }

@@ -18,11 +18,6 @@
   background-color: var(--mb-color-bg-dashboard-card);
   scroll-margin: 6px 0;
 
-  &.isNightMode {
-    border-color: var(--mb-color-bg-night);
-    background-color: var(--mb-color-bg-night);
-  }
-
   &.hasHiddenBackground {
     border: 0 !important;
     background: transparent !important;
@@ -31,10 +26,6 @@
   &.shouldForceHiddenBackground {
     background: var(--mb-color-bg-light);
     border: none !important;
-
-    &.isNightMode {
-      background: var(--mb-color-bg-black);
-    }
 
     &.isEmbeddingSdk {
       background: var(--mb-color-bg-dashboard);

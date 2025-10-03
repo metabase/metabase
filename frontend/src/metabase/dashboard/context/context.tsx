@@ -27,7 +27,6 @@ import type { DashboardActionKey } from "../components/DashboardHeader/Dashboard
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-  useDashboardTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
@@ -79,7 +78,6 @@ export type DashboardContextOwnProps = {
 };
 
 export type DashboardContextOwnResult = {
-  shouldRenderAsNightMode: boolean;
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
 };
@@ -129,11 +127,11 @@ const DashboardContextProviderInner = forwardRef(
 
       children,
 
+      theme = "light",
       background = true,
       bordered = true,
       titled = true,
       font = null,
-      theme: initTheme = "light",
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
       autoScrollToDashcardId = undefined,
@@ -190,18 +188,6 @@ const DashboardContextProviderInner = forwardRef(
       onFullscreenChange,
       ref: fullscreenRef,
     } = useDashboardFullscreen();
-
-    const {
-      hasNightModeToggle,
-      isNightMode,
-      onNightModeChange,
-      theme,
-      setTheme,
-    } = useDashboardTheme(initTheme);
-
-    const shouldRenderAsNightMode = Boolean(
-      isNightMode && (isFullscreen || isEmbeddingIframe),
-    );
 
     const handleError = useCallback(
       (error: unknown) => {
@@ -382,19 +368,14 @@ const DashboardContextProviderInner = forwardRef(
           isFullscreen,
           onFullscreenChange,
           fullscreenRef,
-          hasNightModeToggle,
-          onNightModeChange,
-          isNightMode,
-          shouldRenderAsNightMode,
           refreshPeriod,
           setRefreshElapsedHook,
           onRefreshPeriodChange,
+          theme,
           background,
           bordered,
           titled,
           font,
-          theme,
-          setTheme,
           hideParameters,
           downloadsEnabled,
           autoScrollToDashcardId,

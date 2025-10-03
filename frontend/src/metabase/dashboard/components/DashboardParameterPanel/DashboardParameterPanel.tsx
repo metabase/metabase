@@ -21,8 +21,7 @@ import S from "./DashboardParameterPanel.module.css";
 export function DashboardParameterPanel() {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
-  const { dashboard, hideParameters, isEditing, shouldRenderAsNightMode } =
-    useDashboardContext();
+  const { dashboard, hideParameters, isEditing } = useDashboardContext();
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -51,7 +50,6 @@ export function DashboardParameterPanel() {
             S.allowSticky,
             S.isSticky,
             {
-              [S.isNightMode]: shouldRenderAsNightMode,
               [S.isEmbeddingSdk]: isEmbeddingSdk(),
             },
           )}
@@ -75,7 +73,6 @@ export function DashboardParameterPanel() {
           [TransitionS.transitionThemeChange]: shouldApplyThemeChangeTransition,
           [S.allowSticky]: allowSticky,
           [S.isSticky]: isSticky,
-          [S.isNightMode]: shouldRenderAsNightMode,
           [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
         data-testid="dashboard-parameters-widget-container"

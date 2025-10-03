@@ -44,6 +44,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     downloadsEnabled,
     locale,
     hide_parameters,
+    theme,
   } = useEmbedFrameOptions({ location });
 
   const canWhitelabel = useSelector(getCanWhitelabel);
@@ -56,6 +57,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       <DashboardContextProvider
         dashboardId={dashboardId}
         hideParameters={hide_parameters}
+        theme={theme}
         background={background}
         bordered={bordered}
         downloadsEnabled={downloadsEnabled}

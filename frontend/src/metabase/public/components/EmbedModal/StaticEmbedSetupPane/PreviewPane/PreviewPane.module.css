@@ -8,4 +8,5 @@
   width: 100%;
   min-height: 17.5rem;
   background-image: var(--background-url);
+  color-scheme: normal; /* Prevents browsers from adding their own "canvas color" to the preview window */
 }

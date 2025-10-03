@@ -10,8 +10,9 @@ import {
   inputPadding,
   inputTypography,
 } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 import type { InputSize } from "../../style/types";
 
@@ -23,7 +24,7 @@ interface InputProps {
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
   hasClearButton?: boolean;
-  colorScheme: string;
+  colorScheme: ColorName;
 }
 
 interface InputRootProps {
