@@ -31,6 +31,9 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
     getSetting(state, "show-static-embed-terms"),
   );
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);
+  const applicationName = useSelector(getApplicationName);
+
+  const isEmbeddingSetupStage = embedType === null;
 
   const goToNextStep = () => {
     if (embedType === null && shouldShowEmbedTerms) {
@@ -65,10 +68,11 @@ export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
       // needed to allow selecting with the mouse on the code samples
       enableMouseEvents
     >
-      <EmbedModalHeader onClose={onEmbedClose} onBack={goBackToEmbedModal}>
-        {t`Static embedding`}
-      </EmbedModalHeader>
-
+      {!isEmbeddingSetupStage && (
+        <EmbedModalHeader onClose={onEmbedClose} onBack={goBackToEmbedModal}>
+          {t`Static embedding`}
+        </EmbedModalHeader>
+      )}
       {children({ embedType, goToNextStep, goBackToEmbedModal })}
     </Modal>
   );
