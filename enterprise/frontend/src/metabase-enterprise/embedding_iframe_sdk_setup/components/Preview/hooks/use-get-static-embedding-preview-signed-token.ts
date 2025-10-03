@@ -7,7 +7,6 @@ import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/St
 import { getSignedToken } from "metabase/public/lib/embed";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
-import { getStaticEmbeddingResourceType } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-static-embedding-resource-type";
 
 export const useGetStaticEmbeddingPreviewSignedToken = () => {
   const siteUrl = useSetting("site-url");
@@ -15,12 +14,10 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
 
   const [signedToken, setSignedToken] = useState("");
 
-  const { settings, availableParameters, embeddingParameters } =
+  const { settings, resourceType, availableParameters, embeddingParameters } =
     useSdkIframeEmbedSetupContext();
 
   const { parameterValuesById: parameterValues } = useParameters();
-
-  const resourceType = getStaticEmbeddingResourceType(settings);
 
   const previewParamsBySlug = useMemo(
     () =>

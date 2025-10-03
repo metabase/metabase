@@ -3,21 +3,20 @@ import { useLatest } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import type { EmbedResourceType } from "metabase/public/lib/types";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
-import type { SdkIframeEmbedSetupExperience } from "../types";
-
 type UseParameterListProps = {
-  experience: SdkIframeEmbedSetupExperience;
   resource: Dashboard | Card | null;
+  resourceType: EmbedResourceType | null;
 };
 
 export const useParameters = ({
-  experience,
   resource,
+  resourceType,
 }: UseParameterListProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -33,7 +32,11 @@ export const useParameters = ({
 
   // Extract parameters from the loaded dashboard/card
   const availableParameters = useMemo((): Parameter[] => {
-    if (experience === "dashboard" && resource) {
+    if (!resource || !resourceType) {
+      return [];
+    }
+
+    if (resourceType === "dashboard") {
       const dashboard = resource as Dashboard;
       return getSavedDashboardUiParameters(
         dashboard.dashcards,
@@ -41,13 +44,13 @@ export const useParameters = ({
         dashboard.param_fields,
         metadata,
       );
-    } else if (experience === "chart" && resource) {
+    } else if (resourceType === "question") {
       const card = resource as Card;
       return getCardUiParameters(card as Card, metadataRef.current) || [];
     }
 
     return [];
-  }, [experience, resource, metadata, metadataRef]);
+  }, [resource, resourceType, metadata, metadataRef]);
 
   useEffect(() => {
     if (!resource) {

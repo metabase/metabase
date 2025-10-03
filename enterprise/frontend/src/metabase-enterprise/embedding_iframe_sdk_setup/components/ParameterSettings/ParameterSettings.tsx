@@ -10,7 +10,6 @@ import { Group, Stack, Text } from "metabase/ui";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
-import { getStaticEmbeddingResourceType } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-static-embedding-resource-type";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValueOrArray } from "metabase-types/api";
@@ -25,6 +24,7 @@ export const ParameterSettings = () => {
     experience,
     settings,
     updateSettings,
+    resourceType,
     availableParameters,
     embeddingParameters,
     isLoading,
@@ -110,8 +110,6 @@ export const ParameterSettings = () => {
       availableParameters,
       embeddingParameters,
     );
-
-    const resourceType = getStaticEmbeddingResourceType(settings);
 
     if (!resourceType) {
       return null;

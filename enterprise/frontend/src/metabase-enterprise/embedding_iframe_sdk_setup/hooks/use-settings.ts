@@ -20,7 +20,7 @@ import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-ifram
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession", "isStatic"]);
+  return _.pick(settings, ["theme", "useExistingUserSession"]);
 };
 
 const usePersistedSettings = () => {
