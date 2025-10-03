@@ -79,12 +79,12 @@ export function parseTimestamp(
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
   } else if (typeof value === "number") {
-    if (value < 1000) {
-      // use strict parsing to bypass small numbers like 1
-      result = dayjs.utc(value, "", true);
-    } else {
-      result = dayjs.utc(value.toString());
-    }
+    // if (value < 1000) {
+    //   // use strict parsing to bypass small numbers like 1
+    //   result = dayjs.utc(value, "", true);
+    // } else {
+    result = dayjs.utc(value.toString());
+    // }
   } else {
     result = dayjs.utc(value);
   }
@@ -109,7 +109,8 @@ export function formatFrame(frame: "first" | "last" | "mid") {
 }
 
 export function timezoneToUTCOffset(timezone: string) {
-  return dayjs().tz(timezone).format("Z");
+  // Use a fixed date in winter (non-DST) to get consistent offsets
+  return dayjs("2024-07-01").tz(timezone).format("Z");
 }
 
 export function parseTime(value: Dayjs | string) {
