@@ -18,6 +18,7 @@ import type { DependencyEntry } from "metabase-types/api";
 import { EntryNodePicker } from "./EntryNodePicker";
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
+import { MAX_ZOOM_LEVEL, MIN_ZOOM_LEVEL } from "./constants";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
 
@@ -54,6 +55,8 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
       edges={edges}
       nodeTypes={NODE_TYPES}
       fitView
+      minZoom={MIN_ZOOM_LEVEL}
+      maxZoom={MAX_ZOOM_LEVEL}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
     >
