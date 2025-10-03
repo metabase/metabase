@@ -10,7 +10,7 @@ import { getNodeIcon, getNodeLabel } from "./utils";
 
 type ItemNodeProps = NodeProps<Node<ItemData>>;
 
-export const ItemNode = memo(function EntityNode({
+export const ItemNode = memo(function ItemNode({
   id,
   data,
   isConnectable,
