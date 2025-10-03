@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import EditableTextBase from "metabase/common/components/EditableText";
 import Select from "metabase/common/components/Select";
 import SelectButton from "metabase/common/components/SelectButton";
-import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
   display: flex;
@@ -14,14 +13,14 @@ export const Container = styled.div`
   width: 100%;
   background-color: var(--mb-color-bg-white);
   border-bottom: 1px solid var(--mb-color-border);
-  padding: ${space(2)} ${space(3)};
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-xl);
 `;
 
 export const LeftHeader = styled.div`
   display: flex;
   align-items: center;
   color: var(--mb-color-text-medium);
-  gap: ${space(2)};
+  gap: var(--mantine-spacing-md);
 `;
 
 export const EditableText = styled(EditableTextBase)`
@@ -55,6 +54,6 @@ export const ActionButtons = styled.div`
   /* Since the button is borderless, adding the negative margin
      will make it look flush with the container */
   &:last-child {
-    margin-right: -${space(1)};
+    margin-right: var(--mantine-spacing-sm);
   }
 `;
