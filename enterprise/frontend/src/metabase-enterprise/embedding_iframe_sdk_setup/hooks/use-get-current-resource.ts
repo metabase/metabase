@@ -4,56 +4,40 @@ import { skipToken, useGetCardQuery } from "metabase/api";
 import { fetchDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import type { EmbedResourceType } from "metabase/public/lib/types";
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
+import type {
+  SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
+} from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 import type { Card, Dashboard } from "metabase-types/api";
 
-const getResourceData = ({
+const getResource = ({
+  experience,
   dashboard,
-  isDashboardLoading,
   card,
-  isCardLoading,
 }: {
+  experience: SdkIframeEmbedSetupExperience;
   dashboard: Dashboard | null | undefined;
-  isDashboardLoading: boolean;
   card: Card | null | undefined;
-  isCardLoading: boolean;
 }) => {
   const isResourceWithDifferentTypeLoading =
-    (dashboard && isCardLoading) || (card && isDashboardLoading);
+    (dashboard && experience !== "dashboard") ||
+    (card && experience !== "chart");
 
   if (isResourceWithDifferentTypeLoading) {
-    return {
-      resource: null,
-      resourceType: null,
-    };
+    return null;
   }
 
-  if (dashboard) {
-    return {
-      resource: dashboard,
-      resourceType: "dashboard",
-    } as const;
-  } else if (card) {
-    return {
-      resource: card,
-      resourceType: "question",
-    } as const;
-  } else {
-    return {
-      resource: null,
-      resourceType: null,
-    };
-  }
+  return dashboard ?? card ?? null;
 };
 
 export const useGetCurrentResource = ({
+  experience,
   settings,
 }: {
+  experience: SdkIframeEmbedSetupExperience;
   settings: SdkIframeEmbedSetupSettings;
 }): {
   resource: Dashboard | Card | null;
-  resourceType: EmbedResourceType | null;
   isLoading: boolean;
   isFetching: boolean;
 } => {
@@ -85,16 +69,14 @@ export const useGetCurrentResource = ({
   const isLoading = isDashboardLoading || isCardLoading;
   const isFetching = isCardFetching;
 
-  const { resource, resourceType } = getResourceData({
+  const resource = getResource({
+    experience,
     dashboard,
-    isDashboardLoading,
     card,
-    isCardLoading,
   });
 
   return {
     resource,
-    resourceType,
     isLoading,
     isFetching,
   };

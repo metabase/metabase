@@ -20,7 +20,7 @@ import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-ifram
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
 ) => {
-  return _.pick(settings, ["theme", "useExistingUserSession"]);
+  return _.pick(settings, ["theme", "useExistingUserSession", "isStatic"]);
 };
 
 const usePersistedSettings = () => {
@@ -62,19 +62,19 @@ export const useSettings = ({
     return match([urlParams.resourceType, urlParams.resourceId])
       .with(["dashboard", P.nonNullable], ([, resourceId]) =>
         getDefaultSdkIframeEmbedSettings({
-          resourceType: "dashboard",
+          experience: "dashboard",
           resourceId,
         }),
       )
       .with(["question", P.nonNullable], ([, resourceId]) =>
         getDefaultSdkIframeEmbedSettings({
-          resourceType: "chart",
+          experience: "chart",
           resourceId,
         }),
       )
       .otherwise(() =>
         getDefaultSdkIframeEmbedSettings({
-          resourceType: "dashboard",
+          experience: "dashboard",
           resourceId: recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
         }),
       );

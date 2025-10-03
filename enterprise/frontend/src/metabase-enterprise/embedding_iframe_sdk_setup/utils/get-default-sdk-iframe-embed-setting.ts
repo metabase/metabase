@@ -14,13 +14,13 @@ import type {
 } from "../types";
 
 export const getDefaultSdkIframeEmbedSettings = ({
-  resourceType,
+  experience,
   resourceId,
 }: {
-  resourceType: SdkIframeEmbedSetupExperience;
+  experience: SdkIframeEmbedSetupExperience;
   resourceId: SdkDashboardId | SdkQuestionId;
 }): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(resourceType)
+  const templateDefaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({

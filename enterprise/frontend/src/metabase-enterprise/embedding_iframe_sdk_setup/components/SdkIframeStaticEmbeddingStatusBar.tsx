@@ -11,6 +11,7 @@ import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/Sta
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
+import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 import { isStepWithResource } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/is-step-with-resource";
 
 type Props = Pick<StaticEmbedSetupPaneProps, "resource" | "resourceType"> & {
@@ -98,11 +99,13 @@ export const SdkIframeStaticEmbeddingStatusBar = () => {
     currentStep,
     settings,
     resource,
-    resourceType,
+    experience,
     initialEmbeddingParameters,
   } = useSdkIframeEmbedSetupContext();
 
   const isStaticEmbedding = !!settings.isStatic;
+
+  const resourceType = getResourceTypeFromExperience(experience);
 
   const shouldShowForStep = isStepWithResource(currentStep);
   const shouldShowForResource =

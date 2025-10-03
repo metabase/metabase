@@ -1,9 +1,6 @@
 import { createContext, useContext } from "react";
 
-import type {
-  EmbedResourceType,
-  EmbeddingParameters,
-} from "metabase/public/lib/types";
+import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type {
@@ -23,7 +20,6 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Loaded resources
   resource: Dashboard | Card | null;
-  resourceType: EmbedResourceType | null;
   isLoading: boolean;
   isFetching: boolean;
 

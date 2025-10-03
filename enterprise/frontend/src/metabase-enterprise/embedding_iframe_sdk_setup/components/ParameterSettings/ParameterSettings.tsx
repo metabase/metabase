@@ -9,6 +9,7 @@ import { getLockedPreviewParameters } from "metabase/public/components/EmbedModa
 import { Group, Stack, Text } from "metabase/ui";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -24,7 +25,6 @@ export const ParameterSettings = () => {
     experience,
     settings,
     updateSettings,
-    resourceType,
     availableParameters,
     embeddingParameters,
     isLoading,
@@ -110,6 +110,7 @@ export const ParameterSettings = () => {
       availableParameters,
       embeddingParameters,
     );
+    const resourceType = getResourceTypeFromExperience(experience);
 
     if (!resourceType) {
       return null;

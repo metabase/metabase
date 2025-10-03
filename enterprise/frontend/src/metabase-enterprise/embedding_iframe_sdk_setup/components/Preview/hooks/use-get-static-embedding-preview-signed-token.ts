@@ -7,6 +7,7 @@ import { getPreviewParamsBySlug } from "metabase/public/components/EmbedModal/St
 import { getSignedToken } from "metabase/public/lib/embed";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
+import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 
 export const useGetStaticEmbeddingPreviewSignedToken = () => {
   const siteUrl = useSetting("site-url");
@@ -14,7 +15,7 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
 
   const [signedToken, setSignedToken] = useState("");
 
-  const { settings, resourceType, availableParameters, embeddingParameters } =
+  const { settings, experience, availableParameters, embeddingParameters } =
     useSdkIframeEmbedSetupContext();
 
   const { parameterValuesById: parameterValues } = useParameters();
@@ -31,6 +32,7 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
 
   useDeepCompareEffect(() => {
     const generate = async () => {
+      const resourceType = getResourceTypeFromExperience(experience);
       const token = resourceType
         ? await getSignedToken(
             resourceType,
@@ -48,7 +50,7 @@ export const useGetStaticEmbeddingPreviewSignedToken = () => {
   }, [
     siteUrl,
     previewParamsBySlug,
-    resourceType,
+    experience,
     settings.dashboardId,
     settings.questionId,
     secretKey,
