@@ -1,17 +1,11 @@
-import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useRunPython } from "metabase-enterprise/transforms-python/hooks/use-run-python";
 import type {
   PythonTransformSource,
   PythonTransformTableAliases,
-  RowValue,
   Table,
   TableId,
 } from "metabase-types/api";
-
-import { DataFetcher } from "../../services/data-fetcher";
-import type { PythonExecutionResult } from "../../services/pyodide-worker-pool";
 
 import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
@@ -148,63 +142,6 @@ ${tableAliases
 `;
 
   return script + functionTemplate;
-}
-
-type TransformData = {
-  columns: string[];
-  data: Record<string, RowValue>[];
-};
-
-type TestPythonScriptState = {
-  isRunning: boolean;
-  isDirty: boolean;
-  executionResult: PythonExecutionResult<TransformData> | null;
-  run: () => void;
-  cancel: () => void;
-};
-
-export function useTestPythonTransform(
-  source: PythonTransformSourceDraft,
-): TestPythonScriptState {
-  const { isRunning, cancel, data, executePython } =
-    useRunPython<TransformData>(["numpy", "pandas"]);
-
-  const run = useCallback(async () => {
-    // Fetch data for each table
-    const sources = await Promise.all(
-      Object.entries(source["source-tables"]).map(
-        async ([variableName, tableId]) => {
-          // Fetch table metadata to get the actual table name and schema
-          const tableResponse = await fetch(`/api/table/${tableId}`);
-          const tableData = await tableResponse.json();
-
-          // Fetch 1 row of data
-          const transformSource = await DataFetcher.fetchTableData({
-            databaseId: source["source-database"] as number,
-            tableName: tableData.name,
-            schemaName: tableData.schema,
-            limit: 1,
-          });
-
-          return {
-            ...transformSource,
-            variable_name: variableName,
-            database_id: source["source-database"] as number,
-          };
-        },
-      ),
-    );
-
-    executePython(source.body, sources);
-  }, [source, executePython]);
-
-  return {
-    isRunning,
-    isDirty: true,
-    cancel,
-    run,
-    executionResult: data,
-  };
 }
 
 export function isPythonTransformSource(

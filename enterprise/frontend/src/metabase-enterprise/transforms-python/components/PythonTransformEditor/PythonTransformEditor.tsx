@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
+import { useTestPythonTransform } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type {
   DatabaseId,
   PythonTransformSource,
@@ -17,7 +18,6 @@ import {
   getValidationResult,
   isPythonTransformSource,
   updateTransformSignature,
-  useTestPythonTransform,
 } from "./utils";
 
 export type PythonTransformSourceDraft = {
