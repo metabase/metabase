@@ -29,7 +29,7 @@
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `qp.settings/absolute-max-results`"
     (is (= test-max-results
-           (-> (limit! {:type :native}) mt/rows count)))))
+           (-> (limit! {:type :native, :native {:query "SELECT 1;"}}) mt/rows count)))))
 
 (deftest ^:parallel disable-max-results-test
   (testing "Apply `absolute-max-results` limit in the default case"
@@ -63,7 +63,7 @@
   (testing "Apply a max-results-bare-rows limit specifically on no-aggregation query"
     (let [query  {:constraints {:max-results 46}
                   :type        :query
-                  :query       {}}
+                  :query       {:source-table 1}}
           result (limit! query)]
       (is (= 46
              (-> result mt/rows count))

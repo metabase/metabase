@@ -194,17 +194,17 @@
           (is (:id (setup! 200 assoc-in [:user :last_name] nil)))))
       (testing "email"
         (testing "missing"
-          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+          (is (=? {:errors          {:user {:email "value must be a valid email address."}}
                    :specific-errors {:user {:email ["missing required key, received: nil"]}}}
                   (setup! m/dissoc-in [:user :email]))))
         (testing "invalid"
-          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+          (is (=? {:errors          {:user {:email "value must be a valid email address."}}
                    :specific-errors {:user {:email ["valid email address, received: \"anything\""]}}}
                   (setup! assoc-in [:user :email] "anything")))))
       (testing "password"
         (testing "missing"
           (is (=? {:specific-errors {:user {:password ["missing required key, received: nil"]}}
-                   :errors          {:user #(str/includes? % ":password -> <password is too common.>")}}
+                   :errors          {:user {:password "password is too common."}}}
                   (setup! m/dissoc-in [:user :password]))))
         (testing "invalid"
           (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"anything\""]}}}

@@ -134,15 +134,15 @@
                                  :native   {:query "SELECT pg_sleep(15), 2 AS two"}}))))))
 
 (deftest ^:parallel key-order-should-not-affect-query-hash-test
-  (is (= "69732035b7a82a21d30f97d87a28e3b1701c9df7e88d0637708283ced8a909f1"
+  (is (= "915d52e11063543602921c37e792e60ec5667846a20f517a1080ad64600a92e6"
          (query-hash-hex {:parameters [{:value 1, :name "parameter"}]})
          (query-hash-hex {:parameters [{:name "parameter", :value 1}]}))))
 
 (deftest ^:parallel parameter-order-should-not-affect-query-hash-test
-  (is (= "4a577dcd52dbe5a059d3bbe9eff752cc6a6b5eb2e3d5a56115dc37412116ebe1"
+  (is (= "6e569604fa10aed0cb3b4625991e9f07ba264462ea72fe6251bb2060709af9e0"
          (query-hash-hex {:parameters [{:name "parameter", :value ["a" "b"]}]})
          (query-hash-hex {:parameters [{:name "parameter", :value ["b" "a"]}]})))
-  (is (= "98d1c4bf0dbe9b2c7d9997a5266bb37ca7fd09d60638b81d96292278a594c2e4"
+  (is (= "5cf17924f3e572edbad58dfd8a6f78953d25d234ed5bc23d98d922b48e9bfa61"
          (query-hash-hex {:parameters [{:name "parameter", :value [1 2]}]})
          (query-hash-hex {:parameters [{:name "parameter", :value [2 1]}]}))))
 
