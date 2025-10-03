@@ -119,7 +119,25 @@
                                                           :path           "metabase/channel/email/comment_created.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
-                                            :details {:pattern "{{payload.event_info.email}}"}}]}]}]))
+                                            :details {:pattern "{{payload.event_info.email}}"}}]}]}
+
+          ;; user invitation reminder
+          {:internal_id   "system-event/user-invitation-reminder"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/user-invitation-reminder}]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "User Invitation Reminder Email template"
+                                           :channel_type :channel/email
+                                           :details      {:type           "email/handlebars-resource"
+                                                          :subject        "{{payload.event_info.details.subject}}"
+                                                          :path           "metabase/channel/email/invitation_reminder_notification.hbs"
+                                                          :recipient-type "cc"}}
+                            :recipients   [{:type    :notification-recipient/template
+                                            :details {:pattern "{{payload.event_info.object.email}}"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]
