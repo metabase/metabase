@@ -29,14 +29,20 @@ export interface CompactCurrencyOptions {
   currency_style: CurrencyStyle;
 }
 
-let currencyMapCache: Record<string, CurrencyInfo>;
+const getCurrencyMapCache = (() => {
+  let currencyMapCache: Record<string, CurrencyInfo>;
+
+  return () => {
+    if (!currencyMapCache) {
+      currencyMapCache = Object.fromEntries(currency);
+    }
+
+    return currencyMapCache;
+  };
+})();
 
 export function getCurrencySymbol(currencyCode: string): string {
-  if (!currencyMapCache) {
-    // only turn the array into a map if we call this function
-    currencyMapCache = Object.fromEntries(currency);
-  }
-  return currencyMapCache[currencyCode]?.symbol || currencyCode || "$";
+  return getCurrencyMapCache()[currencyCode]?.symbol || currencyCode || "$";
 }
 
 export const COMPACT_CURRENCY_OPTIONS: CompactCurrencyOptions = {
