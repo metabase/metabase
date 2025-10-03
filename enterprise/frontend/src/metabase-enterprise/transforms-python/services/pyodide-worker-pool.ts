@@ -39,8 +39,13 @@ export class PyodideWorkerPool {
   }
 
   private getWorker(): PyodideWorker {
+    // add a new worker to the pool so there is always at least one
     this.workers.push(new PyodideWorker(this.packages));
-    return this.workers.shift() ?? new PyodideWorker(this.packages);
+
+    // pick a worker that is ready if possible
+    const idx = this.workers.findIndex((worker) => worker.isReady);
+    const jdx = idx === -1 ? 0 : idx;
+    return this.workers.splice(jdx, 1)[0] ?? new PyodideWorker(this.packages);
   }
 
   async executePython(
@@ -55,7 +60,8 @@ export class PyodideWorkerPool {
 
 class PyodideWorker {
   private worker: Worker;
-  private ready: Promise<ReadyMessage>;
+  private ready: Promise<void>;
+  isReady: boolean;
 
   constructor(packages: string[] = []) {
     const url = new URL("/app/assets/pyodide.worker.js", window.location.href);
@@ -63,8 +69,11 @@ class PyodideWorker {
       url.searchParams.append("packages", pkg);
     }
 
+    this.isReady = false;
     this.worker = new Worker(url.toString());
-    this.ready = waitFor(this.worker, "ready", 10000);
+    this.ready = waitFor(this.worker, "ready", 10000).then(() => {
+      this.isReady = true;
+    });
   }
 
   async executePython(
