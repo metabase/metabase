@@ -67,8 +67,7 @@
              (str/starts-with? x "env:"))
     (subs x 4)))
 
-(defn ref->id
-  "Find database ID by name or ref. Returns nil if not found."
+(defn- ref->id*
   [entity-ref ref-index]
   (cond
     (integer? entity-ref)
@@ -77,16 +76,30 @@
     (ref? entity-ref)
     (->> (unref entity-ref)
          (get ref-index)
-         :id)
+         :id)))
 
-    (nil? entity-ref)
-    nil
+(defn ref->id
+  "Find entity ID by name or ref. Returns nil if not found."
+  [entity-ref ref-index]
+  (or (ref->id* entity-ref ref-index)
+      (throw
+       (ex-info "Could not process entity ref!"
+                {:entity-ref entity-ref
+                 :ref-index ref-index}))))
 
-    :else
-    (throw
-     (ex-info "Could not process entity ref!"
-              {:entity-ref entity-ref
-               :ref-index ref-index}))))
+(defn resolve-database-id
+  "Finds database-id, either by finding it in the ref-index or by looking it up by name.
+  `database-ref` can be one of:
+   - integer: assumed to be ID
+   - ref: we look it up in the ref-index
+   - string: we assume this is database-name and try to find it"
+  [database-ref ref-index]
+  (or (ref->id* database-ref ref-index)
+      (when (string? database-ref)
+        (t2/select-one-pk :model/Database :name database-ref))
+      (throw (ex-info "Could not resolve database!"
+                      {:database-ref database-ref
+                       :ref-index ref-index}))))
 
 (def representations-export-dir
   "The dir where POC import/export representations are stored."

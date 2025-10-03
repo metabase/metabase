@@ -84,12 +84,9 @@
   [{question-name :name
     :keys [_type _ref entity-id description database collection] :as representation}
    ref-index]
-  (let [database-id (v0-common/ref->id database ref-index)
-        query (v0-mbql/import-dataset-query representation ref-index)]
-    (when-not database-id
-      (throw (ex-info (str "Database not found: " database)
-                      {:database database
-                       :index ref-index})))
+  (let [database-id (v0-common/resolve-database-id database ref-index)
+        query (-> (assoc representation :database database-id)
+                  (v0-mbql/import-dataset-query ref-index))]
     {:entity_id (or entity-id
                     (v0-common/generate-entity-id representation))
      :creator_id (or api/*current-user-id*

@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -220,117 +219,15 @@
   (when type-str
     (keyword (str/trim type-str))))
 
-(defn- process-column-metadata
-  "Process column definitions from the representation into result_metadata format."
-  [columns]
-  (when (seq columns)
-    (mapv (fn [col]
-            (let [;; Extract all the fields
-                  {:keys [name display_name description base_type effective_type
-                          semantic_type visibility currency
-                          ;; New fields from enriched metadata
-                          database_type table_id active id position
-                          source source_alias field_ref
-                          fingerprint visibility_type
-                          unit inherited_temporal_unit]
-                   ;; Handle lib/* namespaced keys separately
-                   :as col-map} col
-                  ;; Extract lib/* keys and convert string values to keywords where appropriate
-                  lib-keys (into {}
-                                 (map (fn [[k v]]
-                                        [k (if (and (string? v)
-                                                    (or (str/starts-with? v "source/")
-                                                        (str/starts-with? v "type/")))
-                                             (keyword v)
-                                             v)])
-                                      (filter (fn [[k _]]
-                                                (and (keyword? k)
-                                                     (= "lib" (namespace k))))
-                                              col-map)))
-                  ;; Also handle qp/* keys
-                  qp-keys (into {}
-                                (filter (fn [[k _]]
-                                          (and (keyword? k)
-                                               (= "qp" (namespace k))))
-                                        col-map))
-                  ;; Normalize types
-                  normalized-base (normalize-type-name base_type)
-                  normalized-eff (normalize-type-name effective_type)
-                  normalized-sem (normalize-type-name semantic_type)
-                  ;; For field_ref, we need a valid base type (not semantic/relation type)
-                  ;; Check if it's actually a base type using isa?
-                  valid-base-type? (fn [t]
-                                     (and t
-                                          (isa? t :type/*)
-                                          (not (isa? t :Semantic/*))
-                                          (not (isa? t :Relation/*))))
-                  field-base-type (cond
-                                    (valid-base-type? normalized-base) normalized-base
-                                    (valid-base-type? normalized-eff) normalized-eff
-                                    :else :type/Text) ; Default fallback
-                  ;; Process provided field_ref, converting strings to keywords in the options map
-                  process-field-ref (fn [ref]
-                                      (when ref
-                                        (if (and (vector? ref) (= 3 (count ref)))
-                                          (let [[tag id-or-name opts] ref]
-                                            [tag id-or-name
-                                             (if (map? opts)
-                                               (into {} (map (fn [[k v]]
-                                                               [k (if (and (string? v)
-                                                                           (str/starts-with? v "type/"))
-                                                                    (keyword v)
-                                                                    v)])
-                                                             opts))
-                                               opts)])
-                                          ref)))
-                  ;; Use provided field_ref or construct one
-                  final-field-ref (or (process-field-ref field_ref)
-                                      [:field name {:base-type field-base-type}])]
-              (merge
-               ;; Base required fields
-               {:name name
-                :display_name (or display_name name)
-                :field_ref final-field-ref}
-               ;; Optional fields
-               (when description {:description description})
-               (when normalized-base {:base_type normalized-base})
-               (when normalized-eff {:effective_type normalized-eff})
-               (when normalized-sem {:semantic_type normalized-sem})
-               ;; Convert visibility_type to keyword
-               (when (or visibility visibility_type)
-                 {:visibility_type (keyword (or visibility_type visibility))})
-               (when currency {:currency currency})
-               ;; Additional metadata fields
-               (when database_type {:database_type database_type})
-               (when table_id {:table_id table_id})
-               (when (some? active) {:active active})
-               (when id {:id id})
-               (when position {:position position})
-               ;; Convert source to keyword
-               (when source {:source (keyword source)})
-               (when source_alias {:source_alias source_alias})
-               (when fingerprint {:fingerprint fingerprint})
-               ;; Convert unit to keyword
-               (when unit {:unit (keyword unit)})
-               ;; Convert inherited_temporal_unit to keyword
-               (when inherited_temporal_unit {:inherited_temporal_unit (keyword inherited_temporal_unit)})
-               ;; Add all lib/* namespaced keys (with converted values)
-               lib-keys
-               ;; Add all qp/* namespaced keys
-               qp-keys)))
-          columns)))
-
 ;;; ------------------------------------ Public API ------------------------------------
 
 (defmethod import/yaml->toucan :v0/model
   [{model-name :name
     :keys [_type _ref description database collection columns] :as representation}
    ref-index]
-  (let [database-id (v0-common/ref->id database ref-index)
-        dataset-query (v0-mbql/import-dataset-query representation ref-index)]
-    (when-not database-id
-      (throw (ex-info (str "Database not found: " database)
-                      {:database database})))
+  (let [database-id (v0-common/resolve-database-id database ref-index)
+        dataset-query (-> (assoc representation :database database-id)
+                          (v0-mbql/import-dataset-query ref-index))]
     (merge
      {:name model-name
       :description (or description "")
@@ -341,7 +238,7 @@
       :query_type (if (= (:type dataset-query) "native") :native :query)
       :type :model}
      (when columns
-       {:result_metadata (process-column-metadata columns)})
+       {:result_metadata columns})
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
@@ -363,6 +260,53 @@
                                                                  config/internal-mb-user-id))
                                           (assoc :entity_id entity-id))]
           (first (t2/insert-returning-instances! :model/Card model-data-with-creator)))))))
+
+;; Debugging code:
+#_(comment
+    (defn- dataset-query->query
+      "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
+      ([dataset-query]
+       (some-> (:database dataset-query)
+               lib-be/application-database-metadata-provider
+               (dataset-query->query dataset-query)))
+      ([metadata-provider dataset-query]
+       (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
+    [metabase.lib-be.core :as lib-be]
+    [metabase.lib.core :as lib]
+    [metabase.queries.models.card.metadata :as card.metadata]
+    ;; Regenerate result_metadata by running the query to ensure all lib/* keys are present
+    (log/info "Regenerating result_metadata for model" (:name persisted-card))
+    (try
+      (let [;; Clear result_metadata temporarily to force regeneration
+            card-for-regeneration (assoc persisted-card :result_metadata nil)
+            #_#_dataset-query (->> (:dataset_query card-for-regeneration)
+                                   (lib/->pMBQL)
+                                   (lib/query (lib/application-database-metadata-provider database-id)))
+            returned-columns (lib/returned-columns (dataset-query->query (:dataset_query persisted-card)))
+            _ (println "APPLEBANANA")
+            _ (clojure.pprint/pprint returned-columns)
+            ;;(card.metadata/populate-result-metadata card-for-regeneration {})
+            ;; Build a map of column name -> custom metadata from the imported YAML
+            custom-metadata (when-let [imported-meta (:result_metadata model-data)]
+                              (into [] (map (fn [col]
+                                              (select-keys col [:display_name :description :semantic_type :visibility_type :currency]))
+                                            imported-meta)))
+            ;; Merge custom metadata into regenerated metadata, preserving lib/* keys
+            merged-metadata (when returned-columns
+                              (mapv (fn [custom-metadata computed-metadata]
+                                      (merge computed-metadata custom-metadata))
+                                    custom-metadata
+                                    returned-columns))]
+        (println 'MERGED-METADATA)
+        (clojure.pprint/pprint custom-metadata)
+        #_(when merged-metadata
+            (t2/update! :model/Card (:id persisted-card) {:result_metadata merged-metadata})
+            (log/info "Successfully regenerated and merged result_metadata for model" (:name persisted-card)))
+        #_(t2/select-one :model/Card :id (:id persisted-card))
+        persisted-card)
+      (catch Exception e
+        (log/warn e "Failed to regenerate result_metadata for model" (:name persisted-card) "- using imported metadata")
+        persisted-card)))
 
 ;;; -- Export --
 
@@ -392,12 +336,18 @@
   (-> card
       (update-source-table)))
 
+(defn- patch-refs-for-export [query]
+  (-> query
+      (v0-mbql/->ref-database)
+      (v0-mbql/->ref-source-table)
+      (v0-mbql/->ref-fields)))
+
 (defmethod export/export-entity :model [card]
-  (let [query (serdes/export-mbql (:dataset_query card))]
+  (let [query (patch-refs-for-export (:dataset_query card))]
     (cond-> {:name (:name card)
              ;;:version "question-v0"
              :type (:type card)
-             :ref (->ref card)
+             :ref (v0-common/unref (v0-common/->ref (:id card) :model))
              :description (:description card)}
 
       (= :native (:type query))
@@ -406,10 +356,11 @@
 
       (= :query (:type query))
       (assoc :mbql_query (:query query)
-             :database (:database query))
+             :database (:database query)
+             :columns (:result_metadata card))
 
-      :always
-      patch-refs
+      ;;:always
+      ;;patch-refs
 
       :always
       u/remove-nils)))
