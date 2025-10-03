@@ -48,7 +48,7 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
         ref={ref}
         style={style}
       >
-        <CommentsButton
+        <CommentsButton<typeof ForwardRefLink>
           variant={active ? "filled" : "default"}
           unresolvedCommentsCount={unresolvedCommentsCount}
           component={ForwardRefLink}
