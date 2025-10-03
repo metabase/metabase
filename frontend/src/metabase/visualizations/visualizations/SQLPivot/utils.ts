@@ -4,6 +4,37 @@ import _ from "underscore";
 import { isNumber, isString } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, DatasetData } from "metabase-types/api";
 
+/**
+ * Rounds a number to the specified number of decimal places using half-round-to-even (banker's rounding).
+ * This means that when the digit to be rounded is exactly 5, it rounds to the nearest even number.
+ *
+ * @param value - The number to round
+ * @param decimals - The number of decimal places to round to
+ * @returns The rounded number
+ *
+ * @example
+ * halfRoundToEven(54.165, 2) // returns 54.16
+ * halfRoundToEven(54.155, 2) // returns 54.16
+ * halfRoundToEven(54.175, 2) // returns 54.18
+ */
+function halfRoundToEven(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  const scaled = value * factor;
+
+  // Check if the fractional part is exactly 0.5
+  const fractionalPart = scaled - Math.floor(scaled);
+  const isHalf = Math.abs(fractionalPart - 0.5) < Number.EPSILON;
+
+  if (isHalf) {
+    // For half values, round to even
+    const integerPart = Math.floor(scaled);
+    return (integerPart % 2 === 0 ? integerPart : integerPart + 1) / factor;
+  } else {
+    // For non-half values, use standard rounding
+    return Math.round(scaled) / factor;
+  }
+}
+
 export interface SQLPivotSettings {
   "sqlpivot.row_columns"?: string | string[];
   "sqlpivot.column_dimension"?: string;
@@ -555,7 +586,10 @@ function transformToMatrixPivot(
 
         const average =
           values.length > 0
-            ? values.reduce((sum, val) => sum + val, 0) / values.length
+            ? halfRoundToEven(
+                values.reduce((sum, val) => sum + val, 0) / values.length,
+                2,
+              )
             : null;
 
         mainRow.push(average as any);
