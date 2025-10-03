@@ -30,8 +30,8 @@ on:
         type: number
       python-runner-version:
         type: string
-        default: '0.0.1'
-        description: 'Version of the python-runner Docker image to use'
+        default: 'v0.0.1'
+        description: 'Git tag or commit of python-runner repository to use'
         required: false
 
 jobs:
@@ -72,8 +72,7 @@ jobs:
       - name: Setup python-runner
         uses: ./.github/actions/setup-python-runner
         with:
-          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
-          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           python-runner-version: ${{ inputs.python-runner-version }}
 
       - name: Prepare Docker containers
