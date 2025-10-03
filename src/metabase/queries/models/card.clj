@@ -1129,7 +1129,7 @@
     ;; skip publishing the event if it's just a change in its collection position
     (when-not (= #{:collection_position}
                  (set (keys card-updates)))
-      (events/publish-event! :event/card-update {:object #p card :user-id api/*current-user-id*}))
+      (events/publish-event! :event/card-update {:object card :user-id api/*current-user-id*}))
     card))
 
 (defn sole-dashboard-id
