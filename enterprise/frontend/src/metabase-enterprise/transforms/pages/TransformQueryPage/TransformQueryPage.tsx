@@ -7,15 +7,14 @@ import { skipToken } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import {
-  useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
@@ -123,9 +122,28 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  if (transform.source.type === "python") {
+    return (
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+		transform={transform}
+        initialSource={transform.source}
+        proposedSource={
+          proposedSource?.type === "python" ? proposedSource : undefined
+        }
+        isNew={false}
+        isSaving={isLoading}
+        onSave={handleSourceSave}
+        onCancel={handleCancel}
+        onRejectProposed={onRejectProposed}
+        onAcceptProposed={onAcceptProposed}
+      />
+    );
+  }
+
   return (
-    <AdminSettingsLayout fullWidth key={transform.id}>
-      <TransformEditorBody
+    <>
+      <QueryEditor
+        initialSource={transform.source}
         transform={transform}
         initialSource={transform.source}
         proposedSource={proposedSource}

@@ -112,7 +112,6 @@ export const ItemsListSection = ({
           <Button
             variant="filled"
             color="brand"
-            compact
             leftSection={<Icon name="add" size={12} />}
             onClick={onAddNewItem}
           />
