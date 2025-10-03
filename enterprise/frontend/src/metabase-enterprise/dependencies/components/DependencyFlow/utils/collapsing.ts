@@ -34,14 +34,9 @@ function getGraphWithCollapsedNode(
   hideNodeSources(nodeId, edgesByTargetId, collapsedNodeIds, collapsedEdgeIds);
 
   return {
-    nodes: nodes.map((node) => {
-      if (node.id === nodeId) {
-        return { ...node, data: { ...node.data, isExpanded: false } };
-      }
-      return collapsedNodeIds.has(node.id)
-        ? { ...node, data: { ...node.data, isExpanded: false }, hidden: true }
-        : node;
-    }),
+    nodes: nodes.map((node) =>
+      collapsedNodeIds.has(node.id) ? { ...node, hidden: true } : node,
+    ),
     edges: edges.map((edge) =>
       collapsedEdgeIds.has(edge.id) ? { ...edge, hidden: true } : edge,
     ),
@@ -59,12 +54,9 @@ function getGraphWithExpandedNode(
   const expandedEdgeIds = new Set(nodeEdges.map((edge) => edge.id));
 
   return {
-    nodes: nodes.map((node) => {
-      if (node.id === nodeId) {
-        return { ...node, data: { ...node.data, isExpanded: true } };
-      }
-      return expandedNodeIds.has(node.id) ? { ...node, hidden: false } : node;
-    }),
+    nodes: nodes.map((node) =>
+      expandedNodeIds.has(node.id) ? { ...node, hidden: false } : node,
+    ),
     edges: edges.map((edge) =>
       expandedEdgeIds.has(edge.id) ? { ...edge, hidden: false } : edge,
     ),
