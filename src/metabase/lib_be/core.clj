@@ -23,6 +23,7 @@
   application-database-metadata-provider
   instance->metadata
   metadata-provider-cache
+  with-existing-metadata-provider-cache
   with-metadata-provider-cache]
  [metabase.lib-be.models.transforms
   normalize-query

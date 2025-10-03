@@ -21,7 +21,8 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.lib.core :as lib]))
 
 (set! *warn-on-reflection* true)
 
@@ -281,9 +282,9 @@
                                             {:dataset_query   (:dataset-query card-1)
                                              :type            :model
                                              :result_metadata (add-user-edits (:result-metadata card-1))})
-                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)]
-                                            {:dataset_query   (-> (:dataset-query card-2)
-                                                                  (assoc-in [:query :source-table] (format "card__%d" (:id card-1))))
+                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)
+                                                mp     (mt/metadata-provider)]
+                                            {:dataset_query (lib/query mp (lib.metadata/card mp (:id card-1)))
                                              :result_metadata (:result-metadata card-2)})]
           (doseq [[card-type card-id] {"model"                     (:id card-1)
                                        "card with model as source" (:id card-2)}]

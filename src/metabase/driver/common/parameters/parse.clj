@@ -1,5 +1,7 @@
 (ns metabase.driver.common.parameters.parse
-  #_{:clj-kondo/ignore [:metabase/modules]}
+  "DEPRECATED: `driver.common.parameters.*` namespaces deal with legacy MBQL queries. Migrate to MBQL-5-friendly
+  replacement namespaces. The replacement for this namespace is [[metabase.lib.parameters.parse]]."
+  {:deprecated "0.57.0"}
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]

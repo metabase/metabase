@@ -54,7 +54,9 @@
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [next.jdbc]))
+   [next.jdbc]
+   [metabase.lib.core :as lib]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]))
 
 (set! *warn-on-reflection* true)
 
@@ -180,10 +182,11 @@
 
 (mu/defn native-query :- ::mbql.s/Query
   "Like `mbql-query`, but for native queries."
-  [inner-native-query :- mbql.s/NativeQuery]
+  [inner-native-query :- :map]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   {:database (id)
    :type     :native
-   :native   inner-native-query})
+   :native   (mbql.normalize/normalize-fragment [:native] inner-native-query)})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.

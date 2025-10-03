@@ -1354,10 +1354,10 @@
                                   (-> {:query         (str "SELECT * FROM json_table "
                                                            "WHERE json_val::jsonb ? 'a' "
                                                            "AND json_val::jsonb ->> 'a' = {{val}}")
-                                       :template-tags {:val
+                                       :template-tags {"val"
                                                        {:name         "val"
-                                                        :display_name "Val"
-                                                        :type         "text"}}}
+                                                        :display-name "Val"
+                                                        :type         :text}}}
                                       mt/native-query
                                       (assoc :parameters
                                              [{:type   "number/="

@@ -9,7 +9,7 @@
 
 (deftest ^:parallel error-message-test
   (is (=? ["Unrecognized command: 'a-command-that-does-not-exist'"
-           #"\QValid commands: version, help, drop-entity-ids, import, dump,\E.*"]
+           #"\QValid commands: version, help, drop-entity-ids, import,\E.*"]
           (#'cmd/validate "a-command-that-does-not-exist" [])))
   (is (= ["The 'rotate-encryption-key' command requires the following arguments: [new-key], but received: []."]
          (#'cmd/validate "rotate-encryption-key" [])))

@@ -146,7 +146,8 @@
 
 (mr/def ::type
   "Valid parameter :type"
-  (into [:enum {:error/message    "valid parameter type"
+  (into [:enum {:default          :text
+                :error/message    "valid parameter type"
                 :decode/normalize (fn [param-type]
                                     ;; a lot of broken code in Actions was setting param types to invalid things like
                                     ;; `:type/Text`... fix it

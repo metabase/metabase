@@ -7,7 +7,8 @@
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.settings :as qp.settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.lib.test-util.macros :as lib.tu.macros]))
 
 (def ^:private test-max-results 10000)
 
@@ -80,11 +81,11 @@
 (deftest ^:parallel download-row-max-results-test
   (testing "Apply `absolute-max-results` when `download-row-limit` is not set."
     (let [query {:type  :query
-                 :query {}
+                 :query {:source-table (meta/id :venues)}
                  :info  {:context :csv-download}}]
-      (is (=? {:type  :query
-               :query {:limit qp.settings/absolute-max-results}
-               :info  {:context :csv-download}}
+      (is (=? {:type     :query
+               :query    {:limit qp.settings/absolute-max-results}
+               :info     {:context :csv-download}}
               (add-default-limit query))))))
 
 (deftest download-row-limit-test
@@ -104,7 +105,7 @@
           (is (= expected
                  (get-in (add-default-limit
                           {:type  :query
-                           :query {}
+                           :query {:source-table (meta/id :venues)}
                            :info  {:context context}})
                          [:query :limit]))))))))
 
@@ -124,7 +125,7 @@
         (is (= expected
                (get-in (add-default-limit
                         {:type        :query
-                         :query       {}
+                         :query       {:source-table (meta/id :venues)}
                            ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
                            ;; so we can use this to check the behaviour of `add-default-limit` when download-row-limit is unset
                          :constraints (when limit {:max-results-bare-rows limit})

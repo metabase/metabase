@@ -364,6 +364,7 @@
   add-parameters-for-template-tags
   engine
   extract-template-tags
+  fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
   native-extras

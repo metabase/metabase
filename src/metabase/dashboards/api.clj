@@ -21,10 +21,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
-   ;; this is SUPER NAUGHTY but I don't have the mental capacity to fix right now... please don't do things like
-   ;; this...
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
@@ -319,10 +316,10 @@
 
 (defn- do-with-dashboard-load-id [dashboard-load-id body-fn]
   (if dashboard-load-id
-    (binding [*dashboard-load-id*                        dashboard-load-id
-              lib.metadata.jvm/*metadata-provider-cache* (dashboard-load-metadata-provider-cache dashboard-load-id)]
-      (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
-      (body-fn))
+    (binding [*dashboard-load-id* dashboard-load-id]
+      (lib-be/with-existing-metadata-provider-cache (dashboard-load-metadata-provider-cache dashboard-load-id)
+        (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
+        (body-fn)))
     (do
       (log/debug "No dashboard_load_id provided")
       (body-fn))))

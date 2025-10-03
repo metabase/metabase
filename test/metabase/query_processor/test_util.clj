@@ -566,7 +566,8 @@
                   [(data/mbql-query venues)])]
     (is (partial= {:id              1
                    :name            "Card 1"
-                   :dataset-query   {:type :query}
+                   :dataset-query   {:lib/type :mbql/query
+                                     :stages   [{:lib/type :mbql.stage/mbql}]}
                    :result-metadata [{:name "ID"}
                                      {:name "NAME"}
                                      {:name "CATEGORY_ID"}
@@ -580,7 +581,7 @@
                   [(data/native-query (qp.compile/compile (data/mbql-query venues)))])]
     (is (partial= {:id              1
                    :name            "Card 1"
-                   :dataset-query   {:type :native}
+                   :dataset-query   {:stages [{:lib/type :mbql.stage/native}]}
                    :result-metadata [{:name "ID"}
                                      {:name "NAME"}
                                      {:name "CATEGORY_ID"}

@@ -15,7 +15,8 @@
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.lib.schema.util :as lib.schema.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -298,8 +299,9 @@
               :lib/source-column-alias "count"
               ::lib.join/join-alias    "checkins_by_user"}]
             (lib.join/join-returned-columns-relative-to-parent-stage query -1 join)))
-    (is (= (lib.metadata/card metadata-provider 1)
-           (lib.join/joined-thing query join)))))
+    (is (=? (-> (lib.metadata/card metadata-provider 1)
+                (update :dataset-query lib.schema.util/remove-lib-uuids))
+            (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
   (let [query (-> (lib.tu/venues-query)

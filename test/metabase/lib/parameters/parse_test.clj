@@ -1,12 +1,12 @@
-(ns metabase.driver.common.parameters.parse-test
+(ns metabase.lib.parameters.parse-test
   (:require
    [clojure.test :refer :all]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.lib.parameters.parse :as params.parse]
+   [metabase.lib.parameters.parse.types :as lib.parms.parse.types]
    [metabase.lib.parse :as lib.parse]))
 
-(defn- param [field-name] (params/->Param field-name))
-(defn- optional [& args] (params/->Optional args))
+(defn- param [field-name] (lib.parms.parse.types/param {:k field-name}))
+(defn- optional [& args] (lib.parms.parse.types/optional {:args (vec args)}))
 
 (defn- normalize-tokens
   [tokens]
@@ -115,7 +115,7 @@
                (normalize-tokens (params.parse/parse s)))
             (format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
 
-  (testing "Testing that invalid/unterminated template params/clauses throw an exception"
+  (testing "Testing that invalid/unterminated template lib.parms.parse.types/clauses throw an exception"
     (doseq [invalid ["select * from foo [[where bar = {{baz}} "
                      "select * from foo [[where bar = {{baz]]"
                      "select * from foo {{bar}} {{baz"

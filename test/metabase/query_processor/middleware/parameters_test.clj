@@ -324,7 +324,7 @@
                                                                        {"Venue fields"             1
                                                                         "Filter: expensive venues" 2})})}]})]
     (testing "multiple snippets are correctly expanded in parent query"
-      (is (=? {:native {:query "SELECT name, price FROM venues WHERE price > 2", :params nil}}
+      (is (=? {:stages [{:native "SELECT name, price FROM venues WHERE price > 2", :params nil}]}
               (substitute-params mp (:dataset-query (lib.metadata/card mp 1))))))
     (testing "multiple snippets are expanded from saved sub-query"
       (is (=? {:native {:query "SELECT * FROM (SELECT name, price FROM venues WHERE price > 2) AS x", :params []}}

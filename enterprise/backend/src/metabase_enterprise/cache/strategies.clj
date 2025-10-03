@@ -15,10 +15,12 @@
 
 ;; Data shape
 
+;;; This is basically the same schema as `:metabase.cache.api/cache-strategy.ee` except it adds optional
+;;; `:invalidated-at` keys
 (mr/def ::cache-strategy
   "Schema for a caching strategy used internally"
   [:and
-   :metabase.cache.api/cache-strategy.base
+   :metabase.cache.api/cache-strategy.base.ee
    [:multi {:dispatch :type}
     [:nocache  :metabase.cache.api/cache-strategy.nocache]
     [:ttl      [:merge

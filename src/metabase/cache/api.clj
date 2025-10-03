@@ -14,7 +14,13 @@
 
 ;; Data shape
 
-(mr/def ::cache-strategy.base
+;;; TODO (Cam 10/3/25) -- move these schemas into a `.schemas` namespace to follow module shape guidelines
+
+(mr/def ::cache-strategy.base.oss
+  [:map
+   [:type [:enum :nocache :ttl]]])
+
+(mr/def ::cache-strategy.base.ee
   [:map
    [:type [:enum :nocache :ttl :duration :schedule]]])
 
@@ -31,7 +37,7 @@
 (mr/def ::cache-strategy.oss
   "Schema for a caching strategy (OSS)"
   [:and
-   ::cache-strategy.base
+   ::cache-strategy.base.oss
    [:multi {:dispatch :type}
     [:nocache ::cache-strategy.nocache]
     [:ttl     ::cache-strategy.ttl]]])
@@ -40,6 +46,7 @@
   [:map {:closed true}
    [:type                  [:= :duration]]
    [:duration              ms/PositiveInt]
+   ;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically.
    [:unit                  [:enum "hours" "minutes" "seconds" "days"]]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
 
@@ -49,15 +56,17 @@
    [:schedule              u.cron/CronScheduleString]
    [:refresh_automatically {:optional true} [:maybe :boolean]]])
 
+;;; This is basically the same schema as `:metabase-enterprise.cache.strategies/cache-strategy` except it doesn't have
+;;; the optional `:invalidated-at` keys
 (mr/def ::cache-strategy.ee
   "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`."
   [:and
-   ::cache-strategy.base
+   ::cache-strategy.base.ee
    [:multi {:dispatch :type}
-    [:nocache  ::cache-strategy.nocache]
-    [:ttl      ::cache-strategy.ttl]
-    [:duration ::cache-strategy.ee.duration]
-    [:schedule ::cache-strategy.ee.schedule]]])
+    [:nocache     ::cache-strategy.nocache]
+    [:ttl         ::cache-strategy.ttl]
+    [:duration    ::cache-strategy.ee.duration]
+    [:schedule    ::cache-strategy.ee.schedule]]])
 
 (mr/def ::cache-strategy
   (if config/ee-available?

@@ -138,7 +138,8 @@
                   uses))))))))
 
 (deftest ^:parallel modules-config-up-to-date-test
-  (testing "Please update .clj-kondo/config/modules/config.edn 🥰\n"
+  (testing (str "Please update .clj-kondo/config/modules/config.edn 🥰\n"
+                "[Pro Tip: use (dev.deps-graph/print-kondo-config-diff) to see the changes you need to make in a nicer format]\n")
     (let [expected (dev.deps-graph/generate-config)
           actual   (dev.deps-graph/kondo-config)
           modules  (set/union (set (keys expected))

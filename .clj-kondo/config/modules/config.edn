@@ -318,7 +318,7 @@
            app-db
            classloader
            config
-           legacy-mbql
+
            models
            query-processor
            search
@@ -336,10 +336,8 @@
            app-db
            audit-app
            config
-           driver
            eid-translation
            events
-           lib
            lib-be
            models
            notification
@@ -428,17 +426,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
-  dependencies
-  {:team "Querying"
-   :api  #{metabase.premium-features.core}
-   :uses #{premium-features}}
-
   driver
   {:team "Drivers"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.common.parameters
-           metabase.driver.common.parameters.dates
            metabase.driver.common.parameters.parse
            metabase.driver.ddl.interface
            metabase.driver.h2
@@ -1085,7 +1077,6 @@
            audit-app
            collections
            config
-           driver
            events
            models
            permissions
@@ -1623,7 +1614,9 @@
            premium-features util}}
 
   enterprise/bookmarks
-  {:team "UX West"}
+  {:team "UX West"
+   :api  #{}
+   :uses #{}}
 
   enterprise/cache
   {:team "UX West"
@@ -1714,11 +1707,10 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           metabase-enterprise.dependencies.core
+           #_metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
-           app-db
            collections
            config
            driver
@@ -1951,18 +1943,13 @@
            app-db
            appearance
            collections
-           config
-           legacy-mbql
-           lib
            logger
            models
            plugins
            premium-features
            search
-           settings
            setup
-           util
-           warehouse-schema}}
+           util}}
 
   enterprise/snippet-collections
   {:team "Querying"
@@ -1990,7 +1977,6 @@
            settings
            sso
            system
-           users
            util
            enterprise/scim}}
 

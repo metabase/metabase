@@ -1703,7 +1703,8 @@
   [:and
    [:fn
     {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
-    (complement (every-pred :native :query))]
+    (every-pred (some-fn :native :query)
+                (complement (every-pred :native :query)))]
    [:fn
     {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
     (fn [{native :native, mbql :query, query-type :type}]

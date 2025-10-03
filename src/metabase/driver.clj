@@ -1205,8 +1205,15 @@
              :metabase.lib.schema.id/table
              :string]]])
 
+(mr/def ::native-query-deps.transform-dep
+  [:map
+   {:closed true}
+   [:transform pos-int?]])
+
 (mr/def ::native-query-deps
-  [:set ::native-query-deps.table-dep])
+  [:set [:or
+         ::native-query-deps.table-dep
+         ::native-query-deps.transform-dep]])
 
 (defmulti native-query-deps
   "Gets the table dependencies of a given sql string (or equivalent).

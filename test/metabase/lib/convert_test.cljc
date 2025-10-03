@@ -1142,31 +1142,6 @@
                                         assoc :name "b"))
                                 assoc :name "xixix")))))))
 
-(deftest ^:parallel blank-queries-test
-  (testing "minimal legacy"
-    (testing "native queries"
-      (let [query {:type :native}]
-        (testing "pass the legacy schema"
-          (is (mr/validate ::mbql.s/Query query)))
-        (testing "pass the pMBQL schema after conversion"
-          (is (nil? (->> query
-                         lib.convert/->pMBQL
-                         (mr/explain ::lib.schema/query)))))
-        (testing "round trip to pMBQL and back with small changes"
-          (is (= query
-                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))
-    (testing "MBQL queries"
-      (let [query {:type :query}]
-        (testing "pass the legacy schema"
-          (is (mr/validate ::mbql.s/Query query)))
-        (testing "pass the pMBQL schema after conversion"
-          (is (nil? (->> query
-                         lib.convert/->pMBQL
-                         (mr/explain ::lib.schema/query)))))
-        (testing "round trip to pMBQL and back with small changes"
-          (is (= query
-                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))
-
 (deftest ^:parallel round-trip-expression-literal-test
   (are [literal] (test-round-trip {:database 1
                                    :type     :query

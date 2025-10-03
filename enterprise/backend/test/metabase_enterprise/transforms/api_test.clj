@@ -3,16 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.transforms.models.transform-run]
-   [metabase-enterprise.transforms.models.transform-tag]
-   [metabase-enterprise.transforms.models.transform-transform-tag]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
-   [metabase-enterprise.transforms.test-util :refer [parse-instant with-transform-cleanup! utc-timestamp get-test-schema]]
+   [metabase-enterprise.transforms.test-util :refer [get-test-schema parse-instant utc-timestamp with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -43,14 +39,12 @@
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
   [category]
-  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
-        query (query-test-util/make-query
-               {:source-table  table-name
-                :source-column "category"
-                :filter-fn     lib/=
-                :filter-values [category]})]
-      ;; Convert to legacy MBQL which the transform API expects
-    (lib.convert/->legacy-MBQL query)))
+  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))]
+    (query-test-util/make-query
+     {:source-table  table-name
+      :source-column "category"
+      :filter-fn     lib/=
+      :filter-values [category]})))
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -226,8 +220,8 @@
       (mt/with-premium-features #{:transforms}
         (is (=? [{:name "transform1"
                   :source {:type "query", :query {:database (mt/id)
-                                                  :type "query"
-                                                  :query {:source-table (mt/id :orders)}}}
+                                                  :lib/type "mbql/query"
+                                                  :stages [{:source-table (mt/id :orders)}]}}
                   :id (:id parent)
                   :entity_id (:entity_id parent)
                   :target {:schema "public", :name "orders_2", :type "table"}}]
@@ -253,11 +247,11 @@
                            :target      {:type   "table"
                                          :schema (get-test-schema)
                                          :name   table-name}}]
-            (is (=? transform
+            (is (=? (m/dissoc-in transform [:source :query :lib/metadata])
                     (->
                      (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                            transform)
-                     (update-in [:source :query] mbql.normalize/normalize))))))))))
+                     (update-in [:source :query] lib/normalize))))))))))
 
 (deftest change-target-table-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -281,10 +275,10 @@
                           :target      {:type   "table"
                                         :schema (get-test-schema)
                                         :name   table2-name}}]
-            (is (=? updated
-                    (->
-                     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)
-                     (update-in [:source :query] mbql.normalize/normalize))))
+            (is (=? (-> updated
+                        (m/dissoc-in [:source :query :lib/metadata]))
+                    (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)
+                        (update-in [:source :query] lib/normalize))))
             (is (false? (transforms.util/target-table-exists? original)))))))))
 
 (deftest delete-transforms-test
@@ -413,10 +407,11 @@
                                         :source      {:type  "query"
                                                       :query query2}
                                         :target      target2}]
-                (is (=? updated
+                (is (=? (-> updated
+                            (m/dissoc-in [:source :query :lib/metadata]))
                         (->
                          (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" transform-id) updated)
-                         (update-in [:source :query] mbql.normalize/normalize))))
+                         (update-in [:source :query] lib/normalize))))
                 (test-run transform-id)
                 (wait-for-table table2-name 5000)
                 (is (true? (transforms.util/target-table-exists? original)))

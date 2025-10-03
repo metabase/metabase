@@ -13,7 +13,8 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.time :as time])
+   [metabase.util.time :as time]
+   [metabase.util.log :as log])
   (:import
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))
@@ -313,7 +314,10 @@
    (when text
      (let [tag->param #?(:clj tag->param
                          :cljs (js->clj tag->param))
-           tag->normalized-param (update-vals tag->param parameters.schema/normalize-parameter)]
+           tag->normalized-param (try
+                                   (update-vals tag->param parameters.schema/normalize-parameter)
+                                   (catch #?(:clj Throwable :cljs :default) e
+                                     (log/warnf "Unable to substitute tags: invalid parameters: %s" (ex-message e))))]
        ;; Most of the functions in this pipeline are relating to handling optional blocks in the text which use
        ;; the [[ ]] syntax.
        ;; For example, given an input "[[a {{b}}]] [[{{c}}]]", where `b` has no value and `c` = 3:

@@ -1146,6 +1146,14 @@
                (not (:archived card)))
       (:id dashboard))))
 
+(mu/defn fully-parameterized?
+  "Given a Card, returns `true` if its query is fully parameterized."
+  [{query :dataset_query, :as _card} :- [:map
+                                         [:dataset_query [:maybe ::queries.schema/query]]]]
+  (if (empty? query)
+    true
+    (lib/fully-parameterized-query? query)))
+
 (methodical/defmethod mi/to-json :model/Card
   [card json-generator]
   ;; we're doing update + dissoc instead of [[medley.core/dissoc-in]] because we don't want it to remove the

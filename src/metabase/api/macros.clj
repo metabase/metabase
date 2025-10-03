@@ -355,15 +355,21 @@
 (defn- invalid-params-errors [{:keys [schema], :as explanation}]
   (reduce
    (fn [m {:keys [path in], :as _explanation}]
-     (let [nice-path     (loop [path (vec path)]
-                           (if (integer? (last path))
-                             (recur (pop path))
-                             path))
-           nested-schema (loop [path nice-path]
-                           (when (seq path)
-                             (or (malli.util/get-in schema path)
-                                 (recur (pop path)))))]
-       (assoc-in m (remove integer? in) (umd/describe nested-schema))))
+     (let [error-path (remove integer? in)]
+       ;; if there is already an error here keep the existing one, this is usually something like an `[:and x y]`
+       ;; where `x` has already failed so it's preferable to return the error for that than the `y` one, which
+       ;; probably won't make any sense (for some weird reason Malli `:and` schemas don't short-circut)
+       (if (get-in m error-path)
+         m
+         (let [nice-path     (loop [path (vec path)]
+                               (if (integer? (last path))
+                                 (recur (pop path))
+                                 path))
+               nested-schema (loop [path nice-path]
+                               (when (seq path)
+                                 (or (malli.util/get-in schema path)
+                                     (recur (pop path)))))]
+           (assoc-in m error-path (umd/describe nested-schema))))))
    {}
    (:errors explanation)))
 

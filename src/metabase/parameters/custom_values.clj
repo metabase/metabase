@@ -21,7 +21,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.util.log :as log]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]))
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
@@ -61,27 +64,37 @@
   1000)
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
-  [{query :dataset_query, :as _card} :- :metabase.queries.schema/card
-   legacy-field-ref                  :- ::mbql.s/field-or-expression-ref
+  [{query :dataset_query, :keys [id], :as card} :- [:and
+                                                    :metabase.queries.schema/card
+                                                    [:map
+                                                     [:id ::lib.schema.id/card]]]
+   legacy-field-ref                             :- ::mbql.s/field-or-expression-ref
    {:keys [query-string] :as _opts}]
   (when (seq query)
-    (assert (mr/validate :metabase.queries.schema/card _card))
-    (let [query        (lib/append-stage query)
-          value-column (lib/find-column-for-legacy-ref query legacy-field-ref (lib/visible-columns query))
-          textual?     (lib.types.isa/string? value-column)
-          nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
-          query-filter (when query-string
-                         (if textual?
-                           (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                           (lib/= value-column query-string)))]
-      (-> query
-          (lib/limit *max-rows*)
-          (lib/filter nonempty)
-          (cond-> #_query query-filter (lib/filter query-filter))
-          (lib/breakout value-column)
-          ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-          ;; "internal" query in the BE.
-          (assoc-in [:middleware :disable-remaps?] true)))))
+    ;; start a new query using this Card as a starting point
+    (let [query (lib/query query (lib.metadata/card query id))]
+      (when-let [visible-columns (or (not-empty (lib/visible-columns query))
+                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
+                                                id))]
+        (when-let [value-column (or (lib/find-column-for-legacy-ref query legacy-field-ref visible-columns)
+                                    (log/warnf "Cannot get values from Card %d: failed to find column for legacy ref %s\nFound: %s"
+                                               id
+                                               (pr-str legacy-field-ref)
+                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+          (let [textual?     (lib.types.isa/string? value-column)
+                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
+                query-filter (when query-string
+                               (if textual?
+                                 (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                                 (lib/= value-column query-string)))]
+            (-> query
+                (lib/limit *max-rows*)
+                (lib/filter nonempty)
+                (cond-> #_query query-filter (lib/filter query-filter))
+                (lib/breakout value-column)
+                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
+                ;; "internal" query in the BE.
+                (assoc-in [:middleware :disable-remaps?] true))))))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
