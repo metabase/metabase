@@ -12,10 +12,12 @@ import S from "../DependencyFlow.module.css";
 import { GROUP_ITEM_THRESHOLD } from "../constants";
 import type {
   EdgeId,
+  GraphData,
   GroupNodeType,
   GroupType,
   ItemNodeType,
   NodeId,
+  NodeType,
 } from "../types";
 
 import { getNodeByIdMap } from "./common";
@@ -70,7 +72,10 @@ function getItemEdges(edges: DependencyEdge[]): Edge[] {
   });
 }
 
-function getItemGraph(nodes: DependencyNode[], edges: DependencyEdge[]) {
+function getItemGraph(
+  nodes: DependencyNode[],
+  edges: DependencyEdge[],
+): GraphData {
   return {
     nodes: getItemNodes(nodes),
     edges: getItemEdges(edges),
@@ -78,7 +83,7 @@ function getItemGraph(nodes: DependencyNode[], edges: DependencyEdge[]) {
 }
 
 function getEdgesByTypeAndTargetIdMap(
-  nodeById: Map<NodeId, ItemNodeType>,
+  nodeById: Map<NodeId, NodeType>,
   edges: Edge[],
 ) {
   const edgesByTypeAndTargetId = new Map<NodeId, Map<GroupType, Edge[]>>();
@@ -86,7 +91,7 @@ function getEdgesByTypeAndTargetIdMap(
   edges.forEach((edge) => {
     const source = nodeById.get(edge.source);
     const target = nodeById.get(edge.target);
-    if (source == null || target == null) {
+    if (source == null || target == null || source.type !== "item") {
       return;
     }
 
@@ -147,7 +152,7 @@ function getGroupNodesAndEdges(
   return { groupNodes, newEdges, deletedEdgeIds };
 }
 
-function getGroupGraph(nodes: ItemNodeType[], edges: Edge[]) {
+function getGroupGraph(nodes: NodeType[], edges: Edge[]): GraphData {
   const nodeById = getNodeByIdMap(nodes);
   const edgesByTypeAndTargetId = getEdgesByTypeAndTargetIdMap(nodeById, edges);
   const { groupNodes, newEdges, deletedEdgeIds } = getGroupNodesAndEdges(
@@ -163,7 +168,7 @@ function getGroupGraph(nodes: ItemNodeType[], edges: Edge[]) {
   };
 }
 
-export function getInitialGraph({ nodes, edges }: DependencyGraph) {
+export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
   const { nodes: itemNodes, edges: itemEdges } = getItemGraph(nodes, edges);
   return getGroupGraph(itemNodes, itemEdges);
 }
