@@ -159,7 +159,7 @@ export const globalShortcuts = {
     shortcutGroup: "global" as const,
     hide: true,
     shortcut: [
-      "ArrowUp ArrowUp ArrowDown ArrowDown ArrowLeft ArrowRight ArrowLeft ArrowRight A B",
+      "ArrowUp ArrowUp ArrowDown ArrowDown ArrowLeft ArrowRight ArrowLeft ArrowRight B A",
     ],
   },
 };
