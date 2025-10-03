@@ -8,6 +8,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -40,8 +41,13 @@
     task-id))
 
 (defn- async-import!
-  [branch]
-  (run-async! "import" branch (fn [task-id] (impl/import! (source/source-from-settings branch) task-id))))
+  [branch force?]
+  (let [ingestable-source (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
+        source-version (source.ingestable/ingestable-version ingestable-source)
+        last-imported-version (remote-sync.task/last-import-version)]
+    (if (and (not force?) (= last-imported-version source-version))
+      (log/infof "Skipping import: source version %s matches last imported version" source-version)
+      (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id))))))
 
 (defn- async-export!
   [branch message]
@@ -59,13 +65,16 @@
   Requires superuser permissions."
   [_route
    _query
-   {:keys [branch]} :- [:map [:branch {:optional true} ms/NonBlankString]]]
+   {:keys [branch force]} :- [:map [:branch {:optional true} ms/NonBlankString]
+                              [:force {:optional true} :boolean]]]
   (api/check-superuser)
   (when-not (settings/remote-sync-enabled)
     (throw (ex-info "Git sync is paused. Please resume it to perform import operations."
                     {:status-code 400})))
-  {:status :success
-   :task_id (async-import! (or branch (settings/remote-sync-branch)))})
+  (let [task-id (async-import! (or branch (settings/remote-sync-branch)) force)]
+    {:status :success
+     :task_id task-id
+     :message (when-not task-id "No changes since last import")}))
 
 (api.macros/defendpoint :get "/is-dirty"
   "Check if any collection has remote sync changes that are not saved."
@@ -147,7 +156,7 @@
     (if (and (settings/remote-sync-enabled)
              (= :production (settings/remote-sync-type)))
       {:success true
-       :task_id (async-import! (settings/remote-sync-branch))}
+       :task_id (async-import! (settings/remote-sync-branch) false)}
       {:success true})
     (catch Exception e
       (throw (ex-info "Invalid git settings"

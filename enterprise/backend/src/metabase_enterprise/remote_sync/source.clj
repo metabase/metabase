@@ -46,12 +46,11 @@
     (source.p/version original-source)))
 
 (methodical/defmethod source.p/->ingestable :default
-  [source {:keys [path-filters root-dependencies task-id]}]
+  [source {:keys [path-filters root-dependencies]}]
   (cond->> (ingestable/->IngestableSource (cond-> source
                                             (seq path-filters) (->WrappingSource path-filters))
                                           (atom nil))
-    (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)
-    task-id (ingestable/wrap-progress-ingestable task-id 0.7)))
+    (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
 (methodical/defmethod source.p/->ingestable GitSource
   [{:keys [url] :as source} opts]

@@ -58,7 +58,7 @@
                                  :entity_id))))))
 
 (defn- handle-import-exception
-  [e source]
+  [e source-ingestable]
   (if (:cancelled? (ex-data e))
     (log/info "Import from git repository was cancelled")
     (do
@@ -82,21 +82,20 @@
                         (format "Failed to reload from git repository: %s" (ex-message e)))]
         {:status        :error
          :message       error-msg
-         :version       (source.p/version source)
+         :version       (source.ingestable/ingestable-version source-ingestable)
 
          :details {:error-type (type e)}}))))
 
 (defn import!
   "Reloads the Metabase entities from the git repo"
-  [source task-id]
+  [ingestable-source task-id]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
   (let [sync-timestamp (t/instant)]
-    (if source
+    (if ingestable-source
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
-        (let [ingestable-source (source.p/->ingestable source {:task-id task-id
-                                                               :path-filters [#"collections/.*"]})
+        (let [ingestable-source (source.ingestable/wrap-progress-ingestable task-id 0.7 ingestable-source)
               source-version (source.ingestable/ingestable-version ingestable-source)
               _ (remote-sync.task/set-version! task-id source-version)
               load-result (serdes/with-cache
@@ -115,11 +114,11 @@
           (remote-sync.task/update-progress! task-id 0.95))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
-         :version (source.p/version source)
+         :version (source.ingestable/ingestable-version ingestable-source)
          :message "Successfully reloaded from git repository"}
 
         (catch Exception e
-          (handle-import-exception e source))
+          (handle-import-exception e ingestable-source))
         (finally
           (analytics/observe! :metabase-remote-sync/import-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))
       {:status  :error

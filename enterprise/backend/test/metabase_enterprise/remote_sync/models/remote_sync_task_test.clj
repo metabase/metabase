@@ -371,3 +371,27 @@
       (rst/cancel-sync-task! (:id task))
       (is (thrown-with-msg? Exception #"Remote sync task has been cancelled"
                             (rst/update-progress! (:id task) 0.5))))))
+
+(deftest most-recent-successful-task
+  (testing "When there are no tasks, most-recent-successful-task returns nil")
+  (is (nil? (rst/most-recent-successful-task "import")))
+  (testing "When there are no successful tasks, most-recent-successful-task returns nil"
+    (let [task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/fail-sync-task! (:id task) "Test failure")
+      (is (nil? (rst/most-recent-successful-task "import")))))
+  (testing "Returns last successful task"
+    (let [successful-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+      (rst/complete-sync-task! (:id successful-task))
+      (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import")))
+      (testing "Ignores cancelled tasks"
+        (rst/cancel-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))))
+        (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import"))))
+      (testing "Ignores failed tasks"
+        (rst/fail-sync-task! (:id (rst/create-sync-task! "import" (mt/user->id :rasta))) "Error")
+        (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import"))))
+      (testing "Ignores incomplete tasks"
+        (is (=? {:id (:id successful-task)} (rst/most-recent-successful-task "import"))))
+      (testing "Returns newer successful tasks"
+        (let [new-task (rst/create-sync-task! "import" (mt/user->id :rasta))]
+          (rst/complete-sync-task! (:id new-task))
+          (is (=? {:id (:id new-task)} (rst/most-recent-successful-task "import"))))))))
