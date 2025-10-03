@@ -1,6 +1,8 @@
 /* eslint-disable no-undef,import/no-commonjs */
 const path = require("path");
 
+const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
+
 const baseRestrictedConfig = {
   patterns: [{ group: ["cljs/metabase.lib*"] }],
   paths: [
@@ -53,8 +55,7 @@ module.exports = {
           ...baseRestrictedConfig.patterns,
           {
             group: ["__support__/**", "!__support__/metadata"],
-            message:
-              "Please name your test setup and utils files with a `.spec.*` in the filename, e.g. `setup.spec.ts` or `MyComponent.setup.spec.ts`, so that they aren't imported in the SDK build.",
+            message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
           },
         ],
       },
@@ -72,8 +73,7 @@ module.exports = {
               ...baseRestrictedConfig.patterns,
               {
                 group: ["__support__/**"],
-                message:
-                  "Please name your test setup and utils files with a `.spec.*` in the filename, e.g. `setup.spec.ts` or `MyComponent.setup.spec.ts`, so that they aren't imported in the SDK build.",
+                message: TEST_FILES_NAME_PATTERN_ERROR_MESSAGE,
               },
             ],
             paths: [
