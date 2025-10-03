@@ -10,7 +10,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 

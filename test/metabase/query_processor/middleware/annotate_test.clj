@@ -9,7 +9,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))

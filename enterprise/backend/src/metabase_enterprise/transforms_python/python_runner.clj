@@ -11,7 +11,9 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
    ;; TODO check that querying team are ok with us accessing this directly, otherwise make another plan
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   ;;
+   ;; WE ARE NOT <3 -- Cam
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]

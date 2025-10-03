@@ -56,7 +56,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

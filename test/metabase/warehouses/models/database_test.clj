@@ -13,7 +13,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
    [metabase.sync.task.sync-databases :as task.sync-databases]

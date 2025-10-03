@@ -10,7 +10,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]))
 

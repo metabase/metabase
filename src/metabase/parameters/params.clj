@@ -18,7 +18,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -195,7 +194,7 @@
 (defn- filterable-columns-for-query
   "Get filterable columns for query."
   [database-id card stage-number]
-  (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider database-id)
+  (let [metadata-provider (lib-be/application-database-metadata-provider database-id)
         ;; Regular questions are used directly. If a model or metric has been used directly in this card, wrap it into
         ;; a query against that model or metric.
         query (lib/query metadata-provider (if (= :question (:type card))

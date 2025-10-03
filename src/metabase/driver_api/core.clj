@@ -20,7 +20,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
@@ -50,7 +49,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -100,7 +99,7 @@
  events/publish-event!
  lib-be/start-of-week
  lib.field/json-field?
- lib.metadata.jvm/instance->metadata
+ lib-be/instance->metadata
  lib.metadata/database
  lib.metadata/field
  lib.metadata/fields

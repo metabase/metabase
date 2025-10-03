@@ -26,7 +26,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.fetch-metadata :as fetch-metadata]

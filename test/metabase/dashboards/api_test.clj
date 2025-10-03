@@ -15,7 +15,7 @@
    [metabase.dashboards.api :as api.dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-test :as dashboard-test]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -4833,7 +4833,7 @@
             (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/%s/values" (:id dash) "_CATEGORY_NAME_"))))))
 
 (deftest ^:synchronized dashboard-query-metadata-cached-test
-  (let [original-admp   @#'lib.metadata.jvm/application-database-metadata-provider-factory
+  (let [original-admp   @#'lib-be/application-database-metadata-provider-factory
         uncached-calls  (atom -1)
         expected        [{:name "Some dashboard"}
                          {:tables     [{} {}]
@@ -4857,7 +4857,7 @@
           (reset! uncached-calls (call-count-fn))))
       (testing "cached requests"
         (let [provider-counts (atom {})]
-          (with-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
+          (with-redefs [lib-be/application-database-metadata-provider-factory
                         (fn [database-id]
                           (swap! provider-counts update database-id (fnil inc 0))
                           (original-admp database-id))]

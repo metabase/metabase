@@ -7,7 +7,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])

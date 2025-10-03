@@ -23,7 +23,7 @@
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming.test-util :as streaming.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]

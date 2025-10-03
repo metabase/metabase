@@ -19,7 +19,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]

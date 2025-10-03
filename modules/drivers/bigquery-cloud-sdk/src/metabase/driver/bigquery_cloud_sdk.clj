@@ -19,7 +19,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
-   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]

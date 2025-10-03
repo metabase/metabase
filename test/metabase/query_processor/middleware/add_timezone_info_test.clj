@@ -4,7 +4,7 @@
    [metabase.driver :as driver]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)

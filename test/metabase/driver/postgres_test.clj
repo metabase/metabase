@@ -32,7 +32,7 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]

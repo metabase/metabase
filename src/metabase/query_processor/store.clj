@@ -18,7 +18,7 @@
   ;; This whole namespace is in the process of deprecation so ignore deprecated vars in this namespace.
   {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}, :deprecated "0.57.0"}
   (:require
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
@@ -139,7 +139,7 @@
 (mu/defn- ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (let [mp (if (pos-int? database-id-or-metadata-providerable)
-             (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
+             (lib-be/application-database-metadata-provider database-id-or-metadata-providerable)
              (lib.metadata/->metadata-provider database-id-or-metadata-providerable))]
     (ensure-cached-metadata-provider mp)))
 

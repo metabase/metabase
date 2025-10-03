@@ -17,7 +17,7 @@
    [metabase.content-verification.models.moderation-review :as moderation-review]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -108,7 +108,7 @@
    (pmbql-count-query (mt/id) (mt/id :venues)))
 
   ([db-or-id table-or-id]
-   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (u/the-id db-or-id))
+   (let [metadata-provider (lib-be/application-database-metadata-provider (u/the-id db-or-id))
          venues            (lib.metadata/table metadata-provider (u/the-id table-or-id))
          query             (lib/query metadata-provider venues)]
      (lib/aggregate query (lib/count)))))

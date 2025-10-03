@@ -19,7 +19,6 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
@@ -568,7 +567,7 @@
                            :dashboard_count
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
-    (lib.metadata.jvm/with-metadata-provider-cache
+    (lib-be/with-metadata-provider-cache
       (as-> (map post-process-card-row rows) $
         (apply t2/hydrate $ hydration)
         (cond-> $

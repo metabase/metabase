@@ -15,7 +15,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]

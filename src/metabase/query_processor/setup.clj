@@ -14,7 +14,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]

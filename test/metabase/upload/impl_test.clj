@@ -15,7 +15,7 @@
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -1915,7 +1915,7 @@
                 file        (csv-file-with csv-rows)
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table other-id)
-                mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+                mp          (lib-be/application-database-metadata-provider (:db_id table))]
 
             (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
                            :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}

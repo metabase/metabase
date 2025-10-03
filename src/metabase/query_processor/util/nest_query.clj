@@ -20,7 +20,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.log :as log]

@@ -23,7 +23,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]

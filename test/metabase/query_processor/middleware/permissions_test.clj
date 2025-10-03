@@ -11,7 +11,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn])

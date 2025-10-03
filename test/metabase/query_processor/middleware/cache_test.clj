@@ -11,7 +11,6 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.models.query :as query]
@@ -22,7 +21,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -34,7 +33,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.time ZonedDateTime)))

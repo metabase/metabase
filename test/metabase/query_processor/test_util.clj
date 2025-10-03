@@ -15,14 +15,14 @@
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test.data :as data]
    [metabase.test.data.env :as tx.env]
@@ -446,7 +446,7 @@
   "A mock metadata provider composed with the application database metadata provider that adds FK relationships
   for Tables that would normally have them in drivers that have formal FK constraints."
   ([]
-   (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
+   (mock-fks-application-database-metadata-provider (lib-be/application-database-metadata-provider (data/id))))
 
   ([parent-metadata-provider]
    (lib.tu/merged-mock-metadata-provider
@@ -502,7 +502,7 @@
   in `queries`. Cards do not include result metadata. Cards have IDs starting at `1` and increasing sequentially."
   ([queries]
    (metadata-provider-with-cards-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider
@@ -518,7 +518,7 @@
   ([queries :- [:sequential {:min 1} :map]
     transforms]
    (metadata-provider-with-cards-with-transformed-metadata-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    (lib-be/application-database-metadata-provider (data/id))
     queries
     transforms))
 
@@ -554,7 +554,7 @@
   subsequent Cards."
   ([queries]
    (metadata-provider-with-cards-with-metadata-for-queries
-    (lib.metadata.jvm/application-database-metadata-provider (data/id))
+    (lib-be/application-database-metadata-provider (data/id))
     queries))
 
   ([parent-metadata-provider :- ::lib.schema.metadata/metadata-provider

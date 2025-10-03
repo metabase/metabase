@@ -2,4 +2,5 @@
   (:require
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.schema]
+   [metabase-enterprise.dependencies.settings]
    [metabase-enterprise.dependencies.task.backfill]))

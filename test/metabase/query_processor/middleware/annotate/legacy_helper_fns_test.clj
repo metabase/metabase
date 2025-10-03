@@ -4,7 +4,7 @@
    [clojure.walk :as walk]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (deftest ^:parallel aggregation-name-test

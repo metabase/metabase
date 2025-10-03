@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -116,7 +116,7 @@
   "Return a query based on the model with ID `model-id`."
   [card-id]
   (when-let [card (get-card card-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (cond-> (lib.metadata/card mp card-id)
                       ;; pivot questions have strange result-columns so we work with the dataset-query
                       (#{:question} (:type card)) (get :dataset-query))))))
@@ -125,14 +125,14 @@
   "Return a query based on the model with ID `model-id`."
   [metric-id]
   (when-let [card (get-card metric-id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))]
+    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
       (lib/query mp (lib.metadata/metric mp metric-id)))))
 
 (defn table-query
   "Return a query based on the table with ID `table-id`."
   [table-id]
   (when-let [table (get-table table-id :db_id)]
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+    (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 
 (defn metabot-metrics-and-models-query

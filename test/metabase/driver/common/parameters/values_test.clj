@@ -17,7 +17,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]

@@ -44,7 +44,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -234,7 +234,7 @@
 (defn metadata-provider
   "Get a metadata-provider for the current database."
   []
-  (lib.metadata.jvm/application-database-metadata-provider (id)))
+  (lib-be/application-database-metadata-provider (id)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the

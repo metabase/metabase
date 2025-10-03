@@ -16,12 +16,12 @@
    [metabase.core.init]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.request.core]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -71,7 +71,7 @@
   driver/keep-me
   i18n.tu/keep-me
   initialize/keep-me
-  lib.metadata.jvm/keep-me
+  lib-be/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
   metabase.channel.email-test/keep-me
@@ -168,7 +168,7 @@
  [initialize
   initialize-if-needed!]
 
- [lib.metadata.jvm
+ [lib-be
   application-database-metadata-provider]
 
  [metabase.util.log.capture

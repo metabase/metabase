@@ -14,10 +14,10 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
+   [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
-   [metabase.settings.core :refer [defsetting]]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -44,27 +44,6 @@
   (zipmap entities (repeatedly #(ConcurrentHashMap/newKeySet))))
 
 (def ^:private max-retries 5)
-
-(defsetting dependency-backfill-batch-size
-  "Batch size."
-  :visibility :internal
-  :type       :integer
-  :default    20
-  :setter     :none)
-
-(defsetting dependency-backfill-delay-minutes
-  "Backfill delay in minutes."
-  :visibility :internal
-  :type       :integer
-  :default    60
-  :setter     :none)
-
-(defsetting dependency-backfill-variance-minutes
-  "Backfill variance (?) whatever that means."
-  :visibility :internal
-  :type       :integer
-  :default    10
-  :setter     :none)
 
 (defn- processable-ids [model-kw batch-size]
   (let [target-version models.dependency/current-dependency-analysis-version
@@ -121,7 +100,7 @@
                      (let [current-time (current-millis)
                            entity-retry-info (.get retry-state-map id)
                            failure-count (inc (:fail-count entity-retry-info 0))
-                           retry-minutes (* failure-count (dependency-backfill-delay-minutes))
+                           retry-minutes (* failure-count (deps.settings/dependency-backfill-delay-minutes))
                            new-next-retry-timestamp (+ current-time (* retry-minutes 60 1000))]
                        (if (> failure-count max-retries)
                          (do (log/errorf e "Entity %s %s failed %d times, marking as terminally broken."
@@ -148,7 +127,7 @@
                       (when (pos? processed)
                         (log/info "Updated" processed "entities."))
                       (- batch-size processed))))
-                (dependency-backfill-batch-size)
+                (deps.settings/dependency-backfill-batch-size)
                 entities)
         (< 1))))
 
@@ -168,8 +147,8 @@
         retries? (has-pending-retries?)]
     (if (or full-batch-selected?
             retries?)
-      (let [delay-seconds    (* (dependency-backfill-delay-minutes) 60)
-            variance-seconds (* (dependency-backfill-variance-minutes) 60)
+      (let [delay-seconds    (* (deps.settings/dependency-backfill-delay-minutes) 60)
+            variance-seconds (* (deps.settings/dependency-backfill-variance-minutes) 60)
             delay-in-seconds (max 0 (+ (- delay-seconds variance-seconds) (rand-int (* 2 variance-seconds))))]
         (schedule-next-run! delay-in-seconds (.getScheduler ctx)))
       (log/info "No more entities to backfill for, stopping."))))
@@ -194,6 +173,6 @@
          (task/schedule-task! job trigger))))))
 
 (defmethod task/init! ::DependencyBackfill [_]
-  (if (pos? (dependency-backfill-batch-size))
-    (schedule-next-run! (rand-int (* (dependency-backfill-variance-minutes) 60)))
+  (if (pos? (deps.settings/dependency-backfill-batch-size))
+    (schedule-next-run! (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60)))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))

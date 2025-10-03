@@ -5,6 +5,8 @@
    [clojure.java.io :as io]
    [metabase.util.yaml :as yaml]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private serialization-order
   (delay (-> (edn/read-string (slurp (io/resource "serialization-order.edn")))
              (update-vals (fn [order]

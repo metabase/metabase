@@ -10,7 +10,7 @@
    [metabase.dashboards.api :as api.dashboard]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
@@ -250,7 +250,7 @@
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
                       [:uuid ms/UUIDString]]]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (public-sharing.validation/check-public-sharing-enabled)
     (u/prog1 (dashboard-with-uuid uuid)
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
@@ -465,7 +465,7 @@
                                 [:uuid      ms/UUIDString]
                                 [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [dashboard (dashboard-with-uuid uuid)]
       (request/as-admin
         (binding [qp.perms/*param-values-query* true]

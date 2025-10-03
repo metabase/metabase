@@ -12,7 +12,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))

@@ -5,7 +5,7 @@
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -68,7 +68,7 @@
   ([id] (metric-details id nil))
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
-     (metric-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
+     (metric-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([card metadata-provider {:keys [field-values-fn with-default-temporal-breakout? with-queryable-dimensions?]
                             :or   {field-values-fn                 add-field-values
                                    with-default-temporal-breakout? true
@@ -140,7 +140,7 @@
            db-id (if metadata-provider (:db-id base) (:db_id base))
            mp (when query-needed?
                 (or metadata-provider
-                    (lib.metadata.jvm/application-database-metadata-provider db-id)))
+                    (lib-be/application-database-metadata-provider db-id)))
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
@@ -168,7 +168,7 @@
   ([id] (card-details id nil))
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
-     (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
+     (card-details card (lib-be/application-database-metadata-provider (:database_id card)) options)))
   ([base metadata-provider {:keys [field-values-fn with-fields? with-metrics?]
                             :or   {field-values-fn add-field-values
                                    with-fields?    true
@@ -212,7 +212,7 @@
   "Get the details of metrics or models as specified by `card-type` and `cards`
   from the database with ID `database-id` respecting `options`."
   [card-type database-id cards options]
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+  (let [mp (lib-be/application-database-metadata-provider database-id)
         detail-fn (case card-type
                     :metric metric-details
                     :model card-details)]
@@ -226,7 +226,7 @@
   ([metabot-id]
    (answer-sources metabot-id nil))
   ([metabot-id options]
-   (lib.metadata.jvm/with-metadata-provider-cache
+   (lib-be/with-metadata-provider-cache
      (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-id)
            {metrics :metric, models :model}
            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
@@ -260,7 +260,7 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id] :as arguments}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (cond
@@ -289,7 +289,7 @@
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id] :as arguments}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (if (int? metric-id)
@@ -302,7 +302,7 @@
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (if (int? report-id)
@@ -335,7 +335,7 @@
         field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         database-id (:database legacy-query)
         _ (api/read-check :model/Database database-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+        mp (lib-be/application-database-metadata-provider database-id)
         query (lib/query mp legacy-query)
         returned-cols (lib/returned-columns query)]
     {:type :query
@@ -348,5 +348,5 @@
 (defn get-query-details
   "Get the details of a (legacy) query."
   [{:keys [query]}]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     {:structured-output (execute-query (u/generate-nano-id) query)}))

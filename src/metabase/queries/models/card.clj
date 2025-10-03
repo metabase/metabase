@@ -17,7 +17,6 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
@@ -149,7 +148,7 @@
   ([{:keys [database_id dataset_query] :as card}]
    (when dataset_query
      (let [db-id (or database_id (:database dataset_query))
-           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
+           mp    (lib-be/application-database-metadata-provider db-id)]
        (lib-query mp card))))
   ([metadata-providerable {:keys [dataset_query] :as _card}]
    (when dataset_query
@@ -235,7 +234,7 @@
                              (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
                                                                   (remove nil?)))))]
     (doseq [[db-id table-ids] db-id->table-ids
-            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+            :let  [mp (lib-be/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
       (lib.metadata.protocols/metadatas mp {:lib/type :metadata/table, :id (set table-ids)}))))
 
@@ -248,7 +247,7 @@
                                            (keep (comp source-card-id :dataset_query))
                                            cards-with-non-empty-queries)]
     ;; Prefetching code should not propagate any exceptions.
-    (when lib.metadata.jvm/*metadata-provider-cache*
+    (when lib-be/*metadata-provider-cache*
       (try
         (prefetch-tables-for-cards! cards-with-non-empty-queries)
         (catch Throwable t
@@ -655,7 +654,7 @@
                (-> card :dataset_query not-empty)
                (-> card :database_id))
     card
-    (m/assoc-some card :query_description (some-> (lib.metadata.jvm/application-database-metadata-provider
+    (m/assoc-some card :query_description (some-> (lib-be/application-database-metadata-provider
                                                    (:database_id card))
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
