@@ -3,6 +3,11 @@
 const url = new URL(self.location.href);
 const packages = url.searchParams.getAll("packages");
 
+self.addEventListener("unhandledrejection", (event) => {
+  event.stopPropagation();
+  self.postMessage({ type: "error", error: event.reason });
+});
+
 run();
 
 async function run() {
@@ -40,6 +45,19 @@ async function init() {
     packages.map((pkg) => `import ${pkg}`).join("\n"),
   );
 
+  // Add helper function that grabs the last exception
+  // and formats it as a string
+  pyodide.runPythonAsync(
+    `
+def __format_exception():
+  import sys
+  from traceback import format_exception
+  return "".join(
+    format_exception(sys.last_type, sys.last_value, sys.last_traceback)
+  )
+    `,
+  );
+
   return pyodide;
 }
 
@@ -65,9 +83,10 @@ async function execute(pyodide, code) {
       stdout,
       stderr,
     };
-  } catch (error) {
+  } catch (_err) {
+    const error = pyodide.globals.get("__format_exception")();
     return {
-      error,
+      error: serialize(error),
       stdout,
       stderr,
     };
@@ -76,5 +95,8 @@ async function execute(pyodide, code) {
 
 // Deep serialization function to handle nested complex objects
 function serialize(obj) {
-  return JSON.parse(JSON.stringify(obj.toJs({ create_pyproxies: false })));
+  if (obj.toJs) {
+    return JSON.parse(JSON.stringify(obj.toJs({ create_pyproxies: false })));
+  }
+  return obj;
 }

@@ -1,3 +1,6 @@
+import { t } from "ttag";
+
+import { getErrorMessage } from "metabase/api/utils";
 import type { RowValue } from "metabase-types/api";
 
 export type PyodideTableSource = {
@@ -19,15 +22,17 @@ export type PythonExecutionResult = {
   data: Record<string, RowValue>[];
 };
 
+type ErrorMessage = { type: "error"; error: Error };
 type ReadyMessage = { type: "ready" };
 type ResultsMessage = {
   type: "results";
+  error?: string;
+  result?: PythonExecutionResult;
   stdout: string;
   stderr: string;
-  result: PythonExecutionResult;
 };
 
-type WorkerMessage = ReadyMessage | ResultsMessage;
+type WorkerMessage = ReadyMessage | ResultsMessage | ErrorMessage;
 
 export class PyodideWorkerPool {
   workers: PyodideWorker[];
@@ -97,8 +102,15 @@ class PyodideWorker {
 
       return {
         output: evt.result,
+        error: evt.error,
         stdout: evt.stdout,
         stderr: evt.stderr,
+      };
+    } catch (error) {
+      return {
+        error: getErrorMessage(error),
+        stdout: null,
+        stderr: null,
       };
     } finally {
       this.worker.terminate();
@@ -117,14 +129,18 @@ function waitFor<T extends WorkerMessage["type"]>(
         unsubscribe();
         resolve(data as Extract<WorkerMessage, { type: T }>);
       }
+      if (data.type === "error") {
+        unsubscribe();
+        reject(data.error);
+      }
     };
 
     const errHandler = (evt: ErrorEvent) => {
-      reject(evt.error);
+      reject(evt.error ?? new Error(t`Could not start Python worker.`));
     };
 
     const unsubscribe = () => {
-      clearTimeout(t);
+      clearTimeout(timer);
       worker.removeEventListener("message", handler);
       worker.removeEventListener("error", errHandler);
     };
@@ -132,7 +148,7 @@ function waitFor<T extends WorkerMessage["type"]>(
     worker.addEventListener("message", handler);
     worker.addEventListener("error", errHandler);
 
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       unsubscribe();
       reject(new Error(`Timeout waiting for ${type}`));
     }, timeout);
