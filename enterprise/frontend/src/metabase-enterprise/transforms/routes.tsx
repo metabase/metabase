@@ -13,7 +13,6 @@ import { NewJobPage } from "./pages/NewJobPage";
 import { NewTransformPage } from "./pages/NewTransformPage";
 import { RunListPage } from "./pages/RunListPage";
 import { TransformPage } from "./pages/TransformPage";
-import { TransformQueryPage } from "./pages/TransformQueryPage";
 
 const EmptyBoat = () => <Center w="100%" h="100%"><NoDataError  /></Center>;
 
@@ -28,10 +27,9 @@ export const getTransformRoutes = () => (
     <Route path="transforms">
       <Route title={t`Transforms`} component={TransformLayout}>
         <IndexRoute component={EmptyBoat} />
-        <Route path=":transformId" component={TransformPage} />
         <Route path="new/:type" component={NewTransformPage} />
         <Route path="new/card/:cardId" component={NewTransformPage} />
-        <Route path=":transformId/query" component={TransformQueryPage} />
+        <Route path=":transformId" component={TransformPage} />
       </Route>
     </Route>
     {PLUGIN_TRANSFORMS_PYTHON.getAdminRoutes()}

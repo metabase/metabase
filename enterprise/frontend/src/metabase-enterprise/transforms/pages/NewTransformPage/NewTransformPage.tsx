@@ -22,7 +22,7 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
-import { QueryEditor } from "../../components/QueryEditor";
+import { QueryEditor, QueryEditorProvider } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 
 import {
@@ -143,7 +143,7 @@ export function NewTransformPageInner({
   };
 
   return (
-    <>
+    <QueryEditorProvider initialQuery={source.query}>
       <NewTransformEditorBody
         initialSource={initialSource}
         proposedSource={proposedSource}

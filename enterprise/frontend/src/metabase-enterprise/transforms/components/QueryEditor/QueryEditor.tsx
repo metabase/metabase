@@ -1,5 +1,5 @@
 import { useHotkeys, useToggle } from "@mantine/hooks";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -7,6 +7,7 @@ import type { SelectionRange } from "metabase/query_builder/components/NativeQue
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type Question from "metabase-lib/v1/Question";
 import type {
   NativeQuerySnippet,
@@ -19,9 +20,6 @@ import { useQueryMetadata } from "../../hooks/use-query-metadata";
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorValidationCard } from "./EditorValidationCard";
-import {
-  NativeQuerySidebarToggle,
-} from "./NativeQuerySidebar";
 import S from "./QueryEditor.module.css";
 import { useQueryEditorContext } from "./QueryEditorContext";
 import {
@@ -53,32 +51,6 @@ export function QueryEditor({
   onRejectProposed,
   onAcceptProposed,
 }: QueryEditorProps) {
-  return (
-    <QueryEditorContent
-      transform={transform}
-      proposedSource={proposedSource}
-      isNew={isNew}
-      isSaving={isSaving}
-      onSave={onSave}
-      onChange={onChange}
-      onCancel={onCancel}
-      onRejectProposed={onRejectProposed}
-      onAcceptProposed={onAcceptProposed}
-    />
-  );
-}
-
-function QueryEditorContent({
-  transform,
-  proposedSource,
-  isNew = true,
-  isSaving = false,
-  onSave,
-  onChange,
-  onCancel,
-  onRejectProposed,
-  onAcceptProposed,
-}: Omit<QueryEditorProps, 'initialSource'>) {
   const {
     question,
     proposedQuestion,
@@ -93,7 +65,6 @@ function QueryEditorContent({
   } = useQueryEditorContext();
 
   const { isInitiallyLoaded } = useQueryMetadata(question);
-  const [isShowingNativeQueryPreview, toggleNativeQueryPreview] = useToggle();
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
   const validationResult = getValidationResult(question.query());
 
@@ -199,12 +170,6 @@ function QueryEditorContent({
               onChangeNativeEditorSelection={setSelectionRange}
               nativeEditorSelectedText={selectedText}
             />
-            {!isNative && (
-              <NativeQuerySidebarToggle
-                isShowingNativeQueryPreview={isShowingNativeQueryPreview}
-                onToggleNativeQueryPreview={toggleNativeQueryPreview}
-              />
-            )}
           </Stack>
         </Flex>
         <EditorValidationCard validationResult={validationResult} />

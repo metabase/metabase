@@ -22,6 +22,7 @@ import { TagList } from "../../../components/TagList";
 import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
 import { parseTimestampWithTimezone } from "../../../utils";
+import { CreateTransformMenu } from "../CreateTransformMenu";
 import { hasFilterParams } from "../utils";
 
 import S from "./TransformList.module.css";
@@ -50,10 +51,6 @@ export function TransformList({ params }: TransformListProps) {
   const error = transformsError ?? tagsError;
   const dispatch = useDispatch();
 
-  const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
-  };
-
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -72,47 +69,12 @@ export function TransformList({ params }: TransformListProps) {
       sectionTitle={t`Transforms`}
       titleMenuItems={<div />}
       onChangeSorting={() => null}
-      onAddNewItem={() => null}
+      AddButton={CreateTransformMenu}
       listItems={
         <Box>
           {transforms.map((transform) => (
             <TransformListItem key={transform.id} transform={transform} />
-          // <tr
-          //   key={transform.id}
-          //   className={S.row}
-          //   onClick={() => handleRowClick(transform)}
-          // >
-          //   <td className={S.wrap}>{transform.name}</td>
-          //   <td className={S.wrap}>{transform.target.name}</td>
-          //   <td className={S.nowrap}>
-          //     {transform.last_run?.end_time
-          //       ? parseTimestampWithTimezone(
-          //           transform.last_run.end_time,
-          //           systemTimezone,
-          //         ).format("lll")
-          //       : null}
-          //   </td>
-          //   <td className={S.nowrap}>
-          //     {transform.last_run != null ? (
-          //       <RunStatusInfo
-          //         status={transform.last_run.status}
-          //         message={transform.last_run.message}
-          //         endTime={
-          //           transform.last_run.end_time != null
-          //             ? parseTimestampWithTimezone(
-          //                 transform.last_run.end_time,
-          //                 systemTimezone,
-          //               ).toDate()
-          //             : null
-          //         }
-          //       />
-          //     ) : null}
-          //   </td>
-          //   <td className={S.wrap}>
-          //     <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
-          //   </td>
-          // </tr>
-        ))}
+          ))}
         </Box>
       }
     />

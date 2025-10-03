@@ -18,5 +18,5 @@ export function transform(id: Transform["id"]) {
 }
 
 export function transformEdit(id: Transform["id"]) {
-  return `${PLUGIN_TRANSFORMS.ROOT_URL}/${id}/query`;
+  return transform(id);
 }

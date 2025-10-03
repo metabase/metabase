@@ -9,7 +9,7 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { BenchAppBar } from "./BenchAppBar"
 import { BenchNav } from "./BenchNav";
 
-export const ResizeHandle =  ({ direction = "horizontal" }: { direction: "horizontal" | "vertical"}) => {
+export const ResizeHandle =  ({ direction = "horizontal" }: { direction?: "horizontal" | "vertical"}) => {
   const directionProps = {
     horizontal: { cursor: "col-resize", height: "100%", width: 4 },
     vertical: { cursor: "row-resize", height: 4, width: "100%" },

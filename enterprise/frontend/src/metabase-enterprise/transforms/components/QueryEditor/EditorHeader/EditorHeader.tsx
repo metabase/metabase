@@ -30,9 +30,9 @@ export function EditorHeader({
     !isSaving;
 
   return (
-    <Group justify="flex-end" p="md" pos="absolute" top={0} right={0}
+    <Group justify="flex-end" p="sm"
       style={{ zIndex: 24 /* FIXME: silly hack for prototyping */ }}
-      w="50%"
+      w="100%"
     >
       <Button key="cancel" onClick={onCancel} size="compact-sm">{t`Cancel`}</Button>
       <Tooltip
