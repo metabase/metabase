@@ -6,6 +6,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -79,6 +80,7 @@
 
 (t2/define-before-delete :model/Transform [transform]
   (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!
