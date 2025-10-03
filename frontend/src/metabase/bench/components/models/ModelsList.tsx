@@ -10,7 +10,7 @@ import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
-import { MetricEditor } from "../metrics/MetricsList";
+import { ModifyQuestion } from "../ModifyQuestion";
 
 function ModelsList() {
   const { isLoading, data } = useFetchModels();
@@ -63,6 +63,5 @@ export const ModelEditor = (props: {
   location: Location;
   params: { slug: string };
 }) => {
-  // TODO: Make MetricEditor less metric-specific
-  return <MetricEditor {...props} />;
+  return <ModifyQuestion cardId={+props.params.slug} />;
 };
