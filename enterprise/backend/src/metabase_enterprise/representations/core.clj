@@ -62,7 +62,7 @@
 
 ;; =============================================================== ;;
 
-(defn export
+(defn export-with-refs
   "Export a Metabase entity to its human-readable representation.
    Delegates to the multimethod export-entity for extensibility."
   [t2-model]

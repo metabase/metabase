@@ -23,7 +23,7 @@
                  (mt/mbql-query users)]]
     (mt/with-temp [:model/Card model {:type :model
                                       :dataset_query query}]
-      (let [edn (rep/export model)
+      (let [edn (rep/export-with-refs model)
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
             rep  (yaml/parse-string yaml)]

@@ -46,7 +46,7 @@
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Card :id id :type "question"))
-        rep (rep/export question)]
+        rep (rep/export-with-refs question)]
     (try
       (rep/normalize-representation rep)
       (catch Exception e
@@ -61,7 +61,7 @@
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Card :id id :type "model"))
-        rep (rep/export question)]
+        rep (rep/export-with-refs question)]
     (try
       (rep/normalize-representation rep)
       (catch Exception e
@@ -76,7 +76,7 @@
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Card :id id :type "metric"))
-        rep (rep/export question)]
+        rep (rep/export-with-refs question)]
     (try
       (-> rep
           rep/normalize-representation
@@ -93,7 +93,7 @@
    _request]
   (let [id (Long/parseLong id)
         question (api/check-404 (t2/select-one :model/Transform :id id))
-        rep (rep/export question)]
+        rep (rep/export-with-refs question)]
     (try
       (-> rep
           rep/normalize-representation
@@ -114,7 +114,7 @@
    _request]
   (let [id (Long/parseLong id)
         collection (api/check-404 (t2/select-one :model/Collection :id id))
-        rep (rep/export collection)]
+        rep (rep/export-with-refs collection)]
     (try
       (rep/normalize-representation rep)
       (catch Exception e
@@ -129,7 +129,7 @@
    _request]
   (let [id (Long/parseLong id)
         database (api/check-404 (t2/select-one :model/Database :id id))
-        rep (rep/export database)]
+        rep (rep/export-with-refs database)]
     (try
       (rep/normalize-representation rep)
       (catch Exception e

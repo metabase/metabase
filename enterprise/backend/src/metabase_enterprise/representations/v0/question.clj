@@ -143,15 +143,3 @@
 
       :always
       u/remove-nils)))
-#_(comment
-    (let [q (t2/select-one :model/Card :id 93)]
-      (data/diff (:dataset_query q)
-                 (patch-refs-for-export (:dataset_query q))))
-
-    (source-table-ref 2)
-
-    (export (t2/select-one :model/Card :id 97))
-    (t2/select-one :model/Table 2)
-    (t2/select-one :model/Field 57)
-
-    (clojure.pprint/pprint (export (t2/select-one :model/Card :id 123))))

@@ -31,10 +31,10 @@
   representation-type)
 
 (def ^:private type->model
-  {"question" :model/Card
-   "metric" :model/Card
-   "model" :model/Card
-   "database" :model/Database
+  {"question"  :model/Card
+   "metric"    :model/Card
+   "model"     :model/Card
+   "database"  :model/Database
    "transform" :model/Transform})
 
 (defn- read-from-ref [ref]

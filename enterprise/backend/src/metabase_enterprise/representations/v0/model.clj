@@ -261,80 +261,7 @@
                                           (assoc :entity_id entity-id))]
           (first (t2/insert-returning-instances! :model/Card model-data-with-creator)))))))
 
-;; Debugging code:
-#_(comment
-    (defn- dataset-query->query
-      "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
-      ([dataset-query]
-       (some-> (:database dataset-query)
-               lib-be/application-database-metadata-provider
-               (dataset-query->query dataset-query)))
-      ([metadata-provider dataset-query]
-       (some->> dataset-query card.metadata/normalize-dataset-query (lib/query metadata-provider))))
-    [metabase.lib-be.core :as lib-be]
-    [metabase.lib.core :as lib]
-    [metabase.queries.models.card.metadata :as card.metadata]
-    ;; Regenerate result_metadata by running the query to ensure all lib/* keys are present
-    (log/info "Regenerating result_metadata for model" (:name persisted-card))
-    (try
-      (let [;; Clear result_metadata temporarily to force regeneration
-            card-for-regeneration (assoc persisted-card :result_metadata nil)
-            #_#_dataset-query (->> (:dataset_query card-for-regeneration)
-                                   (lib/->pMBQL)
-                                   (lib/query (lib/application-database-metadata-provider database-id)))
-            returned-columns (lib/returned-columns (dataset-query->query (:dataset_query persisted-card)))
-            _ (println "APPLEBANANA")
-            _ (clojure.pprint/pprint returned-columns)
-            ;;(card.metadata/populate-result-metadata card-for-regeneration {})
-            ;; Build a map of column name -> custom metadata from the imported YAML
-            custom-metadata (when-let [imported-meta (:result_metadata model-data)]
-                              (into [] (map (fn [col]
-                                              (select-keys col [:display_name :description :semantic_type :visibility_type :currency]))
-                                            imported-meta)))
-            ;; Merge custom metadata into regenerated metadata, preserving lib/* keys
-            merged-metadata (when returned-columns
-                              (mapv (fn [custom-metadata computed-metadata]
-                                      (merge computed-metadata custom-metadata))
-                                    custom-metadata
-                                    returned-columns))]
-        (println 'MERGED-METADATA)
-        (clojure.pprint/pprint custom-metadata)
-        #_(when merged-metadata
-            (t2/update! :model/Card (:id persisted-card) {:result_metadata merged-metadata})
-            (log/info "Successfully regenerated and merged result_metadata for model" (:name persisted-card)))
-        #_(t2/select-one :model/Card :id (:id persisted-card))
-        persisted-card)
-      (catch Exception e
-        (log/warn e "Failed to regenerate result_metadata for model" (:name persisted-card) "- using imported metadata")
-        persisted-card)))
-
 ;;; -- Export --
-
-(defn ->ref
-  "Make a ref"
-  [card]
-  (format "%s-%s" (name (:type card)) (:id card)))
-
-(defn- source-table-ref [table]
-  (cond
-    (vector? table)
-    (let [[db schema table] table]
-      {:database db
-       :schema schema
-       :table table})
-
-    (string? table)
-    (let [referred-card (t2/select-one :model/Card :entity_id table)]
-      (->ref referred-card))))
-
-(defn- update-source-table [card]
-  (if-some [_table (get-in card [:mbql_query :source-table])]
-    (update-in card [:mbql_query :source-table] source-table-ref)
-    card))
-
-(defn- patch-refs [card]
-  (-> card
-      (update-source-table)))
 
 (defn- patch-refs-for-export [query]
   (-> query
@@ -358,9 +285,6 @@
       (assoc :mbql_query (:query query)
              :database (:database query)
              :columns (:result_metadata card))
-
-      ;;:always
-      ;;patch-refs
 
       :always
       u/remove-nils)))

@@ -11,7 +11,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(def good-yamls ["test_resources/representations/v0/monthly-revenue.question.yml"
+(def good-yamls ["test_resources/representations/v0/singletons/monthly-revenue.question.yml"
                  ;;"test_resources/representations/v0/pokemon-cards-limited.question.yml"
                  ;;"test_resources/representations/v0/collection-8/pokemon-cards.question.yml"
                  ;;"test_resources/representations/v0/collection-8/sales-data.question.yml"
@@ -36,7 +36,7 @@
                  (mt/mbql-query users)]]
     (mt/with-temp [:model/Card question {:type :question
                                          :dataset_query query}]
-      (let [edn (rep/export question)
+      (let [edn (rep/export-with-refs question)
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
             rep  (yaml/parse-string yaml)]
@@ -59,7 +59,7 @@
               persisted (rep/persist! rep ref-index)]
           (is persisted)
           (let [question (t2/select-one :model/Card :id (:id persisted))
-                edn (rep/export question)
+                edn (rep/export-with-refs question)
 
                 yaml (yaml/generate-string edn)
                 rep2 (yaml/parse-string yaml)]
@@ -71,14 +71,14 @@
                    (mt/mbql-query users)]]
       (mt/with-temp [:model/Card question {:type :question
                                            :dataset_query query}]
-        (let [edn (rep/export question)
+        (let [edn (rep/export-with-refs question)
               yaml (yaml/generate-string edn)
               rep (yaml/parse-string yaml)
               rep (rep/normalize-representation rep)
               ref-index {(v0-common/unref (:database edn)) (t2/select-one :model/Database (mt/id))}
               question (rep/persist! rep ref-index)
               question (t2/select-one :model/Card :id (:id question))
-              edn (rep/export question)
+              edn (rep/export-with-refs question)
               yaml (yaml/generate-string edn)
               rep2 (yaml/parse-string yaml)
 

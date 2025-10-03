@@ -14,13 +14,13 @@
     (mt/with-temp [:model/Database database {:engine :postgres
                                              :name "abc"
                                              :details "{}"}]
-      (let [edn (rep/export database)
+      (let [edn (rep/export-with-refs database)
             yaml (yaml/generate-string edn)
             rep (yaml/parse-string yaml)
             rep (rep/normalize-representation rep)
             database (rep/persist! rep)
             database (t2/select-one :model/Database :id (:id database))
-            edn (rep/export database)
+            edn (rep/export-with-refs database)
             yaml (yaml/generate-string edn)
             rep2 (yaml/parse-string yaml)
 
@@ -32,7 +32,7 @@
                                              :name "abc"
                                              :description "MY DB"
                                              :details "{}"}]
-      (let [edn (rep/export database)
+      (let [edn (rep/export-with-refs database)
             edn (assoc edn
                        :description "CHANGE"
                        :details {:url "hello"})
