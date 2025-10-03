@@ -74,7 +74,7 @@ export function parseTimestamp(
     result = value;
   } else if (
     typeof value === "string" &&
-    /(Z|[+-]\d\d:\d\d|[+-]\d{4})$/.test(value)
+    /(Z|[+-]\d\d:?\d\d)$/.test(value)
   ) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
