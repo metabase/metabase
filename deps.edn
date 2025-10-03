@@ -124,7 +124,7 @@
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.1"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.1"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.1"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.1"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.2"}             ; allows the commons-logging API to work with log4j 2
   org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.1"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
   {:mvn/version "2.25.1"}             ; allows the custom json logging format
