@@ -171,14 +171,14 @@ describe("FormattingWidget", () => {
     const seperatorStyleInput = await screen.findByLabelText("Separator style");
     await userEvent.click(seperatorStyleInput);
 
-    const [item] = screen.getAllByRole("listbox");
-    const children = within(item).getAllByRole("option");
+    const [dropdown] = screen.getAllByRole("listbox");
+    const children = within(dropdown).getAllByRole("option");
     expect(children.length).toBe(5);
 
-    expect(within(item).getByText("100,000.00")).toBeInTheDocument();
-    expect(within(item).getByText("100 000,00")).toBeInTheDocument();
-    expect(within(item).getByText("100.000,00")).toBeInTheDocument();
-    expect(within(item).getByText("100000.00")).toBeInTheDocument();
-    expect(within(item).getByText("100’000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100,000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100 000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100.000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100’000.00")).toBeInTheDocument();
   });
 });
