@@ -9,7 +9,10 @@ import cx from "classnames";
 import { ActionIcon, Icon } from "metabase/ui";
 
 import type { NodeId, NodeType } from "../types";
-import { getNodesWithToggledNodes } from "../utils";
+import {
+  getNodesWithCollapsedNodes,
+  getNodesWithExpandedNodes,
+} from "../utils";
 
 import S from "./NodeControls.module.css";
 
@@ -26,7 +29,9 @@ export function NodeControls({ id, isExpanded }: NodeControlsProps) {
   const handleToggle = () => {
     const nodes = getNodes();
     const edges = getEdges();
-    const newNodes = getNodesWithToggledNodes(nodes, edges, [id], isExpanded);
+    const newNodes = isExpanded
+      ? getNodesWithCollapsedNodes(nodes, edges, [id])
+      : getNodesWithExpandedNodes(nodes, edges, [id]);
     setNodes(newNodes);
   };
 

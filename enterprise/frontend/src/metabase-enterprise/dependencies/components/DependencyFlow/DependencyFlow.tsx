@@ -13,7 +13,7 @@ import type { DependencyGraph } from "metabase-types/api";
 
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
-import type { NodeType } from "./types";
+import type { DependencyEntry, NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
@@ -160,8 +160,16 @@ const GRAPH: DependencyGraph = {
   ],
 };
 
+const ENTRY: DependencyEntry = {
+  id: 7,
+  type: "table",
+};
+
 export function DependencyFlow() {
-  const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(GRAPH);
+  const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(
+    GRAPH,
+    ENTRY,
+  );
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -182,7 +190,7 @@ export function DependencyFlow() {
 }
 
 function NodeLayout() {
-  const { getNodes, getEdges, setNodes } = useReactFlow<NodeType>();
+  const { getNodes, getEdges, setNodes, fitView } = useReactFlow<NodeType>();
   const isInitialized = useNodesInitialized();
 
   useLayoutEffect(() => {
@@ -191,8 +199,9 @@ function NodeLayout() {
       const edges = getEdges();
       const nodesWithPositions = getNodesWithPositions(nodes, edges);
       setNodes(nodesWithPositions);
+      fitView({ nodes: nodesWithPositions });
     }
-  }, [isInitialized, getNodes, getEdges, setNodes]);
+  }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
 
   return null;
 }
