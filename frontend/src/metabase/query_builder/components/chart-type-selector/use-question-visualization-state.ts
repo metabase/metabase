@@ -1,7 +1,9 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
-import visualizations from "metabase/visualizations";
+import visualizations, {
+  getMaxDimensionsSupported,
+} from "metabase/visualizations";
 import { sanatizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
 import {
@@ -30,12 +32,29 @@ export const useQuestionVisualizationState = ({
       }
       let newQuestion = question.setDisplay(display).lockDisplay();
       const visualization = visualizations.get(display);
+      let updatedSettings = newQuestion.settings();
+
       if (visualization?.onDisplayUpdate) {
-        const updatedSettings = visualization.onDisplayUpdate(
-          newQuestion.settings(),
-        );
-        newQuestion = newQuestion.setSettings(updatedSettings);
+        updatedSettings = visualization.onDisplayUpdate(updatedSettings);
       }
+
+      const currentDimensions = updatedSettings["graph.dimensions"];
+      const maxDimensionsSupported = getMaxDimensionsSupported(display);
+
+      if (
+        currentDimensions &&
+        currentDimensions.length > maxDimensionsSupported
+      ) {
+        updatedSettings = {
+          ...updatedSettings,
+          "graph.dimensions": currentDimensions.slice(
+            0,
+            maxDimensionsSupported,
+          ),
+        };
+      }
+
+      newQuestion = newQuestion.setSettings(updatedSettings);
       onUpdateQuestion(newQuestion);
     },
     [onUpdateQuestion, question, selectedVisualization],

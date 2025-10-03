@@ -13,6 +13,22 @@ export type ColumnDescriptor = {
   column: RemappingHydratedDatasetColumn;
 };
 
+export type ColumnDescriptors = {
+  breakoutDimensions: ColumnDescriptor[];
+};
+
+export const getBreakoutDimensionsIndexes = (
+  descriptors: ColumnDescriptors,
+) => {
+  return descriptors.breakoutDimensions.map((d) => d.index);
+};
+
+export const getBreakoutDimensionsColumns = (
+  descriptors: ColumnDescriptors,
+) => {
+  return descriptors.breakoutDimensions.map((d) => d.column);
+};
+
 export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   columnNames: string[],
   columns: TColumn[],
@@ -48,7 +64,7 @@ export const hasValidColumnsSelected = (
 
 export type BreakoutChartColumns = {
   dimension: ColumnDescriptor;
-  breakout: ColumnDescriptor;
+  breakout: ColumnDescriptors;
   metric: ColumnDescriptor;
 };
 
@@ -86,10 +102,14 @@ export const getCartesianChartColumns = (
     "graph.dimensions" | "graph.metrics" | "scatter.bubble"
   >,
 ): CartesianChartColumns => {
-  const [dimension, breakout] = getColumnDescriptors(
+  const dimensions = getColumnDescriptors(
     (settings["graph.dimensions"] ?? []).filter(isNotNull),
     columns,
   );
+  const dimension = dimensions[0];
+  const breakout: ColumnDescriptors = {
+    breakoutDimensions: dimensions.slice(1),
+  };
 
   const metrics = getColumnDescriptors(
     _.uniq((settings["graph.metrics"] ?? []).filter(isNotNull)),
@@ -101,7 +121,7 @@ export const getCartesianChartColumns = (
     columns,
   )[0];
 
-  if (breakout) {
+  if (breakout.breakoutDimensions.length > 0) {
     return {
       dimension,
       breakout,
