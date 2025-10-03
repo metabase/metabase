@@ -1748,10 +1748,11 @@
                                                                                    [:= :collection_id id]
                                                                                    (when skip-archived [:not :archived])]})]
                                {["Card" card-id] {"Collection" id}}))
-        documents   (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
-                                                                              [:and [:= :collection_id id]
-                                                                               (when skip-archived [:not :archived])]})]
-                               {["Document" doc-id] {"Collection" id}}))]
+        documents   (when (config/ee-available?)
+                      (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
+                                                                                [:and [:= :collection_id id]
+                                                                                 (when skip-archived [:not :archived])]})]
+                                 {["Document" doc-id] {"Collection" id}})))]
     (merge child-colls dashboards cards documents)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]

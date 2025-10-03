@@ -1044,8 +1044,11 @@
 
   remote-sync
   {:team "UX West"
-   :api  #{metabase.remote-sync.core}
-   :uses #{premium-features}}
+   :api  #{metabase.remote-sync.core
+           metabase.remote-sync.init}
+   :uses #{api
+           models
+           premium-features}}
 
   request
   {:team "UX West"

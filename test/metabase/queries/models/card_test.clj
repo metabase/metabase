@@ -966,7 +966,8 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/Collection {other-coll-id :id} {}
                  :model/Dashboard {dash-id :id} {:collection_id coll-id}
-                 :model/Card card {:dashboard_id dash-id}]
+                 :model/Card card {:dashboard_id dash-id
+                                   :dataset_query (mt/mbql-query venues)}]
     (mt/with-test-user :rasta
       (testing "Can't update the collection_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot manually set `collection_id` on a Dashboard Question"
@@ -1073,190 +1074,197 @@
                                        :verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))
 
-(deftest create-card-library-collection-non-library-deps-test
-  (testing "create-card! should throw exception when saving to library collection with non-library dependencies"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
+(deftest create-card-remote-synced-collection-non-remote-synced-deps-test
+  (testing "create-card! should throw exception when saving to remote-synced collection with non-remote-synced dependencies"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
-                                                     :name "Non-library source card"}]
-      (testing "Card with non-library source card dependency cannot be created in library collection"
+                                                     :name "Non-remote-synced source card"}]
+      (testing "Card with non-remote-synced source card dependency cannot be created in remote-synced collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has non-remote-synced dependencies"
              (card/create-card!
-              {:name "Card with non-library dependency"
+              {:name "Card with non-remote-synced dependency"
                :display "table"
                :visualization_settings {}
                :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})
-               :collection_id library-coll-id}
+               :collection_id remote-synced-coll-id}
               {:id (mt/user->id :rasta)}))))
 
-      (testing "Card without dependencies can be created in library collection"
+      (testing "Card without dependencies can be created in remote-synced collection"
         (let [card (card/create-card!
                     {:name "Card without dependencies"
                      :display "table"
                      :visualization_settings {}
                      :dataset_query (mt/mbql-query venues)
-                     :collection_id library-coll-id}
+                     :collection_id remote-synced-coll-id}
                     {:id (mt/user->id :rasta)})]
           (is (some? card))
-          (is (= library-coll-id (:collection_id card))))))))
+          (is (= remote-synced-coll-id (:collection_id card))))))))
 
-(deftest update-card-library-collection-non-library-deps-test
-  (testing "update-card! should throw exception when moving to library collection with non-library dependencies"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
+(deftest update-card-remote-synced-collection-non-remote-synced-deps-test
+  (testing "update-card! should throw exception when moving to remote-synced collection with non-remote-synced dependencies"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
                    :model/Card {source-card-id :id} {:collection_id regular-coll-id
-                                                     :name "Non-library source card"}
+                                                     :name "Non-remote-synced source card"}
                    :model/Card card {:collection_id regular-coll-id
                                      :name "Card with dependency"
                                      :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
-      (testing "Card with non-library dependencies cannot be moved to library collection"
+      (testing "Card with non-remote-synced dependencies cannot be moved to remote-synced collection"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has non-remote-synced dependencies"
              (card/update-card!
               {:card-before-update card
-               :card-updates {:collection_id library-coll-id}
+               :card-updates {:collection_id remote-synced-coll-id}
                :actor {:id (mt/user->id :rasta)}}))))
 
-      (testing "Card with library dependencies can be moved to library collection"
-        (mt/with-temp [:model/Collection {another-library-coll-id :id} {:type "remote-synced" :location (str "/" library-coll-id "/")}
-                       :model/Card {library-source-card-id :id} {:collection_id another-library-coll-id
-                                                                 :name "Library source card"}
+      (testing "Card with remote-synced dependencies can be moved to remote-synced collection"
+        (mt/with-temp [:model/Collection {another-remote-synced-coll-id :id} {:type "remote-synced" :location (str "/" remote-synced-coll-id "/")}
+                       :model/Card {remote-synced-source-card-id :id} {:collection_id another-remote-synced-coll-id
+                                                                       :name "Remote-Synced source card"}
                        :model/Card movable-card {:collection_id regular-coll-id
-                                                 :name "Card with library dependency"
-                                                 :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-source-card-id)})}]
+                                                 :name "Card with remote-synced dependency"
+                                                 :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-source-card-id)})}]
           (let [updated-card (card/update-card!
                               {:card-before-update movable-card
-                               :card-updates {:collection_id library-coll-id}
+                               :card-updates {:collection_id remote-synced-coll-id}
                                :actor {:id (mt/user->id :rasta)}})]
             (is (some? updated-card))
-            (is (= library-coll-id (:collection_id updated-card)))))))))
+            (is (= remote-synced-coll-id (:collection_id updated-card)))))))))
 
-(deftest update-card-existing-library-card-non-library-deps-test
-  (testing "update-card! should throw exception when card in library collection gains non-library dependencies"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
+(deftest update-card-existing-remote-synced-card-non-remote-synced-deps-test
+  (testing "update-card! should throw exception when card in remote-synced collection gains non-remote-synced dependencies"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
-                   :model/Card {non-library-source-id :id} {:collection_id regular-coll-id
-                                                            :name "Non-library source"}
-                   :model/Card card {:collection_id library-coll-id
-                                     :name "Library card"
+                   :model/Card {non-remote-synced-source-id :id} {:collection_id regular-coll-id
+                                                                  :name "Non-remote-synced source"}
+                   :model/Card card {:collection_id remote-synced-coll-id
+                                     :name "Remote-Synced card"
                                      :dataset_query (mt/mbql-query venues)}]
-      (testing "Cannot update library card to have non-library dependencies"
+      (testing "Cannot update remote-synced card to have non-remote-synced dependencies"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has non-remote-synced dependencies"
              (card/update-card!
               {:card-before-update card
-               :card-updates {:dataset_query (mt/mbql-query nil {:source-table (str "card__" non-library-source-id)})}
+               :card-updates {:dataset_query (mt/mbql-query nil {:source-table (str "card__" non-remote-synced-source-id)})}
                :actor {:id (mt/user->id :rasta)}})))))))
 
-(deftest update-card-library-dependents-prevents-move-from-library-test
-  (testing "update-card! should prevent moving card out of library collection when it has library dependents"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
+(deftest update-card-remote-synced-dependents-prevents-move-from-remote-synced-test
+  (testing "update-card! should prevent moving card out of remote-synced collection when it has remote-synced dependents"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
-                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
-                                                                       :name "Library card"}
-                   :model/Card {dependent-card-id :id} {:collection_id library-coll-id
-                                                        :name "Card dependent on library card"
-                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
-      (testing "Cannot move library card to regular collection when library dependents exist"
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card {dependent-card-id :id} {:collection_id remote-synced-coll-id
+                                                        :name "Card dependent on remote-synced card"
+                                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+      (testing "Cannot move remote-synced card to regular collection when remote-synced dependents exist"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has remote-synced dependents"
              (card/update-card!
-              {:card-before-update library-card
+              {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
                :actor {:id (mt/user->id :rasta)}}))))
 
-      (testing "Can move library card when no library dependents exist"
+      (testing "Can move remote-synced card when no remote-synced dependents exist"
         (t2/delete! :model/Card :id dependent-card-id)
         (let [updated-card (card/update-card!
-                            {:card-before-update library-card
+                            {:card-before-update remote-synced-card
                              :card-updates {:collection_id regular-coll-id}
                              :actor {:id (mt/user->id :rasta)}})]
           (is (some? updated-card))
           (is (= regular-coll-id (:collection_id updated-card))))))))
 
-(deftest update-card-library-dependents-with-parameters-test
-  (testing "update-card! should prevent moving card out of library collection when dependents reference it via parameters"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
+(deftest update-card-remote-synced-dependents-with-parameters-test
+  (testing "update-card! should prevent moving card out of remote-synced collection when dependents reference it via parameters"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
-                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
-                                                                       :name "Library card"}
-                   :model/Card _ {:collection_id library-coll-id
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-id
                                   :name "Card with parameter reference"
                                   :parameters [{:id "test-param"
+                                                :name "test-param"
+                                                :display_param "test param"
                                                 :type :category
-                                                :card-id library-card-id}]}]
-      (testing "Cannot move library card when dependents reference it via parameters"
+                                                :values_source_type "card"
+                                                :values_source_config {:card_id remote-synced-card-id}}]}]
+      (testing "Cannot move remote-synced card when dependents reference it via parameters"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has remote-synced dependents"
              (card/update-card!
-              {:card-before-update library-card
+              {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
                :actor {:id (mt/user->id :rasta)}})))))))
 
-(deftest update-card-library-dependents-with-template-tags-test
-  (testing "update-card! should prevent moving card out of library collection when dependents reference it via template tags"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
+(deftest update-card-remote-synced-dependents-with-template-tags-test
+  (testing "update-card! should prevent moving card out of remote-synced collection when dependents reference it via template tags"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
                    :model/Collection {regular-coll-id :id} {}
-                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
-                                                                       :name "Library card"}
-                   :model/Card _ {:collection_id library-coll-id
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-id
                                   :name "Card with template tag reference"
                                   :dataset_query (mt/native-query {:query "SELECT * FROM {{#123-abc}}"
                                                                    :template-tags {"123-abc" {:id "123-abc"
                                                                                               :name "123-abc"
                                                                                               :display-name "Test Template Tag"
                                                                                               :type :card
-                                                                                              :card-id library-card-id}}})}]
-      (testing "Cannot move library card when dependents reference it via template tags"
+                                                                                              :card-id remote-synced-card-id}}})}]
+      (testing "Cannot move remote-synced card when dependents reference it via template tags"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Model has remote-synced dependents"
              (card/update-card!
-              {:card-before-update library-card
+              {:card-before-update remote-synced-card
                :card-updates {:collection_id regular-coll-id}
                :actor {:id (mt/user->id :rasta)}})))))))
 
-(deftest update-card-library-dependents-allows-move-within-library-test
-  (testing "update-card! should allow moving card between library collections even with library dependents"
-    (mt/with-temp [:model/Collection {library-coll-1-id :id} {:type "remote-synced" :location "/"}
-                   :model/Collection {library-coll-2-id :id} {:type "remote-synced" :location (str "/" library-coll-1-id "/")}
-                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-1-id
-                                                                       :name "Library card"}
-                   :model/Card _ {:collection_id library-coll-1-id
-                                  :name "Card dependent on library card"
-                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
-      (testing "Can move library card between library collections"
+(deftest update-card-remote-synced-dependents-allows-move-within-remote-synced-test
+  (testing "update-card! should allow moving card between remote-synced collections even with remote-synced dependents"
+    (mt/with-temp [:model/Collection {remote-synced-coll-1-id :id} {:type "remote-synced" :location "/"}
+                   :model/Collection {remote-synced-coll-2-id :id} {:type "remote-synced" :location (str "/" remote-synced-coll-1-id "/")}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-1-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-1-id
+                                  :name "Card dependent on remote-synced card"
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+      (testing "Can move remote-synced card between remote-synced collections"
         (let [updated-card (card/update-card!
-                            {:card-before-update library-card
-                             :card-updates {:collection_id library-coll-2-id}
+                            {:card-before-update remote-synced-card
+                             :card-updates {:collection_id remote-synced-coll-2-id}
                              :actor {:id (mt/user->id :rasta)}})]
           (is (some? updated-card))
-          (is (= library-coll-2-id (:collection_id updated-card))))))))
+          (is (= remote-synced-coll-2-id (:collection_id updated-card))))))))
 
-(deftest update-card-library-dependents-allows-non-collection-updates-test
-  (testing "update-card! should allow non-collection updates to library cards with dependents"
-    (mt/with-temp [:model/Collection {library-coll-id :id} {:type "remote-synced"}
-                   :model/Card {library-card-id :id :as library-card} {:collection_id library-coll-id
-                                                                       :name "Library card"}
-                   :model/Card _ {:collection_id library-coll-id
-                                  :name "Card dependent on library card"
-                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" library-card-id)})}]
-      (testing "Can update name and description of library card with dependents"
+(deftest update-card-remote-synced-dependents-allows-non-collection-updates-test
+  (testing "update-card! should allow non-collection updates to remote-synced cards with dependents"
+    (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:type "remote-synced"}
+                   :model/Card {remote-synced-card-id :id :as remote-synced-card} {:collection_id remote-synced-coll-id
+                                                                                   :dataset_query (mt/mbql-query venues)
+                                                                                   :name "Remote-Synced card"}
+                   :model/Card _ {:collection_id remote-synced-coll-id
+                                  :name "Card dependent on remote-synced card"
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" remote-synced-card-id)})}]
+      (testing "Can update name and description of remote-synced card with dependents"
         (let [updated-card (card/update-card!
-                            {:card-before-update library-card
-                             :card-updates {:name "Updated Library Card"
+                            {:card-before-update remote-synced-card
+                             :card-updates {:name "Updated Remote-Synced Card"
                                             :description "Updated description"}
                              :actor {:id (mt/user->id :rasta)}})]
           (is (some? updated-card))
-          (is (= "Updated Library Card" (:name updated-card)))
+          (is (= "Updated Remote-Synced Card" (:name updated-card)))
           (is (= "Updated description" (:description updated-card)))
-          (is (= library-coll-id (:collection_id updated-card))))))))
+          (is (= remote-synced-coll-id (:collection_id updated-card))))))))
 
 (deftest native-query-search-indexing-test
   (testing "native queries should have only query text indexed for search, not the full JSON structure (#64121)"

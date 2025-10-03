@@ -61,7 +61,7 @@
                    :model/Card card3 {:name "Card 3" :collection_id (:id normal-coll)}
                    :model/Card card4 {:name "Card 4" :collection_id (:id normal-coll)}
                    :model/Card card5 {:name "Card 5"}]
-      (let [hydrated-cards #p (t2/hydrate [card1 card2 card3 card4 card5] :is_remote_synced)]
+      (let [hydrated-cards (t2/hydrate [card1 card2 card3 card4 card5] :is_remote_synced)]
         (testing "multiple cards in remote-synced collection are correctly hydrated"
           (is (true? (:is_remote_synced (first hydrated-cards))))
           (is (true? (:is_remote_synced (second hydrated-cards)))))

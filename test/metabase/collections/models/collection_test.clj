@@ -2229,12 +2229,12 @@
       (let [ex (is (thrown-with-msg? Exception
                                      #"Model has non-remote-synced dependencies"
                                      (collection/move-collection! coll (format "/%d/" parent-id) true))
-                   "Should throw exception for non-remote-synced dependencies")]
-        (let [ex-data (ex-data ex)]
-          (is (= 400 (:status-code ex-data))
-              "Exception should have 400 status code")
-          (is (contains? ex-data :non-remote-synced-models)
-              "Exception should contain non-remote-synced models")))
+                   "Should throw exception for non-remote-synced dependencies")
+            ex-data (ex-data ex)]
+        (is (= 400 (:status-code ex-data))
+            "Exception should have 400 status code")
+        (is (contains? ex-data :non-remote-synced-models)
+            "Exception should contain non-remote-synced models"))
 
         ;; Verify the transaction was rolled back - collection should not be moved or changed
       (let [unchanged-coll (t2/select-one :model/Collection :id coll-id)]
