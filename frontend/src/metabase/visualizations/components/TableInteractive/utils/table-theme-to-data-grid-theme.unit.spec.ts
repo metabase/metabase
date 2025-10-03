@@ -33,30 +33,19 @@ describe("tableThemeToDataGridTheme", () => {
     });
   });
 
-  it("uses provided backgroundColor when cell.backgroundColor is undefined", () => {
-    const themeWithoutCellBg = {
-      ...mockTableTheme,
-      cell: { ...mockTableTheme.cell, backgroundColor: undefined },
-    };
-
-    const result = tableThemeToDataGridTheme(themeWithoutCellBg, "#custom");
-
-    expect(result.cell?.backgroundColor).toBe("#custom");
-  });
-
   it("replaces transparent backgroundColor with CSS variable", () => {
     const themeWithoutCellBg = {
       ...mockTableTheme,
       cell: { ...mockTableTheme.cell, backgroundColor: undefined },
     };
 
-    const result = tableThemeToDataGridTheme(themeWithoutCellBg, "transparent");
+    const result = tableThemeToDataGridTheme(themeWithoutCellBg);
 
     expect(result.cell?.backgroundColor).toBe("var(--mb-color-background)");
   });
 
   it("prefers cell.backgroundColor over provided backgroundColor", () => {
-    const result = tableThemeToDataGridTheme(mockTableTheme, "#ignored");
+    const result = tableThemeToDataGridTheme(mockTableTheme);
 
     expect(result.cell?.backgroundColor).toBe("#f5f5f5");
   });
