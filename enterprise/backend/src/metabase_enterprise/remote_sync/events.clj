@@ -8,75 +8,11 @@
    that are part of remote-synced collections."
   (:require
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-;; Define our base event type that derives from the core :metabase/event
-(derive ::remote-sync-event :metabase/event)
-
-;; Define the specific remote-sync event type
-(derive :event/remote-sync ::remote-sync-event)
-
-(defn- log-sync-event!
-  "Log a sync event to the remote_sync_change_log table.
-
-   Args:
-       event (map): Event data map containing sync information.
-           sync-type (str): Type of sync operation performed.
-           status (str): Status of the sync operation.
-           source-branch (str, optional): Source branch name.
-           target-branch (str, optional): Target branch name.
-           collection-id (str, optional): Entity id of the collection
-           version (str): The verison that was synced
-           message (str, optional): Optional message or error details."
-  [{:keys [sync-type status source-branch target-branch message collection-id version]}]
-  (t2/insert! :model/RemoteSyncChangeLog
-              {:sync_type sync-type
-               :source_branch source-branch
-               :target_branch target-branch
-               :model_type (when collection-id "Collection")
-               :model_entity_id collection-id
-               :most_recent true
-               :status status
-               :version version
-               :message message}))
-
-(defn publish-remote-sync!
-  "Publish a remote sync event with the given sync data.
-
-   Args:
-       sync-type (str): Type of sync (\"import\", \"export\").
-       collection-id (string, optional): Entity ID of the collection being synced. Optional for import/export operations.
-       user-id (int, optional): ID of the user triggering the sync.
-       metadata (map, optional): Additional sync metadata. Can include :branch, :status, :message.
-
-   Returns:
-       map: The published event data.
-
-   Examples:
-       (publish-remote-sync! \"import\" nil \"entity\" {:branch \"main\" :status \"success\"})
-       (publish-remote-sync! \"export\" nil \"entity\" {:branch \"feature-branch\" :status \"error\" :message \"Network timeout\"})"
-  [sync-type collection-id user-id & [metadata]]
-  (events/publish-event! :event/remote-sync
-                         (merge {:sync-type sync-type
-                                 :collection-id collection-id
-                                 :user-id user-id
-                                 :timestamp (t/instant)}
-                                metadata)))
-
-;; Event handler for all remote sync events
-(methodical/defmethod events/publish-event! ::remote-sync-event
-  [topic event]
-  (log-sync-event! event)
-  (log/infof "Remote sync event: %s - Collection %s (sync-type: %s, user: %s)"
-             topic
-             (:collection-id event)
-             (:sync-type event)
-             (:user-id event)))
 
  ;; Helper functions for model change tracking
 
@@ -93,42 +29,32 @@
   (boolean
    (collections/remote-synced-collection? collection_id)))
 
-(defn- create-remote-sync-change-log-entry!
-  "Create a remote sync change log entry for a model change.
+(defn- create-remote-sync-object-entry!
+  "Create or update a remote sync object entry for a model change.
 
    Args:
-       model-type (str): Type of model ('card', 'dashboard', 'document', 'collection').
-       model-entity-id (int): ENTITY ID of the affected entity.
-       sync-type (str): Type of change ('create', 'update', 'delete', 'touch').
+       model-type (str): Type of model ('Card', 'Dashboard', 'Document', 'Collection').
+       model-id (int): ID of the affected model.
+       status (str): Status of the sync ('created', 'updated', 'removed', 'deleted', 'error', 'synced').
        user-id (int, optional): ID of the user making the change. Defaults to current user.
 
    Returns:
-       map: The created change log entry."
-  [model-type model-entity-id sync-type & [user-id]]
-  (let [user-id (or user-id api/*current-user-id*)
-        last-sync (t2/select-one-fn :created_at [:model/RemoteSyncChangeLog :created_at] :sync_type [:in ["import" "export"]])
-        base-where-clause [:and
-                           [:= :model_type model-type]
-                           [:= :model_entity_id (str model-entity-id)]
-                           [:= :most_recent true]
-                           [:= :sync_type [:inline "create"]]]
-        created-since-sync (pos-int? (t2/count :model/RemoteSyncChangeLog {:where (cond-> base-where-clause
-                                                                                    (some? last-sync) (conj [:> :created_at last-sync]))}))]
-    (if created-since-sync
-      (when (= sync-type "delete")
-        (t2/delete! :model/RemoteSyncChangeLog
-                    :model_type model-type
-                    :model_entity_id (str model-entity-id)
-                    :sync_type "create"))
-      (t2/insert! :model/RemoteSyncChangeLog
+       map: The created or updated remote sync object entry."
+  [model-type model-id status & [_user-id]]
+  (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
+    (cond
+      (or (and existing (not= "created" (:status existing)))
+          (and (= "created" (:status existing)) (= "removed" status)))
+      (t2/update! :model/RemoteSyncObject (:id existing)
+                  {:status status
+                   :status_changed_at (t/offset-date-time)})
+
+      (not existing)
+      (t2/insert! :model/RemoteSyncObject
                   {:model_type      model-type
-                   :model_entity_id (str model-entity-id)
-                   :sync_type       sync-type
-                   :source_branch   nil
-                   :target_branch   nil
-                   :most_recent     true
-                   :status          "success"
-                   :message         (format "%s %s by user %s" (name sync-type) model-type user-id)}))))
+                   :model_id        model-id
+                   :status          status
+                   :status_changed_at (t/offset-date-time)}))))
 
 ;; Model change tracking event handlers
 
@@ -141,15 +67,26 @@
 (methodical/defmethod events/publish-event! ::card-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (if (:archived object)
-                    "delete"
-                    (case topic
-                      :event/card-create "create"
-                      :event/card-update "update"
-                      :event/card-delete "delete"))]
-    (when (model-in-remote-synced-collection? object)
-      (log/infof "Creating remote sync change log entry for card %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "Card" (:entity_id object) sync-type user-id))))
+        in-remote-synced? (model-in-remote-synced-collection? object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id object))
+        status (if (:archived object)
+                 "deleted"
+                 (case topic
+                   :event/card-create "created"
+                   :event/card-update "updated"
+                   :event/card-delete "deleted"))]
+    (cond
+      ;; Card is in a remote-synced collection - create or update entry
+      in-remote-synced?
+      (do
+        (log/infof "Creating remote sync object entry for card %s (status: %s)" (:id object) status)
+        (create-remote-sync-object-entry! "Card" (:id object) status user-id))
+
+      ;; Card was tracked but moved out of remote-synced collection - mark as removed
+      (and existing-entry (not in-remote-synced?))
+      (do
+        (log/infof "Card %s moved out of remote-synced collection, marking as removed" (:id object))
+        (create-remote-sync-object-entry! "Card" (:id object) "removed" user-id)))))
 
 ;; Dashboard events
 (derive ::dashboard-change-event :metabase/event)
@@ -160,15 +97,26 @@
 (methodical/defmethod events/publish-event! ::dashboard-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (if (:archived object)
-                    "delete"
-                    (case topic
-                      :event/dashboard-create "create"
-                      :event/dashboard-update "update"
-                      :event/dashboard-delete "delete"))]
-    (when (model-in-remote-synced-collection? object)
-      (log/infof "Creating remote sync change log entry for dashboard %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "Dashboard" (:entity_id object) sync-type user-id))))
+        in-remote-synced? (model-in-remote-synced-collection? object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id object))
+        status (if (:archived object)
+                 "deleted"
+                 (case topic
+                   :event/dashboard-create "created"
+                   :event/dashboard-update "updated"
+                   :event/dashboard-delete "deleted"))]
+    (cond
+      ;; Dashboard is in a remote-synced collection - create or update entry
+      in-remote-synced?
+      (do
+        (log/infof "Creating remote sync object entry for dashboard %s (status: %s)" (:id object) status)
+        (create-remote-sync-object-entry! "Dashboard" (:id object) status user-id))
+
+      ;; Dashboard was tracked but moved out of remote-synced collection - mark as removed
+      (and existing-entry (not in-remote-synced?))
+      (do
+        (log/infof "Dashboard %s moved out of remote-synced collection, marking as removed" (:id object))
+        (create-remote-sync-object-entry! "Dashboard" (:id object) "removed" user-id)))))
 
 ;; Document events
 (derive ::document-change-event :metabase/event)
@@ -179,15 +127,26 @@
 (methodical/defmethod events/publish-event! ::document-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (if (:archived object)
-                    "delete"
-                    (case topic
-                      :event/document-create "create"
-                      :event/document-update "update"
-                      :event/document-delete "delete"))]
-    (when (model-in-remote-synced-collection? object)
-      (log/infof "Creating remote sync change log entry for document %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "Document" (:entity_id object) sync-type user-id))))
+        in-remote-synced? (model-in-remote-synced-collection? object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id object))
+        status (if (:archived object)
+                 "deleted"
+                 (case topic
+                   :event/document-create "created"
+                   :event/document-update "updated"
+                   :event/document-delete "deleted"))]
+    (cond
+      ;; Document is in a remote-synced collection - create or update entry
+      in-remote-synced?
+      (do
+        (log/infof "Creating remote sync object entry for document %s (status: %s)" (:id object) status)
+        (create-remote-sync-object-entry! "Document" (:id object) status user-id))
+
+      ;; Document was tracked but moved out of remote-synced collection - mark as removed
+      (and existing-entry (not in-remote-synced?))
+      (do
+        (log/infof "Document %s moved out of remote-synced collection, marking as removed" (:id object))
+        (create-remote-sync-object-entry! "Document" (:id object) "removed" user-id)))))
 
 ;; Collection create/update events - derive from common parent for shared handling
 (derive ::collection-change-event :metabase/event)
@@ -197,11 +156,22 @@
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        sync-type (if (:archived object)
-                    "delete"
-                    (case topic
-                      :event/collection-create "create"
-                      :event/collection-update "update"))]
-    (when (collections/remote-synced-collection? object)
-      (log/infof "Creating remote sync change log entry for collection %s (action: %s)" (:id object) sync-type)
-      (create-remote-sync-change-log-entry! "Collection" (:entity_id object) sync-type user-id))))
+        is-remote-synced? (collections/remote-synced-collection? object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
+        status (if (:archived object)
+                 "deleted"
+                 (case topic
+                   :event/collection-create "created"
+                   :event/collection-update "updated"))]
+    (cond
+      ;; Collection is remote-synced - create or update entry
+      is-remote-synced?
+      (do
+        (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
+        (create-remote-sync-object-entry! "Collection" (:id object) status user-id))
+
+      ;; Collection was remote-synced but type changed - mark as removed
+      (and existing-entry (not is-remote-synced?))
+      (do
+        (log/infof "Collection %s type changed from remote-synced, marking as removed" (:id object))
+        (create-remote-sync-object-entry! "Collection" (:id object) "removed" user-id)))))
