@@ -247,7 +247,7 @@
                             :models  (vec models)}}))))
 
 (comment
-  (binding [api/current-user-permissions-set* (delay #{"/"})
+  (binding [api/*current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
     #_(table-details 30 nil)
