@@ -1,3 +1,5 @@
+import { isFK } from "metabase-lib/v1/types/utils/isa";
+
 import type { TableActionFormParameter } from "../api/types";
 import { TableActionFormInputType } from "../api/types";
 
@@ -76,8 +78,7 @@ export function ParameterActionInput(props: ParameterActionInputProps) {
             searchFieldId={parameter.human_readable_field_id}
             isNullable={parameter.nullable}
             withCreateNew={
-              !parameter.human_readable_field_id &&
-              parameter.semantic_type !== "type/FK"
+              !parameter.human_readable_field_id && !isFK(parameter)
             }
           />
         );
