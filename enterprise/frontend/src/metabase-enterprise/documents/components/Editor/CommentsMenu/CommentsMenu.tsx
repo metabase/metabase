@@ -3,7 +3,6 @@ import { type CSSProperties, forwardRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { isWithinIframe } from "metabase/lib/dom";
 import { Box, rem } from "metabase/ui";
 import type { CommentThread } from "metabase-enterprise/comments/types";
 import { CommentsButton } from "metabase-enterprise/rich_text_editing/tiptap/components/CommentsButton";
@@ -36,10 +35,6 @@ export const CommentsMenu = forwardRef<HTMLDivElement, Props>(
       [threads],
     );
     const hasUnresolvedComments = unresolvedCommentsCount > 0;
-
-    if (isWithinIframe()) {
-      return null;
-    }
 
     return createPortal(
       <Box
