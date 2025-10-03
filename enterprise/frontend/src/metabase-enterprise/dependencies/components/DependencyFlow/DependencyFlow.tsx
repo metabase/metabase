@@ -2,6 +2,7 @@ import {
   Background,
   Controls,
   type Edge,
+  Panel,
   ReactFlow,
   useEdgesState,
   useNodesInitialized,
@@ -16,6 +17,7 @@ import type { DependencyEntry } from "metabase-types/api";
 
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
+import { NodePicker } from "./NodePicker";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
 
@@ -56,6 +58,9 @@ export function DependencyFlow({ entry }: DependencyFlowProps) {
       <Background />
       <Controls />
       <NodeLayout />
+      <Panel position="top-left">
+        <NodePicker entry={entry} />
+      </Panel>
     </ReactFlow>
   );
 }

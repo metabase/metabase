@@ -1,14 +1,12 @@
 import { type NodeProps, useEdges, useNodes } from "@xyflow/react";
 import { memo } from "react";
 
-import { Icon } from "metabase/ui";
+import { FixedSizeIcon } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { NodeControls } from "../NodeControls";
 import type { ItemNodeType, NodeId, NodeType } from "../types";
-import { isNodeExpanded } from "../utils";
-
-import { getNodeIcon, getNodeLabel } from "./utils";
+import { getNodeIcon, getNodeLabel, isNodeExpanded } from "../utils";
 
 type ItemNodeProps = NodeProps<ItemNodeType>;
 
@@ -33,7 +31,7 @@ const ItemNodeBody = memo(function ItemNodeBody({
 }: ItemNodeBodyProps) {
   return (
     <>
-      <Icon flex="0 0 auto" name={getNodeIcon(data)} c="brand" />
+      <FixedSizeIcon name={getNodeIcon(data)} c="brand" />
       {getNodeLabel(data)}
       <NodeControls id={id} isExpanded={isExpanded} />
     </>

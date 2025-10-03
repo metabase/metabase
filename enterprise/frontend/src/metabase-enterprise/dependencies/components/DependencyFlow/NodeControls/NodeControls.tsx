@@ -6,7 +6,7 @@ import {
 } from "@xyflow/react";
 import cx from "classnames";
 
-import { ActionIcon, Icon } from "metabase/ui";
+import { ActionIcon, FixedSizeIcon } from "metabase/ui";
 
 import type { NodeId, NodeType } from "../types";
 import {
@@ -39,7 +39,7 @@ export function NodeControls({ id, isExpanded }: NodeControlsProps) {
     <>
       {targets.length > 0 && (
         <ActionIcon onClick={handleToggle}>
-          <Icon name={isExpanded ? "contract" : "expand"} />
+          <FixedSizeIcon name={isExpanded ? "contract" : "expand"} />
         </ActionIcon>
       )}
       {sources.length > 0 && (

@@ -2,6 +2,7 @@ import dagre from "@dagrejs/dagre";
 import { createSelector } from "@reduxjs/toolkit";
 import type { Edge } from "@xyflow/react";
 
+import type { IconName } from "metabase/ui";
 import type {
   DependencyEdge,
   DependencyEntry,
@@ -348,4 +349,32 @@ export function getNodesWithPositions(
       },
     };
   });
+}
+
+export function getNodeLabel(node: DependencyNode) {
+  return node.type === "table" ? node.data.display_name : node.data.name;
+}
+
+export function getNodeIcon(node: DependencyNode): IconName {
+  switch (node.type) {
+    case "card":
+      switch (node.data.type) {
+        case "question":
+          return "table2";
+        case "model":
+          return "model";
+        case "metric":
+          return "metric";
+        default:
+          return "unknown";
+      }
+    case "table":
+      return "table";
+    case "snippet":
+      return "sql";
+    case "transform":
+      return "refresh_downstream";
+    default:
+      return "unknown";
+  }
 }

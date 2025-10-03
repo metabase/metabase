@@ -77,6 +77,11 @@ export type GetDependencyGraphRequest = {
   type: DependencyType;
 };
 
+export type GetDependencyNodeRequest = {
+  id: DependencyId;
+  type: DependencyType;
+};
+
 export type CheckDependenciesResponse = {
   success: boolean;
   bad_cards?: Card[];
