@@ -297,7 +297,7 @@
   "Name you might want to use for a query when saving an previously-unsaved query. This is the same
   as [[describe-query]] except for native queries, where we don't describe anything."
   [query]
-  (when-not (lib.util/native-stage? (lib.util/query-stage query -1))
+  (when-not (lib.util/native-stage? query -1)
     (try
       (describe-query query)
       (catch #?(:clj Throwable :cljs js/Error) e
