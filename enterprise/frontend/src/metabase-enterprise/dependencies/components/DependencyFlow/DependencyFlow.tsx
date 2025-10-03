@@ -20,7 +20,12 @@ import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { NodeType } from "./types";
-import { getInitialGraph, getNodesWithPositions } from "./utils";
+import {
+  getGroupNodeIds,
+  getInitialGraph,
+  getNodesWithCollapsedNodes,
+  getNodesWithPositions,
+} from "./utils";
 
 const NODE_TYPES = {
   item: ItemNode,
@@ -82,9 +87,13 @@ function NodeLayout() {
     if (isInitialized) {
       const nodes = getNodes();
       const edges = getEdges();
-      const nodesWithPositions = getNodesWithPositions(nodes, edges);
-      setNodes(nodesWithPositions);
-      fitView({ nodes: nodesWithPositions });
+      const newNodes = getNodesWithCollapsedNodes(
+        getNodesWithPositions(nodes, edges),
+        edges,
+        getGroupNodeIds(nodes),
+      );
+      setNodes(newNodes);
+      fitView({ nodes: newNodes });
     }
   }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
 

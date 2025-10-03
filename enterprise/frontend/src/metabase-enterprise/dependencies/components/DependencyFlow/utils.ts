@@ -25,24 +25,26 @@ import type {
   NodeType,
 } from "./types";
 
-export function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
+function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
-export function getGroupNodeId(nodeId: NodeId, type: GroupType): NodeId {
+function getGroupNodeId(nodeId: NodeId, type: GroupType): NodeId {
   return `${nodeId}-${type}`;
 }
 
-export function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
+function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-export function getGroupType(node: DependencyNode): GroupType {
+function getGroupType(node: DependencyNode): GroupType {
   return node.type === "card" ? node.data.type : node.type;
 }
 
-function getNodeIds(nodes: NodeType[]): NodeId[] {
-  return nodes.map((node) => node.id);
+export function getGroupNodeIds(nodes: NodeType[]): NodeId[] {
+  return nodes
+    .filter((node) => node.type === "item-group")
+    .map((node) => node.id);
 }
 
 function getNodesById(nodes: NodeType[]) {
@@ -229,16 +231,13 @@ function getGroupGraph(
   const { groupNodes, newEdges, deletedEdgeIds } = getGroupNodesAndEdges(
     edgesByTypeAndTargetId,
   );
-  const finalNodes = [...nodes, ...groupNodes];
-  const finalEdges = [
-    ...edges.filter((edge) => !deletedEdgeIds.has(edge.id)),
-    ...newEdges,
-  ];
-  const groupNodeIds = getNodeIds(groupNodes);
 
   return {
-    nodes: getNodesWithCollapsedNodes(finalNodes, finalEdges, groupNodeIds),
-    edges: finalEdges,
+    nodes: [...nodes, ...groupNodes],
+    edges: [
+      ...edges.filter((edge) => !deletedEdgeIds.has(edge.id)),
+      ...newEdges,
+    ],
   };
 }
 
@@ -284,7 +283,7 @@ export function isNodeExpanded(
   return expandedById.get(nodeId) ?? false;
 }
 
-function addDescendantNodes(
+function addSourceNodes(
   nodeId: NodeId,
   edgesByTargetId: Map<NodeId, Edge[]>,
   nodeIds: Set<NodeId>,
@@ -292,7 +291,7 @@ function addDescendantNodes(
   const edges = edgesByTargetId.get(nodeId);
   edges?.forEach((edge) => {
     nodeIds.add(edge.source);
-    addDescendantNodes(edge.source, edgesByTargetId, nodeIds);
+    addSourceNodes(edge.source, edgesByTargetId, nodeIds);
   });
 }
 
@@ -304,12 +303,20 @@ export function getNodesWithCollapsedNodes(
   const edgesByTargetId = getEdgesByTargetId(edges);
   const newHiddenNodeIds = new Set<NodeId>();
   nodeIds.forEach((nodeId) =>
-    addDescendantNodes(nodeId, edgesByTargetId, newHiddenNodeIds),
+    addSourceNodes(nodeId, edgesByTargetId, newHiddenNodeIds),
   );
 
   return nodes.map((node) =>
     newHiddenNodeIds.has(node.id) ? { ...node, hidden: true } : node,
   );
+}
+
+export function getNodesWithCollapsedGroups(nodes: NodeType[], edges: Edge[]) {
+  const groupNodeIds = nodes
+    .filter((node) => node.type === "item-group")
+    .map((node) => node.id);
+
+  return getNodesWithCollapsedNodes(nodes, edges, groupNodeIds);
 }
 
 export function getNodesWithExpandedNodes(
