@@ -1277,7 +1277,10 @@ describe("scenarios > dashboard", () => {
 
     it("should warn a user before leaving after adding, removed, moving, or duplicating a tab", () => {
       cy.visit("/");
-
+      cy.findByTestId("home-page").should(
+        "contain",
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
       // add tab
       createNewDashboard();
       H.createNewTab();
@@ -1328,6 +1331,8 @@ describe("scenarios > dashboard", () => {
         cy.findByLabelText("Name").type("Test");
         cy.findByRole("button", { name: "Create" }).click();
       });
+      H.modal().should("not.exist");
+      cy.findByText("Loading...").should("not.exist");
     }
 
     function dragOnXAxis(el, distance) {
