@@ -14,6 +14,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
+import { isWithinIframe } from "metabase/lib/dom";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Loader, Menu, Text, TextInput } from "metabase/ui";
@@ -648,26 +649,28 @@ export const CardEmbedComponent = memo(
                         </Flex>
                       </Menu.Target>
                       <Menu.Dropdown>
-                        <Menu.Item
-                          leftSection={<Icon name="add_comment" size={14} />}
-                          component={ForwardRefLink}
-                          to={
-                            // If no existing unresolved comments comments, add query param to auto-open new comment form
-                            unresolvedCommentsCount > 0
-                              ? commentsPath
-                              : `${commentsPath}?new=true`
-                          }
-                          // actually stop the navigation from happening
-                          onClick={(e) => {
-                            if (!commentsPath || hasUnsavedChanges) {
-                              e.preventDefault();
+                        {!isWithinIframe() && (
+                          <Menu.Item
+                            leftSection={<Icon name="add_comment" size={14} />}
+                            component={ForwardRefLink}
+                            to={
+                              // If no existing unresolved comments comments, add query param to auto-open new comment form
+                              unresolvedCommentsCount > 0
+                                ? commentsPath
+                                : `${commentsPath}?new=true`
                             }
-                          }}
-                          // purely for presentation
-                          disabled={!commentsPath || hasUnsavedChanges}
-                        >
-                          {t`Comment`}
-                        </Menu.Item>
+                            // actually stop the navigation from happening
+                            onClick={(e) => {
+                              if (!commentsPath || hasUnsavedChanges) {
+                                e.preventDefault();
+                              }
+                            }}
+                            // purely for presentation
+                            disabled={!commentsPath || hasUnsavedChanges}
+                          >
+                            {t`Comment`}
+                          </Menu.Item>
+                        )}
                         <Menu.Item
                           onClick={handleEditVisualizationSettings}
                           disabled={!canWrite}
