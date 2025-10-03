@@ -19,7 +19,7 @@ export const GetCodeStep = () => {
     <Stack gap="md">
       <Card p="md">
         <Text size="lg" fw="bold" mb="md">
-          {t`Embed Code`}
+          {t`Embed code`}
         </Text>
 
         <Stack gap="sm">
@@ -46,7 +46,7 @@ export const GetCodeStep = () => {
                   updateInstanceSettings({ [settingKey]: true });
                 }}
               >
-                {copied ? t`Copied!` : t`Copy Code`}
+                {copied ? t`Copied!` : t`Copy code`}
               </Button>
             )}
           </CopyButton>

@@ -121,7 +121,7 @@ export const SelectEmbedOptionsStep = () => {
                   label={
                     <Flex align="center" gap="xs">
                       {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-                      <Text>{t`Without User`}</Text>
+                      <Text>{t`Without user`}</Text>
                       <HoverCard position="bottom">
                         <HoverCard.Target>
                           <Icon

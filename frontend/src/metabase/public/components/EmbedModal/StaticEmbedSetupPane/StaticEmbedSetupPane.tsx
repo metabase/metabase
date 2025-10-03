@@ -22,7 +22,7 @@ import type {
   EmbeddingParametersValues,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { Stack, Tabs } from "metabase/ui";
+import { Paper, Stack, Tabs } from "metabase/ui";
 
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
 import { LookAndFeelSettings } from "./LookAndFeelSettings";
@@ -210,14 +210,23 @@ export const StaticEmbedSetupPane = ({
 
   return (
     <Stack gap={0}>
-      <EmbedModalContentStatusBar
-        resourceType={resourceType}
-        isPublished={resource.enable_embedding}
-        hasSettingsChanges={hasSettingsChanges}
-        onSave={handleSave}
-        onUnpublish={handleUnpublish}
-        onDiscard={handleDiscard}
-      />
+      <Paper
+        withBorder
+        shadow="sm"
+        m="1.5rem 2rem"
+        p="0.75rem 1rem"
+        data-testid="embed-modal-content-status-bar"
+      >
+        <EmbedModalContentStatusBar
+          display="row"
+          resourceType={resourceType}
+          isPublished={resource.enable_embedding}
+          hasSettingsChanges={hasSettingsChanges}
+          onSave={handleSave}
+          onUnpublish={handleUnpublish}
+          onDiscard={handleDiscard}
+        />
+      </Paper>
 
       <Tabs
         defaultValue={EMBED_MODAL_TABS.Overview}

@@ -61,7 +61,7 @@ export const SdkIframeEmbedSetupContent = () => {
     ))
     .with("select-embed-options", () => (
       <Button variant="filled" onClick={handleNext}>
-        {t`Get Code`}
+        {t`Get code`}
       </Button>
     ))
     .otherwise(() => (
@@ -76,47 +76,42 @@ export const SdkIframeEmbedSetupContent = () => {
 
   return (
     <Box className={S.Container}>
-      <SdkIframeStaticEmbeddingStatusBar />
-
-      <Box className={S.ContainerInner}>
-        <SidebarResizer>
-          <Box className={S.Sidebar} component="aside">
-            <Box className={S.SidebarContent}>
-              <StepContent />
+      <SidebarResizer>
+        <Box className={S.Sidebar} component="aside">
+          <Stack className={S.SidebarContent} gap="md">
+            <Box style={{ flexShrink: 0 }}>
+              <SdkIframeStaticEmbeddingStatusBar />
             </Box>
 
-            <Group className={S.Navigation} justify="space-between">
-              <Button
-                variant="default"
-                onClick={handleBack}
-                disabled={!canGoBack || !isSimpleEmbeddingEnabled}
-              >
-                {t`Back`}
-              </Button>
-
-              {nextStepButton}
-            </Group>
-          </Box>
-        </SidebarResizer>
-
-        <Box className={S.PreviewPanel}>
-          <Stack h="100%">
-            {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
-              <SdkIframeEmbedPreview />
-            ) : (
-              <Card h="100%">
-                <Flex h="100%" align="center" justify="center">
-                  <Image
-                    w={120}
-                    h={120}
-                    src={noResultsSource}
-                    alt="No results"
-                  />
-                </Flex>
-              </Card>
-            )}
+            <StepContent />
           </Stack>
+
+          <Group className={S.Navigation} justify="space-between">
+            <Button
+              variant="default"
+              onClick={handleBack}
+              disabled={!canGoBack || !isSimpleEmbeddingEnabled}
+            >
+              {t`Back`}
+            </Button>
+
+            {nextStepButton}
+          </Group>
         </Box>
+      </SidebarResizer>
+
+      <Box className={S.PreviewPanel}>
+        <Stack h="100%">
+          {isSimpleEmbeddingEnabled || isStaticEmbedding ? (
+            <SdkIframeEmbedPreview />
+          ) : (
+            <Card h="100%">
+              <Flex h="100%" align="center" justify="center">
+                <Image w={120} h={120} src={noResultsSource} alt="No results" />
+              </Flex>
+            </Card>
+          )}
+        </Stack>
       </Box>
     </Box>
   );

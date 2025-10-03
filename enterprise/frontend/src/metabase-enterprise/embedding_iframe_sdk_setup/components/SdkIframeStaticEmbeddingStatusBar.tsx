@@ -10,6 +10,7 @@ import type { StaticEmbedSetupPaneProps } from "metabase/public/components/Embed
 import { getHasSettingsChanges } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-settings-changes";
 import { getStaticEmbedSetupPublishHandlers } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-static-embed-setup-publish-handlers";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
+import { Card } from "metabase/ui";
 import { useSdkIframeEmbedSetupContext } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
 import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 import { isStepWithResource } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/is-step-with-resource";
@@ -82,15 +83,18 @@ const SdkIframeStaticEmbeddingStatusBarInner = ({
     });
 
   return (
-    <EmbedModalContentStatusBar
-      resourceType={resourceType}
-      isPublished={resource.enable_embedding}
-      isFetching={isFetching}
-      hasSettingsChanges={hasSettingsChanges}
-      onSave={handleSave}
-      onUnpublish={handleUnpublish}
-      onDiscard={handleDiscard}
-    />
+    <Card>
+      <EmbedModalContentStatusBar
+        display="column"
+        resourceType={resourceType}
+        isPublished={resource.enable_embedding}
+        isFetching={isFetching}
+        hasSettingsChanges={hasSettingsChanges}
+        onSave={handleSave}
+        onUnpublish={handleUnpublish}
+        onDiscard={handleDiscard}
+      />
+    </Card>
   );
 };
 

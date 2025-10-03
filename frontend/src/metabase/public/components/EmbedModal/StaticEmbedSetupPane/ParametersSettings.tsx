@@ -129,8 +129,8 @@ export const ParametersSettings = ({
                     value="disabled"
                     disabled={parameter.required}
                   >{t`Disabled`}</Option>
-                  <Option icon="pencil" value="enabled">{t`Editable`}</Option>
                   <Option icon="lock" value="locked">{t`Locked`}</Option>
+                  <Option icon="pencil" value="enabled">{t`Editable`}</Option>
                 </Select>
               </div>
             );
@@ -144,6 +144,43 @@ export const ParametersSettings = ({
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
+
+      {lockedParameters.length > 0 && (
+        <>
+          <Divider my="2rem" />
+          <StaticEmbedSetupPaneSettingsContentSection
+            title={t`Previewing locked parameters`}
+          >
+            <Stack gap="1rem">
+              <Text>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</Text>
+
+              {valuePopulatedLockedParameters.map((parameter) => (
+                <StaticParameterWidget
+                  key={parameter.id}
+                  className={CS.m0}
+                  parameter={parameter}
+                  parameters={valuePopulatedLockedParameters}
+                  setValue={(value: string) =>
+                    onChangeParameterValue({
+                      id: parameter.id,
+                      slug: parameter.slug,
+                      value,
+                    })
+                  }
+                  setParameterValueToDefault={() => {
+                    onChangeParameterValue({
+                      id: parameter.id,
+                      slug: parameter.slug,
+                      value: parameter.default as any,
+                    });
+                  }}
+                  enableParameterRequiredBehavior
+                />
+              ))}
+            </Stack>
+          </StaticEmbedSetupPaneSettingsContentSection>
+        </>
+      )}
 
       {withInitialValues && valuePopulatedEditableParameters.length > 0 && (
         <>
@@ -172,43 +209,6 @@ export const ParametersSettings = ({
                       });
                     }
                   }}
-                  setParameterValueToDefault={() => {
-                    onChangeParameterValue({
-                      id: parameter.id,
-                      slug: parameter.slug,
-                      value: parameter.default as any,
-                    });
-                  }}
-                  enableParameterRequiredBehavior
-                />
-              ))}
-            </Stack>
-          </StaticEmbedSetupPaneSettingsContentSection>
-        </>
-      )}
-
-      {lockedParameters.length > 0 && (
-        <>
-          <Divider my="2rem" />
-          <StaticEmbedSetupPaneSettingsContentSection
-            title={t`Previewing locked parameters`}
-          >
-            <Stack gap="1rem">
-              <Text>{t`Try passing some sample values to your locked parameters here. Your server will have to provide the actual values in the signed token when doing this for real.`}</Text>
-
-              {valuePopulatedLockedParameters.map((parameter) => (
-                <StaticParameterWidget
-                  key={parameter.id}
-                  className={CS.m0}
-                  parameter={parameter}
-                  parameters={valuePopulatedLockedParameters}
-                  setValue={(value: string) =>
-                    onChangeParameterValue({
-                      id: parameter.id,
-                      slug: parameter.slug,
-                      value,
-                    })
-                  }
                   setParameterValueToDefault={() => {
                     onChangeParameterValue({
                       id: parameter.id,
