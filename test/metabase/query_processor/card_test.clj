@@ -7,6 +7,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -21,8 +22,7 @@
    [metabase.test.data.users :as test.users]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
-   [metabase.util.json :as json]
-   [metabase.lib.core :as lib]))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 

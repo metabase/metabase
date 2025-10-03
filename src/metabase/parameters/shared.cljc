@@ -13,8 +13,8 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.time :as time]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.time :as time])
   (:import
    #?@(:clj
        ((java.time.format DateTimeFormatter)))))

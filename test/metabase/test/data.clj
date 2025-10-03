@@ -43,8 +43,10 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -54,9 +56,7 @@
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [next.jdbc]
-   [metabase.lib.core :as lib]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]))
+   [next.jdbc]))
 
 (set! *warn-on-reflection* true)
 

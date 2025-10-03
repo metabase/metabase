@@ -151,7 +151,6 @@
       {"foo" {:type :string/= :value "*bar*"}}
       "_**bar**_")))
 
-
 (t/deftest ^:parallel substitute-tags-test-4
   (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
     (t/are [text tag->param expected] (= expected (substitute-tags text tag->param))
