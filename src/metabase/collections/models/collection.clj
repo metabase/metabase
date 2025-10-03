@@ -1287,7 +1287,10 @@
                                         (collection->descendant-ids collection
                                                                     :archived [:not= true]))]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:archive_operation_id archive-operation-id
+                  {:type                 (if (= (:type collection) "remote-synced")
+                                           nil
+                                           :type)
+                   :archive_operation_id archive-operation-id
                    :archived_directly    true
                    :archived             true})
       (t2/query-one
@@ -1324,6 +1327,7 @@
         new-parent              (if new-parent-id
                                   (t2/select-one :model/Collection :id new-parent-id)
                                   root-collection)
+        new-parent-type         (:type new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
         new-children-location   (children-location (assoc collection :location new-location))
@@ -1337,6 +1341,9 @@
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
                   {:location             new-location
+                   :type                 (if (= new-parent-type "remote-synced")
+                                           "remote-synced"
+                                           :type)
                    :archive_operation_id nil
                    :archived_directly    nil
                    :archived             false})
