@@ -2,7 +2,7 @@ import {
   connectToInstanceAuthSso,
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
-  validateSessionToken,
+  validateSession,
 } from "embedding/auth-common";
 import {
   INVALID_AUTH_METHOD,
@@ -450,7 +450,7 @@ export abstract class MetabaseEmbedElement extends HTMLElement {
 
     try {
       const { method, sessionToken } = await this._getMetabaseSessionToken();
-      validateSessionToken(sessionToken);
+      validateSession(sessionToken);
 
       if (sessionToken) {
         this.sendMessage("metabase.embed.submitSessionToken", {

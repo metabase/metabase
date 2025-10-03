@@ -669,20 +669,40 @@
                           :dataset_query (mt/mbql-query venues {:fields   [$id $name]
                                                                 :order-by [[:asc $id]]
                                                                 :limit    2})}
-
-                         :model/Card
-                         {card-2-id :id, :as card-2}
-                         {:collection_id collection-2-id
-                          :dataset_query (mt/native-query
-                                          {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                                           :template-tags {"card" {:name         "card"
-                                                                   :display-name "card"
-                                                                   :type         :card
-                                                                   :card-id      card-1-id}}})}]
-            (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
-                             collection-1-id card-1-id collection-2-id card-2-id)
-              (mt/with-test-user :rasta
-                (testing "Sanity check: shouldn't be able to run Card as MBQL query"
+                       :model/Card
+                       {card-2-id :id, :as card-2}
+                       {:collection_id collection-2-id
+                        :dataset_query (mt/native-query
+                                        {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                         :template-tags {"card" {:name         "card"
+                                                                 :display-name "card"
+                                                                 :type         :card
+                                                                 :card-id      card-1-id}}})}]
+          (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
+                           collection-1-id card-1-id collection-2-id card-2-id)
+            (mt/with-test-user :rasta
+              (testing "Sanity check: shouldn't be able to run Card as MBQL query"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to view Card \d+"
+                     (qp/process-query {:database (mt/id), :type :query, :query {:source-table (format "card__%d" card-2-id)}}))))
+              (testing "Sanity check: SHOULD be able to run a native query"
+                (testing (str "COMPILED = \n" (u/pprint-to-str (qp.compile/compile (:dataset_query card-2))))
+                  (is (= [[1 "Red Medicine"]
+                          [2 "Stout Burgers & Beers"]]
+                         (mt/formatted-rows
+                          [int str]
+                          (qp/process-query {:database (mt/id)
+                                             :type     :native
+                                             :native   (dissoc (qp.compile/compile (:dataset_query card-2))
+                                                               :query-permissions/referenced-card-ids)}))))))
+              (let [query (mt/native-query
+                           {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                            :template-tags {"card" {:name         "card"
+                                                    :display-name "card"
+                                                    :type         :card
+                                                    :card-id      card-2-id}}})]
+                (testing "SHOULD NOT be able to run native query with Card ID template tag"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
                        #"You do not have permissions to view Card \d+"

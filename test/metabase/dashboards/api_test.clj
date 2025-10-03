@@ -3995,7 +3995,7 @@
                    {:query (format "insert into types (%s) values ({{%s}})"
                                    (u/upper-case-en field-name)
                                    field-name)
-                    :template-tags {field-name {:id field-name :name field-name :type :text :display-name field-name}}})})
+                    :template-tags {field-name {:id field-name, :name field-name, :type :text, :display-name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
