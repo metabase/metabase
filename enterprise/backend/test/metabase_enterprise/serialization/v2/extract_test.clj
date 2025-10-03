@@ -848,7 +848,6 @@
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-
           (testing "depend on the Table and any fields from the definition"
             (is (= #{[{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}]
@@ -887,10 +886,9 @@
                          :type        "implicit"
                          :created_at  string?
                          :model_id    card-eid-1
-                         :implicit    [{:kind "row/update"}]}
+                         :implicit    [{:kind :row/update}]}
                         ser))
                 (is (not (contains? ser :id)))
-
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/dependencies ser)))))))))))))
@@ -914,7 +912,7 @@
                           {:keys [action-id]}
                           {:name       "My Action"
                            :type       :http
-                           :template   {}
+                           :template   {:method "GET", :url "https://camsaul.com"}
                            :creator_id ann-id
                            :model_id   card-id-1}]
           (let [action (action/select-action :id action-id)]
@@ -928,7 +926,6 @@
                          :http        [{:template {}}]}
                         ser))
                 (is (not (contains? ser :id)))
-
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/dependencies ser)))))))))))))
