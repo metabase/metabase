@@ -12,6 +12,10 @@ export const useGetCurrentResource = (
   const dispatch = useDispatch();
 
   const { loading: isDashboardLoading } = useAsync(async () => {
+    if (!settings.dashboardId) {
+      return;
+    }
+
     await dispatch(
       fetchDashboard({
         dashId: settings.dashboardId as number,
