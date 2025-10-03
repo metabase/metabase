@@ -33,7 +33,7 @@ import { MetricEditorBody } from "metabase/querying/metrics/components/MetricEdi
 import { MetricEditorFooter } from "metabase/querying/metrics/components/MetricEditor/MetricEditorFooter";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Center, FixedSizeIcon, Flex, Loader, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
+// import * as Lib from "metabase-lib";
 import type { RawSeries, RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -123,7 +123,8 @@ export const MetricEditor = ({
     return null;
   }
 
-  const isRunnable = Lib.canRun(question.query(), "metric");
+  // const isRunnable = Lib.canRun(question.query(), "metric");
+  const isRunnable = true; // TODO: Do we need to check for this?
 
   return (
     <>
