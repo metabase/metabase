@@ -53,6 +53,11 @@ export type DependencyNode =
 
 export type DependencyType = DependencyNode["type"];
 
+export type DependencyEntry = {
+  id: DependencyId;
+  type: DependencyType;
+};
+
 export type DependencyEdge = {
   from_entity_id: DependencyId;
   from_entity_type: DependencyType;
@@ -63,6 +68,11 @@ export type DependencyEdge = {
 export type DependencyGraph = {
   nodes: DependencyNode[];
   edges: DependencyEdge[];
+};
+
+export type GetDependencyGraphRequest = {
+  id: DependencyId;
+  type: DependencyType;
 };
 
 export type CheckDependenciesResponse = {

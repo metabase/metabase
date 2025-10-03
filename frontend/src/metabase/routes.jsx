@@ -155,12 +155,11 @@ export const getRoutes = (store) => {
             <IndexRoute component={Onboarding} />
           </Route>
 
-          <Route path="dependencies">
-            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyFlow} />
+          <Route title={t`Dependencies`} path="dependencies">
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyFlowPage} />
             <Route
               path=":type/:id"
-              title={t`Dependencies`}
-              component={PLUGIN_DEPENDENCIES.DependencyFlow}
+              component={PLUGIN_DEPENDENCIES.DependencyFlowPage}
             />
           </Route>
 

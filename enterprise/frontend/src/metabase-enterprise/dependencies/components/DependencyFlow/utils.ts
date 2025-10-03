@@ -4,6 +4,7 @@ import type { Edge } from "@xyflow/react";
 
 import type {
   DependencyEdge,
+  DependencyEntry,
   DependencyGraph,
   DependencyId,
   DependencyNode,
@@ -13,7 +14,6 @@ import type {
 import S from "./DependencyFlow.module.css";
 import { GROUP_ITEM_THRESHOLD } from "./constants";
 import type {
-  DependencyEntry,
   EdgeId,
   GraphData,
   GroupNodeType,

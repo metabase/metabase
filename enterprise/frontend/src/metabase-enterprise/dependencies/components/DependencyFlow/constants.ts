@@ -1,1 +1,1 @@
-export const GROUP_ITEM_THRESHOLD = 1;
+export const GROUP_ITEM_THRESHOLD = 5;

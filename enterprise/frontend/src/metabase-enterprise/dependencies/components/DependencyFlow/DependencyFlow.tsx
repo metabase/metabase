@@ -1,19 +1,22 @@
 import {
   Background,
   Controls,
+  type Edge,
   ReactFlow,
   useEdgesState,
   useNodesInitialized,
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
-import type { DependencyGraph } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
-import type { DependencyEntry, NodeType } from "./types";
+import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
@@ -21,157 +24,25 @@ const NODE_TYPES = {
   "item-group": GroupNode,
 };
 
-const GRAPH: DependencyGraph = {
-  nodes: [
-    {
-      id: 1,
-      type: "table",
-      data: {
-        name: "some_intermediate_table",
-        display_name: "Some intermediate table",
-      },
-    },
-    {
-      id: 2,
-      type: "table",
-      data: {
-        name: "nice_table",
-        display_name: "Nice table",
-      },
-    },
-    {
-      id: 3,
-      type: "table",
-      data: {
-        name: "ugly_table_here",
-        display_name: "Ugly table here",
-      },
-    },
-    {
-      id: 4,
-      type: "transform",
-      data: {
-        name: "Good transform",
-      },
-    },
-    {
-      id: 5,
-      type: "transform",
-      data: {
-        name: "Better transform",
-      },
-    },
-    {
-      id: 6,
-      type: "table",
-      data: {
-        name: "interesting_facts",
-        display_name: "Interesting facts",
-      },
-    },
-    {
-      id: 7,
-      type: "table",
-      data: {
-        name: "another_thing",
-        display_name: "Another thing",
-      },
-    },
-    {
-      id: 8,
-      type: "card",
-      data: {
-        name: "Amazing Accounts",
-        type: "model",
-      },
-    },
-    {
-      id: 9,
-      type: "card",
-      data: {
-        name: "Question 1",
-        type: "question",
-      },
-    },
-    {
-      id: 10,
-      type: "card",
-      data: {
-        name: "Question 2",
-        type: "question",
-      },
-    },
-  ],
-  edges: [
-    {
-      from_entity_id: 4,
-      from_entity_type: "transform",
-      to_entity_id: 1,
-      to_entity_type: "table",
-    },
-    {
-      from_entity_id: 4,
-      from_entity_type: "transform",
-      to_entity_id: 2,
-      to_entity_type: "table",
-    },
-    {
-      from_entity_id: 5,
-      from_entity_type: "transform",
-      to_entity_id: 3,
-      to_entity_type: "table",
-    },
-    {
-      from_entity_id: 6,
-      from_entity_type: "table",
-      to_entity_id: 4,
-      to_entity_type: "transform",
-    },
-    {
-      from_entity_id: 7,
-      from_entity_type: "table",
-      to_entity_id: 5,
-      to_entity_type: "transform",
-    },
-    {
-      from_entity_id: 8,
-      from_entity_type: "card",
-      to_entity_id: 6,
-      to_entity_type: "table",
-    },
-    {
-      from_entity_id: 8,
-      from_entity_type: "card",
-      to_entity_id: 7,
-      to_entity_type: "table",
-    },
-    {
-      from_entity_id: 9,
-      from_entity_type: "card",
-      to_entity_id: 8,
-      to_entity_type: "card",
-    },
-    {
-      from_entity_id: 10,
-      from_entity_type: "card",
-      to_entity_id: 8,
-      to_entity_type: "card",
-    },
-  ],
+type DependencyFlowProps = {
+  entry?: DependencyEntry;
 };
 
-const ENTRY: DependencyEntry = {
-  id: 7,
-  type: "table",
-};
+export function DependencyFlow({ entry }: DependencyFlowProps) {
+  const { data: graph } = useGetDependencyGraphQuery(entry ? entry : skipToken);
+  const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-export function DependencyFlow() {
-  const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(
-    GRAPH,
-    ENTRY,
-  );
-  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  useEffect(() => {
+    if (graph != null && entry != null) {
+      const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(
+        graph,
+        entry,
+      );
+      setNodes(initialNodes);
+      setEdges(initialEdges);
+    }
+  }, [graph, entry, setNodes, setEdges]);
 
   return (
     <ReactFlow

@@ -876,7 +876,7 @@ export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
 };
 
 type DependenciesPlugin = {
-  DependencyFlow: ComponentType;
+  DependencyFlowPage: ComponentType;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
