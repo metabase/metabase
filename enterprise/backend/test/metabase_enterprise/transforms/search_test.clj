@@ -162,11 +162,10 @@
   (search.tu/with-temp-index-table
     (testing "Transform is removed from search index when deleted"
       (binding [search.ingestion/*force-sync* true]
-        (let [now (t/truncate-to (t/offset-date-time) :millis)]
-          (mt/with-temp [:model/Transform {transform-id :id} {:name "Transform to delete"}]
-            (ingest! "transform" [:= :this.id transform-id])
-            (is (some? (fetch-one "transform" :model_id (str transform-id)))
-                "Transform should be in the search index after ingestion")
-            (t2/delete! :model/Transform :id transform-id)
-            (is (nil? (fetch-one "transform" :model_id (str transform-id)))
-                "Transform should be removed from the search index after deletion")))))))
+        (mt/with-temp [:model/Transform {transform-id :id} {:name "Transform to delete"}]
+          (ingest! "transform" [:= :this.id transform-id])
+          (is (some? (fetch-one "transform" :model_id (str transform-id)))
+              "Transform should be in the search index after ingestion")
+          (t2/delete! :model/Transform :id transform-id)
+          (is (nil? (fetch-one "transform" :model_id (str transform-id)))
+              "Transform should be removed from the search index after deletion"))))))
