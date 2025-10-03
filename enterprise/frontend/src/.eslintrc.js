@@ -71,7 +71,7 @@ module.exports = {
             patterns: [
               ...baseRestrictedConfig.patterns,
               {
-                group: ["**/__support__/**"],
+                group: ["__support__/**"],
                 message:
                   "Please name your test setup and utils files with a `.spec.*` in the filename, e.g. `setup.spec.ts` or `MyComponent.setup.spec.ts`, so that they aren't imported in the SDK build.",
               },
