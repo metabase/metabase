@@ -14,13 +14,17 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Cleanup python-runner services
+    - name: Cleanup python-runner container
       if: always()
       run: |
-        echo "Stopping python-runner services..."
-        if [ -d "python-runner" ]; then
-          cd python-runner
-          make stop || echo "WARNING: Failed to stop python runner"
+        echo "Stopping python-runner container..."
+        if docker ps -a --format '{{.Names}}' | grep -q '^python-runner$'; then
+          # Ensure logs are flushed
+          docker logs python-runner >> python-runner.out.log 2>> python-runner.err.log || true
+          docker stop python-runner || echo "WARNING: Failed to stop python-runner container"
+          docker rm python-runner || echo "WARNING: Failed to remove python-runner container"
+        else
+          echo "python-runner container not found"
         fi
       shell: bash
 

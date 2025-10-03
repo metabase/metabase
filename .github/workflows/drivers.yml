@@ -6,6 +6,10 @@ on:
       skip:
         type: boolean
         default: false
+      python-runner-version:
+        type: string
+        default: '0.0.1'
+        description: 'Version of the python-runner Docker image to use'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -137,7 +141,9 @@ jobs:
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Test BigQuery Cloud SDK driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -192,7 +198,9 @@ jobs:
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Add ClickHouse TLS instance to /etc/hosts
       run: |
         sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
@@ -393,7 +401,9 @@ jobs:
     - name: Setup python-runner
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Test H2 driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -515,7 +525,9 @@ jobs:
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
         with:
-          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          python-runner-version: ${{ inputs.python-runner-version }}
       - name: Test ${{ matrix.version.name }}
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -586,7 +598,9 @@ jobs:
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Test ${{ matrix.version.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -855,7 +869,9 @@ jobs:
         if: ${{ matrix.job.needs-python-runner == true }}
         uses: ./.github/actions/setup-python-runner
         with:
-          metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          python-runner-version: ${{ inputs.python-runner-version }}
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
         id: test-driver
         uses: ./.github/actions/test-driver
@@ -993,7 +1009,9 @@ jobs:
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Test ${{ matrix.job.name }}
       id: test-driver
       if: ${{ !matrix.job.skip }}
@@ -1062,7 +1080,9 @@ jobs:
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Test Snowflake driver
       id: test-driver
       uses: ./.github/actions/test-driver
@@ -1198,7 +1218,9 @@ jobs:
       if: ${{ matrix.job.needs-python-runner == true }}
       uses: ./.github/actions/setup-python-runner
       with:
-        metabase-automation-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+        dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+        python-runner-version: ${{ inputs.python-runner-version }}
     - name: Test ${{ matrix.version.name }}
       id: test-driver
       uses: ./.github/actions/test-driver
