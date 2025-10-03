@@ -1485,3 +1485,24 @@
             (mt/with-test-user :rasta
               (is (= [[10]]
                      (run-venues-count-query))))))))))
+
+(deftest sandboxed-join-excludes-hidden-columns-test
+  (testing "When joining to a sandboxed table, hidden columns should not be added to join fields (#64317)"
+    (mt/dataset test-data
+      (met/with-gtaps! {:gtaps {:people {:query (mt/mbql-query people
+                                                  {:fields [$id $address $email $name $city]})}}
+                        :attributes {}}
+        (let [query (mt/mbql-query orders
+                      {:joins [{:fields :all
+                                :source-table $$people
+                                :condition [:= $user_id &people.people.id]
+                                :alias "people"}]
+                       :limit 10})
+              preprocessed (lib/->pMBQL (qp.preprocess/preprocess query))]
+          (testing "Preprocessed query only include fields in sandbox query"
+            (is (=? [[:field {:join-alias "people" :lib/uuid string?} (mt/id :people :id)]
+                     [:field {:join-alias "people" :lib/uuid string?} (mt/id :people :address)]
+                     [:field {:join-alias "people" :lib/uuid string?} (mt/id :people :email)]
+                     [:field {:join-alias "people" :lib/uuid string?} (mt/id :people :name)]
+                     [:field {:join-alias "people" :lib/uuid string?} (mt/id :people :city)]]
+                    (-> preprocessed lib/joins first lib/join-fields)))))))))
