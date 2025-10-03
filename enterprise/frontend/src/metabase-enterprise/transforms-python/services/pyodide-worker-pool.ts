@@ -17,9 +17,11 @@ type ExecutePythonOptions = {
   signal?: AbortSignal;
 };
 
-export type PythonExecutionResult = {
-  columns: string[];
-  data: Record<string, RowValue>[];
+export type PythonExecutionResult<T = unknown> = {
+  output?: T;
+  error?: string;
+  stdout?: string;
+  stderr?: string;
 };
 
 type ErrorMessage = { type: "error"; error: Error };
@@ -53,11 +55,11 @@ export class PyodideWorkerPool {
     return this.workers.splice(jdx, 1)[0] ?? new PyodideWorker(this.packages);
   }
 
-  async executePython(
+  async executePython<T>(
     code: string,
     sources: PyodideTableSource[],
     options?: ExecutePythonOptions,
-  ): Promise<any> {
+  ): Promise<PythonExecutionResult<T>> {
     const worker = this.getWorker();
     return worker.executePython(code, sources, options);
   }
@@ -81,11 +83,11 @@ class PyodideWorker {
     });
   }
 
-  async executePython(
+  async executePython<T>(
     code: string,
     sources: PyodideTableSource[],
     options?: ExecutePythonOptions,
-  ): Promise<any> {
+  ): Promise<PythonExecutionResult<T>> {
     options?.signal?.addEventListener("abort", () => {
       this.worker.terminate();
     });
@@ -101,9 +103,7 @@ class PyodideWorker {
       const evt = await waitFor(this.worker, "results", 30000);
 
       return {
-        output: evt.result
-          ? (JSON.parse(evt.result) as PythonExecutionResult)
-          : null,
+        output: evt.result ? JSON.parse(evt.result) : null,
         error: evt.error,
         stdout: evt.stdout,
         stderr: evt.stderr,
@@ -111,8 +111,6 @@ class PyodideWorker {
     } catch (error) {
       return {
         error: getErrorMessage(error),
-        stdout: null,
-        stderr: null,
       };
     } finally {
       this.worker.terminate();

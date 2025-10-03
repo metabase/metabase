@@ -1,0 +1,47 @@
+import { useRef, useState } from "react";
+
+import { getErrorMessage } from "metabase/api/utils";
+
+import {
+  PyodideWorkerPool,
+  type PythonExecutionResult,
+} from "../services/pyodide-worker-pool";
+
+export function useRunPython<T = unknown>(packages: string[] = []) {
+  const [pool] = useState(() => new PyodideWorkerPool(packages));
+  const controller = useRef<AbortController | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [data, setData] = useState<PythonExecutionResult<T> | null>(null);
+
+  const executePython = async (code: string, sources: any[]) => {
+    if (controller.current) {
+      controller.current.abort();
+    }
+    controller.current = new AbortController();
+
+    try {
+      setIsRunning(true);
+      const result = await pool.executePython<T>(code, sources, {
+        signal: controller.current.signal,
+      });
+      setData(result);
+      return result;
+    } catch (error) {
+      setData({ error: getErrorMessage(error) });
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
+  function cancel() {
+    controller.current?.abort();
+    setIsRunning(false);
+  }
+
+  return {
+    isRunning,
+    data,
+    executePython,
+    cancel,
+  };
+}

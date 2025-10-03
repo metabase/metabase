@@ -1,18 +1,17 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import { getErrorMessage } from "metabase/api/utils";
-import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
+import { useRunPython } from "metabase-enterprise/transforms-python/hooks/use-run-python";
 import type {
-  ExecutePythonTransformResponse,
   PythonTransformSource,
   PythonTransformTableAliases,
+  RowValue,
   Table,
   TableId,
 } from "metabase-types/api";
 
 import { DataFetcher } from "../../services/data-fetcher";
-import { PyodideWorkerPool } from "../../services/pyodide-worker-pool";
+import type { PythonExecutionResult } from "../../services/pyodide-worker-pool";
 
 import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
@@ -151,48 +150,29 @@ ${tableAliases
   return script + functionTemplate;
 }
 
-export type ExecutionResult = {
-  output?: string;
-  stdout?: string;
-  stderr?: string;
-  error?: string;
+type TransformData = {
+  columns: string[];
+  data: Record<string, RowValue>[];
 };
 
 type TestPythonScriptState = {
   isRunning: boolean;
   isDirty: boolean;
-  executionResult: ExecutionResult | null;
+  executionResult: PythonExecutionResult<TransformData> | null;
   run: () => void;
   cancel: () => void;
 };
 
-const pyodideWorkerManager = new PyodideWorkerPool(["numpy", "pandas"]);
-
 export function useTestPythonTransform(
   source: PythonTransformSourceDraft,
 ): TestPythonScriptState {
-  const [executePython, { isLoading: isBackendRunning, originalArgs }] =
-    useExecutePythonMutation();
-  const abort = useRef<(() => void) | null>(null);
-  const [executionResult, setData] =
-    useState<ExecutePythonTransformResponse | null>(null);
-  const [isPyodideRunning, setIsPyodideRunning] = useState(false);
+  const { isRunning, cancel, data, executePython } =
+    useRunPython<TransformData>(["numpy", "pandas"]);
 
-  const isRunning = isBackendRunning || isPyodideRunning;
-  const isDirty = originalArgs?.code !== source.body;
-
-  const runWithPyodide = useCallback(async () => {
-    if (source["source-database"] === undefined) {
-      setData({ error: t`Please select a source database` });
-      return;
-    }
-
-    setIsPyodideRunning(true);
-
-    try {
-      // Fetch data for each table
-      const tableEntries = Object.entries(source["source-tables"]);
-      const sourcesPromises = tableEntries.map(
+  const run = useCallback(async () => {
+    // Fetch data for each table
+    const sources = await Promise.all(
+      Object.entries(source["source-tables"]).map(
         async ([variableName, tableId]) => {
           // Fetch table metadata to get the actual table name and schema
           const tableResponse = await fetch(`/api/table/${tableId}`);
@@ -212,86 +192,18 @@ export function useTestPythonTransform(
             database_id: source["source-database"] as number,
           };
         },
-      );
+      ),
+    );
 
-      const sources = await Promise.all(sourcesPromises);
-
-      // Get shared library code if available
-      let _sharedLibrary = "";
-      try {
-        const libResponse = await fetch("/api/ee/transforms-python/library");
-        if (libResponse.ok) {
-          const libData = await libResponse.json();
-          _sharedLibrary = libData.body || "";
-        }
-      } catch (error) {
-        console.warn("Failed to fetch shared library:", error);
-      }
-
-      // Execute with Pyodide Web Worker
-      const result = await pyodideWorkerManager.executePython(
-        source.body,
-        sources,
-      );
-
-      setData(result);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : t`An unknown error occurred`;
-      setData({ error: errorMessage });
-    } finally {
-      setIsPyodideRunning(false);
-    }
-  }, [source]);
-
-  const _runWithBackend = useCallback(async () => {
-    if (source["source-database"] === undefined) {
-      return null;
-    }
-    const request = executePython({
-      code: source.body,
-      tables: source["source-tables"],
-    });
-    abort.current = () => request.abort();
-
-    try {
-      const data = await request.unwrap();
-      setData(data);
-    } catch (error) {
-      if (typeof error === "object" && error !== null) {
-        if ("name" in error && error.name === "AbortError") {
-          setData({ error: t`Python script execution was canceled` });
-          return;
-        }
-      }
-
-      const errorMessage = getErrorMessage(error, t`An unknown error occurred`);
-      setData({ error: errorMessage });
-    }
+    executePython(source.body, sources);
   }, [source, executePython]);
-
-  const run = async () => {
-    // Use Pyodide for preview instead of backend
-    // Comment out the backend call but keep the code
-    // await runWithBackend();
-    await runWithPyodide();
-  };
-
-  const cancel = () => {
-    if (isPyodideRunning) {
-      // Cancel is handled automatically by the worker
-      setIsPyodideRunning(false);
-    } else {
-      abort.current?.();
-    }
-  };
 
   return {
     isRunning,
-    isDirty,
+    isDirty: true,
     cancel,
     run,
-    executionResult,
+    executionResult: data,
   };
 }
 
