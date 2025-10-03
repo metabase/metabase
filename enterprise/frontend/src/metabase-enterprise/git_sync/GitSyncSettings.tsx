@@ -76,6 +76,7 @@ export const GitSyncSettings = (): JSX.Element => {
       "remote-sync-url": null,
       "remote-sync-token": null,
       "remote-sync-type": null,
+      "remote-sync-auto-import": null,
       "remote-sync-branch": null,
     } as Partial<EnterpriseSettings>);
     setIsDeactivateModalOpen(false);
@@ -161,7 +162,7 @@ export const GitSyncSettings = (): JSX.Element => {
                       />
                       <FormSwitch
                         size="sm"
-                        name="remote-sync-enabled"
+                        name="remote-sync-auto-import"
                         label={t`Auto-sync with git`}
                       />
                     </Stack>
