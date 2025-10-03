@@ -45,6 +45,11 @@ export const GitSyncSettings = (): JSX.Element => {
 
   const { updateSettings } = useAdminSetting("remote-sync-url");
 
+  const handleSubmit = useCallback(
+    (values: GitSyncSettingsSet) => updateGitSyncSettings(values).unwrap(),
+    [updateGitSyncSettings],
+  );
+
   const initialValues = useMemo(() => {
     const values = GIT_SYNC_SCHEMA.cast(settingValues, { stripUnknown: true });
     const tokenValue =
@@ -101,7 +106,7 @@ export const GitSyncSettings = (): JSX.Element => {
             enableReinitialize
             validationSchema={GIT_SYNC_SCHEMA}
             validationContext={settingValues}
-            onSubmit={updateGitSyncSettings}
+            onSubmit={handleSubmit}
           >
             {({ dirty, values }) => (
               <Form disabled={!dirty}>
