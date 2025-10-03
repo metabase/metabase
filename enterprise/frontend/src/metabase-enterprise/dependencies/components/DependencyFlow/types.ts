@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type {
   CardType,
@@ -16,4 +16,9 @@ export type GroupNodeType = Node<GroupNodeData, "item-group">;
 export type GroupNodeData = {
   type: GroupType;
   count: number;
+};
+
+export type GraphData = {
+  nodes: NodeType[];
+  edges: Edge[];
 };

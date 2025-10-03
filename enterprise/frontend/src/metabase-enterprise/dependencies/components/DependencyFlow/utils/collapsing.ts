@@ -1,19 +1,38 @@
+import { createSelector } from "@reduxjs/toolkit";
 import type { Edge } from "@xyflow/react";
 
-import type { NodeId, NodeType } from "../types";
+import type { GraphData, NodeId, NodeType } from "../types";
 
 import { getEdgesByTargetIdMap, getNodeByIdMap } from "./common";
+
+const getExpandedByNodeIdMap = createSelector(
+  (graph: GraphData) => graph.nodes,
+  (graph: GraphData) => graph.edges,
+  (nodes: NodeType[], edges: Edge[]) => {
+    const nodeById = getNodeByIdMap(nodes);
+    const edgesByTargetId = getEdgesByTargetIdMap(edges);
+    const expandedById = new Map<NodeId, boolean>();
+
+    nodes.forEach((node) => {
+      const targetEdges = edgesByTargetId.get(node.id) ?? [];
+      const sourceNodes = targetEdges.map((edge) => nodeById.get(edge.source));
+      const isExpanded = sourceNodes.every(
+        (node) => node != null && !node.hidden,
+      );
+      expandedById.set(node.id, isExpanded);
+    });
+
+    return expandedById;
+  },
+);
 
 export function isNodeExpanded(
   nodes: NodeType[],
   edges: Edge[],
   nodeId: NodeId,
 ) {
-  const nodeById = getNodeByIdMap(nodes);
-  const edgesByTargetId = getEdgesByTargetIdMap(edges);
-  const targetEdges = edgesByTargetId.get(nodeId) ?? [];
-  const sourceNodes = targetEdges.map((edge) => nodeById.get(edge.source));
-  return sourceNodes.every((node) => node != null && !node.hidden);
+  const expandedById = getExpandedByNodeIdMap({ nodes, edges });
+  return expandedById.get(nodeId) ?? false;
 }
 
 function hideNodeSources(
