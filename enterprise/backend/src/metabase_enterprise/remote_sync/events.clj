@@ -35,16 +35,16 @@
    Args:
        model-type (str): Type of model ('Card', 'Dashboard', 'Document', 'Collection').
        model-id (int): ID of the affected model.
-       status (str): Status of the sync ('created', 'updated', 'removed', 'deleted', 'error', 'synced').
+       status (str): Status of the sync ('create', 'update', 'removed', 'delete', 'error', 'synced').
        user-id (int, optional): ID of the user making the change. Defaults to current user.
 
    Returns:
-       map: The created or updated remote sync object entry."
+       map: The create or update remote sync object entry."
   [model-type model-id status & [_user-id]]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
-      (or (and existing (not= "created" (:status existing)))
-          (and (= "created" (:status existing)) (= "removed" status)))
+      (or (and existing (not= "create" (:status existing)))
+          (and (= "create" (:status existing)) (= "removed" status)))
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status
                    :status_changed_at (t/offset-date-time)})
@@ -70,11 +70,11 @@
         in-remote-synced? (model-in-remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id object))
         status (if (:archived object)
-                 "deleted"
+                 "delete"
                  (case topic
-                   :event/card-create "created"
-                   :event/card-update "updated"
-                   :event/card-delete "deleted"))]
+                   :event/card-create "create"
+                   :event/card-update "update"
+                   :event/card-delete "delete"))]
     (cond
       ;; Card is in a remote-synced collection - create or update entry
       in-remote-synced?
@@ -100,11 +100,11 @@
         in-remote-synced? (model-in-remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id object))
         status (if (:archived object)
-                 "deleted"
+                 "delete"
                  (case topic
-                   :event/dashboard-create "created"
-                   :event/dashboard-update "updated"
-                   :event/dashboard-delete "deleted"))]
+                   :event/dashboard-create "create"
+                   :event/dashboard-update "update"
+                   :event/dashboard-delete "delete"))]
     (cond
       ;; Dashboard is in a remote-synced collection - create or update entry
       in-remote-synced?
@@ -130,11 +130,11 @@
         in-remote-synced? (model-in-remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id object))
         status (if (:archived object)
-                 "deleted"
+                 "delete"
                  (case topic
-                   :event/document-create "created"
-                   :event/document-update "updated"
-                   :event/document-delete "deleted"))]
+                   :event/document-create "create"
+                   :event/document-update "update"
+                   :event/document-delete "delete"))]
     (cond
       ;; Document is in a remote-synced collection - create or update entry
       in-remote-synced?
@@ -159,10 +159,10 @@
         is-remote-synced? (collections/remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
         status (if (:archived object)
-                 "deleted"
+                 "delete"
                  (case topic
-                   :event/collection-create "created"
-                   :event/collection-update "updated"))]
+                   :event/collection-create "create"
+                   :event/collection-update "update"))]
     (cond
       ;; Collection is remote-synced - create or update entry
       is-remote-synced?
