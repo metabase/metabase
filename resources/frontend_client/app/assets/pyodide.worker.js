@@ -62,17 +62,17 @@ def __format_exception():
 }
 
 async function execute(pyodide, code) {
-  let stdout = "";
+  const stdout = [];
   pyodide.setStdout({
     batched(out) {
-      stdout += out;
+      stdout.push(out);
     },
   });
 
-  let stderr = "";
+  const stderr = [];
   pyodide.setStderr({
     batched(out) {
-      stderr += out;
+      stderr.push(out);
     },
   });
 
@@ -80,15 +80,15 @@ async function execute(pyodide, code) {
     const result = await pyodide.runPythonAsync(code);
     return {
       result: serialize(result),
-      stdout,
-      stderr,
+      stdout: stdout.join("\n"),
+      stderr: stderr.join("\n"),
     };
   } catch (_err) {
     const error = pyodide.globals.get("__format_exception")();
     return {
       error: serialize(error),
-      stdout,
-      stderr,
+      stdout: stdout.join("\n"),
+      stderr: stderr.join("\n"),
     };
   }
 }
