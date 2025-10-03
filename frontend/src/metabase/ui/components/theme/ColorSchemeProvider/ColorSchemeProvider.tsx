@@ -40,14 +40,8 @@ interface ColorSchemeProviderProps {
   forceColorScheme?: ResolvedColorScheme | null;
 }
 
-const getNextScheme = (scheme: ResolvedColorScheme) => {
-  switch (scheme) {
-    case "light":
-      return "dark";
-    case "dark":
-      return "light";
-  }
-};
+const getNextScheme = (scheme: ResolvedColorScheme) =>
+  scheme === "dark" ? "light" : "dark";
 
 export function ColorSchemeProvider({
   children,

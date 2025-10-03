@@ -36,9 +36,8 @@
 .DashboardLoadingAndErrorWrapper {
   min-height: 100%;
   height: 1px;
-  /* prevents header from scrolling so we can have a fixed sidebar */
-  /* background-color: var(--mb-color-bg-secondary); */
 
+  /* prevents header from scrolling so we can have a fixed sidebar */
   &.isFullHeight {
     height: 100%;
   }
