@@ -165,7 +165,7 @@ describe("FormattingWidget", () => {
     });
   });
 
-  it("should proivde expected number separators (#61854)", async () => {
+  it("should provide expected number separators (#61854)", async () => {
     await setup();
 
     const seperatorStyleInput = await screen.findByLabelText("Separator style");
