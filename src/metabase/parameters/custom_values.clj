@@ -10,6 +10,7 @@
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -76,10 +77,23 @@
     (-> full-query
         (assoc :stages (subvec stages 0 (inc value-column-stage))))))
 
+(defn- query-and-value-column
+  [card value-field-ref]
+  (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
+        query (lib/query mp (lib.metadata/card mp (:id card)))
+        value-column (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))]
+    (if value-column
+      ;; column was found on the last stage
+      {:query query :value-column value-column}
+      ;; if it wasn't, dive into previous stages
+      (let [query (query-for-column-values card value-field-ref)]
+        {:query  (lib/update-query-stage query -1 dissoc :aggregation :breakout)
+         :value-column (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))}))))
+
 (defn- values-from-card-query
   [card value-field-ref {:keys [query-string] :as _opts}]
-  (let [query             (query-for-column-values card value-field-ref)
-        value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
+  (let [{:keys [query value-column]}
+        (query-and-value-column card value-field-ref)
         textual?          (lib.types.isa/string? value-column)
         nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
         query-filter      (when query-string
@@ -87,7 +101,6 @@
                               (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
                               (lib/= value-column query-string)))]
     (-> query
-        (lib/append-stage)
         (lib/limit *max-rows*)
         (lib/filter nonempty)
         (cond-> #_query query-filter (lib/filter query-filter))
