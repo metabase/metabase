@@ -13,12 +13,12 @@ export type NodeType = ItemNodeType | GroupNodeType;
 export type ItemNodeType = Node<DependencyNode, "item">;
 export type GroupNodeType = Node<GroupNodeData, "item-group">;
 
-export type GroupNodeData = {
-  type: GroupType;
-  count: number;
-};
-
 export type GraphData = {
   nodes: NodeType[];
   edges: Edge[];
+};
+
+export type GroupNodeData = {
+  type: GroupType;
+  count: number;
 };

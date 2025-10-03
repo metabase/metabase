@@ -1,9 +1,7 @@
 import {
   Handle,
   Position,
-  useEdges,
   useNodeConnections,
-  useNodes,
   useReactFlow,
 } from "@xyflow/react";
 import cx from "classnames";
@@ -11,25 +9,24 @@ import cx from "classnames";
 import { ActionIcon, Icon } from "metabase/ui";
 
 import type { NodeId, NodeType } from "../types";
-import { getNodesWithToggledNode, isNodeExpanded } from "../utils/collapsing";
+import { getNodesWithToggledNodes } from "../utils";
 
 import S from "./NodeControls.module.css";
 
 type NodeControlsProps = {
-  nodeId: NodeId;
-  isConnectable?: boolean;
+  id: NodeId;
+  isExpanded: boolean;
 };
 
-export function NodeControls({ nodeId, isConnectable }: NodeControlsProps) {
-  const nodes = useNodes<NodeType>();
-  const edges = useEdges();
-  const { setNodes } = useReactFlow<NodeType>();
+export function NodeControls({ id, isExpanded }: NodeControlsProps) {
+  const { getNodes, getEdges, setNodes } = useReactFlow<NodeType>();
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
-  const isExpanded = isNodeExpanded(nodes, edges, nodeId);
 
   const handleToggle = () => {
-    const newNodes = getNodesWithToggledNode(nodes, edges, nodeId, isExpanded);
+    const nodes = getNodes();
+    const edges = getEdges();
+    const newNodes = getNodesWithToggledNodes(nodes, edges, [id], isExpanded);
     setNodes(newNodes);
   };
 
@@ -41,18 +38,14 @@ export function NodeControls({ nodeId, isConnectable }: NodeControlsProps) {
         </ActionIcon>
       )}
       {sources.length > 0 && (
-        <Handle
-          type="source"
-          position={Position.Left}
-          isConnectable={isConnectable}
-        />
+        <Handle type="source" position={Position.Left} isConnectable={false} />
       )}
       {targets.length > 0 && (
         <Handle
           className={cx({ [S.hidden]: !isExpanded })}
           type="target"
           position={Position.Right}
-          isConnectable={isConnectable}
+          isConnectable={false}
         />
       )}
     </>

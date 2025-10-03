@@ -1,3 +1,5 @@
+import dagre from "@dagrejs/dagre";
+import { createSelector } from "@reduxjs/toolkit";
 import type { Edge } from "@xyflow/react";
 
 import type {
@@ -8,8 +10,8 @@ import type {
   DependencyType,
 } from "metabase-types/api";
 
-import S from "../DependencyFlow.module.css";
-import { GROUP_ITEM_THRESHOLD } from "../constants";
+import S from "./DependencyFlow.module.css";
+import { GROUP_ITEM_THRESHOLD } from "./constants";
 import type {
   EdgeId,
   GraphData,
@@ -18,9 +20,7 @@ import type {
   ItemNodeType,
   NodeId,
   NodeType,
-} from "../types";
-
-import { getNodeByIdMap } from "./common";
+} from "./types";
 
 export function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
@@ -36,6 +36,12 @@ export function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
 
 export function getGroupType(node: DependencyNode): GroupType {
   return node.type === "card" ? node.data.type : node.type;
+}
+
+function getNodeByIdMap(nodes: NodeType[]) {
+  const nodeBydId = new Map<NodeId, NodeType>();
+  nodes.forEach((node) => nodeBydId.set(node.id, node));
+  return nodeBydId;
 }
 
 function getItemNodes(nodes: DependencyNode[]): ItemNodeType[] {
@@ -169,6 +175,140 @@ function getGroupGraph(nodes: NodeType[], edges: Edge[]): GraphData {
 }
 
 export function getInitialGraph({ nodes, edges }: DependencyGraph): GraphData {
-  const { nodes: itemNodes, edges: itemEdges } = getItemGraph(nodes, edges);
-  return getGroupGraph(itemNodes, itemEdges);
+  const itemsGraph = getItemGraph(nodes, edges);
+  return getGroupGraph(itemsGraph.nodes, itemsGraph.edges);
+}
+
+const getEdgesByTargetIdMap = createSelector(
+  (edges: Edge[]) => edges,
+  (edges) => {
+    const edgesByTargetId = new Map<NodeId, Edge[]>();
+    edges.forEach((edge) => {
+      let edgesGroup = edgesByTargetId.get(edge.target);
+      if (edgesGroup == null) {
+        edgesGroup = [];
+        edgesByTargetId.set(edge.target, edgesGroup);
+      }
+      edgesGroup.push(edge);
+    });
+    return edgesByTargetId;
+  },
+);
+
+const getExpandedByNodeIdMap = createSelector(
+  (graph: GraphData) => graph.nodes,
+  (graph: GraphData) => graph.edges,
+  (nodes, edges) => {
+    const nodeById = getNodeByIdMap(nodes);
+    const edgesByTargetId = getEdgesByTargetIdMap(edges);
+    const expandedById = new Map<NodeId, boolean>();
+
+    nodes.forEach((node) => {
+      const targetEdges = edgesByTargetId.get(node.id) ?? [];
+      const sourceNodes = targetEdges.map((edge) => nodeById.get(edge.source));
+      const isExpanded = sourceNodes.every(
+        (node) => node != null && !node.hidden,
+      );
+      expandedById.set(node.id, isExpanded);
+    });
+
+    return expandedById;
+  },
+);
+
+export function isNodeExpanded(
+  nodes: NodeType[],
+  edges: Edge[],
+  nodeId: NodeId,
+) {
+  const expandedById = getExpandedByNodeIdMap({ nodes, edges });
+  return expandedById.get(nodeId) ?? false;
+}
+
+function addDescendantNodes(
+  nodeId: NodeId,
+  edgesByTargetId: Map<NodeId, Edge[]>,
+  nodeIds: Set<NodeId>,
+) {
+  const edges = edgesByTargetId.get(nodeId);
+  edges?.forEach((edge) => {
+    nodeIds.add(edge.source);
+    addDescendantNodes(edge.source, edgesByTargetId, nodeIds);
+  });
+}
+
+function getNodesWithCollapsedNodes(
+  nodes: NodeType[],
+  edges: Edge[],
+  nodeIds: NodeId[],
+) {
+  const edgesByTargetId = getEdgesByTargetIdMap(edges);
+  const newHiddenNodeIds = new Set<NodeId>();
+  nodeIds.forEach((nodeId) =>
+    addDescendantNodes(nodeId, edgesByTargetId, newHiddenNodeIds),
+  );
+
+  return nodes.map((node) =>
+    newHiddenNodeIds.has(node.id) ? { ...node, hidden: true } : node,
+  );
+}
+
+function getNodesWithExpandedNodes(
+  nodes: NodeType[],
+  edges: Edge[],
+  nodeIds: NodeId[],
+) {
+  const edgesByTargetId = getEdgesByTargetIdMap(edges);
+  const nodeEdges = nodeIds.flatMap(
+    (nodeId) => edgesByTargetId.get(nodeId) ?? [],
+  );
+  const newVisibleNodeIds = new Set(nodeEdges.map((edge) => edge.source));
+
+  return nodes.map((node) =>
+    newVisibleNodeIds.has(node.id) ? { ...node, hidden: false } : node,
+  );
+}
+
+export function getNodesWithToggledNodes(
+  nodes: NodeType[],
+  edges: Edge[],
+  nodeIds: NodeId[],
+  isExpanded: boolean,
+) {
+  return isExpanded
+    ? getNodesWithCollapsedNodes(nodes, edges, nodeIds)
+    : getNodesWithExpandedNodes(nodes, edges, nodeIds);
+}
+
+export function getNodesWithPositions(
+  nodes: NodeType[],
+  edges: Edge[],
+): NodeType[] {
+  const dagreGraph = new dagre.graphlib.Graph();
+  dagreGraph.setGraph({ rankdir: "LR" });
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, {
+      width: node.measured?.width,
+      height: node.measured?.height,
+    });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.target, edge.source);
+  });
+
+  dagre.layout(dagreGraph);
+
+  return nodes.map((node) => {
+    const { x, y, width, height } = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: {
+        x: x - width / 2,
+        y: y - height / 2,
+      },
+    };
+  });
 }

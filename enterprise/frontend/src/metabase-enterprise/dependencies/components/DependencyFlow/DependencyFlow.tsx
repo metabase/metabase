@@ -13,8 +13,8 @@ import type { DependencyGraph } from "metabase-types/api";
 
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
-import { getInitialGraph } from "./utils/graph";
-import { getNodesWithPositions } from "./utils/layout";
+import type { NodeType } from "./types";
+import { getInitialGraph, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
   item: ItemNode,
@@ -182,7 +182,7 @@ export function DependencyFlow() {
 }
 
 function NodeLayout() {
-  const { getNodes, getEdges, setNodes } = useReactFlow();
+  const { getNodes, getEdges, setNodes } = useReactFlow<NodeType>();
   const isInitialized = useNodesInitialized();
 
   useLayoutEffect(() => {
