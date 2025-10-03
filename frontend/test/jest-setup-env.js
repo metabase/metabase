@@ -9,10 +9,9 @@ let unmockedRouteErrors = [];
 beforeEach(() => {
   unmockedRouteErrors = [];
   fetchMock.mockGlobal();
-  fetchMock.catch((request) => {
-    const url = request.url || request;
-    const method = request.options?.method || request.method || "GET";
-    const errorMessage = `Unmocked ${method} request to: ${url}`;
+  fetchMock.catch((callLog) => {
+    const { url, options } = callLog;
+    const errorMessage = `Unmocked ${options.method} request to: ${url}`;
     unmockedRouteErrors.push(errorMessage);
     throw new Error(errorMessage);
   });
