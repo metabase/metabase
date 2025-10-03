@@ -1,6 +1,7 @@
 // This is the copy of https://github.com/iamkun/dayjs/pull/2060 which implements parseZone
 // which we rely on when using momentjs so we need this plugin to be able to migrate from momentjs
 // @authors: LucaColonnello and all contributors from https://github.com/iamkun/dayjs/issues/651#issuecomment-763033265
+// The colon is made optional with ':?' to support both '+0100' and '+01:00' timezone formats.
 const REGEX_TIMEZONE_OFFSET_FORMAT = /^(.*)([+-])(\d{2}):?(\d{2})|(Z)$/;
 
 const parseOffset = (dateString) =>
