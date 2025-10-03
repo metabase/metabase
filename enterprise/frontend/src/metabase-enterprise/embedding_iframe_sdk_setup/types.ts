@@ -1,4 +1,3 @@
-import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
@@ -59,8 +58,8 @@ export type SdkIframeEmbedSetupSettings = Omit<
   Partial<SdkIframeEmbedSetupStaticEmbeddingSettings> &
   SdkIframeEmbedSetupTemplateSettings;
 
-export type SdkIframeEmbedSetupStartWith = {
-  step: SdkIframeEmbedSetupStep;
-  resourceType: SdkIframeEmbedSetupExperience;
-  resourceId: SdkDashboardId | SdkQuestionId;
+export type SdkIframeEmbedSetupUrlParams = {
+  authMethod?: string | null;
+  resourceType?: string | null;
+  resourceId?: string | null;
 };

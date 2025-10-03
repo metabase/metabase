@@ -14,10 +14,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import {
-  DISABLE_STATIC_EMBEDDING_SETTINGS,
-  ENABLE_STATIC_EMBEDDING_SETTINGS,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -65,15 +61,12 @@ export const SelectEmbedOptionsStep = () => {
 
   const handleAuthTypeChange = (value: string) => {
     const isStatic = value === "no-user";
+    const useExistingUserSession = value === "user-session";
 
-    updateSettings(
-      isStatic
-        ? ENABLE_STATIC_EMBEDDING_SETTINGS
-        : {
-            ...DISABLE_STATIC_EMBEDDING_SETTINGS,
-            useExistingUserSession: value === "user-session",
-          },
-    );
+    updateSettings({
+      isStatic,
+      useExistingUserSession,
+    });
   };
 
   return (

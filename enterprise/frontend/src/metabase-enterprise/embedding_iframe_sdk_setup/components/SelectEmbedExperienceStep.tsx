@@ -16,7 +16,7 @@ import {
 } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupExperience } from "../types";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { EnableEmbeddedAnalyticsCard } from "./EnableEmbeddedAnalyticsCard";
 
