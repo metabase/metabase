@@ -108,15 +108,27 @@
    :task_id (async-export! (or branch (settings/remote-sync-branch))
                            (or message "Exported from Metabase"))})
 
+(defn- task-status [task]
+  (assoc task :status (cond
+                        (remote-sync.task/failed? task) :errored
+                        (remote-sync.task/successful? task) :successful
+                        (remote-sync.task/cancelled? task) :cancelled
+                        (remote-sync.task/timed-out? task) :timed-out
+                        :else :running)))
+
 (api.macros/defendpoint :get "/current-task"
   "Get the current sync task"
   []
   (when-let [task (remote-sync.task/most-recent-task)]
-    (assoc task :status (cond
-                          (remote-sync.task/failed? task) :errored
-                          (remote-sync.task/successful? task) :successful
-                          (remote-sync.task/timed-out? task) :timed-out
-                          :else :running))))
+    (task-status task)))
+
+(api.macros/defendpoint :post "/current-task/cancel"
+  "Cancels the current task if one is running"
+  []
+  (let [task (remote-sync.task/most-recent-task)]
+    (api/check-400 (and (some? task) (remote-sync.task/running? task)) "No active task to cancel")
+    (remote-sync.task/cancel-sync-task! (:id task))
+    (task-status (remote-sync.task/most-recent-task))))
 
 (api.macros/defendpoint :put "/settings"
   "Update Git Sync related settings. You must be a superuser to do this."

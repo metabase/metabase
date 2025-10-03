@@ -113,3 +113,9 @@
         (catch Exception e
           (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))
       (throw (ex-info "Cannot find file" {:abs-path serdes-path})))))
+
+(defn ingestable-version
+  "Returns the version of the given ingestable source."
+  [ingestable]
+  (let [ingestable (or (:ingestable ingestable) ingestable)]
+    (source.p/version (:source ingestable))))

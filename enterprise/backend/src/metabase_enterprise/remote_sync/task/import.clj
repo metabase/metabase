@@ -27,13 +27,13 @@
             (if-let [{id :id} (remote-sync.task/current-task)]
               {:existing? true :id id}
               (remote-sync.task/create-sync-task! "import" config/internal-mb-user-id)))]
-      (if-not existing?
-        (log/warn "Remote sync in progress")
+      (if existing?
+        (log/info "Remote sync already in progress, not auto-importing")
         (dh/with-timeout {:interrupt? true
                           :timeout-ms (settings/remote-sync-task-time-limit-ms)}
+          (log/info "Auto-importing remote-sync collections")
           (let [result (impl/import! (source/source-from-settings (settings/remote-sync-branch))
-                                     task-id
-                                     (settings/remote-sync-branch))]
+                                     task-id)]
             (case (:status result)
               :success (remote-sync.task/complete-sync-task! task-id)
               :error (remote-sync.task/fail-sync-task! task-id (:message result))

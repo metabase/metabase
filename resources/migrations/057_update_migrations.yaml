@@ -1718,6 +1718,13 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: cancelled
+                  type: boolean
+                  remarks: Whether the sync task was cancelled
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
                   name: started_at
                   type: ${timestamp_type}
                   remarks: Timestamp when the sync task started
@@ -1749,6 +1756,10 @@ databaseChangeLog:
                   remarks: error message if this task failed
                   constraints:
                     nullable: true
+              - column:
+                  name: version
+                  type: varchar(50)
+                  remarks: Version that was imported or exported (ex the Git SHA)
 
   - changeSet:
       id: v57.2025-09-24T14:41:00

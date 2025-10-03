@@ -49,6 +49,15 @@
                                          :progress 0
                                          :started_at (mi/now)}
                                         additional-fields)))
+(defn cancel-sync-task!
+  "Mark a sync task as cancelled. This signal will be checked in update-progress! to stop further processing.
+  Have to manually check it rather than having a separate thread check and interrupt the worker thread because
+  sometimes the worker thread is a quartz thread and interrupting it can cause issues."
+  [task-id]
+  (t2/update! :model/RemoteSyncTask task-id
+              {:cancelled true
+               :ended_at (mi/now)
+               :error_message "Task cancelled"}))
 
 (defn update-progress!
   "Update the progress of a sync task.
@@ -58,11 +67,22 @@
     - progress: Progress value (0.0 to 1.0)
 
   Returns:
-    The updated sync task record."
+    The updated sync task record.
+
+  NOTE: if the task has been marked as 'cancelled', this will throw an exception to stop further processing."
   [task-id progress]
+  (when (true? (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
+    (throw (ex-info "Remote sync task has been cancelled" {:task-id    task-id
+                                                           :cancelled? true})))
   (t2/update! :model/RemoteSyncTask task-id
               {:progress progress
                :last_progress_report_at (mi/now)}))
+
+(defn set-version!
+  "Sets the version value for a sync task."
+  [task-id version]
+  (t2/update! :model/RemoteSyncTask task-id
+              {:version version}))
 
 (defn complete-sync-task!
   "Mark a sync task as completed.
@@ -118,17 +138,29 @@
                   :order-by [[:started_at :desc]
                              [:id :desc]]}))
 
-(defn successful?
-  "Returns truthy iff this is a successfully completed task. If task is nil, returns true."
+(defn running?
+  "Returns truthy iff this is a running task."
   [task]
-  (and (nil? (:error_message task))
+  (nil? (:ended_at task)))
+
+(defn successful?
+  "Returns truthy iff this is a successfully completed task."
+  [task]
+  (and (false? (:cancelled task))
+       (nil? (:error_message task))
        (some? (:ended_at task))))
 
 (defn failed?
   "Returns truthy iff this is a failed, completed task"
   [task]
-  (and (some? (:error_message task))
+  (and (false? (:cancelled task))
+       (some? (:error_message task))
        (some? (:ended_at task))))
+
+(defn cancelled?
+  "Returns truthy iff this is a cancelled task."
+  [task]
+  (:cancelled task))
 
 (defn timed-out?
   "Returns truthy iff this is a timed-out, incomplete task"

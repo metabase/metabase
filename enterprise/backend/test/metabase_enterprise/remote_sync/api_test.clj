@@ -12,6 +12,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn mock-git-source
@@ -217,35 +219,67 @@
                                                remote-sync-branch "main"]
               (with-redefs [source/source-from-settings (constantly mock-source)]
                 (is (= "Remote sync in progress"
-                       (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {}))))))))))
+                       (mt/user-http-request :crowberto :post 400 "ee/remote-sync/export" {})))))))))))
 
-  (deftest get-current-sync-status-works
-    (testing "Works when there are no tasks at all"
-      (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task"))))
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+(deftest get-current-sync-status-works
+  (testing "Works when there are no tasks at all"
+    (is (nil? (mt/user-http-request :crowberto :get 204 "ee/remote-sync/current-task"))))
+  (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                 :last_progress_report_at :%now
+                                                 :started_at :%now}]
+    (testing "Returns the current task if one exists"
+      (is (=? {:id integer?
+               :started_at some?
+               :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
+    (testing "After task completion, it's still the current task"
+      (remote-sync.task/complete-sync-task! id)
+      (is (=? {:id integer?
+               :started_at some?
+               :ended_at some?}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))
+  (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                 :last_progress_report_at :%now
+                                                 :started_at :%now}]
+    (testing "Returns the current task if one exists"
+      (is (=? {:id integer?
+               :started_at some?
+               :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
+    (testing "After task errors, returns nothing again"
+      (remote-sync.task/fail-sync-task! id "Some error")
+      (is (=? {:error_message "Some error"}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))
+  (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                 :last_progress_report_at :%now
+                                                 :started_at :%now}]
+    (testing "After task is cancelled, returns that is is cancelled"
+      (remote-sync.task/cancel-sync-task! id)
+      (is (=? {:cancelled true
+               :error_message "Task cancelled"}
+              (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))))
+
+(deftest cancel-current-task
+  (testing "Error when there are no tasks at all"
+    (is (= "No active task to cancel" (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel"))))
+  (testing "Error when last task completed"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type          "export"
                                                    :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (testing "Returns the current task if one exists"
-        (is (=? {:id integer?
-                 :started_at some?
-                 :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
-      (testing "After task completion, it's still the current task"
-        (remote-sync.task/complete-sync-task! id)
-        (is (=? {:id integer?
-                 :started_at some?
-                 :ended_at some?}
-                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))
-    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type "export"
+                                                   :started_at              :%now}]
+      (remote-sync.task/complete-sync-task! id)
+      (is (= "No active task to cancel" (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel")))))
+  (testing "Error when last task errored"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type          "export"
                                                    :last_progress_report_at :%now
-                                                   :started_at :%now}]
-      (testing "Returns the current task if one exists"
-        (is (=? {:id integer?
-                 :started_at some?
-                 :ended_at nil?} (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task"))))
-      (testing "After task errors, returns nothing again"
-        (remote-sync.task/fail-sync-task! id "Some error")
-        (is (=? {:error_message "Some error"}
-                (mt/user-http-request :crowberto :get 200 "ee/remote-sync/current-task")))))))
+                                                   :started_at              :%now}]
+      (remote-sync.task/fail-sync-task! id "Error msg")
+      (is (= "No active task to cancel" (mt/user-http-request :crowberto :post 400 "ee/remote-sync/current-task/cancel")))))
+  (testing "Can cancel active task"
+    (mt/with-temp [:model/RemoteSyncTask {id :id} {:sync_task_type          "export"
+                                                   :last_progress_report_at :%now
+                                                   :started_at              :%now}]
+      (is (=? {:id id
+               :cancelled true
+               :error_message "Task cancelled"} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/current-task/cancel")))
+      (is (remote-sync.task/cancelled? (t2/select-one :model/RemoteSyncTask :id id))))))
 
 (deftest global-is-dirty-endpoint-test
   (test-helpers/with-clean-object

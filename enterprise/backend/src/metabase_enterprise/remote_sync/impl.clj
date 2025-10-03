@@ -2,15 +2,13 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase-enterprise.remote-sync.events :as lib.events]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.ingestable :as source.ingestable]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase.analytics.core :as analytics]
-   [metabase.api.common :as api]
    [metabase.models.serialization :as serdes]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -61,28 +59,32 @@
 
 (defn- handle-import-exception
   [e source]
-  (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
-  (analytics/inc! :metabase-remote-sync/imports-failed)
-  (let [error-msg (cond
-                    (or (instance? java.net.UnknownHostException e)
-                        (instance? java.net.UnknownHostException (ex-cause e)))
-                    "Network error: Unable to reach git repository host"
+  (if (:cancelled? (ex-data e))
+    (log/info "Import from git repository was cancelled")
+    (do
+      (log/errorf e "Failed to reload from git repository: %s" (ex-message e))
+      (analytics/inc! :metabase-remote-sync/imports-failed)
+      (let [error-msg (cond
+                        (or (instance? java.net.UnknownHostException e)
+                            (instance? java.net.UnknownHostException (ex-cause e)))
+                        "Network error: Unable to reach git repository host"
 
-                    (str/includes? (ex-message e) "Authentication failed")
-                    "Authentication failed: Please check your git credentials"
+                        (str/includes? (ex-message e) "Authentication failed")
+                        "Authentication failed: Please check your git credentials"
 
-                    (str/includes? (ex-message e) "Repository not found")
-                    "Repository not found: Please check the repository URL"
+                        (str/includes? (ex-message e) "Repository not found")
+                        "Repository not found: Please check the repository URL"
 
-                    (str/includes? (ex-message e) "branch")
-                    "Branch error: Please check the specified branch exists"
+                        (str/includes? (ex-message e) "branch")
+                        "Branch error: Please check the specified branch exists"
 
-                    :else
-                    (format "Failed to reload from git repository: %s" (ex-message e)))]
-    {:status  :error
-     :message error-msg
-     :version (source.p/version source)
-     :details {:error-type (type e)}}))
+                        :else
+                        (format "Failed to reload from git repository: %s" (ex-message e)))]
+        {:status        :error
+         :message       error-msg
+         :version       (source.p/version source)
+
+         :details {:error-type (type e)}}))))
 
 (defn import!
   "Reloads the Metabase entities from the git repo"
@@ -93,11 +95,12 @@
     (if source
       (try
         ;; Load all entities from Git first - this handles creates/updates via entity_id matching
-        (let [load-result (u/prog1 (serdes/with-cache
-                                     (->>  {:task-id task-id
-                                            :path-filters [#"collections/.*"]}
-                                           (source.p/->ingestable source)
-                                           serialization/load-metabase!)))
+        (let [ingestable-source (source.p/->ingestable source {:task-id task-id
+                                                               :path-filters [#"collections/.*"]})
+              source-version (source.ingestable/ingestable-version ingestable-source)
+              _ (remote-sync.task/set-version! task-id source-version)
+              load-result (serdes/with-cache
+                            (serialization/load-metabase! ingestable-source))
               ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)
@@ -105,7 +108,6 @@
                                      (map (fn [[model entities]]
                                             [model (set (map :id entities))]))
                                      (into {}))]
-
           (remote-sync.task/update-progress! task-id 0.8)
           (t2/with-transaction [_conn]
             (clean-synced! (affected-collections) imported-entities)
@@ -142,16 +144,21 @@
                                                :continue-on-error        false})]
             (remote-sync.task/update-progress! task-id 0.3)
             (source/store! models source task-id message)
+            (remote-sync.task/set-version! task-id (source.p/version source))
             (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
         {:status :success
-         :version (source.p/version source)}
+         :version       (source.p/version source)}
 
         (catch Exception e
-          (analytics/inc! :metabase-remote-sync/imports-failed)
-          (remote-sync.task/fail-sync-task! task-id (ex-message e))
-          {:status  :error
-           :version (source.p/version source)
-           :message (format "Failed to export to git repository: %s" (ex-message e))})
+          (if (:cancelled? (ex-data e))
+            (log/info "Export to git repository was cancelled")
+            (do
+              (analytics/inc! :metabase-remote-sync/imports-failed)
+              (remote-sync.task/fail-sync-task! task-id (ex-message e))
+              {:status  :error
+               :version       (source.p/version source)
+
+               :message (format "Failed to export to git repository: %s" (ex-message e))})))
         (finally
           (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
     {:status  :error
