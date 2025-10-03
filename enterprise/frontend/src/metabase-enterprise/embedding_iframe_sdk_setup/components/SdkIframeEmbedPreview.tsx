@@ -18,6 +18,10 @@ import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase-enterprise/embeddi
 // by appending the script
 import { setupConfigWatcher } from "metabase-enterprise/embedding_iframe_sdk/embed";
 import type { SdkIframeEmbedBaseSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type {
+  SdkIframeDashboardEmbedSettings,
+  SdkIframeQuestionEmbedSettings,
+} from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import { getDerivedDefaultColorsForEmbedFlow } from "../utils/derived-colors-for-embed-flow";
@@ -222,14 +226,20 @@ const SdkIframeEmbedPreviewInner = () => {
 export const SdkIframeEmbedPreview = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
 
+  const lockedParams = (
+    settings as SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings
+  ).lockedParameters;
+
   const remountKey = useMemo(
     () =>
       JSON.stringify({
+        // Locked params must force re-mount the preview to avoid issues
+        lockedParams,
         // We must re-mount preview when `isStatic` setting is changed
         // to properly work with no-user auth handling inside rendered SDK
         isStaticEmbedding: settings.isStatic,
       }),
-    [settings.isStatic],
+    [lockedParams, settings.isStatic],
   );
 
   return <SdkIframeEmbedPreviewInner key={remountKey} />;
