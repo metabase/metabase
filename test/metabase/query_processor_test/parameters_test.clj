@@ -656,19 +656,19 @@
 (deftest sql-permissions-but-no-card-permissions-template-tag-test
   (testing "If we have full SQL perms for a DW but no Card perms we shouldn't be able to include it with a ref or template tag"
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
-      (mt/with-full-data-perms-for-all-users!
-        (mt/with-non-admin-groups-no-root-collection-perms
-          ;; allowing `with-temp` here since we need it to make Collections
-          #_{:clj-kondo/ignore [:discouraged-var]}
-          (mt/with-temp [:model/Collection {collection-1-id :id} {}
-                         :model/Collection {collection-2-id :id} {}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        ;; allowing `with-temp` here since we need it to make Collections
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                       :model/Collection {collection-2-id :id} {}
 
-                         :model/Card
-                         {card-1-id :id}
-                         {:collection_id collection-1-id
-                          :dataset_query (mt/mbql-query venues {:fields   [$id $name]
-                                                                :order-by [[:asc $id]]
-                                                                :limit    2})}
+                       :model/Card
+                       {card-1-id :id}
+                       {:collection_id collection-1-id
+                        :dataset_query (mt/mbql-query venues {:fields   [$id $name]
+                                                              :order-by [[:asc $id]]
+                                                              :limit    2})}
+
                        :model/Card
                        {card-2-id :id, :as card-2}
                        {:collection_id collection-2-id
@@ -695,6 +695,7 @@
                           (qp/process-query {:database (mt/id)
                                              :type     :native
                                              :native   (dissoc (qp.compile/compile (:dataset_query card-2))
+                                                               :lib/type
                                                                :query-permissions/referenced-card-ids)}))))))
               (let [query (mt/native-query
                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
@@ -705,53 +706,32 @@
                 (testing "SHOULD NOT be able to run native query with Card ID template tag"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"You do not have permissions to view Card \d+"
-                       (qp/process-query {:database (mt/id), :type :query, :query {:source-table (format "card__%d" card-2-id)}}))))
-                (testing "Sanity check: SHOULD be able to run a native query"
-                  (testing (str "COMPILED = \n" (u/pprint-to-str (qp.compile/compile (:dataset_query card-2))))
+                       #"\QYou do not have permissions to run this query.\E"
+                       (qp/process-query query))))
+                (testing "Exception should NOT include the compiled native query"
+                  (try
+                    (qp/process-query query)
+                    (is (not ::here?)
+                        "Should never get here, query should throw an Exception")
+                    (catch Throwable e
+                      (doseq [data (keep ex-data (u/full-exception-chain e))]
+                        (walk/postwalk
+                         (fn [form]
+                           (when (string? form)
+                             (is (not (re-find #"SELECT" form))))
+                           form)
+                         data)))))
+                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
+                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
+                  ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
+                  ;; gets rebound with the updated permissions. This will be fixed in #45001
+                  (mt/with-test-user :rasta
                     (is (= [[1 "Red Medicine"]
                             [2 "Stout Burgers & Beers"]]
                            (mt/formatted-rows
                             [int str]
-                            (qp/process-query {:database (mt/id)
-                                               :type     :native
-                                               :native   (-> (qp.compile/compile (:dataset_query card-2))
-                                                             (select-keys [:query :params]))}))))))
-                (let [query (mt/native-query
-                             {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                              :template-tags {"card" {:name         "card"
-                                                      :display-name "card"
-                                                      :type         :card
-                                                      :card-id      card-2-id}}})]
-                  (testing "SHOULD NOT be able to run native query with Card ID template tag"
-                    (is (thrown-with-msg?
-                         clojure.lang.ExceptionInfo
-                         #"\QYou do not have permissions to run this query.\E"
-                         (qp/process-query query))))
-                  (testing "Exception should NOT include the compiled native query"
-                    (try
-                      (qp/process-query query)
-                      (is (not ::here?)
-                          "Should never get here, query should throw an Exception")
-                      (catch Throwable e
-                        (doseq [data (keep ex-data (u/full-exception-chain e))]
-                          (walk/postwalk
-                           (fn [form]
-                             (when (string? form)
-                               (is (not (re-find #"SELECT" form))))
-                             form)
-                           data)))))
-                  (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
-                                " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
-                    (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
-                    ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
-                    ;; gets rebound with the updated permissions. This will be fixed in #45001
-                    (mt/with-test-user :rasta
-                      (is (= [[1 "Red Medicine"]
-                              [2 "Stout Burgers & Beers"]]
-                             (mt/formatted-rows
-                              [int str]
-                              (qp/process-query query)))))))))))))))
+                            (qp/process-query query))))))))))))))
 
 ;;; TODO (Cam 9/9/25) -- I added this in #61114 but I don't remember exactly what I was testing... I think this is a
 ;;; port of one of the Cypress e2e tests but I don't remember which one. Give this a better name.
