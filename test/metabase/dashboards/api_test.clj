@@ -1684,6 +1684,16 @@
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
                                                     nil
+                                                    nil)))))
+    (testing "Copies iframe cards"
+      (let [dashcards [{:card_id 1 :card {:id 1}}
+                       {:visualization_settings
+                        {:virtual_card {:display "iframe"}
+                         :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
+        (is (= dashcards
+               (api.dashboard/update-cards-for-copy dashcards
+                                                    {1 {:id 1}}
+                                                    nil
                                                     nil)))))))
 
 (deftest copy-dashboard-cards-test
