@@ -3,12 +3,28 @@ import type { Edge } from "@xyflow/react";
 
 import type { GraphData, NodeId, NodeType } from "../types";
 
-import { getEdgesByTargetIdMap, getNodeByIdMap } from "./common";
+import { getNodeByIdMap } from "./common";
+
+const getEdgesByTargetIdMap = createSelector(
+  (edges: Edge[]) => edges,
+  (edges) => {
+    const edgesByTargetId = new Map<NodeId, Edge[]>();
+    edges.forEach((edge) => {
+      let edgesGroup = edgesByTargetId.get(edge.target);
+      if (edgesGroup == null) {
+        edgesGroup = [];
+        edgesByTargetId.set(edge.target, edgesGroup);
+      }
+      edgesGroup.push(edge);
+    });
+    return edgesByTargetId;
+  },
+);
 
 const getExpandedByNodeIdMap = createSelector(
   (graph: GraphData) => graph.nodes,
   (graph: GraphData) => graph.edges,
-  (nodes: NodeType[], edges: Edge[]) => {
+  (nodes, edges) => {
     const nodeById = getNodeByIdMap(nodes);
     const edgesByTargetId = getEdgesByTargetIdMap(edges);
     const expandedById = new Map<NodeId, boolean>();
