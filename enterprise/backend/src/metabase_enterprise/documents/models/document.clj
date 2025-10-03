@@ -187,7 +187,7 @@
         (when collection_id #{[{:model "Collection" :id collection_id}]}))))
 
 (defmethod serdes/descendants "Document"
-  [_model-name id]
+  [_model-name id _opts]
   (when-let [document (t2/select-one :model/Document :id id)]
     (when (= prose-mirror/prose-mirror-content-type (:content_type document))
       (merge
