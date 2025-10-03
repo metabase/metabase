@@ -17,7 +17,7 @@ export interface CurrencyOption {
   value: string;
 }
 
-export type CurrencyStyle = "symbol" | "code" | "name";
+export type CurrencyStyle = Intl.NumberFormatOptionsCurrencyDisplay;
 
 export interface CurrencyStyleOption {
   name: string;
@@ -45,7 +45,7 @@ export function getCurrencySymbol(currencyCode: string): string {
   return getCurrencyMapCache()[currencyCode]?.symbol || currencyCode || "$";
 }
 
-export function getCurrencySymbolNative(currencyCode: string): string {
+export function getCurrencyNarrowSymbol(currencyCode: string): string {
   return (
     getCurrencyMapCache()[currencyCode]?.symbol_native || currencyCode || "$"
   );
@@ -63,6 +63,7 @@ export function getCurrencyStyleOptions(
   currency = "USD",
 ): CurrencyStyleOption[] {
   const symbol = getCurrencySymbol(currency);
+  const narrowSymbol = getCurrencyNarrowSymbol(currency);
   const code = getCurrency(currency, "code");
   const name = getCurrency(currency, "name");
   return [
@@ -81,6 +82,10 @@ export function getCurrencyStyleOptions(
     {
       name: t`Name` + ` ` + `(${name})`,
       value: "name" as const,
+    },
+    {
+      name: t`Local symbol` + ` ` + `(${narrowSymbol})`,
+      value: "narrowSymbol" as const,
     },
   ];
 }
