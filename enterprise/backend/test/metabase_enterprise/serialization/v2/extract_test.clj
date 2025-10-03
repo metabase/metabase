@@ -2050,9 +2050,9 @@
                             transform-eid :entity_id}
                            {:name "Test Transform"
                             :description "A test transform for serialization"
-                            :source {:database db-id
-                                     :type "query"
-                                     :query {:source-table table-id}}
+                            :source {:query {:database db-id
+                                             :type     "query"
+                                             :query    {:source-table table-id}}}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
@@ -2089,7 +2089,7 @@
               (is (not (contains? ser :id))))
 
             (testing "source and target MBQL export"
-              (is (=? {:source {:database "My Database" :type "query" :query {:source-table ["My Database" nil "Schemaless Table"]}}
+              (is (=? {:source {:query {:database "My Database" :type :query :query {:source-table ["My Database" nil "Schemaless Table"]}}}
                        :target {:database "My Database" :type "table" :schema "public" :name "target_table"}}
                       (select-keys ser [:source :target]))))
 

@@ -71,13 +71,7 @@
      :model/Card
      (-> card
          (select-keys [:id :name :description :display :visualization_settings :parameters :entity_id :dataset_query])
-         (update :dataset_query (fn [query]
-                                  (-> query
-                                      (select-keys [:lib/type :database :stages])
-                                      (m/update-existing :stages (fn [stages]
-                                                                   (mapv (fn [stage]
-                                                                           (select-keys stage [:lib/type :template-tags]))
-                                                                         stages))))))))))
+         (update :dataset_query select-keys [:lib/metadata :lib/type :database :stages])))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general

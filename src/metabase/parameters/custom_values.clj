@@ -9,9 +9,10 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
@@ -20,6 +21,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -60,25 +62,28 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-(defn- values-from-card-query
-  [card value-field-ref {:keys [query-string] :as _opts}]
-  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
-        query             (lib/query metadata-provider (lib.metadata/card metadata-provider (:id card)))
-        value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
-        textual?          (lib.types.isa/string? value-column)
-        nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
-        query-filter      (when query-string
-                            (if textual?
-                              (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
-                              (lib/= value-column query-string)))]
-    (-> query
-        (lib/limit *max-rows*)
-        (lib/filter nonempty)
-        (cond-> #_query query-filter (lib/filter query-filter))
-        (lib/breakout value-column)
-        ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
-        ;; "internal" query in the BE.
-        (assoc-in [:middleware :disable-remaps?] true))))
+(mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
+  [{query :dataset_query, :as _card} :- :metabase.queries.schema/card
+   legacy-field-ref                  :- ::mbql.s/field-or-expression-ref
+   {:keys [query-string] :as _opts}]
+  (when (seq query)
+    (assert (mr/validate :metabase.queries.schema/card _card))
+    (let [query        (lib/append-stage query)
+          value-column (lib/find-column-for-legacy-ref query legacy-field-ref (lib/visible-columns query))
+          textual?     (lib.types.isa/string? value-column)
+          nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
+          query-filter (when query-string
+                         (if textual?
+                           (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                           (lib/= value-column query-string)))]
+      (-> query
+          (lib/limit *max-rows*)
+          (lib/filter nonempty)
+          (cond-> #_query query-filter (lib/filter query-filter))
+          (lib/breakout value-column)
+          ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
+          ;; "internal" query in the BE.
+          (assoc-in [:middleware :disable-remaps?] true)))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
@@ -97,11 +102,11 @@
   ([card value-field]
    (values-from-card card value-field nil))
 
-  ([card            :- (ms/InstanceOf :model/Card)
-    value-field-ref :- ::mbql.s/field-or-expression-ref
-    opts            :- [:maybe :map]]
-   (let [mbql-query   (values-from-card-query card value-field-ref opts)
-         result       (qp/process-query mbql-query)
+  ([card             :- :metabase.queries.schema/card
+    legacy-field-ref :- ::mbql.s/field-or-expression-ref
+    opts             :- [:maybe :map]]
+   (let [mbql-query   (values-from-card-query card legacy-field-ref opts)
+         result       (some-> mbql-query qp/process-query)
          values       (get-in result [:data :rows])]
      {:values         values
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.

@@ -1,6 +1,7 @@
 (ns metabase.lib.walk.util
   "Utility functions built on top of [[metabase.lib.walk]]."
   (:require
+   [clojure.set :as set]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
@@ -62,13 +63,33 @@
                 (assoc template-tag :lib.walk/template-tag-name template-tag-name)))
          (all-template-tags-map query))))
 
-(mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
-  "Return a set of all `:source-card` Card IDs anywhere in the query, as well as all `:card-id`s in template tags."
-  [query :- ::lib.schema/query]
+(defn- all-metric-ids [query]
+  (let [metric-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:metric _opts (id :guard pos-int?)]
+         (do
+           (vswap! metric-ids conj! id)
+           nil))))
+    (not-empty (persistent! @metric-ids))))
+
+(defn- all-template-tag-card-ids [query]
   (not-empty
-   (into (set (stage-values-set query (keep :source-card)))
+   (into #{}
          (keep :card-id)
          (all-template-tags query))))
+
+(mu/defn all-source-card-ids :- [:maybe [:set {:min 1} ::lib.schema.id/card]]
+  "Return a set of all `:source-card` Card IDs anywhere in the query, as well as all `:card-id`s in template tags and
+  in `:metric` references."
+  [query :- ::lib.schema/query]
+  (not-empty
+   (set/union
+    (stage-values-set query (keep :source-card))
+    (all-metric-ids query)
+    (all-template-tag-card-ids query))))
 
 (mu/defn any-native-stage?
   "Returns true if any stage of this query is native."

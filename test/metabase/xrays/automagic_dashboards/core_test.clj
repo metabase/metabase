@@ -34,14 +34,15 @@
 
 ;;; ------------------- Dashboard template matching  -------------------
 
-(deftest ^:paralell dashboard-template-matching-test
+(deftest ^:parallel dashboard-template-matching-test
   (is (= [:entity/UserTable :entity/GenericTable :entity/*]
          (->> (mt/id :users)
               (t2/select-one :model/Table :id)
               (#'magic/->root)
               (#'magic/matching-dashboard-templates (dashboard-templates/get-dashboard-templates ["table"]))
-              (map (comp first :applies_to)))))
+              (map (comp first :applies_to))))))
 
+(deftest ^:parallel dashboard-template-matching-test-2
   (testing "Test fallback to GenericTable"
     (is (= [:entity/GenericTable :entity/*]
            (->> (-> (t2/select-one :model/Table :id (mt/id :users))
@@ -52,7 +53,7 @@
 
 ;;; ------------------- `->root source` -------------------
 
-(deftest ^:paralell source-root-table-test
+(deftest ^:parallel source-root-table-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Table"
     (mt/dataset test-data
       (testing "The source of a table is the table itself"
@@ -62,7 +63,7 @@
           (is (= entity table))
           (is (= source entity)))))))
 
-(deftest ^:paralell source-root-field-test
+(deftest ^:parallel source-root-field-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Field"
     (mt/dataset test-data
       (testing "The source of a field is the originating table of the field"
@@ -72,7 +73,7 @@
           (is (= source table))
           (is (= entity field)))))))
 
-(deftest ^:paralell source-root-card-test
+(deftest ^:parallel source-root-card-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -91,7 +92,7 @@
               (is (=? (dissoc source :dataset_query)
                       (assoc card :entity_type :entity/GenericTable))))))))))
 
-(deftest ^:paralell source-root-card-test-2
+(deftest ^:parallel source-root-card-test-2
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -117,7 +118,7 @@
               (is (=? (dissoc source :entity_type)
                       nested-query)))))))))
 
-(deftest ^:paralell source-root-card-test-3
+(deftest ^:parallel source-root-card-test-3
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -133,7 +134,7 @@
                 (is (=? (dissoc source :dataset_query :entity_type)
                         card))))))))))
 
-(deftest ^:paralell source-root-card-test-4
+(deftest ^:parallel source-root-card-test-4
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Card"
     (mt/dataset test-data
       (testing "Card sourcing has four branches..."
@@ -154,7 +155,7 @@
                       card))
               (is (= source (t2/select-one :model/Table :id table-id))))))))))
 
-(deftest ^:paralell source-root-query-test
+(deftest ^:parallel source-root-query-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Query"
     (mt/dataset test-data
       (testing "The source of a query is the underlying datasource of the query"
@@ -170,7 +171,7 @@
           (is (= entity query))
           (is (= source (t2/select-one :model/Table (mt/id :orders)))))))))
 
-(deftest ^:paralell source-root-segment-test
+(deftest ^:parallel source-root-segment-test
   (testing "Demonstrate the stated methods in which ->root computes the source of a :model/Segment"
     (testing "The source of a segment is its underlying table."
       (mt/with-temp [:model/Segment segment {:table_id   (mt/id :venues)
@@ -1055,7 +1056,7 @@
 
 ;;; ------------------- Definition overloading -------------------
 
-(deftest ^:paralell most-specific-definition-test
+(deftest ^:parallel most-specific-definition-test
   (testing "Identity"
     (is (= :d1
            (-> [{:d1 {:field_type [:type/Category] :score 100}}]
@@ -1063,7 +1064,7 @@
                first
                key)))))
 
-(deftest ^:paralell ancestors-definition-test
+(deftest ^:parallel ancestors-definition-test
   (testing "Base case: more ancestors"
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1072,7 +1073,7 @@
                first
                key)))))
 
-(deftest ^:paralell definition-tiebreak-test
+(deftest ^:parallel definition-tiebreak-test
   (testing "Break ties based on the number of additional filters"
     (is (= :d3
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1084,7 +1085,7 @@
                first
                key)))))
 
-(deftest ^:paralell definition-tiebreak-score-test
+(deftest ^:parallel definition-tiebreak-score-test
   (testing "Break ties on score"
     (is (= :d2
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1094,7 +1095,7 @@
                first
                key)))))
 
-(deftest ^:paralell definition-tiebreak-precedence-test
+(deftest ^:parallel definition-tiebreak-precedence-test
   (testing "Number of additional filters has precedence over score"
     (is (= :d3
            (-> [{:d1 {:field_type [:type/Category] :score 100}}
@@ -1278,7 +1279,7 @@
 
 ;;; -------------------- Ensure generation of subcards via related (includes indepth, drilldown) --------------------
 
-(deftest ^:paralell related-card-generation-test
+(deftest ^:parallel related-card-generation-test
   (testing "Ensure that the `related` function is called and the right cards are created."
     (mt/with-test-user :rasta
       (mt/dataset test-data
@@ -1312,7 +1313,7 @@
                       (update :zoom-in (comp vec (partial sort-by :title)))
                       (update :related (comp vec (partial sort-by :title)))))))))))
 
-(deftest ^:paralell singular-cell-dimensions-test
+(deftest ^:parallel singular-cell-dimensions-test
   (testing "Find the cell dimensions for a cell query"
     (is (= #{1 2 "TOTAL"}
            (#'magic/singular-cell-dimension-field-ids
@@ -1569,7 +1570,7 @@
 
 ;;; this is a fixed version of the test above that correctly generates the second card so that it matches the equivalent
 ;;; Cypress test spec.
-(deftest ^:paralell compare-to-the-rest-15655-fixed-test
+(deftest ^:parallel compare-to-the-rest-15655-fixed-test
   (testing "Questions based on native questions should produce a valid dashboard. (#15655)"
     (mt/with-temp [:model/Card {native-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                                             (lib/native-query (mt/metadata-provider) "select * from people LIMIT 100;"))

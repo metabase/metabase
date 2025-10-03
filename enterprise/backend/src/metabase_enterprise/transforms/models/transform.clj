@@ -163,7 +163,8 @@
    :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
-               :source {:export serdes/export-mbql :import serdes/import-mbql}
+               :source {:export #(update % :query serdes/export-mbql)
+                        :import #(update % :query serdes/import-mbql)}
                :target {:export serdes/export-mbql :import serdes/import-mbql}
                :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 

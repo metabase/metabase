@@ -21,6 +21,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
@@ -2649,36 +2650,37 @@
                  x))
 
 (defn- fake-query [x]
-  (lib/native-query meta/metadata-provider (format "SELECT %s" (pr-str x))))
+  (lib/native-query (lib.tu/mock-metadata-provider {:database (assoc meta/database :id 55001)})
+                    (format "SELECT %s" (pr-str x))))
 
 (deftest ^:parallel dashcard->query-hashes-test
   (doseq [[dashcard expected]
           [[{:card {:dataset_query (fake-query 1)}}
-            ["FInNxTueC4de1kXkFclz6BIsu/4aslUrNql6oQhgw2c="
-             "ag3JTl9oSwQW1XlPjntogaoHODeOCcCPUUcfwUxSfpo="]]
+            ["RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw="
+             "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0="]]
 
            [{:card   {:dataset_query (fake-query 2)}
              :series [{:dataset_query (fake-query 3)}
                       {:dataset_query (fake-query 4)}]}
-            ["JE98Au7aw+dgofxNiyYuwtiFzOQemOiJraw+c5fHk8I="
-             "pWJ2D+RkoGkEDdge2cTDHuyobYsCAXj5hj8B5NEdrg0="
-             "Iu+K7AsJiNumvjDbzEd4DYEnHfEEyu3OeSvsgUbS7g4="
-             "YmZRD4uUdSmgVnkB9phGpGvJ8TN220YOzot3C7s2yXU="
-             "SxRFTHhqGIpd7gIlplQFrne20q/zllnnoNDwiQkzXeU="
-             "EXlam+/+qwupZW2i2JMzg/WTQAJKb4RytkEvJoLg2BQ="]]]]
+            ["LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng="
+             "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg="
+             "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE="
+             "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k="
+             "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc="
+             "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q="]]]]
     (testing (pr-str dashcard)
       (is (= expected
              (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
 (deftest ^:parallel dashcards->query-hashes-test
-  (is (= ["FInNxTueC4de1kXkFclz6BIsu/4aslUrNql6oQhgw2c="
-          "ag3JTl9oSwQW1XlPjntogaoHODeOCcCPUUcfwUxSfpo="
-          "JE98Au7aw+dgofxNiyYuwtiFzOQemOiJraw+c5fHk8I="
-          "pWJ2D+RkoGkEDdge2cTDHuyobYsCAXj5hj8B5NEdrg0="
-          "Iu+K7AsJiNumvjDbzEd4DYEnHfEEyu3OeSvsgUbS7g4="
-          "YmZRD4uUdSmgVnkB9phGpGvJ8TN220YOzot3C7s2yXU="
-          "SxRFTHhqGIpd7gIlplQFrne20q/zllnnoNDwiQkzXeU="
-          "EXlam+/+qwupZW2i2JMzg/WTQAJKb4RytkEvJoLg2BQ="]
+  (is (= ["RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw="
+          "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0="
+          "LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng="
+          "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg="
+          "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE="
+          "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k="
+          "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc="
+          "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q="]
          (base-64-encode-byte-arrays
           (#'api.dashboard/dashcards->query-hashes
            [{:card {:dataset_query (fake-query 1)}}
@@ -2697,14 +2699,14 @@
            {:card   {:dataset_query (fake-query 2)}
             :series [{:dataset_query (fake-query 3)}
                      {:dataset_query (fake-query 4)}]}]
-          (into {} (for [[k v] {"FInNxTueC4de1kXkFclz6BIsu/4aslUrNql6oQhgw2c=" 111
-                                "ag3JTl9oSwQW1XlPjntogaoHODeOCcCPUUcfwUxSfpo=" 222
-                                "JE98Au7aw+dgofxNiyYuwtiFzOQemOiJraw+c5fHk8I=" 333
-                                "pWJ2D+RkoGkEDdge2cTDHuyobYsCAXj5hj8B5NEdrg0=" 444
-                                "Iu+K7AsJiNumvjDbzEd4DYEnHfEEyu3OeSvsgUbS7g4=" 555
-                                "YmZRD4uUdSmgVnkB9phGpGvJ8TN220YOzot3C7s2yXU=" 666
-                                "SxRFTHhqGIpd7gIlplQFrne20q/zllnnoNDwiQkzXeU=" 777
-                                "EXlam+/+qwupZW2i2JMzg/WTQAJKb4RytkEvJoLg2BQ=" 888}]
+          (into {} (for [[k v] {"RNcJA21084AYlVPIqlxDxMILKsyU6iE9hiUDMYBIrUw=" 111
+                                "GsfPch7sQZ60fotaEuN6fghF82iX3dUHLlvWtkJXOU0=" 222
+                                "LyJKZ0rm2YyPWGXIfP/V6SFcHlRvdalSDD55qn/Avng=" 333
+                                "zYehm4Huu7AD/0GP6XpMhav7+/ystaIeKjax4fqSHUg=" 444
+                                "nDuISCLB6o8sToOR4GHQ/Po6X3A3nE7oPj+e1g2kfCE=" 555
+                                "/yzJQIPSdxWHnREe9F2orYWDbPS5ns8WOaIf6fGix1k=" 666
+                                "oqG69TgkGdzPFaxDFymLAVnb9iuyGnvlX0aiiL1Eojc=" 777
+                                "GKQrcQTNICx7QOYDQVHW7BIi7gB3/oBUWVel+AvOq0Q=" 888}]
                      [(mapv int (codec/base64-decode k)) v]))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3131,7 +3133,7 @@
 (deftest ^:parallel dashboard-with-static-list-parameters-test-2
   (testing "A dashboard that has parameters that has static values"
     (testing "`values_source_config` must be a map and `values_source_type` must be `card` or `static-list` must be a string"
-      (is (= "nullable sequence of parameter must be a map with :id and :type keys"
+      (is (= {:values_source_type "nullable enum of :static-list, :card"}
              (get-in (mt/user-http-request :rasta :post 400 "dashboard"
                                            {:name       "a dashboard"
                                             :parameters [{:id                   "_value_"

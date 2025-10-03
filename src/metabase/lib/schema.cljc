@@ -6,8 +6,9 @@
   Some primitives below are duplicated from [[metabase.util.malli.schema]] since that's not `.cljc`. Other stuff is
   copied from [[metabase.legacy-mbql.schema]] so this can exist completely independently; hopefully at some point in the
   future we can deprecate that namespace and eventually do away with it entirely."
-  (:refer-clojure :exclude [ref every? some])
+  (:refer-clojure :exclude [ref every? some select-keys])
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.actions :as actions]
@@ -35,7 +36,7 @@
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? some]]))
+   [metabase.util.performance :refer [every? some select-keys]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
          metabase.lib.schema.expression.conditional/keep-me
@@ -215,7 +216,11 @@
 (defn- encode-mbql-stage-for-hashing [stage]
   (-> stage
       common/encode-map-for-hashing
-      lib.schema.util/indexed-order-bys-for-stage))
+      lib.schema.util/indexed-order-bys-for-stage
+      ;; preserve these keys because we want to hash two identical queries from different source cards
+      ;; differently (see [[metabase.query-processor.middleware.cache-test/multiple-models-e2e-test]]) and this is a
+      ;; reliable way to differentiate them since it gets populated by the QP.
+      (merge (select-keys stage [:qp/stage-is-from-source-card :qp/stage-had-source-card]))))
 
 (mr/def ::stage.mbql
   [:and
@@ -303,7 +308,9 @@
   [:multi {:dispatch      lib-type
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native :map]
-   [:mbql.stage/mbql   :map]])
+   [:mbql.stage/mbql   [:fn
+                        {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
+                        (some-fn :source-table :source-card)]]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type

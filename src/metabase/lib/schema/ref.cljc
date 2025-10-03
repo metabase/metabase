@@ -73,6 +73,19 @@
 
 (mbql-clause/define-mbql-clause :field
   [:and
+   {:decode/normalize (fn [x]
+                        (when (sequential? x)
+                          (cond
+                            (= (count x) 2)
+                            [:field {} (second x)]
+
+                            (and (= (count x) 3)
+                                 ((some-fn pos-int? string?) (second x))
+                                 ((some-fn map? nil?) (last x)))
+                            [:field (or (last x) {}) (second x)]
+
+                            :else
+                            x)))}
    [:tuple
     [:= {:decode/normalize common/normalize-keyword} :field]
     [:ref ::field.options]

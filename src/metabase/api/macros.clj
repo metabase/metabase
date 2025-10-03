@@ -23,6 +23,7 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
@@ -351,16 +352,20 @@
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
-(defn- invalid-params-errors [schema explanation specific-errors]
-  (or (when (and (map? specific-errors)
-                 (= (mc/type schema) :map))
-        (into {}
-              (let [specific-error-keys (set (keys specific-errors))]
-                (keep (fn [child]
-                        (when (contains? specific-error-keys (first child))
-                          [(first child) (umd/describe (last child))]))))
-              (mc/children schema)))
-      (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
+(defn- invalid-params-errors [{:keys [schema], :as explanation}]
+  (reduce
+   (fn [m {:keys [path in], :as _explanation}]
+     (let [nice-path     (loop [path (vec path)]
+                           (if (integer? (last path))
+                             (recur (pop path))
+                             path))
+           nested-schema (loop [path nice-path]
+                           (when (seq path)
+                             (or (malli.util/get-in schema path)
+                                 (recur (pop path)))))]
+       (assoc-in m (remove integer? in) (umd/describe nested-schema))))
+   {}
+   (:errors explanation)))
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -376,7 +381,7 @@
                                              :body  "body"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors schema explanation specific-errors)]
+                            errors          (invalid-params-errors explanation)]
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
                                              :schema      (mc/form schema)

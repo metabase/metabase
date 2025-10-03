@@ -352,7 +352,8 @@
                                       :type       "implicit"
                                       :model_id   model-id
                                       :kind       "row/create"
-                                      :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]})))))))
+                                      :parameters [{:type "number", :id "nonexistent" :special "shouldbeignored"}
+                                                   {:type "number", :id "id" :special "hello"}]})))))))
 
 (deftest snowplow-test
   (snowplow-test/with-fake-snowplow-collector
@@ -409,27 +410,27 @@
               (is (=? {:errors {:name "string"},
                        :specific-errors {:name ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-              (is (=? {:errors {:model_id "value must be an integer greater than zero."}
+              (is (=? {:errors {:model_id "Valid Card ID"}
                        :specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
             (testing "Handles need to be valid jq"
-              (is (=? {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"}
+              (is (=? {:errors {:response_handle "nullable must be a valid json-query, something like '.item.title'"}
                        :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title', received: \"body\""]}}
                       (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-              (is (=? {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"}
+              (is (=? {:errors {:error_handle "nullable must be a valid json-query, something like '.item.title'"}
                        :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title', received: \"x\""]}}
                       (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
           (testing "Validate PUT"
             (testing "Template needs method and url"
               (is (=? {:specific-errors
                        {:template {:method ["missing required key, received: nil"], :url ["missing required key, received: nil"]}},
-                       :errors {:template "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"}}
+                       :errors {:template {:method "enum of GET, POST, PUT, DELETE, PATCH", :url "string with length >= 1"}}}
                       (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
             (testing "Handles need to be valid jq"
-              (is (=? {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+              (is (=? {:errors {:response_handle "nullable must be a valid json-query, something like '.item.title'"},
                        :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title', received: \"body\""]}}
                       (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-              (is (=? {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+              (is (=? {:errors {:error_handle "nullable must be a valid json-query, something like '.item.title'"},
                        :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title', received: \"x\""]}}
                       (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x")))))))))))
 

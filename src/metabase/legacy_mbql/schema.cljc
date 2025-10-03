@@ -1369,13 +1369,7 @@
   Map of template tag name -> template tag definition"
   [:and
    [:map-of ::lib.schema.common/non-blank-string TemplateTag]
-   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
-   [:fn
-    {:error/message "keys in template tag map must match the :name of their values"}
-    (fn [m]
-      (every? (fn [[tag-name tag-definition]]
-                (core/= tag-name (:name tag-definition)))
-              m))]])
+   [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
 
 (def ^:private NativeQuery:Common
   [:and

@@ -105,7 +105,6 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
-
 (mu/defn target-database-id :- ::lib.schema.id/database
   "Return the target database id of a transform"
   [transform]

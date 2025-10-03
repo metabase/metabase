@@ -1,7 +1,9 @@
 (ns metabase.actions.models
   (:require
    [medley.core :as m]
+   [metabase.actions.schema :as actions.schema]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.core :as parameters]
@@ -9,7 +11,6 @@
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -56,15 +57,21 @@
    :parameters             parameters/transform-parameters
    :visualization_settings transform-action-visualization-settings})
 
+(t2/deftransforms :model/HTTPAction
+  {:template mi/transform-json})
+
 (t2/deftransforms :model/QueryAction
   {:dataset_query lib-be/transform-query})
+
+(t2/deftransforms :model/ImplicitAction
+  {:kind mi/transform-keyword})
 
 (def ^:private transform-json-with-nested-parameters
   {:in  (comp mi/json-in
               (fn [template]
                 (u/update-if-exists template :parameters parameters/normalize-parameters)))
    :out (comp (fn [template]
-                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions parameters/normalize-parameter-mappings)))
+                (u/update-if-exists template :parameters (mi/catch-normalization-exceptions parameters/normalize-parameters)))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/HTTPAction
@@ -101,15 +108,15 @@
    read-or-write :- [:enum :read :write]]
   (mi/perms-objects-set (t2/select-one :model/Card :id (:model_id instance)) read-or-write))
 
-(def action-columns
+(def ^:private action-columns
   "The columns that are common to all Action types."
   [:archived :created_at :creator_id :description :entity_id :made_public_by_id :model_id :name :parameter_mappings
    :parameters :public_uuid :type :updated_at :visualization_settings])
 
-(defn type->model
+(mu/defn- type->model
   "Returns the model from an action type.
    `action-type` can be a string or a keyword."
-  [action-type]
+  [action-type :- ::actions.schema/type]
   (case action-type
     :http     :model/HTTPAction
     :implicit :model/ImplicitAction
@@ -117,38 +124,49 @@
 
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
-(defn insert!
-  "Inserts an Action and related type table. Returns the action id."
-  [action-data]
+;;; TODO (Cam 10/2/25) -- this should just be the default Toucan 2 insert behavior for an action
+(mu/defn- insert*! :- ::actions.schema/id
+  [action-data :- ::actions.schema/action.for-insert]
   (t2/with-transaction [_conn]
     (let [action (first (t2/insert-returning-instances! :model/Action (select-keys action-data action-columns)))
-          model  (type->model (:type action))]
-      (t2/query-one {:insert-into (t2/table-name model)
-                     :values      [(-> (apply dissoc action-data action-columns)
-                                       (assoc :action_id (:id action))
-                                       (cond->
-                                        (= (:type action) :implicit) (dissoc :database_id)
-                                        (= (:type action) :http)     (update :template json/encode)
-                                        (= (:type action) :query)    (update :dataset_query json/encode)))]})
+          model  (type->model (:type action))
+          row    (-> (apply dissoc action-data action-columns)
+                     (assoc :action_id (:id action))
+                     (cond-> (= (:type action) :implicit) (dissoc :database_id)))]
+      (t2/insert! model row)
       (:id action))))
 
-(defn update!
+(mu/defn insert! :- ::actions.schema/id
+  "Inserts an Action and related type table. Returns the action id."
+  [action-data :- :map]
+  (insert*! (lib/normalize ::actions.schema/action.for-insert action-data)))
+
+(mu/defn- update*!
+  [{:keys [id] :as updates} :- ::actions.schema/action.for-update
+   existing-action          :- ::actions.schema/action]
+  (t2/with-transaction [_conn]
+    (when-let [action-row (not-empty (select-keys updates action-columns))]
+      (t2/update! :model/Action id action-row))
+    (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
+                                     (= (or (:type updates) (:type existing-action))
+                                        :implicit)
+                                     (dissoc :database_id)))]
+      (let [type-row       (assoc type-row :action_id id)
+            existing-model (type->model (:type existing-action))]
+        (if (and (:type updates) (not= (:type updates) (:type existing-action)))
+          (let [new-model (type->model (:type updates))]
+            (t2/delete! existing-model :action_id id)
+            (t2/insert! new-model (assoc type-row :action_id id)))
+          (t2/update! existing-model id type-row))))))
+
+(mu/defn update!
   "Updates an Action and the related type table.
    Deletes the old type table row if the type has changed."
-  [{:keys [id] :as action} existing-action]
-  (when-let [action-row (not-empty (select-keys action action-columns))]
-    (t2/update! :model/Action id action-row))
-  (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
-                                   (= (or (:type action) (:type existing-action))
-                                      :implicit)
-                                   (dissoc :database_id)))]
-    (let [type-row (assoc type-row :action_id id)
-          existing-model (type->model (:type existing-action))]
-      (if (and (:type action) (not= (:type action) (:type existing-action)))
-        (let [new-model (type->model (:type action))]
-          (t2/delete! existing-model :action_id id)
-          (t2/insert! new-model (assoc type-row :action_id id)))
-        (t2/update! existing-model id type-row)))))
+  [updates         :- [:map
+                       [:id ::actions.schema/id]]
+   existing-action :- ::actions.schema/action]
+  (let [updates (merge (select-keys existing-action [:type]) updates)] ; in case the updates do not include it.
+    (update*! (lib/normalize ::actions.schema/action.for-update updates) existing-action)))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
@@ -232,14 +250,19 @@
                                               :target [:variable [:template-tag (u/slugify (:name field))]]
                                               ;; TODO (Cam 8/12/25) -- Field base type is NOT a valid parameter types!
                                               ;; See [[metabase.lib.schema.parameter/types]].
-                                              :type (:base_type field)
+                                              :type (let [base-type (:base_type field)]
+                                                      (condp #(isa? %2 %1) base-type
+                                                        :type/Number   :number
+                                                        :type/Temporal :date
+                                                        :type/Boolean  :boolean
+                                                        :text))
                                               :required (:database_required field)
                                               :is-auto-increment (:database_is_auto_increment field)
                                               ::field-id (:id field)
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
 
-(defn select-actions
+(mu/defn select-actions :- [:maybe [:sequential ::actions.schema/action]]
   "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the
    model for implicit actions.
 
@@ -262,7 +285,7 @@
         :implicit
         (let [model-id        (:model_id action)
               saved-params    (m/index-by :id (:parameters action))
-              action-kind     (:kind action)
+              action-kind     (keyword (:kind action))
               implicit-params (cond->> (get model-id->implicit-parameters model-id)
                                 :always
                                 (map (fn [param]
@@ -274,15 +297,15 @@
                                              saved-param' (dissoc saved-param :type)]
                                          (merge param saved-param'))))
 
-                                (= "row/delete" action-kind)
+                                (= action-kind :row/delete)
                                 (filter ::pk?)
 
-                                (= "row/create" action-kind)
+                                (= action-kind :row/create)
                                 (remove #(or (:is-auto-increment %)
                                              ;; non-required PKs like column with default is uuid_generate_v4()
                                              (and (::pk? %) (not (:required %)))))
 
-                                (contains? #{"row/update" "row/delete"} action-kind)
+                                (contains? #{:row/update :row/delete} action-kind)
                                 (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
 
                                 :always
@@ -306,7 +329,7 @@
         (:query :http)
         action))))
 
-(defn select-action
+(mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.
    `options` is [[apply]]ed to [[t2/select]]."
   [& options]

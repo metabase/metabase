@@ -62,7 +62,7 @@
   the transforms in the original list -- if a transform depends on some transform not in the list, the 'extra'
   dependency is ignored. Both query and Python transforms can have dependencies on tables produced by other transforms."
   [transforms]
-  (let [ ;; Group all transforms by their database
+  (let [;; Group all transforms by their database
         transforms-by-db (->> transforms
                               (map (fn [transform]
                                      (let [db-id (transforms.util/target-database-id transform)]

@@ -11,6 +11,7 @@
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.queries.models.query :as query]
@@ -33,6 +34,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [pretty.core :as pretty]
+   [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
    (java.time ZonedDateTime)))
@@ -134,7 +136,11 @@
    :min-duration-ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
-  (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :database 1, :stages [{:abc :def}]} query-kvs))
+  (merge {:cache-strategy (ttl-strategy)
+          :lib/type       :mbql/query
+          :database       1
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+         query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
@@ -465,7 +471,8 @@
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
                                                    :hash       some?
-                                                   ;; TODO: this check is not working if the key is not present in the data
+                                                   ;; TODO: this check is not working if the key is not present in the
+                                                   ;; data
                                                    :cache-hash some?}
                                    :row_count     5
                                    :status        :completed}

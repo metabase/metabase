@@ -255,7 +255,8 @@
   (mapv (fn [col]
           (assoc col :lib/source :source/card, :lib/card-id (:id card)))
         (if (= (:type card) :metric)
-          (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
+          (let [metric-query (-> card
+                                 :dataset-query
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]
             (lib.metadata.calculation/returned-columns
              (assoc metric-query :lib/metadata (:lib/metadata query))

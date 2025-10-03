@@ -95,7 +95,10 @@
    [:database-id ::lib.schema.id/database]
    [:table-id    [:maybe ::lib.schema.id/table]]])
 
-(mu/defn- mbql5-query->database-and-table-ids :- ::database-and-table-ids
+(mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
+  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
+
+  Expects MBQL 5 queries."
   [{database-id :database, :as query} :- ::lib.schema/query]
   (if-let [source-card-id (lib.util/source-card-id query)]
     (let [card (or (lib.metadata/card query source-card-id)
@@ -105,14 +108,6 @@
     (let [table-id (lib.util/source-table-id query)]
       {:database-id database-id
        :table-id    table-id})))
-
-(mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
-  "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
-
- Expects MBQL 5 queries."
-  [query :- [:maybe ::queries.schema/query]]
-  (when (seq query)
-    (mbql5-query->database-and-table-ids query)))
 
 (mu/defn query-is-native? :- :boolean
   "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL

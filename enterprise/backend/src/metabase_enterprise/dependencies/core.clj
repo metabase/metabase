@@ -8,7 +8,6 @@
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -59,8 +58,8 @@
   [_mp _entity-type _entity-id]
   nil)
 
-;; TODO (Cam 10/2/25) -- we already have keywords for these things, `:model/Card` and `:model/Transform`, we should
-;; use those for consistency and discoverability.
+;; TODO (Cam 10/2/25) -- we already have keywords for these things, `:model/Card` and `:model/Transform`, can use
+;; those for consistency and discoverability?
 (defmethod check-entity :card
   [mp _entity-type card-id]
   (let [query  (-> (:dataset-query (lib.metadata/card mp card-id))

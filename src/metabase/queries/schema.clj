@@ -30,7 +30,11 @@
    [true  ::empty-map]
    [false [:schema
            {:decode/normalize lib-be/normalize-query}
-           [:ref ::lib.schema/query]]]])
+           [:merge
+            [:ref ::lib.schema/query]
+            ;; Card query is guaranteed to have a metadata provider
+            [:map
+             [:lib/metadata ::lib.schema.metadata/metadata-provider]]]]]])
 
 ;;; TODO (Cam 9/29/25) -- fill this out more, `:metabase.lib.schema.metadata/card` has a lot of stuff and there's also
 ;;; stuff sprinkled thruout this module. For example [[metabase.queries.api.card/CardUpdateSchema]] should get merged

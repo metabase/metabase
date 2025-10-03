@@ -231,13 +231,14 @@
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
         [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
                                 (mbql.u/check-clause :dimension))]
-    (if-some [field-id (lib.util.match/match-one dimension
-                         ;; TODO it's basically a workaround for ignoring non-dimension parameter targets such as SQL variables
-                         ;; TODO code is misleading; let's check for :dimension and drop the match call here
-                         [:field (field-name :guard string?) _]
-                         (->> filterable-columns
-                              (lib/find-matching-column (lib/->pMBQL dimension))
-                              :id))]
+    (if-some [field-id (when (seq filterable-columns)
+                         (lib.util.match/match-one dimension
+                           ;; TODO it's basically a workaround for ignoring non-dimension parameter targets such as SQL variables
+                           ;; TODO code is misleading; let's check for :dimension and drop the match call here
+                           [:field (field-name :guard string?) _]
+                           (->> filterable-columns
+                                (lib/find-matching-column (lib/->pMBQL &match))
+                                :id)))]
       (-> ctx
           (update :param-id->field-ids #(merge {param-id #{}} %))
           (update-in [:param-id->field-ids param-id] conj field-id))

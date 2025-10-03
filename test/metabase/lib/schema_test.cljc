@@ -362,3 +362,8 @@
   (doseq [m [(sorted-map :a 1)
              (sorted-map "a" 1)]]
     (is (nil? (#'lib.schema/lib-type m)))))
+
+(deftest ^:parallel first-mbql-stage-cannot-be-empty-test
+  (is (= {:stages [["Initial MBQL stage must have either :source-table or :source-card (but not both)"]]}
+         (me/humanize (mr/explain ::lib.schema/query
+                                  {:lib/type :mbql/query, :database 2378, :stages [{:lib/type :mbql.stage/mbql}]})))))

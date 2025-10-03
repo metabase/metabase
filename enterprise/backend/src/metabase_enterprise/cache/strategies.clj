@@ -39,7 +39,8 @@
 (defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
-  [card dashboard-id]
+  [card         :- :metabase.queries.schema/card
+   dashboard-id :- [:maybe :metabase.lib.schema.id/dashboard]]
   (let [qs   (for [[i model model-id] [[1 "question"   (:id card)]
                                        [2 "dashboard"  dashboard-id]
                                        [3 "database"   (:database_id card)]

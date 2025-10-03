@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
@@ -24,11 +25,11 @@
                        :model/Card          card1  {:name          "card1"
                                                     :database_id   (:id db)
                                                     :collection_id (:id col1)
-                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1;")}
+                                                    :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1;")}
                        :model/Card          card2  {:name          "card2"
                                                     :database_id   (:id db)
                                                     :collection_id (:id col1)
-                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1;")}
+                                                    :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1;")}
                        :model/Card          card3  {:name          "card3"
                                                     :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1;")}]
           (testing "Can configure root"

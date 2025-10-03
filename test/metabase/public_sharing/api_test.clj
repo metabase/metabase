@@ -1176,7 +1176,7 @@
        :model/DashboardCard _         {:dashboard_id       (:id dash)
                                        :card_id            (:id card)
                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                             :target       [:dimension (mt/$ids *categories.name)]}]}]
+                                                             :target       [:dimension [:field "NAME" {:base-type :type/Text}]]}]}]
       (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
                               [{:semantic_type "type/Name",
                                 :table_id (mt/id :categories)
@@ -1424,10 +1424,10 @@
                    (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
                    (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
                    (is (= [nil nil nil 7 18760 69540] (last rows))))))
-
              (testing "with parameters"
                (let [result (results :parameters (json/encode [{:name   "State"
                                                                 :id     "_STATE_"
+                                                                :type   :text
                                                                 :slug   :state
                                                                 :target [:dimension (mt/$ids $orders.user_id->people.state)]
                                                                 :value  ["CA" "WA"]}]))]

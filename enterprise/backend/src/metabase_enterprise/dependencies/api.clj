@@ -7,7 +7,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
@@ -54,7 +54,7 @@
    _query-params
    body :- ::card-body]
   (let [database-id    (-> body :dataset_query :database)
-        base-provider  (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+        base-provider  (lib-be/application-database-metadata-provider database-id)
         original       (lib.metadata/card base-provider (:id body))
         card           (-> original
                            (assoc :dataset-query (:dataset_query body)
@@ -84,7 +84,7 @@
   (if (= (keyword (:type source))
          :query)
     (let [database-id   (-> source :query :database)
-          base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
+          base-provider (lib-be/application-database-metadata-provider database-id)
           original      (lib.metadata/transform base-provider id)
           transform     (-> original
                             (cond-> #_transform source (assoc :source source))

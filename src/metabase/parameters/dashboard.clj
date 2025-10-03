@@ -56,8 +56,8 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                            (mbql.u/check-clause :dimension))]
+                              :let [[_dimension field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                                     (mbql.u/check-clause :dimension))]
                               :when field-ref]
                           (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
@@ -103,6 +103,7 @@
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                            {:param       (get (:resolved-params dashboard) param-key)
+                            :param-key   param-key
                             :status-code 400})))
        (try
          (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].

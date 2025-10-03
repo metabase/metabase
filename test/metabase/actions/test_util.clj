@@ -81,7 +81,6 @@
   You can use [[with-actions-test-data-tables]] if you need something other than the `categories` table, e.g. for
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
-(map :table-name actions-test-data)
 
 (defn do-with-dataset-definition
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
@@ -169,79 +168,88 @@
               (is (= [[74]]
                      (row-count))))))))))
 
+(defmulti ^:private create-action*!
+  {:arglists '([options-map model-id])}
+  (fn [options-map _model-id]
+    (:type options-map)))
+
+(defmethod create-action*! :query
+  [options-map model-id]
+  (let [action-id (action/insert!
+                   (merge {:model_id model-id
+                           :name "Query Example"
+                           :parameters [{:id "id"
+                                         :slug "id"
+                                         :type "number"
+                                         :target [:variable [:template-tag "id"]]}
+                                        {:id "name"
+                                         :slug "name"
+                                         :type "text"
+                                         :required false
+                                         :target [:variable [:template-tag "name"]]}]
+                           :visualization_settings {:inline true}
+                           :public_uuid (str (random-uuid))
+                           :made_public_by_id (test.users/user->id :crowberto)
+                           :database_id (data/id)
+                           :creator_id (test.users/user->id :crowberto)
+                           :dataset_query {:database (data/id)
+                                           :type :native
+                                           :native {:query (str "UPDATE categories\n"
+                                                                "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
+                                                                "WHERE id = {{id}}")
+                                                    :template-tags {"id" {:name         "id"
+                                                                          :display-name "ID"
+                                                                          :type         :number
+                                                                          :required     true}
+                                                                    "name" {:name         "name"
+                                                                            :display-name "Name"
+                                                                            :type         :text
+                                                                            :required     false}}}}}
+                          options-map))]
+    {:action-id action-id :model-id model-id}))
+
+(defmethod create-action*! :implicit
+  [options-map model-id]
+  (let [action-id (action/insert! (merge
+                                   {:type :implicit
+                                    :name "Update Example"
+                                    :kind "row/update"
+                                    :public_uuid (str (random-uuid))
+                                    :made_public_by_id (test.users/user->id :crowberto)
+                                    :creator_id (test.users/user->id :crowberto)
+                                    :model_id model-id}
+                                   options-map))]
+    {:action-id action-id :model-id model-id}))
+
+(defmethod create-action*! :http
+  [options-map model-id]
+  (let [action-id (action/insert! (merge
+                                   {:type :http
+                                    :name "Echo Example"
+                                    :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
+                                               :method "POST"
+                                               :body "{\"the_parameter\": {{id}}}"
+                                               :headers "{\"x-test\": \"{{id}}\"}"}
+                                    :parameters [{:id "id"
+                                                  :type "number"
+                                                  :target [:dimension [:template-tag "id"]]}
+                                                 {:id "fail"
+                                                  :type "text"
+                                                  :target [:dimension [:template-tag "fail"]]}]
+                                    :response_handle ".body"
+                                    :model_id model-id
+                                    :public_uuid (str (random-uuid))
+                                    :made_public_by_id (test.users/user->id :crowberto)
+                                    :creator_id (test.users/user->id :crowberto)}
+                                   options-map))]
+    {:action-id action-id :model-id model-id}))
+
 (defn create-action!
   "Impl for [[with-action]]."
   [options-map model-id]
   (let [options-map (merge options-map {:created_at (t/zoned-date-time)
                                         :updated_at (t/zoned-date-time)})]
-    (case (:type options-map)
-      :query
-      (let [action-id (action/insert!
-                       (merge {:model_id model-id
-                               :name "Query Example"
-                               :parameters [{:id "id"
-                                             :slug "id"
-                                             :type "number"
-                                             :target [:variable [:template-tag "id"]]}
-                                            {:id "name"
-                                             :slug "name"
-                                             :type "text"
-                                             :required false
-                                             :target [:variable [:template-tag "name"]]}]
-                               :visualization_settings {:inline true}
-                               :public_uuid (str (random-uuid))
-                               :made_public_by_id (test.users/user->id :crowberto)
-                               :database_id (data/id)
-                               :creator_id (test.users/user->id :crowberto)
-                               :dataset_query {:database (data/id)
-                                               :type :native
-                                               :native {:query (str "UPDATE categories\n"
-                                                                    "SET name = concat([[{{name}}, ' ',]] 'Sh', 'op')\n"
-                                                                    "WHERE id = {{id}}")
-                                                        :template-tags {"id" {:name         "id"
-                                                                              :display-name "ID"
-                                                                              :type         :number
-                                                                              :required     true}
-                                                                        "name" {:name         "name"
-                                                                                :display-name "Name"
-                                                                                :type         :text
-                                                                                :required     false}}}}}
-                              options-map))]
-        {:action-id action-id :model-id model-id})
-
-      :implicit
-      (let [action-id (action/insert! (merge
-                                       {:type :implicit
-                                        :name "Update Example"
-                                        :kind "row/update"
-                                        :public_uuid (str (random-uuid))
-                                        :made_public_by_id (test.users/user->id :crowberto)
-                                        :creator_id (test.users/user->id :crowberto)
-                                        :model_id model-id}
-                                       options-map))]
-        {:action-id action-id :model-id model-id})
-
-      :http
-      (let [action-id (action/insert! (merge
-                                       {:type :http
-                                        :name "Echo Example"
-                                        :template {:url (client/build-url "testing/echo[[?fail={{fail}}]]" {})
-                                                   :method "POST"
-                                                   :body "{\"the_parameter\": {{id}}}"
-                                                   :headers "{\"x-test\": \"{{id}}\"}"}
-                                        :parameters [{:id "id"
-                                                      :type "number"
-                                                      :target [:dimension [:template-tag "id"]]}
-                                                     {:id "fail"
-                                                      :type "text"
-                                                      :target [:dimension [:template-tag "fail"]]}]
-                                        :response_handle ".body"
-                                        :model_id model-id
-                                        :public_uuid (str (random-uuid))
-                                        :made_public_by_id (test.users/user->id :crowberto)
-                                        :creator_id (test.users/user->id :crowberto)}
-                                       options-map))]
-        {:action-id action-id :model-id model-id}))))
+    (create-action*! options-map model-id)))
 
 (defn do-with-actions! [model-def f]
   (initialize/initialize-if-needed! :web-server)
