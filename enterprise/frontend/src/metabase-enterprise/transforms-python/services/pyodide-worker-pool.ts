@@ -78,7 +78,7 @@ class PyodideWorker {
 
     this.isReady = false;
     this.worker = new Worker(url.toString());
-    this.ready = waitFor(this.worker, "ready", 10000).then(() => {
+    this.ready = waitFor(this.worker, "ready", { timeout: 10000 }).then(() => {
       this.isReady = true;
     });
   }
@@ -100,7 +100,10 @@ class PyodideWorker {
         data: { code: getPythonScript(code, sources) },
       });
 
-      const evt = await waitFor(this.worker, "results", 30000);
+      const evt = await waitFor(this.worker, "results", {
+        timeout: 30000,
+        signal: options?.signal,
+      });
 
       return {
         output: evt.result ? JSON.parse(evt.result) : null,
@@ -121,9 +124,13 @@ class PyodideWorker {
 function waitFor<T extends WorkerMessage["type"]>(
   worker: Worker,
   type: T,
-  timeout: number,
+  { timeout, signal }: { timeout: number; signal?: AbortSignal },
 ): Promise<Extract<WorkerMessage, { type: T }>> {
   return new Promise((resolve, reject) => {
+    signal?.addEventListener("abort", () => {
+      reject(new Error("Aborted"));
+    });
+
     const handler = ({ data }: MessageEvent<WorkerMessage>) => {
       if (data.type === type) {
         unsubscribe();
