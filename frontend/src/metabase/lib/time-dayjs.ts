@@ -72,10 +72,7 @@ export function parseTimestamp(
   let result: Dayjs;
   if (dayjs.isDayjs(value)) {
     result = value;
-  } else if (
-    typeof value === "string" &&
-    /(Z|[+-]\d\d:?\d\d)$/.test(value)
-  ) {
+  } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
     result = TEXT_UNIT_FORMATS[unit as "day-of-week"](value);
