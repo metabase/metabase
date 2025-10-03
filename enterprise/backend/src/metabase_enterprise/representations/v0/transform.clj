@@ -50,8 +50,9 @@
    :map])
 
 (mr/def ::database
-  [:and
-   {:description "Name of the source/target database"}
+  [:or
+   {:description "Database reference: integer ID, name string, or ref string"}
+   :int
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::target-table
@@ -194,7 +195,9 @@
       (v0-mbql/->ref-fields)))
 
 (defmethod export/export-entity :model/Transform [transform]
-  (let [query (patch-refs-for-export (-> transform :source :query))]
+  (let [query (if export/*use-refs*
+                (patch-refs-for-export (-> transform :source :query))
+                (-> transform :source :query))]
     (cond-> {:name (:name transform)
              :type "transform"
              :ref (v0-common/unref (v0-common/->ref (:id transform) :transform))

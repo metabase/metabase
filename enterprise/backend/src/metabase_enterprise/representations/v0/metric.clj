@@ -180,8 +180,9 @@
    any?])
 
 (mr/def ::database
-  [:and
-   {:description "Name or ref of the database to run the query against"}
+  [:or
+   {:description "Database reference: integer ID, name string, or ref string"}
+   :int
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::collection
@@ -298,7 +299,9 @@
       (v0-mbql/->ref-fields)))
 
 (defmethod export/export-entity :metric [card]
-  (let [query (patch-refs-for-export (:dataset_query card))]
+  (let [query (if export/*use-refs*
+                (patch-refs-for-export (:dataset_query card))
+                (:dataset_query card))]
     (cond-> {:name (:name card)
              ;;:version "question-v0"
              :type (:type card)

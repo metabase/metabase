@@ -11,6 +11,12 @@
   (:import
    [java.io File]))
 
+(def ^:dynamic *use-refs*
+  "When true (default), export uses refs like 'ref:question-123'.
+   When false, export uses direct IDs like database: 5, source-table: 'card__123'.
+   Set to false for single-file exports that will be loaded with direct IDs."
+  true)
+
 (set! *warn-on-reflection* true)
 
 (comment

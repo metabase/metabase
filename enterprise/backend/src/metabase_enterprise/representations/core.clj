@@ -68,6 +68,15 @@
   [t2-model]
   (export/export-entity t2-model))
 
+(defn export-with-ids
+  "Export a Metabase entity to its human-readable representation with direct IDs.
+   Uses actual database IDs, table IDs (via 'card__123' strings), and integer IDs.
+   Suitable for single-file exports that will be loaded via curl with direct ID resolution.
+   Delegates to the multimethod export-entity for extensibility."
+  [t2-model]
+  (binding [export/*use-refs* false]
+    (export/export-entity t2-model)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Static Experiments ;;
 
