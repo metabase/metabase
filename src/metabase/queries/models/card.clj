@@ -1247,11 +1247,10 @@
                               [(parse-long (subs source-table 6))])
         all-card-ids        (seq (concat template-tags parameters-card-ids source-card-ids))
         card-ids            (if skip-archived
-                              #p (t2/select-pks-set :model/Card {:where [:and
-                                                                         (if all-card-ids
-                                                                           [:in :id all-card-ids]
-                                                                           [:= [:inline 0] [:inline 1]])
-                                                                         [:not :archived]]})
+                              (when all-card-ids
+                                (t2/select-pks-set :model/Card {:where [:and
+                                                                        [:in :id all-card-ids]
+                                                                        [:not :archived]]}))
                               all-card-ids)]
     (into {} (concat
               (for [card-id card-ids]
