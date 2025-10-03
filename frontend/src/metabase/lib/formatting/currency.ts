@@ -75,6 +75,14 @@ export function getCurrencyStyleOptions(
           },
         ]
       : []),
+    ...(narrowSymbol !== code && narrowSymbol !== symbol
+      ? [
+          {
+            name: t`Local symbol` + ` ` + `(${narrowSymbol})`,
+            value: "narrowSymbol" as const,
+          },
+        ]
+      : []),
     {
       name: t`Code` + ` ` + `(${code})`,
       value: "code" as const,
@@ -82,10 +90,6 @@ export function getCurrencyStyleOptions(
     {
       name: t`Name` + ` ` + `(${name})`,
       value: "name" as const,
-    },
-    {
-      name: t`Local symbol` + ` ` + `(${narrowSymbol})`,
-      value: "narrowSymbol" as const,
     },
   ];
 }

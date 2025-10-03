@@ -14,6 +14,7 @@ describe("getCurrencyStyleOptions", () => {
     const options = getCurrencyStyleOptions("NZD");
     expect(options).toEqual([
       { name: "Symbol (NZ$)", value: "symbol" },
+      { name: "Local symbol ($)", value: "narrowSymbol" },
       { name: "Code (NZD)", value: "code" },
       { name: "Name (New Zealand dollars)", value: "name" },
     ]);
