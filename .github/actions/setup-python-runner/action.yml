@@ -20,6 +20,28 @@ runs:
         username: ${{ inputs.dockerhub-username }}
         password: ${{ inputs.dockerhub-token }}
 
+    - name: Start LocalStack (S3 storage)
+      run: |
+        echo "Starting LocalStack container for S3 storage..."
+        docker run -d \
+          --name localstack \
+          -p 4566:4566 \
+          -e SERVICES=s3 \
+          -e DEBUG=1 \
+          localstack/localstack:latest
+
+        # Wait for LocalStack to be ready
+        echo "Waiting for LocalStack to be ready..."
+        for i in {1..30}; do
+          if curl -s --max-time 2 http://localhost:4566/_localstack/health > /dev/null 2>&1; then
+            echo "LocalStack is ready"
+            break
+          fi
+          echo "Waiting for LocalStack... (attempt $i/30)"
+          sleep 2
+        done
+      shell: bash
+
     - name: Pull and run python-runner
       run: |
         echo "Pulling python-runner image version ${{ inputs.python-runner-version }}..."
@@ -28,6 +50,7 @@ runs:
         echo "Starting python-runner container..."
         docker run -d \
           --name python-runner \
+          --link localstack:localstack \
           -p 5001:5001 \
           metabase/python-runner:${{ inputs.python-runner-version }}
 
@@ -47,4 +70,5 @@ runs:
 
         # Stream logs to files in the background
         docker logs -f python-runner > python-runner.out.log 2> python-runner.err.log &
+        docker logs -f localstack > localstack.out.log 2> localstack.err.log &
       shell: bash
