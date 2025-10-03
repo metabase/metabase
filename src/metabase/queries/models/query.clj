@@ -99,15 +99,16 @@
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
 
   Expects MBQL 5 queries."
-  [{database-id :database, :as query} :- ::lib.schema/query]
-  (if-let [source-card-id (lib.util/source-card-id query)]
-    (let [card (or (lib.metadata/card query source-card-id)
-                   ;; Card may belong to a different Database; fetch from the app DB
-                   (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id source-card-id))]
-      (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
-    (let [table-id (lib.util/source-table-id query)]
-      {:database-id database-id
-       :table-id    table-id})))
+  [{database-id :database, :as query} :- ::queries.schema/query]
+  (when (seq query)
+    (if-let [source-card-id (lib.util/source-card-id query)]
+      (let [card (or (lib.metadata/card query source-card-id)
+                     ;; Card may belong to a different Database; fetch from the app DB
+                     (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id source-card-id))]
+        (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
+      (let [table-id (lib.util/source-table-id query)]
+        {:database-id database-id
+         :table-id    table-id}))))
 
 (mu/defn query-is-native? :- :boolean
   "Whether this query (pMBQL or legacy) has a `:native` first stage. Queries with source Cards are considered to be MBQL
