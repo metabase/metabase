@@ -1,11 +1,12 @@
 (ns metabase.parameters.schema
   (:require
+   #?@(:clj
+       ([metabase.models.interface :as mi]))
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -104,10 +105,11 @@
   [parameters]
   (lib/normalize ::parameters parameters))
 
-(def transform-parameters
-  "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
-  {:in  (comp mi/json-in normalize-parameters)
-   :out (comp (mi/catch-normalization-exceptions normalize-parameters) mi/json-out-with-keywordization)})
+#?(:clj
+   (def transform-parameters
+     "Toucan 2 transform for columns that are sequences of Card/Dashboard parameters."
+     {:in  (comp mi/json-in normalize-parameters)
+      :out (comp (mi/catch-normalization-exceptions normalize-parameters) mi/json-out-with-keywordization)}))
 
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
@@ -132,7 +134,8 @@
   (when parameter-mappings
     (lib/normalize ::parameter-mappings parameter-mappings)))
 
-(def transform-parameter-mappings
-  "Toucan 2 transform for columns that are sequences of Card/Dashboard parameter mappings."
-  {:in  (comp mi/json-in normalize-parameter-mappings)
-   :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization)})
+#?(:clj
+   (def transform-parameter-mappings
+     "Toucan 2 transform for columns that are sequences of Card/Dashboard parameter mappings."
+     {:in  (comp mi/json-in normalize-parameter-mappings)
+      :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization)}))
