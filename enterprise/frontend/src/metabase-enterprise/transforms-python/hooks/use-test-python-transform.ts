@@ -3,8 +3,8 @@ import { useCallback } from "react";
 import type { RowValue } from "metabase-types/api";
 
 import type { PythonTransformSourceDraft } from "../components/PythonTransformEditor";
-import { DataFetcher } from "../services/data-fetcher";
 
+import { type SampleData, useSampleData } from "./use-data-sample";
 import { useRunPython } from "./use-run-python";
 
 export type PyodideTableSource = {
@@ -23,44 +23,21 @@ type TransformData = {
 };
 
 export function useTestPythonTransform(source: PythonTransformSourceDraft) {
+  const { fetchSampleData, isRunning: isFetchingData } = useSampleData(source);
   const {
-    isRunning,
+    isRunning: isRunningPython,
     cancel,
     data: executionResult,
     executePython,
   } = useRunPython<TransformData>(["numpy", "pandas"]);
 
   const run = useCallback(async () => {
-    // Fetch data for each table
-    const sources = await Promise.all(
-      Object.entries(source["source-tables"]).map(
-        async ([variableName, tableId]) => {
-          // Fetch table metadata to get the actual table name and schema
-          const tableResponse = await fetch(`/api/table/${tableId}`);
-          const tableData = await tableResponse.json();
-
-          // Fetch 1 row of data
-          const transformSource = await DataFetcher.fetchTableData({
-            databaseId: source["source-database"] as number,
-            tableName: tableData.name,
-            schemaName: tableData.schema,
-            limit: 1,
-          });
-
-          return {
-            ...transformSource,
-            variable_name: variableName,
-            database_id: source["source-database"] as number,
-          };
-        },
-      ),
-    );
-
-    executePython(getPythonScript(source.body, sources));
-  }, [source, executePython]);
+    const sampleData = await fetchSampleData();
+    executePython(getPythonScript(source.body, sampleData));
+  }, [source, executePython, fetchSampleData]);
 
   return {
-    isRunning,
+    isRunning: isRunningPython || isFetchingData,
     isDirty: true,
     cancel,
     run,
@@ -68,14 +45,14 @@ export function useTestPythonTransform(source: PythonTransformSourceDraft) {
   };
 }
 
-function getPythonScript(code: string, sources: PyodideTableSource[]) {
+function getPythonScript(code: string, data: SampleData[]) {
   // add a random suffix to the main function to avoid it
   // from being used in the transform function which would lead to
   // unexpected results.
   const random = Math.random().toString(36).slice(2);
 
   // Encode the columns as base64 JSON to avoid issues with escaping and formatting
-  const encoded = btoa(JSON.stringify(sources.map((source) => source.rows)));
+  const encoded = btoa(JSON.stringify(data.map((source) => source.rows)));
 
   return [
     // code should sit at the top of the script, so line numbers in errors
