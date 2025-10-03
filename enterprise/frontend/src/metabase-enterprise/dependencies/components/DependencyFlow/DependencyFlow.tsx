@@ -28,6 +28,7 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "some_intermediate_table",
+        display_name: "Some intermediate table",
       },
     },
     {
@@ -35,6 +36,7 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "nice_table",
+        display_name: "Nice table",
       },
     },
     {
@@ -42,6 +44,7 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "ugly_table_here",
+        display_name: "Ugly table here",
       },
     },
     {
@@ -63,6 +66,7 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "interesting_facts",
+        display_name: "Interesting facts",
       },
     },
     {
@@ -70,6 +74,7 @@ const GRAPH: DependencyGraph = {
       type: "table",
       data: {
         name: "another_thing",
+        display_name: "Another thing",
       },
     },
     {

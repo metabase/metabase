@@ -10,7 +10,7 @@ import { memo } from "react";
 import { Icon } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeIcon } from "./utils";
+import { getNodeIcon, getNodeLabel } from "./utils";
 
 type ItemNodeProps = NodeProps<Node<DependencyNode>>;
 
@@ -26,7 +26,7 @@ export const ItemNode = memo(function EntityNode({
   return (
     <>
       <Icon flex="0 0 auto" name={getNodeIcon(node)} c="brand" />
-      {node.data.name}
+      {getNodeLabel(node)}
       {sources.length > 0 && (
         <Handle
           type="source"

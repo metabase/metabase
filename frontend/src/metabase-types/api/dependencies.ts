@@ -12,6 +12,7 @@ type BaseDependencyNode<TType, TData> = {
 
 export type TableDependencyData = {
   name: string;
+  display_name: string;
 };
 
 export type TransformDependencyData = {

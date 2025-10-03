@@ -1,6 +1,10 @@
 import type { IconName } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+export function getNodeLabel(node: DependencyNode) {
+  return node.type === "table" ? node.data.display_name : node.data.name;
+}
+
 export function getNodeIcon(node: DependencyNode): IconName {
   switch (node.type) {
     case "card":
