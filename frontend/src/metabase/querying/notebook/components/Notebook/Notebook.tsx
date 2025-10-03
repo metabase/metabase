@@ -1,7 +1,7 @@
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { Box } from "metabase/ui";
+import { Box, type MantineStyleProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import type { NotebookDataPickerOptions } from "../../types";
@@ -23,6 +23,7 @@ export type NotebookProps = {
   readOnly?: boolean;
   modelsFilterList?: DataPickerValue["model"][];
   dataPickerOptions?: NotebookDataPickerOptions;
+  padding?: MantineStyleProps["p"];
 };
 
 export const Notebook = ({
@@ -38,6 +39,7 @@ export const Notebook = ({
   setQueryBuilderMode,
   modelsFilterList,
   dataPickerOptions,
+  padding,
 }: NotebookProps) => {
   const dispatch = useDispatch();
 
@@ -48,7 +50,7 @@ export const Notebook = ({
 
   return (
     <NotebookProvider modelsFilterList={modelsFilterList}>
-      <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
+      <Box pos="relative" p={padding || { base: "1rem", sm: "2rem" }}>
         <NotebookStepList
           updateQuestion={handleUpdateQuestion}
           question={question}
