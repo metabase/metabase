@@ -61,9 +61,9 @@
 
 (defn- query-for-column-values
   "For a `card` generate a query, which will be used for field values computation.
-  Parameter for which values are generated may not be linked to a dimension 
+  Parameter for which values are generated may not be linked to a dimension
   on last stage. Hence all stages are searched for `value-field-ref`. Stages are
-  then truncated so the matching stage becomes last. Results of such query 
+  then truncated so the matching stage becomes last. Results of such query
   contain values of values of exmained field."
   [card value-field-ref]
   (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
