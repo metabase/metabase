@@ -7,7 +7,6 @@ import {
   getDataErrorMessage,
   is403Error,
 } from "metabase/metadata/pages/DataModel/components/PreviewSection/utils";
-import type { DatasetColumn } from "metabase/visualizations/lib/settings/column";
 import type {
   DatabaseId,
   DatasetData,
@@ -18,9 +17,11 @@ import type {
 
 import type { PythonTransformSourceDraft } from "../components/PythonTransformEditor";
 
+export type JSONRow = Record<string, RowValue>;
+
 export type SampleData = {
   alias: string;
-  rows: Record<string, RowValue>[];
+  rows: JSONRow[];
 };
 
 export function useSampleData(source: PythonTransformSourceDraft) {
@@ -75,13 +76,11 @@ function getPreviewQuery(
 }
 
 function formatData(alias: string, data: DatasetData): SampleData {
-  const rows = data.rows.map((row: any[]) => {
-    const obj: Record<string, any> = {};
-    data.cols.forEach((col: DatasetColumn, index: number) => {
-      obj[col.name] = row[index];
-    });
-    return obj;
-  });
+  const rows = data.rows.map((row: any[]) =>
+    Object.fromEntries(
+      data.cols.map((column, index) => [column.name, row[index]]),
+    ),
+  );
 
   return {
     alias,
