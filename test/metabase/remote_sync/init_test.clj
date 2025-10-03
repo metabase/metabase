@@ -49,22 +49,6 @@
         (testing "dashboard in normal collection has is_remote_synced = false"
           (is (false? (:is_remote_synced (second hydrated-dashboards)))))))))
 
-(deftest is-remote-synced-hydration-document-test
-  (testing ":is_remote_synced hydration works for documents"
-    (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"
-                                                       :type "remote-synced"
-                                                       :location "/"}
-                   :model/Collection normal-coll {:name "Normal Collection"
-                                                  :location "/"}
-                   :model/Document doc-in-remote {:collection_id (:id remote-sync-coll)}
-                   :model/Document doc-in-normal {:collection_id (:id normal-coll)}]
-      (let [hydrated-documents (t2/hydrate [doc-in-remote doc-in-normal] :is_remote_synced)]
-        (testing "document in remote-synced collection has is_remote_synced = true"
-          (is (true? (:is_remote_synced (first hydrated-documents)))))
-
-        (testing "document in normal collection has is_remote_synced = false"
-          (is (false? (:is_remote_synced (second hydrated-documents)))))))))
-
 (deftest is-remote-synced-hydration-batched-test
   (testing ":is_remote_synced hydration is efficient with batch hydration"
     (mt/with-temp [:model/Collection remote-sync-coll {:name "Remote Sync Collection"

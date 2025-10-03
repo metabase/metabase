@@ -14,7 +14,8 @@
                                                (t2/select [model :id [[:and [:= :c.type [:inline "remote-synced"]]
                                                                        [:not= :c.type nil]]
                                                                       :is_remote_synced]]
-                                                          {:where [:in :report_card.id (map :id items)]
+                                                          {:where [:in (keyword (str (name (t2/table-name model)) ".id"))
+                                                                   (map :id items)]
                                                            :join [[:collection :c]
                                                                   [:= :collection_id :c.id]]})))
                                    :id
