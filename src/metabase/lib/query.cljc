@@ -205,6 +205,10 @@
   [metadata-providerable query]
   (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
+(defmethod query-method :internal
+  [metadata-providerable internal-query]
+  (query-from-legacy-query metadata-providerable internal-query))
+
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
