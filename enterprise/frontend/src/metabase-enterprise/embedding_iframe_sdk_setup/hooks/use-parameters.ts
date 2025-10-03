@@ -3,7 +3,6 @@ import { useLatest } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
-import { getDefaultEmbeddingParams } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
@@ -11,10 +10,10 @@ import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
-interface UseParameterListProps {
+type UseParameterListProps = {
   experience: SdkIframeEmbedSetupExperience;
   resource: Dashboard | Card | null;
-}
+};
 
 export const useParameters = ({
   experience,
@@ -68,16 +67,8 @@ export const useParameters = ({
     }
   }, [resource, dispatch]);
 
-  const initialEmbeddingParameters = useMemo(() => {
-    if (!resource || !initialAvailableParameters) {
-      return null;
-    }
-
-    return getDefaultEmbeddingParams(resource, initialAvailableParameters);
-  }, [initialAvailableParameters, resource]);
-
   return {
     availableParameters,
-    initialEmbeddingParameters,
+    initialAvailableParameters,
   };
 };

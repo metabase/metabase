@@ -40,6 +40,10 @@ export interface SdkIframeEmbedSetupContextType {
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
   initialEmbeddingParameters: EmbeddingParameters | null;
+  embeddingParameters: EmbeddingParameters;
+  onEmbeddingParametersChange: (
+    embeddingParameters: EmbeddingParameters,
+  ) => void;
 
   isEmbedSettingsLoaded: boolean;
 }

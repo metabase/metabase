@@ -1,10 +1,11 @@
 import { useCallback } from "react";
 
-import { useSdkIframeEmbedSetupContext } from "../../../context";
+import type { SdkIframeEmbedSetupContextType } from "metabase-enterprise/embedding_iframe_sdk_setup/context";
 
-export function useHideParameter() {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
-
+export function useHideParameter({
+  settings,
+  updateSettings,
+}: Pick<SdkIframeEmbedSetupContextType, "settings" | "updateSettings">) {
   const toggleParameterVisibility = useCallback(
     (parameterName: string) => {
       if (!settings.dashboardId && !settings.questionId) {

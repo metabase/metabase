@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 
-import { useSdkIframeEmbedSetupContext } from "../../../context";
+import type { SdkIframeEmbedSetupContextType } from "../../../context";
 
-export function useLockParameter() {
-  const { settings } = useSdkIframeEmbedSetupContext();
-
+export function useLockParameter({
+  settings,
+}: Pick<SdkIframeEmbedSetupContextType, "settings">) {
   const isLockedParameter = useCallback(
     (parameterName: string) => {
       if (settings.dashboardId || settings.questionId) {

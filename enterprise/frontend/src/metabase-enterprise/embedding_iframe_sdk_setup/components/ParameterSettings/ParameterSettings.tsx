@@ -8,8 +8,8 @@ import { ParametersSettings } from "metabase/public/components/EmbedModal/Static
 import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
 import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
-import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-static-embedding-paramers";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
+import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 import { getStaticEmbeddingResourceType } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-static-embedding-resource-type";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -26,13 +26,15 @@ export const ParameterSettings = () => {
     settings,
     updateSettings,
     availableParameters,
+    embeddingParameters,
     isLoading,
   } = useSdkIframeEmbedSetupContext();
 
   const { parameterValuesById } = useParameters();
-  const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
-  const { buildEmbeddedParameters, getSettingsFromEmbeddingParameters } =
-    useEmbeddingParameters();
+  const { isParameterHidden, toggleParameterVisibility } = useHideParameter({
+    settings,
+    updateSettings,
+  });
 
   const isStaticEmbedding = !!settings.isStatic;
   const isQuestionOrDashboardEmbed =
@@ -104,10 +106,9 @@ export const ParameterSettings = () => {
   }
 
   if (isStaticEmbedding) {
-    const embeddingParams = buildEmbeddedParameters(availableParameters);
     const lockedParameters = getLockedPreviewParameters(
       availableParameters,
-      embeddingParams,
+      embeddingParameters,
     );
 
     const resourceType = getStaticEmbeddingResourceType(settings);
@@ -120,13 +121,15 @@ export const ParameterSettings = () => {
       <ParametersSettings
         resourceType={resourceType}
         resourceParameters={availableParameters}
-        embeddingParams={embeddingParams}
+        embeddingParams={embeddingParameters}
         lockedParameters={lockedParameters}
         parameterValues={parameterValuesById}
         withInitialValues
         onChangeEmbeddingParameters={(embeddingParameters) => {
           updateSettings(
-            getSettingsFromEmbeddingParameters(embeddingParameters),
+            getSdkIframeEmbedSettingsForEmbeddingParameters(
+              embeddingParameters,
+            ),
           );
         }}
         onChangeParameterValue={({ slug, value }) =>

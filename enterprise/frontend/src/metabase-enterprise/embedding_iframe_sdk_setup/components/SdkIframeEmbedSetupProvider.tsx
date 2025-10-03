@@ -3,6 +3,7 @@ import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 
 import { useSearchQuery } from "metabase/api";
+import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-embedding-paramers";
 import { useGetCurrentResource } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-current-resource";
 import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 
@@ -94,9 +95,20 @@ export const SdkIframeEmbedSetupProvider = ({
     [settings],
   );
 
-  const { availableParameters, initialEmbeddingParameters } = useParameters({
+  const { availableParameters, initialAvailableParameters } = useParameters({
     experience,
     resource,
+  });
+  const {
+    embeddingParameters,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  } = useEmbeddingParameters({
+    settings,
+    updateSettings,
+    resource,
+    initialAvailableParameters,
+    availableParameters,
   });
 
   useEffect(() => {
@@ -128,6 +140,8 @@ export const SdkIframeEmbedSetupProvider = ({
     isEmbedSettingsLoaded,
     availableParameters,
     initialEmbeddingParameters,
+    embeddingParameters,
+    onEmbeddingParametersChange,
   };
 
   return (
