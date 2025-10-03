@@ -102,6 +102,7 @@ export function TransformQueryPageBody({
     return (
       <AdminSettingsLayout fullWidth key={transform.id}>
         <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+          transform={transform}
           initialSource={transform.source}
           proposedSource={
             proposedSource?.type === "python" ? proposedSource : undefined

@@ -29,6 +29,13 @@ export type SuggestedTransform = Partial<Pick<Transform, "id">> &
 
 export type PythonTransformTableAliases = Record<string, ConcreteTableId>;
 
+export type PythonTransformSourceDraft = {
+  type: "python";
+  body: string;
+  "source-database": DatabaseId | undefined;
+  "source-tables": PythonTransformTableAliases;
+};
+
 export type PythonTransformSource = {
   type: "python";
   body: string;
@@ -42,6 +49,14 @@ export type QueryTransformSource = {
 };
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;
+
+export type DraftTransformSource =
+  | Transform["source"]
+  | PythonTransformSourceDraft;
+
+export type DraftTransform = Partial<
+  Pick<Transform, "id" | "name" | "description" | "target">
+> & { source: DraftTransformSource };
 
 export type TransformTargetType = "table";
 

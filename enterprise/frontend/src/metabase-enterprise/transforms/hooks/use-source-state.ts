@@ -11,7 +11,7 @@ import type { Transform, TransformSource } from "metabase-types/api";
 
 interface UseSourceStateResult<SourceType> {
   source: SourceType | TransformSource;
-  setSource: (source: TransformSource) => void;
+  setSource: (source: SourceType) => void;
   suggestedTransform: MetabotSuggestedTransform | undefined;
   proposedSource: TransformSource | undefined;
   clearProposed: () => void;
@@ -36,7 +36,7 @@ export const useSourceState = <SourceType>(
   const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
 
   const handleSetSource = useCallback(
-    (source: TransformSource) => {
+    (source: SourceType) => {
       dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
       setSource(source);
     },

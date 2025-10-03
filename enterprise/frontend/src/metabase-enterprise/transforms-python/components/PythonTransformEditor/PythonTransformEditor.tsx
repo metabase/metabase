@@ -3,11 +3,13 @@ import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
+import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type {
-  DatabaseId,
   PythonTransformSource,
+  PythonTransformSourceDraft,
   PythonTransformTableAliases,
   Table,
+  Transform,
 } from "metabase-types/api";
 
 import { PythonDataPicker } from "./PythonDataPicker";
@@ -21,19 +23,14 @@ import {
   useTestPythonTransform,
 } from "./utils";
 
-export type PythonTransformSourceDraft = {
-  type: "python";
-  body: string;
-  "source-database": DatabaseId | undefined;
-  "source-tables": PythonTransformTableAliases;
-};
-
 export type PythonTransformEditorProps = {
+  transform?: Transform | undefined;
   initialSource: PythonTransformSourceDraft;
   proposedSource?: PythonTransformSource;
   isNew?: boolean;
   isSaving?: boolean;
   isRunnable?: boolean;
+  onChange?: (newSource: PythonTransformSourceDraft) => void;
   onSave: (newSource: PythonTransformSource) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
@@ -41,11 +38,13 @@ export type PythonTransformEditorProps = {
 };
 
 export function PythonTransformEditor({
+  transform,
   initialSource,
   proposedSource,
   isNew = true,
   isSaving = false,
   isRunnable = true,
+  onChange,
   onSave,
   onCancel,
   onRejectProposed,
@@ -54,6 +53,8 @@ export function PythonTransformEditor({
   const [source, setSource] = useState(initialSource);
   const saveSource = proposedSource ?? source;
   const [isSourceDirty, setIsSourceDirty] = useState(false);
+
+  useRegisterMetabotTransformContext(transform, proposedSource ?? source);
 
   const { isRunning, isDirty, cancel, run, executionResult } =
     useTestPythonTransform(source);
@@ -65,6 +66,7 @@ export function PythonTransformEditor({
     };
     setSource(newSource);
     setIsSourceDirty(true);
+    onChange?.(newSource);
   };
 
   const handleDataChange = (

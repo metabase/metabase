@@ -1,7 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
@@ -14,6 +13,8 @@ import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-
 import type {
   CardId,
   DatasetQuery,
+  DraftTransform,
+  DraftTransformSource,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -56,29 +57,20 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
   const suggestedTransform = useSelector(
     getMetabotSuggestedTransform as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
-  const canUseSuggestedTransform = match({
-    type,
-    suggestionSourceType: suggestedTransform?.source.type,
-  })
-    .with({ type: "native", suggestionSourceType: "query" }, () => true)
-    .with({ type: "python", suggestionSourceType: "python" }, () => true)
-    .otherwise(() => false);
-
-  const [initialSuggestedSource] = useState(
-    canUseSuggestedTransform ? suggestedTransform?.source : undefined,
-  );
 
   if (isLoading || error) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  const initialSource = cardId
-    ? getInitialTransformSource(card, type)
-    : initialSuggestedSource || getInitialTransformSource(card, type);
-
   return (
     <AdminSettingsLayout fullWidth>
-      <NewTransformPageInner initialSource={initialSource} />
+      <NewTransformPageInner
+        initialSource={getInitialTransformSource(
+          card,
+          type,
+          suggestedTransform,
+        )}
+      />
     </AdminSettingsLayout>
   );
 }
@@ -95,7 +87,10 @@ export function NewTransformPageInner({
     proposedSource,
     acceptProposed,
     clearProposed,
-  } = useSourceState(undefined, initialSource);
+  } = useSourceState<TransformSource | DraftTransformSource>(
+    undefined,
+    initialSource,
+  );
 
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
@@ -135,6 +130,7 @@ export function NewTransformPageInner({
       <NewTransformEditorBody
         initialSource={initialSource}
         proposedSource={proposedSource}
+        onChange={setSource}
         onSave={handleSave}
         onCancel={handleCancel}
         onRejectProposed={clearProposed}
@@ -155,6 +151,7 @@ export function NewTransformPageInner({
 interface NewTransformEditorBody {
   initialSource: InitialTransformSource;
   proposedSource?: TransformSource;
+  onChange: (source: DraftTransform["source"]) => void;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;
   onRejectProposed?: () => void;
@@ -164,6 +161,7 @@ interface NewTransformEditorBody {
 function NewTransformEditorBody({
   initialSource,
   proposedSource,
+  onChange,
   onSave,
   onCancel,
   onRejectProposed,
@@ -179,6 +177,7 @@ function NewTransformEditorBody({
         isNew
         onSave={onSave}
         onCancel={onCancel}
+        onChange={onChange}
         onRejectProposed={onRejectProposed}
         onAcceptProposed={onAcceptProposed}
       />
@@ -194,6 +193,7 @@ function NewTransformEditorBody({
       isNew
       onSave={onSave}
       onCancel={onCancel}
+      onChange={onChange}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
     />

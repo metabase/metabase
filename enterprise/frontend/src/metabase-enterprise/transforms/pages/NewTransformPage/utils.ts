@@ -1,9 +1,12 @@
+import { match } from "ts-pattern";
+
 import type { PythonTransformSourceDraft } from "metabase-enterprise/transforms-python/components/PythonTransformEditor";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   DatasetQuery,
   QueryTransformSource,
+  SuggestedTransform,
 } from "metabase-types/api";
 
 export type InitialTransformSource =
@@ -13,7 +16,20 @@ export type InitialTransformSource =
 export function getInitialTransformSource(
   card: Card | undefined,
   type: DatasetQuery["type"] | "python",
+  suggestedTransform: SuggestedTransform | undefined,
 ): InitialTransformSource {
+  const canUseSuggestedTransform = match({
+    type,
+    suggestionSourceType: suggestedTransform?.source.type,
+  })
+    .with({ type: "native", suggestionSourceType: "query" }, () => true)
+    .with({ type: "python", suggestionSourceType: "python" }, () => true)
+    .otherwise(() => false);
+
+  if (!card?.id && suggestedTransform && canUseSuggestedTransform) {
+    return suggestedTransform.source;
+  }
+
   if (type === "python") {
     return getInitialPythonTransformSource();
   }

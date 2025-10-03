@@ -859,6 +859,7 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   SourceSection: ComponentType<{ transform: Transform }>;
   TransformEditor: ComponentType<{
+    transform?: Transform | undefined;
     initialSource: {
       type: "python";
       body: string;
@@ -869,6 +870,12 @@ export type PythonTransformsPlugin = {
     isNew?: boolean;
     isSaving?: boolean;
     isRunnable?: boolean;
+    onChange?: (newSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    }) => void;
     onSave: (newSource: PythonTransformSource) => void;
     onCancel: () => void;
     onRejectProposed?: () => void;
