@@ -23,19 +23,19 @@ describe("formatAttributeValue", () => {
 
   it("should HTML escape single quotes in array and objects", () => {
     expect(formatAttributeValue(["O'Reilly", "D'Angelo"])).toBe(
-      `'["O&39;Reilly","D&39;Angelo"]'`,
+      `'["O&#39;Reilly","D&#39;Angelo"]'`,
     );
     expect(formatAttributeValue({ quote: "It's a test" })).toBe(
-      `'{"quote":"It&39;s a test"}'`,
+      `'{"quote":"It&#39;s a test"}'`,
     );
   });
 
   it("should HTML escape single quotes in nested arrays and objects", () => {
     expect(
       formatAttributeValue([{ name: "O'Reilly" }, { name: "D'Angelo" }]),
-    ).toBe(`'[{"name":"O&39;Reilly"},{"name":"D&39;Angelo"}]'`);
+    ).toBe(`'[{"name":"O&#39;Reilly"},{"name":"D&#39;Angelo"}]'`);
     expect(formatAttributeValue({ nested: { quote: "It's a test" } })).toBe(
-      `'{"nested":{"quote":"It&39;s a test"}}'`,
+      `'{"nested":{"quote":"It&#39;s a test"}}'`,
     );
   });
 
