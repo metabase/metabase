@@ -9,9 +9,14 @@ import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { BenchAppBar } from "./BenchAppBar"
 import { BenchNav } from "./BenchNav";
 
-export const ResizeHandle =  () => (
-  <PanelResizeHandle style={{ cursor: "col-resize", height: "100%", width: 4 }} />
-)
+export const ResizeHandle =  ({ direction = "horizontal" }: { direction: "horizontal" | "vertical"}) => {
+  const directionProps = {
+    horizontal: { cursor: "col-resize", height: "100%", width: 4 },
+    vertical: { cursor: "row-resize", height: 4, width: "100%" },
+  };
+
+  return <PanelResizeHandle style={directionProps[direction]} />;
+}
 
 
 export const BenchApp = ({ children }: { children: React.ReactNode }) => {

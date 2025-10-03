@@ -7,18 +7,16 @@ import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { Box, Card, Stack } from "metabase/ui";
+import { Box, Card, Tabs } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { QueryEditorProvider } from "metabase-enterprise/transforms/components/QueryEditor";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
 import { TransformQueryPage } from "../TransformQueryPage";
 
 import { DependenciesSection } from "./DependenciesSection";
-import { HeaderSection } from "./HeaderSection";
-import { ManageSection } from "./ManageSection";
-import { NameSection } from "./NameSection";
+import { QueryPreview } from "./QueryPreview";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
 import {
@@ -69,27 +67,42 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <PanelGroup direction="horizontal">
-      <Panel>
-        <Box p="md" h="100%">
-          <Card h="100%">
-            <TransformQueryPage transform={transform} />
+    <QueryEditorProvider
+      initialQuery={transform.source.query}
+    >
+      <PanelGroup autoSaveId="transforms-editor-panel-layout" direction="vertical" style={{ height: "100%", width: "100%" }}>
+        <Panel>
+          <TransformQueryPage transform={transform} />
+        </Panel>
+        <ResizeHandle direction="vertical" />
+        <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
+          <Card withBorder mx="sm" h="100%">
+            <Tabs defaultValue="run" variant="pills">
+              <Tabs.List>
+                <Tabs.Tab name={t`Preview`} value="preview">{t`Preview`}</Tabs.Tab>
+                <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
+                <Tabs.Tab name={t`Target`} value="target">{t`Target`}</Tabs.Tab>
+                <Tabs.Tab name={t`Dependencies`} value="dependencies">{t`Dependencies`}</Tabs.Tab>
+              </Tabs.List>
+              <Box p="md">
+                <Tabs.Panel value="preview">
+                  <QueryPreview />
+                </Tabs.Panel>
+                <Tabs.Panel value="run">
+                  <RunSection transform={transform} />
+                </Tabs.Panel>
+                <Tabs.Panel value="target">
+                  <TargetSection transform={transform} />
+                </Tabs.Panel>
+                <Tabs.Panel value="dependencies">
+                  <DependenciesSection transform={transform} />
+                </Tabs.Panel>
+              </Box>
+            </Tabs>
           </Card>
-        </Box>
-      </Panel>
-      <ResizeHandle />
-      <Panel style={{ overflow: "hidden" }}>
-        <Stack h="100%" gap="md" data-testid="transform-details" style={{ overflow: "auto" }} p="md">
-          <Stack gap="sm">
-            <HeaderSection transform={transform} />
-            <NameSection transform={transform} />
-          </Stack>
-          <RunSection transform={transform} />
-          <TargetSection transform={transform} />
-          <DependenciesSection transform={transform} />
-        </Stack>
-      </Panel>
-    </PanelGroup>
+        </Panel>
+      </PanelGroup>
+    </QueryEditorProvider>
   );
 }
 
