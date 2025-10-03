@@ -5,7 +5,6 @@ import { match } from "ts-pattern";
 import { useSearchQuery } from "metabase/api";
 import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-embedding-paramers";
 import { useGetCurrentResource } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-current-resource";
-import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
 
 import {
   SdkIframeEmbedSetupContext,
@@ -112,16 +111,16 @@ export const SdkIframeEmbedSetupProvider = ({
   });
 
   useEffect(() => {
-    if (!initialEmbeddingParameters) {
+    if (!settings.isStatic || !initialEmbeddingParameters) {
       return;
     }
 
-    updateSettings(
-      getSdkIframeEmbedSettingsForEmbeddingParameters(
-        initialEmbeddingParameters,
-      ),
-    );
-  }, [initialEmbeddingParameters, updateSettings]);
+    onEmbeddingParametersChange(initialEmbeddingParameters);
+  }, [
+    settings.isStatic,
+    initialEmbeddingParameters,
+    onEmbeddingParametersChange,
+  ]);
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
