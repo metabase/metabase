@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 import type {
   DependencyId,
@@ -28,4 +28,17 @@ export function getNodeByIdMap<T extends Node["data"]>(nodes: Node<T>[]) {
   const nodeBydId = new Map<NodeId, Node<T>>();
   nodes.forEach((node) => nodeBydId.set(node.id, node));
   return nodeBydId;
+}
+
+export function getEdgesByTargetIdMap(edges: Edge[]) {
+  const edgesByTargetId = new Map<NodeId, Edge[]>();
+  edges.forEach((edge) => {
+    let edgesGroup = edgesByTargetId.get(edge.target);
+    if (edgesGroup == null) {
+      edgesGroup = [];
+      edgesByTargetId.set(edge.target, edgesGroup);
+    }
+    edgesGroup.push(edge);
+  });
+  return edgesByTargetId;
 }

@@ -13,7 +13,7 @@ import type { DependencyGraph } from "metabase-types/api";
 
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
-import { getInitialNodesAndEdges } from "./utils/graph";
+import { getInitialGraph } from "./utils/graph";
 import { getNodesWithPositions } from "./utils/layout";
 
 const NODE_TYPES = {
@@ -161,8 +161,7 @@ const GRAPH: DependencyGraph = {
 };
 
 export function DependencyFlow() {
-  const { nodes: initialNodes, edges: initialEdges } =
-    getInitialNodesAndEdges(GRAPH);
+  const { nodes: initialNodes, edges: initialEdges } = getInitialGraph(GRAPH);
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
 

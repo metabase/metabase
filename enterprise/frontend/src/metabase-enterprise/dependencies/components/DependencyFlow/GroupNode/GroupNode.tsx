@@ -14,7 +14,7 @@ import { getNodeLabel } from "./utils";
 type GroupNodeProps = NodeProps<Node<GroupData>>;
 
 export const GroupNode = memo(function EntityNode({
-  data: group,
+  data,
   sourcePosition = Position.Left,
   targetPosition = Position.Right,
   isConnectable,
@@ -24,7 +24,7 @@ export const GroupNode = memo(function EntityNode({
 
   return (
     <>
-      {getNodeLabel(group)}
+      {getNodeLabel(data)}
       {sources.length > 0 && (
         <Handle
           type="source"
