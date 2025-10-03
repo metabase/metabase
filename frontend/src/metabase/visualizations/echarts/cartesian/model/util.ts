@@ -9,8 +9,13 @@ import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,
   POSITIVE_BAR_DATA_LABEL_KEY_SUFFIX,
 } from "../constants/dataset";
+import { expectedTickCount, maxTicksForChartWidth } from "../utils/timeseries";
 
-import type { DataKey } from "./types";
+import type {
+  DataKey,
+  TimeSeriesAxisFormatter,
+  TimeSeriesInterval,
+} from "./types";
 
 export function getBarSeriesDataLabelKey(dataKey: DataKey, sign: "+" | "-") {
   if (sign === "+") {
@@ -31,4 +36,15 @@ export function getColumnScaling(
     settings.column?.(column) ?? getColumnSettings(settings, column);
   const scale = columnSettings?.scale;
   return Number.isFinite(scale) ? (scale as number) : 1;
+}
+
+export function shouldPinInterval(
+  interval: TimeSeriesInterval,
+  timeRangeMs: number,
+  chartWidth: number,
+  formatter: TimeSeriesAxisFormatter,
+) {
+  const capacity = maxTicksForChartWidth(chartWidth, formatter);
+  const tickCount = expectedTickCount(interval, timeRangeMs);
+  return tickCount <= capacity;
 }
