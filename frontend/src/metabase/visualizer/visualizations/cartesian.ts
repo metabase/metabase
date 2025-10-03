@@ -18,6 +18,7 @@ import {
   shouldSplitVisualizerSeries,
   updateVizSettingsWithRefs,
 } from "metabase/visualizer/utils";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import {
   isDate,
   isDimension,
@@ -116,6 +117,20 @@ export const cartesianDropHandler = (
       dataSource,
     );
   }
+
+  if (over.id === DROPPABLE_ID.TOOLTIP_EXTRA_METRICS_WELL) {
+    const isSuitableColumn = getDefaultMetricFilter(state.display);
+
+    if (isSuitableColumn(column)) {
+      addMetricColumnToCartesianChartTooltip(
+        state,
+        settings,
+        column,
+        columnRef,
+        dataSource,
+      );
+    }
+  }
 };
 
 export function replaceMetricColumnAsScatterBubbleSize(
@@ -187,6 +202,45 @@ export function addMetricColumnToCartesianChart(
   };
 }
 
+export function addMetricColumnToCartesianChartTooltip(
+  state: VisualizerVizDefinitionWithColumns,
+  settings: ComputedVisualizationSettings,
+  column: DatasetColumn,
+  columnRef: VisualizerColumnReference,
+  dataSource: VisualizerDataSource,
+) {
+  // Viz settings are computed before doing any mutations,
+  // so if we're adding several columns in one go,
+  // we need to use state.settings to have an up-to-date list of values
+  const tooltipColumns =
+    state.settings["graph.tooltip_columns"] ??
+    settings["graph.tooltip_columns"] ??
+    [];
+
+  const isInUse = tooltipColumns.includes(
+    getColumnKey({ name: columnRef.name }),
+  );
+  if (isInUse) {
+    return;
+  }
+
+  const newMetric = copyColumn(
+    columnRef.name,
+    column,
+    dataSource.name,
+    state.columns,
+  );
+  state.columns.push(newMetric);
+  state.columnValuesMapping[newMetric.name] = [columnRef];
+  state.settings = {
+    ...state.settings,
+    "graph.tooltip_columns": [
+      ...tooltipColumns,
+      getColumnKey({ name: newMetric.name }),
+    ].filter(Boolean),
+  };
+}
+
 export function addDimensionColumnToCartesianChart(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
@@ -253,6 +307,8 @@ export function findColumnSlotForCartesianChart(parameters: {
       return "graph.dimensions";
     } else if (!bubble && couldBeMetric) {
       return "scatter.bubble";
+    } else if (couldBeMetric) {
+      return "graph.tooltip_columns";
     }
   } else {
     if (isDimension(column) && !isMetric(column)) {
@@ -302,6 +358,14 @@ export function addColumnToCartesianChart(
     );
   } else if (slot === "scatter.bubble") {
     replaceMetricColumnAsScatterBubbleSize(
+      state,
+      settings,
+      column,
+      columnRef,
+      dataSource,
+    );
+  } else if (slot === "graph.tooltip_columns") {
+    addMetricColumnToCartesianChartTooltip(
       state,
       settings,
       column,
@@ -370,10 +434,19 @@ export function removeColumnFromCartesianChart(
       .filter(Boolean);
   }
 
+  if (settings["graph.tooltip_columns"]) {
+    const tooltipColumns = settings["graph.tooltip_columns"];
+    const columnToRemoveKey = getColumnKey({ name: columnName });
+    state.settings["graph.tooltip_columns"] = tooltipColumns
+      .filter((columnRef) => columnRef !== columnToRemoveKey)
+      .filter(Boolean);
+  }
+
   removeColumnFromStateUnlessUsedElseWhere(state, columnName, [
     "graph.metrics",
     "graph.dimensions",
     "scatter.bubble",
+    "graph.tooltip_columns",
   ]);
 }
 
