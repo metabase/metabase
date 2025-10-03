@@ -9,20 +9,39 @@ import type {
 } from "metabase-types/api";
 
 import S from "./DependencyFlow.module.css";
-import type { NodeId } from "./types";
+import {
+  GROUP_ITEM_THRESHOLD,
+  GROUP_NODE_TYPE,
+  ITEM_NODE_TYPE,
+} from "./constants";
+import type {
+  EdgeId,
+  Graph,
+  GroupNodeType,
+  ItemNodeType,
+  NodeId,
+} from "./types";
 
-function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
-export function getNodes(nodes: DependencyNode[]): Node<DependencyNode>[] {
+function getGroupNodeId(nodeId: NodeId, type: DependencyType): NodeId {
+  return `${nodeId}-${type}`;
+}
+
+function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
+  return `${sourceId}-${targetId}`;
+}
+
+function getItemNodes(nodes: DependencyNode[]): ItemNodeType[] {
   return nodes.map((node) => {
-    const nodeId = getNodeId(node.id, node.type);
+    const nodeId = getItemNodeId(node.id, node.type);
 
     return {
       id: nodeId,
-      className: S.node,
-      type: "entity",
+      className: S.item,
+      type: ITEM_NODE_TYPE,
       data: node,
       position: { x: 0, y: 0 },
       connectable: false,
@@ -32,13 +51,13 @@ export function getNodes(nodes: DependencyNode[]): Node<DependencyNode>[] {
   });
 }
 
-export function getEdges(edges: DependencyEdge[]): Edge[] {
+function getItemEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
-    const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
-    const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
+    const sourceId = getItemNodeId(edge.from_entity_id, edge.from_entity_type);
+    const targetId = getItemNodeId(edge.to_entity_id, edge.to_entity_type);
 
     return {
-      id: `${sourceId}-${targetId}`,
+      id: getEdgeId(sourceId, targetId),
       data: edge,
       source: sourceId,
       target: targetId,
@@ -47,6 +66,112 @@ export function getEdges(edges: DependencyEdge[]): Edge[] {
       deletable: false,
     };
   });
+}
+
+function getItemGraph(nodes: DependencyNode[], edges: DependencyEdge[]) {
+  return {
+    nodes: getItemNodes(nodes),
+    edges: getItemEdges(edges),
+  };
+}
+
+function getNodeByIdMap(nodes: ItemNodeType[]) {
+  const nodeBydId = new Map<NodeId, ItemNodeType>();
+  nodes.forEach((node) => nodeBydId.set(node.id, node));
+  return nodeBydId;
+}
+
+function getEdgesByTypeAndTargetIdMap(
+  nodeById: Map<NodeId, ItemNodeType>,
+  edges: Edge[],
+) {
+  const edgesByTypeAndTargetId = new Map<NodeId, Map<DependencyType, Edge[]>>();
+
+  edges.forEach((edge) => {
+    const node = nodeById.get(edge.target);
+    if (node == null) {
+      return;
+    }
+
+    let edgesByType = edgesByTypeAndTargetId.get(edge.target);
+    if (edgesByType == null) {
+      edgesByType = new Map<DependencyType, Edge[]>();
+      edgesByTypeAndTargetId.set(edge.target, edgesByType);
+    }
+
+    const nodeType = node.data.type;
+    let edgesGroup = edgesByType.get(nodeType);
+    if (edgesGroup == null) {
+      edgesGroup = [];
+      edgesByType.set(node.data.type, edgesGroup);
+    }
+
+    edgesGroup.push(edge);
+  });
+
+  return edgesByTypeAndTargetId;
+}
+
+function getGroupNodesAndEdges(
+  edgesByTypeAndTargetId: Map<NodeId, Map<DependencyType, Edge[]>>,
+) {
+  const groupNodes: GroupNodeType[] = [];
+  const newEdges: Edge[] = [];
+  const deletedEdgeIds = new Set<EdgeId>();
+
+  edgesByTypeAndTargetId.forEach((edgesByType, targetId) => {
+    edgesByType.forEach((edgesGroup, type) => {
+      if (edgesGroup.length > GROUP_ITEM_THRESHOLD) {
+        const groupId = getGroupNodeId(targetId, type);
+        groupNodes.push({
+          id: groupId,
+          className: S.group,
+          type: GROUP_NODE_TYPE,
+          data: { type, count: edgesGroup.length },
+          position: { x: 0, y: 0 },
+        });
+        newEdges.push({
+          id: getEdgeId(groupId, targetId),
+          source: groupId,
+          target: targetId,
+        });
+        edgesGroup.forEach((edge) => {
+          newEdges.push({
+            id: getEdgeId(edge.source, groupId),
+            source: edge.source,
+            target: groupId,
+          });
+          deletedEdgeIds.add(edge.id);
+        });
+      }
+    });
+  });
+
+  return { groupNodes, newEdges, deletedEdgeIds };
+}
+
+function getGroupGraph(nodes: ItemNodeType[], edges: Edge[]) {
+  const nodeById = getNodeByIdMap(nodes);
+  const edgesByTypeAndTargetId = getEdgesByTypeAndTargetIdMap(nodeById, edges);
+  const { groupNodes, newEdges, deletedEdgeIds } = getGroupNodesAndEdges(
+    edgesByTypeAndTargetId,
+  );
+
+  return {
+    nodes: [...nodes, ...groupNodes],
+    edges: [
+      ...edges.filter((edge) => !deletedEdgeIds.has(edge.id)),
+      ...newEdges,
+    ],
+  };
+}
+
+export function getGraph(
+  nodes: DependencyNode[],
+  edges: DependencyEdge[],
+): Graph {
+  const { nodes: itemNodes, edges: itemEdges } = getItemGraph(nodes, edges);
+  return getGroupGraph(itemNodes, itemEdges);
 }
 
 export function getNodesWithPositions(nodes: Node[], edges: Edge[]): Node[] {
@@ -77,10 +202,4 @@ export function getNodesWithPositions(nodes: Node[], edges: Edge[]): Node[] {
       },
     };
   });
-}
-
-export function getSelectedNode(
-  nodes: Node<DependencyNode>[],
-): Node<DependencyNode> | undefined {
-  return nodes.find((node) => node.selected);
 }

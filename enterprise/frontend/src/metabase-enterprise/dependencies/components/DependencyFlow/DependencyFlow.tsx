@@ -1,7 +1,6 @@
 import {
   Background,
   Controls,
-  Panel,
   ReactFlow,
   useEdgesState,
   useNodesInitialized,
@@ -12,17 +11,14 @@ import { useLayoutEffect } from "react";
 
 import type { DependencyGraph } from "metabase-types/api";
 
-import { EntityNode } from "./EntityNode";
-import { EntityPanel } from "./EntityPanel";
-import {
-  getEdges,
-  getNodes,
-  getNodesWithPositions,
-  getSelectedNode,
-} from "./utils";
+import { GroupNode } from "./GroupNode";
+import { ItemNode } from "./ItemNode";
+import { GROUP_NODE_TYPE, ITEM_NODE_TYPE } from "./constants";
+import { getGraph, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
-  entity: EntityNode,
+  [ITEM_NODE_TYPE]: ItemNode,
+  [GROUP_NODE_TYPE]: GroupNode,
 };
 
 const GRAPH: DependencyGraph = {
@@ -33,10 +29,6 @@ const GRAPH: DependencyGraph = {
       data: {
         name: "some_intermediate_table",
       },
-      usage_stats: {
-        questions: 10,
-        transforms: 1,
-      },
     },
     {
       id: 2,
@@ -44,18 +36,12 @@ const GRAPH: DependencyGraph = {
       data: {
         name: "nice_table",
       },
-      usage_stats: {
-        transforms: 2,
-      },
     },
     {
       id: 3,
       type: "table",
       data: {
         name: "ugly_table_here",
-      },
-      usage_stats: {
-        transforms: 1,
       },
     },
     {
@@ -78,19 +64,12 @@ const GRAPH: DependencyGraph = {
       data: {
         name: "interesting_facts",
       },
-      usage_stats: {
-        questions: 100,
-        models: 5,
-      },
     },
     {
       id: 7,
       type: "table",
       data: {
         name: "another_thing",
-      },
-      usage_stats: {
-        models: 1,
       },
     },
     {
@@ -100,7 +79,22 @@ const GRAPH: DependencyGraph = {
         name: "Amazing Accounts",
         type: "model",
       },
-      usage_stats: { questions: 1000 },
+    },
+    {
+      id: 9,
+      type: "card",
+      data: {
+        name: "Question 1",
+        type: "question",
+      },
+    },
+    {
+      id: 10,
+      type: "card",
+      data: {
+        name: "Question 2",
+        type: "question",
+      },
     },
   ],
   edges: [
@@ -146,17 +140,25 @@ const GRAPH: DependencyGraph = {
       to_entity_id: 7,
       to_entity_type: "table",
     },
+    {
+      from_entity_id: 9,
+      from_entity_type: "card",
+      to_entity_id: 8,
+      to_entity_type: "card",
+    },
+    {
+      from_entity_id: 10,
+      from_entity_type: "card",
+      to_entity_id: 8,
+      to_entity_type: "card",
+    },
   ],
 };
 
 export function DependencyFlow() {
-  const [nodes, _setNodes, onNodesChange] = useNodesState(
-    getNodes(GRAPH.nodes),
-  );
-  const [edges, _setEdges, onEdgesChange] = useEdgesState(
-    getEdges(GRAPH.edges),
-  );
-  const selectedNode = getSelectedNode(nodes);
+  const graph = getGraph(GRAPH.nodes, GRAPH.edges);
+  const [nodes, _setNodes, onNodesChange] = useNodesState(graph.nodes);
+  const [edges, _setEdges, onEdgesChange] = useEdgesState(graph.edges);
 
   return (
     <ReactFlow
@@ -170,17 +172,12 @@ export function DependencyFlow() {
       <Background />
       <Controls />
       <NodeLayout />
-      {selectedNode != null && (
-        <Panel position="top-right">
-          <EntityPanel node={selectedNode.data} />
-        </Panel>
-      )}
     </ReactFlow>
   );
 }
 
 function NodeLayout() {
-  const { getNodes, getEdges, setNodes, fitView } = useReactFlow();
+  const { getNodes, getEdges, setNodes } = useReactFlow();
   const isInitialized = useNodesInitialized();
 
   useLayoutEffect(() => {
@@ -189,9 +186,8 @@ function NodeLayout() {
       const edges = getEdges();
       const nodesWithPositions = getNodesWithPositions(nodes, edges);
       setNodes(nodesWithPositions);
-      fitView({ nodes: nodesWithPositions });
     }
-  }, [isInitialized, getNodes, getEdges, setNodes, fitView]);
+  }, [isInitialized, getNodes, getEdges, setNodes]);
 
   return null;
 }

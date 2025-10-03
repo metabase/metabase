@@ -1,19 +1,13 @@
-import type { Card, CardDashboardInfo, CardId, CardType } from "./card";
-import type { Collection, CollectionId } from "./collection";
-import type { DashboardId } from "./dashboard";
-import type { DatabaseId } from "./database";
-import type { NativeQuerySnippet, NativeQuerySnippetId } from "./snippets";
-import type { ConcreteTableId } from "./table";
-import type { Transform, TransformId } from "./transform";
-import type { CardDisplayType } from "./visualization";
+import type { Card, CardType } from "./card";
+import type { NativeQuerySnippet } from "./snippets";
+import type { Transform } from "./transform";
 
 export type DependencyId = number;
 
 type BaseDependencyNode<TType, TData> = {
-  id: DatabaseId;
+  id: DependencyId;
   type: TType;
   data: TData;
-  usage_stats?: DependencyUsageStats;
 };
 
 export type TableDependencyData = {
@@ -25,8 +19,8 @@ export type TransformDependencyData = {
 };
 
 export type CardDependencyData = {
-  type: CardType;
   name: string;
+  type: CardType;
 };
 
 export type SnippetDependencyData = {
@@ -58,14 +52,6 @@ export type DependencyNode =
 
 export type DependencyType = DependencyNode["type"];
 
-export type DependencyUsageStats = {
-  questions?: number;
-  models?: number;
-  metrics?: number;
-  transforms?: number;
-  snippets?: number;
-};
-
 export type DependencyEdge = {
   from_entity_id: DependencyId;
   from_entity_type: DependencyType;
@@ -77,81 +63,6 @@ export type DependencyGraph = {
   nodes: DependencyNode[];
   edges: DependencyEdge[];
 };
-
-type BaseDependencyInfo<TType, TData> = {
-  id: DependencyId;
-  type: TType;
-  data: TData;
-  usages?: DependencyUsages;
-};
-
-export type TableDependencyMetadata = {
-  id: ConcreteTableId;
-  name: string;
-  display_name: string;
-  description: string | null;
-  db_id: DependencyId;
-  schema: string | null;
-};
-
-export type TransformDependencyMetadata = {
-  id: TransformId;
-  name: string;
-  description: string | null;
-};
-
-export type CardDependencyMetadata = {
-  id: CardId;
-  name: string;
-  description: string | null;
-  type: CardType;
-  display: CardDisplayType;
-  collection_id: CollectionId | null;
-  dashboard_id: DashboardId | null;
-
-  collection: Collection | null;
-  dashboard: CardDashboardInfo | null;
-};
-
-export type SnippetDependencyMetadata = {
-  id: NativeQuerySnippetId;
-  name: string;
-  description: string | null;
-};
-
-export type DependencyUsages = {
-  questions?: CardDependencyMetadata[];
-  models?: CardDependencyMetadata[];
-  metrics?: CardDependencyMetadata[];
-  transforms?: TransformDependencyMetadata[];
-  snippets?: SnippetDependencyMetadata[];
-};
-
-export type TableDependencyInfo = BaseDependencyInfo<
-  "table",
-  TableDependencyMetadata
->;
-
-export type TransformDependencyInfo = BaseDependencyInfo<
-  "transform",
-  TransformDependencyMetadata
->;
-
-export type CardDependencyInfo = BaseDependencyInfo<
-  "card",
-  CardDependencyMetadata
->;
-
-export type SnippetDependencyInfo = BaseDependencyInfo<
-  "snippet",
-  SnippetDependencyMetadata
->;
-
-export type DependencyInfo =
-  | TableDependencyInfo
-  | TransformDependencyInfo
-  | CardDependencyInfo
-  | SnippetDependencyInfo;
 
 export type CheckDependenciesResponse = {
   success: boolean;
