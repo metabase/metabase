@@ -9,6 +9,7 @@ import {
   StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk-bundle/components/public";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import {
   MOCK_INSTANCE_URL,
