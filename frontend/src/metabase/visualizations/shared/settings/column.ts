@@ -1,9 +1,12 @@
-import {
-  isCurrency,
-  isDataSize,
-  isPercentage,
-} from "metabase-lib/v1/types/utils/isa";
+import { isCurrency, isPercentage } from "metabase-lib/v1/types/utils/isa";
 import type { ColumnSettings, DatasetColumn } from "metabase-types/api";
+
+function hasDataSizeName(column: DatasetColumn): boolean {
+  const name = column.name?.toLowerCase() || "";
+  return /byte|_size$|file_?size|_data$|bandwidth|traffic|storage|capacity/.test(
+    name,
+  );
+}
 
 export function getDefaultNumberStyle(
   column: DatasetColumn,
@@ -17,7 +20,7 @@ export function getDefaultNumberStyle(
     return "percent";
   }
 
-  if (isDataSize(column)) {
+  if (hasDataSizeName(column)) {
     return "datasize";
   }
 
