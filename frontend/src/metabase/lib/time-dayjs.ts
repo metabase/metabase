@@ -79,12 +79,15 @@ export function parseTimestamp(
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
   } else if (typeof value === "number") {
-    // if (value < 1000) {
-    //   // use strict parsing to bypass small numbers like 1
-    //   result = dayjs.utc(value, "", true);
-    // } else {
-    result = dayjs.utc(value.toString());
-    // }
+    // When a unit is provided but not in NUMERIC_UNIT_FORMATS, small numbers
+    // don't make sense as timestamps. For example, parseTimestamp(1, "month")
+    // should not interpret 1 as "1 millisecond since epoch".
+    // Use strict parsing for small numbers to return invalid dates.
+    if (unit && value < 1000) {
+      result = dayjs.utc(value, "", true);
+    } else {
+      result = dayjs.utc(value.toString());
+    }
   } else {
     result = dayjs.utc(value);
   }

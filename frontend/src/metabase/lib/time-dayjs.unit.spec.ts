@@ -22,6 +22,16 @@ describe("time-dayjs", () => {
         expect(parseTimestamp(53, "week-of-year").isoWeek()).toBe(53);
       });
     });
+
+    it("should not parse small numbers as timestamps when non-timestamp unit is provided", () => {
+      // When unit="month", small numbers should return an invalid date
+      // rather than being interpreted as milliseconds since epoch
+      const result = parseTimestamp(1, "month");
+
+      // Small numbers with units like "month", "quarter", "year" don't make sense
+      // as timestamps, so parseTimestamp should return an invalid date
+      expect(result.isValid()).toBe(false);
+    });
   });
 
   describe("timezoneToUTCOffset", () => {
