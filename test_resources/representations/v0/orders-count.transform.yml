@@ -1,0 +1,12 @@
+tags: [monthly, daily]
+ref: transform-4
+name: Orders count by month (transform)
+target_table: {schema: PUBLIC, table: ORDERS_COUNT}
+type: transform
+mbql_query:
+  source-table: {ref/database: 'ref:database-53', ref/schema: PUBLIC, ref/table: ORDERS}
+  aggregation:
+  - [count]
+  breakout:
+  - {ref/database: 'ref:database-53', ref/schema: PUBLIC, ref/table: ORDERS, ref/field: CREATED_AT}
+database: ref:database-53
