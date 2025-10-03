@@ -127,3 +127,20 @@
                      (mc/form (mr/resolve-schema schema)))
       ::location
       [:ref ::location])))
+
+(deftest lazy-explainer-generation-test
+  (with-redefs [#_:clj-kondo/ignore
+                mc/explainer (fn [& _] (throw (ex-info "no explainer creation expected" {})))]
+    ;; adding :rand so they don't get cached:
+    (is (nil? ((mr/explainer [:int {:rand (rand)}]) 1)))
+    (is (nil? (mr/explain [:int {:rand (rand)}] 1)))
+    (is (thrown-with-msg?
+         #?(:clj clojure.lang.ExceptionInfo
+            :cljs js/Error)
+         #"no explainer creation expected"
+         ((mr/explainer [:int {:rand (rand)}]) "not an integer")))
+    (is (thrown-with-msg?
+         #?(:clj clojure.lang.ExceptionInfo
+            :cljs js/Error)
+         #"no explainer creation expected"
+         (mr/explain [:int {:rand (rand)}] "not an integer")))))
