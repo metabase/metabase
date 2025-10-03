@@ -725,7 +725,10 @@
     :database-routing
 
     ;; Does this driver support replication?
-    :database-replication})
+    :database-replication
+
+    ;; Does this driver support creating a java.sql.Statement via a Connection?
+    :jdbc/statements})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
