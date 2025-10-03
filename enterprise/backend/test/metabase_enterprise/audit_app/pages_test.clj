@@ -146,14 +146,15 @@
 
 (deftest works-over-dataset-api
   (testing "FE queries work over dataset api (#64383)"
-    (let [response (mt/user-http-request :crowberto :post 202
-                                         "dataset"
-                                         {:limit 1
-                                          :type :internal,
-                                          :fn "metabase-enterprise.audit-app.pages.queries/bad-table",
-                                          :args [nil nil nil "last_run_at" "desc"],
-                                          :offset 0,
-                                          :parameters []})]
-      (is (=? {:status "completed"
-               :row_count integer?}
-              response)))))
+    (mt/with-premium-features #{:audit-app}
+      (let [response (mt/user-http-request :crowberto :post 202
+                                           "dataset"
+                                           {:limit 1
+                                            :type :internal,
+                                            :fn "metabase-enterprise.audit-app.pages.queries/bad-table",
+                                            :args [nil nil nil "last_run_at" "desc"],
+                                            :offset 0,
+                                            :parameters []})]
+        (is (=? {:status "completed"
+                 :row_count integer?}
+                response))))))
