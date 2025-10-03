@@ -1011,7 +1011,9 @@
          traversed   {}
          accum       {}]
     (let [item        (first to-traverse)
-          found       (apply serdes/descendants (key item))
+          found       (let [[mod id] (key item)]
+                        ;; do NOT skip archived here, we want to find the archived descendants
+                        (serdes/descendants mod id {:skip-archived false}))
           traversed   (conj traversed item)
           to-traverse (merge-with into
                                   (dissoc to-traverse (key item))
@@ -1689,7 +1691,7 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
                           [:not= :type trash-collection-type]]]
@@ -1697,6 +1699,7 @@
       (t2/reducible-select :model/Collection
                            {:where
                             [:and
+                             (when skip-archived [:not :archived])
                              [:or
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
@@ -1705,6 +1708,7 @@
       (t2/reducible-select :model/Collection
                            {:where
                             [:and
+                             (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
                              (or where true)]}))))
@@ -1725,19 +1729,24 @@
       (when (seq path)
         {["Collection" (u/last path)] {"Collection" id}}))))
 
-(defmethod serdes/descendants "Collection" [_model-name id]
+(defmethod serdes/descendants "Collection" [_model-name id {:keys [skip-archived]}]
   (let [location    (when id (t2/select-one-fn :location :model/Collection :id id))
         child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
                       (into {} (for [child-id (t2/select-pks-set :model/Collection
                                                                  {:where [:and
                                                                           [:= :location (str location id "/")]
+                                                                          (when skip-archived [:not :archived])
                                                                           [:or
                                                                            [:not= :type trash-collection-type]
                                                                            [:= :type nil]]]})]
                                  {["Collection" child-id] {"Collection" id}})))
-        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
+        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:and
+                                                                                        [:= :collection_id id]
+                                                                                        (when skip-archived [:not :archived])]})]
                                {["Dashboard" dash-id] {"Collection" id}}))
-        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
+        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:and
+                                                                                   [:= :collection_id id]
+                                                                                   (when skip-archived [:not :archived])]})]
                                {["Card" card-id] {"Collection" id}}))]
     (merge child-colls dashboards cards)))
 

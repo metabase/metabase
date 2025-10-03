@@ -750,7 +750,7 @@
                   ["Card" card-id]             {"Collection" coll2-id}
                   ["NativeQuerySnippet" s1-id] {"Card" card-id}
                   ["Collection" coll-id]       {"NativeQuerySnippet" s1-id}}
-                 (#'extract/resolve-targets [["Collection" coll2-id]] nil))))))))
+                 (#'extract/resolve-targets {:targets [["Collection" coll2-id]]} nil))))))))
 
 (deftest timelines-and-events-test
   (mt/with-empty-h2-app-db!

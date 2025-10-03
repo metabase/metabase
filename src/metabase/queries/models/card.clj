@@ -1236,19 +1236,25 @@
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
 
-(defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (t2/select-one :model/Card :id id)
-        source-table       (some->  card :dataset_query :query :source-table)
-        template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
-        parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
-        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
+(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
+  (let [card                (t2/select-one :model/Card :id id)
+        source-table        (some->  card :dataset_query :query :source-table)
+        template-tags       (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        parameters-card-ids (some->> card :parameters (keep (comp :card_id :values_source_config)))
+        snippets            (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))
+        source-card-ids     (when (and (string? source-table)
+                                       (str/starts-with? source-table "card__"))
+                              [(parse-long (subs source-table 6))])
+        all-card-ids        (seq (concat template-tags parameters-card-ids source-card-ids))
+        card-ids            (if skip-archived
+                              #p (t2/select-pks-set :model/Card {:where [:and
+                                                                         (if all-card-ids
+                                                                           [:in :id all-card-ids]
+                                                                           [:= [:inline 0] [:inline 1]])
+                                                                         [:not :archived]]})
+                              all-card-ids)]
     (into {} (concat
-              (when (and (string? source-table)
-                         (str/starts-with? source-table "card__"))
-                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
-              (for [card-id template-tags]
-                {["Card" card-id] {"Card" id}})
-              (for [card-id parameters-card-id]
+              (for [card-id card-ids]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))

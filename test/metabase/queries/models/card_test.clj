@@ -619,7 +619,7 @@
 (deftest ^:parallel descendants-test
   (testing "regular cards don't depend on anything"
     (mt/with-temp [:model/Card card {:name "some card"}]
-      (is (empty? (serdes/descendants "Card" (:id card)))))))
+      (is (empty? (serdes/descendants "Card" (:id card) {}))))))
 
 (deftest ^:parallel descendants-test-2
   (testing "cards which have another card as the source depend on that card"
@@ -628,9 +628,9 @@
                                       :dataset_query {:database (mt/id)
                                                       :type     :query
                                                       :query    {:source-table (str "card__" (:id card1))}}}]
-      (is (empty? (serdes/descendants "Card" (:id card1))))
+      (is (empty? (serdes/descendants "Card" (:id card1) {})))
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
-             (serdes/descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2) {}))))))
 
 (deftest ^:parallel descendants-test-3
   (testing "cards that has a native template tag"
@@ -646,7 +646,7 @@
                                                                          :snippet-id   (:id snippet)}}
                                                :query         "select * from products where {{snippet}}"}}}]
       (is (= {["NativeQuerySnippet" (:id snippet)] {"Card" (:id card)}}
-             (serdes/descendants "Card" (:id card)))))))
+             (serdes/descendants "Card" (:id card) {}))))))
 
 (deftest ^:parallel descendants-test-4
   (testing "cards which have parameter's source is another card"
@@ -657,7 +657,7 @@
                                                     :values_source_type   "card"
                                                     :values_source_config {:card_id (:id card1)}}]}]
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
-             (serdes/descendants "Card" (:id card2)))))))
+             (serdes/descendants "Card" (:id card2) {}))))))
 
 (deftest ^:parallel extract-test
   (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
