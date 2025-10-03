@@ -472,7 +472,26 @@
 
     (testing "Check that a non-superuser cannot delete a Database"
       (mt/with-temp [:model/Database db]
-        (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
+        (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))
+
+    (testing "Deleting database is effective enough"
+      (mt/with-temp [:model/Database db  {}
+                     :model/Table    t1  {:db_id (:id db)}
+                     :model/Table    t2  {:db_id (:id db)}
+                     :model/Field    f11 {:table_id (:id t1)}
+                     :model/Field    f21 {:table_id (:id t2)}
+                     :model/Card     c1  {:database_id (:id db)}]
+        (t2/with-call-count [qc]
+          (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
+          ;; query breakdown:
+          ;; 2: user + session
+          ;; 1: select db for 404 check
+          ;; 1: select db for db router cache
+          ;; 2: select db-router + delete (even if does not exist) in api handler
+          ;; 1: delete fields
+          ;; 1: delete cards (+ delete them in search - but search is not enabled for this test)
+          ;; 2: select db + delete in api handler
+          (is (= 10 (qc))))))))
 
 (let [normalize (fn normalize [audit-log-details] (update audit-log-details :engine keyword))]
   (deftest delete-database-audit-log-test
