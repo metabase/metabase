@@ -168,8 +168,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isRawTable,
     isEmbeddingSdk,
     scrollToLastColumn,
-    token,
-    uuid,
     getColumnTitle,
     renderTableHeader,
     visualizationIsClickable,
@@ -675,16 +673,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     zoomedRowIndex,
   ]);
 
-  const backgroundColor = useMemo(() => {
-    const isPublicOrStaticEmbedding = token != null || uuid != null;
-    return isPublicOrStaticEmbedding
-      ? "var(--mb-color-bg-black)"
-      : "var(--mb-color-bg-night)";
-  }, [token, uuid]);
-
   const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme, backgroundColor),
-    [tableTheme, backgroundColor],
+    () => tableThemeToDataGridTheme(tableTheme),
+    [tableTheme],
   );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
