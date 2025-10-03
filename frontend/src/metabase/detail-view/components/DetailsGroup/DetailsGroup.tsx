@@ -2,7 +2,7 @@ import {
   getColumnTitle,
   getRowValue,
   renderValue,
-} from "metabase/detail-view/utils.spec";
+} from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";

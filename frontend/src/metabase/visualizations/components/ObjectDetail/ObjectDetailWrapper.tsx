@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { skipToken, useListTableForeignKeysQuery } from "metabase/api";
 import { DetailViewSidesheet } from "metabase/detail-view/components";
-import { filterByPk } from "metabase/detail-view/utils.spec";
+import { filterByPk } from "metabase/detail-view/utils";
 import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 

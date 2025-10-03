@@ -23,7 +23,7 @@ import {
   getEntityIcon,
   getHeaderColumns,
   getRowName,
-} from "metabase/detail-view/utils.spec";
+} from "metabase/detail-view/utils";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";

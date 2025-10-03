@@ -6,7 +6,7 @@ import {
   getSubtitleColumn,
   getTitleColumn,
   renderValue,
-} from "metabase/detail-view/utils.spec";
+} from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import {
   Box,
