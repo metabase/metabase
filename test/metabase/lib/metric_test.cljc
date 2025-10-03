@@ -116,6 +116,15 @@
     (update metric-clause 1 assoc :display-name "CC")
     (assoc metric-metadata :display-name "CC")))
 
+(deftest ^:parallel metric-with-custom-name-display-info-test
+  (testing "Metric with custom name should show correct display-name and long-display-name (issue #58307)"
+    (let [custom-metric-metadata (assoc metric-metadata :display-name "total_price_no_tax_no_discount_metric")]
+      (is (=? {:display-name      "total_price_no_tax_no_discount_metric"
+               :long-display-name "total_price_no_tax_no_discount_metric"
+               :effective-type    :type/Integer
+               :description       "Number of toucans plus number of pelicans"}
+              (lib/display-info query-with-metric custom-metric-metadata))))))
+
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"
