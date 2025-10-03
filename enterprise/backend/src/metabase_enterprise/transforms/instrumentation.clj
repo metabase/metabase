@@ -31,7 +31,7 @@
 
 (mu/defn record-stage-start!
   "Record the start of a transform stage."
-  [job-run-id :- pos-int?
+  [job-run-id :- [:maybe pos-int?]
    stage-label :- ::stage-label]
   (let [stage-type (label-to-stage stage-label)]
     (log/infof "Transform stage started: run-id=%d type=%s label=%s" job-run-id (name stage-type) (name stage-label))
@@ -42,7 +42,7 @@
 
 (mu/defn record-stage-completion!
   "Record the successful completion of a transform stage."
-  [job-run-id :- pos-int?
+  [job-run-id :- [:maybe pos-int?]
    stage-label :- ::stage-label
    duration-ms :- int?]
   (let [stage-type (label-to-stage stage-label)]
@@ -55,7 +55,7 @@
 
 (mu/defn record-stage-failure!
   "Record the failure of a transform stage."
-  [job-run-id :- pos-int?
+  [job-run-id :- [:maybe pos-int?]
    stage-label :- ::stage-label
    duration-ms :- int?]
   (let [stage-type (label-to-stage stage-label)]
@@ -111,7 +111,7 @@
 
 (mu/defn record-data-transfer!
   "Record metrics about data transfer (size and rows)."
-  [job-run-id :- pos-int?
+  [job-run-id :- [:maybe pos-int?]
    stage-label :- ::stage-label
    bytes :- [:maybe int?]
    rows :- [:maybe int?]]
@@ -173,7 +173,7 @@
 
 (mu/defn record-python-api-call!
   "Record metrics about Python API calls."
-  [job-run-id :- pos-int?
+  [job-run-id :- [:maybe pos-int?]
    duration-ms :- int?
    status :- [:enum :success :error :timeout]]
   (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
