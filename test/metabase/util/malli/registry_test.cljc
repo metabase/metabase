@@ -48,6 +48,21 @@
                (mr/validate [:and {:id unique-id} [:re #"\d{3}"] :string] "1234")))
           "Calling validate multiple times with the 'same' schema does not miss cache"))))
 
+(defmacro stable-key?
+  "Evaluates the schema form twice, and if the results are not equal, it is not usable as a cache key."
+  [schema]
+  `(= (#'mr/schema-cache-key ~schema)
+      (#'mr/schema-cache-key ~schema)))
+
+(deftest ^:parallel cache-rejects-bad-fn-test
+  (let [unique-schema [:fn {:id (rand)} (fn my-even [x] (odd? (inc x)))]]
+    (is (= 1 (with-returning-cache-miss-count
+               (mr/validate unique-schema 2))))
+    (is (= 0 (with-returning-cache-miss-count
+               (mr/validate unique-schema 2)
+               (mr/validate unique-schema 2)))
+        "Calling validate with a previously cached schema does not miss cache")))
+
 (mr/def ::int
   :int)
 

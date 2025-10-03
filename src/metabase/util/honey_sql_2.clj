@@ -226,6 +226,9 @@
 
 (sql/register-fn! ::typed #'format-typed)
 
+(defn- lower-cased-en? [s]
+  (= s (u/lower-case-en s)))
+
 (def ^:private NormalizedTypeInfo
   [:map
    [:database-type
@@ -234,8 +237,7 @@
      ms/NonBlankString
      [:fn
       {:error/message "lowercased string"}
-      (fn [s]
-        (= s (u/lower-case-en s)))]]]])
+      #'lower-cased-en?]]]])
 
 (mu/defn- normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
@@ -321,7 +323,7 @@
     (unwrap-typed-honeysql-form honeysql-form)))
 
 (def ^:private TypedExpression
-  [:fn {:error/message "::h2x/typed Honey SQL form"} typed?])
+  [:fn {:error/message "::h2x/typed Honey SQL form"} #'typed?])
 
 (mu/defn cast :- TypedExpression
   "Generate a statement like `cast(expr AS sql-type)`. Returns a typed HoneySQL form."

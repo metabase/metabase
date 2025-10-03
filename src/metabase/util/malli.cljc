@@ -35,12 +35,12 @@
 
 (def ^:private Schema
   [:and any?
-   [:fn {:description "a malli schema"} mc/schema]])
+   [:fn {:description "a malli schema"} #'mc/schema]])
 
 (def localized-string-schema
   "Schema for localized string."
   #?(:clj  [:fn {:error/message "must be a localized string"}
-            i18n/localized-string?]
+            #'i18n/localized-string?]
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
@@ -70,7 +70,7 @@
                           ;; override generic description in api docs and :errors key in API's response
                           :description description-message
                           ;; override generic description in :specific-errors key in API's response
-                          :error/fn    (constantly specific-error-message))))
+                          :error/message specific-error-message)))
 
 #?(:clj
    (defmacro disable-enforcement
