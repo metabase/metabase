@@ -1,3 +1,3 @@
-export const MIN_ZOOM_LEVEL = 0.1;
-export const MAX_ZOOM_LEVEL = 1;
-export const GROUP_ITEM_THRESHOLD = 5;
+export const MIN_ZOOM = 0.1;
+export const MAX_ZOOM = 1;
+export const MAX_EXPANDED_DOWNSTREAM_ITEMS_PER_GROUP = 5;
