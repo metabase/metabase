@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -15,6 +15,9 @@ export function useQueryState(
   proposedQuery?: DatasetQuery,
 ) {
   const [query, setQuery] = useState(initialQuery);
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
   const metadata = useSelector(getMetadata);
 
   const question = useMemo(
