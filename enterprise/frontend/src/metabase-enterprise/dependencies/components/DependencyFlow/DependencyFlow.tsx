@@ -13,12 +13,12 @@ import type { DependencyGraph } from "metabase-types/api";
 
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
-import { GROUP_NODE_TYPE, ITEM_NODE_TYPE } from "./constants";
-import { getNodesWithEdges, getNodesWithPositions } from "./utils";
+import { getInitialNodesAndEdges } from "./utils/graph";
+import { getNodesWithPositions } from "./utils/layout";
 
 const NODE_TYPES = {
-  [ITEM_NODE_TYPE]: ItemNode,
-  [GROUP_NODE_TYPE]: GroupNode,
+  item: ItemNode,
+  "item-group": GroupNode,
 };
 
 const GRAPH: DependencyGraph = {
@@ -161,9 +161,10 @@ const GRAPH: DependencyGraph = {
 };
 
 export function DependencyFlow() {
-  const graph = getNodesWithEdges(GRAPH.nodes, GRAPH.edges);
-  const [nodes, _setNodes, onNodesChange] = useNodesState(graph.nodes);
-  const [edges, _setEdges, onEdgesChange] = useEdgesState(graph.edges);
+  const { nodes: initialNodes, edges: initialEdges } =
+    getInitialNodesAndEdges(GRAPH);
+  const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   return (
     <ReactFlow

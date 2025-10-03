@@ -1,32 +1,22 @@
-import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
 
 import type {
   DependencyEdge,
-  DependencyId,
+  DependencyGraph,
   DependencyNode,
-  DependencyType,
 } from "metabase-types/api";
 
-import S from "./DependencyFlow.module.css";
+import S from "../DependencyFlow.module.css";
+import { GROUP_ITEM_THRESHOLD } from "../constants";
+import type { EdgeId, GroupData, GroupType, NodeId } from "../types";
+
 import {
-  GROUP_ITEM_THRESHOLD,
-  GROUP_NODE_TYPE,
-  ITEM_NODE_TYPE,
-} from "./constants";
-import type { EdgeId, GroupData, GroupType, NodeId } from "./types";
-
-function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
-  return `${type}-${id}`;
-}
-
-function getGroupNodeId(nodeId: NodeId, type: GroupType): NodeId {
-  return `${nodeId}-${type}`;
-}
-
-function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
-  return `${sourceId}-${targetId}`;
-}
+  getEdgeId,
+  getGroupNodeId,
+  getGroupType,
+  getItemNodeId,
+  getNodeByIdMap,
+} from "./common";
 
 function getItemNodes(nodes: DependencyNode[]): Node<DependencyNode>[] {
   return nodes.map((node) => {
@@ -35,7 +25,7 @@ function getItemNodes(nodes: DependencyNode[]): Node<DependencyNode>[] {
     return {
       id: nodeId,
       className: S.item,
-      type: ITEM_NODE_TYPE,
+      type: "item",
       data: node,
       position: { x: 0, y: 0 },
       connectable: false,
@@ -69,16 +59,6 @@ function getItemGraph(nodes: DependencyNode[], edges: DependencyEdge[]) {
   };
 }
 
-function getNodeType(node: DependencyNode) {
-  return node.type === "card" ? node.data.type : node.type;
-}
-
-function getNodeByIdMap(nodes: Node<DependencyNode>[]) {
-  const nodeBydId = new Map<NodeId, Node<DependencyNode>>();
-  nodes.forEach((node) => nodeBydId.set(node.id, node));
-  return nodeBydId;
-}
-
 function getEdgesByTypeAndTargetIdMap(
   nodeById: Map<NodeId, Node<DependencyNode>>,
   edges: Edge[],
@@ -98,11 +78,11 @@ function getEdgesByTypeAndTargetIdMap(
       edgesByTypeAndTargetId.set(edge.target, edgesByType);
     }
 
-    const nodeType = getNodeType(source.data);
-    let edgesGroup = edgesByType.get(nodeType);
+    const groupType = getGroupType(source.data);
+    let edgesGroup = edgesByType.get(groupType);
     if (edgesGroup == null) {
       edgesGroup = [];
-      edgesByType.set(nodeType, edgesGroup);
+      edgesByType.set(groupType, edgesGroup);
     }
 
     edgesGroup.push(edge);
@@ -125,7 +105,7 @@ function getGroupNodesAndEdges(
         groupNodes.push({
           id: groupId,
           className: S.group,
-          type: GROUP_NODE_TYPE,
+          type: "item-group",
           data: { type, count: edgesGroup.length },
           position: { x: 0, y: 0 },
         });
@@ -165,40 +145,7 @@ function getGroupGraph(nodes: Node<DependencyNode>[], edges: Edge[]) {
   };
 }
 
-export function getNodesWithEdges(
-  nodes: DependencyNode[],
-  edges: DependencyEdge[],
-) {
+export function getInitialNodesAndEdges({ nodes, edges }: DependencyGraph) {
   const { nodes: itemNodes, edges: itemEdges } = getItemGraph(nodes, edges);
   return getGroupGraph(itemNodes, itemEdges);
-}
-
-export function getNodesWithPositions(nodes: Node[], edges: Edge[]): Node[] {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setGraph({ rankdir: "LR" });
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, {
-      width: node.measured?.width,
-      height: node.measured?.height,
-    });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.target, edge.source);
-  });
-
-  dagre.layout(dagreGraph);
-
-  return nodes.map((node) => {
-    const { x, y, width, height } = dagreGraph.node(node.id);
-    return {
-      ...node,
-      position: {
-        x: x - width / 2,
-        y: y - height / 2,
-      },
-    };
-  });
 }
