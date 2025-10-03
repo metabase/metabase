@@ -1470,15 +1470,15 @@
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card {card-id :id, :as card} {:dataset_query    (mt/native-query
-                                                                                {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
-                                                                                 :template-tags {"NAME"
-                                                                                                 {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
-                                                                                                  :name         "NAME"
-                                                                                                  :display-name "Name"
-                                                                                                  :type         :dimension
-                                                                                                  :dimension    [:field (mt/id :people :name) nil]
-                                                                                                  :widget-type  :string/=
-                                                                                                  :default      nil}}})
+                                                                               {:query         "SELECT count(*) AS count FROM PUBLIC.PEOPLE WHERE true [[AND {{NAME}}]]"
+                                                                                :template-tags {"NAME"
+                                                                                                {:id           "9ddca4ca-3906-83fd-bc6b-8480ae9ab05e"
+                                                                                                 :name         "NAME"
+                                                                                                 :display-name "Name"
+                                                                                                 :type         :dimension
+                                                                                                 :dimension    [:field (mt/id :people :name) nil]
+                                                                                                 :widget-type  :string/=
+                                                                                                 :default      nil}}})
                                                             :enable_embedding true
                                                             :embedding_params {:NAME "enabled"}}]
           (testing "Card"
@@ -1508,10 +1508,10 @@
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card {:dataset_query    (mt/native-query
-                                                             {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
-                                                              :template-tags {"qty_locked" {:name         "qty_locked"
-                                                                                            :display-name "Quantity (Locked)"
-                                                                                            :type         :number}}})
+                                                            {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
+                                                             :template-tags {"qty_locked" {:name         "qty_locked"
+                                                                                           :display-name "Quantity (Locked)"
+                                                                                           :type         :number}}})
                                          :enable_embedding true
                                          :embedding_params {:qty_locked "locked"}}]
           (is (= [3443]
@@ -1522,7 +1522,7 @@
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card source-card {:dataset_query (mt/native-query
-                                                                 {:query "SELECT CAST('9223372036854775808' AS DECIMAL) as NUMBER UNION ALL
+                                                                {:query "SELECT CAST('9223372036854775808' AS DECIMAL) as NUMBER UNION ALL
                                                                           SELECT CAST('0' AS DECIMAL) as NUMBER UNION ALL
                                                                           SELECT CAST('-9223372036854775809' as DECIMAL) as NUMBER"})}
                        :model/Card target-card {:dataset_query {:database (mt/id)

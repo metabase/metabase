@@ -246,7 +246,12 @@ export const SdkQuestionDefaultView = ({
         )}
       </Stack>
 
-      <Box className={InteractiveQuestionS.Main} p="sm" w="100%" h="100%">
+      <Box
+        className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
+        p="sm"
+        w="100%"
+        h="100%"
+      >
         <Box className={InteractiveQuestionS.Content}>
           {isEditorOpen ? (
             <Editor onApply={closeEditor} />

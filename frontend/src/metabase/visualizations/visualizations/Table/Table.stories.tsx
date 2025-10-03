@@ -132,6 +132,23 @@ export const DashboardTableEmbeddingTheme = {
   },
 };
 
+export const DashboardTableEmbeddingThemeWithDarkBackground = {
+  render: (args: any) => {
+    return (
+      <div style={{ backgroundColor: "#2f3542", padding: "1rem" }}>
+        <DefaultTemplate {...args} />
+      </div>
+    );
+  },
+  args: {
+    series: data.ordersWithPeople,
+    bgColor: "transparent",
+    isDashboard: true,
+    theme: {},
+    hasDevWatermark: false,
+  },
+};
+
 export const DashboardTableEmbeddingThemeWithStickyBackgroundColor = {
   render: DefaultTemplate,
   args: {

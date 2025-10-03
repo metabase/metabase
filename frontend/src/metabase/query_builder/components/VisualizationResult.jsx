@@ -138,6 +138,7 @@ export default class VisualizationResult extends Component {
             isObjectDetail={false}
             isQueryBuilder={true}
             isShowingSummarySidebar={isShowingSummarySidebar}
+            isRunning={isRunning}
             onEditSummary={onEditSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}

@@ -55,6 +55,7 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
@@ -360,6 +361,7 @@
   metadata-provider?
   metadata-providerable?]
  [lib.native
+  add-parameters-for-template-tags
   engine
   extract-template-tags
   has-template-tag-variables?
@@ -458,6 +460,8 @@
   source-table-id
   source-card-id
   update-query-stage]
+ [lib.validate
+  find-bad-refs]
  [metabase.lib.walk.util
   all-field-ids
   all-source-card-ids
