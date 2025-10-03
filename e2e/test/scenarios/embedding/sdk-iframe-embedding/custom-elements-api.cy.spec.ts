@@ -390,19 +390,33 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   });
 
   describe("<metabase-metabot>", () => {
-    it("should use sidebar layout by default when no layout attribute is provided", () => {
+    it("should load the embedded Metabot component", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
       <metabase-metabot />
       `);
 
-      H.getSimpleEmbedIframeContent()
-        .findByTestId("metabot-question-container")
-        .should("have.attr", "data-layout", "sidebar");
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("metabot chat should be interactive");
+        cy.findByText("Ask questions to AI.").should("be.visible");
+        cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
+        cy.findByText(
+          "Metabot is currently offline. Please try again later.",
+        ).should("be.visible");
+
+        cy.log(
+          "uses sidebar layout by default when no layout attribute is provided",
+        );
+        cy.findByTestId("metabot-question-container").should(
+          "have.attr",
+          "data-layout",
+          "sidebar",
+        );
+      });
     });
 
-    it("should respect the layout attribute when set to stacked", () => {
+    it("should apply the data-layout attribute when layout is set to stacked", () => {
       H.visitCustomHtmlPage(`
       ${H.getNewEmbedScriptTag()}
       ${H.getNewEmbedConfigurationScript()}
