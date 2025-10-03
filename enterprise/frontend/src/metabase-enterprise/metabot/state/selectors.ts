@@ -172,3 +172,13 @@ export const getMetabotSuggestedTransform = createSelector(
     );
   },
 );
+
+export const getIsSuggestedTransformActive = createSelector(
+  [getMetabotSuggestedTransforms, (_, suggestionId: string) => suggestionId],
+  (suggestedTransforms, suggestionId) => {
+    const suggestion = suggestedTransforms.find(
+      (t) => t.suggestionId === suggestionId,
+    );
+    return suggestion?.active ?? false;
+  },
+);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -16,6 +16,7 @@ interface UseSourceStateResult<SourceType> {
   proposedSource: TransformSource | undefined;
   clearProposed: () => void;
   acceptProposed: (source: TransformSource) => void;
+  isDirty: boolean;
 }
 
 export const useSourceState = <SourceType>(
@@ -32,8 +33,15 @@ export const useSourceState = <SourceType>(
     (state) => getMetabotSuggestedTransform(state, transformId) as any,
   ) as ReturnType<typeof getMetabotSuggestedTransform>;
 
-  const isPropsedSame = _.isEqual(suggestedTransform?.source, source);
+  const isPropsedSame = useMemo(
+    () => _.isEqual(suggestedTransform?.source, source),
+    [suggestedTransform?.source, source],
+  );
   const proposedSource = isPropsedSame ? undefined : suggestedTransform?.source;
+
+  const isDirty = useMemo(() => {
+    return !_.isEqual(initialSource, source) || !!proposedSource;
+  }, [initialSource, source, proposedSource]);
 
   const handleSetSource = useCallback(
     (source: SourceType) => {
@@ -55,15 +63,10 @@ export const useSourceState = <SourceType>(
     [dispatch, suggestedTransform],
   );
 
-  useEffect(() => {
-    if (isPropsedSame) {
-      clearProposed();
-    }
-  }, [isPropsedSame, clearProposed]);
-
   return {
     source,
     setSource: handleSetSource,
+    isDirty,
     suggestedTransform,
     proposedSource,
     clearProposed,

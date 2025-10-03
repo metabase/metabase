@@ -86,7 +86,7 @@ export function QueryEditor({
 
   const handleChange = async (newQuestion: Question) => {
     setQuestion(newQuestion);
-    onChange?.({ type: "query", query: question.datasetQuery() });
+    onChange?.({ type: "query", query: newQuestion.datasetQuery() });
   };
 
   const handleSave = () => {

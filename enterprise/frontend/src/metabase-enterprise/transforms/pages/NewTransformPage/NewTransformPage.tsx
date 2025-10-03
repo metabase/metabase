@@ -1,9 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { Location } from "history";
 import { useState } from "react";
+import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -42,10 +45,16 @@ type NewTransformPageParsedParams = {
 };
 
 type NewTransformPageProps = {
+  location: Location;
   params: NewTransformPageParams;
+  route: Route;
 };
 
-export function NewTransformPage({ params }: NewTransformPageProps) {
+export function NewTransformPage({
+  location,
+  route,
+  params,
+}: NewTransformPageProps) {
   const { type, cardId } = getParsedParams(params);
 
   const {
@@ -65,6 +74,8 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
   return (
     <AdminSettingsLayout fullWidth>
       <NewTransformPageInner
+        route={route}
+        location={location}
         initialSource={getInitialTransformSource(
           card,
           type,
@@ -77,8 +88,12 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
 
 export function NewTransformPageInner({
   initialSource,
+  location,
+  route,
 }: {
   initialSource: InitialTransformSource;
+  location: Location;
+  route: Route;
 }) {
   const {
     source,
@@ -87,6 +102,7 @@ export function NewTransformPageInner({
     proposedSource,
     acceptProposed,
     clearProposed,
+    isDirty,
   } = useSourceState<TransformSource | DraftTransformSource>(
     undefined,
     initialSource,
@@ -106,6 +122,7 @@ export function NewTransformPageInner({
   };
 
   const handleCancel = () => {
+    setSource(initialSource);
     dispatch(push(getTransformListUrl()));
     clearProposed();
   };
@@ -144,6 +161,12 @@ export function NewTransformPageInner({
           onClose={closeModal}
         />
       )}
+      <LeaveRouteConfirmModal
+        key={location.key}
+        isEnabled={isDirty}
+        route={route}
+        onConfirm={clearProposed}
+      />
     </>
   );
 }

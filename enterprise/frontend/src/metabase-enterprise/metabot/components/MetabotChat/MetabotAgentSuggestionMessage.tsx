@@ -4,13 +4,13 @@ import type { UnknownAction } from "@reduxjs/toolkit";
 import cx from "classnames";
 import { useMemo } from "react";
 import { push } from "react-router-redux";
-import { useMount } from "react-use";
+import { useLocation, useMount } from "react-use";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import {
@@ -27,6 +27,7 @@ import { useLazyGetTransformQuery } from "metabase-enterprise/api";
 import {
   type MetabotAgentEditSuggestionChatMessage,
   activateSuggestedTransform,
+  getIsSuggestedTransformActive,
 } from "metabase-enterprise/metabot/state";
 import type {
   MetabotTransformInfo,
@@ -100,10 +101,20 @@ export const AgentSuggestionMessage = ({
 }) => {
   const dispatch = useDispatch();
 
-  const { suggestedTransform } = message.payload;
-  const isNew = !suggestedTransform.id;
+  const { suggestedTransform, editorTransform } = message.payload;
+  const isActive = useSelector((state) =>
+    getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
+  );
 
   const [opened, { toggle }] = useDisclosure(true);
+
+  const url = useLocation();
+  const isViewing = url.pathname?.startsWith(
+    getTransformUrl(suggestedTransform),
+  );
+
+  const canApply = !isViewing || !isActive;
+  const isNew = !isViewing && !editorTransform;
 
   const {
     data: originalTransform,
@@ -195,10 +206,15 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c="success"
+              c={canApply ? "success" : "text-light"}
+              disabled={!canApply}
               onClick={handleApply}
             >
-              {isNew ? t`Create` : t`Apply`}
+              {match({ isNew, canApply })
+                .with({ canApply: false }, () => t`Applied`)
+                .with({ isNew: true }, () => t`Create`)
+                .with({ canApply: true }, () => t`Apply`)
+                .exhaustive()}
             </Button>
           </Flex>
         </Group>
