@@ -4,11 +4,13 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (defmethod import/type->schema :v0/transform [_]
@@ -35,7 +37,7 @@
 (mr/def ::description
   [:and
    {:description "Documentation explaining the transform's purpose"}
-   ::lib.schema.common/non-blank-string])
+   :string])
 
 (mr/def ::query
   [:and
@@ -106,62 +108,45 @@
 
 (defn yaml->toucan
   "Convert a validated v0 transform representation into data suitable for creating/updating a Transform."
-  [{:keys [_ref name description database source target] :as representation}
+  [{:keys [database] :as representation}
    ref-index]
   (let [database-id (try
-                      (v0-common/ref->id database ref-index)
+                      (v0-common/ref->id (:database representation) ref-index)
                       (catch Exception e
                         (log/errorf e "Error resolving database ref: %s" database)
                         (t2/select-one-fn :id :model/Database :name database)))
-        ;; TODO: better method for persistent entity IDs
-        entity-id (v0-common/generate-entity-id (assoc representation :collection "transforms"))]
+        query (v0-mbql/import-dataset-query representation ref-index)]
     (when-not database-id
       (throw (ex-info (str "Database not found: " database)
                       {:database database})))
-    {:entity_id entity-id
-     :name name
-     :description (or description "")
+    {:entity_id (or (:entity_id representation)
+                    (v0-common/generate-entity-id (assoc representation :collection "transforms")))
+     :name (:name representation)
+     :description (or (:description representation) "")
      :source {:type "query"
-              :query (merge
-                      {:database database-id}
-                      (cond
-                        (:query source)
-                        {:type "native"
-                         :native {:query (:query source)
-                                  :template-tags {}}}
-
-                        (:query representation)
-                        {:type "native"
-                         :native {:query (:query representation)
-                                  :template-tags {}}}
-
-                        (:mbql_query source)
-                        (assoc (:mbql_query source) :database database-id)
-
-                        (:mbql_query representation)
-                        (assoc (:mbql_query representation) :database database-id)
-
-                        :else
-                        (throw (ex-info "Source must have either 'query' or 'mbql_query'"
-                                        {:source source}))))}
+              :query query}
      :target {:type "table"
-              :schema (:schema target)
-              :name (:table target)}}))
+              :schema (-> representation :target_table :schema)
+              :name (-> representation :target_table :table)}}))
 
 (defmethod import/yaml->toucan :v0/transform
   [representation ref-index]
   (yaml->toucan representation ref-index))
 
-(defn persist!
-  "Ingest a v0 transform representation and create or update a Transform in the database.
+(defn- set-up-tags [transform-id tags]
+  (when (seq tags)
+    (let [existing-tags (t2/select :model/TransformTag :name [:in tags])
+          missing-tags (reduce disj (set tags) (map :name existing-tags))
+          new-tags (t2/insert-returning-instances! :model/TransformTag (for [tag missing-tags] {:name tag}))
+          by-name (into {} (map (juxt :name identity)) (concat existing-tags new-tags))]
+      (t2/insert! :model/TransformTransformTag (for [[i tag] (map vector (range) tags)]
+                                                 {:transform_id transform-id
+                                                  :tag_id (-> tag by-name :id)
+                                                  :position i})))))
 
-   For POC: Uses ref as a stable identifier for upserts.
-   If a transform with the same ref exists (via entity_id), it will be updated.
-   Otherwise a new transform will be created.
-
-   Returns the created/updated Transform."
+(defmethod import/persist! :v0/transform
   [representation ref-index]
-  (let [transform-data (yaml->toucan representation ref-index)
+  (let [transform-data (import/yaml->toucan representation ref-index)
         entity-id (:entity_id transform-data)
         existing (when entity-id
                    (t2/select-one :model/Transform :entity_id entity-id))]
@@ -169,10 +154,14 @@
       (do
         (log/info "Updating existing transform" (:name transform-data) "with ref" (:ref representation))
         (t2/update! :model/Transform (:id existing) (dissoc transform-data :entity_id))
-        (t2/select-one :model/Transform :id (:id existing)))
+        (t2/delete! :model/TransformTransformTag :transform_id (:id existing))
+        (set-up-tags (:id existing) (:tags representation))
+        (t2/hydrate (t2/select-one :model/Transform :id (:id existing)) :transform_tag_names))
       (do
         (log/info "Creating new transform" (:name transform-data))
-        (t2/insert-returning-instance! :model/Transform transform-data)))))
+        (let [transform (t2/insert-returning-instance! :model/Transform transform-data)]
+          (set-up-tags (:id transform) (:tags representation))
+          (t2/hydrate transform :transform_tag_names))))))
 
 ;; EXPORT
 
@@ -198,32 +187,48 @@
     (update-in card [:mbql_query :source-table] source-table-ref)
     card))
 
-(defn- patch-refs [card]
-  (-> card
-      (update-source-table)))
+(defn- patch-refs-for-export [query]
+  (-> query
+      (v0-mbql/->ref-database)
+      (v0-mbql/->ref-source-table)
+      (v0-mbql/->ref-fields)))
 
 (defmethod export/export-entity :model/Transform [transform]
-  (let [query (serdes/export-mbql (-> transform :source :query))]
+  (let [query (patch-refs-for-export (-> transform :source :query))]
     (cond-> {:name (:name transform)
-             ;;:version "question-v0"
              :type "transform"
-             :ref (->ref transform)
-             :description (:description transform)}
+             :ref (v0-common/unref (v0-common/->ref (:id transform) :transform))
+             :description (:description transform)
+             :entity_id (:entity_id transform)
+             :tags (:tags transform)}
 
-      (= "native" (:type query))
+      (#{"native" :native} (:type query))
       (assoc :query (-> query :native :query)
              :database (:database query))
 
-      (= "query" (:type query))
+      (#{"query" :query} (:type query))
       (assoc :mbql_query (:query query)
              :database (:database query))
 
-      (= "table" (-> transform :target :type))
+      (#{"table" :table} (-> transform :target :type))
       (assoc :target_table {:schema (-> transform :target :schema)
-                            :table (-> transform :target :name)})
-
-      :always
-      patch-refs
+                            :table  (-> transform :target :name)})
 
       :always
       u/remove-nils)))
+
+(comment
+  (t2/hydrate (t2/select-one :model/Transform) :transform_tag_names)
+  (t2/select-one :model/TransformTag)
+  (def t (t2/hydrate (t2/select-one :model/Transform) :transform_tag_names))
+  (def q (-> t :source :query))
+  (v0-mbql/->ref-fields q)
+  (def i {"database-53" (t2/select-one :model/Database 53)})
+  (yaml->toucan (export/export-entity t) i)
+
+  (spit "test_resources/representations/v0/orders-count.transform.yml"
+        (-> :model/Transform
+            t2/select-one
+            (t2/hydrate :transform_tag_names)
+            export/export-entity
+            yaml/generate-string)))

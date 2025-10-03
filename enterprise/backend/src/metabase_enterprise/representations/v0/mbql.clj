@@ -26,11 +26,17 @@
                         (str "card__"))
                    ;; map with database ref - resolve database and lookup table
                    (and (map? table-ref) (v0-common/ref? (:ref/database table-ref)))
-                   (let [db-id (v0-common/ref->id (:ref/database table-ref) ref-index)]
-                     (t2/select-one-fn :id :model/Table
-                                       :db_id db-id
-                                       :schema (:ref/schema table-ref)
-                                       :name (:ref/table table-ref)))
+                   (let [db-id (v0-common/ref->id (:ref/database table-ref) ref-index)
+
+                         table-id
+                         (t2/select-one-fn :id :model/Table
+                                           :db_id db-id
+                                           :schema (:ref/schema table-ref)
+                                           :name (:ref/table table-ref))]
+                     (when (nil? table-id)
+                       (throw (ex-info "Could not find matching table."
+                                       {:table-ref table-ref})))
+                     table-id)
                    ;; Not a ref -- leave it be
                    :else
                    table-ref)]
@@ -107,7 +113,8 @@
   (walk/postwalk
    (fn [node]
      (if (and (vector? node)
-              (= :field (first node)))
+              (or (= :field (first node))
+                  (= "field" (first node))))
        (let [[_ id] node]
          (cond
            (string? id)
