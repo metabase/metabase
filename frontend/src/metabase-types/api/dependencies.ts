@@ -13,6 +13,8 @@ type BaseDependencyNode<TType, TData> = {
 export type TableDependencyData = {
   name: string;
   display_name: string;
+  db_id: string;
+  schema: string | null;
 };
 
 export type TransformDependencyData = {
