@@ -839,7 +839,7 @@
      (when (pos? database-id)
        [{:type :database, :id database-id}
         {:type :schema, :id database-id}])
-     (when (= (:lib/type base-stage) :mbql.stage/native)
+     (when (lib.util/native-stage? base-stage)
        (concat
         ;; Extract field dependencies from dimension template tags
         (for [{tag-type :type, [dim-tag _opts id] :dimension} (vals (:template-tags base-stage))

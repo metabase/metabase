@@ -180,5 +180,5 @@
     :query      false
     :native     true
     :mbql/query (let [query (mi/maybe-normalize-query :out query)]
-                  (lib.util/first-stage-is-native? query))
+                  (lib/native? query))
     false))

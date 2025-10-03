@@ -52,7 +52,7 @@
    stage-number :- :int]
   (let [{stage-type :lib/type, :keys [source-card] :as stage} (lib.util/query-stage query stage-number)]
     (when-let [metadata (:lib/stage-metadata stage)]
-      (when (or (= stage-type :mbql.stage/native)
+      (when (or (lib.util/native-stage? stage)
                 source-card)
         (let [source-type (case stage-type
                             :mbql.stage/native :source/native

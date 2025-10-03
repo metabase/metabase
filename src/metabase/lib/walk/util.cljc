@@ -4,6 +4,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
@@ -41,8 +42,7 @@
   "Return a combined template tags map for all native stages of a `query`."
   [query :- ::lib.schema/query]
   (transduce-stages
-   (comp (filter (fn [stage]
-                   (= (:lib/type stage) :mbql.stage/native)))
+   (comp (filter lib.util/native-stage?)
          (mapcat :template-tags))
    (fn rf
      ([m]
@@ -77,7 +77,7 @@
      query
      (fn [_query _path stage]
        (when (and (not @has-native-stage?)
-                  (= (:lib/type stage) :mbql.stage/native))
+                  (lib.util/native-stage? stage))
          (vreset! has-native-stage? true))
        nil))
     @has-native-stage?))

@@ -343,7 +343,7 @@
   [{{:keys [disable-remaps?]} :middleware, :as query} :- ::lib.schema/query]
   (if (or disable-remaps?
           ;; last stage (only stage) is native
-          (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
+          (lib/native-stage? query -1))
     query
     (let [{:keys [remaps query]} (add-fk-remaps query)]
       (cond-> query

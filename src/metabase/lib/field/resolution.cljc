@@ -553,7 +553,7 @@
     (m/find-first #(= (:name %) id-or-name)
                   (lib.metadata.calculation/returned-columns query (lib.metadata/table query source-table-id)))
 
-    (= (:lib/type stage) :mbql.stage/native)
+    (lib.util/native-stage? stage)
     (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
       (-> col
           (assoc :lib/source :source/native)

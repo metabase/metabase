@@ -495,16 +495,6 @@
   [query]
   (-> query :stages first :source-card))
 
-(mu/defn first-stage-type :- [:maybe [:enum :mbql.stage/mbql :mbql.stage/native]]
-  "Type of the first query stage."
-  [query :- :map]
-  (:lib/type (query-stage query 0)))
-
-(mu/defn first-stage-is-native? :- :boolean
-  "Whether the first stage of the query is a native query stage."
-  [query :- :map]
-  (= (first-stage-type query) :mbql.stage/native))
-
 (mu/defn- unique-alias :- :string
   [original :- :string
    suffix   :- :string]

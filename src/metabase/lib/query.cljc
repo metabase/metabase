@@ -49,8 +49,7 @@
 (mu/defn native? :- :boolean
   "Given a query, return whether it is a native query."
   [query :- ::lib.schema/query]
-  (let [stage (lib.util/query-stage query 0)]
-    (= (:lib/type stage) :mbql.stage/native)))
+  (lib.util/native-stage? query 0))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/query
   [_query _stage-number query]
@@ -464,7 +463,7 @@
       (mapcat stage-seq* query-fragment))
 
     (map? query-fragment)
-    (if (= (:lib/type query-fragment) :mbql.stage/native)
+    (if (lib.util/native-stage? query-fragment)
       (-> query-fragment :template-tags template-tag-stages)
       (concat (:stages query-fragment) (mapcat stage-seq* (vals query-fragment))))
 
