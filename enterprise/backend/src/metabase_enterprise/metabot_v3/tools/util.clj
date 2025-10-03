@@ -141,7 +141,9 @@
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
   and its subcollections. If the metabot has use_verified_content enabled, only verified
-  content is returned."
+  content is returned.
+
+  Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
