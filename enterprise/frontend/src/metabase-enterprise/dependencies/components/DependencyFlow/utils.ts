@@ -3,6 +3,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { Edge } from "@xyflow/react";
 
 import type { IconName } from "metabase/ui";
+import visualizations from "metabase/visualizations";
 import type {
   DependencyEdge,
   DependencyEntry,
@@ -360,7 +361,7 @@ export function getNodeIcon(node: DependencyNode): IconName {
     case "card":
       switch (node.data.type) {
         case "question":
-          return "table2";
+          return visualizations.get(node.data.display)?.iconName ?? "table2";
         case "model":
           return "model";
         case "metric":
