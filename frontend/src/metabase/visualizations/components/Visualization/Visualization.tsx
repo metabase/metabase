@@ -865,10 +865,6 @@ class Visualization extends PureComponent<
                     isRawTable={isRawTable}
                     isQueryBuilder={!!isQueryBuilder}
                     isSettings={!!isSettings}
-                    isSelectable={isSelectable}
-                    rowChecked={rowChecked}
-                    onAllSelectClick={onAllSelectClick}
-                    onRowSelectClick={onRowSelectClick}
                     isShowingDetailsOnlyColumns={isShowingDetailsOnlyColumns}
                     scrollToLastColumn={scrollToLastColumn}
                     metadata={metadata}
@@ -913,6 +909,11 @@ class Visualization extends PureComponent<
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
                     tableFooterExtraButtons={tableFooterExtraButtons}
+                    // These props are only used by the table on the Erroring Questions admin page
+                    isSelectable={isSelectable}
+                    rowChecked={rowChecked}
+                    onAllSelectClick={onAllSelectClick}
+                    onRowSelectClick={onRowSelectClick}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}
