@@ -994,9 +994,13 @@
             {:collection_id 2 :description \"diff\"})"
   [consider card-before updates]
   ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
-  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x] (if (keyword? x)
-                                                                        (name x)
-                                                                        x))
+  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x]
+                                                                (if (keyword? x)
+                                                                  (->> [(namespace x)
+                                                                        (name x)]
+                                                                       (remove nil?)
+                                                                       (str/join "/"))
+                                                                  x))
                                                               card))
         before               (prepare (select-keys card-before consider))
         after                (prepare (select-keys updates consider))

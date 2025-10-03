@@ -724,7 +724,8 @@
   (letfn [(changed? [before after]
             (#'card/changed? @#'card/card-compare-keys before after))]
     (testing "Ignores keyword/string"
-      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
+      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}})))
+      (is (false? (changed? {:dataset_query {:silly/namespaced ::keywords}} {:dataset_query {"silly/namespaced" "metabase.queries.models.card-test/keywords"}}))))
     (testing "Ignores properties not in `api.card/card-compare-keys"
       (is (false? (changed? {:collection_id 1
                              :collection_position 0}
