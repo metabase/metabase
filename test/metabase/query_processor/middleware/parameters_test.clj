@@ -317,12 +317,12 @@
                                       :name        "Filter: expensive venues"}]
              :cards                 [{:id            1
                                       :dataset-query (mt/native-query
-                                                       {:query         (str "SELECT {{ Venue fields }} "
-                                                                            "FROM venues "
-                                                                            "WHERE {{ Filter: expensive venues }}")
-                                                        :template-tags (snippet-template-tags
-                                                                        {"Venue fields"             1
-                                                                         "Filter: expensive venues" 2})})}]})]
+                                                      {:query         (str "SELECT {{ Venue fields }} "
+                                                                           "FROM venues "
+                                                                           "WHERE {{ Filter: expensive venues }}")
+                                                       :template-tags (snippet-template-tags
+                                                                       {"Venue fields"             1
+                                                                        "Filter: expensive venues" 2})})}]})]
     (testing "multiple snippets are correctly expanded in parent query"
       (is (=? {:native {:query "SELECT name, price FROM venues WHERE price > 2", :params nil}}
               (substitute-params mp (:dataset-query (lib.metadata/card mp 1))))))
@@ -331,8 +331,8 @@
               (substitute-params
                mp
                (mt/native-query
-                 {:query         "SELECT * FROM {{#1}} AS x"
-                  :template-tags (card-template-tags [1])})))))))
+                {:query         "SELECT * FROM {{#1}} AS x"
+                 :template-tags (card-template-tags [1])})))))))
 
 (deftest ^:parallel include-card-parameters-test
   (testing "Expanding a Card reference should include its parameters (#12236)"

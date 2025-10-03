@@ -1,10 +1,11 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
+import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-package";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 
 import { getIsLocalhost } from "./is-localhost";
@@ -14,6 +15,7 @@ interface SdkProblemOptions {
   isEnabled: boolean;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
+  session: MetabaseEmbeddingSessionToken | null;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
@@ -26,11 +28,12 @@ export const USAGE_PROBLEM_MESSAGES = {
 
   // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
   DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
+  JWT_EXP_NULL: `The JWT token is missing the "exp" (expiration) claim. We will disallow tokens without "exp" in a future release. Please add "exp" to the token payload.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
   // eslint-disable-next-line no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
-  "https://www.metabase.com/docs/latest/embedding/sdk/authentication#authenticating-people-from-your-server";
+  "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
 
 export const METABASE_UPGRADE_URL = "https://www.metabase.com/upgrade";
 
@@ -45,6 +48,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   SSO_WITHOUT_LICENSE: METABASE_UPGRADE_URL,
   EMBEDDING_SDK_NOT_ENABLED: SDK_INTRODUCTION_DOCS_URL,
   DEVELOPMENT_MODE_CLOUD_INSTANCE: METABASE_UPGRADE_URL,
+  JWT_EXP_NULL: SDK_AUTH_DOCS_URL,
 } as const;
 
 /**
@@ -54,7 +58,8 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode } = options;
+  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode, session } =
+    options;
   const { apiKey } = authConfig;
 
   const isSSO = !apiKey;
@@ -77,6 +82,7 @@ export function getSdkUsageProblem(
       isLocalhost,
       isEnabled,
       isDevelopmentMode,
+      session,
     })
       .with({ isDevelopmentMode: true }, () =>
         toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
@@ -105,6 +111,7 @@ export function getSdkUsageProblem(
       .with({ isApiKey: true, hasTokenFeature: true }, () =>
         toError("API_KEYS_WITH_LICENSE"),
       )
+      .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
       .otherwise(() => null)
   );
 }
