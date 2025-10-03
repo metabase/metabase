@@ -460,6 +460,7 @@
   query-stage
   source-table-id
   source-card-id
+  stage-type
   update-query-stage]
  [lib.validate
   find-bad-refs]

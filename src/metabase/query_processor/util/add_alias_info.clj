@@ -161,22 +161,21 @@
   earlier."
   [query stage-path desired-column-alias]
   (when desired-column-alias
-    (let [stage (get-in query stage-path)]
-      (cond
-        ;; for native stages just return desired-column-alias without escaping (see comment
-        ;; in [[add-escaped-desired-aliases]] for more info)
-        (lib/native-stage? stage)
-        desired-column-alias
+    (case (lib/stage-type (get-in query stage-path))
+      ;; for native stages just return desired-column-alias without escaping (see comment
+      ;; in [[add-escaped-desired-aliases]] for more info)
+      :mbql.stage/native
+      desired-column-alias
 
-        (lib/mbql-stage? stage)
-        (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
-                                         (throw (ex-info "Stage is missing ::desired-alias->escaped"
-                                                         {:stage-path stage-path})))]
-          (or (get desired-alias->escaped desired-column-alias)
-              (throw (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
-                              {:path                   stage-path
-                               :desired-alias          desired-column-alias
-                               :desired-alias->escaped desired-alias->escaped}))))))))
+      :mbql.stage/mbql
+      (let [desired-alias->escaped (or (::desired-alias->escaped (get-in query stage-path))
+                                       (throw (ex-info "Stage is missing ::desired-alias->escaped"
+                                                       {:stage-path stage-path})))]
+        (or (get desired-alias->escaped desired-column-alias)
+            (throw (ex-info (format "Missing ::desired-alias->escaped for %s" (pr-str desired-column-alias))
+                            {:path                   stage-path
+                             :desired-alias          desired-column-alias
+                             :desired-alias->escaped desired-alias->escaped})))))))
 
 (defn- escaped-join-alias [query stage-path join-alias]
   (when join-alias
@@ -320,11 +319,11 @@
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/path
    stage      :- ::lib.schema/stage]
-  (cond
-    (lib/native-stage? stage)
+  (case (lib/stage-type stage)
+    :mbql.stage/native
     stage
 
-    (lib/mbql-stage? stage)
+    :mbql.stage/mbql
     (try
       (->> stage
            (add-source-aliases query stage-path)

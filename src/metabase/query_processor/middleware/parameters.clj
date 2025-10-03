@@ -23,10 +23,10 @@
    stage :- ::lib.schema/stage]
   (if-not ((some-fn :parameters :template-tags) stage)
     stage
-    (let [f        (cond
-                     (lib/mbql-stage? stage)   qp.mbql/expand
-                     (lib/native-stage? stage) (fn [query _path stage]
-                                                 (qp.native/expand-stage query stage)))
+    (let [f        (case (lib/stage-type stage)
+                     :mbql.stage/mbql   qp.mbql/expand
+                     :mbql.stage/native (fn [query _path stage]
+                                          (qp.native/expand-stage query stage)))
           expanded (f query path stage)]
       (dissoc expanded :parameters :template-tags))))
 
