@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -163,6 +164,20 @@
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
 
+(defn- related-tables
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
+  [query with-fields?]
+  (let [fk-fields (->> (lib/visible-columns query)
+                       (filter :fk-field-id))
+        related-table-ids (->> fk-fields
+                               (map :table-id)
+                               (into #{}))]
+    (when (seq related-table-ids)
+      (map #(table-details % {:with-fields? with-fields?
+                              :field-values-fn add-field-values
+                              :with-metrics? false})
+           related-table-ids))))
+
 (defn- card-details
   "Get details for a card."
   ([id] (card-details id nil))
@@ -188,21 +203,20 @@
                                                             (#{:query} (:type dataset-query)))
                                                      dataset-query
                                                      card-metadata)))
-         cols (when with-fields?
-                (->> (lib/visible-columns card-query)
-                     field-values-fn
-                     (map #(metabot-v3.tools.u/add-table-reference card-query %))))
+         returned-fields (when with-fields?
+                           (->> (lib/returned-columns card-query)
+                                field-values-fn))
+         related-tables (related-tables card-query with-fields?)
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
-          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
+          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
+          :related_tables related-tables
           :database_id (:database_id base)
-          :queryable-foreign-key-tables []
           :verified (verified-review? id "card")}
-
          (m/assoc-some :description (:description base)
                        :metrics (when with-metrics?
                                   (not-empty (mapv #(convert-metric % metadata-provider options)
@@ -237,7 +251,7 @@
                             :models  (vec models)}}))))
 
 (comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
+  (binding [api/current-user-permissions-set* (delay #{"/"})
             api/*current-user-id* 2
             api/*is-superuser?* true]
     #_(table-details 30 nil)
@@ -264,10 +278,9 @@
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (cond
-                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
-                                         (if (= :model (:type card))
-                                           card
-                                           (format "ID %s is not a valid model id, it's a question" model-id)))
+                    (int? model-id)    (u/prog1 (card-details model-id (assoc options :only-model true))
+                                         (api/check (= :model (:type <>)) 404
+                                                    (format "ID %s is not a valid model id, it's a question" model-id)))
                     (int? table-id)    (table-details table-id options)
                     (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                                          (card-details (parse-long card-id) options)
