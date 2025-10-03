@@ -230,6 +230,13 @@
       (and (map? query) (seq query))
       normalize)))
 
+(defn maybe-normalize-transform-source
+  "Normalizes the `source` of a transform."
+  [in-or-out raw-source]
+  (let [{source-type :type :as source} (m/map-keys keyword raw-source)]
+    (cond-> source
+      (= (keyword source-type) :query) (update :query (partial maybe-normalize-query in-or-out)))))
+
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
@@ -263,6 +270,11 @@
   "Transform for metabase-query."
   {:in  (comp json-in (partial maybe-normalize-query :in))
    :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
+
+(def transform-transform-source
+  "Transform for transform source fields."
+  {:in  (comp json-in (partial maybe-normalize-transform-source :in))
+   :out (comp (catch-normalization-exceptions (partial maybe-normalize-transform-source :out)) json-out-without-keywordization)})
 
 (def transform-parameters-list
   "Transform for parameters list."

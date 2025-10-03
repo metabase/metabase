@@ -172,7 +172,7 @@
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
 
- ;; Enterprise remote sync events
+;; Enterprise remote sync events
 
 (mr/def :event/remote-sync
   [:map
@@ -184,3 +184,13 @@
    [:status {:optional true} [:maybe [:enum "success" "error"]]]
    [:version {:optional true} :string]
    [:message {:optional true} [:maybe :string]]])
+
+;; snippet events
+
+(mr/def ::snippet
+  [:map {:closed true}
+   [:object [:fn #(t2/instance-of? :model/NativeQuerySnippet %)]]])
+
+(mr/def :event/snippet-create ::snippet)
+(mr/def :event/snippet-update ::snippet)
+(mr/def :event/snippet-delete ::snippet)

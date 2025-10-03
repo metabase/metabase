@@ -321,6 +321,7 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "table_data_editing",
+  "dependencies",
   "documents",
   "semantic_search",
   "transforms",

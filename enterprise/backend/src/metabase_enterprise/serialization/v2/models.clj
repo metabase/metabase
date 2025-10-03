@@ -65,6 +65,7 @@
    "DashboardBookmark"
    "DataPermissions"
    "DatabaseRouter"
+   "Dependency"
    "DocumentBookmark"
    "HTTPAction"
    "ImplicitAction"

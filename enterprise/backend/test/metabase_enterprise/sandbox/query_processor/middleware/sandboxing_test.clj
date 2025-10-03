@@ -88,17 +88,17 @@
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select [:*]
-                 :from [[(identifier :venues)]]
-                 :where [:=
-                         (identifier :venues :category_id)
-                         [:raw "{{cat}}"]]
-                 :order-by [[(identifier :venues :id) :asc]]})
+             {:query
+              (format-honeysql
+               {:select [:*]
+                :from [[(identifier :venues)]]
+                :where [:=
+                        (identifier :venues :category_id)
+                        [:raw "{{cat}}"]]
+                :order-by [[(identifier :venues :id) :asc]]})
 
-               :template_tags
-               {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+              :template_tags
+              {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
      :remappings {:cat ["variable" ["template-tag" "cat"]]}}))
 
 (defn- parameterized-sql-with-join-sandbox-def
@@ -107,38 +107,38 @@
   (driver/with-driver (or driver/*driver* :h2)
     (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select [[(identifier :checkins :id)]
-                          [(identifier :checkins :user_id)]
+             {:query
+              (format-honeysql
+               {:select [[(identifier :checkins :id)]
+                         [(identifier :checkins :user_id)]
                           ;; these columns are ILLEGAL, you're NOT allowed to add columns not in the original table.
                           ;; We should complain loudly and then ignore them.
-                          [(identifier :venues :name)]
-                          [(identifier :venues :category_id)]]
-                 :from [[(identifier :checkins)]]
-                 :left-join [[(identifier :venues)]
-                             [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
-                 :where [:=
-                         (identifier :checkins :user_id)
-                         [:raw "{{user}}"]]
-                 :order-by [[(identifier :checkins :id) :asc]]})
+                         [(identifier :venues :name)]
+                         [(identifier :venues :category_id)]]
+                :from [[(identifier :checkins)]]
+                :left-join [[(identifier :venues)]
+                            [:= (identifier :checkins :venue_id) (identifier :venues :id)]]
+                :where [:=
+                        (identifier :checkins :user_id)
+                        [:raw "{{user}}"]]
+                :order-by [[(identifier :checkins :id) :asc]]})
 
-               :template_tags
-               {"user" {:name "user"
-                        :display-name "User ID"
-                        :type :number
-                        :required true}}})
+              :template_tags
+              {"user" {:name "user"
+                       :display-name "User ID"
+                       :type :number
+                       :required true}}})
      :remappings {:user ["variable" ["template-tag" "user"]]}}))
 
 (defn- venue-names-native-sandbox-def []
   (driver/with-driver (or driver/*driver* :h2)
     {:query (mt/native-query
-              {:query
-               (format-honeysql
-                {:select [[(identifier :venues :id)]
-                          [(identifier :venues :name)]]
-                 :from [[(identifier :venues)]]
-                 :order-by [[(identifier :venues :id) :asc]]})})}))
+             {:query
+              (format-honeysql
+               {:select [[(identifier :venues :id)]
+                         [(identifier :venues :name)]]
+                :from [[(identifier :venues)]]
+                :order-by [[(identifier :venues :id) :asc]]})})}))
 
 (defn- run-venues-count-query []
   (mt/format-rows-by
@@ -599,13 +599,13 @@
      (fn [{:keys [cols expected-cols]}]
        (testing "A query with an equivalent native query sandbox should have the same metadata"
          (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
-                                                     {:query
-                                                      (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
-                                                           "FROM VENUES "
-                                                           "WHERE CATEGORY_ID = {{cat}}")
+                                                    {:query
+                                                     (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
+                                                          "FROM VENUES "
+                                                          "WHERE CATEGORY_ID = {{cat}}")
 
-                                                      :template_tags
-                                                      {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                                     :template_tags
+                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
                                             :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                            :attributes {"cat" 50}}
            (is (=? (expected-cols)
@@ -619,13 +619,13 @@
        (testing (str "If columns are removed/reordered we should still merge in metadata for the columns we're "
                      "able to match from the original Table")
          (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
-                                                     {:query
-                                                      (str "SELECT NAME, ID, LONGITUDE, PRICE "
-                                                           "FROM VENUES "
-                                                           "WHERE CATEGORY_ID = {{cat}}")
+                                                    {:query
+                                                     (str "SELECT NAME, ID, LONGITUDE, PRICE "
+                                                          "FROM VENUES "
+                                                          "WHERE CATEGORY_ID = {{cat}}")
 
-                                                      :template_tags
-                                                      {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                                     :template_tags
+                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
                                             :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                            :attributes {"cat" 50}}
            (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
@@ -636,15 +636,15 @@
   (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (EE #525)"
     (met/with-gtaps! (mt/$ids
                        {:gtaps {:venues {:query (mt/native-query
-                                                  {:query (str "SELECT DISTINCT VENUES.* "
-                                                               "FROM VENUES "
-                                                               "LEFT JOIN CHECKINS"
-                                                               "       ON CHECKINS.VENUE_ID = VENUES.ID "
-                                                               "WHERE CHECKINS.USER_ID IN ({{sandbox}})")
-                                                   :template-tags {"sandbox"
-                                                                   {:name "sandbox"
-                                                                    :display-name "Sandbox"
-                                                                    :type :text}}})
+                                                 {:query (str "SELECT DISTINCT VENUES.* "
+                                                              "FROM VENUES "
+                                                              "LEFT JOIN CHECKINS"
+                                                              "       ON CHECKINS.VENUE_ID = VENUES.ID "
+                                                              "WHERE CHECKINS.USER_ID IN ({{sandbox}})")
+                                                  :template-tags {"sandbox"
+                                                                  {:name "sandbox"
+                                                                   :display-name "Sandbox"
+                                                                   :type :text}}})
                                          :remappings {"user_id" [:variable [:template-tag "sandbox"]]}}
                                 :checkins {:remappings {"user_id" [:dimension $checkins.user_id]}}}
                         :attributes {"user_id" 1}})
@@ -667,13 +667,13 @@
     (testing "Should work with SQL queries that return less columns than there were in the original Table\n"
       (met/with-gtaps! (mt/$ids
                          {:gtaps      {:venues   {:query      (mt/native-query
-                                                                {:query         (str "SELECT * "
-                                                                                     "FROM VENUES "
-                                                                                     "WHERE VENUES.ID IN ({{sandbox}})")
-                                                                 :template-tags {"sandbox"
-                                                                                 {:name         "sandbox"
-                                                                                  :display-name "Sandbox"
-                                                                                  :type         :text}}})
+                                                               {:query         (str "SELECT * "
+                                                                                    "FROM VENUES "
+                                                                                    "WHERE VENUES.ID IN ({{sandbox}})")
+                                                                :template-tags {"sandbox"
+                                                                                {:name         "sandbox"
+                                                                                 :display-name "Sandbox"
+                                                                                 :type         :text}}})
                                                   :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                                        :checkins {}}
                           :attributes {"venue_id" 1}})
@@ -709,11 +709,11 @@
 (defn- do-with-sql-gtap! [sql f]
   (met/with-gtaps! (mt/$ids
                      {:gtaps {:venues {:query (mt/native-query
-                                                {:query sql
-                                                 :template-tags {"sandbox"
-                                                                 {:name "sandbox"
-                                                                  :display-name "Sandbox"
-                                                                  :type :text}}})
+                                               {:query sql
+                                                :template-tags {"sandbox"
+                                                                {:name "sandbox"
+                                                                 :display-name "Sandbox"
+                                                                 :type :text}}})
                                        :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
                               :checkins {}}
                       :attributes {"venue_id" 1}})
@@ -1041,18 +1041,18 @@
                            (pr-str orders-gtap-card-has-metadata?)
                            (pr-str products-gtap-card-has-metadata?))
             (met/with-gtaps! {:gtaps {:orders {:query (mt/native-query
-                                                        {:query "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
-                                                         :template-tags {"uid" {:display-name "User ID"
-                                                                                :id "1"
-                                                                                :name "uid"
-                                                                                :type :number}}})
+                                                       {:query "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
+                                                        :template-tags {"uid" {:display-name "User ID"
+                                                                               :id "1"
+                                                                               :name "uid"
+                                                                               :type :number}}})
                                                :remappings {"user_id" [:variable [:template-tag "uid"]]}}
                                       :products {:query (mt/native-query
-                                                          {:query "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
-                                                           :template-tags {"cat" {:display-name "Category"
-                                                                                  :id "2"
-                                                                                  :name "cat"
-                                                                                  :type :text}}})
+                                                         {:query "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
+                                                          :template-tags {"cat" {:display-name "Category"
+                                                                                 :id "2"
+                                                                                 :name "cat"
+                                                                                 :type :text}}})
                                                  :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
                               :attributes {"user_id" "1", "user_cat" "Widget"}}
               (when orders-gtap-card-has-metadata?

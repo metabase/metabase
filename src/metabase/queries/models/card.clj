@@ -1199,7 +1199,9 @@
           ;; this is data migration column
           :dataset_query_metrics_v2_migration_backup
           ;; this column is not used anymore
-          :cache_ttl]
+          :cache_ttl
+          ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
+          :dependency_analysis_version]
    :transform
    {:created_at             (serdes/date)
     :database_id            (serdes/fk :model/Database :name)
