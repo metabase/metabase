@@ -13,7 +13,7 @@ export function openMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("not.visible");
   }
 
-  cy.get("body").type("{ctrl+b}{cmd+b}");
+  cy.get("body").type("{ctrl+e}{cmd+e}");
 
   if (assertVisibility) {
     assertChatVisibility("visible");
@@ -25,7 +25,7 @@ export function closeMetabotViaShortcutKey(assertVisibility = true) {
     assertChatVisibility("visible");
   }
 
-  cy.get("body").type("{ctrl+b}{cmd+b}");
+  cy.get("body").type("{ctrl+e}{cmd+e}");
 
   if (assertVisibility) {
     assertChatVisibility("not.visible");

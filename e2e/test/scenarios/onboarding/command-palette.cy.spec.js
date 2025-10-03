@@ -419,7 +419,6 @@ describe("command palette", () => {
     it("should have a 'New document' item", () => {
       cy.visit("/");
       cy.findByRole("button", { name: /search/i }).click();
-
       H.commandPalette().within(() => {
         H.commandPaletteInput().should("be.visible").type("new document");
         cy.findByText("New document").should("be.visible").click();

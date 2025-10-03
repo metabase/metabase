@@ -196,7 +196,7 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         H.openMetabotViaSearchButton();
         H.expectUnstructuredSnowplowEvent({
           event: "metabot_chat_opened",
-          triggered_from: "search",
+          triggered_from: "header",
         });
         H.closeMetabotViaCloseButton();
       });
