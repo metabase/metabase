@@ -14,13 +14,13 @@ import {
   GROUP_NODE_TYPE,
   ITEM_NODE_TYPE,
 } from "./constants";
-import type { DependencyGroup, EdgeId, NodeId } from "./types";
+import type { EdgeId, GroupData, GroupType, NodeId } from "./types";
 
 function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
-function getGroupNodeId(nodeId: NodeId, type: DependencyType): NodeId {
+function getGroupNodeId(nodeId: NodeId, type: GroupType): NodeId {
   return `${nodeId}-${type}`;
 }
 
@@ -69,6 +69,10 @@ function getItemGraph(nodes: DependencyNode[], edges: DependencyEdge[]) {
   };
 }
 
+function getNodeType(node: DependencyNode) {
+  return node.type === "card" ? node.data.type : node.type;
+}
+
 function getNodeByIdMap(nodes: Node<DependencyNode>[]) {
   const nodeBydId = new Map<NodeId, Node<DependencyNode>>();
   nodes.forEach((node) => nodeBydId.set(node.id, node));
@@ -79,25 +83,26 @@ function getEdgesByTypeAndTargetIdMap(
   nodeById: Map<NodeId, Node<DependencyNode>>,
   edges: Edge[],
 ) {
-  const edgesByTypeAndTargetId = new Map<NodeId, Map<DependencyType, Edge[]>>();
+  const edgesByTypeAndTargetId = new Map<NodeId, Map<GroupType, Edge[]>>();
 
   edges.forEach((edge) => {
-    const node = nodeById.get(edge.target);
-    if (node == null) {
+    const source = nodeById.get(edge.source);
+    const target = nodeById.get(edge.target);
+    if (source == null || target == null) {
       return;
     }
 
     let edgesByType = edgesByTypeAndTargetId.get(edge.target);
     if (edgesByType == null) {
-      edgesByType = new Map<DependencyType, Edge[]>();
+      edgesByType = new Map<GroupType, Edge[]>();
       edgesByTypeAndTargetId.set(edge.target, edgesByType);
     }
 
-    const nodeType = node.data.type;
+    const nodeType = getNodeType(source.data);
     let edgesGroup = edgesByType.get(nodeType);
     if (edgesGroup == null) {
       edgesGroup = [];
-      edgesByType.set(node.data.type, edgesGroup);
+      edgesByType.set(nodeType, edgesGroup);
     }
 
     edgesGroup.push(edge);
@@ -107,9 +112,9 @@ function getEdgesByTypeAndTargetIdMap(
 }
 
 function getGroupNodesAndEdges(
-  edgesByTypeAndTargetId: Map<NodeId, Map<DependencyType, Edge[]>>,
+  edgesByTypeAndTargetId: Map<NodeId, Map<GroupType, Edge[]>>,
 ) {
-  const groupNodes: Node<DependencyGroup>[] = [];
+  const groupNodes: Node<GroupData>[] = [];
   const newEdges: Edge[] = [];
   const deletedEdgeIds = new Set<EdgeId>();
 

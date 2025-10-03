@@ -1,28 +1,20 @@
 import { msgid, ngettext } from "ttag";
 
-import type { DependencyGroup } from "../types";
+import type { GroupData } from "../types";
 
-export function getNodeLabel({ type, count }: DependencyGroup) {
+export function getNodeLabel({ type, count }: GroupData) {
   switch (type) {
-    case "card":
-      return ngettext(msgid`${count} card`, `${count} cards`, count);
+    case "question":
+      return ngettext(msgid`${count} question`, `${count} questions`, count);
+    case "model":
+      return ngettext(msgid`${count} model`, `${count} models`, count);
+    case "metric":
+      return ngettext(msgid`${count} metric`, `${count} metrics`, count);
     case "table":
-      return ngettext(
-        msgid`${count} table uses this`,
-        `${count} tables`,
-        count,
-      );
+      return ngettext(msgid`${count} table`, `${count} tables`, count);
     case "snippet":
-      return ngettext(
-        msgid`${count} snippet uses this`,
-        `${count} snippets`,
-        count,
-      );
+      return ngettext(msgid`${count} snippet`, `${count} snippets`, count);
     case "transform":
-      return ngettext(
-        msgid`${count} transform uses this`,
-        `${count} transforms`,
-        count,
-      );
+      return ngettext(msgid`${count} transform`, `${count} transforms`, count);
   }
 }
