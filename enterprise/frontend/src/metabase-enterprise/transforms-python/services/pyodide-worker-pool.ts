@@ -61,14 +61,18 @@ class PyodideWorker {
   private ready: Promise<void>;
   isReady: boolean;
 
-  constructor(packages: string[] = []) {
-    const url = new URL("/app/assets/pyodide.worker.js", window.location.href);
-    for (const pkg of packages) {
-      url.searchParams.append("packages", pkg);
-    }
-
+  constructor() {
     this.isReady = false;
-    this.worker = new Worker(url.toString());
+    this.worker = new Worker(
+      // This needs to be a URL literal defined inline in the new Worker argument
+      // for rspack to correctly resolve it.
+      new URL(
+        "./pyodide-worker.ts",
+        // @ts-expect-error: TypeScript complains about import.meta.url
+        import.meta.url,
+      ),
+      { name: "pyodide-worker" },
+    );
     this.ready = waitFor(this.worker, "ready", { timeout: 10000 }).then(() => {
       this.isReady = true;
     });

@@ -179,7 +179,10 @@
                                  (when config/is-dev?
                                    "ws://*:9630")]
                   :manifest-src ["'self'"]
-                  :media-src    ["www.metabase.com"]}]
+                  :media-src    ["www.metabase.com"]
+                  :worker-src   ["'self'"
+                                 ;; For remote-web-worker to work
+                                 "blob:"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors

@@ -1,7 +1,6 @@
 /// <reference lib="webworker" />
 
-const url = new URL(self.location.href);
-const packages = url.searchParams.getAll("packages");
+const PACKAGES = ["pandas", "numpy"];
 
 self.addEventListener("unhandledrejection", (event) => {
   event.stopPropagation();
@@ -37,12 +36,12 @@ async function init() {
   // eslint-disable-next-line no-undef
   const pyodide = await loadPyodide({
     indexURL: "/app/assets/pyodide/",
-    packages,
+    packages: PACKAGES,
   });
 
   // import the packages on initialization since that is slow
   await pyodide.runPythonAsync(
-    packages.map((pkg) => `import ${pkg}`).join("\n"),
+    PACKAGES.map((pkg) => `import ${pkg}`).join("\n"),
   );
 
   // Add helper function that grabs the last exception
