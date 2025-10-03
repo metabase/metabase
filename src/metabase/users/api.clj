@@ -17,6 +17,7 @@
    [metabase.session.models.session :as session]
    [metabase.sso.core :as sso]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -372,8 +373,10 @@
                                  (u/select-keys-when body
                                                      :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
-                                 false))]
+                                 (= source "setup")))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
+      (when (= source "setup")
+        (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
       (analytics/track-event! :snowplow/invite
                               {:event           :invite-sent
                                :invited-user-id new-user-id
@@ -390,7 +393,7 @@
             [:last_name              {:optional true} [:maybe ms/NonBlankString]]
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
-            [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+            [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
             [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
   (invite-user body))
 
@@ -434,7 +437,7 @@
        [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
-       [:login_attributes       {:optional true} [:maybe user/LoginAttributes]]
+       [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
   (try
     (check-self-or-superuser id)
@@ -444,7 +447,8 @@
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
-    (api/check-403 (valid-email-update? user-before-update email))
+    (when (contains? body :email)
+      (api/check-403 (valid-email-update? user-before-update email)))
     ;; SSO users (JWT, SAML, LDAP, Google) can't change their first/last names
     (when (contains? body :first_name)
       (api/checkp (valid-name-update? user-before-update :first_name first_name)

@@ -428,6 +428,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Querying"
+   :api  #{metabase.premium-features.core}
+   :uses #{premium-features}}
+
   driver
   {:team "Drivers"
    :api  #{metabase.driver
@@ -502,6 +507,7 @@
            metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -554,6 +560,11 @@
    :uses #{api
            models
            util}}
+
+  graph
+  {:team "Querying"
+   :api  #{metabase.graph.core}
+   :uses #{util}}
 
   indexed-entities
   {:team "UX West"
@@ -724,6 +735,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           events
            lib
            models
            permissions
@@ -893,6 +905,19 @@
            enterprise/advanced-permissions
            enterprise/sandbox}}
 
+  python-runner
+  {:team "Workflows"
+   :api  #{metabase.python-runner.api
+           metabase.python-runner.core
+           metabase.python-runner.init}
+   :uses #{api
+           driver
+           models
+           query-processor
+           request
+           util
+           enterprise/transforms}}
+
   queries
   {:team "Querying"
    :api  #{metabase.queries.api
@@ -938,6 +963,7 @@
    :uses #{api
            legacy-mbql
            lib
+           lib-be
            models
            permissions
            query-processor
@@ -1020,6 +1046,7 @@
            metabase.request.schema}
    :uses #{api
            config
+           embedding
            permissions ; FIXME
            session
            settings
@@ -1225,6 +1252,7 @@
            events
            lib
            models
+           premium-features
            query-processor
            settings
            task
@@ -1333,9 +1361,11 @@
   users
   {:team "UX West"
    :api  #{metabase.users.api
+           metabase.users.core
            metabase.users.init
            metabase.users.models.user
-           metabase.users.models.user-parameter-value}
+           metabase.users.models.user-parameter-value
+           metabase.users.schema}
    :uses #{analytics
            api
            appearance
@@ -1470,6 +1500,7 @@
            driver
            legacy-mbql
            lib
+           lib-be
            models
            queries
            query-permissions
@@ -1625,6 +1656,7 @@
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
    :uses #{api
+           channel
            events
            models
            request
@@ -1696,6 +1728,29 @@
            util
            warehouse-schema
            warehouses}}
+
+  enterprise/dependencies
+  {:team "Querying"
+   :api  #{metabase-enterprise.dependencies.api
+           metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.init}
+   :uses #{analyze
+           api
+           app-db
+           collections
+           config
+           driver
+           events
+           graph
+           lib
+           lib-be
+           models
+           native-query-snippets
+           premium-features
+           queries
+           query-processor
+           task
+           util}}
 
   enterprise/documents
   {:team "UX West"
@@ -1812,10 +1867,13 @@
            pulse
            query-processor
            request
+           search
            server
            settings
+           store-api
            sync
            system
+           task
            users
            util
            warehouse-schema
@@ -1977,6 +2035,7 @@
    :api  #{metabase-enterprise.transforms.api
            metabase-enterprise.transforms.core
            metabase-enterprise.transforms.init
+           metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api
@@ -2002,6 +2061,7 @@
   enterprise/transforms-python
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
+           metabase-enterprise.transforms-python.execute
            metabase-enterprise.transforms-python.init
            metabase-enterprise.transforms-python.settings}
    :uses #{api

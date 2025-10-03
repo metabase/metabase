@@ -36,9 +36,9 @@
                    (metabot-v3.config/resolve-dynamic-profile-id nil "any-metabot-id")))))
 
         (testing "metabot-id mapping takes third precedence"
-          (is (= "experimental"
+          (is (= "internal"
                  (metabot-v3.config/resolve-dynamic-profile-id nil metabot-v3.config/internal-metabot-id)))
-          (is (= "default"
+          (is (= "embedding"
                  (metabot-v3.config/resolve-dynamic-profile-id nil metabot-v3.config/embedded-metabot-id))))
 
         (testing "falls back to default when no matches"
@@ -47,7 +47,7 @@
 
         (testing "single arity version uses dynamic metabot resolution"
           (mt/with-temporary-setting-values [metabot-v3.settings/metabot-id metabot-v3.config/embedded-metabot-id]
-            (is (= "default"
+            (is (= "embedding"
                    (metabot-v3.config/resolve-dynamic-profile-id nil)))))))))
 
 (deftest integrated-resolution-test
@@ -75,4 +75,4 @@
           (let [metabot-id (metabot-v3.config/resolve-dynamic-metabot-id nil)
                 profile-id (metabot-v3.config/resolve-dynamic-profile-id nil metabot-id)]
             (is (= metabot-v3.config/internal-metabot-id metabot-id))
-            (is (= "experimental" profile-id))))))))
+            (is (= "internal" profile-id))))))))

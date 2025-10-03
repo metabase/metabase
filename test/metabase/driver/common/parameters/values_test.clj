@@ -489,11 +489,11 @@
                                                                              {:order-by [[:asc $id]] :limit 2})}
                          :model/Card       card-2 {:collection_id (u/the-id collection)
                                                    :dataset_query (mt/native-query
-                                                                    {:query         "SELECT * FROM {{card}}"
-                                                                     :template-tags {"card" {:name         "card"
-                                                                                             :display-name "card"
-                                                                                             :type         :card
-                                                                                             :card-id      card-1-id}}})}]
+                                                                   {:query         "SELECT * FROM {{card}}"
+                                                                    :template-tags {"card" {:name         "card"
+                                                                                            :display-name "card"
+                                                                                            :type         :card
+                                                                                            :card-id      card-1-id}}})}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card-2)]
@@ -842,11 +842,11 @@
                                               :dataset_query (mt/mbql-query venues {:limit 2})}
                  :model/Card {card-2-id :id} {:collection_id nil
                                               :dataset_query (mt/native-query
-                                                               {:query         "SELECT * FROM {{card}}"
-                                                                :template-tags {"card" {:name         "card"
-                                                                                        :display-name "card"
-                                                                                        :type         :card
-                                                                                        :card-id      card-1-id}}})}]
+                                                              {:query         "SELECT * FROM {{card}}"
+                                                               :template-tags {"card" {:name         "card"
+                                                                                       :display-name "card"
+                                                                                       :type         :card
+                                                                                       :card-id      card-1-id}}})}]
     ;; even tho Card 2 references Card 1, we don't want to include it in the set of referenced Card IDs, since you
     ;; should only need permissions for Card 2 to be able to run the query (see #15131)
     (testing (format "Card 1 ID = %d, Card 2 ID = %d" card-1-id card-2-id)

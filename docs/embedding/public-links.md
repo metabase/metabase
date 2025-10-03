@@ -65,9 +65,9 @@ You can simulate drill-through on a public dashboard by setting up a [custom cli
 6. Optional: pass a filter value from the primary dashboard to the destination dashboard by adding a query parameter to the end of the destination URL:
 
 ```
-{%raw%}
+{% raw %}
 /public/dashboard/?child_filter_name={{parent_column_name}}
-{%endraw%}
+{% endraw %}
 ```
 
 For example, if you have a primary public dashboard that displays **Invoices** data, you can pass the **Plan** name (on click) to a destination public dashboard that displays **Accounts** data:

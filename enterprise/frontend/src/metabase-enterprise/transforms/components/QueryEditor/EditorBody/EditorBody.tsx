@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
+import { useWindowSize } from "react-use";
 
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
@@ -7,6 +8,7 @@ import { useSetting } from "metabase/common/hooks";
 import NativeQueryEditor, {
   type SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { Box } from "metabase/ui";
 import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
@@ -24,6 +26,9 @@ import { ResizeHandle } from "../ResizeHandle";
 import S from "./EditorBody.module.css";
 
 const EDITOR_HEIGHT = 550;
+
+const NATIVE_HEADER_HEIGHT = 55;
+const HEADER_HEIGHT = 65 + 50;
 
 const NATIVE_EDITOR_SIDEBAR_FEATURES = {
   dataReference: true,
@@ -51,6 +56,7 @@ type EditorBodyProps = {
   modalSnippet?: NativeQuerySnippet | null;
   onChangeModalSnippet: (snippet: NativeQuerySnippet | null) => void;
   onChangeNativeEditorSelection: (range: SelectionRange[]) => void;
+  onOpenModal: (type: QueryModalType) => void;
   nativeEditorSelectedText?: string | null;
 
   databases: ApiDatabase[];
@@ -74,19 +80,23 @@ export function EditorBody({
   onChangeModalSnippet,
   onChangeNativeEditorSelection,
   nativeEditorSelectedText,
+  onOpenModal,
 }: EditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
 
+  const editorHeight = useInitialEditorHeight(isNative);
+
   const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
     () => ({
-      height: EDITOR_HEIGHT,
+      height: editorHeight,
       resizeHandles: ["s"],
+      className: S.root,
       style: isResizing ? undefined : { transition: "height 0.25s" },
       onResizeStart: () => setIsResizing(true),
       onResizeStop: () => setIsResizing(false),
     }),
-    [isResizing],
+    [isResizing, editorHeight],
   );
 
   const handleResize = () => {
@@ -136,12 +146,13 @@ export function EditorBody({
       }}
       setNativeEditorSelectedRange={onChangeNativeEditorSelection}
       nativeEditorSelectedText={nativeEditorSelectedText}
+      onOpenModal={onOpenModal}
     />
   ) : (
     <ResizableBox
-      className={S.root}
       axis="y"
-      height={EDITOR_HEIGHT}
+      className={S.root}
+      height={editorHeight}
       handle={<ResizeHandle />}
       resizeHandles={["s"]}
       onResizeStart={() => setIsResizing(true)}
@@ -203,4 +214,17 @@ function useDataPickerOptions({ databases }: { databases: ApiDatabase[] }) {
       },
     };
   }, [databases]);
+}
+
+function getHeaderHeight(isNative: boolean) {
+  if (isNative) {
+    return HEADER_HEIGHT + NATIVE_HEADER_HEIGHT;
+  }
+  return HEADER_HEIGHT;
+}
+
+function useInitialEditorHeight(isNative: boolean) {
+  const { height: windowHeight } = useWindowSize();
+  const headerHeight = getHeaderHeight(isNative);
+  return Math.min(0.8 * (windowHeight - headerHeight), EDITOR_HEIGHT);
 }

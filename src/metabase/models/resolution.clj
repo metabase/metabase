@@ -38,6 +38,7 @@
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
+    :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase-enterprise.documents.models.document
     :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
@@ -51,7 +52,6 @@
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
     :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
-    :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
     :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
     :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index

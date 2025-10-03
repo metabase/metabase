@@ -1,13 +1,15 @@
 (ns metabase.query-processor.streaming.json
   "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
   response with all the metadata for `:api`."
+  (:refer-clojure :exclude [mapv])
   (:require
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)

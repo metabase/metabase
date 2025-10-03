@@ -54,6 +54,7 @@ export type DatabaseFeature =
   | "distinct-where"
   | "saved-question-sandboxing"
   | "split-part"
+  | "transforms/python"
   | "transforms/table";
 
 export interface Database extends DatabaseData {

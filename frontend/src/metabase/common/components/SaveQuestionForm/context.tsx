@@ -164,9 +164,10 @@ export const SaveQuestionProvider = ({
     originalQuestion.type() !== "metric" &&
     originalQuestion.canWrite();
 
-  const saveToDashboard = originalQuestion
-    ? undefined
-    : (question.dashboardId() ?? undefined);
+  const saveToDashboard =
+    originalQuestion || !question.creationType()
+      ? undefined
+      : (question.dashboardId() ?? undefined);
 
   return (
     <FormProvider

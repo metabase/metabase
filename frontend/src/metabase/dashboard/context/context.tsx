@@ -13,9 +13,13 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  ParameterValuesMap,
+} from "metabase-types/api";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -48,7 +52,7 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams?: ParameterValues;
+  parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;

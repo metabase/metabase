@@ -1,4 +1,4 @@
-{:min-bb-version "1.12.197"
+{:min-bb-version "1.12.208"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test" "bin/lint-migrations-file/src"]
@@ -159,6 +159,37 @@
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
+
+  notify
+  {:doc      "Send notification for a comment (that already exists)"
+   :requires [[mage.be-dev :refer [nrepl-eval]]]
+   :options  [["-c" "--comment-id ID" "Notify about this comment id"]
+              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task     (let [opts (:options (cli/parse! (current-task)))
+                   ;; note: no quoting -> expect it to be int
+                   code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
+               (if (:port opts)
+                 (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
+                 (nrepl-eval "metabase-enterprise.comments.core" code)))}
+
+  run-tests
+  {:doc        "Run a tests (or a single test) against nrepl server"
+   :requires   [[clojure.string :as str]
+                [mage.be-dev :refer [nrepl-eval]]]
+   :arg-schema [:tuple [:string {:name "NS/TEST" :desc "or just NS"}]]
+   :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task       (let [{:keys  [options]
+                      [test] :arguments} (cli/parse! (current-task))
+                     test                (if (or (str/starts-with? test "test/")
+                                                 (str/starts-with? test "enterprise/"))
+                                           ;; paths should come in as strings
+                                           (format "\"%s\"" test)
+                                           ;; ns or var should be a symbol
+                                           (str "'" test))
+                     code (format
+                           "(do ((requiring-resolve 'dev.reload/reload!)) (find-and-run-tests-repl {:only %s}))"
+                           test)]
+                 (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
 
   ls {:doc      "List all mage public and private tasks"
       :examples [["./bin/mage ls" "List all tasks"]]

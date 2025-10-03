@@ -9,6 +9,8 @@ summary: Getting started with Embedded Analytics JS for embedding Metabase entit
 
 Embedded analytics JS lets you embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
+{% include shared/in-page-promo-embedding-workshop.html %}
+
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
 Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
@@ -23,20 +25,25 @@ Currently you can choose to embed:
 
 ## Quickstart
 
+You can also follow the setup guide directly in Metabase in **Admin > Embedding > Setup guide**. We're recording the steps here for convenience.
+
 ### 1. Enable Embedded Analytics JS
 
-1. In Metabase, go to **Admin Settings > Embedding > Modular embedding**.
+1. In Metabase, go to **Admin > Embedding > Modular embedding**.
 2. Toggle on **Embedded Analytics JS**.
 3. Under **Cross-Origin Resource Sharing (CORS)**, add the URLs of the websites where you want to embed Metabase (such as `https://*.example.com`). For testing embeds, you can use `localhost` which is always included in CORS policy.
 
 ### 2. Create a new embed
 
-1. In Metabase, go to **Admin Settings > Embedding > Quick start** and select **Create embed**. Note that this will only be visible to admins.
+1. In Metabase, go to **Admin > Embedding > Setup guide > Embed in your code**, and select **Try it out** next to **Embedded analytics JS**.
+
+   If you're planning to embed an existing question or dashboard, you can instead go straight to that question or dashboard, click on the **Share** button, and choose **Embedded Analytics JS**.
+
 2. Choose the _type_ of entity to embed:
-    - Dashboard
-    - Question
-    - Exploration (which will embed the Metabase query builder)
-    - Browser
+   - Dashboard
+   - Question
+   - Exploration (which will embed the Metabase query builder)
+   - Browser
 3. Next, select the entity you want to embed. For browser, pick the collection you want people to start from.
 
 Once you've selected what you want to embed, click Next to customize your embed.
@@ -109,13 +116,13 @@ Note the `defer` attribute and the reference to your Metabase URL in the script 
 
 If you're embedding multiple entities on the same page, you only need to include the `<script>` tags once globally.
 
-You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin Settings > Embedding > Setup guide > Create embed**. Check out the [Quickstart](#quickstart).
+You can also generate the code snippet for Embedded Analytics JS interactively in Metabase through **Admin > Embedding > Setup guide > Embed in your code**. Check out the [quickstart](#quickstart).
 
 ## Customizing embeds
 
 The exact customization options you see will depend on what type of entity you're embedding.
 
-When you're creating a new embed using **Admin Settings > Embedding > Setup guide > Create embed**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see the following customization options in the interactive creation flow. These options correspond to parameters in [components](#components).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 
@@ -140,6 +147,8 @@ To define the configuration that applies to every embed on the page, use the `de
 - `useExistingUserSession: true|false` (optional, for development only) - lets you preview the embed locally using your Metabase admin account session. Only supported in Google Chrome.
 
 - `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
+
+- `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./sdk/authentication.md#customizing-jwt-authentication).
 
 ### Theming
 
@@ -360,7 +369,7 @@ To render a question (chart).
 
 To render a collection browser so people can navigate a collection and open dashboards or questions.
 
- ```html
+```html
 <metabase-browser initial-collection="14" read-only="false"></metabase-browser>
 ```
 

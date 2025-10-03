@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 2px solid color-mix(in srgb, var(--mb-color-border), black 5%);
+  border: 1px solid var(--mb-color-border);
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
@@ -20,13 +20,13 @@
 
 .Button:hover {
   color: var(--mb-color-text-brand);
-  border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
+  border-color: var(--mb-color-border);
   background: var(--mb-color-bg-light);
 }
 
 .Button:focus-visible {
   border-color: var(--mb-color-background);
-  outline: 2px solid var(--mb-color-brand);
+  outline: 1px solid var(--mb-color-brand);
 }
 
 @media screen and (--breakpoint-min-lg) {

@@ -17,6 +17,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   entityTypes: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
+  hiddenParameters: Yup.mixed().optional(),
   isSaveEnabled: Yup.mixed().optional(),
   onBeforeSave: Yup.mixed().optional(),
   onNavigateBack: Yup.mixed().optional(),
@@ -38,6 +39,7 @@ const propsSchema: Yup.SchemaOf<InteractiveQuestionProps> = Yup.object({
   withChartTypeSelector: Yup.mixed().optional(),
   withDownloads: Yup.mixed().optional(),
   withResetButton: Yup.mixed().optional(),
+  onVisualizationChange: Yup.mixed().optional(),
 }).noUnknown();
 
 export const interactiveQuestionSchema: FunctionSchema = {

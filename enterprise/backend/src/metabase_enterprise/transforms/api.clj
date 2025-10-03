@@ -1,7 +1,9 @@
 (ns metabase-enterprise.transforms.api
   (:require
+   [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
+   [metabase-enterprise.transforms.canceling :as transforms.canceling]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -13,6 +15,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -29,12 +32,21 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::transform-source
-  [:map
-   [:type [:= "query"]]
-   [:query [:map [:database :int]]]])
+  [:multi {:dispatch (comp keyword :type)}
+   [:query
+    [:map
+     [:type [:= "query"]]
+     [:query [:map [:database :int]]]]]
+   [:python
+    [:map {:closed true}
+     [:source-database {:optional true} :int]
+     [:source-tables   [:map-of :string :int]]
+     [:type [:= "python"]]
+     [:body :string]]]])
 
 (mr/def ::transform-target
   [:map
+   [:database {:optional true} :int]
    [:type [:enum "table"]]
    [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]])
@@ -55,14 +67,10 @@
              :schema "transforms"
              :name "gadget_products"}}])
 
-(defn- source-database-id
-  [transform]
-  (-> transform :source :query :database))
-
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (source-database-id transform))
-                                (deferred-tru "The source database cannot be found."))
+  (let [database (api/check-400 (t2/select-one :model/Database (transforms.util/target-database-id transform))
+                                (deferred-tru "The target database cannot be found."))
         feature (transforms.util/required-database-feature transform)]
     (api/check-400 (not (:is_sample database))
                    (deferred-tru "Cannot run transforms on the sample database."))
@@ -73,14 +81,27 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
+(defn- check-feature-enabled!
+  [transform]
+  (api/check (transforms.util/check-feature-enabled transform)
+             [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
+
 (api.macros/defendpoint :get "/"
   "Get a list of transforms."
   [_route-params
-   _query-params]
+   {:keys [last_run_start_time last_run_statuses tag_ids]} :-
+   [:map
+    [:last_run_start_time {:optional true} [:maybe ms/NonBlankString]]
+    [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
+    [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (api/check-superuser)
-  (-> (t2/select :model/Transform)
-      (t2/hydrate :last_run :transform_tag_ids)
-      (->> (map #(update % :last_run transforms.util/localize-run-timestamps)))))
+  (let [transforms (t2/select :model/Transform)]
+    (into []
+          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                (map #(update % :last_run transforms.util/localize-run-timestamps)))
+          (t2/hydrate transforms :last_run :transform_tag_ids))))
 
 (api.macros/defendpoint :post "/"
   "Create a new transform."
@@ -95,18 +116,21 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
+  (check-feature-enabled! body)
   (api/check (not (transforms.util/target-table-exists? body))
              403
              (deferred-tru "A table with that name already exists."))
-  (t2/with-transaction [_]
-    (let [tag-ids (:tag_ids body)
-          transform (t2/insert-returning-instance!
-                     :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
-      ;; Add tag associations if provided
-      (when (seq tag-ids)
-        (transform.model/update-transform-tags! (:id transform) tag-ids))
-      ;; Return with hydrated tag_ids
-      (t2/hydrate transform :transform_tag_ids))))
+  (let [transform (t2/with-transaction [_]
+                    (let [tag-ids (:tag_ids body)
+                          transform (t2/insert-returning-instance!
+                                     :model/Transform (select-keys body [:name :description :source :target :run_trigger]))]
+                      ;; Add tag associations if provided
+                      (when (seq tag-ids)
+                        (transform.model/update-transform-tags! (:id transform) tag-ids))
+                      ;; Return with hydrated tag_ids
+                      (t2/hydrate transform :transform_tag_ids)))]
+    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+    transform))
 
 (api.macros/defendpoint :get "/:id"
   "Get a specific transform."
@@ -115,8 +139,7 @@
   (log/info "get transform" id)
   (api/check-superuser)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
-        database-id (source-database-id transform)
-        target-table (transforms.util/target-table database-id target :active true)]
+        target-table (transforms.util/target-table (transforms.util/target-database-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
@@ -168,25 +191,29 @@
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
   (api/check-superuser)
-  (t2/with-transaction [_]
-    ;; Cycle detection should occur within the transaction to avoid race
-    (let [old (t2/select-one :model/Transform id)
-          new (merge old body)
-          target-fields #(-> % :target (select-keys [:schema :name]))]
-      (check-database-feature new)
-      (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
-        (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                        {:status-code 400})))
-      (api/check (not (and (not= (target-fields old) (target-fields new))
-                           (transforms.util/target-table-exists? new)))
-                 403
-                 (deferred-tru "A table with that name already exists.")))
-
-    (t2/update! :model/Transform id (dissoc body :tag_ids))
-    ;; Update tag associations if provided
-    (when (contains? body :tag_ids)
-      (transform.model/update-transform-tags! id (:tag_ids body)))
-    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids)))
+  (let [transform (t2/with-transaction [_]
+                    ;; Cycle detection should occur within the transaction to avoid race
+                    (let [old (t2/select-one :model/Transform id)
+                          new (merge old body)
+                          target-fields #(-> % :target (select-keys [:schema :name]))]
+                      ;; we must validate on a full transform object
+                      (check-feature-enabled! new)
+                      (check-database-feature new)
+                      (when (transforms.util/query-transform? old)
+                        (when-let [{:keys [cycle-str]} (transforms.ordering/get-transform-cycle new)]
+                          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                                          {:status-code 400}))))
+                      (api/check (not (and (not= (target-fields old) (target-fields new))
+                                           (transforms.util/target-table-exists? new)))
+                                 403
+                                 (deferred-tru "A table with that name already exists.")))
+                    (t2/update! :model/Transform id (dissoc body :tag_ids))
+                    ;; Update tag associations if provided
+                    (when (contains? body :tag_ids)
+                      (transform.model/update-transform-tags! id (:tag_ids body)))
+                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids))]
+    (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
+    transform))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a transform."
@@ -212,8 +239,11 @@
                     [:id ms/PositiveInt]]]
   (log/info "canceling transform " id)
   (api/check-superuser)
-  (let [run (api/check-404 (transform-run/running-run-for-transform-id id))]
-    (transform-run-cancelation/mark-cancel-started-run! (:id run)))
+  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        run (api/check-404 (transform-run/running-run-for-transform-id id))]
+    (transform-run-cancelation/mark-cancel-started-run! (:id run))
+    (when (transforms.util/python-transform? transform)
+      (transforms.canceling/cancel-run! (:id run))))
   nil)
 
 (api.macros/defendpoint :post "/:id/run"
@@ -223,10 +253,15 @@
   (log/info "run transform" id)
   (api/check-superuser)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        _         (check-feature-enabled! transform)
         start-promise (promise)]
-    (u.jvm/in-virtual-thread*
-     (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
-                                                        :run-method :manual}))
+    (if (transforms.util/python-transform? transform)
+      (u.jvm/in-virtual-thread*
+       (transforms-python.execute/execute-python-transform! transform {:start-promise start-promise
+                                                                       :run-method :manual}))
+      (u.jvm/in-virtual-thread*
+       (transforms.execute/run-mbql-transform! transform {:start-promise start-promise
+                                                          :run-method :manual})))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

@@ -83,30 +83,6 @@ redirect_from:
   },
   "components" : {
     "schemas" : {
-      "api.tiles.route-params" : {
-        "type" : "object",
-        "properties" : {
-          "lat-field" : {
-            "type" : "string"
-          },
-          "lon-field" : {
-            "type" : "string"
-          },
-          "x" : {
-            "description" : "value must be an integer.",
-            "type" : "integer"
-          },
-          "y" : {
-            "description" : "value must be an integer.",
-            "type" : "integer"
-          },
-          "zoom" : {
-            "description" : "value must be an integer.",
-            "type" : "integer"
-          }
-        },
-        "required" : [ "zoom", "x", "y", "lat-field", "lon-field" ]
-      },
       "gsheets.response" : {
         "anyOf" : [ {
           "type" : "object",
@@ -228,6 +204,52 @@ redirect_from:
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
+      },
+      "metabase-enterprise.dependencies.api.card-body" : {
+        "type" : "object",
+        "properties" : {
+          "dataset_query" : {
+            "description" : "Value must be a map.",
+            "type" : "object",
+            "properties" : { }
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "result_metadata" : {
+            "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+          }
+        },
+        "required" : [ "id" ]
+      },
+      "metabase-enterprise.dependencies.api.transform-body" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "description" : "Value must be a map.",
+            "type" : "object",
+            "properties" : { }
+          },
+          "target" : {
+            "description" : "Value must be a map.",
+            "type" : "object",
+            "properties" : { }
+          }
+        },
+        "required" : [ "id" ]
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "type" : "object",
@@ -385,14 +407,27 @@ redirect_from:
       "metabase-enterprise.metabot-v3.tools.api.basic-table" : {
         "type" : "object",
         "properties" : {
-          "description" : {
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
             "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "model", "table" ]
           },
           "fields" : {
             "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
           },
-          "id" : {
-            "type" : "integer"
+          "database_schema" : {
+            "type" : "string"
           },
           "metrics" : {
             "type" : "array",
@@ -400,15 +435,11 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
             }
           },
-          "name" : {
+          "description" : {
             "type" : "string"
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "model", "table" ]
           }
         },
-        "required" : [ "id", "type", "name", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.bucket" : {
         "type" : "string",
@@ -803,49 +834,6 @@ redirect_from:
           "required" : [ "output" ]
         } ]
       },
-      "metabase-enterprise.metabot-v3.tools.api.find-metric-result" : {
-        "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "structured_output" : {
-              "type" : "object",
-              "properties" : {
-                "default_time_dimension_field_id" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.column"
-                },
-                "description" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "type" : "integer"
-                },
-                "name" : {
-                  "type" : "string"
-                },
-                "queryable_dimensions" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.column"
-                  }
-                },
-                "type" : {
-                  "const" : "metric"
-                }
-              },
-              "required" : [ "id", "type", "name", "queryable_dimensions" ]
-            }
-          },
-          "required" : [ "structured_output" ]
-        }, {
-          "type" : "object",
-          "properties" : {
-            "output" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "output" ]
-        } ]
-      },
       "metabase-enterprise.metabot-v3.tools.api.find-outliers-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -968,6 +956,9 @@ redirect_from:
           },
           "type" : {
             "const" : "metric"
+          },
+          "verified" : {
+            "type" : "boolean"
           }
         },
         "required" : [ "id", "type", "name" ]
@@ -975,22 +966,16 @@ redirect_from:
       "metabase-enterprise.metabot-v3.tools.api.full-table" : {
         "type" : "object",
         "properties" : {
-          "description" : {
-            "type" : "string"
-          },
-          "fields" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
-          },
           "id" : {
             "type" : "integer"
           },
-          "metrics" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
-            }
-          },
           "name" : {
+            "type" : "string"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "display_name" : {
             "type" : "string"
           },
           "queryable_foreign_key_tables" : {
@@ -1002,9 +987,24 @@ redirect_from:
           "type" : {
             "type" : "string",
             "enum" : [ "model", "table" ]
+          },
+          "fields" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
+          },
+          "database_schema" : {
+            "type" : "string"
+          },
+          "metrics" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
+            }
+          },
+          "description" : {
+            "type" : "string"
           }
         },
-        "required" : [ "id", "type", "name", "fields" ]
+        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.generate-insights-arguments" : {
         "type" : "object",
@@ -1100,6 +1100,9 @@ redirect_from:
                 },
                 "type" : {
                   "const" : "dashboard"
+                },
+                "verified" : {
+                  "type" : "boolean"
                 }
               },
               "required" : [ "id", "type", "name" ]
@@ -1284,6 +1287,9 @@ redirect_from:
                 },
                 "type" : {
                   "const" : "question"
+                },
+                "verified" : {
+                  "type" : "boolean"
                 }
               },
               "required" : [ "id", "type", "name", "result_columns" ]
@@ -1494,6 +1500,65 @@ redirect_from:
       "metabase-enterprise.metabot-v3.tools.api.proportion" : {
         "type" : "number"
       },
+      "metabase-enterprise.metabot-v3.tools.api.query-datasource-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "aggregations" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.aggregation"
+              }
+            },
+            "fields" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field"
+              }
+            },
+            "filters" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.filter"
+              }
+            },
+            "group_by" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.group-by"
+              }
+            },
+            "limit" : {
+              "type" : "integer"
+            },
+            "model_id" : {
+              "type" : "integer"
+            },
+            "order_by" : {
+              "type" : "array",
+              "items" : {
+                "type" : "object",
+                "properties" : {
+                  "direction" : {
+                    "type" : "string",
+                    "enum" : [ "asc", "desc" ]
+                  },
+                  "field" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.field"
+                  }
+                },
+                "required" : [ "field", "direction" ]
+              }
+            },
+            "table_id" : {
+              "type" : "integer"
+            }
+          }
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
       "metabase-enterprise.metabot-v3.tools.api.query-metric-arguments" : {
         "allOf" : [ {
           "type" : "object",
@@ -1576,6 +1641,130 @@ redirect_from:
           "type" : "object",
           "properties" : { }
         } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.search-arguments" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "created_at" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "database_id" : {
+              "type" : "integer"
+            },
+            "entity_types" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string",
+                "enum" : [ "table", "model", "question", "dashboard", "metric", "database" ]
+              }
+            },
+            "last_edited_at" : {
+              "type" : "string",
+              "minLength" : 1
+            },
+            "limit" : {
+              "default" : 50,
+              "type" : "integer"
+            },
+            "semantic_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            },
+            "term_queries" : {
+              "type" : "array",
+              "items" : {
+                "type" : "string"
+              }
+            }
+          }
+        }, {
+          "type" : "object",
+          "properties" : { }
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.search-result" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "structured_output" : {
+              "type" : "object",
+              "properties" : {
+                "data" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-result-item"
+                  }
+                },
+                "total_count" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "data", "total_count" ]
+            }
+          },
+          "required" : [ "structured_output" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "output" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "output" ]
+        } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.search-result-item" : {
+        "description" : "Unified schema for search result items.",
+        "type" : "object",
+        "properties" : {
+          "collection" : {
+            "type" : "object",
+            "properties" : {
+              "authority_level" : {
+                "type" : "string"
+              },
+              "name" : {
+                "type" : "string"
+              }
+            }
+          },
+          "id" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "verified" : {
+            "type" : "boolean"
+          },
+          "database_id" : {
+            "type" : "integer"
+          },
+          "updated_at" : {
+            "type" : "string"
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string",
+            "enum" : [ "table", "model", "dashboard", "question", "metric", "database" ]
+          },
+          "database_schema" : {
+            "type" : "string"
+          },
+          "created_at" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "name" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.statistics" : {
         "type" : "object",
@@ -1817,26 +2006,52 @@ redirect_from:
         "enum" : [ "none", "global-schedule" ]
       },
       "metabase-enterprise.transforms.api.transform-source" : {
-        "type" : "object",
-        "properties" : {
-          "query" : {
-            "type" : "object",
-            "properties" : {
-              "database" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "query" : {
+              "type" : "object",
+              "properties" : {
+                "database" : {
+                  "type" : "integer"
+                }
+              },
+              "required" : [ "database" ]
+            },
+            "type" : {
+              "const" : "query"
+            }
+          },
+          "required" : [ "type", "query" ]
+        }, {
+          "type" : "object",
+          "properties" : {
+            "body" : {
+              "type" : "string"
+            },
+            "source-database" : {
+              "type" : "integer"
+            },
+            "source-tables" : {
+              "type" : "object",
+              "additionalProperties" : {
                 "type" : "integer"
               }
             },
-            "required" : [ "database" ]
+            "type" : {
+              "const" : "python"
+            }
           },
-          "type" : {
-            "const" : "query"
-          }
-        },
-        "required" : [ "type", "query" ]
+          "required" : [ "source-tables", "type", "body" ],
+          "additionalProperties" : false
+        } ]
       },
       "metabase-enterprise.transforms.api.transform-target" : {
         "type" : "object",
         "properties" : {
+          "database" : {
+            "type" : "integer"
+          },
           "name" : {
             "type" : "string"
           },
@@ -2968,7 +3183,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3007,7 +3222,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3033,7 +3248,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3061,7 +3276,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3087,7 +3302,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3833,30 +4048,37 @@ redirect_from:
         "type" : "integer"
       },
       "metabase.lib.schema.id.action" : {
+        "description" : "Valid Action ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.card" : {
+        "description" : "Valid Card ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.dashboard" : {
+        "description" : "Valid Dashboard ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.database" : {
+        "description" : "Valid Database ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.dimension" : {
+        "description" : "Valid Dimension ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.field" : {
+        "description" : "Valid Field ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.pulse" : {
+        "description" : "Valid Pulse ID",
         "type" : "integer",
         "minimum" : 1
       },
@@ -3865,18 +4087,22 @@ redirect_from:
         "const" : -1337
       },
       "metabase.lib.schema.id.segment" : {
+        "description" : "Valid legacy Segment ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.snippet" : {
+        "description" : "Valid Snippet ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.table" : {
+        "description" : "Valid Table ID",
         "type" : "integer",
         "minimum" : 1
       },
       "metabase.lib.schema.id.user" : {
+        "description" : "Valid User ID",
         "type" : "integer",
         "minimum" : 1
       },
@@ -3979,6 +4205,7 @@ redirect_from:
         }, { }, { }, { } ]
       },
       "metabase.lib.schema.literal.time" : {
+        "description" : "time literal",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.literal..string.time"
         }, { }, { } ]
@@ -4247,8 +4474,8 @@ redirect_from:
         "optional" : true
       },
       "metabase.lib.schema.metadata.desired-column-alias" : {
-        "type" : "string",
-        "minLength" : 1
+        "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+        "type" : "string"
       },
       "metabase.lib.schema.metadata.fingerprint..fingerprint.global" : {
         "description" : "Fingerprint values that Fields of all types should have.",
@@ -4527,7 +4754,8 @@ redirect_from:
         "optional" : true
       },
       "metabase.lib.schema.metadata.source-column-alias" : {
-        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+        "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+        "type" : "string"
       },
       "metabase.lib.schema.middleware-options.middleware-options" : {
         "description" : "Additional options that can be used to toggle middleware on or off.",
@@ -4588,26 +4816,29 @@ redirect_from:
       },
       "metabase.lib.schema.parameter..dimension.target" : {
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-field-ref"
-        }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-expression-ref"
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-expression-ref"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.template-tag"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
+      },
+      "metabase.lib.schema.parameter..target.legacy-expression-ref" : {
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
+      },
+      "metabase.lib.schema.parameter..target.legacy-field-ref" : {
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
       },
       "metabase.lib.schema.parameter..variable.target" : {
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-field-ref"
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.template-tag"
         } ]
       },
       "metabase.lib.schema.parameter.dimension" : { },
-      "metabase.lib.schema.parameter.legacy-expression-ref" : {
-        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
-      },
-      "metabase.lib.schema.parameter.legacy-field-ref" : {
-        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
+      "metabase.lib.schema.parameter.id" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
       },
       "metabase.lib.schema.parameter.parameter" : {
         "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
@@ -4615,7 +4846,7 @@ redirect_from:
         "properties" : {
           "default" : { },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -4643,11 +4874,11 @@ redirect_from:
       },
       "metabase.lib.schema.parameter.target" : {
         "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.legacy-field-ref"
-        }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.dimension"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.variable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
       },
       "metabase.lib.schema.parameter.template-tag" : {
@@ -4670,6 +4901,7 @@ redirect_from:
         } ]
       },
       "metabase.lib.schema.parameter.type" : {
+        "description" : "Valid parameter :type",
         "type" : "string",
         "enum" : [ "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
@@ -4698,6 +4930,14 @@ redirect_from:
       "metabase.lib.schema.template-tag..raw-value.type" : {
         "type" : "string",
         "enum" : [ "date", "number", "boolean", "text" ]
+      },
+      "metabase.lib.schema.template-tag.id" : {
+        "oneOf" : [ {
+          "type" : "string",
+          "format" : "uuid"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+        } ]
       },
       "metabase.lib.schema.temporal-bucketing.unit" : {
         "type" : "string",
@@ -12647,6 +12887,9 @@ redirect_from:
                   "content" : {
                     "type" : "object"
                   },
+                  "html" : {
+                    "type" : "string"
+                  },
                   "parent_comment_id" : {
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
@@ -12662,7 +12905,7 @@ redirect_from:
                     "enum" : [ "document" ]
                   }
                 },
-                "required" : [ "target_type", "target_id", "content" ]
+                "required" : [ "target_type", "target_id", "content", "html" ]
               }
             }
           }
@@ -12722,6 +12965,9 @@ redirect_from:
                 "properties" : {
                   "content" : {
                     "type" : "object"
+                  },
+                  "html" : {
+                    "type" : "string"
                   },
                   "is_resolved" : {
                     "type" : "boolean"
@@ -13123,6 +13369,104 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/database-routing" ]
+      }
+    },
+    "/api/ee/dependencies/check_card" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_card",
+        "description" : "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/check_snippet" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_snippet",
+        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "content" : {
+                    "type" : "string"
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "name" : {
+                    "description" : "snippet names cannot include '}' or start with spaces"
+                  }
+                },
+                "required" : [ "id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/check_transform" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_transform",
+        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
       }
     },
     "/api/ee/document/" : {
@@ -13909,66 +14253,6 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
-    "/api/ee/metabot-tools/find-metric" : {
-      "post" : {
-        "summary" : "POST /api/ee/metabot-tools/find-metric",
-        "description" : "Find a metric matching a description.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "conversation_id" : {
-                      "description" : "value must be a valid UUID.",
-                      "type" : "string",
-                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                    }
-                  },
-                  "required" : [ "conversation_id" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "arguments" : {
-                    "type" : "object",
-                    "properties" : {
-                      "message" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "message" ]
-                  },
-                  "conversation_id" : {
-                    "description" : "value must be a valid UUID.",
-                    "type" : "string",
-                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-                  }
-                },
-                "required" : [ "arguments", "conversation_id" ]
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-tools" ]
-      }
-    },
     "/api/ee/metabot-tools/find-outliers" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/find-outliers",
@@ -14520,6 +14804,60 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
+    "/api/ee/metabot-tools/query-datasource" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/query-datasource",
+        "description" : "Construct a query from a model or table data source.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.query-datasource-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "arguments", "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
     "/api/ee/metabot-tools/query-metric" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-tools/query-metric",
@@ -14628,6 +14966,60 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-tools" ]
       }
     },
+    "/api/ee/metabot-tools/search" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-tools/search",
+        "description" : "Enhanced search with term and semantic queries using Reciprocal Rank Fusion.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:conversation_id -> <value must be a valid UUID.>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "conversation_id" : {
+                      "description" : "value must be a valid UUID.",
+                      "type" : "string",
+                      "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    }
+                  },
+                  "required" : [ "conversation_id" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "arguments" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.search-arguments"
+                  },
+                  "conversation_id" : {
+                    "description" : "value must be a valid UUID.",
+                    "type" : "string",
+                    "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  }
+                },
+                "required" : [ "conversation_id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-tools" ]
+      }
+    },
     "/api/ee/metabot-v3/agent-streaming" : {
       "post" : {
         "summary" : "POST /api/ee/metabot-v3/agent-streaming",
@@ -14724,6 +15116,35 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-v3/document" ]
       }
     },
+    "/api/ee/metabot-v3/feedback" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-v3/feedback",
+        "description" : "Proxy Metabot feedback to Harbormaster, adding the premium embedding token.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3" ]
+      }
+    },
     "/api/ee/metabot-v3/metabot/" : {
       "get" : {
         "summary" : "GET /api/ee/metabot-v3/metabot/",
@@ -14768,37 +15189,10 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/metabot/{id}/entities" : {
-      "get" : {
-        "summary" : "GET /api/ee/metabot-v3/metabot/{id}/entities",
-        "description" : "List the entities this metabot has access to",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3/metabot" ]
       },
       "put" : {
-        "summary" : "PUT /api/ee/metabot-v3/metabot/{id}/entities",
-        "description" : "Update the entities this metabot has access to",
+        "summary" : "PUT /api/ee/metabot-v3/metabot/{id}",
+        "description" : "Update a metabot instance",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -14825,70 +15219,17 @@ redirect_from:
               "schema" : {
                 "type" : "object",
                 "properties" : {
-                  "items" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "id" : {
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "model" : {
-                          "type" : "string",
-                          "enum" : [ "dataset", "metric", "collection" ]
-                        }
-                      },
-                      "required" : [ "id", "model" ]
-                    }
+                  "collection_id" : {
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "use_verified_content" : {
+                    "type" : "boolean"
                   }
                 },
-                "required" : [ "items" ]
+                "additionalProperties" : false
               }
             }
-          }
-        },
-        "tags" : [ "/api/ee/metabot-v3/metabot" ]
-      }
-    },
-    "/api/ee/metabot-v3/metabot/{id}/entities/{model}/{model-id}" : {
-      "delete" : {
-        "summary" : "DELETE /api/ee/metabot-v3/metabot/{id}/entities/{model}/{model-id}",
-        "description" : "Remove an entity from this metabot's access list",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        }, {
-          "in" : "path",
-          "name" : "model",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "enum" : [ "dataset", "metric", "collection" ]
-          }
-        }, {
-          "in" : "path",
-          "name" : "model-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/metabot-v3/metabot" ]
@@ -15654,6 +15995,16 @@ redirect_from:
                         },
                         "value" : {
                           "anyOf" : [ {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "anyOf" : [ {
+                                "type" : "string",
+                                "minLength" : 1
+                              }, {
+                                "type" : "boolean"
+                              } ]
+                            }
+                          }, {
                             "type" : "string",
                             "minLength" : 1
                           }, {
@@ -16009,7 +16360,18 @@ redirect_from:
           }
         }, {
           "in" : "query",
-          "name" : "transform_tag_ids",
+          "name" : "last_run_statuses",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "tag_ids",
           "required" : false,
           "schema" : {
             "type" : "array",
@@ -16331,7 +16693,38 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/ee/transform/",
         "description" : "Get a list of transforms.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "last_run_start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_run_statuses",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "tag_ids",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -17442,11 +17835,18 @@ redirect_from:
         "tags" : [ "/api/embed" ]
       }
     },
-    "/api/embed/tiles/card/{token}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/embed/tiles/card/{token}/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/embed/tiles/card/{token}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/embed/tiles/card/{token}/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for an embedded Card using the map visualization.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "path",
           "name" : "zoom",
           "required" : true,
@@ -17471,27 +17871,6 @@ redirect_from:
           },
           "description" : "value must be an integer."
         }, {
-          "in" : "path",
-          "name" : "lat-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lon-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "token",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
           "in" : "query",
           "name" : "parameters",
           "required" : false,
@@ -17499,6 +17878,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -17514,49 +17907,11 @@ redirect_from:
         "tags" : [ "/api/embed" ]
       }
     },
-    "/api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for a Card on an embedded Dashboard using the map visualization.",
         "parameters" : [ {
-          "in" : "path",
-          "name" : "zoom",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "x",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "y",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "lat-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lon-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
           "in" : "path",
           "name" : "token",
           "required" : true,
@@ -17582,6 +17937,30 @@ redirect_from:
           },
           "description" : "value must be an integer greater than zero."
         }, {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
           "in" : "query",
           "name" : "parameters",
           "required" : false,
@@ -17589,6 +17968,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -20598,6 +20991,168 @@ redirect_from:
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/tiles/card/{token}/{zoom}/{x}/{y}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/tiles/card/{token}/{zoom}/{x}/{y}",
+        "description" : "Generates a single tile image for an embedded Card using the map visualization.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
+    "/api/preview_embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}",
+        "description" : "Generates a single tile image for a Card on an embedded Dashboard using the map visualization.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "dashcard-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "query",
+          "name" : "parameters",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          },
+          "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/product-feedback/" : {
       "post" : {
         "summary" : "POST /api/product-feedback/",
@@ -21478,11 +22033,20 @@ redirect_from:
         "tags" : [ "/api/public" ]
       }
     },
-    "/api/public/tiles/card/{uuid}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/public/tiles/card/{uuid}/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/public/tiles/card/{uuid}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/public/tiles/card/{uuid}/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth\n  credentials. Public sharing must be enabled.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "uuid",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "description" : "value must be a valid UUID."
+        }, {
           "in" : "path",
           "name" : "zoom",
           "required" : true,
@@ -21507,29 +22071,6 @@ redirect_from:
           },
           "description" : "value must be an integer."
         }, {
-          "in" : "path",
-          "name" : "lat-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lon-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "uuid",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
-          },
-          "description" : "value must be a valid UUID."
-        }, {
           "in" : "query",
           "name" : "parameters",
           "required" : false,
@@ -21537,6 +22078,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -21552,49 +22107,11 @@ redirect_from:
         "tags" : [ "/api/public" ]
       }
     },
-    "/api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/public/tiles/dashboard/{uuid}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not\n  require auth credentials. Public sharing must be enabled.",
         "parameters" : [ {
-          "in" : "path",
-          "name" : "zoom",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "x",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "y",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "lat-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lon-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
           "in" : "path",
           "name" : "uuid",
           "required" : true,
@@ -21622,6 +22139,30 @@ redirect_from:
           },
           "description" : "value must be an integer greater than zero."
         }, {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
           "in" : "query",
           "name" : "parameters",
           "required" : false,
@@ -21629,6 +22170,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -24023,11 +24578,20 @@ redirect_from:
         "tags" : [ "/api/task" ]
       }
     },
-    "/api/tiles/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/tiles/{card-id}/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/tiles/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/tiles/{card-id}/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for a saved Card.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "card-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
           "in" : "path",
           "name" : "zoom",
           "required" : true,
@@ -24052,29 +24616,6 @@ redirect_from:
           },
           "description" : "value must be an integer."
         }, {
-          "in" : "path",
-          "name" : "lat-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lon-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "card-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        }, {
           "in" : "query",
           "name" : "parameters",
           "required" : false,
@@ -24082,6 +24623,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -24097,49 +24652,11 @@ redirect_from:
         "tags" : [ "/api/tiles" ]
       }
     },
-    "/api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/tiles/{dashboard-id}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for a dashcard.",
         "parameters" : [ {
-          "in" : "path",
-          "name" : "zoom",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "x",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "y",
-          "required" : true,
-          "schema" : {
-            "type" : "integer"
-          },
-          "description" : "value must be an integer."
-        }, {
-          "in" : "path",
-          "name" : "lat-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "in" : "path",
-          "name" : "lon-field",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
           "in" : "path",
           "name" : "dashboard-id",
           "required" : true,
@@ -24167,6 +24684,30 @@ redirect_from:
           },
           "description" : "value must be an integer greater than zero."
         }, {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
           "in" : "query",
           "name" : "parameters",
           "required" : false,
@@ -24174,6 +24715,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -24189,11 +24744,35 @@ redirect_from:
         "tags" : [ "/api/tiles" ]
       }
     },
-    "/api/tiles/{zoom}/{x}/{y}/{lat-field}/{lon-field}" : {
+    "/api/tiles/{zoom}/{x}/{y}" : {
       "get" : {
-        "summary" : "GET /api/tiles/{zoom}/{x}/{y}/{lat-field}/{lon-field}",
+        "summary" : "GET /api/tiles/{zoom}/{x}/{y}",
         "description" : "Generates a single tile image for an ad-hoc query.",
         "parameters" : [ {
+          "in" : "path",
+          "name" : "zoom",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "x",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
+          "in" : "path",
+          "name" : "y",
+          "required" : true,
+          "schema" : {
+            "type" : "integer"
+          },
+          "description" : "value must be an integer."
+        }, {
           "in" : "query",
           "name" : "query",
           "required" : true,
@@ -24201,6 +24780,20 @@ redirect_from:
             "type" : "string"
           },
           "description" : "value must be a valid JSON string."
+        }, {
+          "in" : "query",
+          "name" : "latField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "lonField",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "2XX" : {

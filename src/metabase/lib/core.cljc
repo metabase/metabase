@@ -34,6 +34,7 @@
    [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
+   [metabase.lib.metadata.protocols]
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
@@ -44,6 +45,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
+   [metabase.lib.schema]
    [metabase.lib.schema.util]
    [metabase.lib.segment :as lib.segment]
    [metabase.lib.serialize]
@@ -53,6 +55,7 @@
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.validate :as lib.validate]
    [metabase.lib.walk.util]
    [metabase.util.namespaces :as shared.ns]))
 
@@ -86,6 +89,7 @@
          metabase.lib.metadata/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
+         metabase.lib.metadata.protocols/keep-me
          lib.metric/keep-me
          lib.native/keep-me
          lib.normalize/keep-me
@@ -95,6 +99,7 @@
          lib.query/keep-me
          lib.ref/keep-me
          lib.remove-replace/keep-me
+         metabase.lib.schema/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
          metabase.lib.serialize/keep-me
@@ -336,6 +341,7 @@
   limit
   max-rows-limit]
  [metabase.lib.metadata
+  ->metadata-provider
   general-cached-value]
  [lib.metadata.calculation
   column-name
@@ -350,7 +356,12 @@
   visible-columns]
  [lib.metadata.composed-provider
   composed-metadata-provider]
+ [metabase.lib.metadata.protocols
+  cached-metadata-provider-with-cache?
+  metadata-provider?
+  metadata-providerable?]
  [lib.native
+  add-parameters-for-template-tags
   engine
   extract-template-tags
   has-template-tag-variables?
@@ -408,6 +419,8 @@
   rename-join
   replace-clause
   replace-join]
+ [metabase.lib.schema
+  native-only-query?]
  [metabase.lib.schema.util]
  [lib.segment
   available-segments]
@@ -437,16 +450,25 @@
   clause?
   clause-of-type?
   fresh-uuids
+  mbql-stage?
   native-stage?
   normalized-query-type
+  normalized-mbql-version
   previous-stage
   previous-stage-number
   query-stage
   source-table-id
+  source-card-id
   update-query-stage]
+ [lib.validate
+  find-bad-refs]
  [metabase.lib.walk.util
   all-field-ids
   all-source-card-ids
   all-source-table-ids
+  all-template-tag-field-ids
+  all-template-tag-snippet-ids
   all-template-tags
+  all-template-tags-map
+  all-template-tags-id->field-ids
   any-native-stage?])
