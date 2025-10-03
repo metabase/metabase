@@ -52,7 +52,7 @@ function getPythonScript(code: string, data: SampleData[]) {
   const random = Math.random().toString(36).slice(2);
 
   // Encode the columns as base64 JSON to avoid issues with escaping and formatting
-  const encoded = btoa(JSON.stringify(data.map((source) => source.rows)));
+  const encoded = btoa(JSON.stringify(data));
 
   return [
     // code should sit at the top of the script, so line numbers in errors
@@ -71,8 +71,12 @@ def __run_transform_${random}():
     base64.b64decode(encoded)
   )
 
+  kwargs = {}
+  for column in columns:
+    kwargs[column['alias']] = pd.DataFrame(column['rows'])
+
   # run user-defind transform
-  result = transform(*columns)
+  result = transform(**kwargs)
 
   if result is None:
     raise Exception('Transform function did not return a result')
