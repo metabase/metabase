@@ -32,7 +32,6 @@
     "**/test/*",
     "!frontend/test/__support__/metadata",
     "**/test-utils.*",
-    "**/test-utils.*",
     "**/test-helpers.*",
     "**/testMocks.*",
     "**/*.stories.*"
