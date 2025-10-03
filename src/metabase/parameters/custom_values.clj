@@ -63,11 +63,11 @@
   1000)
 
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
-  [{query :dataset_query, :keys [id], :as card} :- [:and
-                                                    :metabase.queries.schema/card
-                                                    [:map
-                                                     [:id ::lib.schema.id/card]]]
-   legacy-field-ref                             :- ::mbql.s/field-or-expression-ref
+  [{query :dataset_query, :keys [id], :as _card} :- [:and
+                                                     :metabase.queries.schema/card
+                                                     [:map
+                                                      [:id ::lib.schema.id/card]]]
+   legacy-field-ref                              :- ::mbql.s/field-or-expression-ref
    {:keys [query-string] :as _opts}]
   (when (seq query)
     ;; start a new query using this Card as a starting point

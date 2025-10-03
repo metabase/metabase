@@ -5,7 +5,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
-   #_{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
