@@ -96,6 +96,10 @@ describe("FormattingWidget", () => {
     // eslint-disable-next-line jest-dom/prefer-to-have-value
     expect(nameRadio).toHaveAttribute("value", "name");
     expect(nameRadio).not.toBeChecked();
+
+    expect(
+      within(currencyStyleWidget).queryByLabelText(/Local symbol/),
+    ).not.toBeInTheDocument();
   });
 
   it("should update multiple settings", async () => {
