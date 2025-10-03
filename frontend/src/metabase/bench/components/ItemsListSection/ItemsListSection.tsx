@@ -9,15 +9,16 @@ import type { BenchItemsListSorting } from "./types";
 type ItemsListSectionProps = {
   sectionTitle: React.ReactNode;
   titleMenuItems: React.ReactNode;
+  AddButton?: React.ComponentType;
   onChangeSorting: (sorting: BenchItemsListSorting) => void;
   onAddNewItem: () => void;
-
   listItems: React.ReactNode;
 };
 
 export const ItemsListSection = ({
   sectionTitle,
   titleMenuItems,
+  AddButton,
   onChangeSorting,
   onAddNewItem,
   listItems,
@@ -109,12 +110,14 @@ export const ItemsListSection = ({
             </Menu.Dropdown>
           </Menu>
 
-          <Button
-            variant="filled"
-            color="brand"
-            leftSection={<Icon name="add" size={12} />}
-            onClick={onAddNewItem}
-          />
+          {AddButton ? <AddButton /> : (
+            <Button
+              variant="filled"
+              color="brand"
+              leftSection={<Icon name="add" size={12} />}
+              onClick={onAddNewItem}
+            />
+          )}
         </Group>
       </Flex>
       <Box p="md" style={{ overflow: "auto" }}>

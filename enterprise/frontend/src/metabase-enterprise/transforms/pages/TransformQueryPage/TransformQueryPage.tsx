@@ -7,8 +7,7 @@ import { skipToken } from "metabase/api";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
@@ -125,17 +124,17 @@ export function TransformQueryPageBody({
   if (transform.source.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-		transform={transform}
+        transform={transform}
         initialSource={transform.source}
         proposedSource={
           proposedSource?.type === "python" ? proposedSource : undefined
         }
         isNew={false}
-        isSaving={isLoading}
-        onSave={handleSourceSave}
+        isSaving={isSaving}
+        onSave={handleSaveSource}
         onCancel={handleCancel}
-        onRejectProposed={onRejectProposed}
-        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={clearProposed}
+        onAcceptProposed={acceptProposed}
       />
     );
   }
