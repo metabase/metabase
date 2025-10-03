@@ -726,21 +726,21 @@
         (testing "SQL Query"
           (mt/with-temp [:model/Card {sql-card-id :id} {:name          "Products (SQL)"
                                                         :dataset_query (mt/native-query
-                                                                         {:query
-                                                                          (str "SELECT id, title, category\n"
-                                                                               "FROM products\n"
-                                                                               "WHERE {{category}}\n"
-                                                                               "ORDER BY id ASC\n"
-                                                                               "LIMIT 2")
+                                                                        {:query
+                                                                         (str "SELECT id, title, category\n"
+                                                                              "FROM products\n"
+                                                                              "WHERE {{category}}\n"
+                                                                              "ORDER BY id ASC\n"
+                                                                              "LIMIT 2")
 
-                                                                          :template-tags
-                                                                          {"category"
-                                                                           {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
-                                                                            :name         "category"
-                                                                            :display-name "Category"
-                                                                            :type         :dimension
-                                                                            :dimension    [:field (mt/id :products :category) nil]
-                                                                            :widget-type  :category}}})}
+                                                                         :template-tags
+                                                                         {"category"
+                                                                          {:id           "_SQL_CATEGORY_TEMPLATE_TAG_"
+                                                                           :name         "category"
+                                                                           :display-name "Category"
+                                                                           :type         :dimension
+                                                                           :dimension    [:field (mt/id :products :category) nil]
+                                                                           :widget-type  :category}}})}
                          :model/DashboardCard _ {:parameter_mappings [{:parameter_id "_SQL_CATEGORY_"
                                                                        :card_id      sql-card-id
                                                                        :target       [:dimension [:template-tag "category"]]}]
@@ -773,7 +773,7 @@
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
                      :model/Card      {card-id :id} {:name          "Products (SQL)"
                                                      :dataset_query (mt/native-query
-                                                                      {:query "SELECT * FROM venues LIMIT 1"})}
+                                                                     {:query "SELECT * FROM venues LIMIT 1"})}
                      :model/DashboardCard _ {:dashboard_id dashboard-id
                                              :card_id      card-id}]
         (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)

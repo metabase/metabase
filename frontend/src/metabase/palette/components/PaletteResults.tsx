@@ -101,11 +101,6 @@ export const PaletteResults = ({
                   pt="md"
                   pb="sm"
                   mt={isFirst ? undefined : "md"}
-                  style={{
-                    borderTop: isFirst
-                      ? undefined
-                      : "1px solid var(--mb-color-border)",
-                  }}
                   w="100%"
                 >
                   {item}

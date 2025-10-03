@@ -647,11 +647,11 @@
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
-                                      {:query "update categories set name = 'foo' where id = {{id}}"
-                                       :template-tags {:id {:id "id"
-                                                            :name "id"
-                                                            :type "number"
-                                                            :display-name "Id"}}})
+                                     {:query "update categories set name = 'foo' where id = {{id}}"
+                                      :template-tags {:id {:id "id"
+                                                           :name "id"
+                                                           :type "number"
+                                                           :display-name "Id"}}})
                                     :type name)]
                   (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}
