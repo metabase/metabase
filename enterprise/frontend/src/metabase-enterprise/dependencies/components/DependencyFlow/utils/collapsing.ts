@@ -38,7 +38,9 @@ function getGraphWithCollapsedNode(
       if (node.id === nodeId) {
         return { ...node, data: { ...node.data, isExpanded: false } };
       }
-      return collapsedNodeIds.has(node.id) ? { ...node, hidden: true } : node;
+      return collapsedNodeIds.has(node.id)
+        ? { ...node, data: { ...node.data, isExpanded: false }, hidden: true }
+        : node;
     }),
     edges: edges.map((edge) =>
       collapsedEdgeIds.has(edge.id) ? { ...edge, hidden: true } : edge,
