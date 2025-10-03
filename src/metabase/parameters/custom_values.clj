@@ -59,10 +59,27 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
+(defn- query-for-column-values
+  "For a `card` generate a query, which will be used for field values computation.
+  Parameter for which values are generated may not be linked to a dimension 
+  on last stage. Hence all stages are searched for `value-field-ref`. Stages are
+  then truncated so the matching stage becomes last. Results of such query 
+  contain values of values of exmained field."
+  [card value-field-ref]
+  (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
+        full-query (lib/query mp (:dataset_query card))
+        value-column-stage (m/find-first (fn [stage-number]
+                                           (lib/find-column-for-legacy-ref
+                                            full-query stage-number value-field-ref
+                                            (lib/visible-columns full-query stage-number)))
+                                         (reverse (range (lib/stage-count full-query))))
+        stages (vec (:stages full-query))]
+    (-> full-query
+        (assoc :stages (subvec stages 0 (inc value-column-stage))))))
+
 (defn- values-from-card-query
   [card value-field-ref {:keys [query-string] :as _opts}]
-  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
-        query             (lib/query metadata-provider (lib.metadata/card metadata-provider (:id card)))
+  (let [query             (query-for-column-values card value-field-ref)
         value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
         textual?          (lib.types.isa/string? value-column)
         nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
@@ -71,6 +88,7 @@
                               (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
                               (lib/= value-column query-string)))]
     (-> query
+        (lib/append-stage)
         (lib/limit *max-rows*)
         (lib/filter nonempty)
         (cond-> #_query query-filter (lib/filter query-filter))
