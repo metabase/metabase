@@ -15,9 +15,9 @@ import { skipToken } from "metabase/api";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
+import { EntryNodePicker } from "./EntryNodePicker";
 import { GroupNode } from "./GroupNode";
 import { ItemNode } from "./ItemNode";
-import { NodePicker } from "./NodePicker";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
 
@@ -32,7 +32,8 @@ type DependencyFlowProps = {
 };
 
 export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
-  const { data: graph } = useGetDependencyGraphQuery(entry ? entry : skipToken);
+  const { data: graph, isFetching: isGraphFetching } =
+    useGetDependencyGraphQuery(entry ? entry : skipToken);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -60,7 +61,11 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
       <Controls />
       <NodeLayout />
       <Panel position="top-left">
-        <NodePicker entry={entry} onEntryChange={onEntryChange} />
+        <EntryNodePicker
+          entry={entry}
+          isGraphFetching={isGraphFetching}
+          onEntryChange={onEntryChange}
+        />
       </Panel>
     </ReactFlow>
   );

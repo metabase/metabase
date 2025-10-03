@@ -21,16 +21,22 @@ const PICKER_MODELS: DataPickerValue["model"][] = [
   "metric",
 ];
 
-type NodePickerProps = {
+type EntryNodePickerProps = {
   entry: DependencyEntry | undefined;
+  isGraphFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export function NodePicker({ entry, onEntryChange }: NodePickerProps) {
-  const { data: node } = useGetDependencyNodeQuery(
+export function EntryNodePicker({
+  entry,
+  isGraphFetching,
+  onEntryChange,
+}: EntryNodePickerProps) {
+  const [isOpened, { open, close }] = useDisclosure();
+  const { data: node, isFetching: isNodeFetching } = useGetDependencyNodeQuery(
     entry != null ? entry : skipToken,
   );
-  const [isOpened, { open, close }] = useDisclosure();
+  const isFetching = isNodeFetching || isGraphFetching;
 
   const handleChange = (tableId: TableId) => {
     onEntryChange(getDependencyEntry(tableId));
@@ -40,6 +46,7 @@ export function NodePicker({ entry, onEntryChange }: NodePickerProps) {
     <>
       <Button
         variant={node ? "default" : "filled"}
+        loading={isFetching}
         leftSection={node ? <FixedSizeIcon name={getNodeIcon(node)} /> : null}
         onClick={open}
       >
