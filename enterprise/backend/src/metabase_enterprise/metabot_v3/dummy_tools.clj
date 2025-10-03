@@ -166,7 +166,7 @@
 
 (defn- related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
-  [query with-fields?]
+  [query with-fields? field-values-fn]
   (let [fk-fields (->> (lib/visible-columns query)
                        (filter :fk-field-id))
         related-table-ids (->> fk-fields
@@ -174,7 +174,7 @@
                                (into #{}))]
     (when (seq related-table-ids)
       (map #(table-details % {:with-fields? with-fields?
-                              :field-values-fn add-field-values
+                              :field-values-fn field-values-fn
                               :with-metrics? false})
            related-table-ids))))
 
@@ -190,23 +190,19 @@
                                    with-metrics?   true}
                             :as   options}]
    (let [id (:id base)
-         query-needed? (or with-fields? with-metrics?)
-         card-metadata (when query-needed?
-                         (lib.metadata/card metadata-provider id))
-         dataset-query (when query-needed?
-                         (get card-metadata :dataset-query))
+         card-metadata (lib.metadata/card metadata-provider id)
+         dataset-query (get card-metadata :dataset-query)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
-         card-query (when query-needed?
-                      (lib/query metadata-provider (if (and (#{:question} card-type)
-                                                            (#{:pivot} (:display base))
-                                                            (#{:query} (:type dataset-query)))
-                                                     dataset-query
-                                                     card-metadata)))
+         card-query (lib/query metadata-provider (if (and (#{:question} card-type)
+                                                          (#{:pivot} (:display base))
+                                                          (#{:query} (:type dataset-query)))
+                                                   dataset-query
+                                                   card-metadata))
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
-         related-tables (related-tables card-query with-fields?)
+         related-tables (related-tables card-query with-fields? field-values-fn)
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
