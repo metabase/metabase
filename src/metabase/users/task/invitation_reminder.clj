@@ -6,7 +6,6 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
-   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -31,16 +30,8 @@
       ;; NOTE: the new user join url is a password reset route with an indicator that this is a first time user.
       (str (user/form-password-reset-url reset-token) "#new"))))
 
-(defn- get-invitor-info
-  "Get invitor information from the user who created this invited user.
-  Note: The core_user table doesn't have a created_by column, so we cannot
-  determine who invited the user. Returns a default placeholder."
-  [_user-id]
-  ;; TODO: If we add a created_by/invited_by column in the future, we can fetch the actual invitor
-  {:email nil :first_name nil})
-
 (defn- users-invited-3-days-ago
-  "Find all users who were invited exactly 3 days ago (same calendar day, 3 days back)
+  "Find all users who were invited 3 days ago (same calendar day, 3 days back)
   and still haven't logged in (last_login is null)."
   []
   (let [today           (t/local-date)
@@ -56,18 +47,9 @@
 
 (defn- send-invitation-reminder!
   "Send a reminder email to a user who was invited but hasn't joined yet."
-  [{:keys [id email] :as user}]
-  (let [invitor-info (get-invitor-info id)
-        invitor-name (or (:first_name invitor-info) "A teammate")
-        app-name     (messages/app-name-trs)
-        subject      (str invitor-name " is waiting for you to join " (appearance/site-name))]
-    (log/infof "Sending invitation reminder to user %d (%s)" id email)
-    (events/publish-event! :event/user-invitation-reminder
-                           {:object  (select-keys user [:id :email :first_name :last_name])
-                            :details {:invitor         (or invitor-info {:email nil :first_name nil})
-                                      :subject         subject
-                                      :join_url        (join-url id)
-                                      :application_name app-name}})))
+  [{:keys [id email]}]
+  (log/infof "Sending invitation reminder to user %d (%s)" id email)
+  (events/publish-event! :event/user-invitation-reminder {:object {:id id :email email}}))
 
 (defn- send-invitation-reminders!
   "Main task function that finds users invited 3 days ago and sends them reminder emails."
@@ -102,8 +84,8 @@
                  (triggers/for-job (jobs/key job-key))
                  (triggers/start-now)
                  (triggers/with-schedule
+                  ;; Run every day at 10 AM
                   (cron/schedule
-                   ;; TODO: TESTING ONLY - Run every minute. Change back to: "0 0 10 * * ? *" (daily at 10 AM)
-                   (cron/cron-schedule "0 * * * * ? *")
+                   (cron/cron-schedule "0 0 10 * * ? *")
                    (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))

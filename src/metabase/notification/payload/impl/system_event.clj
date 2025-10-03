@@ -36,9 +36,8 @@
        :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
 
       :event/user-invitation-reminder
-      (let [details (:details event-info)]
-        {:invitation_reminder_subject (:subject details)
-         :invitation_reminder_join_url (:join_url details)})
+      {:invitation_reminder_email_subject (trs "Reminder: A teammate is waiting for you to join {0}" (appearance/application-name))
+       :invitation_reminder_join_url (join-url user-id nil)}
 
       {})))
 

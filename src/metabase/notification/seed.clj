@@ -133,7 +133,7 @@
                             :template     {:name         "User Invitation Reminder Email template"
                                            :channel_type :channel/email
                                            :details      {:type           "email/handlebars-resource"
-                                                          :subject        "{{payload.event_info.details.subject}}"
+                                                          :subject        "{{payload.custom.invitation_reminder_email_subject}}"
                                                           :path           "metabase/channel/email/invitation_reminder_notification.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template

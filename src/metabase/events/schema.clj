@@ -93,14 +93,8 @@
 (mr/def :event/user-invitation-reminder
   [:map {:closed true}
    [:object [:map
-             [:id         pos-int?]
-             [:email      ms/Email]]]
-   [:details [:map {:closed true}
-              [:invitor          [:map {:closed true}
-                                  [:email      {:optional true} [:maybe ms/Email]]
-                                  [:first_name {:optional true} [:maybe :string]]]]
-              [:subject          :string]
-              [:join_url         :string]]]])
+             [:id    pos-int?]
+             [:email ms/Email]]]])
 
 ;; segment events
 
