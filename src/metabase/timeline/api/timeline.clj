@@ -33,7 +33,7 @@
                                                               [:icon          {:optional true} [:maybe timeline-event/Icon]]
                                                               [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                               [:archived      {:optional true} [:maybe :boolean]]]]
-  (collection/check-write-perms-for-collection collection-id)
+  (api/create-check :model/Timeline {:collection_id collection-id})
   (let [tl (merge
             body
             {:creator_id api/*current-user-id*}
