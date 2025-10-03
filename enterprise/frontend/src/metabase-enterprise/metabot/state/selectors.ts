@@ -21,8 +21,7 @@ export const getMetabot = (state: MetabotStoreState) => {
 
 export const getMetabotVisible = createSelector(
   [getMetabot, getLocation],
-  (metabot, location) =>
-    location.pathname.startsWith(Urls.transforms()) ? true : metabot.visible,
+  (metabot) => metabot.visible,
 );
 
 export const getMessages = createSelector(
