@@ -10,6 +10,7 @@ export const VisualizationRoot = styled.div`
   height: 100%;
 `;
 
+// Remember to update DASHCARD_HEADER_HEIGHT if height of this element changes
 export const VisualizationHeader = styled.div`
   padding: 0.625rem 0.5rem 0.375rem 0.5rem;
   flex-shrink: 0;
