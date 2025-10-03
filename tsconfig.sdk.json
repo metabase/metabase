@@ -13,7 +13,8 @@
     "paths": {
       "*": ["./frontend/src/*", "./enterprise/frontend/src/*"],
       "build-configs/*": ["./frontend/build/*"],
-      "cljs/*": ["./target/cljs_release/*"]
+      "cljs/*": ["./target/cljs_release/*"],
+      "__support__/*": ["./frontend/test/__support__/*"]
     },
     "stripInternal": true
   },
@@ -29,7 +30,7 @@
     "**/mocks/*",
     "**/tests/*",
     "**/test/*",
-    "**/__support__/*",
+    "!frontend/test/__support__/metadata",
     "**/test-utils.*",
     "**/test-utils.*",
     "**/test-helpers.*",
