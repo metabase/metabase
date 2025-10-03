@@ -20,6 +20,20 @@
   ;; Otherwise get all remote-synced collections
   (t2/select-pks-vec :model/Collection :type "remote-synced"))
 
+(defn sync-objects!
+  "Setup the remote-sync-object table with the imported-entities"
+  [timestamp imported-entities]
+  (t2/delete! :model/RemoteSyncObject)
+  (let [inserts (->> imported-entities
+                     (mapcat (fn [[model entity-ids]]
+                               (t2/select [(keyword "model" model) :id] :entity_id [:in entity-ids])))
+                     (map (fn [{:keys [id] :as model}]
+                            {:model_type (name (t2/model model))
+                             :model_id id
+                             :status "synced"
+                             :status_changed_at timestamp})))]
+    (t2/insert! :model/RemoteSyncObject inserts)))
+
 (defn- clean-synced!
   "Delete any remote sync content that was NOT part of the import"
   [synced-collection-ids imported-entities]
@@ -93,7 +107,9 @@
                                      (into {}))]
 
           (remote-sync.task/update-progress! task-id 0.8)
-          (clean-synced! (affected-collections) imported-entities)
+          (t2/with-transaction [_conn]
+            (clean-synced! (affected-collections) imported-entities)
+            (sync-objects! sync-timestamp imported-entities))
           (remote-sync.task/update-progress! task-id 0.95))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
@@ -125,7 +141,8 @@
                                                :include-database-secrets false
                                                :continue-on-error        false})]
             (remote-sync.task/update-progress! task-id 0.3)
-            (source/store! models source task-id message)))
+            (source/store! models source task-id message)
+            (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
         {:status :success
          :version (source.p/version source)}
 

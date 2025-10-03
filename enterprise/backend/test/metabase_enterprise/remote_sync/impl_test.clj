@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
@@ -229,3 +230,55 @@
                   (is (= task-id (:task-id (first @progress-calls))))
                   ;; Check progress value is expected
                   (is (= 0.3 (:progress (first @progress-calls)))))))))))))
+
+(deftest import!-resets-remote-sync-object-table-test
+  (testing "import! deletes and recreates RemoteSyncObject table with synced status"
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
+        (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+                       :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
+          (t2/insert! :model/RemoteSyncObject
+                      [{:model_type "Collection" :model_id coll-id :status "created" :status_changed_at (t/offset-date-time)}
+                       {:model_type "Card" :model_id card-id :status "updated" :status_changed_at (t/offset-date-time)}
+                       {:model_type "Card" :model_id 999 :status "deleted" :status_changed_at (t/offset-date-time)}])
+          (is (= 3 (t2/count :model/RemoteSyncObject)))
+          (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
+                                    (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
+                                    "collections/test-collection-1xxxx-_/cards/test-card-1.yaml"
+                                    (test-helpers/generate-card-yaml "test-card-1xxxxxxxxxx" "Test Card" "test-collection-1xxxx")}}
+                mock-source (test-helpers/create-mock-source :initial-files test-files)
+                result (impl/import! mock-source task-id)]
+            (is (= :success (:status result)))
+            (let [entries (t2/select :model/RemoteSyncObject)]
+              (is (= 2 (count entries)))
+              (is (every? #(= "synced" (:status %)) entries))
+              (is (some #(and (= "Collection" (:model_type %))
+                              (= coll-id (:model_id %))) entries))
+              (is (some #(and (= "Card" (:model_type %))
+                              (= card-id (:model_id %))) entries))
+              (is (not (some #(= 999 (:model_id %)) entries))))))))))
+
+(deftest export!-updates-all-statuses-to-synced-test
+  (testing "export! updates all RemoteSyncObject entries to synced status"
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temporary-setting-values [remote-sync-type :development]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :type "remote-synced" :entity_id "test-collection-1xxxx" :location "/"}
+                         :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}
+                         :model/Dashboard {dash-id :id} {:name "Test Dashboard" :collection_id coll-id :entity_id "test-dashboard-1xxxxx"}]
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id coll-id :status "updated" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id card-id :status "created" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Dashboard" :model_id dash-id :status "removed" :status_changed_at (t/offset-date-time)}])
+            (is (= "updated" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
+            (is (= "created" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
+            (is (= "removed" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))
+            (let [mock-source (test-helpers/create-mock-source)
+                  result (impl/export! mock-source task-id "Test commit message")]
+              (is (= :success (:status result)))
+              (let [entries (t2/select :model/RemoteSyncObject)]
+                (is (= 3 (count entries)))
+                (is (every? #(= "synced" (:status %)) entries))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
+                (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))))))))))
