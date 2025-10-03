@@ -39,7 +39,17 @@ H.describeWithSnowplow(suiteTitle, () => {
       visitNewEmbedPage();
       assertRecentItemName("dashboard", dashboardName);
 
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
       H.waitForSimpleEmbedIframesToLoad();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail: "default",
+      });
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("dashboard title is visible");
@@ -59,12 +69,16 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       visitNewEmbedPage();
       assertRecentItemName("card", questionName);
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
-      getEmbedSidebar().findByText("Chart").click();
+      getEmbedSidebar().within(() => {
+        cy.findByText("Chart").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "chart",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=chart",
       });
 
       cy.wait("@cardQuery");
@@ -77,11 +91,15 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     it("shows exploration template when selected", { tags: "@skip" }, () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Exploration").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Exploration").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "exploration",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=exploration",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -94,11 +112,15 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     it("shows browser template when selected", () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Browser").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Browser").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "browser",
+        event: "embed_wizard_experience_completed",
+        event_detail: "custom=browser",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -144,11 +166,14 @@ H.describeWithSnowplow(suiteTitle, () => {
         visitNewEmbedPage();
         cy.wait("@emptyRecentItems");
 
-        getEmbedSidebar().findByText("Chart").click();
+        getEmbedSidebar().within(() => {
+          cy.findByText("Chart").click();
+          cy.findByText("Next").click();
+        });
 
         H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_experience_selected",
-          event_detail: "chart",
+          event: "embed_wizard_experience_completed",
+          event_detail: "custom=chart",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
