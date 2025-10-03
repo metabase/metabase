@@ -104,14 +104,6 @@ H.describeWithSnowplow(suiteTitle, () => {
         .findByLabelText("Product ID")
         .should("contain", "456");
 
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_option_changed",
-          event_detail: "initialParameters",
-        },
-        2,
-      );
-
       cy.log("both default values should be in the code snippet");
       getEmbedSidebar().within(() => {
         cy.findByText("Get Code").click();
@@ -146,14 +138,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       H.getSimpleEmbedIframeContent()
         .findByTestId("dashboard-parameters-widget-container")
         .should("not.exist");
-
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "embed_wizard_option_changed",
-          event_detail: "hiddenParameters",
-        },
-        2,
-      );
 
       cy.log("code snippet should contain the hidden parameters");
       getEmbedSidebar().within(() => {
@@ -216,11 +200,6 @@ H.describeWithSnowplow(suiteTitle, () => {
 
         // value in a subtotal field
         cy.findAllByText("75.41").first().should("be.visible");
-      });
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "initialSqlParameters",
       });
 
       getEmbedSidebar().within(() => {

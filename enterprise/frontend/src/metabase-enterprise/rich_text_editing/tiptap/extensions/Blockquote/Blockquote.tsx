@@ -16,7 +16,6 @@ import { CommentsMenu } from "metabase-enterprise/documents/components/Editor/Co
 import {
   getChildTargetId,
   getCurrentDocument,
-  getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
@@ -52,7 +51,6 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
     getListCommentsQuery(document),
   );
   const comments = commentsData?.comments;
-  const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id } = node.attrs;
@@ -92,7 +90,6 @@ export const BlockquoteNodeView = ({ node }: NodeViewProps) => {
       {document && rendered && (
         <CommentsMenu
           active={isOpen}
-          disabled={hasUnsavedChanges}
           href={`/document/${document.id}/comments/${_id}`}
           ref={refs.setFloating}
           show={isOpen || hovered}

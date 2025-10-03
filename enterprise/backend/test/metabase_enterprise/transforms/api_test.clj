@@ -224,8 +224,14 @@
                    :model/Transform child   (-> (->transform "transform2" (mt/mbql-query nil {:source-table table}))
                                                 (assoc-in [:target :name] "orders_3"))]
       (mt/with-premium-features #{:transforms}
-        (is (= [parent]
-               (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
+        (is (=? [{:name "transform1"
+                  :source {:type "query", :query {:database (mt/id)
+                                                  :type "query"
+                                                  :query {:source-table (mt/id :orders)}}}
+                  :id (:id parent)
+                  :entity_id (:entity_id parent)
+                  :target {:schema "public", :name "orders_2", :type "table"}}]
+                (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s/dependencies" (:id child)))))))))
 
 (deftest put-transforms-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -777,3 +783,39 @@
               (is (= "Transforms are not supported on databases with DB routing enabled."
                      (mt/user-http-request :crowberto :put 400 (format "ee/transform/%s" (:id transform))
                                            (assoc transform :name "Gadget Products 2")))))))))))
+
+(deftest transform-revisions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "transform_revisions_test"]
+          (let [test-transform-revisions (fn [action url req exp-revisions]
+                                           (let [transform (mt/user-http-request :crowberto action 200 url req)
+                                                 transform-id (:id transform)]
+                                             (is (= exp-revisions (t2/count :model/Revision :model "Transform"
+                                                                            :model_id transform-id)))
+                                             (let [revision (t2/select-one :model/Revision :model "Transform"
+                                                                           :model_id transform-id :most_recent true)
+                                                   rev-transform (:object revision)
+                                                   removed #{:id :entity_id :created_at :updated_at}]
+                                               (is (every? #(not (contains? rev-transform %)) removed))
+                                               ;; CI tries comparing "=" with := which fails
+                                               (is (=? (dissoc rev-transform :source) transform)))
+                                             transform-id))
+                gadget-req {:name   "Gadget Products"
+                            :description "The gadget products"
+                            :source {:type  "query"
+                                     :query (make-query "Gadget")}
+                            :target {:type   "table"
+                                     :schema (get-test-schema)
+                                     :name   table-name}}
+                transform-id (test-transform-revisions :post "ee/transform" gadget-req 1)
+                widget-req {:name   "Widget Products"
+                            :description "The widget products"
+                            :source {:type  "query"
+                                     :query (make-query "Widget")}
+                            :tag_ids [4]
+                            :target {:type   "table"
+                                     :schema (get-test-schema)
+                                     :name   table-name}}]
+            (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))

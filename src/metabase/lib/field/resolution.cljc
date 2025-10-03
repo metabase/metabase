@@ -513,10 +513,10 @@
     (resolve-in-card-returned-columns query source-card-id id-or-name)))
 
 (defn- fallback-metadata [id-or-name]
-  (log/warn (u/format-color :red
-                            (str "We tried every trick we could think of and still failed to resolve a field"
-                                 " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
-                            (pr-str id-or-name)))
+  (log/debug (u/format-color :red
+                             (str "We tried every trick we could think of and still failed to resolve a field"
+                                  " ref. If the query doesn't work, this is why. Returning fallback metadata for %s")
+                             (pr-str id-or-name)))
   (merge
    {:lib/type            :metadata/column
     ;; guess that the column came from the previous stage
@@ -600,11 +600,11 @@
              (not *recursive-expression-resolution?*))
     (binding [*recursive-expression-resolution?* true]
       (when-some [expr (lib.expression/maybe-resolve-expression query stage-number id-or-name)]
-        (log/warn (u/format-color :red
-                                  (str "Resolved field %s to an expression. Please remember to use :expression references"
-                                       " for expressions in the current stage -- using a :field ref is unsupported and may"
-                                       " not be allowed in the future.")
-                                  (pr-str id-or-name)))
+        (log/debug (u/format-color :red
+                                   (str "Resolved field %s to an expression. Please remember to use :expression references"
+                                        " for expressions in the current stage -- using a :field ref is unsupported and may"
+                                        " not be allowed in the future.")
+                                   (pr-str id-or-name)))
         (-> (lib.expression/expression-metadata query stage-number expr)
             (assoc :lib/source-column-alias id-or-name))))))
 

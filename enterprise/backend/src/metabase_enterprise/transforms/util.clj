@@ -176,8 +176,8 @@
 (defn compile-source
   "Compile the source query of a transform."
   [{query-type :type :as source}]
-  (case query-type
-    "query" (:query (qp.compile/compile-with-inline-parameters (massage-sql-query (:query source))))))
+  (case (keyword query-type)
+    :query (:query (qp.compile/compile-with-inline-parameters (massage-sql-query (:query source))))))
 
 (defn required-database-feature
   "Returns the database feature necessary to execute `transform`."
