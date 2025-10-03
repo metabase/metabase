@@ -13,7 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import S from "./DependencyFlow.module.css";
-import { MAX_EXPANDED_DOWNSTREAM_ITEMS_PER_GROUP } from "./constants";
+import { MAX_EXPANDED_ITEMS_PER_GROUP } from "./constants";
 import type {
   EdgeId,
   GraphData,
@@ -181,7 +181,7 @@ function getGroupNodesAndEdges(
 
   edgesByTypeAndTargetId.forEach((edgesByType, targetId) => {
     edgesByType.forEach((edgesGroup, type) => {
-      if (edgesGroup.length > MAX_EXPANDED_DOWNSTREAM_ITEMS_PER_GROUP) {
+      if (edgesGroup.length > MAX_EXPANDED_ITEMS_PER_GROUP) {
         const groupId = getGroupNodeId(targetId, type);
         groupNodes.push({
           id: groupId,

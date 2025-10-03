@@ -2,6 +2,7 @@ import type { Card, CardType } from "./card";
 import type { DatabaseId } from "./database";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Transform } from "./transform";
+import type { CardDisplayType } from "./visualization";
 
 export type DependencyId = number;
 
@@ -25,6 +26,7 @@ export type TransformDependencyData = {
 export type CardDependencyData = {
   name: string;
   type: CardType;
+  display: CardDisplayType;
   database_id: DatabaseId;
 };
 
