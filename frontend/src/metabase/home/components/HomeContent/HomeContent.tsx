@@ -39,12 +39,12 @@ export const HomeContent = (): JSX.Element | null => {
     return <LoadingAndErrorWrapper error={error} />;
   }
 
-  if (!user || isLoading(user, databases, recentItems, popularItems)) {
-    return <LoadingAndErrorWrapper loading />;
+  if (embeddingHomepage === "visible" && user?.is_superuser) {
+    return <EmbedHomepage />;
   }
 
-  if (embeddingHomepage === "visible" && user.is_superuser) {
-    return <EmbedHomepage />;
+  if (!user || isLoading(user, databases, recentItems, popularItems)) {
+    return <LoadingAndErrorWrapper loading />;
   }
 
   if (isPopularSection(user, recentItems, popularItems)) {
