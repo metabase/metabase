@@ -171,6 +171,16 @@ describe("Auth Flow - JWT", () => {
       },
     );
 
+    fetchMock.get(
+      `${instanceUrlWithSubpath}/api/session/properties`,
+      createMockSettings({ "enable-embedding-sdk": true }),
+    );
+
+    fetchMock.get(
+      `${instanceUrlWithSubpath}/api/user/current`,
+      createMockUser(),
+    );
+
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: instanceUrlWithSubpath,
     });
