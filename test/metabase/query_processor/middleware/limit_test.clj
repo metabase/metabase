@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.settings :as qp.settings]

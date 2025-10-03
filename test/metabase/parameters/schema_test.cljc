@@ -1,6 +1,6 @@
 (ns metabase.parameters.schema-test
   (:require
-   [clojure.test :refer :all]
+   [clojure.test :refer [deftest is]]
    [metabase.parameters.schema :as parameters.schema]))
 
 (deftest ^:parallel default-to-type-text-test
