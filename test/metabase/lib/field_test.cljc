@@ -2196,42 +2196,34 @@
                                 :fields (for [col   (map :name b-cols)
                                               :when (not= col "TITLE")]
                                           [:field {} col])}]}]}
-            (lib.field/remove-field query -1 b-title))))
+            (lib.field/remove-field query -1 b-title)))))
 
 (deftest ^:parallel inherited-temporal-unit-effective-type-test
   (testing "inherited temporal units should have correct effective type (#48932)"
     (testing "extraction units should have :type/Integer effective type in multi-stage queries"
-      (let [mp                (meta/metadata-provider)
-            first-stage-query (-> (lib/query mp (meta/table-metadata :orders))
+      (doseq [unit [:minute-of-hour :hour-of-day :day-of-week :day-of-month :month-of-year :year]]
+        (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                                   (lib/aggregate (lib/count))
                                   (lib/breakout (lib/with-temporal-bucket
-                                                 (meta/field-metadata :orders :created-at)
-                                                 :day-of-week)))
-            multi-stage-query (lib/append-stage first-stage-query)
-            ;; Find the day-of-week column in the second stage
-            day-of-week-col   (m/find-first
-                               #(= (:display-name %) "Created At: Day of week")
-                               (lib/visible-columns multi-stage-query))]
-        (is (some? day-of-week-col) "Day of week column should exist in second stage")
-        (is (= :day-of-week (:inherited-temporal-unit day-of-week-col))
-            "Column should have inherited temporal unit")
-        (is (= :type/Integer (lib.metadata.calculation/type-of multi-stage-query 1 day-of-week-col))
-            "Day of week column should have Integer effective type in second stage")))
-    
+                                                  (meta/field-metadata :orders :created-at)
+                                                  unit))
+                                  lib/append-stage)
+              [extracted-col] (lib/visible-columns query)]
+          (is (=? {:inherited-temporal-unit unit
+                   :temporal-unit           (symbol "nil #_\"key is not present.\"")
+                   :effective-type          :type/Integer}
+                  extracted-col)))))
+
     (testing "truncation units should preserve original effective type in multi-stage queries"
-      (let [mp                (meta/metadata-provider)
-            first-stage-query (-> (lib/query mp (meta/table-metadata :orders))
+      (doseq [unit [:minute :hour :day :month]]
+        (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                                   (lib/aggregate (lib/count))
                                   (lib/breakout (lib/with-temporal-bucket
-                                                 (meta/field-metadata :orders :created-at)
-                                                 :month)))
-            multi-stage-query (lib/append-stage first-stage-query)
-            ;; Find the month column in the second stage
-            month-col         (m/find-first
-                               #(= (:display-name %) "Created At: Month")
-                               (lib/visible-columns multi-stage-query))]
-        (is (some? month-col) "Month column should exist in second stage")
-        (is (= :month (:inherited-temporal-unit month-col))
-            "Column should have inherited temporal unit")
-        (is (= :type/Date (lib.metadata.calculation/type-of multi-stage-query 1 month-col))
-            "Month column should have Date effective type in second stage"))))))
+                                                  (meta/field-metadata :orders :created-at)
+                                                  unit))
+                                  lib/append-stage)
+              [truncated-col] (lib/visible-columns query)]
+          (is (=? {:inherited-temporal-unit unit
+                   :temporal-unit           (symbol "nil #_\"key is not present.\"")
+                   :effective-type          (:effective-type (meta/field-metadata :orders :created-at))}
+                  truncated-col)))))))
