@@ -45,6 +45,14 @@
   [topic event]
   (push-revision! :model/Dashboard event {:is-creation? (= topic :event/dashboard-create)}))
 
+(derive ::transform-event ::event)
+(derive :event/transform-create ::transform-event)
+(derive :event/transform-update ::transform-event)
+
+(methodical/defmethod events/publish-event! ::transform-event
+  [topic event]
+  (push-revision! :model/Transform event {:is-creation? (= topic :event/transform-create)}))
+
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)
 (derive :event/segment-update ::segment-event)
