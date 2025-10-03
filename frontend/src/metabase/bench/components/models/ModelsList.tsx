@@ -1,15 +1,16 @@
+import type { Location } from "history";
 import type React from "react";
 import { Link } from "react-router";
 
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
-import { Box, Center, FixedSizeIcon, Flex, Loader , Text } from "metabase/ui";
+import { Box, Center, FixedSizeIcon, Flex, Loader, Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
+import { MetricEditor } from "../metrics/MetricsList";
 
 function ModelsList() {
   const { isLoading, data } = useFetchModels();
@@ -20,11 +21,13 @@ function ModelsList() {
       sectionTitle="Models"
       onAddNewItem={() => {}}
       listItems={
-        !models || isLoading
-          ? <Center><Loader /></Center>
-          : models.map((model) => (
-            <ModelListItem key={model.id} model={model} />
-          ))
+        !models || isLoading ? (
+          <Center>
+            <Loader />
+          </Center>
+        ) : (
+          models.map((model) => <ModelListItem key={model.id} model={model} />)
+        )
       }
     />
   );
@@ -37,9 +40,7 @@ function ModelListItem({ model }: { model: RecentCollectionItem }) {
       <Link to={`/bench/model/${model.id}`}>
         <Flex gap="sm" align="center">
           <FixedSizeIcon {...icon} size={16} c="brand" />
-          <Text fw="bold">
-            {model.name}
-          </Text>
+          <Text fw="bold">{model.name}</Text>
         </Flex>
         <Flex gap="sm" c="text-light" ml="lg">
           <FixedSizeIcon name="folder" />
@@ -52,17 +53,16 @@ function ModelListItem({ model }: { model: RecentCollectionItem }) {
 
 export const ModelsLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <BenchLayout
-      nav={<ModelsList />}
-      name="model"
-    >
+    <BenchLayout nav={<ModelsList />} name="model">
       {children}
     </BenchLayout>
-  )
+  );
 };
 
-export const ModelEditor = (props: {location: unknown, params: unknown }) => {
-  return (
-    <QueryBuilder {...props} />
-  )
+export const ModelEditor = (props: {
+  location: Location;
+  params: { slug: string };
+}) => {
+  // TODO: Make MetricEditor less metric-specific
+  return <MetricEditor {...props} />;
 };
