@@ -245,11 +245,18 @@ const CollectionStatusBadge = ({
 };
 
 const useSyncStatus = () => {
-  const syncResponse = useGetCurrentSyncTaskQuery();
+  const { data } = useGetCurrentSyncTaskQuery();
   const dispatch = useDispatch();
+  const [wasRunning, setWasRunning] = useState(false);
 
   useEffect(() => {
-    const isDone = syncResponse.data && syncResponse.data.ended_at !== null;
+    const isDone = data && data.ended_at !== null;
+    const isRunning = data && data.ended_at === null;
+
+    if (isRunning) {
+      setWasRunning(true);
+    }
+
     if (!isDone) {
       const timeout = setTimeout(() => {
         dispatch(
@@ -260,17 +267,19 @@ const useSyncStatus = () => {
     } else {
       dispatch(EnterpriseApi.util.invalidateTags([tag("collection-tree")]));
       dispatch(EnterpriseApi.util.invalidateTags([tag("session-properties")]));
-    }
-  }, [syncResponse, dispatch]); // need whole object to retrigger on change
 
-  const isDone =
-    !syncResponse.data ||
-    (syncResponse.data && syncResponse.data.ended_at !== null);
+      if (wasRunning && data?.sync_task_type) {
+        window.location.reload();
+      }
+    }
+  }, [data, dispatch, wasRunning]);
+
+  const isDone = !data || (data && data.ended_at !== null);
 
   return {
-    status: isDone ? "idle" : syncResponse.data?.sync_task_type,
-    progress: syncResponse.data?.progress ?? 0,
-    message: syncResponse.data?.error_message ?? "",
+    status: isDone ? "idle" : data?.sync_task_type,
+    progress: data?.progress ?? 0,
+    message: data?.error_message ?? "",
   };
 };
 
