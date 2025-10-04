@@ -499,6 +499,12 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByText("Get Code").click();
     codeBlock().should("contain", 'layout="stacked"');
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,layout=stacked",
+    });
+
     getEmbedSidebar().findByText("Back").click();
     getEmbedSidebar().findByLabelText("Sidebar").click().should("be.checked");
 
@@ -508,5 +514,11 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar().findByText("Get Code").click();
     codeBlock().should("contain", 'layout="sidebar"');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,layout=sidebar",
+    });
   });
 });
