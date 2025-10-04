@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from "__support__/ui";
 
-import { setup } from "./test-setup";
+import { setup } from "./setup.spec";
 
 describe("SdkBreadcrumbs", () => {
   it("shows the reported location from collection browser and dashboard", async () => {
