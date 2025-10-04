@@ -29,7 +29,6 @@ import { getConfigurableThemeColors } from "../utils/theme-colors";
 
 import { EmbedPreviewLoadingOverlay } from "./EmbedPreviewLoadingOverlay";
 import { getVisibleParameters } from "./ParameterSettings/utils/get-visible-parameters";
-import { useGetStaticEmbeddingPreviewSignedToken } from "./Preview/hooks/use-get-static-embedding-preview-signed-token";
 import S from "./SdkIframeEmbedPreview.module.css";
 
 declare global {
@@ -41,7 +40,8 @@ declare global {
 }
 
 const SdkIframeEmbedPreviewInner = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
+  const { settings, staticEmbeddingSignedToken } =
+    useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
 
   const isStaticEmbedding = !!settings.isStatic;
@@ -134,8 +134,6 @@ const SdkIframeEmbedPreviewInner = () => {
     }
   }, [settings.componentName]);
 
-  const { signedToken } = useGetStaticEmbeddingPreviewSignedToken();
-
   return (
     <Card
       className={S.EmbedPreviewIframe}
@@ -162,7 +160,9 @@ const SdkIframeEmbedPreviewInner = () => {
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
-            "question-id": !isStaticEmbedding ? s.questionId : signedToken,
+            "question-id": !isStaticEmbedding
+              ? s.questionId
+              : staticEmbeddingSignedToken,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
             "target-collection": s.targetCollection,
@@ -188,7 +188,9 @@ const SdkIframeEmbedPreviewInner = () => {
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
-            "dashboard-id": !isStaticEmbedding ? s.dashboardId : signedToken,
+            "dashboard-id": !isStaticEmbedding
+              ? s.dashboardId
+              : staticEmbeddingSignedToken,
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
             "initial-parameters": s.initialParameters

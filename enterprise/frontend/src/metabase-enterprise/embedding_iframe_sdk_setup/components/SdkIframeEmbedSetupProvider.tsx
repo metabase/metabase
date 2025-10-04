@@ -5,6 +5,8 @@ import { match } from "ts-pattern";
 import { useSearchQuery } from "metabase/api";
 import { useEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-embedding-paramers";
 import { useGetCurrentResource } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-current-resource";
+import { useGetStaticEmbeddingSignedToken } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-get-static-embedding-signed-token";
+import { useParametersValues } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-parameters-values";
 
 import {
   SdkIframeEmbedSetupContext,
@@ -113,6 +115,21 @@ export const SdkIframeEmbedSetupProvider = ({
     availableParameters,
   });
 
+  const { parameterValuesById, previewParameterValuesBySlug } =
+    useParametersValues({
+      settings,
+      availableParameters,
+      embeddingParameters,
+    });
+
+  const { signedToken: staticEmbeddingSignedToken } =
+    useGetStaticEmbeddingSignedToken({
+      settings,
+      experience,
+      previewParameterValuesBySlug,
+      embeddingParameters,
+    });
+
   useEffect(() => {
     if (!settings.isStatic || !initialEmbeddingParameters) {
       return;
@@ -142,8 +159,11 @@ export const SdkIframeEmbedSetupProvider = ({
     isEmbedSettingsLoaded,
     availableParameters,
     initialEmbeddingParameters,
+    parameterValuesById,
+    previewParameterValuesBySlug,
     embeddingParameters,
     onEmbeddingParametersChange,
+    staticEmbeddingSignedToken,
   };
 
   return (

@@ -7,7 +7,6 @@ import { ParameterWidget } from "metabase/parameters/components/ParameterWidget"
 import { ParametersSettings } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/ParametersSettings";
 import { getLockedPreviewParameters } from "metabase/public/components/EmbedModal/StaticEmbedSetupPane/lib/get-locked-preview-parameters";
 import { Group, Stack, Text } from "metabase/ui";
-import { useParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/components/ParameterSettings/hooks/use-parameters";
 import { SET_INITIAL_PARAMETER_DEBOUNCE_MS } from "metabase-enterprise/embedding_iframe_sdk_setup/constants";
 import { getResourceTypeFromExperience } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-resource-type-from-experience";
 import { getSdkIframeEmbedSettingsForEmbeddingParameters } from "metabase-enterprise/embedding_iframe_sdk_setup/utils/get-sdk-iframe-embed-settings-for-embedding-parameters";
@@ -26,11 +25,11 @@ export const ParameterSettings = () => {
     settings,
     updateSettings,
     availableParameters,
+    parameterValuesById,
     embeddingParameters,
     isLoading,
   } = useSdkIframeEmbedSetupContext();
 
-  const { parameterValuesById } = useParameters();
   const { isParameterHidden, toggleParameterVisibility } = useHideParameter({
     settings,
     updateSettings,

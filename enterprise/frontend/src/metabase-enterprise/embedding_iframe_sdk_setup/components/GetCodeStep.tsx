@@ -2,7 +2,9 @@ import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { Button, Card, CopyButton, Icon, Stack, Text } from "metabase/ui";
+import { EmbedServerSnippetLanguageSelect } from "metabase/public/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
+import { Button, Card, CopyButton, Flex, Icon, Stack, Text } from "metabase/ui";
+import { useSdkIframeEmbedServerSnippet } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-sdk-iframe-embed-server-snippet";
 import type { SettingKey } from "metabase-types/api";
 
 import { trackEmbedWizardCodeCopied } from "../analytics";
@@ -13,10 +15,36 @@ export const GetCodeStep = () => {
   const { settings } = useSdkIframeEmbedSetupContext();
   const [updateInstanceSettings] = useUpdateSettingsMutation();
 
+  const serverSnippetData = useSdkIframeEmbedServerSnippet();
   const snippet = useSdkIframeEmbedSnippet();
 
   return (
     <Stack gap="md">
+      {!!serverSnippetData && (
+        <Card p="md">
+          <Flex align="baseline" justify="space-between">
+            <Text size="lg" fw="bold" mb="md">
+              {t`Server code`}
+            </Text>
+
+            <EmbedServerSnippetLanguageSelect
+              languageOptions={serverSnippetData.serverSnippetOptions}
+              selectedOptionId={serverSnippetData.selectedServerSnippetId}
+              onChangeOption={serverSnippetData.setSelectedServerSnippetId}
+            />
+          </Flex>
+
+          <Stack gap="sm">
+            <CodeEditor
+              language={serverSnippetData.serverSnippetOption.language}
+              value={serverSnippetData.serverSnippetOption.source}
+              readOnly
+              lineNumbers={false}
+            />
+          </Stack>
+        </Card>
+      )}
+
       <Card p="md">
         <Text size="lg" fw="bold" mb="md">
           {t`Embed code`}

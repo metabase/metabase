@@ -28,10 +28,12 @@ export function getEmbedSnippet({
   settings,
   instanceUrl,
   experience,
+  staticEmbeddingSignedToken,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   instanceUrl: string;
   experience: SdkIframeEmbedSetupExperience;
+  staticEmbeddingSignedToken: string | null;
 }): string {
   // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
   return `<script defer src="${instanceUrl}/app/embed.js"></script>
@@ -50,15 +52,21 @@ function defineMetabaseConfig(config) {
   });
 </script>
 
-${getEmbedCustomElementSnippet({ settings, experience })}`;
+${getEmbedCustomElementSnippet({
+  settings,
+  experience,
+  staticEmbeddingSignedToken,
+})}`;
 }
 
 export function getEmbedCustomElementSnippet({
   settings,
   experience,
+  staticEmbeddingSignedToken,
 }: {
   settings: SdkIframeEmbedSetupSettings;
   experience: SdkIframeEmbedSetupExperience;
+  staticEmbeddingSignedToken: string | null;
 }): string {
   const isStaticEmbedding = !!settings.isStatic;
 
@@ -75,6 +83,9 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ...settings,
+        questionId: !settings.isStatic
+          ? settings.questionId
+          : staticEmbeddingSignedToken,
         initialSqlParameters: getVisibleParameters(
           questionSettings.initialSqlParameters,
           questionSettings.lockedParameters,
@@ -98,6 +109,9 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ...settings,
+        dashboardId: !settings.isStatic
+          ? settings.dashboardId
+          : staticEmbeddingSignedToken,
         initialParameters: getVisibleParameters(
           dashboardSettings.initialParameters,
           dashboardSettings.lockedParameters,
@@ -116,7 +130,14 @@ export function getEmbedCustomElementSnippet({
       : ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  return `<${elementName} ${attributes}></${elementName}>`;
+  const customElementSnippetParts = [
+    staticEmbeddingSignedToken
+      ? `<!--\nTHIS IS THE EXAMPLE!\nNEVER HARDCODE THIS JWT TOKEN DIRECTLY IN YOUR HTML!\n\nFetch the JWT token from your backend and programmatically pass it to the '${elementName}'.\n-->`
+      : "",
+    `<${elementName} ${attributes}></${elementName}>`,
+  ].filter(Boolean);
+
+  return customElementSnippetParts.join("\n");
 }
 
 // Convert camelCase keys to lower-dash-case for web components
