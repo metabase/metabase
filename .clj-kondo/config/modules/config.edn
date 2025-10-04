@@ -1655,7 +1655,8 @@
   {:team "Workflows"
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
-   :uses #{api
+   :uses #{analytics
+           api
            channel
            events
            models
