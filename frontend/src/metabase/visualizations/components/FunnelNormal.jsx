@@ -177,7 +177,7 @@ export default class FunnelNormal extends Component {
         <FunnelStep isFirst>
           <Head
             isNarrow={isNarrow}
-            style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+            style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
           >
             <Ellipsified data-testid="funnel-chart-header">
               {formatDimension(sortedRows[0][dimensionIndex])}
@@ -203,7 +203,7 @@ export default class FunnelNormal extends Component {
             <FunnelStep key={index}>
               <Head
                 isNarrow={isNarrow}
-                style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+                style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
               >
                 <Ellipsified data-testid="funnel-chart-header">
                   {formatDimension(sortedRows[index + 1][dimensionIndex])}
@@ -223,7 +223,7 @@ export default class FunnelNormal extends Component {
                   <Ellipsified>{formatPercent(stepPercentage)}</Ellipsified>
                 </Title>
                 <Subtitle
-                  style={{ fontSize: isDashboard ? "0.75rem" : "unset" }}
+                  style={{ fontSize: isDashboard ? "0.8125rem" : "unset" }}
                 >
                   <Ellipsified>
                     {formatMetric(sortedRows[index + 1][metricIndex])}
