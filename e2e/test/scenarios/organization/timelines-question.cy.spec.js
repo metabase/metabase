@@ -90,7 +90,7 @@ describe("scenarios > organization > timelines > question", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v3").should("be.visible");
 
-      cy.findByLabelText("table2 icon").click();
+      cy.findByLabelText("Switch to data").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("v1").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
