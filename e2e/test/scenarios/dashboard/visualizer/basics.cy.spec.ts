@@ -367,6 +367,105 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.tooltip().findByText("My description").should("exist");
   });
 
+  it("should propagate original card title and description to visualizer cards (metabase#63863)", () => {
+    const questionWithDescription = {
+      ...ORDERS_COUNT_BY_CREATED_AT,
+      name: "Original Question Title",
+      description: "Original question description",
+    };
+
+    H.createQuestion(questionWithDescription, {
+      wrapId: true,
+      idAlias: "questionWithDescriptionId",
+    });
+
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      cy.get("@questionWithDescriptionId").then((questionId) => {
+        H.addQuestionToDashboard({
+          dashboardId,
+          cardId: questionId as any,
+        });
+        H.visitDashboard(dashboardId);
+      });
+    });
+
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Original Question Title").should("exist");
+    });
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.icon("info").realHover();
+      });
+    H.tooltip().findByText("Original question description").should("exist");
+
+    H.editDashboard();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+
+    H.modal().within(() => {
+      cy.findByDisplayValue("Original Question Title").should("exist");
+      cy.findByText("Settings").click();
+      cy.findByTestId("card.description").should(
+        "have.value",
+        "Original question description",
+      );
+
+      H.selectVisualization("bar");
+    });
+
+    H.saveDashcardVisualizerModal();
+
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Original Question Title").should("exist");
+    });
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.icon("info").realHover();
+      });
+    H.tooltip().findByText("Original question description").should("exist");
+
+    H.editDashboard();
+
+    H.showDashcardVisualizerModal(0);
+    H.modal().within(() => {
+      cy.findByDisplayValue("Original Question Title").should("exist");
+      cy.findByText("Settings").click();
+      cy.findByTestId("card.description").should(
+        "have.value",
+        "Original question description",
+      );
+
+      cy.findByTestId("visualizer-title").clear().type("Updated Title").blur();
+      cy.findByTestId("card.description")
+        .clear()
+        .type("Updated description")
+        .blur();
+    });
+
+    H.saveDashcardVisualizerModal();
+
+    H.saveDashboard({ waitMs: DASHBOARD_SAVE_WAIT_TIME });
+
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Updated Title").should("exist");
+    });
+
+    H.getDashboardCard(0)
+      .realHover()
+      .within(() => {
+        cy.icon("info").realHover();
+      });
+    H.tooltip().findByText("Updated description").should("exist");
+  });
+
   it("should start in a pristine state and update dirtyness accordingly", () => {
     createDashboardWithVisualizerDashcards();
     H.editDashboard();
@@ -636,11 +735,10 @@ describe("scenarios > dashboard > visualizer > basics", () => {
           response?.body?.dashcards[0]?.visualization_settings?.visualization
             ?.settings;
 
-        expect(Object.keys(visualizerSettings)).to.have.length(3);
+        expect(Object.keys(visualizerSettings)).to.have.length(2);
         expect(visualizerSettings).to.eql({
           "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
           "graph.metrics": ["COLUMN_2", "COLUMN_3"],
-          "card.title": "Orders by Created At (Month)",
         });
       });
     });

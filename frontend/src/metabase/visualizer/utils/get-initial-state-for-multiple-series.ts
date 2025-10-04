@@ -167,12 +167,7 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
       columnsToRefs,
     ),
     ...mergedSettings,
-    "card.title": mainCard.name,
   };
-
-  if (mainCard.description != null) {
-    state.settings["card.description"] = mainCard.description;
-  }
 
   return state;
 }

@@ -107,15 +107,9 @@ export function getInitialStateForCardDataSource(
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
-    settings: {
-      "card.title": card.name,
-    },
+    settings: {},
     datasetFallbacks: { [card.id]: dataset },
   };
-
-  if (card.description != null) {
-    state.settings["card.description"] = card.description;
-  }
 
   const dataSource = createDataSource("card", card.id, card.name);
 
@@ -226,12 +220,7 @@ export function getInitialStateForCardDataSource(
   state.settings = {
     ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
-    "card.title": card.name,
   };
-
-  if (card.description != null) {
-    state.settings["card.description"] = card.description;
-  }
 
   return state;
 }
