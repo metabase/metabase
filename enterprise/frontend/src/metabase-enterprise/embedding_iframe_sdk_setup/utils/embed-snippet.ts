@@ -57,6 +57,7 @@ export function getEmbedCustomElementSnippet({
     .with("chart", () => "metabase-question")
     .with("exploration", () => "metabase-question")
     .with("browser", () => "metabase-browser")
+    .with("metabot", () => "metabase-metabot")
     .exhaustive();
 
   const settingsWithExplorationOverride = match(experience)

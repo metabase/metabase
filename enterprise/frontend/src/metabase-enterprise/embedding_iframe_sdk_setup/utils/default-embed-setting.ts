@@ -4,6 +4,7 @@ import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
+  MetabotEmbedOptions,
   QuestionEmbedOptions,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
@@ -54,6 +55,12 @@ export const getDefaultSdkIframeEmbedSettings = (
         readOnly: true,
       }),
     )
+    .with(
+      "metabot",
+      (): MetabotEmbedOptions => ({
+        componentName: "metabase-metabot",
+      }),
+    )
     .exhaustive();
 
   return {
@@ -79,6 +86,5 @@ export const getExperienceFromSettings = (
     .with({ componentName: "metabase-question" }, () => "chart")
     .with({ componentName: "metabase-browser" }, () => "browser")
     .with({ componentName: "metabase-dashboard" }, () => "dashboard")
-    // TODO(EMB-869): add Metabot experience to embed flow - replace this with "metabot"
-    .with({ componentName: "metabase-metabot" }, () => "chart")
+    .with({ componentName: "metabase-metabot" }, () => "metabot")
     .exhaustive();

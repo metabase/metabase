@@ -12,7 +12,11 @@ import type {
 /** The maximum number of recent items to show in the resource selection step. */
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
-export const getEmbedExperiences = () =>
+export const getEmbedExperiences = ({
+  isMetabotAvailable,
+}: {
+  isMetabotAvailable: boolean;
+}) =>
   [
     {
       value: "dashboard",
@@ -34,6 +38,15 @@ export const getEmbedExperiences = () =>
       title: t`Browser`,
       description: t`Embed a browser to manage dashboards and charts`,
     },
+    ...(isMetabotAvailable
+      ? [
+          {
+            value: "metabot" as const,
+            title: t`Metabot`,
+            description: t`Embed a Metabot chat interface`,
+          },
+        ]
+      : []),
   ] satisfies {
     title: string;
     description: string;
@@ -54,7 +67,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-resource",
     component: SelectEmbedResourceStep,
-    skipFor: ["exploration"],
+    skipFor: ["exploration", "metabot"],
   },
   {
     id: "select-embed-options",
