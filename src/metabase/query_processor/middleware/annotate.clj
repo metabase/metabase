@@ -93,16 +93,28 @@
    rf
    [(base-type-inferer metadata)]
    (fn combine [result base-types]
-     (let [cols' (mapv (fn [col base-type]
-                         (assoc col
-                                :base_type      base-type
-                                :effective_type base-type
-                                :field_ref      [:field (:name col) {:base-type base-type}]))
-                       (:cols metadata)
-                       base-types)]
-       (rf (cond-> result
-             (map? result)
-             (assoc-in [:data :cols] cols')))))))
+     (rf (if (map? result)
+           (let [name->base-type (->> (map (fn [col base-type]
+                                             (when-some [name (:lib/deduplicated-name col)]
+                                               [name base-type]))
+                                           (:cols metadata)
+                                           base-types)
+                                      (remove nil?)
+                                      (into {}))]
+             (update-in result [:data :cols]
+                        ;; Make sure to reuse original columns from the result and not just overwrite them with
+                        ;; metadata columns because the latter may be missing some columns.
+                        (fn [original-cols]
+                          (mapv (fn [col]
+                                  (let [name (:lib/deduplicated-name col)]
+                                    (if-let [base-type (name->base-type name)]
+                                      (assoc col
+                                             :base_type      base-type
+                                             :effective_type base-type
+                                             :field_ref      [:field name {:base-type base-type}])
+                                      col)))
+                                original-cols))))
+           result)))))
 
 (mu/defn- add-column-info-with-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query
