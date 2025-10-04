@@ -485,4 +485,28 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
     codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
   });
+
+  it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar().findByLabelText("Auto").should("be.checked");
+    getEmbedSidebar().findByLabelText("Stacked").click().should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("metabot-question-container")
+      .should("have.attr", "data-layout", "stacked");
+
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", 'layout="stacked"');
+
+    getEmbedSidebar().findByText("Back").click();
+    getEmbedSidebar().findByLabelText("Sidebar").click().should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("metabot-question-container")
+      .should("have.attr", "data-layout", "sidebar");
+
+    getEmbedSidebar().findByText("Get Code").click();
+    codeBlock().should("contain", 'layout="sidebar"');
+  });
 });
