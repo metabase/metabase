@@ -106,7 +106,7 @@ export function getEmbedCustomElementSnippet({
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  return `<${elementName} ${attributes}></${elementName}>`;
+  return `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`;
 }
 
 // Convert camelCase keys to lower-dash-case for web components
