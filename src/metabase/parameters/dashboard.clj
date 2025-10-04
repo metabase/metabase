@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
@@ -82,6 +83,25 @@
                  2 second
                  1 first)))))
 
+(defn- cards-with-filters
+  "Lazy seq of cards from `dashboard` that are mapped to param to `param-key` and contain some filters.
+  Dashboard is expected to have hydrated `:resolved-params`."
+  [dashboard param-key]
+  (for [mapping (get-in dashboard [:resolved-params param-key :mappings])
+        :let [card (get-in mapping [:dashcard :card])
+              query (:dataset_query card)
+              modern-query (lib/->pMBQL query)]
+        ;; Yes, this is paranoid. Let's be rather safe than sorry.
+        :when (when (not-empty modern-query)
+                (m/find-first (partial lib/filters modern-query)
+                              (range (lib/stage-count modern-query))))]
+    card))
+
+(defn- cards-with-filters?
+  "Does param-key have any card with filter mapped? Dashboard is expected to have hydrate `:resolved-params`."
+  [dashboard param-key]
+  (boolean (seq (cards-with-filters dashboard param-key))))
+
 (mu/defn chain-filter :- ms/FieldValuesResult
   "C H A I N filters!
 
@@ -98,7 +118,8 @@
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
          field-ids   (into #{} (map :field-id (param->fields param)))]
-     (if (empty? field-ids)
+     (if (or (empty? field-ids)
+             (cards-with-filters? dashboard param-key))
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                            {:param       (get (:resolved-params dashboard) param-key)

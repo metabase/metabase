@@ -59,11 +59,41 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
+(defn- query-for-column-values
+  "For a `card` generate a query, which will be used for field values computation.
+  Parameter for which values are generated may not be linked to a dimension
+  on last stage. Hence all stages are searched for `value-field-ref`. Stages are
+  then truncated so the matching stage becomes last. Results of such query
+  contain values of values of exmained field."
+  [card value-field-ref]
+  (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
+        full-query (lib/query mp (:dataset_query card))
+        value-column-stage (m/find-first (fn [stage-number]
+                                           (lib/find-column-for-legacy-ref
+                                            full-query stage-number value-field-ref
+                                            (lib/visible-columns full-query stage-number)))
+                                         (reverse (range (lib/stage-count full-query))))
+        stages (vec (:stages full-query))]
+    (-> full-query
+        (assoc :stages (subvec stages 0 (inc value-column-stage))))))
+
+(defn- query-and-value-column
+  [card value-field-ref]
+  (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
+        query (lib/query mp (lib.metadata/card mp (:id card)))
+        value-column (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))]
+    (if value-column
+      ;; column was found on the last stage
+      {:query query :value-column value-column}
+      ;; if it wasn't, dive into previous stages
+      (let [query (query-for-column-values card value-field-ref)]
+        {:query  (lib/update-query-stage query -1 dissoc :aggregation :breakout)
+         :value-column (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))}))))
+
 (defn- values-from-card-query
   [card value-field-ref {:keys [query-string] :as _opts}]
-  (let [metadata-provider (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
-        query             (lib/query metadata-provider (lib.metadata/card metadata-provider (:id card)))
-        value-column      (lib/find-column-for-legacy-ref query value-field-ref (lib/visible-columns query))
+  (let [{:keys [query value-column]}
+        (query-and-value-column card value-field-ref)
         textual?          (lib.types.isa/string? value-column)
         nonempty          ((if textual? lib/not-empty lib/not-null) value-column)
         query-filter      (when query-string
