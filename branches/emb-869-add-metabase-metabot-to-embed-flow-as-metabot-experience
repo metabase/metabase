@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-858-add-metabase-metabot-custom-element-for-embed-js-with",
     "hash": "8b4c19c1a99cfce0ce3dcb64fffdf2a906f1dc43"
+  },
+  "upstream": {
+    "branch": "emb-869-add-metabase-metabot-to-embed-flow-as-metabot-experience"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 64388,
+        "gqlID": "PR_kwDOAczgH86sDTrS"
+      }
+    }
   }
 }
