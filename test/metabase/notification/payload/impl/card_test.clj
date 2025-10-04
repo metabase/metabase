@@ -184,7 +184,7 @@
 (deftest cards-with-rows-saved-to-disk-will-cleanup-the-files
   (let [f               (atom nil)
         orig-execute-fn @#'notification.payload.execute/execute-card]
-    (with-redefs [notification.payload.execute/rows-to-disk-threadhold 1
+    (with-redefs [notification.payload.execute/rows-to-disk-threshold 1
                   notification.payload.execute/execute-card
                   (fn [& args]
                     (let [result (apply orig-execute-fn args)]
