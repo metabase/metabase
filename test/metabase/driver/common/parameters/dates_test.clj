@@ -97,12 +97,12 @@
       (testing "hours"
         (is (= [:!=
                 [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
-                "2016-06-07T00:00:00Z"]
+                "2016-06-07T00:00:00"]
                (params.dates/date-string->filter "exclude-hours-0" [:field "field" {:base-type :type/DateTime}])))
         (is (= [:!=
                 [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
-                "2016-06-07T00:00:00Z"
-                "2016-06-07T23:00:00Z"]
+                "2016-06-07T00:00:00"
+                "2016-06-07T23:00:00"]
                (params.dates/date-string->filter "exclude-hours-0-23" [:field "field" {:base-type :type/DateTime}])))
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-\""
                      (params.dates/date-string->filter "exclude-hours-" [:field "field" {:base-type :type/DateTime}])))
