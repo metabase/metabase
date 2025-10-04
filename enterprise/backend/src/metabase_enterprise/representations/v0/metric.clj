@@ -8,7 +8,6 @@
    [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -212,14 +211,6 @@
 ;;; ------------------------------------ INGESTION ------------------------------------
 
 ;;; ---------------------------- Column Metadata Processing -----------------------------
-
-(defn- normalize-type-name
-  "Convert type strings to internal keyword format.
-   Expects strings like 'type/Text' or 'type/PK' and converts to :type/Text, :type/PK.
-   Also handles already-keywordized values."
-  [type-str]
-  (when type-str
-    (keyword (str/trim type-str))))
 
 ;;; ------------------------------------ Public API ------------------------------------
 

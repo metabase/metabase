@@ -174,9 +174,10 @@
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::mbql-query
-  [:and
-   {:description "MBQL (Metabase Query Language) query that defines the model's data"}
-   any?])
+  [:or
+   {:description "MBQL query - either embedded map or ref to MBQL data"}
+   ::lib.schema.common/non-blank-string
+   :map])
 
 (mr/def ::database
   [:or
@@ -212,23 +213,21 @@
 
 ;;; ---------------------------- Column Metadata Processing -----------------------------
 
-(defn- normalize-type-name
-  "Convert type strings to internal keyword format.
-   Expects strings like 'type/Text' or 'type/PK' and converts to :type/Text, :type/PK.
-   Also handles already-keywordized values."
-  [type-str]
-  (when type-str
-    (keyword (str/trim type-str))))
-
 ;;; ------------------------------------ Public API ------------------------------------
 
 (defmethod import/yaml->toucan :v0/model
   [{model-name :name
-    :keys [_type _ref description database collection columns] :as representation}
+    :keys [_type _ref description database collection columns mbql_query] :as representation}
    ref-index]
   (let [database-id (v0-common/resolve-database-id database ref-index)
         dataset-query (-> (assoc representation :database database-id)
-                          (v0-mbql/import-dataset-query ref-index))]
+                          (v0-mbql/import-dataset-query ref-index))
+        ;; For MBQL queries with refs, extract result_metadata from MBQL data
+        result-metadata (if (and (string? mbql_query) (v0-common/ref? mbql_query))
+                          (let [mbql-data (get ref-index (v0-common/unref mbql_query))]
+                            (or (:result_metadata mbql-data) columns))
+                          ;; For embedded MBQL or native queries, use columns from representation
+                          columns)]
     (merge
      {:name model-name
       :description (or description "")
@@ -238,8 +237,8 @@
       :database_id database-id
       :query_type (if (= (:type dataset-query) "native") :native :query)
       :type :model}
-     (when columns
-       {:result_metadata columns})
+     (when result-metadata
+       {:result_metadata result-metadata})
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
@@ -273,11 +272,12 @@
 (defmethod export/export-entity :model [card]
   (let [query (if export/*use-refs*
                 (patch-refs-for-export (:dataset_query card))
-                (:dataset_query card))]
+                (:dataset_query card))
+        card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
+        mbql-ref (str "mbql-" card-ref)]
     (cond-> {:name (:name card)
-             ;;:version "question-v0"
              :type (:type card)
-             :ref (v0-common/unref (v0-common/->ref (:id card) :model))
+             :ref card-ref
              :description (:description card)}
 
       (= :native (:type query))
@@ -285,9 +285,18 @@
              :database (:database query))
 
       (= :query (:type query))
-      (assoc :mbql_query (:query query)
-             :database (:database query)
-             :columns (:result_metadata card))
+      (assoc :mbql_query (str "ref:" mbql-ref)
+             :database (:database query))
 
       :always
       u/remove-nils)))
+
+(defmethod export/export-mbql-data :model
+  [card]
+  (let [query (if export/*use-refs*
+                (patch-refs-for-export (:dataset_query card))
+                (:dataset_query card))]
+    (when (= :query (:type query))
+      (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
+            mbql-ref (str "mbql-" card-ref)]
+        (v0-mbql/create-mbql-data mbql-ref (:query query) (:result_metadata card))))))

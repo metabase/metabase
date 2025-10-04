@@ -5,9 +5,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [metabase.util.yaml :as yaml]))
+   [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -24,7 +24,7 @@
       (let [edn (rep/export-with-refs model)
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
-            rep  (yaml/parse-string yaml)]
+            rep (yaml/parse-string yaml)]
         (is (rep/normalize-representation rep))))))
 
 (deftest can-import

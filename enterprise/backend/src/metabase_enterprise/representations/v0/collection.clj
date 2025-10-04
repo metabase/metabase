@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
-   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.collections.api :as coll.api]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]

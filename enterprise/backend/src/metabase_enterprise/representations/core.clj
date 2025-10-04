@@ -132,7 +132,8 @@
                 instances (populate dir collection)]
             (fix-refs instances @ref->id)))))))
 
-(defonce static-assets (atom nil))
+(defonce ^{:doc "Atom holding statically loaded assets for experimental features."} static-assets
+  (atom nil))
 
 (defn set-static-assets
   "Set 'em"
@@ -184,6 +185,14 @@
                                   :created_at (java.time.OffsetDateTime/now)})
   (type *1)
   (t2/select-one :model/Collection :id 2))
+
+(defn export-collection-representations
+  "Export a collection and all its contents to YAML files.
+   Delegates to export/export-collection-representations."
+  ([id]
+   (export/export-collection-representations id))
+  ([id path]
+   (export/export-collection-representations id path)))
 
 (defn import-collection-representations
   "Because I didn't potemkin yet."

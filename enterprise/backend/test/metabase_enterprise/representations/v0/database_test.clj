@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))

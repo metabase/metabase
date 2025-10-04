@@ -5,7 +5,7 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest export-group
+(deftest export-group-test
   (testing "We get the question and database when exporting the question"
     (mt/with-temp [:model/Card question {:type :question
                                          :dataset_query (mt/native-query {:query "select 1"})}]

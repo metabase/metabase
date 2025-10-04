@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.collections.api :as coll.api]
    [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import
    [java.io File]))
@@ -24,17 +24,27 @@
   (def representation-type nil))
 
 (defmulti representation-type
+  "Returns the representation type for an entity (e.g., :question, :model, :metric).
+   For plain maps (like MBQL data), uses :type field. For Toucan models, uses t2/model."
   {:arglists '[[entity]]}
-  t2/model)
+  (fn [entity]
+    (or (:type entity) (t2/model entity))))
 
 (defmethod representation-type :model/Card [card] (:type card))
-(defmethod representation-type :default [entity] (t2/model entity))
+(defmethod representation-type :default [entity]
+  (or (:type entity) (t2/model entity)))
 
 (defmulti export-entity
   "Export a Metabase entity to its human-readable representation format.
    Dispatches on [model type] for Cards, [model nil] for other entities."
   {:arglists '[[entity]]}
   representation-type)
+
+(defmulti export-mbql-data
+  "Export MBQL data for a card. Dispatches on card type (:model or :question).
+   Returns MBQL data representation if card has MBQL query, nil for native queries."
+  {:arglists '[[card]]}
+  :type)
 
 (def ^:private type->model
   {"question"  :model/Card
@@ -44,8 +54,17 @@
    "transform" :model/Transform})
 
 (defn- read-from-ref [ref]
-  (let [[type id] (str/split ref #"-")]
-    (export-entity (t2/select-one (type->model type) :id (Long/parseLong id)))))
+  (if (str/starts-with? ref "mbql-")
+    (let [card-ref (subs ref 5)
+          [type id] (str/split card-ref #"-" 2)
+          card (t2/select-one (type->model type) :id (Long/parseLong id))
+          mbql-data (export-mbql-data card)]
+      (if mbql-data
+        (let [nested-refs (v0-common/refs mbql-data)]
+          (mapcat read-from-ref nested-refs))
+        []))
+    [(let [[type id] (str/split ref #"-" 2)]
+       (export-entity (t2/select-one (type->model type) :id (Long/parseLong id))))]))
 
 (defn export-set
   "Returns a transitive set of ref-dependencies"
@@ -54,7 +73,7 @@
          prev #{}]
     (if-some [new (seq (set/difference acc prev))]
       (let [refs (set (mapcat v0-common/refs new))
-            reps (map read-from-ref refs)]
+            reps (mapcat read-from-ref refs)]
         (recur (into acc reps) acc))
       acc)))
 
@@ -95,12 +114,20 @@
          (if (= model-type :collection)
            (export-collection-representations child-id (str path coll-dir))
            (try
-             (let [entity-yaml (->> model-type
-                                    (t2/select-one :model/Card :id child-id :type)
-                                    (export-entity)
-                                    (yaml/generate-string))
-                   file-name (v0-common/file-sys-name child-id (:entity_id child) ".yaml")]
-               (spit (str path coll-dir file-name) entity-yaml))
+             (let [card (t2/select-one :model/Card :id child-id :type model-type)
+                   entity-yaml (-> card export-entity yaml/generate-string)
+                   base-file-name (v0-common/file-sys-name child-id (:entity_id child) "")
+                   card-file-name (str base-file-name ".yaml")]
+               ;; Write the card YAML file
+               (spit (str path coll-dir card-file-name) entity-yaml)
+               ;; If this is an MBQL card, also export the MBQL data
+               (when (and (get-in card [:dataset_query :type])
+                          (= :query (get-in card [:dataset_query :type])))
+                 (let [mbql-data (export-mbql-data card)]
+                   (when mbql-data
+                     (let [mbql-yaml (-> mbql-data export-entity yaml/generate-string)
+                           mbql-file-name (str base-file-name ".mbql.yml")]
+                       (spit (str path coll-dir mbql-file-name) mbql-yaml))))))
              (catch Exception e
                (log/errorf e "Unable to export representation of type %s with id %s" model-type child-id)))))))))
 

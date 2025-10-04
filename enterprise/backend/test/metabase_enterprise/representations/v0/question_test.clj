@@ -2,11 +2,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -67,18 +68,31 @@
                    (mt/mbql-query users)]]
       (mt/with-temp [:model/Card question {:type :question
                                            :dataset_query query}]
-        (let [edn (rep/export-with-refs question)
-              yaml (yaml/generate-string edn)
-              rep (yaml/parse-string yaml)
-              rep (rep/normalize-representation rep)
-              ref-index {(v0-common/unref (:database edn)) (t2/select-one :model/Database (mt/id))}
-              question (rep/persist! rep ref-index)
+        (let [card-edn (rep/export-with-refs question)
+              card-yaml (yaml/generate-string card-edn)
+              card-rep (yaml/parse-string card-yaml)
+              card-rep (rep/normalize-representation card-rep)
+
+              ;; For MBQL queries, also export MBQL data
+              mbql-edn (when (= :query (:type query))
+                         (export/export-mbql-data question))
+
+              ;; For MBQL queries, serialize to YAML and parse back
+              mbql-rep (when mbql-edn
+                         (let [mbql-yaml (-> mbql-edn export/export-entity yaml/generate-string)
+                               parsed (yaml/parse-string mbql-yaml)]
+                           (rep/normalize-representation parsed)))
+
+              ;; Build ref-index with database and MBQL data (if present)
+              ref-index (cond-> {(v0-common/unref (:database card-edn)) (t2/select-one :model/Database (mt/id))}
+                          mbql-rep (assoc (:ref mbql-rep) (rep/persist! mbql-rep nil)))
+
+              question (rep/persist! card-rep ref-index)
               question (t2/select-one :model/Card :id (:id question))
               edn (rep/export-with-refs question)
               yaml (yaml/generate-string edn)
               rep2 (yaml/parse-string yaml)
-
               rep2 (rep/normalize-representation rep2)]
-          (is (=? (dissoc rep :ref) rep2)))))))
+          (is (=? (dissoc card-rep :ref) rep2)))))))
 
 (deftest export-import-refs)

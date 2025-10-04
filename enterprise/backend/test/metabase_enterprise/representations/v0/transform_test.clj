@@ -1,13 +1,13 @@
-(ns metabase-enterprise.representations.v0.question-test
+(ns metabase-enterprise.representations.v0.transform-test
   (:require
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -43,10 +43,10 @@
                                                :target {:type "table"
                                                         :name "output_table"
                                                         :schema "output_schema"}}]
-      (let [edn (rep/export transform)
+      (let [edn (rep/export-with-refs transform)
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
-            rep  (yaml/parse-string yaml)]
+            rep (yaml/parse-string yaml)]
         (is (rep/normalize-representation rep))))))
 
 (deftest can-import
@@ -68,7 +68,7 @@
                          (t2/select-one :model/Database (mt/id))}
               persisted (rep/persist! rep ref-index)]
           (is persisted)
-          (let [edn (rep/export persisted)
+          (let [edn (rep/export-with-refs persisted)
                 yaml (yaml/generate-string edn)
                 rep2 (yaml/parse-string yaml)]
             (is (=? (dissoc rep :ref :database) rep2))))))))
@@ -84,14 +84,14 @@
                                                  :target {:type "table"
                                                           :schema "PUBLIC"
                                                           :name "SOME_TABLE"}}]
-        (let [edn (rep/export transform)
+        (let [edn (rep/export-with-refs transform)
               yaml (yaml/generate-string edn)
               rep (yaml/parse-string yaml)
               rep (rep/normalize-representation rep)
               ref-index {(v0-common/unref (:database edn)) (t2/select-one :model/Database (mt/id))}
               transform (rep/persist! rep ref-index)
               transform (t2/select-one :model/Transform :id (:id transform))
-              edn (rep/export transform)
+              edn (rep/export-with-refs transform)
               yaml (yaml/generate-string edn)
               rep2 (yaml/parse-string yaml)
               rep2 (rep/normalize-representation rep2)]

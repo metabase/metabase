@@ -6,7 +6,6 @@
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -171,23 +170,6 @@
   [card]
   (format "%s-%s" "transform" (:id card)))
 
-(defn- source-table-ref [table]
-  (cond
-    (vector? table)
-    (let [[db schema table] table]
-      {:database db
-       :schema schema
-       :table table})
-
-    (string? table)
-    (let [referred-card (t2/select-one :model/Card :entity_id table)]
-      (->ref referred-card))))
-
-(defn- update-source-table [card]
-  (if-some [_table (get-in card [:mbql_query :source-table])]
-    (update-in card [:mbql_query :source-table] source-table-ref)
-    card))
-
 (defn- patch-refs-for-export [query]
   (-> query
       (v0-mbql/->ref-database)
@@ -215,7 +197,7 @@
 
       (#{"table" :table} (-> transform :target :type))
       (assoc :target_table {:schema (-> transform :target :schema)
-                            :table  (-> transform :target :name)})
+                            :table (-> transform :target :name)})
 
       :always
       u/remove-nils)))
