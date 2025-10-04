@@ -48,6 +48,7 @@ import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric"
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
@@ -529,7 +530,7 @@ export function getYAxisModel(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
   formattingOptions?: OptionsType,
-  gridSize?: { height: number },
+  gridSize?: VisualizationGridSize,
 ): YAxisModel | null {
   if (seriesKeys.length === 0) {
     return null;
@@ -584,7 +585,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
-  gridSize?: { height: number },
+  gridSize?: VisualizationGridSize,
 ) {
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
