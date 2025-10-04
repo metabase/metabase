@@ -47,8 +47,8 @@
             (log/warnf "🚫 Result file too large (%.2f MB > %.2f MB max). Skipping load to protect memory."
                        file-size-mb max-size-mb)
             ;; Return part with error marker so render pipeline shows an error
-            (assoc-in part [:result :error]
-                      (tru "Results too large to display. The query returned too much data to show in this notification.")))
+            (update part :result merge {:error (tru "Results too large to display. The query returned too much data to show in this notification.")
+                                        :render/too-large? true}))
           ;; Re-throw other exceptions
           (throw e))))))
 

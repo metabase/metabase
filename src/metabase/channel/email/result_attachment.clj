@@ -95,15 +95,16 @@
           visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
                              (not-empty (get-in dashcard [:visualization_settings :visualization :settings :card.title])))
           filename-prefix  (or visualizer-title original-card-name)]
-      (->>
-       [(when-let [temp-file (and (:include_csv card)
-                                  (create-temp-file-or-throw! "csv"))]
-          (with-open [os (io/output-stream temp-file)]
-            (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
-          (create-result-attachment-map "csv" filename-prefix temp-file))
-        (when-let [temp-file (and (:include_xls card)
-                                  (create-temp-file-or-throw! "xlsx"))]
-          (with-open [os (io/output-stream temp-file)]
-            (stream-api-results-to-export-format! os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
-          (create-result-attachment-map "xlsx" filename-prefix temp-file))]
-       (filterv some?)))))
+      (when-not (:render/too-large? result)
+        (->>
+         [(when-let [temp-file (and (:include_csv card)
+                                    (create-temp-file-or-throw! "csv"))]
+            (with-open [os (io/output-stream temp-file)]
+              (stream-api-results-to-export-format! os {:export-format :csv :format-rows? format-rows :pivot? pivot-results} result))
+            (create-result-attachment-map "csv" filename-prefix temp-file))
+          (when-let [temp-file (and (:include_xls card)
+                                    (create-temp-file-or-throw! "xlsx"))]
+            (with-open [os (io/output-stream temp-file)]
+              (stream-api-results-to-export-format! os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
+            (create-result-attachment-map "xlsx" filename-prefix temp-file))]
+         (filterv some?))))))
