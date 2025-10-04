@@ -137,8 +137,8 @@
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
     (doseq [limit [1 10]]
-      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
-        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+      (with-redefs [notification.payload.execute/rows-to-disk-threshold 5]
+        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threshold)
                    "card has rows saved to disk"
                    "card has rows saved in memory")
           (notification.tu/with-notification-testing-setup!
