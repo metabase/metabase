@@ -219,4 +219,22 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.findByTestId("preview-loading-indicator").should("not.exist");
   });
+
+  it("shows Metabot experience when selected", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Metabot").click();
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_experience_completed",
+      event_detail: "custom=metabot",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Ask questions to AI.").should("be.visible");
+    });
+  });
 });
