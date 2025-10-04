@@ -22,13 +22,16 @@ const userOptions = {
   GENERATE_SNAPSHOTS: true,
   QUIET: false,
   TZ: "UTC",
+  QA_DB_ENABLED: undefined,
+  BUILD_JAR: undefined,
+  START_BACKEND: undefined,
   ...booleanify(process.env),
 };
 
 const derivedOptions = {
-  QA_DB_ENABLED: userOptions.START_CONTAINERS,
-  BUILD_JAR: userOptions.BACKEND_PORT === 4000,
-  START_BACKEND: userOptions.BACKEND_PORT === 4000,
+  QA_DB_ENABLED: userOptions.QA_DB_ENABLED ?? userOptions.START_CONTAINERS,
+  BUILD_JAR: userOptions.BUILD_JAR ?? userOptions.BACKEND_PORT === 4000,
+  START_BACKEND: userOptions.START_BACKEND ?? userOptions.BACKEND_PORT === 4000,
   CYPRESS_IS_EMBEDDING_SDK: String(userOptions.TEST_SUITE === "component"),
   MB_SNOWPLOW_AVAILABLE: userOptions.START_CONTAINERS,
   MB_SNOWPLOW_URL: "http://localhost:9090",
