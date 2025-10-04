@@ -36,8 +36,7 @@
   (let [stage-type (label-to-stage stage-label)]
     (log/infof "Transform stage started: run-id=%d type=%s label=%s" job-run-id (name stage-type) (name stage-label))
     (prometheus/inc! :metabase-transforms/stage-started
-                     {:job-run-id (str job-run-id)
-                      :stage-type (name stage-type)
+                     {:stage-type (name stage-type)
                       :stage-label (name stage-label)})))
 
 (mu/defn record-stage-completion!
@@ -47,8 +46,7 @@
    duration-ms :- int?]
   (let [stage-type (label-to-stage stage-label)]
     (log/infof "Transform stage completed: run-id=%d type=%s label=%s duration=%dms" job-run-id (name stage-type) (name stage-label) duration-ms)
-    (let [labels {:job-run-id (str job-run-id)
-                  :stage-type (name stage-type)
+    (let [labels {:stage-type (name stage-type)
                   :stage-label (name stage-label)}]
       (prometheus/inc! :metabase-transforms/stage-completed labels)
       (prometheus/observe! :metabase-transforms/stage-duration-ms labels duration-ms))))
@@ -60,8 +58,7 @@
    duration-ms :- int?]
   (let [stage-type (label-to-stage stage-label)]
     (log/warnf "Transform stage failed: run-id=%d type=%s label=%s duration=%s" job-run-id (name stage-type) (name stage-label) (str duration-ms "ms"))
-    (let [labels {:job-run-id (str job-run-id)
-                  :stage-type (name stage-type)
+    (let [labels {:stage-type (name stage-type)
                   :stage-label (name stage-label)}]
       (prometheus/inc! :metabase-transforms/stage-failed labels)
       (when duration-ms
@@ -124,8 +121,7 @@
                (name stage-label)
                (if bytes (str " bytes=" bytes) "")
                (if rows (str " rows=" rows) "")))
-  (let [labels {:job-run-id (str job-run-id)
-                :stage-label (name stage-label)}]
+  (let [labels {:stage-label (name stage-label)}]
     (when bytes
       (prometheus/observe! :metabase-transforms/data-transfer-bytes labels bytes))
     (when rows
@@ -136,15 +132,13 @@
   [job-id run-method]
   (log/infof "Transform job started: job-id=%d run-method=%s" job-id (name run-method))
   (prometheus/inc! :metabase-transforms/job-runs-total
-                   {:job-id (str job-id)
-                    :run-method (name run-method)}))
+                   {:run-method (name run-method)}))
 
 (defn record-job-completion!
   "Record the successful completion of a transform job run."
   [job-id run-method duration-ms]
   (log/infof "Transform job completed: job-id=%d run-method=%s duration=%dms" job-id (name run-method) duration-ms)
-  (let [labels {:job-id (str job-id)
-                :run-method (name run-method)}]
+  (let [labels {:run-method (name run-method)}]
     (prometheus/inc! :metabase-transforms/job-runs-completed labels)
     (prometheus/observe! :metabase-transforms/job-run-duration-ms labels duration-ms)))
 
@@ -152,8 +146,7 @@
   "Record the failure of a transform job run."
   [job-id run-method duration-ms]
   (log/warnf "Transform job failed: job-id=%d run-method=%s duration=%dms" job-id (name run-method) duration-ms)
-  (let [labels {:job-id (str job-id)
-                :run-method (name run-method)}]
+  (let [labels {:run-method (name run-method)}]
     (prometheus/inc! :metabase-transforms/job-runs-failed labels)
     (prometheus/observe! :metabase-transforms/job-run-duration-ms labels duration-ms)))
 
@@ -177,10 +170,8 @@
    duration-ms :- int?
    status :- [:enum :success :error :timeout]]
   (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
-  (let [labels {:job-run-id (str job-run-id)}]
-    (prometheus/inc! :metabase-transforms/python-api-calls-total
-                     (assoc labels :status (name status)))
-    (prometheus/observe! :metabase-transforms/python-api-call-duration-ms labels duration-ms)))
+  (prometheus/inc! :metabase-transforms/python-api-calls-total {:status (name status)})
+  (prometheus/observe! :metabase-transforms/python-api-call-duration-ms {} duration-ms))
 
 (defmacro with-python-api-timing
   "Execute body while timing a Python API call."
