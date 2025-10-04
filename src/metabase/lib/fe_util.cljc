@@ -75,7 +75,7 @@
                            (:temporal-unit (lib.options/options maybe-clause-arg)))
                 (u.time/timestamp-coercible? other-arg))))
 
-(defn- expand-temporal-expression
+(defn expand-temporal-expression
   "Modify expression in a way, that its resulting [[expression-parts]] are digestable by filter picker.
 
    Current filter picker implementation is unable to handle expression parts of expressions of a form
