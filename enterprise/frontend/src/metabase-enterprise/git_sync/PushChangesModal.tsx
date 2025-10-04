@@ -160,21 +160,33 @@ const AllChangesView = ({
     const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
 
     const result = Object.entries(byCollection)
-      .map(([collectionId, items]) => ({
-        pathSegments: getCollectionPathSegments(
-          Number(collectionId) || undefined,
-          collectionMap,
-        ),
-        collectionId: Number(collectionId) || undefined,
-        items: items.sort((a, b) => {
-          const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
-          const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
-          if (statusOrderA !== statusOrderB) {
-            return statusOrderA - statusOrderB;
-          }
-          return a.name.localeCompare(b.name);
-        }),
-      }))
+      .map(([collectionId, items]) => {
+        const collectionEntity = items.find(
+          (item) =>
+            item.model === "collection" && item.id === Number(collectionId),
+        );
+        const nonCollectionItems = items.filter(
+          (item) =>
+            !(item.model === "collection" && item.id === Number(collectionId)),
+        );
+
+        return {
+          pathSegments: getCollectionPathSegments(
+            Number(collectionId) || undefined,
+            collectionMap,
+          ),
+          collectionId: Number(collectionId) || undefined,
+          collectionEntity,
+          items: nonCollectionItems.sort((a, b) => {
+            const statusOrderA = SYNC_STATUS_ORDER.indexOf(a.sync_status);
+            const statusOrderB = SYNC_STATUS_ORDER.indexOf(b.sync_status);
+            if (statusOrderA !== statusOrderB) {
+              return statusOrderA - statusOrderB;
+            }
+            return a.name.localeCompare(b.name);
+          }),
+        };
+      })
       .sort((a, b) =>
         a.pathSegments
           .map((s) => s.name)
@@ -206,25 +218,43 @@ const AllChangesView = ({
             <Fragment key={group.collectionId}>
               {groupIndex > 0 && <Divider />}
               <Box p="md">
-                <Group p="sm" gap="sm" mb="12px" bg="bg-light" bdrs="md">
+                <Group
+                  p="sm"
+                  gap="sm"
+                  mb={group.items.length > 0 ? "12px" : 0}
+                  bg="bg-light"
+                  bdrs="md"
+                >
                   <Icon name="synced_collection" size={16} c="text-secondary" />
                   <CollectionPath segments={group.pathSegments} />
-                </Group>
-                <Stack
-                  gap="12px"
-                  ml="md"
-                  pl="xs"
-                  style={{
-                    borderLeft: "2px solid var(--mb-color-border)",
-                  }}
-                >
-                  {group.items.map((entity) => (
-                    <EntityLink
-                      key={`${entity.model}-${entity.id}`}
-                      entity={entity}
+                  {group.collectionEntity && (
+                    <Icon
+                      name={getSyncStatusIcon(
+                        group.collectionEntity.sync_status,
+                      )}
+                      size={16}
+                      c={getSyncStatusColor(group.collectionEntity.sync_status)}
+                      ml="auto"
                     />
-                  ))}
-                </Stack>
+                  )}
+                </Group>
+                {group.items.length > 0 && (
+                  <Stack
+                    gap="12px"
+                    ml="md"
+                    pl="xs"
+                    style={{
+                      borderLeft: "2px solid var(--mb-color-border)",
+                    }}
+                  >
+                    {group.items.map((entity) => (
+                      <EntityLink
+                        key={`${entity.model}-${entity.id}`}
+                        entity={entity}
+                      />
+                    ))}
+                  </Stack>
+                )}
               </Box>
             </Fragment>
           ))}
