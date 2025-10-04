@@ -2,7 +2,15 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Card, Checkbox, Divider, Select, Stack, Text } from "metabase/ui";
+import {
+  Card,
+  Checkbox,
+  Divider,
+  Group,
+  Radio,
+  Stack,
+  Text,
+} from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -36,66 +44,52 @@ export const SelectEmbedOptionsStep = () => {
 
   return (
     <Stack gap="md">
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="md">
-          {t`Behavior`}
-        </Text>
-        <Stack gap="md">
-          {isQuestionOrDashboardEmbed && (
-            <Checkbox
-              label={t`Allow people to drill through on data points`}
-              checked={settings.drills}
-              onChange={(e) => updateSettings({ drills: e.target.checked })}
-            />
-          )}
+      {!isMetabotComponent && (
+        <Card p="md">
+          <Text size="lg" fw="bold" mb="md">
+            {t`Behavior`}
+          </Text>
+          <Stack gap="md">
+            {isQuestionOrDashboardEmbed && (
+              <Checkbox
+                label={t`Allow people to drill through on data points`}
+                checked={settings.drills}
+                onChange={(e) => updateSettings({ drills: e.target.checked })}
+              />
+            )}
 
-          {isDashboardOrQuestion && (
-            <Checkbox
-              label={t`Allow downloads`}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
-              }
-            />
-          )}
+            {isDashboardOrQuestion && (
+              <Checkbox
+                label={t`Allow downloads`}
+                checked={settings.withDownloads}
+                onChange={(e) =>
+                  updateSettings({ withDownloads: e.target.checked })
+                }
+              />
+            )}
 
-          {isQuestionComponent && (
-            <Checkbox
-              label={t`Allow people to save new questions`}
-              checked={settings.isSaveEnabled}
-              onChange={(e) =>
-                updateSettings({ isSaveEnabled: e.target.checked })
-              }
-            />
-          )}
+            {isQuestionComponent && (
+              <Checkbox
+                label={t`Allow people to save new questions`}
+                checked={settings.isSaveEnabled}
+                onChange={(e) =>
+                  updateSettings({ isSaveEnabled: e.target.checked })
+                }
+              />
+            )}
 
-          {isBrowserComponent && (
-            <Checkbox
-              label={t`Allow editing dashboards and questions`}
-              checked={!settings.readOnly}
-              onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
-            />
-          )}
-
-          {isMetabotComponent && (
-            <Select
-              label={t`Layout`}
-              value={settings.layout ?? "auto"}
-              data={[
-                { label: t`Auto`, value: "auto" },
-                { label: t`Stacked`, value: "stacked" },
-                { label: t`Sidebar`, value: "sidebar" },
-              ]}
-              onChange={(layout) =>
-                updateSettings({
-                  // Don't include layout in snippets if it's set to `auto`
-                  layout: layout === "auto" ? undefined : layout,
-                })
-              }
-            />
-          )}
-        </Stack>
-      </Card>
+            {isBrowserComponent && (
+              <Checkbox
+                label={t`Allow editing dashboards and questions`}
+                checked={!settings.readOnly}
+                onChange={(e) =>
+                  updateSettings({ readOnly: !e.target.checked })
+                }
+              />
+            )}
+          </Stack>
+        </Card>
+      )}
 
       {isQuestionOrDashboardEmbed && (
         <Card p="md">
@@ -120,15 +114,40 @@ export const SelectEmbedOptionsStep = () => {
           onColorReset={() => updateSettings({ theme: undefined })}
         />
 
-        {isQuestionOrDashboardEmbed && (
-          <>
-            <Divider mt="lg" mb="md" />
+        {(isQuestionOrDashboardEmbed || isMetabotComponent) && (
+          <Divider mt="lg" mb="md" />
+        )}
 
-            <Checkbox
-              label={t`Show ${experience} title`}
-              checked={settings.withTitle}
-              onChange={(e) => updateSettings({ withTitle: e.target.checked })}
-            />
+        {isQuestionOrDashboardEmbed && (
+          <Checkbox
+            label={t`Show ${experience} title`}
+            checked={settings.withTitle}
+            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+          />
+        )}
+
+        {isMetabotComponent && (
+          <>
+            <Text fw="bold" mb="sm">{t`Layout`}</Text>
+
+            <Radio.Group
+              value={settings.layout ?? "auto"}
+              onChange={(layout) =>
+                updateSettings({
+                  // Don't include layout in snippets if it's set to `auto`
+                  layout:
+                    layout === "auto"
+                      ? undefined
+                      : (layout as "stacked" | "sidebar"),
+                })
+              }
+            >
+              <Group gap="md">
+                <Radio value="auto" label={t`Auto`} />
+                <Radio value="stacked" label={t`Stacked`} />
+                <Radio value="sidebar" label={t`Sidebar`} />
+              </Group>
+            </Radio.Group>
           </>
         )}
       </Card>
