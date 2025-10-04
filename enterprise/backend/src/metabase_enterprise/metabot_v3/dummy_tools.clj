@@ -163,6 +163,20 @@
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
 
+(defn- related-tables
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
+  [query with-fields? field-values-fn]
+  (let [fk-fields (->> (lib/visible-columns query)
+                       (filter :fk-field-id))
+        related-table-ids (->> fk-fields
+                               (map :table-id)
+                               (into #{}))]
+    (when (seq related-table-ids)
+      (map #(table-details % {:with-fields? with-fields?
+                              :field-values-fn field-values-fn
+                              :with-metrics? false})
+           related-table-ids))))
+
 (defn- card-details
   "Get details for a card."
   ([id] (card-details id nil))
@@ -175,34 +189,29 @@
                                    with-metrics?   true}
                             :as   options}]
    (let [id (:id base)
-         query-needed? (or with-fields? with-metrics?)
-         card-metadata (when query-needed?
-                         (lib.metadata/card metadata-provider id))
-         dataset-query (when query-needed?
-                         (get card-metadata :dataset-query))
+         card-metadata (lib.metadata/card metadata-provider id)
+         dataset-query (get card-metadata :dataset-query)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
-         card-query (when query-needed?
-                      (lib/query metadata-provider (if (and (#{:question} card-type)
-                                                            (#{:pivot} (:display base))
-                                                            (#{:query} (:type dataset-query)))
-                                                     dataset-query
-                                                     card-metadata)))
-         cols (when with-fields?
-                (->> (lib/visible-columns card-query)
-                     field-values-fn
-                     (map #(metabot-v3.tools.u/add-table-reference card-query %))))
+         card-query (lib/query metadata-provider (if (and (#{:question} card-type)
+                                                          (#{:pivot} (:display base))
+                                                          (#{:query} (:type dataset-query)))
+                                                   dataset-query
+                                                   card-metadata))
+         returned-fields (when with-fields?
+                           (->> (lib/returned-columns card-query)
+                                field-values-fn))
+         related-tables (related-tables card-query with-fields? field-values-fn)
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
-          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
+          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
+          :related_tables related-tables
           :database_id (:database_id base)
-          :queryable-foreign-key-tables []
           :verified (verified-review? id "card")}
-
          (m/assoc-some :description (:description base)
                        :metrics (when with-metrics?
                                   (not-empty (mapv #(convert-metric % metadata-provider options)
@@ -264,10 +273,9 @@
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (cond
-                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
-                                         (if (= :model (:type card))
-                                           card
-                                           (format "ID %s is not a valid model id, it's a question" model-id)))
+                    (int? model-id)    (u/prog1 (card-details model-id (assoc options :only-model true))
+                                         (api/check (= :model (:type <>)) 404
+                                                    (format "ID %s is not a valid model id, it's a question" model-id)))
                     (int? table-id)    (table-details table-id options)
                     (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                                          (card-details (parse-long card-id) options)
