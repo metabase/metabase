@@ -9,7 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
       ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]))
 
 (defenterprise swap-destination-db

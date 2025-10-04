@@ -113,7 +113,9 @@
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-app.audit [] ::noop)
+  metabase-enterprise.audit-app.audit []
+  (log/info "Not installing EE audit app DB")
+  ::noop)
 
 (defn- signal-handler
   "Create a signal handler that logs the received signal and then delegates to the original handler."

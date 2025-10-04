@@ -1,9 +1,7 @@
 (ns metabase.lib.schema.metadata
-  (:refer-clojure :exclude [every?])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -11,25 +9,7 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every?]]))
-
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (not (str/includes? (str k) "_"))))
-
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
-   kebab-cased-map?])
+   [metabase.util.malli.registry :as mr]))
 
 ;;; Column vs Field?
 ;;;
@@ -528,8 +508,7 @@
    ;;
    ;; Additional constraints
    ;;
-   ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map
+   ::lib.schema.common/kebab-cased-map
    [:ref ::column.validate-for-source]])
 
 (mr/def ::persisted-info.definition
@@ -773,3 +752,10 @@
    {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
+
+(mr/def ::transform
+  "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
+  [:map
+   [:id     ::lib.schema.id/transform]
+   [:source {:optional true} [:map
+                              [:query {:optional true} [:ref :metabase.lib.schema/query]]]]])

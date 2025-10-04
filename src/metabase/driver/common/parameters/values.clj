@@ -7,12 +7,20 @@
     ;; -> {\"checkin_date\" {:field {:name \"date\", :parent_id nil, :table_id 1375}
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
-                                     :value  \"2015-01-01~2016-09-01\"}}}"
+                                     :value  \"2015-01-01~2016-09-01\"}}}
+
+
+  DEPRECATED: `driver.common.parameters.*` namespaces deal with legacy MBQL queries. Migrate to MBQL-5-friendly
+  replacement namespaces. The replacement for this namespace is [[metabase.query-processor.parameters.values]].
+
+  TODO (Cam 10/3/25) -- that namespace was introduced in #61158, but then I removed it in a subsequent PR to prune
+  unused namespaces. We can't migrate to it if it's gone... please restore it when we start migrating usages of it
+  over."
+  {:deprecated "0.57.0"}
   (:refer-clojure :exclude [every? some mapv])
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
-   [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -24,13 +32,13 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? some mapv]])
+   [metabase.util.performance :refer [every? mapv some]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))
@@ -452,7 +460,11 @@
     (query->params-map some-inner-query)
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
-  [{tags :template-tags, params :parameters} :- :map]
+  [{tags :template-tags, params :parameters, :as _inner-query} :- [:and
+                                                                   [:map]
+                                                                   [:fn
+                                                                    {:error/message "should be a legacy inner query"}
+                                                                    (complement :lib/type)]]]
   (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags

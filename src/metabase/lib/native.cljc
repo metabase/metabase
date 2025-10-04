@@ -8,6 +8,8 @@
    [medley.core :as m]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.parameters.parse :as lib.params.parse]
+   [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -17,11 +19,12 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.template-tags :as lib.template-tags]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [some select-keys mapv every?]]))
+   [metabase.util.performance :refer [every? mapv select-keys some]]))
 
 ;; Template Tags: Variables
 
@@ -303,8 +306,9 @@
        (assoc stage :template-tags
               (merge existing-tags (select-keys tags valid-tags)))))))
 
-(mu/defn raw-native-query :- ::common/non-blank-string
-  "Returns the native query string"
+(mu/defn raw-native-query :- some?
+  "Returns the native query. This is a SQL string for SQL-based drivers; for other drivers like MongoDB it might be a
+  Clojure map."
   [query :- ::lib.schema/query]
   (:native (lib.util/query-stage query 0)))
 
@@ -416,3 +420,52 @@
                              ttags)]
     (cond-> query
       (seq new-parameters) (assoc :parameters new-parameters))))
+
+(mu/defn- fully-parameterized-text?
+  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
+  described by `template-tags` (usually the template tags of a native query).
+
+  The rules to consider a piece of text fully parameterized is as follows:
+
+  1. All parameters not in an optional block are field-filters or snippets or have a default value.
+  2. All required parameters have a default value.
+
+  The first rule is absolutely necessary, as queries violating it cannot be executed without
+  externally supplied parameter values. The second rule is more controversial, as field-filters
+  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
+  external parameter values (neither do parameters in optional blocks). The rule has been added
+  nonetheless, because marking a parameter as required is something the user does intentionally
+  and queries that are technically executable without parameters can be unacceptably slow
+  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
+  seem to be useful any way, but if the user said it is required, we honor this flag.)"
+  [text              :- :string
+   template-tags-map :- ::lib.schema.template-tag/template-tag-map]
+  (try
+    (let [obligatory-params (into #{}
+                                  (comp (filter lib.params.parse.types/param?)
+                                        (map :k))
+                                  (lib.params.parse/parse text))]
+      (and (every? #(or (#{:dimension :snippet :card} (:type %))
+                        (:default %))
+                   (map template-tags-map obligatory-params))
+           (every? #(or (not (:required %))
+                        (:default %))
+                   (vals template-tags-map))))
+    (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
+      ;; true so that we still can try to generate a preview for the query and display an error.
+      false)))
+
+;;; TODO (Cam 10/3/25) -- this needs a much better docstring
+(mu/defn fully-parameterized-query? :- boolean?
+  "Given a query, returns `true` if its query is fully parameterized."
+  [query :- ::lib.schema/query]
+  (let [raw-native-query-string (when (lib.schema/native-only-query? query)
+                                  (let [query (raw-native-query query)]
+                                    (when (string? query)
+                                      query)))
+        template-tags-map       (when raw-native-query-string
+                                  (not-empty (lib.walk.util/all-template-tags-map query)))]
+    (if (and template-tags-map raw-native-query-string)
+      (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
+      true)))

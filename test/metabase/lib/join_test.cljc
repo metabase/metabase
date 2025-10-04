@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -298,8 +299,9 @@
               :lib/source-column-alias "count"
               ::lib.join/join-alias    "checkins_by_user"}]
             (lib.join/join-returned-columns-relative-to-parent-stage query -1 join)))
-    (is (= (lib.metadata/card metadata-provider 1)
-           (lib.join/joined-thing query join)))))
+    (is (=? (-> (lib.metadata/card metadata-provider 1)
+                (update :dataset-query lib.schema.util/remove-lib-uuids))
+            (lib.join/joined-thing query join)))))
 
 (deftest ^:parallel joins-source-and-desired-aliases-test
   (let [query (-> (lib.tu/venues-query)

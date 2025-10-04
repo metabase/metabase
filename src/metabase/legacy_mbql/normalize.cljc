@@ -1154,6 +1154,8 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   [query]
+  (when (:lib/type query)
+    (throw (ex-info "Legacy MBQL normalization code cannot normalize MBQL >= 5" {:query query})))
   (try
     (-> query
         normalize-tokens
@@ -1177,9 +1179,12 @@
   where this fragment would normally live in a full query.
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
-    ;;-> [:= [:field-id 100] 200]"
+    ;;-> [:= [:field-id 100] 200]
+
+  DEPRECATED -- this is notoriously unreliable, convert to MBQL 5 and use [[metabase.lib.normalize]] instead."
+  {:deprecated "0.57.0"}
   [path :- [:maybe [:sequential :keyword]]
    x]
-  (if-not (seq path)
+  (if (empty? path)
     (normalize x)
     (get (normalize-fragment (butlast path) {(last path) x}) (last path))))

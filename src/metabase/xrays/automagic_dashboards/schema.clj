@@ -3,24 +3,47 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::root
   [:map
    [:database ::lib.schema.id/database]])
 
+(mr/def ::source
+  [:or
+   (ms/InstanceOf #{:model/Table :model/Card})
+   [:map
+    [:entity_type [:and
+                   qualified-keyword?
+                   [:fn
+                    {:error/message ":entity/ keyword"}
+                    #(= (namespace %) "entity")]]]]])
+
 (mr/def ::context
   "The big ball of mud data object from which we generate x-rays"
   (mc/schema
    [:map
-    [:source       any?]
-    [:root         [:ref ::root]]
+    [:source       {:optional true} ::source]
+    [:root         {:optional true} [:ref ::root]]
     [:tables       {:optional true} any?]
     [:query-filter {:optional true} any?]]))
 
 (mr/def ::query
-  [:ref ::mbql.s/Query])
+  "Schema for the type of MBQL queries handled by X-Rays. Currently, either legacy or MBQL 5 is supported, and functions
+  use [[metabase.xrays.automagic-dashboards.util/do-with-legacy-query]]
+  or [[metabase.xrays.automagic-dashboards.util/do-with-mbql5-query]] as needed; in the future we can change this to
+  only accept MBQL 5 and update any code working with legacy MBQL."
+  [:and
+   [:map
+    [:database ::lib.schema.id/database]]
+   [:multi {:dispatch lib/normalized-mbql-version}
+    [:mbql-version/mbql5  [:ref ::lib.schema/query]]
+    [:mbql-version/legacy [:ref ::mbql.s/Query]]]])
 
 (mr/def ::table-id-or-database-id
   [:and
@@ -287,3 +310,45 @@
     (mg/sample affinities)
     (mg/sample affinity-matches)
     (mg/sample grounded-metric))
+
+(mr/def ::field
+  [:and
+   [:map
+    ;; as mentioned elsewhere X-Rays does some kind of insane nonsense and creates fields with types like
+    ;; `:type/GenericNumber` when instantiating templates
+    [:base_type {:optional true} ::lib.schema.common/base-type]]
+   [:fn
+    {:error/message "Should be a field with snake_case keys"}
+    (complement :base-type)]])
+
+(mr/def ::card
+  [:map
+   [:id            {:optional true} [:or symbol? ::lib.schema.id/card]]
+   [:dataset_query {:optional true} ::query]])
+
+(mr/def ::dashcard
+  [:map
+   [:id                     {:optional true} [:or symbol? ::lib.schema.id/dashcard]]
+   [:card                   {:optional true} ::card]
+   [:card_id                {:optional true} [:or symbol? ::lib.schema.id/card]]
+   [:col                    {:optional true} nat-int?]
+   [:row                    {:optional true} nat-int?]
+   [:size_x                 {:optional true} pos-int?]
+   [:size_y                 {:optional true} pos-int?]
+   [:visualization_settings {:optional true} map?]
+   [:title                  {:optional true} string?]
+   [:card-score             {:optional true} number?]])
+
+(mr/def ::dashboard
+  [:map
+   [:dashcards {:optional true} [:sequential ::dashcard]]
+   [:filters   {:optional true} [:sequential :any]]])
+
+(mr/def ::card-template
+  :map)
+
+(mr/def ::dashboard-template
+  "This is somewhat different [[metabase.xrays.automagic-dashboards.schema/DashboardTemplate]], I haven't exactly worked
+  out what the schema is supposed to be yet."
+  [:map
+   [:cards {:optional true} [:maybe [:sequential ::card-template]]]])

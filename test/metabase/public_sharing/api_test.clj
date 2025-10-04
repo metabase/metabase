@@ -70,7 +70,7 @@
                             :name    "Venue ID"
                             :slug    "venue_id"
                             :type    "id"
-                            :target  [:dimension (mt/id :venues :id)]
+                            :target  [:dimension (mt/id :venues :id)] ; this is wrong, we have never allowed [:dimension <id>] ...
                             :default nil}]})
            (shared-obj)
            m)]
@@ -353,7 +353,8 @@
                                                    {:database (mt/id)
                                                     :type     :native
                                                     :native   {:query         "SELECT count(*) AS Count FROM venues [[WHERE id = {{venue_id}}]]"
-                                                               :template-tags {"venue_id" {:name         "venue_id"
+                                                               :template-tags {"venue_id" {:id           "_VENUE_ID_"
+                                                                                           :name         "venue_id"
                                                                                            :display-name "Venue ID"
                                                                                            :type         :number
                                                                                            :required     false}}}}
@@ -398,7 +399,6 @@
                   (client/client :get 202 (str "public/card/" uuid "/query")
                                  :parameters (json/encode [{:id    "_VENUE_ID_"
                                                             :value 2}]))))))
-
       ;; see longer explanation in [[metabase.legacy-mbql.schema/parameter-types]]
       (testing "If the FE client is incorrectly passing in the parameter as a `:category` type, allow it for now"
         (with-temp-public-card [{uuid :public_uuid} {:dataset_query {:database (mt/id)
@@ -475,7 +475,8 @@
                              {:database (mt/id)
                               :type     :native
                               :native   {:query         "SELECT count(*) FROM venues v WHERE price = {{price}}"
-                                         :template-tags {"price" {:name         "price"
+                                         :template-tags {"price" {:id           "_PRICE_"
+                                                                  :name         "price"
                                                                   :display-name "Price"
                                                                   :type         :number
                                                                   :required     true}}}}}]
@@ -693,8 +694,10 @@
       (mt/with-temporary-setting-values [enable-public-sharing false]
         (with-temp-public-dashboard-and-card [dash card dashcard]
           (is (= "An error occurred."
-                 (client/client :get 400 (dashcard-url dash card dashcard)))))))
+                 (client/client :get 400 (dashcard-url dash card dashcard)))))))))
 
+(deftest execute-public-dashcard-errors-test-2
+  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
     (testing "Should get a 404"
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (with-temp-public-dashboard-and-card [dash card dashcard]
@@ -844,7 +847,8 @@
           (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                            :type     :native
                                                            :native   {:query         "SELECT {{num}} AS num"
-                                                                      :template-tags {:num {:name         "num"
+                                                                      :template-tags {:num {:id           "01234"
+                                                                                            :name         "num"
                                                                                             :display-name "Num"
                                                                                             :type         "number"
                                                                                             :required     true
@@ -927,8 +931,7 @@
         (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                          :type     :native
                                                          :native   {:query         "SELECT {{msg}} AS message"
-                                                                    :template-tags {:msg {:id           "_MSG_
-"
+                                                                    :template-tags {:msg {:id           "_MSG_"
                                                                                           :name         "msg"
                                                                                           :display-name "Message"
                                                                                           :type         "text"
@@ -1173,7 +1176,7 @@
        :model/DashboardCard _         {:dashboard_id       (:id dash)
                                        :card_id            (:id card)
                                        :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                                             :target       [:dimension (mt/$ids *categories.name)]}]}]
+                                                             :target       [:dimension [:field "NAME" {:base-type :type/Text}]]}]}]
       (is (=? {:param_fields {(keyword "_CATEGORY_NAME_")
                               [{:semantic_type "type/Name",
                                 :table_id (mt/id :categories)
@@ -1421,10 +1424,10 @@
                    (is (= ["AK" "Affiliate" "Doohickey" 0 18 81] (first rows)))
                    (is (= ["CO" "Affiliate" "Gadget" 0 62 211] (nth rows 100)))
                    (is (= [nil nil nil 7 18760 69540] (last rows))))))
-
              (testing "with parameters"
                (let [result (results :parameters (json/encode [{:name   "State"
                                                                 :id     "_STATE_"
+                                                                :type   :text
                                                                 :slug   :state
                                                                 :target [:dimension (mt/$ids $orders.user_id->people.state)]
                                                                 :value  ["CA" "WA"]}]))]

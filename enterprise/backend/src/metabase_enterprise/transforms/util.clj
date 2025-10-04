@@ -7,10 +7,11 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.settings :as transforms.settings]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sync.core :as sync]
    [metabase.util :as u]
@@ -104,8 +105,7 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
-;; TODO this and target-database-id can be transforms multimethods?
-(defn target-database-id
+(mu/defn target-database-id :- ::lib.schema.id/database
   "Return the target database id of a transform"
   [transform]
   (if (python-transform? transform)

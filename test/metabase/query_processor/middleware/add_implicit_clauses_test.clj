@@ -152,8 +152,9 @@
                       [:field "count" {:base-type :type/Integer}]]}
             (add-implicit-clauses-to-legacy-inner-query
              (:query (lib.tu.macros/mbql-query checkins
-                       {:source-query {:aggregation [[:count]]
-                                       :breakout    [!month.$date]}})))))))
+                       {:source-query {:source-table $$checkins
+                                       :aggregation  [[:count]]
+                                       :breakout     [!month.$date]}})))))))
 
 (deftest ^:parallel expression-with-only-field-in-source-query-test
   (testing "Field coming from expression in source query should have string id"

@@ -102,7 +102,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -148,6 +148,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/database_partitioned
                 :field/database_type
                 :field/description
                 :field/display_name
@@ -535,6 +536,12 @@
   [& body]
   `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
                                            (atom (cache/basic-cache-factory {})))]
+     ~@body))
+
+(defmacro with-existing-metadata-provider-cache
+  "Wrapper to bind [[*metadata-provider-cache*]] to an existing cache, if you are doing something weird."
+  [metadata-provider-cache & body]
+  `(binding [*metadata-provider-cache* ~metadata-provider-cache]
      ~@body))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider

@@ -97,8 +97,8 @@
 
 ;; * card
 (s/def ::display #{:table})
-(s/def ::visualization_settings #{"{}"})
-(s/def ::dataset_query #{"{}"})
+(s/def ::visualization_settings #{{}})
+(s/def ::dataset_query #{{}})
 
 ;; * dashboardcard_series
 (s/def ::position pos-int?)
@@ -138,7 +138,7 @@
 (s/def ::col pos-int?)
 (s/def ::size_x pos-int?)
 (s/def ::size_y pos-int?)
-(s/def ::parameter_mappings #{[{}]})
+(s/def ::parameter_mappings #{[]})
 
 (s/def ::action (s/keys :req-un [::id :action/type ::name]))
 (s/def ::query-action (s/keys :req-un [::dataset_query]))
@@ -147,7 +147,6 @@
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
 (s/def ::collection (s/keys :req-un [::id ::name]))
-(s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
 (s/def ::pulse (s/keys :req-un [::id ::name]))
 (s/def ::permissions-group (s/keys :req-un [::id ::name]))
 (s/def ::permissions-group-membership (s/keys :req-un [::user_id ::group_id]))

@@ -971,7 +971,9 @@
                                                :widget-type :text
                                                :display-name "foo"
                                                :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
-               (lib/dependent-metadata nil :question)))))
+               (lib/dependent-metadata nil :question))))))
+
+(deftest ^:parallel dependent-metadata-test-2
   (testing "simple query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -979,7 +981,9 @@
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/venues-query)
-      (lib/append-stage (lib.tu/venues-query))))
+      (lib/append-stage (lib.tu/venues-query)))))
+
+(deftest ^:parallel dependent-metadata-test-3
   (testing "join query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -987,7 +991,9 @@
                       {:type :table,    :id (meta/id :categories)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-join)
-      (lib/append-stage (lib.tu/query-with-join))))
+      (lib/append-stage (lib.tu/query-with-join)))))
+
+(deftest ^:parallel dependent-metadata-test-4
   (testing "source card based query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -995,7 +1001,9 @@
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-source-card)
-      (lib/append-stage (lib.tu/query-with-source-card))))
+      (lib/append-stage (lib.tu/query-with-source-card)))))
+
+(deftest ^:parallel dependent-metadata-test-5
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
@@ -1003,7 +1011,9 @@
                       {:type :table,    :id (meta/id :users)}]
                      (lib/dependent-metadata query nil :question))
       (lib.tu/query-with-source-card-with-result-metadata)
-      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata))))
+      (lib/append-stage (lib.tu/query-with-source-card-with-result-metadata)))))
+
+(deftest ^:parallel dependent-metadata-test-6
   (testing "model based query"
     (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-model)]
       (are [query] (=? [{:type :database, :id (meta/id)}
@@ -1012,7 +1022,9 @@
                         {:type :table,    :id (meta/id :users)}]
                        (lib/dependent-metadata query nil :question))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-7
   (testing "metric based query"
     (let [query (assoc (lib.tu/query-with-source-card) :lib/metadata lib.tu/metadata-provider-with-metric)]
       (are [query] (=? [{:type :database, :id (meta/id)}
@@ -1023,7 +1035,9 @@
                         {:type :table,    :id (meta/id :venues)}]
                        (lib/dependent-metadata query nil :question))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-8
   (testing "editing a model"
     (let [metadata-provider lib.tu/metadata-provider-with-model
           query (->> (lib.metadata/card metadata-provider 1)
@@ -1037,7 +1051,9 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :model))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-9
   (testing "editing a metric"
     (let [metadata-provider lib.tu/metadata-provider-with-metric
           query (->> (lib.metadata/card metadata-provider 1)
@@ -1051,7 +1067,9 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :metric))
         query
-        (lib/append-stage query))))
+        (lib/append-stage query)))))
+
+(deftest ^:parallel dependent-metadata-test-10
   (testing "Native query snippets should be included in dependent metadata"
     (let [;; lib/native-query would try to look up the snippets:
           query {:lib/type :mbql/query

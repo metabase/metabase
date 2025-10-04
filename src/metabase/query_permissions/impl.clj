@@ -19,7 +19,7 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; legacy usage -- don't do things like this going forward
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -247,7 +247,7 @@
      ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
      ;; that means no one will ever get to see it
      (catch Throwable e
-       (let [e (ex-info "Error calculating permissions for query"
+       (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e))
                         {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
                                     query)}
                         e)]

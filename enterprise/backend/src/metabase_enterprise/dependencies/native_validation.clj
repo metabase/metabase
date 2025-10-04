@@ -2,37 +2,54 @@
   (:require
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]))
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.util.malli :as mu]))
 
-(defn- compile-query [metadata-provider query]
-  (->> (lib/query metadata-provider query)
-       lib/add-parameters-for-template-tags
-       (qp/compile-query-with-metadata-provider metadata-provider)
-       :query))
+(mu/defn- compile-query :- ::lib.schema/native-only-query
+  [query :- ::lib.schema/query]
+  (-> query
+      lib/add-parameters-for-template-tags
+      ;; to expand template tag parameters
+      qp.preprocess/preprocess
+      (as-> $query (if (lib/native-only-query? $query)
+                     $query
+                     (lib/native-query query (:query (qp.compile/compile $query)))))))
 
-(defn validate-native-query
+(mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.
 
    Returns either nil or a list of errors."
-  [driver metadata-provider query]
-  (->> (compile-query metadata-provider query)
-       (driver/validate-native-query-fields driver metadata-provider)))
+  [driver :- :keyword
+   query  :- ::lib.schema/query]
+  (->> query
+       compile-query
+       (driver/validate-native-query-fields driver)))
 
-(defn native-result-metadata
+(mu/defn native-result-metadata
   "Compiles a (native) query and calculates its result metadata"
-  [driver metadata-provider query]
-  (->> (compile-query metadata-provider query)
-       (driver/native-result-metadata driver metadata-provider)))
+  [driver :- :keyword
+   query  :- ::lib.schema/query]
+  (->> query
+       compile-query
+       (driver/native-result-metadata driver)))
 
-(defn native-query-deps
+(mu/defn native-query-deps :- [:set
+                               [:or
+                                ::driver/native-query-deps.table-dep
+                                [:map {:closed true} [:snippet ::lib.schema.id/snippet]]
+                                [:map {:closed true} [:card ::lib.schema.id/card]]]]
   "Returns the upstream dependencies of a native query, as a set of `{:kind id}` pairs."
-  [driver metadata-provider query]
-  (let [compiled (compile-query metadata-provider query)]
-    (into (driver/native-query-deps driver compiled metadata-provider)
+  [driver :- :keyword
+   query  :- ::lib.schema/native-only-query]
+  (let [compiled (compile-query query)]
+    (into (driver/native-query-deps driver compiled)
+          ;; TODO (Cam 10/1/25) -- Even this much MBQL manipulation outside of Lib is illegal. Move this sort of stuff
+          ;; into Lib.
           (keep #(case (:type %)
-                   "snippet" {:snippet (:snippet-id %)}
-                   :snippet  {:snippet (:snippet-id %)}
-                   "card"    {:card (:card-id %)}
-                   :card     {:card (:card-id %)}
+                   :snippet {:snippet (:snippet-id %)}
+                   :card    {:card (:card-id %)}
                    nil))
-          (-> query :native :template-tags vals))))
+          (lib/all-template-tags query))))

@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.card :as qp.card]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -22,11 +24,14 @@
                                                     :collection_id (:id col1)}
                        :model/Card          card1  {:name          "card1"
                                                     :database_id   (:id db)
-                                                    :collection_id (:id col1)}
+                                                    :collection_id (:id col1)
+                                                    :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1;")}
                        :model/Card          card2  {:name          "card2"
                                                     :database_id   (:id db)
-                                                    :collection_id (:id col1)}
-                       :model/Card          card3  {:name "card3"}]
+                                                    :collection_id (:id col1)
+                                                    :dataset_query (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1;")}
+                       :model/Card          card3  {:name          "card3"
+                                                    :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1;")}]
           (testing "Can configure root"
             (is (mt/user-http-request :crowberto :put 200 "cache/"
                                       {:model    "root"
@@ -45,7 +50,6 @@
                                   ;; no check for old value in case you had something in appdb
                                   :new-value {:strategy "nocache" :config {:name "root"}}}}
                       (last-audit-event)))))
-
           (testing "Can configure others"
             (is (mt/user-http-request :crowberto :put 200 "cache/"
                                       {:model    "database"
@@ -59,7 +63,6 @@
                                       {:model    "question"
                                        :model_id (:id card1)
                                        :strategy {:type "nocache" :name "card1"}})))
-
           (testing "HTTP responds with correct listings"
             (is (=? {:data [{:model "root" :model_id 0}]}
                     (mt/user-http-request :crowberto :get 200 "cache/")))
@@ -73,22 +76,20 @@
                             {:model "question" :model_id (:id card1)}]}
                     (mt/user-http-request :crowberto :get 200 "cache/" {}
                                           :collection (:id col1) :model :dashboard :model :question))))
-
           (testing "We select correct config for something from a db"
             (testing "First card has own config"
               (is (=? {:type :nocache :name "card1"}
-                      (:cache-strategy (#'qp.card/query-for-card card1 {} {} {} {}))))
+                      (:cache-strategy (#'qp.card/query-for-card card1 [] {} {} {}))))
               (is (=? {:type :nocache :name "card1"}
-                      (:cache-strategy (#'qp.card/query-for-card card1 {} {} {} {:dashboard-id (u/the-id dash1)})))))
+                      (:cache-strategy (#'qp.card/query-for-card card1 [] {} {} {:dashboard-id (u/the-id dash1)})))))
             (testing "Second card should hit database or dashboard cache"
               (is (=? {:type :nocache :name "db"}
-                      (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {}))))
+                      (:cache-strategy (#'qp.card/query-for-card card2 [] {} {} {}))))
               (is (=? {:type :nocache :name "dash"}
-                      (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {:dashboard-id (u/the-id dash1)})))))
+                      (:cache-strategy (#'qp.card/query-for-card card2 [] {} {} {:dashboard-id (u/the-id dash1)})))))
             (testing "Third card targets other db and gets root config"
               (is (=? {:type :nocache :name "root"}
-                      (:cache-strategy (#'qp.card/query-for-card card3 {} {} {} {}))))))
-
+                      (:cache-strategy (#'qp.card/query-for-card card3 [] {} {} {}))))))
           (testing "It's possible to delete a configuration"
             (is (nil? (mt/user-http-request :crowberto :delete 204 "cache/"
                                             {:model    "database"
@@ -99,8 +100,7 @@
                                             :model :database))))
             (testing "And card2 gets root config"
               (is (=? {:type :nocache :name "root"}
-                      (:cache-strategy (#'qp.card/query-for-card card2 {} {} {} {}))))))
-
+                      (:cache-strategy (#'qp.card/query-for-card card2 [] {} {} {}))))))
           (testing "It's possible to use advanced cache strategies"
             (is (mt/user-http-request :crowberto :put 200 "cache/"
                                       {:model    "root"

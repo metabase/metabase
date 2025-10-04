@@ -993,9 +993,10 @@
   [_]
   nil)
 
-(defmethod driver/native-query-deps :bigquery-cloud-sdk
-  [driver query]
-  (let [db-tables (driver-api/tables (driver-api/metadata-provider))
+(mu/defmethod driver/native-query-deps :bigquery-cloud-sdk :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (let [db-tables (driver-api/tables query)
         transforms (t2/select [:model/Transform :id :target])]
     (into #{} (comp
                (map :component)
@@ -1004,6 +1005,7 @@
                        {:schema (first parts) :table (second parts)}))
                (keep #(driver.sql/find-table-or-transform driver db-tables transforms %)))
           (-> query
+              driver-api/raw-native-query
               macaw/parsed-query
               macaw/query->components
               :tables))))

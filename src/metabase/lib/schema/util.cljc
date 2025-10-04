@@ -16,7 +16,6 @@
     (if (@result our-uuid)
       (vswap! result vary-meta update :duplicates (fnil conj #{}) our-uuid)
       (vswap! result conj our-uuid)))
-
   (reduce-kv (fn [_ k v]
                (when (not (qualified-keyword? k))
                  (collect-uuids* v result)))
@@ -125,7 +124,7 @@
        (map? x) (dissoc :lib/uuid)))
    x))
 
-(defn- indexed-order-bys-for-stage
+(defn indexed-order-bys-for-stage
   "Convert all order-bys in a stage to refer to aggregations by index instead of uuid"
   [{:keys [aggregation order-by] :as stage}]
   (if (and aggregation order-by)

@@ -4,6 +4,8 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -17,8 +19,19 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
+(defn- transform-source-out [m]
+  (-> m
+      mi/json-out-without-keywordization
+      (update-keys keyword)
+      (m/update-existing :query lib-be/normalize-query)))
+
+(defn- transform-source-in [m]
+  (-> m
+      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
+      mi/json-in))
+
 (t2/deftransforms :model/Transform
-  {:source      mi/transform-transform-source
+  {:source      {:out transform-source-out, :in transform-source-in}
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
@@ -150,7 +163,8 @@
    :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
-               :source {:export serdes/export-mbql :import serdes/import-mbql}
+               :source {:export #(update % :query serdes/export-mbql)
+                        :import #(update % :query serdes/import-mbql)}
                :target {:export serdes/export-mbql :import serdes/import-mbql}
                :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 

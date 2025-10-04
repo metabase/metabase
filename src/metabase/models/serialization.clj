@@ -1,6 +1,8 @@
 ;; -*- outline-regexp: "[; ]+#+[[:space:]]+" -*-
 (ns metabase.models.serialization
-  "Defines core interfaces for serialization.
+  "TODO (Cam 10/1/25) -- move this into the serialization module or something like that, not all models need this.
+
+  Defines core interfaces for serialization.
 
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place,
   these methods are defined here and implemented for all the exported models.
@@ -61,6 +63,7 @@
    [malli.transform :as mtx]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -956,7 +959,7 @@
   "Given a numeric ID, look up a different identifying field for that entity, and return it as a portable ID.
   Eg. `Database.name`.
   [[import-fk-keyed]] is the inverse.
-  Unusual parameter order lets this be called as, for example, `(update x :db_id export-fk-keyed 'Database :name)`.
+  Unusual parameter order lets this be called as, for example, `(update x :db_id export-fk-keyed :model/Database :name)`.
 
   Note: This assumes the primary key is called `:id`."
   [id model field]
@@ -968,7 +971,7 @@
   Eg. `Database.name`.
 
   Unusual parameter order lets this be called as, for example,
-  `(update x :creator_id import-fk-keyed 'Database :name)`."
+  `(update x :creator_id import-fk-keyed :model/Database :name)`."
   [portable model field]
   (t2/select-one-pk model field portable))
 
@@ -1000,8 +1003,8 @@
   [[import-table-fk]] is the inverse."
   [table-id]
   (when table-id
-    (let [{:keys [db_id name schema]} (t2/select-one 'Table :id table-id)
-          db-name                     (t2/select-one-fn :name 'Database :id db_id)]
+    (let [{:keys [db_id name schema]} (t2/select-one :model/Table :id table-id)
+          db-name                     (t2/select-one-fn :name :model/Database :id db_id)]
       [db-name schema name])))
 
 (defn ^:dynamic ^::cache *import-table-fk*
@@ -1009,13 +1012,13 @@
   The input might be nil, in which case so is the output. This is legal for a native question."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (if-let [db-id (t2/select-one-fn :id 'Database :name db-name)]
-      (or (t2/select-one-fn :id 'Table :name table-name :schema schema :db_id db-id)
+    (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
+      (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
           (throw (ex-info (format "table id present, but no table found: %s" table-id)
                           {:table-id table-id})))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
                       {:table-id table-id
-                       :database-names (sort (t2/select-fn-vec :name 'Table))})))))
+                       :database-names (sort (t2/select-fn-vec :name :model/Table))})))))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -1025,7 +1028,7 @@
                   (when schema {:model "Schema" :id schema})
                   {:model "Table" :id table-name}]))
 
-(def ^:private STORAGE-DIRS {"Database" "databases"
+(def ^:private storage-dirs {"Database" "databases"
                              "Schema"   "schemas"
                              "Table"    "tables"
                              "Field"    "fields"})
@@ -1041,7 +1044,7 @@
   [path]
   (into [] cat
         (for [entry path]
-          [(or (get STORAGE-DIRS (:model entry))
+          [(or (get storage-dirs (:model entry))
                (throw (ex-info "Could not find dir name" {:entry entry})))
            (:id entry)])))
 
@@ -1163,34 +1166,31 @@
     (mapv ids->fully-qualified-names &match)
 
     map?
-    (as-> &match entity
-      (m/update-existing entity :database (fn [db-id]
-                                            (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
-                                              "database/__virtual"
-                                              (t2/select-one-fn :name 'Database :id db-id))))
-      (m/update-existing entity :card_id #(*export-fk* % 'Card)) ; attibutes that refer to db fields use _
-      (m/update-existing entity :card-id #(*export-fk* % 'Card)) ; template-tags use dash
-      (m/update-existing entity :source-table export-source-table)
-      (m/update-existing entity :source_table export-source-table)
-      (m/update-existing entity :breakout    (fn [breakout]
-                                               (mapv mbql-id->fully-qualified-name breakout)))
-      (m/update-existing entity :aggregation (fn [aggregation]
-                                               (mapv mbql-id->fully-qualified-name aggregation)))
-      (m/update-existing entity :filter      ids->fully-qualified-names)
-      (m/update-existing entity ::mb.viz/param-mapping-source *export-field-fk*)
-      (m/update-existing entity :segment    *export-fk* 'Segment)
-      (m/update-existing entity :snippet-id *export-fk* 'NativeQuerySnippet)
-      (merge entity
-             (m/map-vals ids->fully-qualified-names
-                         (dissoc entity
-                                 :database :card_id :card-id :source-table :breakout :aggregation :filter :segment
-                                 ::mb.viz/param-mapping-source :snippet-id))))))
+    (reduce-kv
+     (fn [entity k _v]
+       (let [f (case k
+                 :database                     (fn [db-id]
+                                                 (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
+                                                   "database/__virtual"
+                                                   (t2/select-one-fn :name :model/Database :id db-id)))
+                 (:card_id :card-id)           #(*export-fk* % :model/Card) ; attibutes that refer to db fields use `_`; template-tags use `-`
+                 (:source_table :source-table) export-source-table
+                 ::mb.viz/param-mapping-source *export-field-fk*
+                 :segment                      #(*export-fk* % :model/Segment)
+                 :snippet-id                   #(*export-fk* % :model/NativeQuerySnippet)
+                 #_else                        ids->fully-qualified-names)]
+         (update entity k f)))
+     &match
+     &match)))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
   inside it into portable references."
   [encoded]
-  (ids->fully-qualified-names encoded))
+  (let [encoded (cond-> encoded
+                  ;; temporary usage until we port SerDes to Lib / MBQL 5
+                  (:lib/type encoded) #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL)]
+    (ids->fully-qualified-names encoded)))
 
 (defn- portable-id?
   "True if the provided string is either an Entity ID or identity-hash string."
@@ -1222,7 +1222,7 @@
     (-> &match
         (assoc :database (if (= fully-qualified-name "database/__virtual")
                            lib.schema.id/saved-questions-virtual-database-id
-                           (t2/select-one-pk 'Database :name fully-qualified-name)))
+                           (t2/select-one-pk :model/Database :name fully-qualified-name)))
         mbql-fully-qualified-names->ids*) ; Process other keys
 
     {:card-id (entity-id :guard portable-id?)}
@@ -1294,6 +1294,8 @@
                   entity)))
 
 (defn- mbql-deps-map [entity]
+  (assert (not (:lib/type entity))
+          "SerDes v2 does not currently work on MBQL 5, please convert to legacy first")
   (->> (for [[k v] entity]
          (cond
            (and (= k :database)
@@ -1359,7 +1361,7 @@
   [parameters]
   (reduce set/union #{}
           (for [parameter parameters
-                :when (= "card" (:values_source_type parameter))
+                :when (= (keyword (:values_source_type parameter)) :card)
                 :let  [config (:values_source_config parameter)]]
             (set/union #{[{:model "Card" :id (:card_id config)}]}
                        (mbql-deps-vector (:value_field config))))))
@@ -1389,7 +1391,7 @@
      (merge entity
             {:id (case model
                    "table"    (*export-table-fk* id)
-                   "database" (*export-fk-keyed* id 'Database :name)
+                   "database" (*export-fk-keyed* id :model/Database :name)
                    (*export-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- json-ids->fully-qualified-names
@@ -1563,7 +1565,7 @@
      (merge entity
             {:id (case model
                    "table"    (*import-table-fk* id)
-                   "database" (*import-fk-keyed* id 'Database :name)
+                   "database" (*import-fk-keyed* id :model/Database :name)
                    (*import-fk* id (link-card-model->toucan-model model)))}))))
 
 (defn- import-visualizations [entity]

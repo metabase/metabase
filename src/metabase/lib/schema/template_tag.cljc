@@ -170,13 +170,23 @@
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 
+;;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+(mr/def ::template-tag-map.validate-names
+  [:fn
+   {:error/message "keys in template tag map must match the :name of their values"
+    :decode/normalize (fn [m]
+                        (when (map? m)
+                          (reduce-kv
+                           (fn [m k _v]
+                             (assoc-in m [k :name] k))
+                           m
+                           m)))}
+   (fn [m]
+     (every? (fn [[tag-name tag-definition]]
+               (= tag-name (:name tag-definition)))
+             m))])
+
 (mr/def ::template-tag-map
   [:and
    [:map-of ::name ::template-tag]
-   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
-   [:fn
-    {:error/message "keys in template tag map must match the :name of their values"}
-    (fn [m]
-      (every? (fn [[tag-name tag-definition]]
-                (= tag-name (:name tag-definition)))
-              m))]])
+   [:ref ::template-tag-map.validate-names]])

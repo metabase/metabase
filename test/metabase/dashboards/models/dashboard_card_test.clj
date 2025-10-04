@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
-   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card-test :as card-test]
    [metabase.test :as mt]
@@ -31,16 +30,19 @@
   (testing "retrieve-dashboard-card basic dashcard (no additional series)"
     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                    :model/Card          {card-id :id}      {}
-                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id :parameter_mappings [{:foo "bar"}]}]
-      (is (= {:size_x                 4
-              :size_y                 4
-              :col                    0
-              :row                    0
-              :parameter_mappings     [{:foo "bar"}]
-              :inline_parameters      []
-              :visualization_settings {}
-              :series                 []}
-             (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
+                   :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                            :card_id card-id
+                                                            :parameter_mappings [{:parameter_id "wow"
+                                                                                  :target       [:dimension [:template-tag "id"]]}]}]
+      (is (=? {:size_x                 4
+               :size_y                 4
+               :col                    0
+               :row                    0
+               :parameter_mappings     [{:parameter_id "wow"}]
+               :inline_parameters      []
+               :visualization_settings {}
+               :series                 []}
+              (dashboard-card/retrieve-dashboard-card dashcard-id))))))
 
 (deftest ^:parallel retrieve-dashboard-card-with-additional-series-test
   (testing "retrieve-dashboard-card dashcard w/ additional series"
@@ -117,40 +119,40 @@
                                      :size_y                 3
                                      :row                    1
                                      :col                    1
-                                     :parameter_mappings     [{:foo "bar"}]
+                                     :parameter_mappings     [{:parameter_id "bird", :target [:dimension [:template-tag "nest"]]}]
                                      :inline_parameters      []
                                      :visualization_settings {}
                                      :series                 [card-id]}]))]
         (testing "return value from function"
-          (is (= {:size_x                 4
-                  :size_y                 3
-                  :col                    1
-                  :row                    1
-                  :parameter_mappings     [{:foo "bar"}]
-                  :inline_parameters      []
-                  :visualization_settings {}
-                  :series                 [{:name                   "Test Card"
-                                            :description            nil
-                                            :display                :table
-                                            :type                   :question
-                                            :dataset_query          {}
-                                            :visualization_settings {}}]}
-                 (remove-ids-and-timestamps dashboard-card))))
+          (is (=? {:size_x                 4
+                   :size_y                 3
+                   :col                    1
+                   :row                    1
+                   :parameter_mappings     [{:parameter_id "bird"}]
+                   :inline_parameters      []
+                   :visualization_settings {}
+                   :series                 [{:name                   "Test Card"
+                                             :description            nil
+                                             :display                :table
+                                             :type                   :question
+                                             :dataset_query          {}
+                                             :visualization_settings {}}]}
+                  dashboard-card)))
         (testing "validate db captured everything"
-          (is (= {:size_x                 4
-                  :size_y                 3
-                  :col                    1
-                  :row                    1
-                  :parameter_mappings     [{:foo "bar"}]
-                  :inline_parameters      []
-                  :visualization_settings {}
-                  :series                 [{:name                   "Test Card"
-                                            :description            nil
-                                            :display                :table
-                                            :type                   :question
-                                            :dataset_query          {}
-                                            :visualization_settings {}}]}
-                 (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card (:id dashboard-card))))))))))
+          (is (=? {:size_x                 4
+                   :size_y                 3
+                   :col                    1
+                   :row                    1
+                   :parameter_mappings     [{:parameter_id "bird"}]
+                   :inline_parameters      []
+                   :visualization_settings {}
+                   :series                 [{:name                   "Test Card"
+                                             :description            nil
+                                             :display                :table
+                                             :type                   :question
+                                             :dataset_query          {}
+                                             :visualization_settings {}}]}
+                  (dashboard-card/retrieve-dashboard-card (:id dashboard-card)))))))))
 
 (deftest update-dashboard-card!-test
   (testing (str "update-dashboard-card! basic update. We are testing multiple things here: 1. ability to update all "
@@ -161,19 +163,20 @@
                    :model/DashboardCard {dashcard-id :id
                                          :as dashboard-card} {:dashboard_id       dashboard-id
                                                               :card_id            card-id
-                                                              :parameter_mappings [{:foo "bar"}]}
+                                                              :parameter_mappings [{:parameter_id "x"
+                                                                                    :target       [:dimension [:template-tag "x"]]}]}
                    :model/Card          {card-id-1 :id}   {:name "Test Card 1"}
                    :model/Card          {card-id-2 :id}   {:name "Test Card 2"}]
       (testing "unmodified dashcard"
-        (is (= {:size_x                 4
-                :size_y                 4
-                :col                    0
-                :row                    0
-                :parameter_mappings     [{:foo "bar"}]
-                :inline_parameters      []
-                :visualization_settings {}
-                :series                 []}
-               (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
+        (is (=? {:size_x                 4
+                 :size_y                 4
+                 :col                    0
+                 :row                    0
+                 :parameter_mappings     [{:parameter_id "x"}]
+                 :inline_parameters      []
+                 :visualization_settings {}
+                 :series                 []}
+                (dashboard-card/retrieve-dashboard-card dashcard-id))))
       (testing "return value from the update call should be nil"
         (is (nil? (dashboard-card/update-dashboard-card!
                    {:id                     dashcard-id
@@ -184,32 +187,32 @@
                     :size_y                 3
                     :row                    1
                     :col                    1
-                    :parameter_mappings     [{:foo "barbar"}]
+                    :parameter_mappings     [{:parameter_id "y", :target [:dimension [:template-tag "y"]]}]
                     :inline_parameters      []
                     :visualization_settings {}
                     :series                 [card-id-2 card-id-1]}
                    dashboard-card))))
       (testing "validate db captured everything"
-        (is (= {:size_x                 5
-                :size_y                 3
-                :col                    1
-                :row                    1
-                :parameter_mappings     [{:foo "barbar"}]
-                :inline_parameters      []
-                :visualization_settings {}
-                :series                 [{:name                   "Test Card 2"
-                                          :description            nil
-                                          :display                :table
-                                          :type                   :question
-                                          :dataset_query          {}
-                                          :visualization_settings {}}
-                                         {:name                   "Test Card 1"
-                                          :description            nil
-                                          :display                :table
-                                          :type                   :question
-                                          :dataset_query          {}
-                                          :visualization_settings {}}]}
-               (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id))))))))
+        (is (=? {:size_x                 5
+                 :size_y                 3
+                 :col                    1
+                 :row                    1
+                 :parameter_mappings     [{:parameter_id "y", :target [:dimension [:template-tag "y"]]}]
+                 :inline_parameters      []
+                 :visualization_settings {}
+                 :series                 [{:name                   "Test Card 2"
+                                           :description            nil
+                                           :display                :table
+                                           :type                   :question
+                                           :dataset_query          {}
+                                           :visualization_settings {}}
+                                          {:name                   "Test Card 1"
+                                           :description            nil
+                                           :display                :table
+                                           :type                   :question
+                                           :dataset_query          {}
+                                           :visualization_settings {}}]}
+                (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
 
 (deftest update-dashboard-card!-call-count-test
   (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
@@ -280,38 +283,6 @@
                                                        :visualization_settings original}]
            (is (= expected
                   (t2/select-one-fn :visualization_settings :model/DashboardCard :id (u/the-id dashcard))))))))))
-
-(deftest ^:parallel normalize-parameter-mappings-test-2
-  (testing "make sure parameter mappings correctly normalize things like legacy MBQL clauses"
-    (is (= [{:target [:dimension [:field 30 {:source-field 23}]]}]
-           ((:out mi/transform-parameters-list)
-            (json/encode
-             [{:target [:dimension [:fk-> 23 30]]}]))))
-
-    (testing "...but parameter mappings we should not normalize things like :target"
-      (is (= [{:card-id 123, :hash "abc", :target "foo"}]
-             ((:out mi/transform-parameters-list)
-              (json/encode
-               [{:card-id 123, :hash "abc", :target "foo"}])))))))
-
-(deftest ^:parallel keep-empty-parameter-mappings-empty-test
-  (testing (str "we should keep empty parameter mappings as empty instead of making them nil (if `normalize` removes "
-                "them because they are empty) (I think this is to prevent NPEs on the FE? Not sure why we do this)")
-    (is (= []
-           ((:out mi/transform-parameters-list)
-            (json/encode []))))))
-
-(deftest ^:parallel normalize-card-parameter-mappings-test
-  (doseq [parameters [[]
-                      [{:name "Time grouping"
-                        :slug "time_grouping"
-                        :id "8e366c15"
-                        :type :temporal-unit
-                        :sectionId "temporal-unit"
-                        :temporal_units [:minute :quarter-of-year]}]]]
-    (is (= parameters
-           ((:out mi/transform-card-parameters-list)
-            (json/encode parameters))))))
 
 (deftest ^:parallel identity-hash-test
   (testing "Dashboard card hashes are composed of the card hash, dashboard hash, and visualization settings"

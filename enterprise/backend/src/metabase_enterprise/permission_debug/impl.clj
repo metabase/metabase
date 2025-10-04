@@ -14,7 +14,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -176,9 +175,8 @@
    Returns a map of blocked tables by group in the format:
    {[db-name schema table-name] #{group-name-1 group-name-2}}"
   [user-id card permissions-blocking permissions-granting]
-  ;; legacy usage -- don't do things like this going forward
-  (let [query (-> card :dataset_query qp.preprocess/preprocess #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL)
-        query-tables (-> query :query #_{:clj-kondo/ignore [:deprecated-var]} lib.util/collect-source-tables)
+  (let [query (-> card :dataset_query qp.preprocess/preprocess)
+        query-tables (lib/all-source-table-ids query)
         native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
     (->>
      (cond

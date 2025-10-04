@@ -2,7 +2,6 @@
   (:require
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -12,13 +11,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.xrays.domain-entities.core
-    :as de
-    :refer [Bindings DimensionBindings SourceEntity SourceName]]
-   [metabase.xrays.domain-entities.specs
-    :refer [domain-entity-specs DomainEntitySpec]]
+   [metabase.xrays.domain-entities.core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
+   [metabase.xrays.domain-entities.specs :as domain-entities.specs :refer [*domain-entity-specs* DomainEntitySpec]]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :refer [Step transform-specs TransformSpec]]
+   [metabase.xrays.transforms.specs :as transforms.specs :refer [*transform-specs* Step TransformSpec]]
    [toucan2.core :as t2]))
 
 (mu/defn- add-bindings :- Bindings
@@ -44,7 +40,7 @@
 (mu/defn- infer-resulting-dimensions :- DimensionBindings
   [bindings             :- Bindings
    {:keys [joins name]} :- Step
-   query                :- mbql.s/Query]
+   query                :- ::transforms.specs/query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
     (into {} (for [{:keys [name] :as col} (qp.preprocess/query->expected-cols query)]
@@ -142,7 +138,11 @@
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
 (def ^:private Tableset
-  [:sequential (ms/InstanceOf :model/Table)])
+  [:sequential
+   [:and
+    (ms/InstanceOf :model/Table)
+    [:map
+     [:domain_entity [:maybe ::domain-entities.specs/instantiated-domain-entity]]]]])
 
 (mu/defn- find-tables-with-domain-entity :- Tableset
   [tableset           :- Tableset
@@ -171,8 +171,8 @@
   [bindings           :- Bindings
    {:keys [provides]} :- TransformSpec]
   (doseq [domain-entity-name provides]
-    (assert (de/satisfies-requierments? (get-in bindings [domain-entity-name :entity])
-                                        (@domain-entity-specs domain-entity-name))
+    (assert (de/satisfies-requirements? (get-in bindings [domain-entity-name :entity])
+                                        (@*domain-entity-specs* domain-entity-name))
             (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
                       domain-entity-name))))
   bindings)
@@ -181,7 +181,7 @@
   [tableset           :- Tableset
    {:keys [requires]} :- TransformSpec]
   (let [matches (map (comp (partial find-tables-with-domain-entity tableset)
-                           @domain-entity-specs)
+                           @*domain-entity-specs*)
                      requires)]
     (when (every? (comp #{1} count) matches)
       (map first matches))))
@@ -218,4 +218,4 @@
   [table]
   (filter (comp (partial some (comp #{(u/the-id table)} u/the-id))
                 (partial tables-matching-requirements (tableset (:db_id table) (:schema table))))
-          @transform-specs))
+          @*transform-specs*))

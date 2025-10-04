@@ -1,4 +1,5 @@
 (ns metabase.lib.parse
+  "Code for parsing parameters in raw SQL strings."
   (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]

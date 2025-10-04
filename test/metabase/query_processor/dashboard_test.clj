@@ -1,9 +1,6 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards.api-test]]."
-  {:clj-kondo/config '{:linters
-                       ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
-                       ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.api-test :as api.dashboard-test]
@@ -174,9 +171,9 @@
       [:model/Card {card-id :id} {:database_id   (mt/id)
                                   :table_id      (mt/id :venues)
                                   :dataset_query (mt/mbql-query venues
-                                                   {:aggregation  [:count]
-                                                    :breakout     [$category_id
-                                                                   $price]})}
+                                                   {:aggregation [:count]
+                                                    :breakout    [$category_id
+                                                                  $price]})}
        :model/Dashboard {dashboard-id :id} {:parameters
                                             [{:slug      "venue_id"
                                               :id        "_VENUE_ID_"

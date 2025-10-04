@@ -427,7 +427,7 @@
     "clean-dev:js": "rm -rf resources/frontend_client/app/dist target/classes/frontend_client/app/dist",
     "clean-release:cljs": "rm -rf target/cljs_release/*",
     "clean:cljs": "yarn && yarn clean-dev:cljs && yarn clean-release:cljs",
-    "cljs-nrepl": "yarn && shadow-cljs node-repl -d cider/cider-nrepl:0.45.0 -d cider/piggieback:0.5.3 -d refactor-nrepl/refactor-nrepl:3.9.1",
+    "cljs-nrepl": "yarn && shadow-cljs node-repl -d cider/cider-nrepl:0.57.0 -d cider/piggieback:0.6.1 -d refactor-nrepl/refactor-nrepl:3.11.0",
     "cljs-server-restart": "yarn && shadow-cljs restart",
     "cljs-server-start": "yarn && shadow-cljs start",
     "cljs-server-stop": "yarn && shadow-cljs stop",
