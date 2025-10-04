@@ -22,11 +22,6 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
-    // Make the PRODUCT_ID column a URL column for click behavior tests, to avoid having to create a new model
-    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
-      semantic_type: "type/URL",
-    });
-
     // Create a question with custom column that returns a url as a string
     H.createQuestion({
       name: "Orders with URL Expression",
@@ -59,7 +54,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           query: { "source-table": ORDERS_ID, limit: 5 },
         },
         {
-          name: "Line chart with disabled click behavior",
+          name: "Line chart with external URL click behavior",
           display: "line",
           query: {
             "source-table": ORDERS_ID,
@@ -71,7 +66,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
           },
         },
         {
-          name: "Line chart with internal click behavior",
+          name: "Line chart with internal dashboard click behavior",
           display: "line",
           query: {
             "source-table": ORDERS_ID,
@@ -94,7 +89,15 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
                   type: "link",
                   linkType: "url",
                   linkTemplate: "https://metabase.com",
-                  linkTextTemplate: "Link Text Applied",
+                  linkTextTemplate: "External Link",
+                },
+              },
+              '["name","TOTAL"]': {
+                click_behavior: {
+                  type: "link",
+                  linkType: "dashboard",
+                  targetId: 1,
+                  linkTextTemplate: "Internal Link (Disabled)",
                 },
               },
             },
@@ -130,11 +133,11 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     );
   });
 
-  it("should not trigger url click behaviors in the sdk (metabase#51099)", () => {
-    // Spies to intercept opening external links.
-    // See "clickLink" in frontend/src/metabase/lib/dom.js to see what we are intercepting.
+  it("should allow external URL click behaviors in the SDK (EMB-878)", () => {
+    // External click behaviour use the open() function in metabase/lib/dom creates temporary anchors and calls .click()
+    // To check that we call it, we stub the anchor element click
     cy.window().then((win) => {
-      cy.spy(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
+      cy.stub(win.HTMLAnchorElement.prototype, "click").as("anchorClick");
     });
 
     cy.get<string>("@dashboardId").then((dashboardId) => {
@@ -143,54 +146,72 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
 
     cy.wait("@dashcardQuery").then(() => {
       cy.location().then((location) => {
+        // We use this to check that we're still on the same page at the end of the test,
+        // if that's not the case, it means we did navigation not on a new tab, as we should have
         cy.wrap(location.pathname).as("initialPath");
       });
 
-      const root = getSdkRoot();
+      getSdkRoot().within(() => {
+        cy.log("Custom text for external click behavior should be applied");
+        H.getDashboardCard(0)
+          .findAllByText("External Link")
+          .should("have.length", 5);
 
-      root.within(() => {
-        // Table should not contain any anchor links
-        H.getDashboardCard(0).get("table a").should("have.length", 0);
+        cy.log(
+          "Clicking on 'External Link' text should trigger external URL behavior",
+        );
+        H.getDashboardCard(0).findAllByText("External Link").first().click();
 
-        // Drill-through should work on columns without click behavior
+        cy.log("Verify that the external link logic was called");
+        cy.get<sinon.SinonSpy>("@anchorClick").then((spy) => {
+          expect(spy.callCount).to.be.greaterThan(0);
+
+          const externalLinkCalls = spy
+            .getCalls()
+            .filter((call: any) => call.thisValue.target === "_blank");
+          expect(externalLinkCalls.length).to.be.greaterThan(
+            0,
+            "should open external links in new tab",
+          );
+        });
+
+        cy.log("Verify that we didn't open the drills popover");
+        cy.get(POPOVER_ELEMENT).should("not.exist");
+      });
+
+      // Check that we didn't navigate away from the current host app page
+      cy.location().then((location) => {
+        cy.get("@initialPath").should("eq", location.pathname);
+      });
+    });
+  });
+
+  it("should disable internal dashboard/question link click behaviors in the SDK (metabase#51099)", () => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    cy.wait("@dashcardQuery").then(() => {
+      getSdkRoot().within(() => {
+        // Internal dashboard link text should NOT be applied (disabled)
+        // The TOTAL column should show its normal value, not "Internal Link (Disabled)"
+        H.getDashboardCard(0).should(
+          "not.contain.text",
+          "Internal Link (Disabled)",
+        );
+
+        // Drill-through should still work on columns without click behavior
         H.getDashboardCard(0).findByText("39.72").click();
         popover().should("contain.text", "Filter by this value");
 
-        // Drill-through should work on URL columns, which is PRODUCT_ID in this case.
-        // It should open a popover, not open a new link.
-        const urlCell = H.getDashboardCard(0).findByText("123");
-        urlCell.should("not.have.attr", "data-testid", "link-formatted-text");
-        urlCell.click();
-
-        popover().should("contain.text", "Filter by this value");
-
-        // URL formatting via column click behavior should not apply.
-        H.getDashboardCard(0).should("not.contain.text", "Link Text Applied");
-        H.getDashboardCard(0).findByText("37.65").click();
-        cy.get(POPOVER_ELEMENT).should("not.exist");
-
-        // Line chart click behavior should be disabled in the sdk
-        H.getDashboardCard(1).within(() => {
+        // Line chart with internal dashboard click behavior should NOT navigate (disabled)
+        // Instead, drill-through should work
+        H.getDashboardCard(2).within(() => {
           cartesianChartCircle().eq(0).click();
         });
 
-        cy.get(POPOVER_ELEMENT).should("not.exist");
-      });
-
-      // We should never open a window in new tab in this test.
-      cy.get<sinon.SinonSpy>("@anchorClick").then((clickSpy) => {
-        const blankClicks = clickSpy
-          .getCalls()
-          .filter(
-            (call: sinon.SinonSpyCall) => call.thisValue.target === "_blank",
-          );
-
-        expect(blankClicks).to.have.length(0, "should never open a new tab");
-      });
-
-      // We should never be navigated away from the current page in this test.
-      cy.location().then((location) => {
-        cy.get("@initialPath").should("eq", location.pathname);
+        // Should show drill-through popover since internal link was filtered out
+        popover().should("contain.text", "See this Order");
       });
     });
   });
