@@ -201,7 +201,8 @@
                     :can_delete
                     :can_manage_db
                     [:collection :is_personal]
-                    [:moderation_reviews :moderator_details])
+                    [:moderation_reviews :moderator_details]
+                    :is_remote_synced)
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (card/model? card) (t2/hydrate :persisted
@@ -777,7 +778,10 @@
                                                  (u/the-id card)))]
           (t2/update! (t2/table-name :model/Card)
                       {:id [:in (set cards-without-position)]}
-                      {:collection_id new-collection-id-or-nil})))))
+                      {:collection_id new-collection-id-or-nil}))
+        (doseq [card cards]
+          (collection/check-non-remote-synced-dependencies card)))))
+
   (when new-collection-id-or-nil
     (events/publish-event! :event/collection-touch {:collection-id new-collection-id-or-nil :user-id api/*current-user-id*})))
 

@@ -72,6 +72,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   based_on_upload?: TableId | null; // table id of upload table, if any
 
   archived: boolean;
+  is_remote_synced?: boolean;
 
   creator?: CreatorInfo;
   "last-edit-info"?: LastEditInfo;

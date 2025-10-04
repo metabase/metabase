@@ -610,7 +610,7 @@
                                                                            {:type "cardEmbed"
                                                                             :attrs {:id 789}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 456] {"Document" document-id}
                 ["Card" 789] {"Document" document-id}}
                descendants))))))
@@ -625,7 +625,7 @@
                                                                             :attrs {:id 789
                                                                                     :model "dashboard"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 456] {"Document" document-id}
                 ["Dashboard" 789] {"Document" document-id}}
                descendants))))))
@@ -642,7 +642,7 @@
                                                                             :attrs {:id 333
                                                                                     :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 111] {"Document" document-id}
                 ["Card" 222] {"Document" document-id}
                 ["Table" 333] {"Document" document-id}}
@@ -654,12 +654,12 @@
                                                                  :content [{:type "paragraph"
                                                                             :content [{:type "text" :text "Plain text only"}]}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {} descendants))))))
 
 (deftest document-serdes-descendants-nonexistent-document-test
   (testing "Document descendants returns nil for non-existent document"
-    (let [descendants (serdes/descendants "Document" 99999999)]
+    (let [descendants (serdes/descendants "Document" 99999999 {})]
       (is (nil? descendants)))))
 
 (deftest document-serdes-descendants-unknown-smart-link-model-test
@@ -672,7 +672,7 @@
                                                                             :attrs {:id 789
                                                                                     :model "unknown-model"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         ;; Should only include the known model type
         (is (= {["Card" 456] {"Document" document-id}}
                descendants))
@@ -688,7 +688,7 @@
                                                                             :attrs {:id 456
                                                                                     :model "card"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         ;; Should merge duplicate references - same card referenced twice
         (is (= {["Card" 456] {"Document" document-id}}
                descendants))
@@ -699,7 +699,7 @@
   (testing "Document descendants handles non-prose-mirror documents"
     (mt/with-temp [:model/Document {document-id :id} {:document {:some "other format"}
                                                       :content_type "application/json"}] ; Not prose-mirror
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (nil? descendants))))))
 
 (deftest document-serdes-descendants-all-model-types-test
@@ -715,7 +715,7 @@
                                                                             :attrs {:id 333
                                                                                     :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
-      (let [descendants (serdes/descendants "Document" document-id)]
+      (let [descendants (serdes/descendants "Document" document-id {})]
         (is (= {["Card" 111] {"Document" document-id}
                 ["Dashboard" 222] {"Document" document-id}
                 ["Table" 333] {"Document" document-id}}

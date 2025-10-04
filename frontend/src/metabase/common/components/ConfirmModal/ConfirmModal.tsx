@@ -15,6 +15,7 @@ interface ConfirmModal extends ModalProps {
   title?: string | ReactNode;
   content?: string;
   message?: string | ReactNode;
+  children?: ReactNode;
   onConfirm?: () => void | Promise<void>;
   confirmButtonText?: string;
   confirmButtonProps?: Omit<ButtonProps, "onClick" | "children">;
@@ -27,6 +28,7 @@ export const ConfirmModal = ({
   title,
   content,
   message = t`Are you sure you want to do this?`,
+  children,
   onClose,
   onConfirm = _.noop,
   confirmButtonText = t`Yes`,
@@ -51,6 +53,7 @@ export const ConfirmModal = ({
       <Flex direction="column" gap="lg" mt="lg">
         {content ? <Text>{content}</Text> : null}
         <Text>{message}</Text>
+        {children}
         <Flex align="center" justify="space-between" gap="md">
           {errorMessage ? <Text c="danger">{errorMessage} </Text> : <div />}
           <Flex align="center" justify="flex-end" gap="md">

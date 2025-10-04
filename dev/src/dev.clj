@@ -348,7 +348,9 @@
     (do
       ;; prevent things like dereferencing metabase.api.common/*current-user-permissions-set* from triggering the check
       ;; by calling `next-method` *twice*. To reduce the performance impact, just call it with the first instance.
-      (maybe-realize (next-method model strategy k [(first instances)]))
+      ;; we do this for each model because e.g. we may have one `:RootCollection` and several `:Collection`s.
+      (doseq [[instance-model instances] (group-by t2/model instances)]
+        (maybe-realize (next-method model strategy k [(first instances)])))
       ;; Now we can actually run the hydration with the full set of instances and make sure no more DB calls happened.
       (t2/with-call-count [call-count]
         (let [res (maybe-realize (next-method model strategy k instances))]

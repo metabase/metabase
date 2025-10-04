@@ -8,6 +8,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   isExamplesCollection,
   isRootTrashCollection,
+  isSyncedCollection,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
@@ -20,6 +21,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import {
   ActionIcon,
   Flex,
@@ -49,7 +51,7 @@ import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
-interface CollectionTreeItem extends Collection {
+export interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
 }
@@ -88,6 +90,7 @@ export function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
+  const showSyncGroup = useSetting("remote-sync-type") === "development";
 
   const [
     addDataModalOpened,
@@ -119,16 +122,26 @@ export function MainNavbarView({
     [isAtHomepageDashboard, onItemSelect],
   );
 
-  const [regularCollections, trashCollection, examplesCollection] =
-    useMemo(() => {
-      return [
-        collections.filter(
-          (c) => !isRootTrashCollection(c) && !isExamplesCollection(c),
-        ),
-        collections.find(isRootTrashCollection),
-        collections.find(isExamplesCollection),
-      ];
-    }, [collections]);
+  const [
+    regularCollections,
+    trashCollection,
+    examplesCollection,
+    syncedCollections,
+  ] = useMemo(() => {
+    return [
+      collections.filter((c) => {
+        const isNormalCollection =
+          !isRootTrashCollection(c) && !isExamplesCollection(c);
+        if (!showSyncGroup) {
+          return isNormalCollection;
+        }
+        return isNormalCollection && !isSyncedCollection(c);
+      }),
+      collections.find(isRootTrashCollection),
+      collections.find(isExamplesCollection),
+      collections.filter(isSyncedCollection),
+    ];
+  }, [collections, showSyncGroup]);
 
   const isNewInstance = useSelector(getIsNewInstance);
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
@@ -193,6 +206,14 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
+          {showSyncGroup && (
+            <PLUGIN_GIT_SYNC.SyncedCollectionsSidebarSection
+              syncedCollections={syncedCollections}
+              collectionItem={collectionItem}
+              onItemSelect={onItemSelect}
+            />
+          )}
+
           <SidebarSection>
             <ErrorBoundary>
               <CollectionSectionHeading
@@ -243,7 +264,9 @@ export function MainNavbarView({
             </TrashSidebarSection>
           )}
         </div>
-        <WhatsNewNotification />
+        <div>
+          <WhatsNewNotification />
+        </div>
       </SidebarContentRoot>
 
       <AddDataModal opened={addDataModalOpened} onClose={closeAddDataModal} />

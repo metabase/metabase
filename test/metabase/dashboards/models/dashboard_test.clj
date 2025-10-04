@@ -310,7 +310,7 @@
                                                  :values_source_config {:card_id     (:id card)
                                                                         :value_field [:field (:id field) nil]}}]}]
       (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
-             (serdes/descendants "Dashboard" (:id dashboard))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {})))))
 
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
@@ -321,7 +321,7 @@
                                          :parameter_mappings []}]
         (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
                                       "DashboardCard" (:id dc)}}
-               (serdes/descendants "Dashboard" (:id dashboard)))))))
+               (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
     (mt/with-temp
@@ -340,7 +340,7 @@
                                     "DashboardCard" (:id dc)}
               ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
                                     "DashboardCard" (:id dc)}}
-             (serdes/descendants "Dashboard" (:id dashboard))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {})))))
 
   (testing "dashboard in which its dashcards have series"
     (mt/with-temp
@@ -358,7 +358,7 @@
                         [["Card" (:id card)] (cond-> {"Dashboard"           (:id dashboard)
                                                       "DashboardCard"       (:id dashcard)}
                                                series (assoc "DashboardCardSeries" (:id series)))]))
-             (serdes/descendants "Dashboard" (:id dashboard)))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
 (deftest ^:parallel hydrate-tabs-test
   (mt/with-temp

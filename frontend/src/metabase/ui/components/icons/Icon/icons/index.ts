@@ -190,6 +190,8 @@ import gear_settings_filled_component from "./gear_settings_filled.svg?component
 import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import git_branch_component from "./git_branch.svg?component";
+import git_branch_source from "./git_branch.svg?source";
 import globe_component from "./globe.svg?component";
 import globe_source from "./globe.svg?source";
 import google_component from "./google.svg?component";
@@ -416,6 +418,8 @@ import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
 import sync_component from "./sync.svg?component";
 import sync_source from "./sync.svg?source";
+import synced_collection_component from "./synced_collection.svg?component";
+import synced_collection_source from "./synced_collection.svg?source";
 import t_shirt_component from "./t-shirt.svg?component";
 import t_shirt_source from "./t-shirt.svg?source";
 import tab_component from "./tab.svg?component";
@@ -847,6 +851,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: gem_component,
       source: gem_source,
     },
+    git_branch: {
+      component: git_branch_component,
+      source: git_branch_source,
+    },
     globe: {
       component: globe_component,
       source: globe_source,
@@ -1182,6 +1190,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     sync: {
       component: sync_component,
       source: sync_source,
+    },
+    synced_collection: {
+      component: synced_collection_component,
+      source: synced_collection_source,
     },
     question: {
       component: question_component,
@@ -1560,6 +1572,7 @@ export type IconName =
   | "gear_settings_filled"
   | "gem"
   | "globe"
+  | "git_branch"
   | "grabber"
   | "grid"
   | "group"
@@ -1641,6 +1654,7 @@ export type IconName =
   | "sort_arrows"
   | "sum"
   | "sync"
+  | "synced_collection"
   | "question"
   | "quote"
   | "redo"

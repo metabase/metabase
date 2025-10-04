@@ -579,10 +579,10 @@
    NOTE: This is called during **EXPORT**.
 
    Dispatched on model-name."
-  {:arglists '([model-name db-id])}
-  (fn [model-name _] model-name))
+  {:arglists '([model-name db-id opts])}
+  (fn [model-name _ _] model-name))
 
-(defmethod descendants :default [_ _]
+(defmethod descendants :default [_ _ _]
   nil)
 
 (defmulti required

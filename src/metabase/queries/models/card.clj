@@ -12,6 +12,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
    [metabase.cache.core :as cache]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
@@ -114,19 +115,20 @@
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/remote-sync-protected))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
    ;; Cards in audit collection should not be writable.
-   (if (and
+   (and
+    (not (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (audit/default-audit-collection)))
+          (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (audit/default-audit-collection))))
-     false
-     (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
+          (= (:collection_id instance) (:id (audit/default-audit-collection)))))
+    (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
@@ -932,9 +934,11 @@
                                               ;; Adding a new card at `collection_position` could cause other cards in
                                               ;; this collection to change position, check that and fix it if needed
                                               (api/maybe-reconcile-collection-position! position-info)
-                                              (t2/insert-returning-instance! :model/Card (cond-> card-data
-                                                                                           metadata
-                                                                                           (assoc :result_metadata metadata))))]
+                                              (u/prog1 (t2/insert-returning-instance! :model/Card (cond-> card-data
+                                                                                                    metadata
+                                                                                                    (assoc :result_metadata metadata)))
+                                                (when (collections/remote-synced-collection? (:collection_id <>))
+                                                  (collections/check-non-remote-synced-dependencies <>))))]
      (let [{:keys [dashboard_id]} card]
        (when (and dashboard_id autoplace-dashboard-questions?)
          (autoplace-dashcard-for-card! dashboard_id (:dashboard_tab_id input-card-data) card)))
@@ -1111,7 +1115,13 @@
         (log/error "Update of dependent card parameters failed!")
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
-                   "`card-updates`:" (pr-str card-updates)))))
+                   "`card-updates`:" (pr-str card-updates))))
+    (when (collections/remote-synced-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
+      (collections/check-non-remote-synced-dependencies (t2/select-one :model/Card :id (:id card-before-update))))
+    (when (and (api/column-will-change? :collection_id card-before-update card-updates)
+               (collections/moving-from-remote-synced? (:collection_id card-before-update) (:collection_id card-updates)))
+      (collections/check-remote-synced-dependents (:collection_id card-before-update)
+                                                  card-before-update)))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
@@ -1226,19 +1236,24 @@
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
 
-(defmethod serdes/descendants "Card" [_model-name id]
-  (let [card               (t2/select-one :model/Card :id id)
-        source-table       (some->  card :dataset_query :query :source-table)
-        template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
-        parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
-        snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
+(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
+  (let [card                (t2/select-one :model/Card :id id)
+        source-table        (some->  card :dataset_query :query :source-table)
+        template-tags       (some->> card :dataset_query :native :template-tags vals (keep :card-id))
+        parameters-card-ids (some->> card :parameters (keep (comp :card_id :values_source_config)))
+        snippets            (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))
+        source-card-ids     (when (and (string? source-table)
+                                       (str/starts-with? source-table "card__"))
+                              [(parse-long (subs source-table 6))])
+        all-card-ids        (seq (concat template-tags parameters-card-ids source-card-ids))
+        card-ids            (if skip-archived
+                              (when all-card-ids
+                                (t2/select-pks-set :model/Card {:where [:and
+                                                                        [:in :id all-card-ids]
+                                                                        [:not :archived]]}))
+                              all-card-ids)]
     (into {} (concat
-              (when (and (string? source-table)
-                         (str/starts-with? source-table "card__"))
-                {["Card" (parse-long (subs source-table 6))] {"Card" id}})
-              (for [card-id template-tags]
-                {["Card" card-id] {"Card" id}})
-              (for [card-id parameters-card-id]
+              (for [card-id card-ids]
                 {["Card" card-id] {"Card" id}})
               (for [snippet-id snippets]
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))

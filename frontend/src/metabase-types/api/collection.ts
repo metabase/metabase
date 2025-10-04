@@ -30,7 +30,11 @@ export type CollectionContentModel = "card" | "dataset";
 
 export type CollectionAuthorityLevel = "official" | null;
 
-export type CollectionType = "instance-analytics" | "trash" | null;
+export type CollectionType =
+  | "instance-analytics"
+  | "trash"
+  | "remote-synced"
+  | null;
 
 export type LastEditInfo = {
   email: string;
@@ -50,7 +54,7 @@ export type CollectionAuthorityLevelConfig = {
 
 export type CollectionInstanceAnaltyicsConfig = {
   type: CollectionType;
-  name: string;
+  name?: string;
   icon: IconName;
   color?: string;
   tooltips?: Record<string, string>;
@@ -69,7 +73,7 @@ export interface Collection {
   archived: boolean;
   children?: Collection[];
   authority_level?: CollectionAuthorityLevel;
-  type?: "instance-analytics" | "trash" | null;
+  type?: CollectionType;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -82,6 +86,8 @@ export interface Collection {
 
   here?: CollectionContentModel[];
   below?: CollectionContentModel[];
+
+  git_sync_enabled?: boolean;
 
   // Assigned on FE
   originalName?: string;
@@ -170,6 +176,7 @@ export type ListCollectionItemsRequest = {
   archived?: boolean;
   pinned_state?: "all" | "is_pinned" | "is_not_pinned";
   namespace?: "snippets";
+  collection_type?: CollectionType;
 } & PaginationRequest &
   Partial<SortingOptions<ListCollectionItemsSortColumn>>;
 
@@ -185,6 +192,7 @@ export interface UpdateCollectionRequest {
   archived?: boolean;
   parent_id?: RegularCollectionId | null;
   authority_level?: CollectionAuthorityLevel;
+  type?: CollectionType;
 }
 
 export interface CreateCollectionRequest {
@@ -200,6 +208,7 @@ export interface ListCollectionsRequest {
   namespace?: string;
   "personal-only"?: boolean;
   "exclude-other-user-collections"?: boolean;
+  collection_type?: CollectionType;
 }
 export interface ListCollectionsTreeRequest {
   "exclude-archived"?: boolean;
@@ -207,6 +216,7 @@ export interface ListCollectionsTreeRequest {
   namespace?: string;
   shallow?: boolean;
   "collection-id"?: RegularCollectionId | null;
+  collection_type?: CollectionType;
 }
 
 export interface DeleteCollectionRequest {

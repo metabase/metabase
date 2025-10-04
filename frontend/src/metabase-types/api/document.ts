@@ -17,6 +17,7 @@ export type Document = {
   created_at: string;
   updated_at: string;
   archived: boolean;
+  is_remote_synced?: boolean;
   can_delete: boolean;
   can_restore: boolean;
   can_write: boolean;
