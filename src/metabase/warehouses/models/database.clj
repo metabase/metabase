@@ -32,7 +32,8 @@
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.realize :as t2.realize]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp]
+   [next.jdbc :as jdbc]))
 
 (set! *warn-on-reflection* true)
 
@@ -306,39 +307,29 @@
       normalize-details)))
 
 (mu/defn- delete-database-fields!
-  "We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with
-  cascade delete foreign key constraints in generated columns. #44866
-
-  Use a join to do this so we don't end up with a mega query with > 64k parameters (#58491)
-
-  TODO -- this is an absolutely horrible way to deal with deleting Fields belonging to a Database, there can be
-  literally hundreds of thousands of fields and we do an individual follow-on DELETE in :model/Field before-delete for
-  each one. I really think we should have kept the FK as an ON DELETE CASCADE. -- Cam"
   [database-id :- ::lib.schema.id/database]
   {:pre [(pos-int? database-id)]}
-  (t2/delete! :model/Field (case (mdb/db-type)
-                             (:postgres :h2)
-                             {:where  [:in :id {:select    [[:field.id :id]]
-                                                :from      [[(t2/table-name :model/Field) :field]]
-                                                :left-join [[(t2/table-name :model/Table) :table]
-                                                            [:= :field.table_id :table.id]]
-                                                :where     [:= :table.db_id [:inline database-id]]}]}
-
-                             :mysql
-                             {:delete    [:field]
-                              :from      [[(t2/table-name :model/Field) :field]]
-                              :left-join [[(t2/table-name :model/Table) :table]
-                                          [:= :field.table_id :table.id]]
-                              :where     [:= :table.db_id [:inline database-id]]})))
+  ;; Field has `define-before-delete` deleting children, but we'll delete them all at once because they refer same
+  ;; database
+  (t2/query {:delete-from (t2/table-name :model/Field)
+             :where       [:in :table_id {:from   [(t2/table-name :model/Table)]
+                                          :select [:id]
+                                          :where  [:= :db_id database-id]}]}))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
-  ;; This is a temporary hack to hide these cards from most searches.
-  ;; Once search supports deletion, we should revisit this.
-  (t2/update! :model/Card :database_id id {:archived true})
+  (->> (eduction
+        (map t2.realize/realize)
+        (partition-all 1000)
+        (t2/reducible-query {:delete-from (t2/table-name :model/Card)
+                             :where       [:= :database_id id]
+                             :returning   [:id]}))
+       (run! (fn [batch]
+               ;; damn circular deps
+               ((requiring-resolve 'metabase.search.core/delete!) :model/Card #p (map (comp str :id) batch)))))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
