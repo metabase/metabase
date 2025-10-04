@@ -79,4 +79,6 @@ export const getExperienceFromSettings = (
     .with({ componentName: "metabase-question" }, () => "chart")
     .with({ componentName: "metabase-browser" }, () => "browser")
     .with({ componentName: "metabase-dashboard" }, () => "dashboard")
+    // TODO(EMB-869): add Metabot experience to embed flow - replace this with "metabot"
+    .with({ componentName: "metabase-metabot" }, () => "chart")
     .exhaustive();
