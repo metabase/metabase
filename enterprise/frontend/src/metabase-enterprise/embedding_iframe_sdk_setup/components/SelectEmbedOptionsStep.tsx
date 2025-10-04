@@ -7,6 +7,8 @@ import {
   Checkbox,
   Divider,
   Group,
+  HoverCard,
+  Icon,
   Radio,
   Stack,
   Text,
@@ -128,7 +130,25 @@ export const SelectEmbedOptionsStep = () => {
 
         {isMetabotComponent && (
           <>
-            <Text fw="bold" mb="sm">{t`Layout`}</Text>
+            <Group align="center" gap="xs" mb="sm">
+              <Text fw="bold">{t`Layout`}</Text>
+
+              <HoverCard position="right-start">
+                <HoverCard.Target>
+                  <Icon
+                    name="info"
+                    size={14}
+                    c="text-medium"
+                    cursor="pointer"
+                  />
+                </HoverCard.Target>
+                <HoverCard.Dropdown>
+                  <Text size="sm" p="md" style={{ width: 300 }}>
+                    {t`Auto layout adapts to screen sizes. Stacked and sidebar layout uses the same layout on all screen sizes.`}
+                  </Text>
+                </HoverCard.Dropdown>
+              </HoverCard>
+            </Group>
 
             <Radio.Group
               value={settings.layout ?? "auto"}
