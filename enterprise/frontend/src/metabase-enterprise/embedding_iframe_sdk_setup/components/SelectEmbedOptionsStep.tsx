@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
+import { Card, Checkbox, Divider, Select, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
@@ -21,6 +21,7 @@ export const SelectEmbedOptionsStep = () => {
 
   const isBrowserComponent = settings.componentName === "metabase-browser";
   const isQuestionComponent = settings.componentName === "metabase-question";
+  const isMetabotComponent = settings.componentName === "metabase-metabot";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -73,6 +74,24 @@ export const SelectEmbedOptionsStep = () => {
               label={t`Allow editing dashboards and questions`}
               checked={!settings.readOnly}
               onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+            />
+          )}
+
+          {isMetabotComponent && (
+            <Select
+              label={t`Layout`}
+              value={settings.layout ?? "auto"}
+              data={[
+                { label: t`Auto`, value: "auto" },
+                { label: t`Stacked`, value: "stacked" },
+                { label: t`Sidebar`, value: "sidebar" },
+              ]}
+              onChange={(layout) =>
+                updateSettings({
+                  // Don't include layout in snippets if it's set to `auto`
+                  layout: layout === "auto" ? undefined : layout,
+                })
+              }
             />
           )}
         </Stack>
