@@ -8,10 +8,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
+    - merge:
+        - host
+        - group-id: host-and-port
     - merge:
         - port
         - default: 8080
+          group-id: host-and-port
     - merge:
         - dbname
         - name: catalog
@@ -52,7 +55,10 @@ driver:
         - additional-options
         - placeholder: "trustServerCertificate=false"
     - default-advanced-options
-
+extra:
+  field-groups:
+    - id: "host-and-port"
+      container-style: "host-and-port-section"
 init:
   - step: load-namespace
     namespace: metabase.driver.starburst

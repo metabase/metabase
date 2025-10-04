@@ -77,6 +77,11 @@ export type DatabaseProvider = {
 
 export type EngineKey = (typeof engineKeys)[number];
 
+export interface FieldGroupConfig {
+  id: string;
+  "container-style": string;
+}
+
 export interface Engine {
   "driver-name": string;
   "details-fields"?: EngineField[];
@@ -87,6 +92,7 @@ export interface Engine {
       text: string;
     };
     providers?: DatabaseProvider[];
+    "field-groups"?: FieldGroupConfig[];
   } | null;
 }
 
@@ -102,6 +108,7 @@ export interface EngineField {
   options?: EngineFieldOption[];
   "visible-if"?: Record<string, unknown>;
   "treat-before-posting"?: EngineFieldTreatType;
+  "group-id"?: string;
 }
 
 export type EngineFieldType =
