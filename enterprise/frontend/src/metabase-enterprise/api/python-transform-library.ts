@@ -29,5 +29,8 @@ export const pythonLibraryApi = EnterpriseApi.injectEndpoints({
   }),
 });
 
-export const { useGetPythonLibraryQuery, useUpdatePythonLibraryMutation } =
-  pythonLibraryApi;
+export const {
+  useGetPythonLibraryQuery,
+  useLazyGetPythonLibraryQuery,
+  useUpdatePythonLibraryMutation,
+} = pythonLibraryApi;
