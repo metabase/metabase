@@ -5,6 +5,7 @@ import { currency } from "cljs/metabase.util.currency";
 import {
   displayNameForColumn,
   getCurrency,
+  getCurrencyNarrowSymbol,
   getCurrencyStyleOptions,
   getCurrencySymbol,
   getDateFormatFromStyle,
@@ -395,6 +396,9 @@ export const NUMBER_COLUMN_SETTINGS = {
       ) {
         if (settings["currency_style"] === "symbol") {
           return getCurrencySymbol(settings["currency"]);
+        }
+        if (settings["currency_style"] === "narrowSymbol") {
+          return getCurrencyNarrowSymbol(settings["currency"]);
         }
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
