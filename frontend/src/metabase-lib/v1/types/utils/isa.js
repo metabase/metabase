@@ -22,9 +22,11 @@ import {
  * @example
  * isa(field.semantic_type, TYPE.Currency);
  *
- * @param {string} x
- * @param {string} y
- * @return {boolean}
+ * @template X extends string
+ * @template Y extends string
+ * @param {X} x
+ * @param {Y} y
+ * @returns {x is Y}
  */
 export const isa = (x, y) => cljs_isa(x, y);
 
@@ -120,6 +122,10 @@ export const isDimension = (col) => col && col.source !== "aggregation";
 export const isMetric = (col) =>
   col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
 
+/**
+ * @param {Field} field
+ * @returns {boolean}
+ */
 export const isFK = (field) => field && isTypeFK(field.semantic_type);
 export const isPK = (field) => field && isTypePK(field.semantic_type);
 export const isEntityName = (field) =>
