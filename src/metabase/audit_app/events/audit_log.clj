@@ -148,6 +148,7 @@
 
 (derive ::user-event ::event)
 (derive :event/user-invited ::user-event)
+(derive :event/user-invitation-reminder ::user-event)
 (derive :event/user-deactivated ::user-event)
 (derive :event/user-reactivated ::user-event)
 (derive :event/password-reset-initiated ::user-event)

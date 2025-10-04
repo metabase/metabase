@@ -34,6 +34,11 @@
       :event/user-invited
       {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
        :user_invited_join_url      (join-url user-id (when from-setup "/admin/databases/create"))}
+
+      :event/user-invitation-reminder
+      {:invitation_reminder_email_subject (trs "Reminder: A teammate is waiting for you to join {0}" (appearance/application-name))
+       :invitation_reminder_join_url (join-url user-id nil)}
+
       {})))
 
 (mu/defmethod notification.payload/payload :notification/system-event
