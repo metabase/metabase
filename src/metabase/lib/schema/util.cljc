@@ -1,11 +1,11 @@
 (ns metabase.lib.schema.util
-  (:refer-clojure :exclude [ref run! every? mapv])
+  (:refer-clojure :exclude [ref run! every? mapv first second])
   (:require
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [run! every? mapv]]))
+   [metabase.util.performance :as perf :refer [run! every? mapv first second]]))
 
 (declare collect-uuids*)
 
@@ -85,13 +85,17 @@
 (mu/defn mbql-clause-distinct-key
   "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
   another. Removes namespaced keywords and type information keys like `:base-type`."
-  [[tag opts & children]]
-  (into [tag
-         (opts-distinct-key opts)]
-        (map (fn [child]
-               (cond-> child
-                 (mbql-clause? child) mbql-clause-distinct-key)))
-        children))
+  [clause]
+  (let [tag (first clause)
+        opts (second clause)
+        f #(cond-> %
+             (mbql-clause? %) mbql-clause-distinct-key)]
+    (if (= (count clause) 3)
+      ;; Fastpath
+      [tag (opts-distinct-key opts) (f (nth clause 2))]
+      (into [tag (opts-distinct-key opts)]
+            (map f)
+            (drop 2 clause)))))
 
 (defn distinct-mbql-clauses?
   "Is a sequence of `mbql-clauses` distinct for the purposes of appearing in things like `:fields`, `:breakouts`, or
