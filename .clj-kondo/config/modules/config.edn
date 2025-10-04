@@ -1862,6 +1862,7 @@
            lib
            lib-be
            models
+           native-query-snippets
            permissions
            premium-features
            pulse
@@ -1878,7 +1879,9 @@
            util
            warehouse-schema
            warehouses
-           enterprise/documents}}
+           enterprise/documents
+           enterprise/transforms
+           enterprise/transforms-python}}
 
   enterprise/permission-debug
   {:team "UX West"
@@ -2050,6 +2053,7 @@
            premium-features
            query-processor
            request
+           search
            settings
            sync
            task

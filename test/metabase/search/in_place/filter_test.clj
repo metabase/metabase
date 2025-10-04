@@ -24,16 +24,23 @@
 (deftest ^:parallel ->applicable-models-test
   (testing "without optional filters"
     (testing "return :models as is"
-      (is (= search.config/all-models
+      (is (= (disj search.config/all-models "transform")
              (search.filter/search-context->applicable-models
               default-search-ctx)))
       (is (= #{}
              (search.filter/search-context->applicable-models
               (assoc default-search-ctx :models #{}))))
-      (is (= search.config/all-models
+      (is (= (disj search.config/all-models "transform")
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
-                     {:archived? true})))))))
+                     {:archived? true}))))))
+
+  (testing "metabot search context includes transforms"
+    (is (= search.config/all-models
+           (search.filter/search-context->applicable-models
+            (merge default-search-ctx
+                   {:models  search.config/all-models
+                    :context :metabot}))))))
 
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"

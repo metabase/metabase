@@ -152,6 +152,15 @@
            (nil? tschema)
            (similar? uschema tschema))))
 
+(defn- visible-filter-clause
+  []
+  (mi/visible-filter-clause :model/Table
+                            :id
+                            {:user-id       api/*current-user-id*
+                             :is-superuser? api/*is-superuser?*}
+                            {:perms/view-data      :unrestricted
+                             :perms/create-queries :query-builder-and-native}))
+
 (defn find-matching-tables
   "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
 
@@ -175,16 +184,25 @@
                              :db_id database-id
                              :active true
                              :visibility_type nil
-                             (cond-> {:where (mi/visible-filter-clause :model/Table
-                                                                       :id
-                                                                       {:user-id       api/*current-user-id*
-                                                                        :is-superuser? api/*is-superuser?*}
-                                                                       {:perms/view-data      :unrestricted
-                                                                        :perms/create-queries :query-builder-and-native})
+                             (cond-> {:where (visible-filter-clause)
                                       :limit 10000}
                                (seq used-ids) (update :where #(if %
                                                                 [:and % [:not-in :id used-ids]]
                                                                 [:not-in :id used-ids]))))))
+
+(defn used-tables-from-ids
+  "Return table info for `table-ids` in the same shape as [[used-tables]].
+
+  Useful for cases where you don't have a native query (e.g. python transforms), but do have a seq of used table ids."
+  [database-id table-ids]
+  (if-not (seq table-ids)
+    []
+    (t2/select [:model/Table :id :name :schema]
+               :db_id database-id
+               :id [:in table-ids]
+               :active true
+               :visibility_type nil
+               {:where (visible-filter-clause)})))
 
 (defn used-tables
   "Return all tables used in the query, including fuzzy-matched ones.

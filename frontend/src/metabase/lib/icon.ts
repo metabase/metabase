@@ -9,7 +9,12 @@ import type {
   SearchModel,
 } from "metabase-types/api";
 
-export type IconModel = SearchModel | CollectionItemModel | "schema";
+export type IconModel =
+  | SearchModel
+  | CollectionItemModel
+  | "schema"
+  | "transform"
+  | "user";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -36,6 +41,8 @@ export const modelIconMap: Record<IconModel, IconName> = {
   metric: "metric",
   snippet: "unknown",
   document: "document",
+  transform: "refresh_downstream",
+  user: "person",
 };
 
 export type IconData = {
