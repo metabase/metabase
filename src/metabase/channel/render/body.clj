@@ -639,6 +639,13 @@
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @card-error-rendered-info)
 
+(mu/defmethod render :card-error/results-too-large :- ::RenderedPartCard
+  [_chart-type _render-type _timezone-id _card _dashcard _data]
+  {:attachments nil,
+   :content [:div
+             {:style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif; color: #EF8C8C; font-weight: 700; padding: 16px;"}
+             "The results returned from this question were too large. Perhaps add an aggregation or a filter."]})
+
 (mu/defmethod render :render-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]
   @error-rendered-info)

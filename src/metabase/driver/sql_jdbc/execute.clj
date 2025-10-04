@@ -742,7 +742,8 @@
   [context :- [:maybe ::lib.schema.info/context]]
   (let [download-contexts #{:csv-download :xlsx-download :json-download
                             :public-csv-download :public-xlsx-download :public-json-download
-                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download}]
+                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download
+                            :pulse}]
     (boolean (download-contexts context))))
 
 (defn execute-reducible-query
