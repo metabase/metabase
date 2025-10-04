@@ -2197,3 +2197,33 @@
                                               :when (not= col "TITLE")]
                                           [:field {} col])}]}]}
             (lib.field/remove-field query -1 b-title)))))
+
+(deftest ^:parallel inherited-temporal-unit-effective-type-test
+  (testing "inherited temporal units should have correct effective type (#48932)"
+    (testing "extraction units should have :type/Integer effective type in multi-stage queries"
+      (doseq [unit [:minute-of-hour :hour-of-day :day-of-week :day-of-month :month-of-year :year]]
+        (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                  (lib/aggregate (lib/count))
+                                  (lib/breakout (lib/with-temporal-bucket
+                                                  (meta/field-metadata :orders :created-at)
+                                                  unit))
+                                  lib/append-stage)
+              [extracted-col] (lib/visible-columns query)]
+          (is (=? {:inherited-temporal-unit unit
+                   :temporal-unit           (symbol "nil #_\"key is not present.\"")
+                   :effective-type          :type/Integer}
+                  extracted-col)))))
+
+    (testing "truncation units should preserve original effective type in multi-stage queries"
+      (doseq [unit [:minute :hour :day :month]]
+        (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                  (lib/aggregate (lib/count))
+                                  (lib/breakout (lib/with-temporal-bucket
+                                                  (meta/field-metadata :orders :created-at)
+                                                  unit))
+                                  lib/append-stage)
+              [truncated-col] (lib/visible-columns query)]
+          (is (=? {:inherited-temporal-unit unit
+                   :temporal-unit           (symbol "nil #_\"key is not present.\"")
+                   :effective-type          (:effective-type (meta/field-metadata :orders :created-at))}
+                  truncated-col)))))))
