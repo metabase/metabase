@@ -186,8 +186,8 @@ export const SdkIframeEmbedPreview = () => {
               : undefined,
           }),
         )
-        .with({ componentName: "metabase-metabot" }, () =>
-          createElement("metabase-metabot", { layout: "auto" }),
+        .with({ componentName: "metabase-metabot" }, (s) =>
+          createElement("metabase-metabot", { layout: s.layout }),
         )
         .exhaustive()}
 
