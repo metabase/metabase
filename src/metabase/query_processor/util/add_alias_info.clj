@@ -161,7 +161,7 @@
   earlier."
   [query stage-path desired-column-alias]
   (when desired-column-alias
-    (case (:lib/type (get-in query stage-path))
+    (case (lib/stage-type (get-in query stage-path))
       ;; for native stages just return desired-column-alias without escaping (see comment
       ;; in [[add-escaped-desired-aliases]] for more info)
       :mbql.stage/native
@@ -319,7 +319,7 @@
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/path
    stage      :- ::lib.schema/stage]
-  (case (:lib/type stage)
+  (case (lib/stage-type stage)
     :mbql.stage/native
     stage
 

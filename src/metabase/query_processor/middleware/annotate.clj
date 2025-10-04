@@ -119,7 +119,7 @@
 (mu/defn- needs-type-inference?
   [query                                       :- ::lib.schema/query
    {initial-cols :cols, :as _initial-metadata} :- ::metadata]
-  (and (= (:lib/type (lib/query-stage query 0)) :mbql.stage/native)
+  (and (lib/native? query)
        (or (empty? initial-cols)
            (every? (fn [col]
                      (let [base-type ((some-fn :base-type :base_type) col)]

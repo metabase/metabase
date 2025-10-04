@@ -739,7 +739,7 @@
                              (select-keys query [:info]))
           parameters  (:parameters base)
           inner-query (chain-stages base)
-          query-type  (if (-> query :stages last :lib/type (= :mbql.stage/native))
+          query-type  (if (-> query :stages last lib.util/native-stage?)
                         :native
                         :query)]
       (merge (dissoc base :stages :parameters :lib.convert/converted?)
