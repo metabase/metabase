@@ -3,11 +3,10 @@ import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { color, darken } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 export const StoreIconRoot = styled(ExternalLink)`
-  margin-right: ${space(1)};
+  margin-right: var(--mantine-spacing-sm);
 `;
 
 export const StoreIconWrapper = styled.div`
@@ -32,5 +31,5 @@ export const StoreIconWrapper = styled.div`
 `;
 
 export const StoreIcon = styled(Icon)`
-  margin: ${space(1)};
+  margin: var(--mantine-spacing-sm);
 `;

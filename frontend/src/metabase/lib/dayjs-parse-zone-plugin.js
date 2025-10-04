@@ -1,7 +1,8 @@
 // This is the copy of https://github.com/iamkun/dayjs/pull/2060 which implements parseZone
 // which we rely on when using momentjs so we need this plugin to be able to migrate from momentjs
 // @authors: LucaColonnello and all contributors from https://github.com/iamkun/dayjs/issues/651#issuecomment-763033265
-const REGEX_TIMEZONE_OFFSET_FORMAT = /^(.*)([+-])(\d{2}):(\d{2})|(Z)$/;
+// The colon is made optional with ':?' to support both '+0100' and '+01:00' timezone formats.
+const REGEX_TIMEZONE_OFFSET_FORMAT = /^(.*)([+-])(\d{2}):?(\d{2})|(Z)$/;
 
 const parseOffset = (dateString) =>
   dateString.match(REGEX_TIMEZONE_OFFSET_FORMAT);
@@ -47,8 +48,19 @@ const pluginFunc = (option, dayjsClass, dayjsFactory) => {
     const [, dateTime] = match;
     const offset = formatOffset(match);
 
+    // Fix millisecond parsing for timestamps with fewer than 3 decimal places
+    // related issue https://github.com/iamkun/dayjs/issues/2459
+    let adjustedDateTime = dateTime;
+    const millisecondsMatch = dateTime.match(/(\.\d{1,2})$/);
+    if (millisecondsMatch) {
+      const [, ms] = millisecondsMatch;
+      // Pad milliseconds to 3 digits (e.g., .01 -> .010, .1 -> .100)
+      const paddedMs = ms.padEnd(4, "0"); // .xxx format
+      adjustedDateTime = dateTime.replace(/\.\d{1,2}$/, paddedMs);
+    }
+
     return dayjsFactory(
-      dateTime,
+      adjustedDateTime,
       {
         $offset: offset,
         ...format,

@@ -158,7 +158,7 @@ export function FormattingWidget() {
                 { label: "100 000,00", value: ", " },
                 { label: "100.000,00", value: ",." },
                 { label: "100000.00", value: "." },
-                { label: "100'000.00", value: ".'" },
+                { label: "100’000.00", value: ".’" },
               ]}
               onChange={(newValue) =>
                 handleChange({

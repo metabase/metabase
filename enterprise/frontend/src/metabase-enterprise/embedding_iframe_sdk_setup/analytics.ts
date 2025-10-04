@@ -1,70 +1,124 @@
+import _ from "underscore";
+
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import type { SdkIframeEmbedSetupExperience } from "./types";
-import { filterEmptySettings } from "./utils/filter-empty-settings";
+import type {
+  SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupSettings,
+} from "./types";
+import {
+  getDefaultSdkIframeEmbedSettings,
+  getResourceIdFromSettings,
+} from "./utils/default-embed-setting";
 
-export const trackEmbedWizardExperienceSelected = (
+/**
+ * Tracking every embed settings would bloat Snowplow, so we only track
+ * the most relevant options that reveal usage patterns.
+ */
+const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
+  "drills",
+  "withTitle",
+  "withDownloads",
+  "isSaveEnabled",
+  "readOnly",
+];
+
+/**
+ * When comparing settings to defaults, we ignore these options as they are already tracked in another step.
+ */
+const EMBED_SETTINGS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
+  "componentName",
+  "dashboardId",
+  "questionId",
+  "targetCollection",
+];
+
+export const trackEmbedWizardOpened = () =>
+  trackSimpleEvent({ event: "embed_wizard_opened" });
+
+export const trackEmbedWizardExperienceCompleted = (
   experience: SdkIframeEmbedSetupExperience,
+  defaultExperience: SdkIframeEmbedSetupExperience,
 ) =>
   trackSimpleEvent({
-    event: "embed_wizard_experience_selected",
-    event_detail: experience,
+    event: "embed_wizard_experience_completed",
+    event_detail:
+      experience === defaultExperience ? "default" : `custom=${experience}`,
   });
 
-export const trackEmbedWizardResourceSelected = (
-  resourceId: number,
-  experience: SdkIframeEmbedSetupExperience,
-) =>
-  trackSimpleEvent({
-    event: "embed_wizard_resource_selected",
-    target_id: resourceId,
-    event_detail: experience,
-  });
-
-export const trackEmbedWizardCodeCopied = () =>
-  trackSimpleEvent({
-    event: "embed_wizard_code_copied",
-  });
-
-export const trackEmbedWizardSettingsUpdated = (
-  settings: Partial<SdkIframeEmbedSettings>,
+export const trackEmbedWizardResourceSelectionCompleted = (
+  currentSettings: SdkIframeEmbedSetupSettings,
+  defaultResourceId: string | number,
 ) => {
-  const filteredSettings = filterEmptySettings(settings);
+  const currentResourceId = getResourceIdFromSettings(currentSettings) ?? "";
+  const isDefault = currentResourceId === defaultResourceId;
 
-  const settingKeys = Object.keys(
-    filteredSettings,
-  ) as SdkIframeEmbedSettingKey[];
-
-  const untrackedKeys: SdkIframeEmbedSettingKey[] = [
-    // These keys are not tracked as user settings.
-    "instanceUrl",
-
-    // These are tracked via trackEmbedWizardExperienceSelected and trackEmbedWizardResourceSelected
-    "questionId",
-    "dashboardId",
-  ];
-
-  settingKeys.forEach((settingKey) => {
-    if (untrackedKeys.includes(settingKey)) {
-      return;
-    }
-
-    if (settingKey === "useExistingUserSession") {
-      trackSimpleEvent({
-        event: "embed_wizard_auth_selected",
-        event_detail: settings.useExistingUserSession ? "user-session" : "sso",
-      });
-
-      return;
-    }
-
-    trackSimpleEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: settingKey,
-    });
+  trackSimpleEvent({
+    event: "embed_wizard_resource_selection_completed",
+    event_detail: isDefault ? "default" : "custom",
   });
 };
+
+const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
+  _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
+
+export const trackEmbedWizardOptionsCompleted = (
+  settings: Partial<SdkIframeEmbedSettings>,
+  experience: SdkIframeEmbedSetupExperience,
+) => {
+  // Get defaults for this experience type (with a dummy resource ID)
+  const defaultSettings = getDefaultSdkIframeEmbedSettings(experience, 0);
+
+  // Does the embed settings diverge from the experience defaults?
+  const hasCustomOptions = !_.isEqual(
+    getEmbedSettingsToCompare(settings),
+    getEmbedSettingsToCompare(defaultSettings),
+  );
+
+  let options: string[] = [
+    `settings=${hasCustomOptions ? "custom" : "default"}`,
+  ];
+
+  if (hasCustomOptions) {
+    const hasCustomTheme = settings.theme?.colors !== undefined;
+
+    options = [
+      ...options,
+      `theme=${hasCustomTheme ? "custom" : "default"}`,
+      `auth=${settings.useExistingUserSession ? "user_session" : "sso"}`,
+    ];
+
+    for (const _optionKey in settings) {
+      const optionKey = _optionKey as keyof SdkIframeEmbedSettings;
+
+      if (!EMBED_SETTINGS_TO_TRACK.includes(optionKey)) {
+        continue;
+      }
+
+      const value = settings[optionKey];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      options.push(`${optionKey}=${value.toString()}`);
+    }
+  }
+
+  trackSimpleEvent({
+    event: "embed_wizard_options_completed",
+    event_detail: options.join(","),
+  });
+};
+
+export const trackEmbedWizardCodeCopied = (
+  authMethod: "sso" | "user_session",
+) =>
+  trackSimpleEvent({
+    event: "embed_wizard_code_copied",
+    event_detail: authMethod,
+  });
