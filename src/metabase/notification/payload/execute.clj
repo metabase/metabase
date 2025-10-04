@@ -143,6 +143,8 @@
   [qp-result]
   (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
 
+(def rows-to-disk-threshold 2000)
+
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
 
@@ -173,14 +175,14 @@
                                                             :add-default-userland-constraints? false}
                                             :make-run      (fn make-run [qp _export-format]
                                                              (^:once fn* [query info]
-                                                               (qp
-                                                                (qp/userland-query query info)
-                                                    ;; Pass streaming rff with 2000 row threshold
-                                                    (notification.streaming/notification-rff
-                                                     2000
-                                                     {:dashboard_id dashboard_id
-                                                      :card_id card-id
-                                                      :dashcard_id (u/the-id dashcard)}))))))})
+                                                              (qp
+                                                               (qp/userland-query query info)
+                                                               ;; Pass streaming rff with 2000 row threshold
+                                                               (notification.streaming/notification-rff
+                                                                rows-to-disk-threshold
+                                                                {:dashboard_id dashboard_id
+                                                                 :card_id card-id
+                                                                 :dashcard_id (u/the-id dashcard)}))))))})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -297,7 +299,7 @@
                                                                     (qp/userland-query query info)
                                                                  ;; Pass streaming rff with 2000 row threshold
                                                                  (notification.streaming/notification-rff
-                                                                  2000
+                                                                  rows-to-disk-threshold
                                                                   {:card-id card-id})))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
