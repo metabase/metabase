@@ -32,6 +32,11 @@ import {
   provideCardTags,
   provideParameterValuesTags,
 } from "./tags";
+import {
+  invalidateGitSyncOnCreate,
+  invalidateGitSyncOnDelete,
+  invalidateGitSyncOnUpdate,
+} from "./utils/git-sync-cache-helpers";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
@@ -123,6 +128,8 @@ export const cardApi = Api.injectEndpoints({
           url: "/api/card",
           body,
         }),
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          invalidateGitSyncOnCreate(dispatch, queryFulfilled),
         invalidatesTags: (_, error) => invalidateTags(error, [listTag("card")]),
       }),
       createCardFromCsv: builder.mutation<Card, CreateCardFromCsvRequest>({
@@ -157,6 +164,16 @@ export const cardApi = Api.injectEndpoints({
               : ""),
           body,
         }),
+        onQueryStarted: (
+          updateRequest,
+          { dispatch, queryFulfilled, getState },
+        ) => {
+          const state = getState();
+          const oldCard = cardApi.endpoints.getCard.select({
+            id: updateRequest.id,
+          })(state)?.data;
+          invalidateGitSyncOnUpdate(oldCard, dispatch, queryFulfilled);
+        },
         invalidatesTags: (_, error, payload) => {
           const tags = [
             listTag("card"),
@@ -181,6 +198,11 @@ export const cardApi = Api.injectEndpoints({
           method: "DELETE",
           url: `/api/card/${id}`,
         }),
+        onQueryStarted: (id, { dispatch, getState }) => {
+          const state = getState();
+          const card = cardApi.endpoints.getCard.select({ id })(state)?.data;
+          invalidateGitSyncOnDelete(card, dispatch);
+        },
         invalidatesTags: (_, error, id) =>
           invalidateTags(error, [
             listTag("card"),

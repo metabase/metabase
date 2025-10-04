@@ -850,10 +850,12 @@ export const PLUGIN_GIT_SYNC: {
   LibraryNav: ComponentType;
   GitSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType;
+  getGitSyncInvalidationTags: () => any[] | null;
 } = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
+  getGitSyncInvalidationTags: () => null,
 };
 
 export type PythonTransformsPlugin = {
