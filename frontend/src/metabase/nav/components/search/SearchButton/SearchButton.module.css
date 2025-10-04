@@ -18,8 +18,9 @@
   gap: 0.25rem;
 
   &:hover .shortcutText {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-primary);
     transition: color 100ms ease;
+    background-color: var(--mb-color-brand-light);
   }
 }
 
@@ -27,4 +28,6 @@
   color: transparent;
   user-select: none;
   transition: color 350ms ease;
+  border-radius: 2px;
+  padding: 3px 5px;
 }

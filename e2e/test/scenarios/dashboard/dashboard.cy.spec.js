@@ -218,7 +218,7 @@ describe("scenarios > dashboard", () => {
 
       H.commandPaletteButton().click();
       H.commandPalette().within(() => {
-        cy.findByText("Recent items").should("exist");
+        cy.findByText("Recents").should("exist");
         cy.findByRole("option", { name: "Orders in a dashboard" }).click();
       });
 

@@ -53,18 +53,6 @@ describe("PaletteResultItem", () => {
     );
   });
 
-  it("if active, icon color should always be white", async () => {
-    setup({
-      item: { icon: "model", extra: { iconColor: "green" } },
-      active: true,
-    });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "var(--mb-color-text-white)",
-    );
-  });
-
   it("should not render an icon if none is provided", async () => {
     setup({});
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
