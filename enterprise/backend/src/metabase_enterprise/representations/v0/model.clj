@@ -138,7 +138,29 @@
    [:effective_type {:optional true} ::effective-type]
    [:semantic_type {:optional true} ::semantic-type]
    [:visibility {:optional true} ::visibility]
-   [:currency {:optional true} ::currency]])
+   [:visibility_type {:optional true} [:maybe :string]]
+   [:fk_target_field_id {:optional true} [:maybe :int]]
+   [:currency {:optional true} ::currency]
+   [:settings {:optional true} [:maybe ::column-settings]]])
+
+(mr/def ::column-settings
+  [:map
+   {:description "User-editable column settings for formatting and display"}
+   [:column_title {:optional true} [:maybe :string]]
+   [:text_align {:optional true} [:maybe [:enum "left" "right" "middle"]]]
+   [:text_wrapping {:optional true} [:maybe :boolean]]
+   [:view_as {:optional true} [:maybe [:enum "link" "email_link" "image" "auto"]]]
+   [:link_text {:optional true} [:maybe :string]]
+   [:link_url {:optional true} [:maybe :string]]
+   [:show_mini_bar {:optional true} [:maybe :boolean]]
+   [:number_style {:optional true} [:maybe [:enum "decimal" "percent" "scientific" "currency"]]]
+   [:currency {:optional true} [:maybe :string]]
+   [:currency_style {:optional true} [:maybe :string]]
+   [:date_style {:optional true} [:maybe :string]]
+   [:date_separator {:optional true} [:maybe [:enum "/" "-" "."]]]
+   [:date_abbreviate {:optional true} [:maybe :boolean]]
+   [:time_enabled {:optional true} [:maybe [:enum "minutes" "seconds" "milliseconds"]]]
+   [:time_style {:optional true} [:maybe :string]]])
 
 (mr/def ::columns
   [:sequential
@@ -215,6 +237,29 @@
 
 ;;; ------------------------------------ Public API ------------------------------------
 
+(defn- merge-column
+  "Merge user-edited fields from a column representation into base column metadata.
+   User edits take precedence for display_name, description, semantic_type, visibility_type, and fk_target_field_id.
+   Settings are merged with user settings taking precedence."
+  [base-col user-col]
+  (-> base-col
+      (merge (select-keys user-col [:display_name :description :semantic_type
+                                    :visibility_type :fk_target_field_id]))
+      (update :settings #(merge % (:settings user-col)))))
+
+(defn- merge-column-metadata
+  "Merge user-edited column metadata from model.yml into base metadata from mbql.yml.
+   User edits take precedence. Returns the base metadata with user edits applied."
+  [base-metadata user-columns]
+  (if (empty? user-columns)
+    base-metadata
+    (let [user-by-name (into {} (map (juxt :name identity)) user-columns)]
+      (mapv (fn [base-col]
+              (if-let [user-col (get user-by-name (:name base-col))]
+                (merge-column base-col user-col)
+                base-col))
+            base-metadata))))
+
 (defmethod import/yaml->toucan :v0/model
   [{model-name :name
     :keys [_type _ref description database collection columns mbql_query] :as representation}
@@ -222,11 +267,12 @@
   (let [database-id (v0-common/resolve-database-id database ref-index)
         dataset-query (-> (assoc representation :database database-id)
                           (v0-mbql/import-dataset-query ref-index))
-        ;; For MBQL queries with refs, extract result_metadata from MBQL data
-        result-metadata (if (and (string? mbql_query) (v0-common/ref? mbql_query))
-                          (let [mbql-data (get ref-index (v0-common/unref mbql_query))]
-                            (or (:result_metadata mbql-data) columns))
-                          ;; For embedded MBQL or native queries, use columns from representation
+        base-result-metadata (if (and (string? mbql_query) (v0-common/ref? mbql_query))
+                               (let [mbql-data (get ref-index (v0-common/unref mbql_query))]
+                                 (:result_metadata mbql-data))
+                               nil)
+        result-metadata (if base-result-metadata
+                          (merge-column-metadata base-result-metadata columns)
                           columns)]
     (merge
      {:name model-name
@@ -263,6 +309,30 @@
 
 ;;; -- Export --
 
+(defn- extract-user-editable-settings
+  "Extract user-editable settings from a column's settings map.
+   Returns only the fields that users should be able to edit in YAML."
+  [settings]
+  (when settings
+    (not-empty
+     (select-keys settings
+                  [:column_title :text_align :text_wrapping :view_as :link_text :link_url
+                   :show_mini_bar :number_style :currency :currency_style
+                   :date_style :date_separator :date_abbreviate :time_enabled :time_style]))))
+
+(defn- extract-user-editable-column-metadata
+  "Extract user-editable metadata from a result_metadata column entry.
+   Returns a map with :name and user-editable fields only."
+  [column]
+  (let [base {:name (:name column)}
+        editable (not-empty
+                  (select-keys column [:display_name :description :semantic_type
+                                       :visibility_type :fk_target_field_id]))
+        settings (extract-user-editable-settings (:settings column))]
+    (cond-> base
+      editable (merge editable)
+      settings (assoc :settings settings))))
+
 (defn- patch-refs-for-export [query]
   (-> query
       (v0-mbql/->ref-database)
@@ -274,7 +344,9 @@
                 (patch-refs-for-export (:dataset_query card))
                 (:dataset_query card))
         card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
-        mbql-ref (str "mbql-" card-ref)]
+        mbql-ref (str "mbql-" card-ref)
+        columns (when-let [result-metadata (:result_metadata card)]
+                  (seq (mapv extract-user-editable-column-metadata result-metadata)))]
     (cond-> {:name (:name card)
              :type (:type card)
              :ref card-ref
@@ -287,6 +359,9 @@
       (= :query (:type query))
       (assoc :mbql_query (str "ref:" mbql-ref)
              :database (:database query))
+
+      columns
+      (assoc :columns columns)
 
       :always
       u/remove-nils)))
