@@ -866,14 +866,9 @@
     (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
-  [_driver {:keys [query output-table]}]
+  [_driver query output-table]
   (let [table-str (get-table-str output-table)]
     [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
-
-(defmethod driver/compile-drop-table :bigquery-cloud-sdk
-  [_driver table]
-  (let [table-str (get-table-str table)]
-    [(str "DROP TABLE IF EXISTS " table-str)]))
 
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
@@ -882,7 +877,8 @@
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
-  (let [sql (driver/compile-drop-table driver table-name)]
+  (let [table-str (get-table-str table-name)
+        sql [(str "DROP TABLE IF EXISTS " table-str)]]
     (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
 
 (defn- convert-value-for-insertion
@@ -980,7 +976,8 @@
   (let [qualified-name (if schema
                          (keyword schema name)
                          (keyword name))
-        drop-sql (first (driver/compile-drop-table driver qualified-name))]
+        table-str (get-table-str qualified-name)
+        drop-sql (str "DROP TABLE IF EXISTS " table-str)]
     (driver/execute-raw-queries! driver database [drop-sql])
     nil))
 
@@ -1021,6 +1018,16 @@
          :details
          list-datasets
          (some #{schema}))))
+
+(defmethod driver/rename-table! :bigquery-cloud-sdk
+  [driver db old-name new-name]
+  (let [old-name (str (namespace old-name) "." (name old-name))
+        ;; String formatting with backquotes here is okay because bigquery
+        ;; dataset and table names cannot contains backticks (`) or dots (.)
+        ;; https://cloud.google.com/bigquery/docs/datasets#dataset-naming
+        ;; https://cloud.google.com/bigquery/docs/tables#table_naming
+        sql (format "ALTER TABLE `%s` RENAME TO `%s`;" old-name (name new-name))]
+    (driver/execute-raw-queries! driver (:details db) [sql])))
 
 (defmethod driver/table-name-length-limit :bigquery-cloud-sdk
   [_driver]
