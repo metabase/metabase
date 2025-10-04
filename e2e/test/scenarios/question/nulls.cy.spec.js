@@ -91,7 +91,7 @@ describe("scenarios > question > null", () => {
       cy.findByTestId("dashcard-container").within(() => {
         cy.findByTestId("loading-indicator").should("not.exist");
         cy.findByTestId("legend-caption-title").should("have.text", "13626");
-        cy.findByText("TOTAL").should("be.visible");
+        cy.findByText("Total").should("be.visible");
         cy.findByText("0").should("be.visible");
       });
     });

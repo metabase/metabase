@@ -117,7 +117,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     // flakiness prevention
-    cy.findByTestId("chart-container").findByText("TOTAL").should("be.visible");
+    cy.findByTestId("chart-container").findByText("Total").should("be.visible");
     cy.findByTestId("view-footer")
       .findByText("Showing 4 rows")
       .should("be.visible");
@@ -172,7 +172,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("not.exist");
+      cy.findByText("Total").should("not.exist");
     });
 
     H.leftSidebar().within(() => {
@@ -180,7 +180,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText("Total").should("be.visible");
     });
   });
 
@@ -668,7 +668,7 @@ function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
     if (totalValue != null) {
-      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText("Total").should("be.visible");
       cy.findByText(totalValue).should("be.visible");
     }
 

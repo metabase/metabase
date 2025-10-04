@@ -77,8 +77,6 @@ describe("ensureRoomForLabels", () => {
       mockSettings,
       hiddenSeries,
       mockRenderingContext,
-      undefined,
-      undefined, // gridSize not available in test
     );
 
     const chartMeasurements = getChartMeasurements(
