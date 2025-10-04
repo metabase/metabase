@@ -263,15 +263,13 @@
           (is (= [[1746]]
                  (mt/rows results))))))))
 
-;;; This one is a really tricky one to solve, the problem is that the implicit join happens in the first stage (Card 1)
-;;; because of the remappped column, but the parameter asks to be applied to stage 3... it's too late to add a new
-;;; filter against `PEOPLE__via__USER_ID.STATE` at that point because it doesn't come back from stage 1 or 2 (this is
-;;; why resolution trips up and falls back to `source.STATE`. I think the only way to fix this would be to make the
-;;; parameter logic apply the parameter to the correct stage (ignoring `:stage-number` when it's wrong) or add another
-;;; duplicate implicit join in stage 3 to power the filter
+;;; This is tricky case: the implicit join happens in stage 0 (Card 1) because of the remapped column, but the parameter
+;;; asks to be applied to stage 2. Logic in `add-implicit-joins` now propagates that use of the implicitly joined column
+;;; through stage 1 to stage 0, making the column available for the filter in the last stage.
 ;;;
-;;; See
-;;; also [[metabase.lib.field.resolution-test/resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test]]
+;;; See also
+;;; [[metabase.lib.field.resolution-test/resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test]]
+;;; and [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
 (deftest ^:parallel model-with-implicit-join-and-external-remapping-test
   (testing "Should handle models with implicit join on externally remapped field (#57596)"
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
@@ -293,9 +291,6 @@
                                               :source-field (mt/id :orders :user_id)
                                               :source-field-name "USER_ID"}]
                                             {:stage-number -1}]}]))]
-        ;; should return 613 rows
         (mt/with-native-query-testing-context query
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #"Column \"source\.PEOPLE__via__USER_ID__STATE\" not found"
-               (-> query qp/process-query mt/rows count))))))))
+          (is (= 613
+                 (-> query qp/process-query mt/rows count))))))))

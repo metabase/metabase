@@ -3,14 +3,18 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.metadata-providers.remap :as lib.tu.remap]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.fetch-source-query]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1090,3 +1094,34 @@
       (is (=? {:joins [{:alias "CATEGORIES__via__CATEGORY_ID"}
                        {:alias "CATEGORIES__via__ID"}]}
               (#'qp.add-implicit-joins/resolve-implicit-joins-this-level query path stage))))))
+
+(deftest ^:parallel implicit-join-from-much-earlier-stage-test
+  (testing "if a join in stage 1 is used in stage 2, the field should propagate through stage 1 (#63245)"
+    (let [;; These remaps are required! Otherwise the implicit join clause is added elsewhere, and #63245 does not
+          ;; come into play. With the remaps, the innermost query on `Orders` includes a join on People so it can remap
+          ;; the `USER_ID` column. Then the implicit join in stage 2 of the test query will reuse that join clause on
+          ;; stage 0, which is the condition which causes #63245.
+          mp              (lib.tu.remap/remap-metadata-provider
+                           meta/metadata-provider
+                           (meta/id :orders :user-id)    (meta/id :people :name)
+                           (meta/id :orders :product-id) (meta/id :products :title))
+          ordersQ         (lib/query mp (meta/table-metadata :orders))
+          mp              (lib.tu/metadata-provider-with-card-from-query mp 1 ordersQ)
+          ordersQ+peopleT (-> (lib/query mp (lib.metadata/card mp 1))
+                              (lib/join (meta/table-metadata :people)))
+          mp              (lib.tu/metadata-provider-with-card-from-query mp 2 ordersQ+peopleT)
+          query           (-> (lib/query mp (lib.metadata/card mp 2))
+                              (lib/aggregate (lib/count))
+                              (lib/breakout (lib.options/ensure-uuid
+                                             [:field {:source-field (meta/id :orders :user-id)
+                                                      :source-field-name "USER_ID"}
+                                              (meta/id :people :state)])))
+          preprocessed    (qp.preprocess/preprocess query)]
+      (is (=? {:stages [{:fields [any? any? any? any? any? any? any? any? any? any? any?
+                                  [:field {:join-alias        "PEOPLE__via__USER_ID"
+                                           :source-field      (meta/id :orders :user-id)
+                                           :source-field-name "USER_ID"}
+                                   (meta/id :people :state)]]}
+                        {}
+                        {}]}
+              preprocessed)))))
