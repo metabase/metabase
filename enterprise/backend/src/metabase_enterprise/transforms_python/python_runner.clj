@@ -146,8 +146,9 @@
     :else
     v))
 
-(defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan]}]
-  (let [query    {:source-table table-id}]
+(defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan limit]}]
+  {:pre [(or (nil? limit) (pos-int? limit))]}
+  (let [query (cond-> {:source-table table-id} limit (assoc :limit limit))]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
@@ -173,7 +174,7 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code run-id table-name->id shared-storage]}]
+  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
 
@@ -183,16 +184,21 @@
 
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (transforms-python.settings/python-runner-timeout-seconds)
-                                  :request_id          run-id
+                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                  :request_id          (or request-id run-id)
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
                                   :events_url          (:url events)
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
 
-        response                 (transforms.instrumentation/with-python-api-timing [run-id]
-                                   (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
+        request-fn               #(python-runner-request server-url :post "/execute" {:body (json/encode payload)})
+
+        response                 (if run-id
+                                   (transforms.instrumentation/with-python-api-timing [run-id]
+                                     (request-fn))
+                                   ;; test runs are not timed currently
+                                   (request-fn))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
     (update response :body (fn [string-if-error]
@@ -251,7 +257,8 @@
   [{:keys [run-id
            shared-storage
            table-name->id
-           cancel-chan]}]
+           cancel-chan
+           limit]}]
   ;; TODO there's scope for some parallelism here, in particular across different databases
   (doseq [[table-name table-id] table-name->id
           :let [{:keys [s3-client bucket-name objects]} shared-storage
@@ -272,7 +279,8 @@
               :table-id    table-id
               :fields-meta fields-meta
               :temp-file   tmp-data-file
-              :cancel-chan cancel-chan}))
+              :cancel-chan cancel-chan
+              :limit       limit}))
 
           (with-open [writer (io/writer tmp-meta-file)]
             (json/encode-to manifest writer {}))
