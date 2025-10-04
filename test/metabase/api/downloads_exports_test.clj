@@ -1777,3 +1777,27 @@
                   ["3"            "300.0" ""      "300.0"]
                   ["Grand totals" "200.0" "100.0" "175.0"]]
                  (rest result))))))))
+
+(deftest ^:parallel pivot-long-column-names-download-test
+  (testing "Pivot table downloads should include columns with very long names that are present in frontend"
+    (let [long-title (apply str (repeat 10 "Long title"))]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card pivot-card
+                       {:display                :pivot
+                        :visualization_settings {:pivot_table.column_split
+                                                 {:columns ["CATEGORY"]
+                                                  :rows    ["VENDOR"]
+                                                  :values  ["sum" long-title]}}
+                        :dataset_query          (mt/mbql-query orders
+                                                  {:aggregation [[:sum $total]
+                                                                 [:aggregation-options [:count] {:name         long-title
+                                                                                                 :display-name long-title}]]
+                                                   :breakout    [$product_id->products.category
+                                                                 $product_id->products.vendor]
+                                                   :limit       3})}]
+
+          (testing "download"
+            (let [res     (card-download pivot-card {:export-format :csv :pivot true :format-rows false})
+                  headers (second res)]
+              (is (= 3 (count headers)))
+              (is (some #{long-title} headers)))))))))
