@@ -83,7 +83,8 @@
    (select-keys
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
-     :database_required :database_is_auto_increment :entity_id])))
+     :database_required :database_is_auto_increment :database_is_pk :database_is_generated :database_is_nullable
+     :entity_id])))
 
 (deftest ^:parallel list-table-test
   (testing "GET /api/table"

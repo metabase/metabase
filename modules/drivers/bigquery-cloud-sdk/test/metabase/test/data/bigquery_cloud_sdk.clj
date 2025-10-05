@@ -322,18 +322,19 @@
 (defn- load-tabledef! [dataset-id {:keys [table-name field-definitions], :as tabledef}]
   (let [table-name (normalize-name table-name)]
     (create-table! dataset-id table-name field-definitions)
-    ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
-    ;; unique key it shouldn't result in duplicates.
-    (loop [num-retries 5]
-      (let [^Throwable e (try
-                           (insert-data! dataset-id table-name (tabledef->prepared-rows tabledef))
-                           nil
-                           (catch Throwable e
-                             e))]
-        (when e
-          (if (pos? num-retries)
-            (recur (dec num-retries))
-            (throw e)))))))
+    (when (seq (:rows tabledef))
+      ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
+      ;; unique key it shouldn't result in duplicates.
+      (loop [num-retries 5]
+        (let [^Throwable e (try
+                             (insert-data! dataset-id table-name (tabledef->prepared-rows tabledef))
+                             nil
+                             (catch Throwable e
+                               e))]
+          (when e
+            (if (pos? num-retries)
+              (recur (dec num-retries))
+              (throw e))))))))
 
 (defn delete-old-datasets!
   []

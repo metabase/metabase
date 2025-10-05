@@ -46,7 +46,10 @@
                               :case-sensitivity-string-filter-options false
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
-                              :database-routing                       true}]
+                              :database-routing                       true
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
