@@ -3,15 +3,17 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms-python.execute :as transforms-python.execute]
+   [metabase-enterprise.transforms-python.python-runner :as transforms-python.python-runner]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! get-test-schema]]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref)
+   (clojure.lang IDeref IReduceInit)
    (java.io Closeable)
-   (java.time Duration)))
+   (java.time Duration Instant)))
 
 (set! *warn-on-reflection* true)
 
@@ -156,6 +158,37 @@
     (= (first xs) (first ys)) (recur (rest xs) (rest ys))
     :else (recur (rest xs) ys)))
 
+(defn- get-last-run [transform-id]
+  (:last_run (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
+
+(defn- open-message-value-observer
+  "Polls the `:message` state of the last run and stores the value every time it is different to the last observation.
+  Close with .close, grab the vector of values with deref."
+  ^Closeable [transform-id]
+  (let [states (atom [])
+        fut    (future
+                 (try
+                   (loop []
+                     (let [{:keys [message]} (get-last-run transform-id)]
+                       (cond
+                         (.isInterrupted (Thread/currentThread))
+                         nil
+
+                        ;; same message as last time
+                         (= message (peek @states))
+                         (recur)
+
+                        ;; new message value
+                         :else (do (swap! states conj message)
+                                   (recur)))))
+                   (catch InterruptedException _ nil)))]
+    (reify IDeref
+      (deref [_] @states)
+      Closeable
+      (close [_]
+        (future-cancel fut)
+        (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
+
 (deftest python-transform-logging-test
   (letfn [(program->source [program]
             (->> (concat ["import pandas as pd"
@@ -183,34 +216,6 @@
             (when (= :succeeded expect-status)
               (transforms.tu/wait-for-table (:name target) 5000)))
 
-          (get-last-run [transform-id]
-            (:last_run (mt/user-http-request :crowberto :get 200 (format "ee/transform/%d" transform-id))))
-
-          (open-message-value-observer [transform-id]
-            (let [states (atom [])
-                  fut    (future
-                           (try
-                             (loop []
-                               (let [{:keys [message]} (get-last-run transform-id)]
-                                 (cond
-                                   (.isInterrupted (Thread/currentThread))
-                                   nil
-
-                                  ;; same message as last time
-                                   (= message (peek @states))
-                                   (recur)
-
-                                  ;; new message value
-                                   :else (do (swap! states conj message)
-                                             (recur)))))
-                             (catch InterruptedException _ nil)))]
-              (reify IDeref
-                (deref [_] @states)
-                Closeable
-                (close [_]
-                  (future-cancel fut)
-                  (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
-
           (run-scenario [scenario schema]
             (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO
                           transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
@@ -220,7 +225,7 @@
                                                 :schema schema
                                                 :name   "result"}]
                 (let [transform-id      (create-transform scenario target)
-                      observed-messages (with-open [observer ^Closeable (open-message-value-observer transform-id)]
+                      observed-messages (with-open [observer (open-message-value-observer transform-id)]
                                           (block-on-run scenario target transform-id)
                                           @observer)
                       last-run          (get-last-run transform-id)]
@@ -314,6 +319,176 @@
                    :schema "PUBLIC"
                    :db_id  (:id target-db)}
                   (:table response))))))))
+
+;; NOTE: The test does not simulate a multi-node setup.
+;; In the general case we should expect the signal some time after the /cancel API call, so smaller runs may never see the signal.
+;; If you extend the size of the tables / run time then any behaviour this test exposes should also be possible for delayed signals.
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]} ; todo factor to maybe some private helpers or share test impl for multiple top-level tests
+(deftest python-cancellation-test
+  (letfn [(create-transform [{:keys [desc program]} target]
+            (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                  {:name   (format "Python cancellation test: %s" desc)
+                                   :source {:type            "python"
+                                            :body            (str/join "\n" program)
+                                            :source-database (mt/id)
+                                            :source-tables   {"transforms_customers" (mt/id :transforms_customers)}}
+                                   :target (assoc target :database (mt/id))}))
+
+          ;; using clojure-ey coordination with promises (I know j.u.c could be better here)
+          ;; goal is blocking at the right point during the run so that we can test the cancellation behaviour
+          ;; for a particular stage during the run or area of interest (e.g. during a table copy out to shared storage)
+
+          (await-signal [wait-signal]
+            (when-not (deref wait-signal 5000 nil)
+              (throw (ex-info "Expected delivery of wait signal within a reasonable amount of time" {}))))
+
+          (reducible-proxy [ready-signal
+                            wait-signal
+                            reducible-rows]
+            (reify IReduceInit
+              (reduce [_ f init]
+                (deliver ready-signal true)
+                (await-signal wait-signal)
+                (reduce f init reducible-rows))))
+
+          (blocking-redefs [{:keys [block]} ready-signal wait-signal]
+            (case block
+              :read
+              (let [f-ref #'transforms-python.python-runner/execute-mbql-query
+                    f     @f-ref]
+                {f-ref
+                 (fn [driver db-id query respond cancel-chan]
+                   (f driver db-id query
+                      (fn [metadata reducible-rows]
+                        (respond metadata (reducible-proxy ready-signal wait-signal reducible-rows)))
+                      cancel-chan))})
+              :write
+              (let [f-ref #'transforms-python.execute/transfer-file-to-db
+                    f     @f-ref]
+                {f-ref
+                 (fn [& args]
+                   (deliver ready-signal true)
+                   (await-signal wait-signal)
+                   (apply f args))})
+              nil))
+
+          (run-scenario [{:keys [expect-script] :as scenario} target]
+            (let [ready-signal    (promise)                 ; test blocks: until the run is ready to be cancelled
+                  wait-signal     (promise)                 ; run blocks:  until the test has cancelled
+                  finished-signal (promise)                 ; test blocks: until the run has finished (exceptionally or not)
+                  exec-fn         @#'transforms-python.execute/execute-python-transform!
+                  redefs          (blocking-redefs scenario ready-signal wait-signal)]
+              (with-redefs-fn
+                (merge
+                 {#'transforms-python.execute/execute-python-transform!
+                  (fn [& args]
+                    (try
+                      (apply exec-fn args)
+                      (finally
+                        (deliver finished-signal true))))}
+                 redefs)
+                (fn []
+                  (let [{transform-id :id} (create-transform scenario target)]
+                    (with-open [message-observer (open-message-value-observer transform-id)]
+                      (let [_          (mt/user-http-request :crowberto :post 202 (format "ee/transform/%d/run" transform-id))
+                            ;; Cancellation currently overwrites the message, so we should wait for some log output if we expect it
+                            ;; Ideally we would not use the message field for log output, or otherwise avoid having logs being lost on cancellation.
+                            _          (when expect-script
+                                         (u/poll {:thunk       #(deref message-observer)
+                                                  :done?       #(some #{"script started"} %)
+                                                  :interval-ms 1
+                                                  :timeout-ms  5000}))
+                            _          (when redefs (await-signal ready-signal))
+                            _          (get-last-run transform-id)
+                            _          (mt/user-http-request :crowberto :post 204 (format "ee/transform/%d/cancel" transform-id))
+                            _          (deliver wait-signal true)
+                            _          (await-signal finished-signal)
+                            last-run   (get-last-run transform-id)]
+                        {:messages     @message-observer
+                         :last-run     last-run})))))))]
+
+    (let [blocking-script
+          ["import time"
+           "import pandas as pd"
+           "def transform(transforms_customers):"
+           "  print(\"script started\")"
+           ;; longer sleep gives more room for slow CI when checking for 'how quickly should a trivial run complete'
+           ;; this is important for figuring out whether new runs can happen after a cancelled job that might have blocked the runner
+           ;; N.B. if cancellation works, we do not pay the timeout during the test, the test does not always wait 30 seconds!
+           "  time.sleep(30)"
+           "  return pd.DataFrame({'x': [42]})"]
+
+          non-blocking-script
+          ["import pandas as pd"
+           "def transform(transforms_customers):"
+           "  print(\"script started\")"
+           "  return pd.DataFrame({'x': [42]})"]
+
+          scenarios
+          [{:desc          "during python eval"
+            :program       blocking-script
+            :expect-script true
+            :expect-write  false
+            :expect-status :canceled}
+           {:desc          "during table read"
+            :program       non-blocking-script
+            :block         :read
+            :expect-script false
+            :expect-write  false
+            :expect-status :canceled}
+           {:desc          "during table write"
+            :program       non-blocking-script
+            :block         :write,
+            :expect-script true
+            :expect-write  true                             ; note: the cancellation signal is currently ignored during the write phase
+            :expect-status :canceled}]]
+
+      (doseq [{:keys [desc expect-status expect-script expect-write] :as scenario} scenarios]
+        (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/python)
+                             ; these drivers cause timing issues, could be fixed if we change timeout / time variables in test
+                             (disj :snowflake :bigquery-cloud-sdk :redshift :mongo))
+          (mt/with-premium-features #{:transforms :transforms-python}
+            (mt/dataset transforms-dataset/transforms-test
+              (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+                (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO]
+                  (with-transform-cleanup! [target {:type   "table"
+                                                    :schema schema
+                                                    :name   "result"}]
+                    (testing desc
+                      (testing "initial cancellation"
+                        (let [scenario-result (run-scenario scenario target)
+                              {:keys [messages last-run]} scenario-result]
+                          (is (= (name expect-status) (:status last-run)))
+
+                          (when (some? expect-script)
+                            (if expect-script
+                              (testing "script should have started"
+                                (is (some #(str/includes? % "script started") messages)))
+                              (testing "script should not have started"
+                                (is (not-any? #(str/includes? % "script started") messages))
+                                (is (not (str/includes? (str (:message last-run)) "script started"))))))
+
+                          (when (some? expect-write)
+                            (testing "table existence"
+                              (is (= expect-write (driver/table-exists? driver/*driver* (mt/db) target)))))))))
+
+                  ; todo We have not yet covered the case where we rerun the same transform while there might be some hangover.
+                  ;      Cancellation addresses the transform and not the run, there is shared mutable state and races on it are possible
+                  (testing "the runner is not blocked for a new run"
+                    (with-transform-cleanup! [target {:type   "table"
+                                                      :schema schema
+                                                      :name   "result"}]
+                      (let [{transform-id :id} (create-transform {:desc "normal run", :program non-blocking-script} target)
+                            _          (transforms.tu/test-run transform-id)
+                            {:keys [status start_time end_time]} (get-last-run transform-id)
+                            start-inst (some-> start_time Instant/parse)
+                            end-inst   (some-> end_time Instant/parse)
+                            duration   (when (and start-inst end-inst) (Duration/between start-inst end-inst))]
+                        (is (= "succeeded" status))
+                        (when duration
+                          ;; 10 seconds is an estimate of the maximum time we should expect the normal run to take.
+                          ;; if the runner was blocked for 30 seconds, and only then did the new run get scheduled - we would exceed this time.
+                          (is (< (.toSeconds duration) 10)))))))))))))))
 
 (deftest python-transform-schema-change-integration-test
   (testing "Python transform handles schema changes using appropriate rename strategy"
