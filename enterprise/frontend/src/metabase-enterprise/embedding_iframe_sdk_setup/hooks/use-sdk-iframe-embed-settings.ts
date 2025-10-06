@@ -47,7 +47,7 @@ const usePersistedSettings = () => {
   return [persistedSettings, persistSettings] as const;
 };
 
-export const useSettings = ({
+export const useSdkIframeEmbedSettings = ({
   urlParams,
   recentDashboards,
   isRecentsLoading,

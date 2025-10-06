@@ -36,29 +36,27 @@ export const useGetCurrentResource = ({
 }: {
   experience: SdkIframeEmbedSetupExperience;
   settings: SdkIframeEmbedSetupSettings;
-}): {
-  resource: Dashboard | Card | null;
-  isLoading: boolean;
-  isFetching: boolean;
-} => {
+}) => {
   const dispatch = useDispatch();
 
-  const { loading: isDashboardLoading } = useAsync(async () => {
-    if (!settings.dashboardId) {
-      return;
-    }
+  const { loading: isDashboardLoading, error: dashboardLoadingError } =
+    useAsync(async () => {
+      if (!settings.dashboardId) {
+        return;
+      }
 
-    await dispatch(
-      fetchDashboard({
-        dashId: settings.dashboardId as number,
-        queryParams: {},
-      }),
-    );
-  }, [settings.dashboardId, dispatch]);
+      await dispatch(
+        fetchDashboard({
+          dashId: settings.dashboardId as number,
+          queryParams: {},
+        }),
+      );
+    }, [settings.dashboardId, dispatch]);
   const dashboard = useSelector(getDashboardComplete);
 
   const {
     data: card,
+    error: cardLoadingError,
     isLoading: isCardLoading,
     isFetching: isCardFetching,
   } = useGetCardQuery(
@@ -74,8 +72,11 @@ export const useGetCurrentResource = ({
     card,
   });
 
+  const isError = !!dashboardLoadingError || !!cardLoadingError;
+
   return {
     resource,
+    isError,
     isLoading,
     isFetching,
   };

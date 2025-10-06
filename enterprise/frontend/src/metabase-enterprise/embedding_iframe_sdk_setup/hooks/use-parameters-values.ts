@@ -20,7 +20,7 @@ export const useParametersValues = ({
    *
    * Here we convert them to "by-id" to make widgets work properly.
    */
-  const parameterValuesById: EmbeddingParametersValues = useMemo(() => {
+  const parametersValuesById: EmbeddingParametersValues = useMemo(() => {
     const valuesBySlug = match(settings)
       .with({ dashboardId: P.nonNullable }, (s) => s.initialParameters ?? {})
       .with({ questionId: P.nonNullable }, (s) => s.initialSqlParameters ?? {})
@@ -33,6 +33,6 @@ export const useParametersValues = ({
   }, [availableParameters, settings]);
 
   return {
-    parameterValuesById,
+    parametersValuesById,
   };
 };

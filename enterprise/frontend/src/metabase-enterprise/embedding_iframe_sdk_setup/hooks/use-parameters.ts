@@ -42,7 +42,7 @@ export const useParameters = ({
       );
     } else if (experience === "chart") {
       const card = resource as Card;
-      return getCardUiParameters(card as Card, metadataRef.current) || [];
+      return getCardUiParameters(card, metadataRef.current) || [];
     }
 
     return [];

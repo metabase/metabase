@@ -20,6 +20,7 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Loaded resources
   resource: Dashboard | Card | null;
+  isError: boolean;
   isLoading: boolean;
   isFetching: boolean;
 

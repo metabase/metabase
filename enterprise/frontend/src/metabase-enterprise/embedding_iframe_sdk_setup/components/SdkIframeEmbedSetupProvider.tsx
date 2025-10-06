@@ -13,7 +13,7 @@ import {
   useParametersValues,
   useRecentItems,
 } from "../hooks";
-import { useSettings } from "../hooks/use-settings";
+import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type {
   SdkIframeEmbedSetupStep,
   SdkIframeEmbedSetupUrlParams,
@@ -77,7 +77,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isEmbedSettingsLoaded,
     replaceSettings,
     updateSettings,
-  } = useSettings({
+  } = useSdkIframeEmbedSettings({
     urlParams,
     recentDashboards,
     isRecentsLoading,
@@ -90,7 +90,7 @@ export const SdkIframeEmbedSetupProvider = ({
     [settings],
   );
 
-  const { resource, isLoading, isFetching } = useGetCurrentResource({
+  const { resource, isError, isLoading, isFetching } = useGetCurrentResource({
     experience,
     settings,
   });
@@ -100,7 +100,7 @@ export const SdkIframeEmbedSetupProvider = ({
     resource,
   });
 
-  const { parameterValuesById } = useParametersValues({
+  const { parametersValuesById } = useParametersValues({
     settings,
     availableParameters,
   });
@@ -110,6 +110,7 @@ export const SdkIframeEmbedSetupProvider = ({
     setCurrentStep,
     experience,
     resource,
+    isError,
     isLoading,
     isFetching,
     settings,
@@ -122,7 +123,7 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentItem,
     isEmbedSettingsLoaded,
     availableParameters,
-    parameterValuesById,
+    parameterValuesById: parametersValuesById,
   };
 
   return (
