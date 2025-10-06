@@ -12,13 +12,15 @@ export type DependencyEntry = {
   type: DependencyType;
 };
 
-export type DependencyUsageStats = Partial<Record<DependencyType, number>>;
+export type DependencyGraphNodeUsageStats = Partial<
+  Record<DependencyType, number>
+>;
 
 type BaseDependencyGraphNode<TType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
-  usage_stats?: DependencyUsageStats;
+  usage_stats?: DependencyGraphNodeUsageStats;
 };
 
 export type TableDependencyGraphData = Pick<
