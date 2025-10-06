@@ -1,24 +1,12 @@
 import type { Edge, Node } from "@xyflow/react";
 
-import type {
-  CardType,
-  DependencyNode,
-  DependencyType,
-} from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
 export type NodeId = string;
 export type EdgeId = string;
-export type GroupType = CardType | Exclude<DependencyType, "card">;
-export type NodeType = ItemNodeType | GroupNodeType;
-export type ItemNodeType = Node<DependencyNode, "item">;
-export type GroupNodeType = Node<GroupNodeData, "item-group">;
+export type NodeType = Node<DependencyNode>;
 
 export type GraphData = {
   nodes: NodeType[];
   edges: Edge[];
-};
-
-export type GroupNodeData = {
-  type: GroupType;
-  count: number;
 };

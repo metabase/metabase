@@ -1,5 +1,4 @@
 import dagre from "@dagrejs/dagre";
-import { createSelector } from "@reduxjs/toolkit";
 import type { Edge } from "@xyflow/react";
 
 import type { IconName } from "metabase/ui";
@@ -11,74 +10,28 @@ import type {
   DependencyId,
   DependencyNode,
   DependencyType,
+  DependentNode,
 } from "metabase-types/api";
 
 import S from "./DependencyFlow.module.css";
-import { MAX_EXPANDED_ITEMS_PER_GROUP } from "./constants";
-import type {
-  EdgeId,
-  GraphData,
-  GroupNodeType,
-  GroupType,
-  ItemNodeType,
-  NodeId,
-  NodeType,
-} from "./types";
+import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
 function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
-}
-
-function getGroupNodeId(nodeId: NodeId, type: GroupType): NodeId {
-  return `${nodeId}-${type}`;
 }
 
 function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-function getGroupType(node: DependencyNode): GroupType {
-  return node.type === "card" ? node.data.type : node.type;
-}
-
-export function getGroupNodeIds(nodes: NodeType[]): NodeId[] {
-  return nodes
-    .filter((node) => node.type === "item-group")
-    .map((node) => node.id);
-}
-
-function getNodesById(nodes: NodeType[]) {
-  const nodeBydId = new Map<NodeId, NodeType>();
-  nodes.forEach((node) => nodeBydId.set(node.id, node));
-  return nodeBydId;
-}
-
-function getEdgesByTargetId(edges: Edge[]) {
-  const edgesByTargetId = new Map<NodeId, Edge[]>();
-
-  edges.forEach((edge) => {
-    let edgesGroup = edgesByTargetId.get(edge.target);
-    if (edgesGroup == null) {
-      edgesGroup = [];
-      edgesByTargetId.set(edge.target, edgesGroup);
-    }
-    edgesGroup.push(edge);
-  });
-
-  return edgesByTargetId;
-}
-
-function getItemNodes(
-  nodes: DependencyNode[],
-  entry: DependencyEntry,
-): ItemNodeType[] {
+function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
   return nodes.map((node) => {
     const nodeId = getItemNodeId(node.id, node.type);
 
     return {
       id: nodeId,
-      className: S.item,
-      type: "item",
+      className: S.node,
+      type: "node",
       data: node,
       position: { x: 0, y: 0 },
       selected: node.id === entry.id && node.type === entry.type,
@@ -89,7 +42,7 @@ function getItemNodes(
   });
 }
 
-function getItemEdges(edges: DependencyEdge[]): Edge[] {
+function getEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
     const sourceId = getItemNodeId(edge.from_entity_id, edge.from_entity_type);
     const targetId = getItemNodeId(edge.to_entity_id, edge.to_entity_type);
@@ -106,233 +59,14 @@ function getItemEdges(edges: DependencyEdge[]): Edge[] {
   });
 }
 
-function getItemGraph(
-  nodes: DependencyNode[],
-  edges: DependencyEdge[],
-  entry: DependencyEntry,
-): GraphData {
-  return {
-    nodes: getItemNodes(nodes, entry),
-    edges: getItemEdges(edges),
-  };
-}
-
-function addGroupEdgesByTypeAndTargetId(
-  nodeId: NodeId,
-  nodeById: Map<NodeId, NodeType>,
-  edgesByTargetId: Map<NodeId, Edge[]>,
-  edgesByTypeAndTargetId: Map<NodeId, Map<GroupType, Edge[]>>,
-) {
-  const edges = edgesByTargetId.get(nodeId);
-
-  edges?.forEach((edge) => {
-    const source = nodeById.get(edge.source);
-    const target = nodeById.get(edge.target);
-    if (source == null || target == null || source.type !== "item") {
-      return;
-    }
-
-    let edgesByType = edgesByTypeAndTargetId.get(edge.target);
-    if (edgesByType == null) {
-      edgesByType = new Map<GroupType, Edge[]>();
-      edgesByTypeAndTargetId.set(edge.target, edgesByType);
-    }
-
-    const groupType = getGroupType(source.data);
-    let edgesGroup = edgesByType.get(groupType);
-    if (edgesGroup == null) {
-      edgesGroup = [];
-      edgesByType.set(groupType, edgesGroup);
-    }
-
-    edgesGroup.push(edge);
-  });
-
-  edges?.forEach((edge) => {
-    addGroupEdgesByTypeAndTargetId(
-      edge.source,
-      nodeById,
-      edgesByTargetId,
-      edgesByTypeAndTargetId,
-    );
-  });
-
-  return edgesByTypeAndTargetId;
-}
-
-function getGroupEdgesByTypeAndTargetIdMap(
-  nodes: NodeType[],
-  edges: Edge[],
-  entry: DependencyEntry,
-) {
-  const nodeId = getItemNodeId(entry.id, entry.type);
-  const nodeById = getNodesById(nodes);
-  const edgesByTargetId = getEdgesByTargetId(edges);
-  const edgesByTypeAndTargetId = new Map<NodeId, Map<GroupType, Edge[]>>();
-
-  addGroupEdgesByTypeAndTargetId(
-    nodeId,
-    nodeById,
-    edgesByTargetId,
-    edgesByTypeAndTargetId,
-  );
-
-  return edgesByTypeAndTargetId;
-}
-
-function getGroupNodesAndEdges(
-  edgesByTypeAndTargetId: Map<NodeId, Map<GroupType, Edge[]>>,
-) {
-  const groupNodes: GroupNodeType[] = [];
-  const newEdges: Edge[] = [];
-  const deletedEdgeIds = new Set<EdgeId>();
-
-  edgesByTypeAndTargetId.forEach((edgesByType, targetId) => {
-    edgesByType.forEach((edgesGroup, type) => {
-      if (edgesGroup.length > MAX_EXPANDED_ITEMS_PER_GROUP) {
-        const groupId = getGroupNodeId(targetId, type);
-        groupNodes.push({
-          id: groupId,
-          className: S.group,
-          type: "item-group",
-          data: { type, count: edgesGroup.length },
-          position: { x: 0, y: 0 },
-        });
-        newEdges.push({
-          id: getEdgeId(groupId, targetId),
-          source: groupId,
-          target: targetId,
-        });
-        edgesGroup.forEach((edge) => {
-          newEdges.push({
-            id: getEdgeId(edge.source, groupId),
-            source: edge.source,
-            target: groupId,
-          });
-          deletedEdgeIds.add(edge.id);
-        });
-      }
-    });
-  });
-
-  return { groupNodes, newEdges, deletedEdgeIds };
-}
-
-function getGroupGraph(
-  nodes: NodeType[],
-  edges: Edge[],
-  entry: DependencyEntry,
-): GraphData {
-  const edgesByTypeAndTargetId = getGroupEdgesByTypeAndTargetIdMap(
-    nodes,
-    edges,
-    entry,
-  );
-  const { groupNodes, newEdges, deletedEdgeIds } = getGroupNodesAndEdges(
-    edgesByTypeAndTargetId,
-  );
-
-  return {
-    nodes: [...nodes, ...groupNodes],
-    edges: [
-      ...edges.filter((edge) => !deletedEdgeIds.has(edge.id)),
-      ...newEdges,
-    ],
-  };
-}
-
 export function getInitialGraph(
   { nodes, edges }: DependencyGraph,
   entry: DependencyEntry,
 ): GraphData {
-  const { nodes: itemNodes, edges: itemEdges } = getItemGraph(
-    nodes,
-    edges,
-    entry,
-  );
-  return getGroupGraph(itemNodes, itemEdges, entry);
-}
-
-const getExpandedByNodeId = createSelector(
-  (graph: GraphData) => graph.nodes,
-  (graph: GraphData) => graph.edges,
-  (nodes, edges) => {
-    const nodeById = getNodesById(nodes);
-    const edgesByTargetId = getEdgesByTargetId(edges);
-    const expandedById = new Map<NodeId, boolean>();
-
-    nodes.forEach((node) => {
-      const targetEdges = edgesByTargetId.get(node.id) ?? [];
-      const sourceNodes = targetEdges.map((edge) => nodeById.get(edge.source));
-      const isExpanded = sourceNodes.every(
-        (node) => node != null && !node.hidden,
-      );
-      expandedById.set(node.id, isExpanded);
-    });
-
-    return expandedById;
-  },
-);
-
-export function isNodeExpanded(
-  nodes: NodeType[],
-  edges: Edge[],
-  nodeId: NodeId,
-) {
-  const expandedById = getExpandedByNodeId({ nodes, edges });
-  return expandedById.get(nodeId) ?? false;
-}
-
-function addSourceNodes(
-  nodeId: NodeId,
-  edgesByTargetId: Map<NodeId, Edge[]>,
-  nodeIds: Set<NodeId>,
-) {
-  const edges = edgesByTargetId.get(nodeId);
-  edges?.forEach((edge) => {
-    nodeIds.add(edge.source);
-    addSourceNodes(edge.source, edgesByTargetId, nodeIds);
-  });
-}
-
-export function getNodesWithCollapsedNodes(
-  nodes: NodeType[],
-  edges: Edge[],
-  nodeIds: NodeId[],
-) {
-  const edgesByTargetId = getEdgesByTargetId(edges);
-  const newHiddenNodeIds = new Set<NodeId>();
-  nodeIds.forEach((nodeId) =>
-    addSourceNodes(nodeId, edgesByTargetId, newHiddenNodeIds),
-  );
-
-  return nodes.map((node) =>
-    newHiddenNodeIds.has(node.id) ? { ...node, hidden: true } : node,
-  );
-}
-
-export function getNodesWithCollapsedGroups(nodes: NodeType[], edges: Edge[]) {
-  const groupNodeIds = nodes
-    .filter((node) => node.type === "item-group")
-    .map((node) => node.id);
-
-  return getNodesWithCollapsedNodes(nodes, edges, groupNodeIds);
-}
-
-export function getNodesWithExpandedNodes(
-  nodes: NodeType[],
-  edges: Edge[],
-  nodeIds: NodeId[],
-) {
-  const edgesByTargetId = getEdgesByTargetId(edges);
-  const nodeEdges = nodeIds.flatMap(
-    (nodeId) => edgesByTargetId.get(nodeId) ?? [],
-  );
-  const newVisibleNodeIds = new Set(nodeEdges.map((edge) => edge.source));
-
-  return nodes.map((node) =>
-    newVisibleNodeIds.has(node.id) ? { ...node, hidden: false } : node,
-  );
+  return {
+    nodes: getNodes(nodes, entry),
+    edges: getEdges(edges),
+  };
 }
 
 export function getNodesWithPositions(
@@ -368,23 +102,18 @@ export function getNodesWithPositions(
   });
 }
 
-export function getNodeLabel(node: DependencyNode) {
+export function getNodeLabel(node: DependencyNode | DependentNode) {
   return node.type === "table" ? node.data.display_name : node.data.name;
 }
 
-export function getNodeIcon(node: DependencyNode): IconName {
+export function getNodeIcon(node: DependencyNode | DependentNode): IconName {
   switch (node.type) {
-    case "card":
-      switch (node.data.type) {
-        case "question":
-          return visualizations.get(node.data.display)?.iconName ?? "table2";
-        case "model":
-          return "model";
-        case "metric":
-          return "metric";
-        default:
-          return "unknown";
-      }
+    case "question":
+      return visualizations.get(node.data.display)?.iconName ?? "table2";
+    case "model":
+      return "model";
+    case "metric":
+      return "metric";
     case "table":
       return "table";
     case "snippet":

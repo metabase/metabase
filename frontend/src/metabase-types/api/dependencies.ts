@@ -5,7 +5,7 @@ import type { Transform } from "./transform";
 
 export type DependencyId = number;
 
-export type DependencyType = CardType | "transform" | "snippet";
+export type DependencyType = CardType | "table" | "transform" | "snippet";
 
 export type DependencyEntry = {
   id: DependencyId;
@@ -21,7 +21,7 @@ type BaseDependencyNode<TType, TData> = {
   usage_stats?: DependencyUsageStats;
 };
 
-type BaseDependentItem<TType, TData> = {
+type BaseDependentNode<TType, TData> = {
   id: DependencyId;
   type: TType;
   data: TData;
@@ -32,32 +32,32 @@ export type TableDependencyNodeData = Pick<
   "name" | "display_name" | "db_id" | "schema"
 >;
 
-export type TableDependentItemData = TableDependencyNodeData;
+export type TableDependentNodeData = TableDependencyNodeData;
 
 export type TransformDependencyNodeData = Pick<Transform, "name">;
 
-export type TransformDependentItemData = TransformDependencyNodeData;
+export type TransformDependentNodeData = TransformDependencyNodeData;
 
 export type CardDependencyNodeData = Pick<
   Card,
   "name" | "display" | "database_id"
 >;
 
-export type CardDependentItemData = CardDependencyNodeData &
+export type CardDependentNodeData = CardDependencyNodeData &
   Pick<Card, "collection_id" | "collection" | "database_id" | "dashboard">;
 
 export type SnippetDependencyNodeData = Pick<NativeQuerySnippet, "name">;
 
-export type SnippetDependentItemData = SnippetDependencyNodeData;
+export type SnippetDependentNodeData = SnippetDependencyNodeData;
 
 export type TableDependencyNode = BaseDependencyNode<
   "table",
   TableDependencyNodeData
 >;
 
-export type TableDependentItem = BaseDependencyNode<
+export type TableDependentNode = BaseDependencyNode<
   "table",
-  TableDependentItemData
+  TableDependentNodeData
 >;
 
 export type TransformDependencyNode = BaseDependencyNode<
@@ -65,42 +65,55 @@ export type TransformDependencyNode = BaseDependencyNode<
   TransformDependencyNodeData
 >;
 
-export type TransformDependentItem = BaseDependentItem<
+export type TransformDependentNode = BaseDependentNode<
   "transform",
-  TransformDependentItemData
+  TransformDependentNodeData
 >;
 
-export type CardDependencyNode = BaseDependencyNode<
-  "card",
+type CardDependencyNode<TType> = BaseDependencyNode<
+  TType,
   CardDependencyNodeData
 >;
 
-export type CardDependentItem = BaseDependentItem<
-  "card",
-  CardDependentItemData
->;
+type CardDependentNode<TType> = BaseDependentNode<TType, CardDependentNodeData>;
+
+export type QuestionDependencyNode = CardDependencyNode<"question">;
+
+export type QuestionDependentNode = CardDependentNode<"question">;
+
+export type ModelDependencyNode = CardDependencyNode<"model">;
+
+export type ModelDependentNode = CardDependentNode<"model">;
+
+export type MetricDependencyNode = CardDependencyNode<"metric">;
+
+export type MetricDependentNode = CardDependentNode<"metric">;
 
 export type SnippetDependencyNode = BaseDependencyNode<
   "snippet",
   SnippetDependencyNodeData
 >;
 
-export type SnippetDependentItem = BaseDependentItem<
+export type SnippetDependentNode = BaseDependentNode<
   "snippet",
-  SnippetDependentItemData
+  SnippetDependentNodeData
 >;
 
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
-  | CardDependencyNode
+  | QuestionDependencyNode
+  | ModelDependencyNode
+  | MetricDependencyNode
   | SnippetDependencyNode;
 
-export type DependentItem =
-  | TableDependentItem
-  | TransformDependentItem
-  | CardDependentItem
-  | SnippetDependentItem;
+export type DependentNode =
+  | TableDependentNode
+  | TransformDependentNode
+  | QuestionDependentNode
+  | ModelDependentNode
+  | MetricDependentNode
+  | SnippetDependentNode;
 
 export type DependencyEdge = {
   from_entity_id: DependencyId;

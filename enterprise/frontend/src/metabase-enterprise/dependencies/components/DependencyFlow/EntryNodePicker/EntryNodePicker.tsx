@@ -1,14 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import {
   DataPickerModal,
   type DataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import { Button, FixedSizeIcon } from "metabase/ui";
-import { useGetDependencyNodeQuery } from "metabase-enterprise/api";
-import type { DependencyEntry, TableId } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyGraph,
+  TableId,
+} from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "../utils";
 
@@ -23,20 +25,21 @@ const PICKER_MODELS: DataPickerValue["model"][] = [
 
 type EntryNodePickerProps = {
   entry: DependencyEntry | undefined;
-  isGraphFetching: boolean;
+  graph: DependencyGraph | undefined;
+  isFetching: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
 export function EntryNodePicker({
   entry,
-  isGraphFetching,
+  graph,
+  isFetching,
   onEntryChange,
 }: EntryNodePickerProps) {
-  const [isOpened, { open, close }] = useDisclosure();
-  const { data: node, isFetching: isNodeFetching } = useGetDependencyNodeQuery(
-    entry != null ? entry : skipToken,
+  const node = graph?.nodes.find(
+    (node) => node.id === entry?.id && node.type === entry?.type,
   );
-  const isFetching = isNodeFetching || isGraphFetching;
+  const [isOpened, { open, close }] = useDisclosure();
 
   const handleChange = (tableId: TableId) => {
     onEntryChange(getDependencyEntry(tableId));

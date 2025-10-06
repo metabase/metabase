@@ -16,20 +16,13 @@ import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import { EntryNodePicker } from "./EntryNodePicker";
-import { GroupNode } from "./GroupNode";
-import { ItemNode } from "./ItemNode";
+import { NodeContent } from "./NodeContent";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { NodeType } from "./types";
-import {
-  getGroupNodeIds,
-  getInitialGraph,
-  getNodesWithCollapsedNodes,
-  getNodesWithPositions,
-} from "./utils";
+import { getInitialGraph, getNodesWithPositions } from "./utils";
 
 const NODE_TYPES = {
-  item: ItemNode,
-  "item-group": GroupNode,
+  node: NodeContent,
 };
 
 type DependencyFlowProps = {
@@ -38,8 +31,9 @@ type DependencyFlowProps = {
 };
 
 export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
-  const { data: graph, isFetching: isGraphFetching } =
-    useGetDependencyGraphQuery(entry ? entry : skipToken);
+  const { data: graph, isFetching } = useGetDependencyGraphQuery(
+    entry ? entry : skipToken,
+  );
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -71,7 +65,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
       <Panel position="top-left">
         <EntryNodePicker
           entry={entry}
-          isGraphFetching={isGraphFetching}
+          isFetching={isFetching}
           onEntryChange={onEntryChange}
         />
       </Panel>
@@ -87,11 +81,7 @@ function NodeLayout() {
     if (isInitialized) {
       const nodes = getNodes();
       const edges = getEdges();
-      const newNodes = getNodesWithCollapsedNodes(
-        getNodesWithPositions(nodes, edges),
-        edges,
-        getGroupNodeIds(nodes),
-      );
+      const newNodes = getNodesWithPositions(nodes, edges);
       setNodes(newNodes);
       fitView({ nodes: newNodes });
     }

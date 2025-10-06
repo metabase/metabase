@@ -1,22 +1,15 @@
-.item,
-.group {
+.node {
   display: flex;
   gap: 0.5rem;
   align-items: center;
   padding: 0.5rem 1rem;
-  height: 3rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   background-color: var(--mb-color-bg-white);
 }
 
-.group {
-  color: var(--mb-color-text-secondary);
-}
-
 :global(.selected) {
-  &.item,
-  &.group {
+  &.node {
     border-color: var(--mb-color-brand);
   }
 }

@@ -30,12 +30,14 @@ export function getDataPickerValue(
         db_id: node.data.db_id,
         schema: node.data.schema ?? "",
       };
-    case "card":
+    case "question":
+    case "model":
+    case "metric":
       return {
         id: node.id,
-        model: getDataPickerModel(node.data.type),
+        model: getDataPickerModel(node.type),
         name: node.data.name,
-        database_id: node.data.database_id,
+        database_id: node.data.database_id ?? 0,
       };
   }
 }
@@ -43,6 +45,6 @@ export function getDataPickerValue(
 export function getDependencyEntry(tableId: TableId): DependencyEntry {
   const cardId = getQuestionIdFromVirtualTableId(tableId);
   return cardId != null
-    ? { id: cardId, type: "card" }
+    ? { id: cardId, type: "question" }
     : { id: Number(tableId), type: "table" };
 }
