@@ -63,7 +63,6 @@ export const useGetCurrentResource = ({
     isFetching: isCardFetching,
   } = useGetCardQuery(
     settings.questionId ? { id: settings.questionId as number } : skipToken,
-    { refetchOnMountOrArgChange: true },
   );
 
   const isLoading = isDashboardLoading || isCardLoading;
