@@ -1,4 +1,5 @@
 (ns metabase.lib.metadata
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
@@ -8,7 +9,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -117,6 +119,18 @@
   (when (lib.types.isa/foreign-key? column)
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
       (field metadata-providerable remap-field-id))))
+
+;; TODO: Better schemas for transforms coming out of the metadata provider.
+(mu/defn transform :- [:maybe [:map]]
+  "Gets a Transform by ID, or nil if it does not exist."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   transform-id          :- :int]
+  (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id))
+
+(mu/defn transforms :- [:maybe [:sequential [:map]]]
+  "Gets all Transforms"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable)))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."

@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Group, Icon } from "metabase/ui";
+import { PythonEditor } from "metabase-enterprise/transforms-python/components/PythonEditor";
 import type { Transform } from "metabase-types/api";
 
 import { QueryView } from "../../../components/QueryView";
@@ -20,9 +21,12 @@ type ManageSectionProps = {
 };
 
 export function ManageSection({ transform }: ManageSectionProps) {
+  const sectionLabel =
+    transform.source.type === "python" ? t`Python script` : t`Query`;
+
   return (
     <TitleSection
-      label={t`Query`}
+      label={sectionLabel}
       rightSection={
         <Group>
           <EditQueryButton transform={transform} />
@@ -31,7 +35,12 @@ export function ManageSection({ transform }: ManageSectionProps) {
       }
     >
       <Card p={0} shadow="none" withBorder>
-        <QueryView query={transform.source.query} />
+        {transform.source.type === "query" && (
+          <QueryView query={transform.source.query} />
+        )}
+        {transform.source.type === "python" && (
+          <PythonEditor value={transform.source.body} readOnly />
+        )}
       </Card>
     </TitleSection>
   );
@@ -43,6 +52,8 @@ type EditQueryButtonProps = {
 
 function EditQueryButton({ transform }: EditQueryButtonProps) {
   const isDisabled = isTransformRunning(transform);
+  const buttonText =
+    transform.source.type === "python" ? t`Edit script` : t`Edit query`;
 
   return (
     <Button
@@ -51,7 +62,7 @@ function EditQueryButton({ transform }: EditQueryButtonProps) {
       leftSection={<Icon name="pencil_lines" aria-hidden />}
       disabled={isDisabled}
     >
-      {t`Edit query`}
+      {buttonText}
     </Button>
   );
 }

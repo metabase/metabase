@@ -14,16 +14,12 @@
   [run-id]
   (t2/query-one
    [(str "INSERT INTO transform_run_cancelation (run_id) "
-         "SELECT ? "
-         "WHERE "
-         "      EXISTS (SELECT 1 "
-         "              FROM transform_run "
-         "              WHERE (transform_run.id = ?) "
-         "                AND transform_run.is_active)"
-         "      AND NOT EXISTS (SELECT 1 "
-         "                      FROM transform_run_cancelation "
-         "                      WHERE run_id = ?)")
-    run-id run-id run-id])
+         "SELECT transform_run.id "
+         "FROM transform_run "
+         "WHERE transform_run.id = ? "
+         "AND transform_run.is_active "
+         "AND NOT EXISTS (SELECT 1 FROM transform_run_cancelation WHERE run_id = ?)")
+    run-id run-id])
   (t2/update! :model/TransformRun
               :id run-id
               {:status "canceling"})

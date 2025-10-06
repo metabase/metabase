@@ -1,6 +1,6 @@
 (ns metabase.legacy-mbql.util
   "Utilitiy functions for working with MBQL queries."
-  (:refer-clojure :exclude [replace])
+  (:refer-clojure :exclude [replace some mapv every?])
   (:require
    #?@(:clj
        [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
+   [metabase.util.performance :refer [some mapv every?]]
    [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns
@@ -522,8 +523,10 @@
   `nil`, returns `nil`.
 
   Throws an Exception when it encounters a unresolved source query (i.e., the `:source-table \"card__id\"`
-  form), because it cannot return an accurate result for a query that has not yet been preprocessed."
-  {:arglists '([outer-query])}
+  form), because it cannot return an accurate result for a query that has not yet been preprocessed.
+
+  Prefer [[metabase.lib.core/source-table-id]] going forward."
+  {:arglists '([outer-query]), :deprecated "0.57.0"}
   [{{source-table-id :source-table, source-query :source-query} :query, query-type :type, :as query} :- [:maybe :map]]
   (cond
     ;; for native queries, there's no source table to resolve
@@ -716,6 +719,7 @@
 
      (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
      ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
+  {:deprecated "0.57.0"}
   [names :- [:sequential :string]]
   (map (unique-name-generator) names))
 
@@ -802,19 +806,13 @@
       (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))
       clause)))
 
-(defn remove-namespaced-options
-  "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys in the
-  options map. This is mainly for clause equality comparison purposes -- in current usage namespaced keys are used by
-  individual pieces of middleware or driver implementations for tracking little bits of information that should not be
-  considered relevant when comparing clauses for equality."
-  [field-or-ref]
-  (update-field-options field-or-ref (partial into {} (remove (fn [[k _]]
-                                                                (qualified-keyword? k))))))
-
 (defn referenced-field-ids
   "Find all the `:field` references with integer IDs in `coll`, which can be a full MBQL query, a snippet of MBQL, or a
   sequence of those things; return a set of Field IDs. Includes Fields referenced indirectly via `:source-field`.
-  Returns `nil` if no IDs are found."
+  Returns `nil` if no IDs are found.
+
+  DEPRECATED: Use [[metabase.lib.core/all-field-ids]] going forward."
+  {:deprecated "0.57.0"}
   [coll]
   (not-empty
    (into #{}

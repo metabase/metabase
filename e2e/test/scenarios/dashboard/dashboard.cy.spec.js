@@ -645,6 +645,33 @@ describe("scenarios > dashboard", () => {
         H.getDashboardCard(1).contains("bottom");
       },
     );
+
+    it("should not save the dashboard when the user clicks 'Discard changes'", () => {
+      // Navigate to the dashboard via client-side navigation (to trigger the client-side "Discard changes" prompt)
+      cy.visit("/");
+      cy.findByTestId("main-navbar-root").findByText("Our analytics").click();
+      cy.findByTestId("collection-table")
+        .findByText(originalDashboardName)
+        .click();
+
+      cy.log("Make a change to the dashboard");
+      H.editDashboard();
+      cy.findByTestId("dashboard-empty-state")
+        .findByText("Add a chart")
+        .click();
+      H.sidebar().findByText("Orders, Count").click();
+      H.getDashboardCards().should("have.length", 1);
+
+      cy.log("Navigate back and discard changes");
+      cy.go("back");
+      H.modal().button("Discard changes").click();
+      cy.findByTestId("collection-table")
+        .findByText(originalDashboardName)
+        .click();
+
+      cy.log("Verify changes were not saved");
+      cy.findByTestId("dashboard-empty-state").should("exist");
+    });
   });
 
   describe("iframe cards", () => {

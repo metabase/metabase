@@ -52,6 +52,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-dependencies?
   enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?
@@ -73,6 +74,7 @@
   enable-sso-ldap?
   enable-sso-saml?
   enable-transforms?
+  enable-python-transforms?
   enable-upload-management?
   enable-whitelabeling?
   has-attached-dwh?

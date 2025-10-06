@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.metadata
+  (:refer-clojure :exclude [every?])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
@@ -10,7 +11,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
@@ -162,11 +164,22 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+;; these can both be empty strings like `""` because SQL Server (and possibly some other DBs) allow empty strings as
+;; column identifiers
+
 (mr/def ::source-column-alias
-  ::lib.schema.common/non-blank-string)
+  "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The
+  left-hand side (LHS) of
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::desired-column-alias
-  [:string {:min 1}])
+  "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N
+  becomes the source column alias in stage N+1. The right-hand side (RHS) in
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::original-name
   "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
@@ -564,7 +577,7 @@
   separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
   probably just use `:metadata/card` here."
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
-   :metadata/segment])
+   :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::lib-or-legacy-column
   "Schema for the maps in card `:result-metadata` and similar. These can be either

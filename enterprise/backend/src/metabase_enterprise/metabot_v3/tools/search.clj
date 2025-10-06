@@ -61,7 +61,7 @@
 (defn- search-result-id
   "Generate a unique identifier for a search result based on its id and model."
   [search-result]
-  (juxt :id :model) search-result)
+  ((juxt :id :model) search-result))
 
 (defn- reciprocal-rank-fusion
   "Combine multiple ranked search result lists using Reciprocal Rank Fusion (RRF).
@@ -107,6 +107,7 @@
         use-verified-content? (if metabot-id
                                 (:use_verified_content metabot)
                                 false)
+        limit (or limit 50)
         search-fn (fn [query]
                     (let [search-context (search/search-context
                                           (merge
@@ -122,7 +123,7 @@
                                             :current-user-perms @api/*current-user-permissions-set*
                                             :context :metabot
                                             :archived false
-                                            :limit (or limit 50)
+                                            :limit limit
                                             :offset 0}
                                            (when use-verified-content?
                                              {:verified true})))
@@ -131,5 +132,5 @@
         ;; Create futures for parallel execution
         futures (mapv #(future (search-fn %)) all-queries)
         result-lists (mapv deref futures)
-        fused-results (reciprocal-rank-fusion result-lists)]
+        fused-results (take limit (reciprocal-rank-fusion result-lists))]
     (map transform-search-result fused-results)))

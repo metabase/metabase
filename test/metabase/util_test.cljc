@@ -133,7 +133,9 @@
       (doseq [[s expected] s->expected]
         (testing (list 'u/slugify s)
           (is (= expected
-                 (u/slugify s))))))))
+                 (u/slugify s)))))))
+  (testing "non-ASCII characters are not truncated in the middle"
+    (is (= "%E5%8B%87" (u/slugify "勇士" {:max-length 10})))))
 
 (deftest ^:parallel slugify-unicode-test
   (doseq [[group s->expected]
@@ -534,6 +536,20 @@
     #{1}    true
     [1 2]   true
     [1 2 1] false))
+
+(deftest ^:parallel traverse-test
+  (testing "u/traverse tracks deps correctly"
+    (let [graph {:a [:b :d]
+                 :b [:c :d]
+                 :c nil
+                 :d [:e]
+                 :e nil}]
+      (is (= {:a nil
+              :b #{:a}
+              :c #{:b}
+              :d #{:a :b}
+              :e #{:d}}
+             (u/traverse [:a] #(zipmap (get graph %) (repeat #{%}))))))))
 
 (deftest ^:parallel round-to-decimals-test
   (are [decimal-place expected] (= expected

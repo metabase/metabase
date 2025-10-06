@@ -714,7 +714,7 @@
       [:model/Card          {card-id :id} {:name "Native card"
                                            :database_id   (mt/id)
                                            :dataset_query (mt/native-query
-                                                            {:query "SELECT category FROM products LIMIT 10;"})
+                                                           {:query "SELECT category FROM products LIMIT 10;"})
                                            :type          :model}
        :model/Dashboard     {dash-id :id} {:parameters [{:name      "Text"
                                                          :slug      "text"
@@ -1679,6 +1679,16 @@
                                                  :text         "keep me!"}}
                        {:action_id 123}]]
         (is (= (butlast dashcards)
+               (api.dashboard/update-cards-for-copy dashcards
+                                                    {1 {:id 1}}
+                                                    nil
+                                                    nil)))))
+    (testing "Copies iframe cards"
+      (let [dashcards [{:card_id 1 :card {:id 1}}
+                       {:visualization_settings
+                        {:virtual_card {:display "iframe"}
+                         :iframe "<iframe src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" />"}}]]
+        (is (= dashcards
                (api.dashboard/update-cards-for-copy dashcards
                                                     {1 {:id 1}}
                                                     nil
@@ -3158,7 +3168,7 @@
       (mt/with-temp [:model/Card {model-id :id :as native-card} {:database_id   (mt/id)
                                                                  :name          "Native Query"
                                                                  :dataset_query (mt/native-query
-                                                                                  {:query "SELECT category FROM products LIMIT 10;"})
+                                                                                 {:query "SELECT category FROM products LIMIT 10;"})
                                                                  :type          :model}]
         (let [metadata (-> (:dataset_query native-card)
                            qp/process-query :data :results_metadata :columns)]
@@ -3975,10 +3985,10 @@
   {:type :query
    :parameters [{:id field-name :slug field-name :target ["variable" ["template-tag" field-name]] :type :text}]
    :dataset_query (mt/native-query
-                    {:query (format "insert into types (%s) values ({{%s}})"
-                                    (u/upper-case-en field-name)
-                                    field-name)
-                     :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
+                   {:query (format "insert into types (%s) values ({{%s}})"
+                                   (u/upper-case-en field-name)
+                                   field-name)
+                    :template-tags {field-name {:id field-name :name field-name :type :text :display_name field-name}}})})
 
 (deftest dashcard-action-execution-type-test
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :mysql)
@@ -4735,9 +4745,8 @@
                                     {:id (mt/id :products)
                                      :fields sequential?}
                                     {:id (mt/id :venues)}])
-                          (sort-by :id
-                                   [{:id (str "card__" card-id-2)
-                                     :fields sequential?}]))
+                          [{:id (str "card__" card-id-2)
+                            :fields sequential?}])
           :cards [{:id link-card}]
           :databases [{:id (mt/id) :engine string?}]
           :dashboards [{:id link-dash}]}
@@ -4748,6 +4757,7 @@
     (mt/with-temp
       [:model/Card          {card-id-1 :id}    {:dataset_query (mt/mbql-query products)}
        :model/Card          {card-id-2 :id}    {:dataset_query {:type     :query
+                                                                :database (mt/id)
                                                                 :query    {:source-table (str "card__" card-id-1)}}}
        :model/Dashboard     {dashboard-id :id} {}
        :model/DashboardCard _                  {:card_id      card-id-2
@@ -4921,8 +4931,8 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
                      :model/Card {card-id :id} {:dataset_query (mt/native-query
-                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
-                                                                  :template-tags {}})}
+                                                                {:query "SELECT COUNT(*) FROM \"ORDERS\""
+                                                                 :template-tags {}})}
                      :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                              :dashboard_id dashboard-id}]
         (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]

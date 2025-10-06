@@ -50,27 +50,38 @@ H.describeWithSnowplowEE("document comments", () => {
       testCommentingOnNode(documentId, BLOCKQUOTE_ID, getBlockquote);
       testCommentingOnNode(documentId, ORDERED_LIST_ID, getOrderedList);
       testCommentingOnNode(documentId, CODE_BLOCK_ID, getCodeBlock);
-      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed);
+      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed, {
+        isCardEmbedNode: true,
+      });
     });
 
     function testCommentingOnNode<E extends HTMLElement>(
       targetId: DocumentId,
       childTargetId: string,
       getNodeElement: () => Cypress.Chainable<JQuery<E>>,
+      { isCardEmbedNode = false } = {},
     ) {
       cy.get("body").click(0, 0);
-      Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
-        "not.be.visible",
-      );
 
-      getNodeElement()
-        .closest("[data-node-view-wrapper]")
-        .should("have.attr", "aria-expanded", "false");
-      getNodeElement().scrollIntoView();
-      getNodeElement().realHover();
-      Comments.getDocumentNodeButton({ targetId, childTargetId })
-        .should("be.visible")
-        .click();
+      if (isCardEmbedNode) {
+        getNodeElement().scrollIntoView();
+        getNodeElement().icon("ellipsis").click();
+
+        H.menu().findByText("Comment").click();
+      } else {
+        Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
+          "not.be.visible",
+        );
+
+        getNodeElement()
+          .closest("[data-node-view-wrapper]")
+          .should("have.attr", "aria-expanded", "false");
+        getNodeElement().scrollIntoView();
+        getNodeElement().realHover();
+        Comments.getDocumentNodeButton({ targetId, childTargetId })
+          .should("be.visible")
+          .click();
+      }
 
       Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
@@ -95,6 +106,7 @@ H.describeWithSnowplowEE("document comments", () => {
         targetId,
         childTargetId,
         hasComments: true,
+        isCardEmbedNode,
       })
         .should("be.visible")
         .and("contain.text", "1");
@@ -112,6 +124,7 @@ H.describeWithSnowplowEE("document comments", () => {
         targetId,
         childTargetId,
         hasComments: true,
+        isCardEmbedNode,
       }).should("be.visible");
     }
   });
@@ -557,7 +570,7 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
-  it("prevents editing the document when comments are open", () => {
+  it("allows editing the document when comments are open", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -567,17 +580,17 @@ H.describeWithSnowplowEE("document comments", () => {
         H.documentContent().click();
 
         cy.realType("test");
-        cy.findByRole("button", { name: "Save" }).should("not.exist");
+        cy.findByRole("button", { name: "Save" }).should("exist");
 
         H.documentContent()
-          .get('[contenteditable="false"]')
+          .get('[contenteditable="true"]')
           .should("be.visible");
         H.documentFormattingMenu().should("not.exist");
       });
     });
   });
 
-  it("prevents opening comments when document has changes", () => {
+  it("allows opening comments when document has changes", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -601,15 +614,11 @@ H.describeWithSnowplowEE("document comments", () => {
 
       getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
 
-      cy.findByLabelText("Comments")
-        .should("be.disabled")
-        .click({ force: true });
-      Comments.getSidebar().should("not.exist");
+      cy.findByLabelText("Comments").should("not.be.disabled").click();
+      Comments.getSidebar().should("be.visible");
 
-      cy.findByLabelText("Show all comments")
-        .should("be.disabled")
-        .click({ force: true });
-      Comments.getSidebar().should("not.exist");
+      cy.findByLabelText("Show all comments").should("not.be.disabled").click();
+      Comments.getSidebar().should("be.visible");
     });
   });
 
@@ -1801,12 +1810,21 @@ function createLoremIpsumDocument() {
           ],
         },
         {
-          type: "cardEmbed",
+          type: "resizeNode",
           attrs: {
-            id: ORDERS_QUESTION_ID,
-            name: null,
-            _id: CARD_EMBED_ID,
+            height: 350,
+            minHeight: 280,
           },
+          content: [
+            {
+              type: "cardEmbed",
+              attrs: {
+                id: ORDERS_QUESTION_ID,
+                name: null,
+                _id: CARD_EMBED_ID,
+              },
+            },
+          ],
         },
         {
           type: "paragraph",
