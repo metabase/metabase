@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
+import { Box} from "metabase/ui";
 
 import Revision from "./Revision";
 
@@ -35,23 +35,12 @@ export default class RevisionHistory extends Component {
       >
         {() => (
           <>
-            <Breadcrumbs
-              className={CS.py4}
-              crumbs={[
-                [
-                  t`Segments`,
-                  `/admin/datamodel/segments?table=${segment.table_id}`,
-                ],
-                [t`Segment History`],
-              ]}
-            />
-            <div
-              className={cx(CS.wrapper, CS.py4)}
-              style={{ maxWidth: 950 }}
+            <Box
+              py="md"
               data-testid="segment-revisions"
             >
               <h2 className={CS.mb4}>
-                {t`Revision History for`} &quot;{segment.name}&quot;
+                {t`Revision history for`} &quot;{segment.name}&quot;
               </h2>
               <ol>
                 {revisions.map((revision) => (
@@ -65,7 +54,7 @@ export default class RevisionHistory extends Component {
                   />
                 ))}
               </ol>
-            </div>
+            </Box>
           </>
         )}
       </LoadingAndErrorWrapper>

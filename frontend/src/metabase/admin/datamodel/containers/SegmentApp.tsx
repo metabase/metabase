@@ -1,6 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import type { Route } from "react-router";
-import { push } from "react-router-redux";
 
 import {
   skipToken,
@@ -10,11 +9,8 @@ import {
   useUpdateSegmentMutation,
 } from "metabase/api";
 import { BenchLayout } from "metabase/bench/components/BenchLayout";
-import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
-import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { useDispatch } from "metabase/lib/redux";
 import { Box, Card, Center } from "metabase/ui";
 import type {
   CreateSegmentRequest,
@@ -25,11 +21,9 @@ import { SegmentForm } from "../components/SegmentForm";
 
 import SegmentListApp from "./SegmentListApp";
 
-const SEGMENT_LIST_ROUTE = "/bench/segment";
-
 export const UpdateSegmentForm = ({
   params,
-  route,
+  route
 }: {
   params: { id: string };
   route: Route;
@@ -43,15 +37,10 @@ export const UpdateSegmentForm = ({
     segment ? { id: segment?.table_id } : skipToken,
   );
   const [updateSegment] = useUpdateSegmentMutation();
-  const dispatch = useDispatch();
 
-  const [isDirty, setIsDirty] = useState(false);
-
-  const handleSubmit = async (values: Partial<UpdateSegmentRequest>) => {
-    setIsDirty(false);
-    await updateSegment(values as UpdateSegmentRequest).unwrap();
-    dispatch(push(SEGMENT_LIST_ROUTE));
-  };
+  const handleSubmit = useCallback(async (values: Partial<UpdateSegmentRequest>) => {
+    return updateSegment(values as UpdateSegmentRequest).unwrap();
+  }, [updateSegment]);
 
   const isLoading = isSegmentLoading || isTableLoading;
 
@@ -60,49 +49,25 @@ export const UpdateSegmentForm = ({
   }
 
   return (
-    <>
-      <SegmentForm
-        segment={segment}
-        onSubmit={handleSubmit}
-        setIsDirty={setIsDirty}
-      />
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
-    </>
+    <SegmentForm
+      segment={segment}
+      onSubmit={handleSubmit}
+      route={route}
+    />
   );
 };
 
 export const CreateSegmentForm = ({ route }: { route: Route }) => {
-  const [isDirty, setIsDirty] = useState(false);
   const [createSegment] = useCreateSegmentMutation();
-  const dispatch = useDispatch();
 
-  /**
-   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
-   * prop has a chance to re-compute on re-render
-   */
-  const [, scheduleCallback] = useCallbackEffect();
-
-  const handleSubmit = useCallback(
-    (segment: Partial<CreateSegmentRequest>) => {
-      setIsDirty(false);
-
-      scheduleCallback(async () => {
-        try {
-          await createSegment(segment as CreateSegmentRequest).unwrap();
-          dispatch(push(SEGMENT_LIST_ROUTE));
-        } catch (error) {
-          setIsDirty(isDirty);
-        }
-      });
+  const handleSubmit = useCallback(async (segment: Partial<CreateSegmentRequest>) => {
+      return createSegment(segment as CreateSegmentRequest).unwrap();
     },
-    [isDirty, scheduleCallback, createSegment, dispatch],
+    [createSegment],
   );
 
   return (
-    <>
-      <SegmentForm onSubmit={handleSubmit} setIsDirty={setIsDirty} />
-      <LeaveRouteConfirmModal isEnabled={isDirty} route={route} />
-    </>
+    <SegmentForm onSubmit={handleSubmit} route={route} />
   );
 };
 
