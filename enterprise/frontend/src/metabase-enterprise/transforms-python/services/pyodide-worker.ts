@@ -1,5 +1,23 @@
 /// <reference lib="webworker" />
 
+// Pyodide does not come with type definitions, so we have to add them
+// here as best we can.
+type Pyodide = {
+  setStdout(options: { batched: (out: string) => void }): void;
+  setStderr(options: { batched: (out: string) => void }): void;
+  runPythonAsync(code: string): Promise<any>;
+  globals: {
+    get<T>(name: string): T;
+  };
+  FS: {
+    writeFile(
+      name: string,
+      content: string,
+      options: { encoding: string },
+    ): void;
+  };
+};
+
 const PACKAGES = ["pandas", "numpy"];
 
 self.addEventListener("unhandledrejection", (event) => {
@@ -34,7 +52,7 @@ async function init() {
 
   // @ts-expect-error - loadPyodide is available after importScripts
   // eslint-disable-next-line no-undef
-  const pyodide = await loadPyodide({
+  const pyodide: Pyodide = await loadPyodide({
     indexURL: "/app/assets/pyodide/",
     packages: PACKAGES,
   });
@@ -60,17 +78,21 @@ def __format_exception():
   return pyodide;
 }
 
-async function execute(pyodide, code, libraries = {}) {
-  const stdout = [];
+async function execute(
+  pyodide: Pyodide,
+  code: string,
+  libraries: Record<string, string> = {},
+) {
+  const stdout: string[] = [];
   pyodide.setStdout({
-    batched(out) {
+    batched(out: string) {
       stdout.push(out);
     },
   });
 
-  const stderr = [];
+  const stderr: string[] = [];
   pyodide.setStderr({
-    batched(out) {
+    batched(out: string) {
       stderr.push(out);
     },
   });
@@ -87,7 +109,7 @@ async function execute(pyodide, code, libraries = {}) {
       stderr: stderr.join("\n"),
     };
   } catch (_err) {
-    const error = pyodide.globals.get("__format_exception")();
+    const error = pyodide.globals.get<() => string>("__format_exception")();
     return {
       error: serialize(error),
       stdout: stdout.join("\n"),
@@ -97,8 +119,13 @@ async function execute(pyodide, code, libraries = {}) {
 }
 
 // Deep serialization function to handle nested complex objects
-function serialize(obj) {
-  if (obj.toJs) {
+function serialize(obj: unknown) {
+  if (
+    typeof obj === "object" &&
+    obj !== null &&
+    "toJs" in obj &&
+    typeof obj.toJs === "function"
+  ) {
     return JSON.parse(JSON.stringify(obj.toJs({ create_pyproxies: false })));
   }
   return obj;
