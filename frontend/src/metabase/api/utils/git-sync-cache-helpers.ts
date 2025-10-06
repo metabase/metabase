@@ -5,13 +5,9 @@ import { Api } from "../api";
 
 function shouldInvalidateForEntity(
   oldEntity: Card | Dashboard | Document | undefined,
-  newEntity: Card | Dashboard | Document | undefined,
+  newEntity: Card | Dashboard | Document,
 ): boolean {
-  if (!oldEntity || !newEntity) {
-    return false;
-  }
-
-  const oldSynced = oldEntity.is_remote_synced ?? false;
+  const oldSynced = oldEntity?.is_remote_synced ?? false;
   const newSynced = newEntity.is_remote_synced ?? false;
 
   return oldSynced !== newSynced || newSynced;
@@ -21,11 +17,11 @@ function shouldInvalidateForCollection(
   oldCollection: Collection | undefined,
   newCollection: Collection | undefined,
 ): boolean {
-  if (!oldCollection || !newCollection) {
+  if (!newCollection) {
     return false;
   }
 
-  const oldType = oldCollection.type;
+  const oldType = oldCollection?.type;
   const newType = newCollection.type;
 
   const typeChanged = oldType !== newType;
