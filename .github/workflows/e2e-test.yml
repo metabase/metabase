@@ -187,7 +187,7 @@ jobs:
 
       - name: Extract chunk-specific changed timings
         id: extract-timings
-        if: inputs.split_index >= 0
+        if: inputs.split_index >= 0 && github.ref == 'refs/heads/master'
         continue-on-error: true
         uses: actions/github-script@v7
         with:
