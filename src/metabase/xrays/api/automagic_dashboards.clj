@@ -58,7 +58,7 @@
   "form-encoded base-64-encoded JSON"
   [:fn
    {:api/regex #"(?:[A-Za-z0-9]|(?:%2B)|(?:%2F))+(?:%3D){0,2}"
-    :error/fn  (constantly (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
+    :error/fn  (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
    decode-base64-json])
 
 (api.macros/defendpoint :get "/database/:id/candidates"
@@ -144,8 +144,7 @@
 
 (def ^:private Entity
   (into [:enum {:api/regex (u.regex/re-or (map name entities))
-                :error/fn  (fn [_ _]
-                             (i18n/tru "Invalid entity type"))}]
+                :error/fn  (fn [_ _] (i18n/tru "Invalid entity type"))}]
         entities))
 
 (mr/def ::entity-id-or-query
