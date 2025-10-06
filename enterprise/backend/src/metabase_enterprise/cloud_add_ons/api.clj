@@ -20,19 +20,24 @@
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map
-                              [:product-type [:enum "metabase-ai"]]]
+                              [:product-type [:enum "metabase-ai" "python-execution"]]]
    _query-params
    {:keys [terms_of_service]} :- [:map
-                                  [:terms_of_service :boolean]]]
+                                  [:terms_of_service {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
   (cond
-    (not terms_of_service)
+    (and (= product-type "metabase-ai")
+         (not terms_of_service))
     {:status 400 :body {:errors {:terms_of_service "Need to accept terms of service."}}}
 
     (not (premium-features/is-hosted?))
     {:status 400 :body "Can only purchase add-ons for Metabase Cloud instances."}
 
-    (not (premium-features/offer-metabase-ai?))
+    (or
+     (and (= product-type "metabase-ai")
+          (not (premium-features/offer-metabase-ai?)))
+     (and (= product-type "python-execution")
+          (not (premium-features/enable-python-transforms?))))
     {:status 400 :body "Can only purchase add-ons for eligible subscriptions."}
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))
