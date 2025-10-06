@@ -32,7 +32,15 @@ import {
 import { MetricEditorBody } from "metabase/querying/metrics/components/MetricEditor/MetricEditorBody";
 import { MetricEditorFooter } from "metabase/querying/metrics/components/MetricEditor/MetricEditorFooter";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Center, FixedSizeIcon, Flex, Loader, Text } from "metabase/ui";
+import {
+  Box,
+  Center,
+  FixedSizeIcon,
+  Flex,
+  Loader,
+  NavLink,
+  Text,
+} from "metabase/ui";
 // import * as Lib from "metabase-lib";
 import type { RawSeries, RecentCollectionItem } from "metabase-types/api";
 
@@ -40,7 +48,7 @@ import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 
-function MetricsList() {
+function MetricsList({ activeId }: { activeId: number }) {
   const { isLoading, data } = useFetchMetrics();
   const metrics = data?.data;
 
@@ -55,7 +63,11 @@ function MetricsList() {
           </Center>
         ) : (
           metrics.map((metric) => (
-            <MetricListItem key={metric.id} metric={metric} />
+            <MetricListItem
+              key={metric.id}
+              metric={metric}
+              active={metric.id === activeId}
+            />
           ))
         )
       }
@@ -63,27 +75,46 @@ function MetricsList() {
   );
 }
 
-function MetricListItem({ metric }: { metric: RecentCollectionItem }) {
+function MetricListItem({
+  metric,
+  active,
+}: {
+  metric: RecentCollectionItem;
+  active?: boolean;
+}) {
   const icon = getIcon({ type: "dataset", ...metric });
   return (
     <Box mb="sm">
-      <Link to={`/bench/metric/${metric.id}`}>
-        <Flex gap="sm" align="center">
-          <FixedSizeIcon {...icon} size={16} c="brand" />
-          <Text fw="bold">{metric.name}</Text>
-        </Flex>
-        <Flex gap="sm" c="text-light" ml="lg">
-          <FixedSizeIcon name="folder" />
-          <EllipsifiedCollectionPath collection={metric.collection} />
-        </Flex>
-      </Link>
+      <NavLink
+        component={Link}
+        to={`/bench/metric/${metric.id}`}
+        active={active}
+        label={
+          <>
+            <Flex gap="sm" align="center">
+              <FixedSizeIcon {...icon} size={16} c="brand" />
+              <Text fw="bold">{metric.name}</Text>
+            </Flex>
+            <Flex gap="sm" c="text-light" ml="lg">
+              <FixedSizeIcon name="folder" />
+              <EllipsifiedCollectionPath collection={metric.collection} />
+            </Flex>
+          </>
+        }
+      />
     </Box>
   );
 }
 
-export const MetricsLayout = ({ children }: { children: React.ReactNode }) => {
+export const MetricsLayout = ({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: { slug: string };
+}) => {
   return (
-    <BenchLayout nav={<MetricsList />} name="model">
+    <BenchLayout nav={<MetricsList activeId={+params.slug} />} name="model">
       {children}
     </BenchLayout>
   );

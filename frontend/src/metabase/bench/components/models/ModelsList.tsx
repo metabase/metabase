@@ -5,14 +5,22 @@ import { Link } from "react-router";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { Box, Center, FixedSizeIcon, Flex, Loader, Text } from "metabase/ui";
+import {
+  Box,
+  Center,
+  FixedSizeIcon,
+  Flex,
+  Loader,
+  NavLink,
+  Text,
+} from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { MetricEditor } from "../metrics/MetricsList";
 
-function ModelsList() {
+function ModelsList({ activeId }: { activeId: number }) {
   const { isLoading, data } = useFetchModels();
   const models = data?.data;
 
@@ -26,34 +34,61 @@ function ModelsList() {
             <Loader />
           </Center>
         ) : (
-          models.map((model) => <ModelListItem key={model.id} model={model} />)
+          models.map((model) => (
+            <ModelListItem
+              key={model.id}
+              model={model}
+              active={model.id === activeId}
+            />
+          ))
         )
       }
     />
   );
 }
 
-function ModelListItem({ model }: { model: RecentCollectionItem }) {
+function ModelListItem({
+  model,
+  active,
+}: {
+  model: RecentCollectionItem;
+  active?: boolean;
+}) {
   const icon = getIcon({ type: "dataset", ...model });
   return (
     <Box mb="sm">
-      <Link to={`/bench/model/${model.id}`}>
-        <Flex gap="sm" align="center">
-          <FixedSizeIcon {...icon} size={16} c="brand" />
-          <Text fw="bold">{model.name}</Text>
-        </Flex>
-        <Flex gap="sm" c="text-light" ml="lg">
-          <FixedSizeIcon name="folder" />
-          <EllipsifiedCollectionPath collection={model.collection} />
-        </Flex>
-      </Link>
+      <NavLink
+        component={Link}
+        to={`/bench/model/${model.id}`}
+        active={active}
+        label={
+          <>
+            <Flex gap="sm" align="center">
+              <FixedSizeIcon {...icon} size={16} c="brand" />
+              <Text fw="bold" c={active ? "brand" : undefined}>
+                {model.name}
+              </Text>
+            </Flex>
+            <Flex gap="sm" c="text-light" ml="lg">
+              <FixedSizeIcon name="folder" />
+              <EllipsifiedCollectionPath collection={model.collection} />
+            </Flex>
+          </>
+        }
+      />
     </Box>
   );
 }
 
-export const ModelsLayout = ({ children }: { children: React.ReactNode }) => {
+export const ModelsLayout = ({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: { slug: string };
+}) => {
   return (
-    <BenchLayout nav={<ModelsList />} name="model">
+    <BenchLayout nav={<ModelsList activeId={+params.slug} />} name="model">
       {children}
     </BenchLayout>
   );
