@@ -13,7 +13,7 @@ export const VariationDetails = ({ children, color }: Props) => {
   }
 
   return (
-    <Title c={color} order={5}>
+    <Title c={color} order={5} lh="inherit">
       {children}
     </Title>
   );
