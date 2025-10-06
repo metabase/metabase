@@ -564,6 +564,10 @@ const MetabaseManageContentElement = createCustomElement("metabase-browser", [
   "read-only",
 ]);
 
+const MetabaseMetabotElement = createCustomElement("metabase-metabot", [
+  "layout",
+]);
+
 // Expose the old API that's still used in the tests, we'll probably remove this api unless customers prefer it
 if (typeof window !== "undefined") {
   (window as any)["metabase.embed"] = {
@@ -575,4 +579,5 @@ export {
   MetabaseDashboardElement,
   MetabaseQuestionElement,
   MetabaseManageContentElement,
+  MetabaseMetabotElement,
 };

@@ -1,8 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { space } from "metabase/styled-components/theme";
-
 const TITLE_LINE_HEIGHT_REM = 1.4;
 
 export const ScalarRoot = styled.div`
@@ -43,6 +41,6 @@ export const ScalarTitleContainer = styled.div<ScalarTitleContainerProps>`
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 0 ${space(1)};
+  padding: 0 var(--mantine-spacing-sm);
   width: 100%;
 `;
