@@ -3,21 +3,12 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import {
-  Card,
-  Checkbox,
-  Divider,
-  Group,
-  HoverCard,
-  Icon,
-  Radio,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
@@ -42,48 +33,54 @@ const BehaviorSection = () => {
           onChange={(e) => updateSettings({ isSaveEnabled: e.target.checked })}
         />
       ))
-      .with({ questionId: P.nonNullable, template: P.nullish }, (settings) => (
-        <Stack gap="md">
-          <Checkbox
-            label={t`Allow people to drill through on data points`}
-            checked={settings.drills}
-            onChange={(e) => updateSettings({ drills: e.target.checked })}
-          />
+      .with(
+        { componentName: "metabase-question", questionId: P.nonNullable },
+        (settings) => (
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
 
-          <Checkbox
-            label={t`Allow downloads`}
-            checked={settings.withDownloads}
-            onChange={(e) =>
-              updateSettings({ withDownloads: e.target.checked })
-            }
-          />
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
 
-          <Checkbox
-            label={t`Allow people to save new questions`}
-            checked={settings.isSaveEnabled}
-            onChange={(e) =>
-              updateSettings({ isSaveEnabled: e.target.checked })
-            }
-          />
-        </Stack>
-      ))
-      .with({ dashboardId: P.nonNullable }, (settings) => (
-        <Stack gap="md">
-          <Checkbox
-            label={t`Allow people to drill through on data points`}
-            checked={settings.drills}
-            onChange={(e) => updateSettings({ drills: e.target.checked })}
-          />
+            <Checkbox
+              label={t`Allow people to save new questions`}
+              checked={settings.isSaveEnabled}
+              onChange={(e) =>
+                updateSettings({ isSaveEnabled: e.target.checked })
+              }
+            />
+          </Stack>
+        ),
+      )
+      .with(
+        { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
+        (settings) => (
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
 
-          <Checkbox
-            label={t`Allow downloads`}
-            checked={settings.withDownloads}
-            onChange={(e) =>
-              updateSettings({ withDownloads: e.target.checked })
-            }
-          />
-        </Stack>
-      ))
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
+          </Stack>
+        ),
+      )
       .with({ componentName: "metabase-browser" }, (settings) => (
         <Checkbox
           label={t`Allow editing dashboards and questions`}
@@ -149,11 +146,10 @@ const AppearanceSection = () => {
   );
 
   const appearanceSection = match(settings)
+    .with({ template: "exploration" }, () => null)
+    .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
     .with(
-      P.union(
-        { componentName: "metabase-question", template: P.nullish },
-        { componentName: "metabase-dashboard" },
-      ),
+      { componentName: P.union("metabase-question", "metabase-dashboard") },
       (settings) => (
         <Checkbox
           label={t`Show ${experience} title`}
@@ -162,7 +158,6 @@ const AppearanceSection = () => {
         />
       ),
     )
-    .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
     .otherwise(() => null);
 
   return (
@@ -176,48 +171,5 @@ const AppearanceSection = () => {
       {appearanceSection && <Divider mt="lg" mb="md" />}
       {appearanceSection}
     </Card>
-  );
-};
-
-const MetabotLayoutSetting = () => {
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
-
-  if (settings.componentName !== "metabase-metabot") {
-    return null;
-  }
-
-  return (
-    <Stack gap="xs">
-      <Group align="center" gap="xs" mb="sm">
-        <Text fw="bold">{t`Layout`}</Text>
-
-        <HoverCard position="right-start">
-          <HoverCard.Target>
-            <Icon name="info" size={14} c="text-medium" cursor="pointer" />
-          </HoverCard.Target>
-          <HoverCard.Dropdown>
-            <Text size="sm" p="md" style={{ width: 300 }}>
-              {t`Auto layout adapts to screen sizes. Stacked and sidebar layout uses the same layout on all screen sizes.`}
-            </Text>
-          </HoverCard.Dropdown>
-        </HoverCard>
-      </Group>
-
-      <Radio.Group
-        value={settings.layout ?? "auto"}
-        onChange={(layout) =>
-          updateSettings({
-            layout:
-              layout === "auto" ? undefined : (layout as "stacked" | "sidebar"),
-          })
-        }
-      >
-        <Group gap="md">
-          <Radio value="auto" label={t`Auto`} />
-          <Radio value="stacked" label={t`Stacked`} />
-          <Radio value="sidebar" label={t`Sidebar`} />
-        </Group>
-      </Radio.Group>
-    </Stack>
   );
 };
