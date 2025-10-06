@@ -27,23 +27,25 @@ export function PythonEditorResults({
   const [tab, setTab] = useState<ResultsTab>("results");
   return (
     <DebouncedFrame className={S.visualization}>
-      <ExecutionResultHeader
-        executionResult={executionResult}
-        tab={tab}
-        onTabChange={setTab}
-      />
-      {!executionResult && <EmptyState />}
-      {executionResult &&
-        tab === "results" &&
-        (executionResult?.error ? (
-          <ErrorState error={executionResult.error} />
-        ) : (
-          <ExecutionOutputTable output={executionResult?.output} />
-        ))}
-      {executionResult && tab === "output" && (
-        <ExecutionOutputLogs executionResult={executionResult} />
-      )}
-      {isRunning && <LoadingState />}
+      <Box data-testid="python-results">
+        <ExecutionResultHeader
+          executionResult={executionResult}
+          tab={tab}
+          onTabChange={setTab}
+        />
+        {!executionResult && <EmptyState />}
+        {executionResult &&
+          tab === "results" &&
+          (executionResult?.error ? (
+            <ErrorState error={executionResult.error} />
+          ) : (
+            <ExecutionOutputTable output={executionResult?.output} />
+          ))}
+        {executionResult && tab === "output" && (
+          <ExecutionOutputLogs executionResult={executionResult} />
+        )}
+        {isRunning && <LoadingState />}
+      </Box>
     </DebouncedFrame>
   );
 }
