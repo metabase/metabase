@@ -2,6 +2,7 @@ import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
+  MetabotEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
@@ -37,7 +38,8 @@ export type SdkIframeEmbedSetupTemplateSettings =
   | SdkIframeDashboardEmbedSettings
   | SdkIframeQuestionEmbedSettings
   | ExplorationEmbedOptions
-  | BrowserEmbedOptions;
+  | BrowserEmbedOptions
+  | MetabotEmbedOptions;
 
 /**
  * Settings used by the embed setup route.
