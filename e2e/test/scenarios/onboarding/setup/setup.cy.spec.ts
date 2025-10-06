@@ -589,6 +589,8 @@ describe("scenarios > setup", () => {
 
     H.main().findByText("Hide these").scrollIntoView().realHover();
 
+    // Needed to split this up, as Cypress was erroring around elements changing during chaining
+    H.popover().should("exist");
     H.popover().findByText("Embedding done, all good").click();
 
     H.main()
