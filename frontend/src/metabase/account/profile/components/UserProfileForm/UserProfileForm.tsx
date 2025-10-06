@@ -116,18 +116,20 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
 };
 
 const ColorSchemeSwitcher = () => {
+  const toggleId = "color-switcher-toggle";
   return (
     <Box mb="lg">
       {/* this font doesn't match because the old form component is at 12.3px 🙄 */}
       <Text mt="xs" fw="bold" c="text-medium">
         {t`Theme`}
       </Text>
-      <label style={{ cursor: "pointer" }}>
-        <Flex align="center" gap="sm" pt="sm">
-          <ColorSchemeToggle />
-          <Text>{t`Toggle between light, dark, and system preference`}</Text>
-        </Flex>
-      </label>
+
+      <Flex align="center" gap="sm" pt="sm">
+        <ColorSchemeToggle id={toggleId} />
+        <label style={{ cursor: "pointer" }} htmlFor={toggleId}>
+          <Text>{t`Toggle between light and dark color schemes`}</Text>
+        </label>
+      </Flex>
     </Box>
   );
 };

@@ -245,7 +245,37 @@ describe("user > settings", () => {
       cy.findByLabelText("Email").should("not.exist");
     });
   });
+
+  describe("dark mode", () => {
+    it("should toggle through light and dark mode when clicking on the label or icon", () => {
+      cy.visit("/account/profile");
+
+      cy.findByRole("img", { name: /sun/ }).click();
+      assertDarkMode();
+
+      cy.findByRole("img", { name: /moon/ }).click();
+      assertLightMode();
+
+      H.main()
+        .findByText(/Toggle between light and dark/)
+        .click();
+      assertDarkMode();
+
+      cy.realPress(["Meta", "Shift", "L"]);
+      assertLightMode();
+    });
+  });
 });
+
+const assertLightMode = () =>
+  cy
+    .get("body")
+    .should("have.css", "--mb-color-background", "hsla(0, 0%, 100%, 1.00)");
+
+const assertDarkMode = () =>
+  cy
+    .get("body")
+    .should("have.css", "--mb-color-background", "hsla(204, 66%, 8%, 1)");
 
 /**
  * Stub the current user authentication method
