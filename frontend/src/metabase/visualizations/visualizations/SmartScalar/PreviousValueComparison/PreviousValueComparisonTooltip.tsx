@@ -4,7 +4,7 @@ import { Flex, useMantineTheme } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
-import { TOOLTIP_ICON_SIZE } from "../constants";
+import { TEXT_SPACING, TOOLTIP_ICON_SIZE } from "../constants";
 
 import { DetailCandidate } from "./DetailCandidate";
 import { VariationDetails } from "./VariationDetails";
@@ -31,7 +31,7 @@ export function PreviousValueComparisonTooltip({
   ];
 
   return (
-    <Flex align="center">
+    <Flex gap={TEXT_SPACING} align="center">
       <VariationPercent
         color={lighten(theme.fn.themeColor("text-medium"), 0.3)}
         comparison={comparison}

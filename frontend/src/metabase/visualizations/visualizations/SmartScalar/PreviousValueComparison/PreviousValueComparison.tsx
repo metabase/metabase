@@ -18,12 +18,17 @@ import {
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
-import { ICON_MARGIN_RIGHT, ICON_SIZE, SPACING } from "../constants";
+import {
+  ELLIPSIS_BADGE_WIDTH,
+  ICON_MARGIN_RIGHT,
+  ICON_SIZE,
+  SPACING,
+  TEXT_SPACING,
+} from "../constants";
 import { formatChangeAutoPrecision, getChangeWidth } from "../utils";
 
 import { DetailCandidate } from "./DetailCandidate";
 import { PreviousValueComparisonTooltip } from "./PreviousValueComparisonTooltip";
-import { Separator } from "./Separator";
 import { VariationDetails } from "./VariationDetails";
 import { VariationPercent } from "./VariationPercent";
 
@@ -44,8 +49,8 @@ export function PreviousValueComparison({
 }: PreviousValueComparisonProps) {
   const theme = useMantineTheme();
   const fontSize = "0.875rem";
-
   const { changeType, percentChange, comparisonValue, display } = comparison;
+  const showsOtherValuesInTooltip = tooltipComparisons.length > 1;
 
   const fittedChangeDisplay =
     changeType === CHANGE_TYPE_OPTIONS.CHANGED.CHANGE_TYPE
@@ -59,13 +64,10 @@ export function PreviousValueComparison({
   const availableComparisonWidth =
     width -
     4 * SPACING -
+    TEXT_SPACING -
     ICON_SIZE -
+    (showsOtherValuesInTooltip ? ELLIPSIS_BADGE_WIDTH + TEXT_SPACING : 0) -
     ICON_MARGIN_RIGHT -
-    measureTextWidth(innerText(<Separator color="irrelevant" />), {
-      size: fontSize,
-      family: fontFamily,
-      weight: 700,
-    }) -
     measureTextWidth(fittedChangeDisplay, {
       size: fontSize,
       family: fontFamily,
@@ -124,6 +126,7 @@ export function PreviousValueComparison({
       }
     >
       <Flex
+        gap={TEXT_SPACING}
         wrap="wrap"
         align="center"
         justify="center"
@@ -142,6 +145,7 @@ export function PreviousValueComparison({
         >
           {fittedChangeDisplay}
         </VariationPercent>
+
         <VariationDetails
           color="var(--mb-color-text-secondary)"
           separatorColor={lighten(theme.fn.themeColor("text-light"), 0.25)}
@@ -149,8 +153,8 @@ export function PreviousValueComparison({
           {fittedDetailDisplay}
         </VariationDetails>
 
-        {tooltipComparisons.length > 1 && (
-          <Badge ml="xs" px="xs" size="xs" variant="light">
+        {showsOtherValuesInTooltip && (
+          <Badge px="xs" size="xs" variant="light" w={ELLIPSIS_BADGE_WIDTH}>
             <Group align="center" h="100%">
               <Icon name="ellipsis" size={12} />
             </Group>

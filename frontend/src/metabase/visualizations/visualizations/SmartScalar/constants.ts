@@ -1,3 +1,7 @@
+export const TEXT_SPACING = 4;
+
+export const ELLIPSIS_BADGE_WIDTH = 22;
+
 export const SPACING = 8;
 
 export const ICON_SIZE = 13;
