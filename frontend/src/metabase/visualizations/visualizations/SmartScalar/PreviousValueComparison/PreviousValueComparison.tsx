@@ -93,14 +93,10 @@ export function PreviousValueComparison({
 
   return (
     <Tooltip
-      // this tooltip's label does not support text wrapping (it could though)
-      // so we're just letting it take as much space as it needs to prevent overflow
-      maw="100%"
       disabled={
         fullDetailDisplay === fittedDetailDisplay &&
         tooltipComparisons.length === 0
       }
-      position="bottom"
       label={
         <Stack gap="xs" fz={14}>
           {tooltipComparisons.map((comparison, index) => {
@@ -114,6 +110,7 @@ export function PreviousValueComparison({
           })}
         </Stack>
       }
+      position="bottom"
     >
       <Flex
         gap={TEXT_SPACING}

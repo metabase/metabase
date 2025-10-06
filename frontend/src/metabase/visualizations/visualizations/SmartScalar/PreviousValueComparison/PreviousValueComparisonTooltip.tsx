@@ -31,7 +31,7 @@ export function PreviousValueComparisonTooltip({
   ];
 
   return (
-    <Flex gap={TEXT_SPACING} align="center">
+    <Flex gap={TEXT_SPACING} align="flex-start">
       <VariationPercent
         color={lighten(theme.fn.themeColor("text-medium"), 0.3)}
         comparison={comparison}
