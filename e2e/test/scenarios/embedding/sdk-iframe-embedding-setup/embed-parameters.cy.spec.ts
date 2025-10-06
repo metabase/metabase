@@ -114,7 +114,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.log("both default values should be in the code snippet");
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "initial-parameters=");
         codeBlock().should("contain", '"id":[123]');
         codeBlock().should("contain", '"product_id":[456]');
@@ -157,7 +157,7 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.log("code snippet should contain the hidden parameters");
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "hidden-parameters=");
         codeBlock().should("contain", '"id"');
         codeBlock().should("contain", '"product_id"');
@@ -224,7 +224,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       getEmbedSidebar().within(() => {
-        cy.findByText("Get Code").click();
+        cy.findByText("Get code").click();
         codeBlock().should("contain", "initial-sql-parameters=");
         codeBlock().should("not.contain", "hidden-parameters="); // not supported for questions yet
         codeBlock().should("contain", '"id":"123"');

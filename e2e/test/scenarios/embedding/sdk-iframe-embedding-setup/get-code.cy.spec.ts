@@ -99,7 +99,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Embed Code").should("be.visible");
+      cy.findByText("Embed code").should("be.visible");
       codeBlock().should("be.visible");
       codeBlock().should("contain", "defineMetabaseConfig");
       codeBlock().should("contain", "metabase-dashboard");
