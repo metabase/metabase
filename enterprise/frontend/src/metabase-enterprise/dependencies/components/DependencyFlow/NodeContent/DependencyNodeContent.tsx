@@ -7,10 +7,10 @@ import {
 import { memo, useContext } from "react";
 import { t } from "ttag";
 
-import { Box, FixedSizeIcon, Group, Stack, UnstyledButton } from "metabase/ui";
+import { Box, Chip, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { DependencyFlowContext } from "../DependencyFlowContext";
+import { DependencyContext } from "../DependencyContext";
 import type { NodeType } from "../types";
 import { getNodeIcon, getNodeLabel } from "../utils";
 
@@ -59,22 +59,19 @@ type DependentGroupButtonProps = {
 
 function DependentGroupButton({ node, group }: DependentGroupButtonProps) {
   const { selectedGroupNode, selectedGroupType, handleSelectDependencyGroup } =
-    useContext(DependencyFlowContext);
+    useContext(DependencyContext);
   const isSelected =
     node.id === selectedGroupNode?.id &&
     node.type === selectedGroupNode?.type &&
     group.type === selectedGroupType;
 
   return (
-    <UnstyledButton
+    <Chip
       key={group.type}
-      p="0.125rem 0.25rem"
-      c={isSelected ? "white" : "text-primary"}
-      bg={isSelected ? "brand" : "bg-medium"}
-      bdrs="xs"
+      checked={isSelected}
       onClick={() => handleSelectDependencyGroup(node, group.type)}
     >
       {getDependentGroupLabel(group)}
-    </UnstyledButton>
+    </Chip>
   );
 }

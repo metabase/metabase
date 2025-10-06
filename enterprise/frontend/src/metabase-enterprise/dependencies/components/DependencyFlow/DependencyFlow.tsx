@@ -25,11 +25,11 @@ import type {
 } from "metabase-types/api";
 
 import {
-  DependencyFlowContext,
-  type DependencyFlowContextType,
-} from "./DependencyFlowContext";
-import { DependencyNodeContent } from "./DependencyNodeContent";
-import { DependencyNodePicker } from "./DependencyNodePicker";
+  DependencyContext,
+  type DependencyContextType,
+} from "./DependencyContext";
+import { DependencyPicker } from "./DependencyPicker";
+import { DependencyNodeContent } from "./NodeContent";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
@@ -101,7 +101,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
   );
 
   const contextValue = useMemo(
-    (): DependencyFlowContextType => ({
+    (): DependencyContextType => ({
       selectedGroupNode,
       selectedGroupType,
       handleSelectDependencyGroup,
@@ -110,7 +110,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
   );
 
   return (
-    <DependencyFlowContext.Provider value={contextValue}>
+    <DependencyContext.Provider value={contextValue}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -125,7 +125,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
         <Controls />
         <NodeLayout />
         <Panel position="top-left">
-          <DependencyNodePicker
+          <DependencyPicker
             graph={graph}
             entry={entry}
             isFetching={isFetching}
@@ -133,7 +133,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
           />
         </Panel>
       </ReactFlow>
-    </DependencyFlowContext.Provider>
+    </DependencyContext.Provider>
   );
 }
 

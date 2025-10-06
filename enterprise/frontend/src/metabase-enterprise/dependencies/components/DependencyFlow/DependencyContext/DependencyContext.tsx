@@ -2,7 +2,7 @@ import { createContext } from "react";
 
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-export type DependencyFlowContextType = {
+export type DependencyContextType = {
   selectedGroupNode?: DependencyNode;
   selectedGroupType?: DependencyGroupType;
   handleSelectDependencyGroup: (
@@ -11,6 +11,6 @@ export type DependencyFlowContextType = {
   ) => void;
 };
 
-export const DependencyFlowContext = createContext<DependencyFlowContextType>({
+export const DependencyContext = createContext<DependencyContextType>({
   handleSelectDependencyGroup: () => undefined,
 });
