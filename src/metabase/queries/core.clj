@@ -43,9 +43,6 @@
   save-query-and-update-average-execution-time!])
 
 #_{:clj-kondo/ignore [:missing-docstring]}
-(p/import-def metabase.queries.models.card/lib-query card->lib-query)
-
-#_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)
 
 #_{:clj-kondo/ignore [:missing-docstring]}

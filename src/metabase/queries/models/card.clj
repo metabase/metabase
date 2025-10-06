@@ -141,19 +141,6 @@
   [card]
   (= (keyword (:type card)) :model))
 
-(defn lib-query
-  "Given a card with at least its `:dataset_query` field, this returns the `metabase.lib` form of the query.
-
-  A `metadata-provider` may be passed as an optional first parameter, if the caller has one to hand."
-  ([{:keys [database_id dataset_query] :as card}]
-   (when dataset_query
-     (let [db-id (or database_id (:database dataset_query))
-           mp    (lib-be/application-database-metadata-provider db-id)]
-       (lib-query mp card))))
-  ([metadata-providerable {:keys [dataset_query] :as _card}]
-   (when dataset_query
-     (lib/query metadata-providerable dataset_query))))
-
 ;;; -------------------------------------------------- Hydration --------------------------------------------------
 
 (methodical/defmethod t2/batched-hydrate [:model/Card :dashboard_count]

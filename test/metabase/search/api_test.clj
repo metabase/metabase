@@ -1379,6 +1379,8 @@
        :model/Card {mbql-model :id}            {:name search-term :type :model}
        :model/Card {native-model-in-name :id}  {:name search-term :type :model}
        :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
+      (is (= :native
+             (t2/select-one-fn :query_type :model/Card :id native-card-in-query)))
       (mt/with-actions
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
@@ -1401,7 +1403,6 @@
                    ["dataset" mbql-model]
                    ["dataset" native-model-in-name]
                    ["action" http-action]
-
                    ["card" native-card-in-query]
                    ["dataset" native-model-in-query]
                    ["action" query-action]}

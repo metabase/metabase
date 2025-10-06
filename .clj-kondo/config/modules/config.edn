@@ -1077,6 +1077,8 @@
            collections
            config
            events
+           lib
+           lib-be
            models
            permissions
            premium-features
