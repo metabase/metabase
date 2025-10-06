@@ -39,12 +39,9 @@ export function PreviousValueComparisonTooltip({
       >
         {display.percentChange}
       </VariationPercent>
-      <VariationDetails
-        color="var(--mb-color-tooltip-text-secondary)"
-        separatorColor={lighten(theme.fn.themeColor("text-medium"), 0.15)}
-      >
+      <VariationDetails>
         <DetailCandidate
-          color="var(--mb-color-tooltip-text-secondary)"
+          color="white"
           comparison={comparison}
           valueFormatted={valueCandidates[0]}
         />

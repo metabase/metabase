@@ -4,8 +4,7 @@ import { Title } from "metabase/ui";
 
 interface Props {
   children: ReactNode;
-  color: string;
-  separatorColor: string;
+  color?: string;
 }
 
 export const VariationDetails = ({ children, color }: Props) => {

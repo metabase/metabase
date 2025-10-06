@@ -2,19 +2,10 @@ import cx from "classnames";
 import innerText from "react-innertext";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import {
-  Badge,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Tooltip,
-  useMantineTheme,
-} from "metabase/ui";
+import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -47,7 +38,6 @@ export function PreviousValueComparison({
   tooltipComparisons,
   width,
 }: PreviousValueComparisonProps) {
-  const theme = useMantineTheme();
   const fontSize = "0.875rem";
   const { changeType, percentChange, comparisonValue, display } = comparison;
   const showsOtherValuesInTooltip = tooltipComparisons.length > 1;
@@ -146,10 +136,7 @@ export function PreviousValueComparison({
           {fittedChangeDisplay}
         </VariationPercent>
 
-        <VariationDetails
-          color="var(--mb-color-text-secondary)"
-          separatorColor={lighten(theme.fn.themeColor("text-light"), 0.25)}
-        >
+        <VariationDetails color="var(--mb-color-text-secondary)">
           {fittedDetailDisplay}
         </VariationDetails>
 
