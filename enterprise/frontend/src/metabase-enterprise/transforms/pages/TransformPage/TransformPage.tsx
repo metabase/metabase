@@ -37,7 +37,7 @@ type TransformPageProps = {
   params: TransformPageParams;
 };
 
-export function TransformPage({ params }: TransformPageProps) {
+export function TransformPage({ params, isNew }: TransformPageProps) {
   const { transformId } = getParsedParams(params);
   const [isPolling, setIsPolling] = useState(false);
   const {
@@ -79,40 +79,56 @@ export function TransformPage({ params }: TransformPageProps) {
         </Panel>
         <ResizeHandle direction="vertical" />
         <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-          <Card withBorder mx="sm" h="100%">
-            <Tabs defaultValue="run" variant="pills">
-              <Tabs.List>
-                <Tabs.Tab
-                  name={t`Preview`}
-                  value="preview"
-                >{t`Preview`}</Tabs.Tab>
-                <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
-                <Tabs.Tab name={t`Target`} value="target">{t`Target`}</Tabs.Tab>
-                <Tabs.Tab
-                  name={t`Dependencies`}
-                  value="dependencies"
-                >{t`Dependencies`}</Tabs.Tab>
-              </Tabs.List>
-              <Box p="md">
-                <Tabs.Panel value="preview">
-                  <QueryPreview />
-                </Tabs.Panel>
-                <Tabs.Panel value="run">
-                  <RunSection transform={transform} />
-                </Tabs.Panel>
-                <Tabs.Panel value="target">
-                  <TargetSection transform={transform} />
-                </Tabs.Panel>
-                <Tabs.Panel value="dependencies">
-                  <DependenciesSection transform={transform} />
-                </Tabs.Panel>
-              </Box>
-            </Tabs>
-          </Card>
+          <TransformDrawer transform={transform} />
         </Panel>
       </PanelGroup>
     </QueryEditorProvider>
   );
+}
+
+export function TransformDrawer({ transform }: { transform: Transform }) {
+  const isNew = !transform.id;
+
+  return (
+    <Card withBorder mx="sm" h="100%">
+      <Tabs defaultValue="preview" variant="pills">
+        <Tabs.List>
+          <Tabs.Tab
+            name={t`Preview`}
+            value="preview"
+          >{t`Preview`}</Tabs.Tab>
+          {!isNew && (
+            <>
+              <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
+              <Tabs.Tab name={t`Target`} value="target">{t`Target`}</Tabs.Tab>
+              <Tabs.Tab
+                name={t`Dependencies`}
+                value="dependencies"
+              >{t`Dependencies`}</Tabs.Tab>
+            </>
+          )}
+        </Tabs.List>
+        <Box p="md">
+          <Tabs.Panel value="preview">
+            <QueryPreview />
+          </Tabs.Panel>
+          {!isNew && (
+            <>
+              <Tabs.Panel value="run">
+                <RunSection transform={transform} />
+              </Tabs.Panel>
+              <Tabs.Panel value="target">
+                <TargetSection transform={transform} />
+              </Tabs.Panel>
+              <Tabs.Panel value="dependencies">
+                <DependenciesSection transform={transform} />
+              </Tabs.Panel>
+            </>
+          )}
+        </Box>
+      </Tabs>
+    </Card>
+  )
 }
 
 function getParsedParams({

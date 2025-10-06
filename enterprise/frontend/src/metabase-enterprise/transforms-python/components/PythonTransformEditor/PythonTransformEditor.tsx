@@ -139,7 +139,6 @@ export function PythonTransformEditor({
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />
-      <Stack h="100%" w="100%">
         <PythonDataPicker
           database={saveSource["source-database"]}
           tables={saveSource["source-tables"]}
@@ -147,6 +146,7 @@ export function PythonTransformEditor({
         />
         <PythonEditorBody
           isRunning={isRunning}
+          isRunnable={isRunnable}
           isDirty={isDirty}
           onRun={run}
           onCancel={cancel}
@@ -168,7 +168,6 @@ export function PythonTransformEditor({
             onRejectProposed={onRejectProposed}
           />
         )}
-      </Stack>
     </Stack>
   );
 }
