@@ -167,7 +167,7 @@ export function NewTransformPageInner({
         route={route}
         onConfirm={clearProposed}
       />
-    </>
+    </QueryEditorProvider>
   );
 }
 
