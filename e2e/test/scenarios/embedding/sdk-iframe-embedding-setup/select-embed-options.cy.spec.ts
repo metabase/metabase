@@ -62,7 +62,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -98,7 +98,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -134,7 +134,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.exist");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -177,7 +177,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'drills="false"');
   });
 
@@ -206,7 +206,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -258,7 +258,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.exist");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'with-title="false"');
 
     cy.log("go back to embed options step");
@@ -319,7 +319,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       cy.log("snippet should be updated");
-      getEmbedSidebar().findByText("Get Code").click();
+      getEmbedSidebar().findByText("Get code").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
@@ -358,7 +358,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -404,7 +404,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Reset colors").should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -432,7 +432,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("snippet should not contain theme colors");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("not.contain", '"theme": {');
 
     H.expectUnstructuredSnowplowEvent({
@@ -471,7 +471,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("have.css", "background-color", "rgb(18, 18, 18)");
 
     cy.log("check that derived colors are applied to snippet");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
