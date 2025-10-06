@@ -116,7 +116,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByLabelText("Existing Metabase session").should("be.checked");
       codeBlock().should("contain", '"useExistingUserSession": true');
 
-      cy.findByText(/Copy Code/).click();
+      cy.findByText(/Copy code/).click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
@@ -155,7 +155,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.findByLabelText("Single sign-on (SSO)").click();
       codeBlock().should("not.contain", "useExistingUserSession");
 
-      cy.findByText(/Copy Code/).click();
+      cy.findByText(/Copy code/).click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
