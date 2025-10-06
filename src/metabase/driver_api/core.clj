@@ -116,6 +116,7 @@
  lib.util/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
+ lib/order-by-clause
  lib/query-from-legacy-inner-query
  lib/raw-native-query
  limit/absolute-max-results

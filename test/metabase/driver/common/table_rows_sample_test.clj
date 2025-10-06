@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -21,6 +22,19 @@
 (defmethod driver/database-supports? [:redshift ::field-count-tests]
   [_driver _feature _database]
   false)
+
+(deftest ^:parallel table-rows-sample-query-options-test
+  (let [mp        meta/metadata-provider
+        table     (meta/table-metadata :orders)
+        fields    (driver-api/fields mp (:id table))
+        id-column (meta/field-metadata :orders :id)
+        opts      {:limit    100
+                   :order-by [(driver-api/order-by-clause id-column :desc)]}]
+    (is (=? {:stages [{:source-table (meta/id :orders)
+                       :fields       sequential?
+                       :order-by     [[:desc {} [:field {} (meta/id :orders :id)]]]
+                       :limit        100}]}
+           (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
