@@ -550,7 +550,12 @@ export class UnconnectedDataSelector extends Component {
       this.props.selectedDatabaseId == null
     ) {
       const databases = this.getDatabases();
-      if (databases && databases.length === 1) {
+      if (
+        databases &&
+        databases.length === 1 &&
+        (!this.props.databaseIsDisabled ||
+          !this.props.databaseIsDisabled(databases[0]))
+      ) {
         this.onChangeDatabase(databases[0]);
       }
     }
