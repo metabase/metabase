@@ -16,7 +16,7 @@
       qp.preprocess/preprocess
       (as-> $query (if (lib/native-only-query? $query)
                      $query
-                     (lib/native-query query (:query (qp.compile/compile $query)))))))
+                     (lib/native-query $query (:query (qp.compile/compile $query)))))))
 
 (mu/defn validate-native-query
   "Compiles a (native) query and validates that the fields and tables it refers to really exist.

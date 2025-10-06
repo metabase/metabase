@@ -262,7 +262,6 @@
   [cols]
   (map #(update-keys % u/->kebab-case-en) cols))
 
-;; FIXME
 (mu/defn- source-cols
   [card
    source :- [:enum ::breakouts ::aggregations]]
