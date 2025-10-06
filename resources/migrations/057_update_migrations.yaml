@@ -1913,11 +1913,12 @@ databaseChangeLog:
         - addColumn:
             tableName: report_card
             columns:
-              - name: legacy_query
-                type: text
-                remarks: >-
-                  Legacy MBQL version of the query for existing Cards created before v57, to support rollbacks to v56.
-                  This column should be removed in v58.
+              - column:
+                  name: legacy_query
+                  type: text
+                  remarks: >-
+                    Legacy MBQL version of the query for existing Cards created before v57, to support rollbacks to
+                    v56. This column should be removed in v58.
 
   - changeSet:
       id: v57.2025-10-06T18:26:01
@@ -1943,11 +1944,12 @@ databaseChangeLog:
         - addColumn:
             tableName: query_action
             columns:
-              - name: legacy_query
-                type: text
-                remarks: >-
-                  Legacy MBQL version of the query for existing Query Actions created before v57, to support rollbacks
-                  to v56. This column should be removed in v58.
+              - column:
+                  name: legacy_query
+                  type: text
+                  remarks: >-
+                    Legacy MBQL version of the query for existing Query Actions created before v57, to support
+                    rollbacks to v56. This column should be removed in v58.
 
   - changeSet:
       id: v57.2025-10-06T18:26:03
@@ -1973,11 +1975,12 @@ databaseChangeLog:
         - addColumn:
             tableName: transform
             columns:
-              - name: legacy_source
-                type: text
-                remarks: >-
-                  Legacy MBQL version of the query for existing Query Actions created before v57, to support rollbacks
-                  to v56. This column should be removed in v58.
+              - column:
+                  name: legacy_source
+                  type: text
+                  remarks: >-
+                    Legacy MBQL version of the query for existing Query Actions created before v57, to support
+                    rollbacks to v56. This column should be removed in v58.
 
   - changeSet:
       id: v57.2025-10-06T18:26:05
