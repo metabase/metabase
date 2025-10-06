@@ -1163,3 +1163,26 @@
                     (request (assoc arguments
                                     :with_fields false
                                     :with_metrics false))))))))))
+
+(deftest get-table-details-related-tables-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [conversation-id (str (random-uuid))
+          ai-token (ai-session-token)
+          request (fn [arguments]
+                    (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                          {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                          {:arguments arguments
+                                           :conversation_id conversation-id}))]
+      (testing "Normal call includes related_tables by default"
+        (let [response (request {:table_id (mt/id :orders)})
+              related-tables (get-in response [:structured_output :related_tables])]
+          (is (= [(mt/id :products) (mt/id :people)]
+                 (map :id related-tables))
+              "Should include tables related to Orders by foreign keys")
+          (is (every? #(not (contains? % :related_tables)) related-tables)
+              "Related tables should not have nested related_tables"))
+
+        (testing "Without related tables"
+          (is (nil? (-> (request {:table_id (mt/id :orders)
+                                  :with_related_tables false})
+                        (get-in [:structured_output :related_tables])))))))))
