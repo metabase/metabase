@@ -9,12 +9,27 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import { useEffect, useLayoutEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyGraph,
+  DependencyGroupType,
+  DependencyNode,
+} from "metabase-types/api";
 
-import { NodeContent } from "./NodeContent";
-import { NodePicker } from "./NodePicker";
+import {
+  DependencyFlowContext,
+  type DependencyFlowContextType,
+} from "./DependencyFlowContext";
+import { DependencyNodeContent } from "./DependencyNodeContent";
+import { DependencyNodePicker } from "./DependencyNodePicker";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
@@ -50,7 +65,7 @@ const GRAPH: DependencyGraph = {
 };
 
 const NODE_TYPES = {
-  node: NodeContent,
+  node: DependencyNodeContent,
 };
 
 type DependencyFlowProps = {
@@ -62,6 +77,9 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
   const { data: graph, isFetching } = { data: GRAPH, isFetching: false };
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [selectedGroupNode, setSelectedGroupNode] = useState<DependencyNode>();
+  const [selectedGroupType, setSelectedGroupType] =
+    useState<DependencyGroupType>();
 
   useEffect(() => {
     if (graph != null && entry != null) {
@@ -74,29 +92,48 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
     }
   }, [graph, entry, setNodes, setEdges]);
 
+  const handleSelectDependencyGroup = useCallback(
+    (node: DependencyNode, type: DependencyGroupType) => {
+      setSelectedGroupNode(node);
+      setSelectedGroupType(type);
+    },
+    [],
+  );
+
+  const contextValue = useMemo(
+    (): DependencyFlowContextType => ({
+      selectedGroupNode,
+      selectedGroupType,
+      handleSelectDependencyGroup,
+    }),
+    [selectedGroupNode, selectedGroupType, handleSelectDependencyGroup],
+  );
+
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={NODE_TYPES}
-      fitView
-      minZoom={MIN_ZOOM}
-      maxZoom={MAX_ZOOM}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-    >
-      <Background />
-      <Controls />
-      <NodeLayout />
-      <Panel position="top-left">
-        <NodePicker
-          graph={graph}
-          entry={entry}
-          isFetching={isFetching}
-          onEntryChange={onEntryChange}
-        />
-      </Panel>
-    </ReactFlow>
+    <DependencyFlowContext.Provider value={contextValue}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={NODE_TYPES}
+        fitView
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+      >
+        <Background />
+        <Controls />
+        <NodeLayout />
+        <Panel position="top-left">
+          <DependencyNodePicker
+            graph={graph}
+            entry={entry}
+            isFetching={isFetching}
+            onEntryChange={onEntryChange}
+          />
+        </Panel>
+      </ReactFlow>
+    </DependencyFlowContext.Provider>
   );
 }
 

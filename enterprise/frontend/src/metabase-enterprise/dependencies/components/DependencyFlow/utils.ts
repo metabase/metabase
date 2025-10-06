@@ -33,8 +33,6 @@ function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
       data: node,
       position: { x: 0, y: 0 },
       selected: node.id === entry.id && node.type === entry.type,
-      selectable: false,
-      connectable: false,
       draggable: false,
       deletable: false,
     };
