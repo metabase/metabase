@@ -95,7 +95,9 @@ function MetricListItem({
           <>
             <Flex gap="sm" align="center">
               <FixedSizeIcon {...icon} size={16} c="brand" />
-              <Text fw="bold">{metric.name}</Text>
+              <Text fw="bold" c={active ? "brand" : undefined}>
+                {metric.name}
+              </Text>
             </Flex>
             <Flex gap="sm" c="text-light" ml="lg">
               <FixedSizeIcon name="folder" />
