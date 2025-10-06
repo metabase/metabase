@@ -174,7 +174,7 @@
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.2" :extension "pom"} ; JavaScript engine
   org.graalvm.polyglot/polyglot             {:mvn/version "24.2.2"}             ; GraalVM platform, required by JS engine
   org.jsoup/jsoup                           {:mvn/version "1.21.1"}             ; required by hickory
-  org.liquibase/liquibase-core              {:mvn/version "4.33.0"              ; migration management (Java lib)
+  org.liquibase/liquibase-core              {:mvn/version "5.0.1"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
