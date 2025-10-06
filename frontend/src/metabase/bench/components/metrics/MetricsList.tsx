@@ -6,13 +6,18 @@ import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
+import { noop } from "underscore";
 
+import { searchApi } from "metabase/api";
+import { listTag } from "metabase/api/tags";
 import { getIcon } from "metabase/browse/models/utils";
 import ActionButton from "metabase/common/components/ActionButton/ActionButton";
+import Button from "metabase/common/components/Button";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { newQuestion } from "metabase/lib/urls/questions";
 import {
   type QueryParams,
   cancelQuery,
@@ -21,6 +26,7 @@ import {
   runQuestionQuery,
   updateQuestion,
 } from "metabase/query_builder/actions";
+import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import {
   getFirstQueryResult,
@@ -30,8 +36,7 @@ import {
   getRawSeries,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { MetricEditorBody } from "metabase/querying/metrics/components/MetricEditor/MetricEditorBody";
-import { MetricEditorFooter } from "metabase/querying/metrics/components/MetricEditor/MetricEditorFooter";
+import { MetricEditor as QBMetricEditor } from "metabase/querying/metrics/components/MetricEditor/MetricEditor";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -42,22 +47,28 @@ import {
   NavLink,
   Text,
 } from "metabase/ui";
-// import * as Lib from "metabase-lib";
 import type { RawSeries, RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 
-function MetricsList({ activeId }: { activeId: number }) {
+function MetricsList({ activeId }: { activeId: number | null }) {
   const dispatch = useDispatch();
   const { isLoading, data } = useFetchMetrics();
   const metrics = data?.data;
 
+  const hash = newQuestion({
+    mode: "query",
+    cardType: "metric",
+  })
+    .split("#")
+    .pop();
+
   return (
     <ItemsListSection
       sectionTitle="Metrics"
-      onAddNewItem={() => dispatch(push("/bench/metric/new"))}
+      onAddNewItem={() => dispatch(push(`/bench/metric/new#${hash}`))}
       listItems={
         !metrics || isLoading ? (
           <Center>
@@ -142,6 +153,7 @@ export const MetricEditor = ({
     }
   }, [location, params, previousLocation, dispatch]);
 
+  const handleCreate = useCreateQuestion();
   const handleSave = useSaveQuestion();
 
   const question = useSelector(getQuestion);
@@ -158,52 +170,63 @@ export const MetricEditor = ({
     return null;
   }
 
-  // const isRunnable = Lib.canRun(question.query(), "metric");
-  const isRunnable = true; // TODO: Do we need to check for this?
-
   return (
-    <>
-      <BenchPaneHeader
-        title={question.displayName()}
-        actions={
-          <ActionButton
-            key="save"
-            actionFn={() => handleSave(question)}
-            disabled={!isRunnable || !isDirty}
-            normalText={t`Save`}
-            activeText={t`Saving…`}
-            failedText={t`Save failed`}
-            successText={t`Saved`}
-            className={cx(
-              ButtonsS.Button,
-              ButtonsS.ButtonPrimary,
-              ButtonsS.ButtonSmall,
-            )}
-          />
-        }
-      />
-      <MetricEditorBody
-        question={question}
-        reportTimezone={reportTimezone}
-        isDirty={isDirty}
-        isResultDirty={isResultDirty}
-        isRunnable={isRunnable}
-        onChange={(q) => dispatch(updateQuestion(q))}
-        onRunQuery={() => dispatch(runQuestionQuery())}
-        excludeSidebar
-        padding="md"
-        height={window.innerHeight / 2}
-      />
-      <MetricEditorFooter
-        question={question}
-        result={result}
-        rawSeries={rawSeries}
-        isRunnable={isRunnable}
-        isRunning={isRunning}
-        isResultDirty={isResultDirty}
-        onRunQuery={() => dispatch(runQuestionQuery())}
-        onCancelQuery={() => dispatch(cancelQuery())}
-      />
-    </>
+    <QBMetricEditor
+      question={question}
+      result={result}
+      rawSeries={rawSeries}
+      reportTimezone={reportTimezone}
+      isDirty={isDirty}
+      isResultDirty={isResultDirty}
+      isRunning={isRunning}
+      onChange={(q) => dispatch(updateQuestion(q))}
+      onCreate={async (q) => {
+        const result = await handleCreate(q);
+        dispatch(push(`/bench/metric/${result.id()}`));
+
+        // TODO: Find a way to remove the setTimeout. Search reindexing appears to be async so refetching immediately doesn't return a list containing the newly added item.
+        setTimeout(() => {
+          dispatch(searchApi.util.invalidateTags([listTag("card")]));
+        }, 100);
+
+        return result;
+      }}
+      onSave={handleSave}
+      onCancel={noop}
+      onRunQuery={() => dispatch(runQuestionQuery())}
+      onCancelQuery={() => dispatch(cancelQuery())}
+      Header={(headerProps) => (
+        <BenchPaneHeader
+          title={question.displayName() ?? t`New metric`}
+          actions={
+            !question.isSaved() ? (
+              <Button
+                key="create"
+                primary
+                small
+                onClick={() => headerProps.onCreate(question)}
+              >
+                {t`Save`}
+              </Button>
+            ) : (
+              <ActionButton
+                key="save"
+                actionFn={() => headerProps.onSave(question)}
+                disabled={!headerProps.isRunnable || !isDirty}
+                normalText={t`Save`}
+                activeText={t`Saving…`}
+                failedText={t`Save failed`}
+                successText={t`Saved`}
+                className={cx(
+                  ButtonsS.Button,
+                  ButtonsS.ButtonPrimary,
+                  ButtonsS.ButtonSmall,
+                )}
+              />
+            )
+          }
+        />
+      )}
+    />
   );
 };
