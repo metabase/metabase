@@ -619,10 +619,10 @@
   (testing "Document descendants includes smart links"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {:id 456
+                                                                            :attrs {:entityId 456
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 789
+                                                                            :attrs {:entityId 789
                                                                                     :model "dashboard"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [descendants (serdes/descendants "Document" document-id {})]
@@ -636,10 +636,10 @@
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id 111}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 222
+                                                                            :attrs {:entityId 222
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 333
+                                                                            :attrs {:entityId 333
                                                                                     :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [descendants (serdes/descendants "Document" document-id {})]
@@ -666,10 +666,10 @@
   (testing "Document descendants ignores smart links with unknown model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {:id 456
+                                                                            :attrs {:entityId 456
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 789
+                                                                            :attrs {:entityId 789
                                                                                     :model "unknown-model"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [descendants (serdes/descendants "Document" document-id {})]
@@ -685,7 +685,7 @@
                                                                  :content [{:type "cardEmbed"
                                                                             :attrs {:id 456}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 456
+                                                                            :attrs {:entityId 456
                                                                                     :model "card"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [descendants (serdes/descendants "Document" document-id {})]
@@ -706,13 +706,13 @@
   (testing "Document descendants correctly maps all supported smart link model types"
     (mt/with-temp [:model/Document {document-id :id} {:document {:type "doc"
                                                                  :content [{:type "smartLink"
-                                                                            :attrs {:id 111
+                                                                            :attrs {:entityId 111
                                                                                     :model "card"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 222
+                                                                            :attrs {:entityId 222
                                                                                     :model "dashboard"}}
                                                                            {:type "smartLink"
-                                                                            :attrs {:id 333
+                                                                            :attrs {:entityId 333
                                                                                     :model "table"}}]}
                                                       :content_type "application/json+vnd.prose-mirror"}]
       (let [descendants (serdes/descendants "Document" document-id {})]
