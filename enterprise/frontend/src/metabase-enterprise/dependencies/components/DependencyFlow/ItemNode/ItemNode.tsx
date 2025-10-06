@@ -2,7 +2,7 @@ import { type NodeProps, useEdges, useNodes } from "@xyflow/react";
 import { memo } from "react";
 
 import { FixedSizeIcon } from "metabase/ui";
-import type { DependencyGraphNode } from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
 import { NodeControls } from "../NodeControls";
 import type { ItemNodeType, NodeId, NodeType } from "../types";
@@ -20,7 +20,7 @@ export const ItemNode = function ItemNode({ id, data }: ItemNodeProps) {
 
 type ItemNodeBodyProps = {
   id: NodeId;
-  data: DependencyGraphNode;
+  data: DependencyNode;
   isExpanded: boolean;
 };
 

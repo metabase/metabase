@@ -3,7 +3,7 @@ import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/
 import type {
   CardType,
   DependencyEntry,
-  DependencyGraphNode,
+  DependencyNode,
   TableId,
 } from "metabase-types/api";
 
@@ -19,7 +19,7 @@ function getDataPickerModel(type: CardType) {
 }
 
 export function getDataPickerValue(
-  node: DependencyGraphNode,
+  node: DependencyNode,
 ): DataPickerValue | undefined {
   switch (node.type) {
     case "table":

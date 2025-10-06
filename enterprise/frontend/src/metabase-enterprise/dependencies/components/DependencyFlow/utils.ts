@@ -5,11 +5,11 @@ import type { Edge } from "@xyflow/react";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  DependencyEdge,
   DependencyEntry,
   DependencyGraph,
-  DependencyGraphEdge,
-  DependencyGraphNode,
   DependencyId,
+  DependencyNode,
   DependencyType,
 } from "metabase-types/api";
 
@@ -37,7 +37,7 @@ function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-function getGroupType(node: DependencyGraphNode): GroupType {
+function getGroupType(node: DependencyNode): GroupType {
   return node.type === "card" ? node.data.type : node.type;
 }
 
@@ -69,7 +69,7 @@ function getEdgesByTargetId(edges: Edge[]) {
 }
 
 function getItemNodes(
-  nodes: DependencyGraphNode[],
+  nodes: DependencyNode[],
   entry: DependencyEntry,
 ): ItemNodeType[] {
   return nodes.map((node) => {
@@ -89,7 +89,7 @@ function getItemNodes(
   });
 }
 
-function getItemEdges(edges: DependencyGraphEdge[]): Edge[] {
+function getItemEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
     const sourceId = getItemNodeId(edge.from_entity_id, edge.from_entity_type);
     const targetId = getItemNodeId(edge.to_entity_id, edge.to_entity_type);
@@ -107,8 +107,8 @@ function getItemEdges(edges: DependencyGraphEdge[]): Edge[] {
 }
 
 function getItemGraph(
-  nodes: DependencyGraphNode[],
-  edges: DependencyGraphEdge[],
+  nodes: DependencyNode[],
+  edges: DependencyEdge[],
   entry: DependencyEntry,
 ): GraphData {
   return {
@@ -368,11 +368,11 @@ export function getNodesWithPositions(
   });
 }
 
-export function getNodeLabel(node: DependencyGraphNode) {
+export function getNodeLabel(node: DependencyNode) {
   return node.type === "table" ? node.data.display_name : node.data.name;
 }
 
-export function getNodeIcon(node: DependencyGraphNode): IconName {
+export function getNodeIcon(node: DependencyNode): IconName {
   switch (node.type) {
     case "card":
       switch (node.data.type) {

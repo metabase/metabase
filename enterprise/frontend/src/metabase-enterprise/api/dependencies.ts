@@ -4,7 +4,7 @@ import type {
   CheckSnippetDependenciesRequest,
   CheckTransformDependenciesRequest,
   DependencyGraph,
-  DependencyGraphNode,
+  DependencyNode,
   GetDependencyGraphRequest,
   GetDependencyNodeRequest,
 } from "metabase-types/api";
@@ -23,10 +23,7 @@ export const dependencyApi = EnterpriseApi.injectEndpoints({
         params,
       }),
     }),
-    getDependencyNode: builder.query<
-      DependencyGraphNode,
-      GetDependencyNodeRequest
-    >({
+    getDependencyNode: builder.query<DependencyNode, GetDependencyNodeRequest>({
       query: (params) => ({
         method: "GET",
         url: "/api/ee/dependencies/graph/node",
