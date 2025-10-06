@@ -517,12 +517,11 @@
                            :dashboard_count
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
-    (lib-be/with-metadata-provider-cache
-      (as-> (map post-process-card-row rows) $
-        (apply t2/hydrate $ hydration)
-        (cond-> $
-          hydrate-based-on-upload upload/model-hydrate-based-on-upload)
-        (map post-process-card-row-after-hydrate $)))))
+    (as-> (map post-process-card-row rows) $
+      (apply t2/hydrate $ hydration)
+      (cond-> $
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+      (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
   [_ options _ rows]

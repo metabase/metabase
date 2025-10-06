@@ -532,7 +532,11 @@
 (defmacro with-metadata-provider-cache
   "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
 
-  If there is already a [[*metadata-provider-cache*]], this leaves it in place."
+  If there is already a [[*metadata-provider-cache*]], this leaves it in place.
+
+  Note that the metadata provider cache is initialized automatically in a REST API request context by
+  the [[metabase.server.middleware.metadata-provider-cache]] middleware; if writing a REST API endpoint you do not
+  need to manually initialize one."
   [& body]
   `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
                                            (atom (cache/basic-cache-factory {})))]

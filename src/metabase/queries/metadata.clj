@@ -154,22 +154,21 @@
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
   [cards :- [:sequential ::queries.schema/card]]
-  (lib-be/with-metadata-provider-cache
-    (let [;; All the queries on all the cards
-          card-queries (into []
-                             (comp (map :dataset_query)
-                                   (filter not-empty))
-                             cards)
-          ;; Plus the card-level metadata of each model and native query
-          queries (into []
-                        (comp (filter (fn [{query :dataset_query, card-type :type, :as _card}]
-                                        (or (= card-type :model)
-                                            (lib/native-stage? query -1))))
-                              (map (fn [{database-id :database_id, card-id :id, :as _card}]
-                                     (let [mp (lib-be/application-database-metadata-provider database-id)]
-                                       (lib/query mp (lib.metadata/card mp card-id))))))
-                        cards)]
-      (batch-fetch-query-metadata (concat card-queries queries)))))
+  (let [ ;; All the queries on all the cards
+        card-queries (into []
+                           (comp (map :dataset_query)
+                                 (filter not-empty))
+                           cards)
+        ;; Plus the card-level metadata of each model and native query
+        queries (into []
+                      (comp (filter (fn [{query :dataset_query, card-type :type, :as _card}]
+                                      (or (= card-type :model)
+                                          (lib/native-stage? query -1))))
+                            (map (fn [{database-id :database_id, card-id :id, :as _card}]
+                                   (let [mp (lib-be/application-database-metadata-provider database-id)]
+                                     (lib/query mp (lib.metadata/card mp card-id))))))
+                      cards)]
+    (batch-fetch-query-metadata (concat card-queries queries))))
 
 (defn- click-behavior->link-details
   [{:keys [linkType type targetId] :as _click-behavior}]

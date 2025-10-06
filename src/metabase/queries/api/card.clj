@@ -106,15 +106,14 @@
 (mu/defn- cards-for-segment-or-metric
   [model-type :- [:enum :segment :metric]
    model-id   :- pos-int?]
-  (lib-be/with-metadata-provider-cache
-    (->> (t2/select :model/Card (merge order-by-name
-                                       {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
-         ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
-         (filter (fn [{query :dataset_query, :as _card}]
-                   (when (seq query)
-                     (case model-type
-                       :segment (lib/uses-segment? query model-id)
-                       :metric  (lib/uses-metric? query model-id))))))))
+  (->> (t2/select :model/Card (merge order-by-name
+                                     {:where [:like :dataset_query (str "%" (name model-type) "%" model-id "%")]}))
+       ;; now check if the segment/metric with model-id really occurs in a filter/aggregation expression
+       (filter (fn [{query :dataset_query, :as _card}]
+                 (when (seq query)
+                   (case model-type
+                     :segment (lib/uses-segment? query model-id)
+                     :metric  (lib/uses-metric? query model-id)))))))
 
 (defmethod cards-for-filter-option* :using_segment
   [_filter-option model-id]
