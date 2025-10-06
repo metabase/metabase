@@ -1915,10 +1915,10 @@ databaseChangeLog:
             columns:
               - column:
                   name: legacy_query
-                  type: text
+                  type: ${text.type}
                   remarks: >-
-                    Legacy MBQL version of the query for existing Cards created before v57, to support rollbacks to
-                    v56. This column should be removed in v58.
+                    Legacy MBQL version of the query (serialized as JSON) for existing Cards created before v57, to
+                    support rollbacks to v56. This column should be removed in v58.
 
   - changeSet:
       id: v57.2025-10-06T18:26:01
@@ -1939,23 +1939,23 @@ databaseChangeLog:
       id: v57.2025-10-06T18:26:02
       author: camsaul
       comment: >-
-        Copy legacy MBQL queries from query_action.dataset_query to query_action.legacy_query
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query
       changes:
         - addColumn:
             tableName: query_action
             columns:
               - column:
                   name: legacy_query
-                  type: text
+                  type: ${text.type}
                   remarks: >-
-                    Legacy MBQL version of the query for existing Query Actions created before v57, to support
-                    rollbacks to v56. This column should be removed in v58.
+                    Legacy MBQL version of the query (serialized as JSON) for existing Query Actions created before
+                    v57, to support rollbacks to v56. This column should be removed in v58.
 
   - changeSet:
       id: v57.2025-10-06T18:26:03
       author: camsaul
       comment: >-
-        Copy legacy MBQL queries from query_action.dataset_query to query_action.legacy_query to support rollbacks
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query to support rollbacks
       changes:
         - sql: >-
             UPDATE query_action
@@ -1965,37 +1965,6 @@ databaseChangeLog:
             UPDATE query_action
             SET dataset_query = legacy_query
             WHERE legacy_query IS NOT NULL;
-
-  - changeSet:
-      id: v57.2025-10-06T18:26:04
-      author: camsaul
-      comment: >-
-        Copy legacy MBQL queries from transform.source to transform.legacy_source
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: legacy_source
-                  type: text
-                  remarks: >-
-                    Legacy MBQL version of the query for existing Query Actions created before v57, to support
-                    rollbacks to v56. This column should be removed in v58.
-
-  - changeSet:
-      id: v57.2025-10-06T18:26:05
-      author: camsaul
-      comment: >-
-        Copy legacy MBQL queries from transform.source to trabsansform.legacy_source to support rollbacks
-      changes:
-        - sql: >-
-            UPDATE transform
-            SET legacy_source = source;
-      rollback:
-        - sql: >-
-            UPDATE transform
-            SET source = legacy_source
-            WHERE legacy_source IS NOT NULL;
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
@@ -2027,7 +1996,7 @@ databaseChangeLog:
 #
 # 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
 #
-# 3) Run mage lint-migrations-file to run core.spec checks against any changes you make here. Liquibase is pretty
+# 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
 #    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
 #    this check but it's nicer to know now instead of waiting for CI.
 #
