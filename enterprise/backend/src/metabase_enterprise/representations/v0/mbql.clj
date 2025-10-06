@@ -7,10 +7,10 @@
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2])
   (:import
    [java.util Base64]))
@@ -26,7 +26,7 @@
    Takes a map with :query and optionally :result_metadata,
    converts to YAML string, then base64 encodes."
   [data]
-  (let [^String yaml-str (yaml/generate-string data)
+  (let [^String yaml-str (rep-yaml/generate-string data)
         bytes (.getBytes yaml-str "UTF-8")
         encoder (Base64/getEncoder)]
     (.encodeToString encoder bytes)))
@@ -38,7 +38,7 @@
   (let [decoder (Base64/getDecoder)
         bytes (.decode decoder base64-str)
         yaml-str (String. bytes "UTF-8")]
-    (yaml/parse-string yaml-str)))
+    (rep-yaml/parse-string yaml-str)))
 
 ;; ============================================================================
 ;; MBQL Data Schema
@@ -47,7 +47,7 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Type must be 'v0/mbql-data'"}
-   :v0/mbql-data])
+   :v0/mbql])
 
 (mr/def ::ref
   [:and
@@ -59,15 +59,15 @@
    {:description "Base64-encoded YAML containing query and optionally result_metadata"}
    ::lib.schema.common/non-blank-string])
 
-(mr/def ::mbql-data
+(mr/def ::mbql
   [:map
    {:description "v0 schema for MBQL data representation"}
    [:type ::type]
    [:ref ::ref]
    [:data ::data]])
 
-(defmethod import/type->schema :v0/mbql-data [_]
-  ::mbql-data)
+(defmethod import/type->schema :v0/mbql [_]
+  ::mbql)
 
 ;; ============================================================================
 ;; Import: Convert representation refs to Metabase IDs
@@ -238,24 +238,24 @@
   "Create an MBQL data representation from query and optional result_metadata.
    Returns a map with plain data - encoding happens only when writing to YAML."
   [mbql-ref query result-metadata]
-  (u/remove-nils {:type :v0/mbql-data
+  (u/remove-nils {:type :v0/mbql
                   :ref mbql-ref
                   :query query
                   :result_metadata result-metadata}))
 
-(defmethod export/export-entity :v0/mbql-data [mbql-data-rep]
+(defmethod export/export-entity :v0/mbql [mbql-data-rep]
   (-> mbql-data-rep
       (assoc :data (encode-mbql-data (select-keys mbql-data-rep [:query :result_metadata])))
       (dissoc :query :result_metadata)))
 
-(defmethod import/decode-data :v0/mbql-data
+(defmethod import/decode-data :v0/mbql
   [representation]
   (update representation :data decode-mbql-data))
 
-(defmethod import/yaml->toucan :v0/mbql-data
+(defmethod import/yaml->toucan :v0/mbql
   [representation _ref-index]
   (:data representation))
 
-(defmethod import/persist! :v0/mbql-data
+(defmethod import/persist! :v0/mbql
   [representation _ref-index]
   (import/yaml->toucan representation nil))

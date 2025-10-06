@@ -262,7 +262,7 @@
 
 (defmethod import/yaml->toucan :v0/model
   [{model-name :name
-    :keys [_type _ref description database collection columns mbql_query] :as representation}
+    :keys [_type _ref entity-id description database collection columns mbql_query] :as representation}
    ref-index]
   (let [database-id (v0-common/resolve-database-id database ref-index)
         dataset-query (-> (assoc representation :database database-id)
@@ -276,6 +276,8 @@
                           columns)]
     (merge
      {:name model-name
+      :entity_id (or entity-id
+                     (v0-common/generate-entity-id representation))
       :description (or description "")
       :display :table
       :dataset_query dataset-query
@@ -291,7 +293,7 @@
 (defmethod import/persist! :v0/model
   [representation ref-index]
   (let [model-data (import/yaml->toucan representation ref-index)
-        entity-id (v0-common/generate-entity-id representation)
+        entity-id (:entity_id model-data)
         existing (when entity-id
                    (t2/select-one :model/Card :entity_id entity-id))]
     (if existing
@@ -350,6 +352,7 @@
     (cond-> {:name (:name card)
              :type (:type card)
              :ref card-ref
+             :entity-id (:entity_id card)
              :description (:description card)}
 
       (= :native (:type query))

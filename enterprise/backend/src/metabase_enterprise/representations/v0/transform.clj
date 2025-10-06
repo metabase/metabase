@@ -5,11 +5,11 @@
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
+   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (defmethod import/type->schema :v0/transform [_]
@@ -216,4 +216,4 @@
             t2/select-one
             (t2/hydrate :transform_tag_names)
             export/export-entity
-            yaml/generate-string)))
+            rep-yaml/generate-string)))

@@ -65,7 +65,7 @@
 
               ;; Build ref-index with database and MBQL data (if present)
               ref-index (cond-> {(v0-common/unref (:database card-edn)) (t2/select-one :model/Database (mt/id))}
-                          mbql-rep (assoc (:ref mbql-rep) (rep/persist! mbql-rep nil)))
+                          mbql-rep (assoc (:ref mbql-rep) (import/persist! mbql-rep nil)))
 
               model (rep/persist! card-rep ref-index)
               model (t2/select-one :model/Card :id (:id model))

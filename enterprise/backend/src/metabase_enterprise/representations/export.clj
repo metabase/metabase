@@ -116,18 +116,16 @@
            (try
              (let [card (t2/select-one :model/Card :id child-id :type model-type)
                    entity-yaml (-> card export-entity yaml/generate-string)
+                   suffix (format ".%s.yml" (name model-type))
                    base-file-name (v0-common/file-sys-name child-id (:entity_id child) "")
-                   card-file-name (str base-file-name ".yaml")]
-               ;; Write the card YAML file
+                   card-file-name (str base-file-name suffix)]
                (spit (str path coll-dir card-file-name) entity-yaml)
-               ;; If this is an MBQL card, also export the MBQL data
                (when (and (get-in card [:dataset_query :type])
                           (= :query (get-in card [:dataset_query :type])))
-                 (let [mbql-data (export-mbql-data card)]
-                   (when mbql-data
-                     (let [mbql-yaml (-> mbql-data export-entity yaml/generate-string)
-                           mbql-file-name (str base-file-name ".mbql.yml")]
-                       (spit (str path coll-dir mbql-file-name) mbql-yaml))))))
+                 (when-let [mbql-data (export-mbql-data card)]
+                   (let [mbql-yaml (-> mbql-data export-entity yaml/generate-string)
+                         mbql-file-name (str base-file-name ".mbql.yml")]
+                     (spit (str path coll-dir mbql-file-name) mbql-yaml)))))
              (catch Exception e
                (log/errorf e "Unable to export representation of type %s with id %s" model-type child-id)))))))))
 
