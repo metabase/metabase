@@ -14,7 +14,7 @@ import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../types";
-import { getResourceIdFromSettings } from "../utils/default-embed-setting";
+import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
 import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
