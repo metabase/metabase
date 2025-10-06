@@ -79,13 +79,15 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
+   #_[metabase.lib.serialize :as lib.serialize]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
-   [metabase.util.time :as u.time]))
+   [metabase.util.time :as u.time]
+   [metabase.lib.core :as lib]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
@@ -2616,3 +2618,38 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export query-to-js
+  "Serialize a query to a plain JS object."
+  [cljs-query]
+  (letfn [(->js [x]
+            (cond
+              (map? x)
+              (-> (reduce-kv (fn [m k v]
+                               (assoc m (->js k) (->js v)))
+                             {}
+                             x)
+                  clj->js)
+
+              (sequential? x)
+              (-> (mapv ->js x)
+                  clj->js)
+
+              (qualified-keyword? x)
+              (str (namespace x) "/" (name x))
+
+              (simple-keyword? x)
+              (name x)
+
+              :else
+              (clj->js x)))]
+    (-> cljs-query
+        lib/prepare-for-serialization
+        ->js)))
+
+(defn ^:export js-to-query
+  "Deserialize a query from a plain JS object."
+  [js-query]
+  (-> js-query
+      js->clj
+      lib/normalize))

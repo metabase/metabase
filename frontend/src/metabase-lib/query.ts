@@ -136,3 +136,11 @@ export function previewQuery(
 ): Query | null {
   return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
 }
+
+export function queryToJs(query: Query): Object {
+  return ML.query_to_js(query);
+}
+
+export function jsToQuery(jsQuery: Object): Query {
+  return ML.js_to_query(jsQuery);
+}

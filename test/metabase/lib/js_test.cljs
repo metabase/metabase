@@ -15,6 +15,8 @@
    [metabase.test.util.js :as test.js]
    [metabase.util.malli.registry :as mr]))
 
+(comment metabase.test-runner.assert-exprs.approximately-equal/keep-me)
+
 (deftest ^:parallel query=-test
   (doseq [q1 [nil js/undefined]
           q2 [nil js/undefined]]
@@ -624,3 +626,34 @@
                         :keyword "too"
                         :value   nil}]
       (is (js= expected (lib.js/display-info->js input))))))
+
+(deftest ^:parallel query-to-js-test
+  (let [query    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/aggregate (lib/count))
+                     lib/append-stage
+                     (as-> $query (lib/filter $query (lib/> (first (lib/returned-columns $query)) 100))))
+        js-query (lib.js/query-to-js query)
+        ag-uuid (lib.options/uuid (first (lib/aggregations query 0)))
+        filter-uuid (lib.options/uuid (first (lib/filters query)))
+        field-uuid  (-> (first (lib/filters query))
+                        (nth 2)
+                        lib.options/uuid)]
+    (testing "CLJS to JS"
+      (is (js= #js {"database" (meta/id)
+                    "lib/type" "mbql/query"
+                    "stages"   #js [#js {"source-table" (meta/id :orders)
+                                         "lib/type"     "mbql.stage/mbql"
+                                         "aggregation"  #js [#js ["count" #js {"lib/uuid" ag-uuid}]]}
+                                    #js {"lib/type" "mbql.stage/mbql"
+                                         "filters"  #js [#js [">"
+                                                              #js {"lib/uuid" filter-uuid}
+                                                              #js ["field"
+                                                                   #js {"effective-type" "type/Integer"
+                                                                        "lib/uuid"       field-uuid
+                                                                        "base-type"      "type/Integer"}
+                                                                   "count"]
+                                                              100]]}]}
+               js-query)))
+    (testing "JS to CLJS"
+      (is (= (dissoc query :lib/metadata)
+             (lib.js/js-to-query js-query))))))
