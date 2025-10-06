@@ -38,7 +38,7 @@ describe("Embed flow > embedding hub step completion tracking", () => {
       expect(authRadio).toBeChecked();
 
       const actionButton = screen.getByRole("button", {
-        name: trigger === "copy" ? /Copy Code/ : /Done/,
+        name: trigger === "copy" ? /Copy code/ : /Done/,
       });
 
       await userEvent.click(actionButton);
