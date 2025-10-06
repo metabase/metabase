@@ -1979,7 +1979,7 @@ databaseChangeLog:
                     nullable: true
               - column:
                   name: cancelled
-                  type: boolean
+                  type: ${boolean.type}
                   remarks: Whether the sync task was cancelled
                   defaultValueBoolean: false
                   constraints:

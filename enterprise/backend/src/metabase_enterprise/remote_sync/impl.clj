@@ -94,13 +94,9 @@
   (let [sync-timestamp (t/instant)]
     (if ingestable-source
       (try
-        ;; Load all entities from Git first - this handles creates/updates via entity_id matching
         (let [ingestable-source (source.ingestable/wrap-progress-ingestable task-id 0.7 ingestable-source)
-              source-version (source.ingestable/ingestable-version ingestable-source)
-              _ (remote-sync.task/set-version! task-id source-version)
               load-result (serdes/with-cache
                             (serialization/load-metabase! ingestable-source))
-              ;; Extract entity_ids by model from the :seen paths
               imported-entities (->> (:seen load-result)
                                      (map last) ; Get the last element of each path (the entity itself)
                                      (group-by :model)
@@ -112,6 +108,9 @@
             (clean-synced! (affected-collections) imported-entities)
             (sync-objects! sync-timestamp imported-entities))
           (remote-sync.task/update-progress! task-id 0.95))
+        (remote-sync.task/set-version!
+         task-id
+         (source.ingestable/ingestable-version ingestable-source))
         (log/info "Successfully reloaded entities from git repository")
         {:status  :success
          :version (source.ingestable/ingestable-version ingestable-source)
