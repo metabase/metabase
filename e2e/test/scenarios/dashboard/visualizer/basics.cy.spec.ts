@@ -367,6 +367,40 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.tooltip().findByText("My description").should("exist");
   });
 
+  it("should allow drilling into the underlying question by clicking on the title (metabase#64340)", () => {
+    H.createQuestion(ORDERS_COUNT_BY_CREATED_AT, {
+      wrapId: true,
+      idAlias: "questionId",
+    });
+
+    H.createDashboard().then(({ body: { id: dashboardId } }) => {
+      cy.get("@questionId").then((questionId) => {
+        H.addQuestionToDashboard({
+          dashboardId,
+          cardId: questionId as any,
+        });
+        H.visitDashboard(dashboardId);
+      });
+    });
+
+    H.editDashboard();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+
+    H.modal().within(() => {
+      H.selectVisualization("bar");
+    });
+    H.saveDashcardVisualizerModal();
+    H.saveDashboard();
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders by Created At (Month)").click();
+    });
+
+    cy.url().should("match", /\/question\/\d+/);
+  });
+
   it("should propagate original card title and description to visualizer cards (metabase#63863)", () => {
     const questionWithDescription = {
       ...ORDERS_COUNT_BY_CREATED_AT,

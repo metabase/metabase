@@ -313,7 +313,9 @@ export function DashCardVisualization({
     );
     const card = extendCardWithDashcardSettings(
       {
-        ...dashcard.card,
+        // Visualizer click handling code expect visualizer cards not to have card.id
+        name: dashcard.card.name,
+        description: dashcard.card.description,
         display,
         visualization_settings: settings,
       } as Card,
