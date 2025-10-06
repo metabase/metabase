@@ -2,22 +2,23 @@ import { type ReactNode, useMemo, useState } from "react";
 import { useLocation } from "react-use";
 
 import { useSearchQuery } from "metabase/api";
-import {
-  useGetCurrentResource,
-  useParameters,
-  useParametersValues,
-  useRecentItems,
-} from "metabase-enterprise/embedding_iframe_sdk_setup/hooks";
 
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
+import {
+  useGetCurrentResource,
+  useParameters,
+  useParametersValues,
+  useRecentItems,
+} from "../hooks";
 import { useSettings } from "../hooks/use-settings";
 import type {
   SdkIframeEmbedSetupStep,
   SdkIframeEmbedSetupUrlParams,
 } from "../types";
+import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -70,13 +71,18 @@ export const SdkIframeEmbedSetupProvider = ({
   const [currentStep, setCurrentStep] =
     useState<SdkIframeEmbedSetupStep>(defaultStep);
 
-  const { settings, isEmbedSettingsLoaded, replaceSettings, updateSettings } =
-    useSettings({
-      urlParams,
-      recentDashboards,
-      isRecentsLoading,
-      modelCount,
-    });
+  const {
+    settings,
+    defaultSettings,
+    isEmbedSettingsLoaded,
+    replaceSettings,
+    updateSettings,
+  } = useSettings({
+    urlParams,
+    recentDashboards,
+    isRecentsLoading,
+    modelCount,
+  });
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -107,10 +113,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoading,
     isFetching,
     settings,
-    defaultSettings: {
-      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
-      experience: getExperienceFromSettings(defaultSettings),
-    },
+    defaultSettings,
     replaceSettings,
     updateSettings,
     recentDashboards,

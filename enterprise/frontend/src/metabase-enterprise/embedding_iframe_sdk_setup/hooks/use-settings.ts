@@ -3,7 +3,6 @@ import { P, match } from "ts-pattern";
 import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
-import { trackEmbedWizardSettingsUpdated } from "metabase-enterprise/embedding_iframe_sdk_setup/analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
@@ -14,7 +13,12 @@ import type {
   SdkIframeEmbedSetupUrlParams,
 } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
-import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+import { trackEmbedWizardOpened } from "../analytics";
+import {
+  getDefaultSdkIframeEmbedSettings,
+  getExperienceFromSettings,
+  getResourceIdFromSettings,
+} from "../utils/get-default-sdk-iframe-embed-setting";
 
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
@@ -103,8 +107,6 @@ export const useSettings = ({
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
       setRawSettings((prevSettings) => {
-        trackEmbedWizardSettingsUpdated(nextSettings);
-
         // Merging with a partial setting requires us to cast the type
         const mergedSettings = {
           ...(prevSettings ?? defaultSettings),
@@ -142,6 +144,8 @@ export const useSettings = ({
       });
 
       setEmbedSettingsLoaded(true);
+
+      trackEmbedWizardOpened();
     }
   }, [
     persistedSettings,
@@ -153,6 +157,10 @@ export const useSettings = ({
 
   return {
     settings,
+    defaultSettings: {
+      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
+      experience: getExperienceFromSettings(defaultSettings),
+    },
     isEmbedSettingsLoaded,
     replaceSettings,
     updateSettings,
