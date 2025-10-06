@@ -1,4 +1,4 @@
-/* eslint-disable no-undef,import/no-commonjs */
+/* eslint-disable import/no-commonjs */
 
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
