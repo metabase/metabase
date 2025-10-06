@@ -1,15 +1,17 @@
+import type { ComponentPropsWithoutRef, ElementType } from "react";
 import { t } from "ttag";
 
 import { Button, type ButtonProps, Icon } from "metabase/ui";
 
-interface Props extends ButtonProps {
+type Props<C extends ElementType = "button"> = ButtonProps & {
   unresolvedCommentsCount: number;
-}
+  component?: C;
+} & Omit<ComponentPropsWithoutRef<C>, keyof ButtonProps | "component">;
 
-export const CommentsButton = ({
+export const CommentsButton = <C extends ElementType = "button">({
   unresolvedCommentsCount,
   ...props
-}: Props) => {
+}: Props<C>) => {
   return (
     <Button
       aria-label={t`Comments`}
@@ -19,7 +21,7 @@ export const CommentsButton = ({
       }
       px="sm"
       size="xs"
-      {...props}
+      {...(props as ButtonProps)}
     >
       {unresolvedCommentsCount > 0 ? unresolvedCommentsCount : null}
     </Button>

@@ -128,6 +128,24 @@ describe("Auth Flow - JWT", () => {
     );
   });
 
+  it('should not render usage problem popover saying JWT is missing "exp" claim when then token is being fetched', async () => {
+    const customFetchFunction = jest.fn().mockImplementation(() => ({
+      jwt: MOCK_VALID_JWT_RESPONSE,
+    }));
+
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      preferredAuthMethod: "jwt",
+      fetchRequestToken: customFetchFunction,
+    });
+
+    setup({ authConfig });
+
+    expect(
+      screen.queryByTestId("sdk-usage-problem-indicator"),
+    ).not.toBeInTheDocument();
+  });
+
   it("should include the subpath when requesting the SSO endpoint", async () => {
     // we can't use the usual mocks here as they use mocks that don't expect the subpath
     const instanceUrlWithSubpath = `${MOCK_INSTANCE_URL}/subpath`;

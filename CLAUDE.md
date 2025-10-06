@@ -29,7 +29,8 @@
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Lint Changes:** `./bin/mage kondo-updated HEAD`
 - **Format:** `./bin/mage cljfmt-files [path]`
-- **Test file:** `clojure -X:dev:test :only namespace/test-name`
+- **Run a test:** `./bin-mage run-tests namespace/test-name`
+- **Run all tests in a namespace:** `./bin-mage run-tests namespace`
 - **Check Code Readability** `./bin/mage -check-readable` with optional line-number
   - Run this after every change to Clojure code, only accept readable code
 - **Evaluating Clojure Code** `./bin/mage -repl '<code>'`

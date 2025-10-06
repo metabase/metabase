@@ -314,6 +314,19 @@ describe("scenarios > setup", () => {
       .should("be.visible");
   });
 
+  // There are only one step in the setup flow, so there is no need to show step numbers.
+  it("should not show step numbers in cloud embedding use case", () => {
+    H.mockSessionProperty("is-hosted?", true);
+    H.mockSessionProperty("token-features", { hosting: true });
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    H.main().findByText("What should we call you?").should("be.visible");
+    cy.findByTestId("step-number").should("not.exist");
+  });
+
   it("should allow localization in the 'embedding' setup flow", () => {
     cy.visit(
       "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
