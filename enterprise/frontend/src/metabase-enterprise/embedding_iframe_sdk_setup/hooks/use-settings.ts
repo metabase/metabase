@@ -83,13 +83,14 @@ export const useSettings = ({
       );
   }, [recentDashboards, urlParams]);
 
-  const [rawSettings, setRawSettings] =
-    useState<SdkIframeEmbedSetupSettings>(defaultSettings);
+  const [rawSettings, setRawSettings] = useState<SdkIframeEmbedSetupSettings>();
 
   const settings = useMemo(() => {
+    const latestSettings = rawSettings ?? defaultSettings;
+
     // Append entity-types=model if there are more than 2 models in the instance.
     if (modelCount > 2) {
-      return match(rawSettings)
+      return match(latestSettings)
         .with({ componentName: "metabase-question" }, (settings) => ({
           ...settings,
           entityTypes: ["model" as const],
@@ -101,8 +102,8 @@ export const useSettings = ({
         .otherwise((settings) => settings);
     }
 
-    return rawSettings;
-  }, [modelCount, rawSettings]);
+    return latestSettings;
+  }, [defaultSettings, modelCount, rawSettings]);
 
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
