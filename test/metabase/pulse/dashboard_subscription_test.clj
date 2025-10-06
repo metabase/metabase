@@ -9,7 +9,7 @@
    [metabase.channel.render.body :as body]
    [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.payload.execute]
-   [metabase.notification.payload.temp-storage :as notification.temp-storage]
+   [metabase.notification.payload.streaming :as notification.streaming]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -1283,21 +1283,21 @@
                                                           :description "How are the birds doing today?"}
                  :model/Card          {card-id :id} {:name pulse.test-util/card-name
                                                      :dataset_query (mt/mbql-query orders {:limit 2})}]
-    (with-redefs [notification.temp-storage/temp-dir (delay (let [dir (io/file (System/getProperty "java.io.tmpdir")
-                                                                               (str "metabase-test" (random/random-name)))]
-                                                              (.mkdirs dir)
-                                                              dir))
+    (with-redefs [notification.streaming/temp-dir (delay (let [dir (io/file (System/getProperty "java.io.tmpdir")
+                                                                            (str "metabase-test" (random/random-name)))]
+                                                           (.mkdirs dir)
+                                                           dir))
                   notification.payload.execute/rows-to-disk-threshold 1
                   channel/send!                      (fn [& _args]
                                                        (testing "sanity check that there are files there to cleanup"
-                                                         (is (not-empty (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))]
+                                                         (is (not-empty (.listFiles ^java.io.File @@#'notification.streaming/temp-dir)))))]
       (with-dashboard-sub-for-card [{pulse-id :id}
                                     {:card         card-id
                                      :creator_id   (mt/user->id :rasta)
                                      :dashboard    dashboard-id
                                      :channel-type :email}]
         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
-        (is (empty? (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))))
+        (is (empty? (.listFiles ^java.io.File @@#'notification.streaming/temp-dir)))))))
 
 (deftest dashboard-with-rows-saved-to-disk-test
   (testing "whether the rows of a dashboard saved to disk or in memory, all channels should work"
