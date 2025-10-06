@@ -267,15 +267,13 @@ describe("user > settings", () => {
   });
 });
 
+// I wanted to examine the value of a color vairable, but it's hard to inspect hsla colors between local and CI.
+// sometimes the alpha is a decimal value, sometimes it isnt...
 const assertLightMode = () =>
-  cy
-    .get("body")
-    .should("have.css", "--mb-color-background", "hsla(0, 0%, 100%, 1)");
+  cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
 
 const assertDarkMode = () =>
-  cy
-    .get("body")
-    .should("have.css", "--mb-color-background", "hsla(204, 66%, 8%, 1)");
+  cy.get("body").should("have.css", "background-color", "rgb(0, 0, 0)");
 
 /**
  * Stub the current user authentication method
