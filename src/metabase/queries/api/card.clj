@@ -222,20 +222,32 @@
         (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
 
 (api.macros/defendpoint :get "/:id"
-  "Get `Card` with ID."
+  "Get `Card` with ID.
+
+  As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)
+  instead, you can specify `?legacy-mbql=true`."
   [{:keys [id]} :- [:map
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
-   {ignore-view? :ignore_view, :keys [context]} :- [:map
-                                                    [:ignore_view {:optional true} [:maybe :boolean]]
-                                                    [:context     {:optional true} [:maybe [:enum :collection]]]]]
+   {ignore-view? :ignore_view
+    legacy-mbql? :legacy-mbql
+    :keys        [context]} :- [:map
+                                [:ignore_view         {:optional true} [:maybe :boolean]]
+                                [:context             {:optional true} [:maybe [:enum :collection]]]
+                                [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
-        card (get-card resolved-id)]
-    (u/prog1 card
+        card        (get-card resolved-id)
+        response    (cond-> card
+                      legacy-mbql?
+                      (update :dataset_query (fn [query]
+                                               #_{:clj-kondo/ignore [:discouraged-var]}
+                                               (cond-> query
+                                                 (seq query) lib/->legacy-MBQL))))]
+    (u/prog1 response
       (when-not ignore-view?
         (events/publish-event! :event/card-read
                                {:object-id (:id <>)
-                                :user-id api/*current-user-id*
-                                :context (or context :question)})))))
+                                :user-id   api/*current-user-id*
+                                :context   (or context :question)})))))
 
 (defn- check-allowed-to-remove-from-existing-dashboards [card]
   (let [dashboards (or (:in_dashboards card)
