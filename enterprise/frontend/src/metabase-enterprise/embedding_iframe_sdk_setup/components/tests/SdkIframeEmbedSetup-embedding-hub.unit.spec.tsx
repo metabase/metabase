@@ -28,7 +28,7 @@ describe("Embed flow > embedding hub step completion tracking", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Next" }));
       await userEvent.click(screen.getByRole("button", { name: "Next" }));
-      await userEvent.click(screen.getByRole("button", { name: "Get Code" }));
+      await userEvent.click(screen.getByRole("button", { name: "Get code" }));
 
       const authRadio = screen.getByDisplayValue(
         authMethod === "user_session" ? "user-session" : "sso",
