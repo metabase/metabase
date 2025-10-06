@@ -176,7 +176,7 @@
   {:doc        "Run a tests (or a single test) against nrepl server"
    :requires   [[clojure.string :as str]
                 [mage.be-dev :refer [nrepl-eval]]]
-   :arg-schema [:tuple [:string {:name "NS/TEST" :desc "or just NS"}]]
+   :arg-schema [:tuple [:string {:name "TEST" :desc "Either NS, or NS/test, or a path to file, or to a dir"}]]
    :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
    :task       (let [{:keys  [options]
                       [test] :arguments} (cli/parse! (current-task))
@@ -292,7 +292,12 @@
    :requires [[mage.examples-test :as examples-test]]
    :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
 
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  -complete
+  {:doc "Auto-complete bb.edn tasks"
+   :requires [[mage.bb-complete :as bb-complete]]
+   :task (bb-complete/complete *command-line-args*)}
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
   ;; These tasks are for personal use, a place for half baked tasks.
   ;; Feel free to add your own tasks here, but don't expect them to be run by anyone else, or be listed in the
