@@ -11,15 +11,25 @@ import {
 } from "@xyflow/react";
 import { useEffect, useLayoutEffect } from "react";
 
-import { skipToken } from "metabase/api";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
+import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 
 import { EntryNodePicker } from "./EntryNodePicker";
 import { NodeContent } from "./NodeContent";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
+
+const GRAPH: DependencyGraph = {
+  nodes: [
+    {
+      id: 1,
+      type: "model",
+      data: { name: "Account", display: "table" },
+      dependents: { question: 10 },
+    },
+  ],
+  edges: [],
+};
 
 const NODE_TYPES = {
   node: NodeContent,
@@ -31,9 +41,7 @@ type DependencyFlowProps = {
 };
 
 export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
-  const { data: graph, isFetching } = useGetDependencyGraphQuery(
-    entry ? entry : skipToken,
-  );
+  const { data: graph, isFetching } = { data: GRAPH, isFetching: false };
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 

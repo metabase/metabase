@@ -18,7 +18,9 @@ export function parseParams(
 
 function parseDependencyType(type: unknown): DependencyType | undefined {
   switch (type) {
-    case "card":
+    case "question":
+    case "model":
+    case "metric":
     case "table":
     case "transform":
     case "snippet":
