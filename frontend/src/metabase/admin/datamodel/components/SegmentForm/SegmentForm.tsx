@@ -50,17 +50,20 @@ export const SegmentForm = ({
   const dispatch = useDispatch();
   const [sendToast] = useToast();
 
-  const handleSubmit = useCallback((values: Partial<UpdateSegmentRequest>) => {
-    setIsSubmitting(true);
-    return onSubmit(values)
-      .then(() => {
-        sendToast({ message: t`Segment saved` });
-        dispatch(push("/bench/segment"));
-      })
-      .catch(() => {
-        setIsSubmitting(false);
-      });
-  }, [onSubmit, dispatch, sendToast]);
+  const handleSubmit = useCallback(
+    (values: Partial<UpdateSegmentRequest>) => {
+      setIsSubmitting(true);
+      return onSubmit(values)
+        .then(() => {
+          sendToast({ message: t`Segment saved` });
+          dispatch(push("/bench/segment"));
+        })
+        .catch(() => {
+          setIsSubmitting(false);
+        });
+    },
+    [onSubmit, dispatch, sendToast],
+  );
 
   return (
     <FormProvider<SegmentFormValues>
@@ -125,7 +128,10 @@ export const SegmentForm = ({
               </Box>
               <SegmentFormActions isValid={isValid && dirty} />
             </Stack>
-            <LeaveRouteConfirmModal isEnabled={dirty && !isSubmitting} route={route} />
+            <LeaveRouteConfirmModal
+              isEnabled={dirty && !isSubmitting}
+              route={route}
+            />
           </Form>
         );
       }}
