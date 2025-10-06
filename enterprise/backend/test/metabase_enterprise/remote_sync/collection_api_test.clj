@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.collection-api-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
