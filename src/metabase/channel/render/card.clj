@@ -156,7 +156,7 @@
       (let [data (ex-data e)]
         (cond
           (:render/too-large? data) (do
-                                      (log/error e "Pulse card query error: results too large")
+                                      (log/error "Pulse card query error: results too large")
                                       (body/render :card-error/results-too-large nil nil nil nil nil))
           (:card-error data) (do
                                (log/error e "Pulse card query error")
