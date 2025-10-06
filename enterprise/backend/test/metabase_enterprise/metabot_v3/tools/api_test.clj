@@ -1141,9 +1141,9 @@
                                        {:request-options {:headers {"x-metabase-session" rasta-ai-token}}}
                                        {:conversation_id conversation-id}))))
         (testing "With superuser permissions"
-          (is (=? {:structured_output [(select-keys t1 [:id :entity_id :name :description :source])
+          (is (=? {:structured_output [(mt/obj->json->obj (select-keys t1 [:id :entity_id :name :description :source]))
                                        ;; note: t2 not included because it's a (non-native) MBQL query
-                                       (select-keys t3 [:id :entity_id :name :description :source])]
+                                       (mt/obj->json->obj (select-keys t3 [:id :entity_id :name :description :source]))]
                    :conversation_id conversation-id}
                   (-> (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transforms"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
@@ -1185,7 +1185,7 @@
         (testing "With superuser permissions"
           (doseq [transform [t1 t2]]
             (testing (:name transform)
-              (is (=? {:structured_output transform
+              (is (=? {:structured_output (mt/obj->json->obj (select-keys transform [:id :entity_id :name :description :source :target]))
                        :conversation_id conversation-id}
                       (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-transform-details"
                                             {:request-options {:headers {"x-metabase-session" crowberto-ai-token}}}
