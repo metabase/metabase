@@ -7,7 +7,6 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
-   [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -39,7 +38,7 @@
             (f))))
 
 (use-fixtures :each
-  th/clean-remote-sync-state
+  test-helpers/clean-remote-sync-state
   (fn [f] (mt/with-premium-features #{:serialization} (f))))
 
 (defn- wait-for-task-completion [task-id]
