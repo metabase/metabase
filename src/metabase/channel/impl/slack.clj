@@ -86,42 +86,47 @@
 
 (defn- part->sections!
   "Converts a notification part directly into Slack Block Kit blocks."
-  [part]
-  (let [part (channel.shared/maybe-realize-data-rows part)]
-    (case (:type part)
-      :card
-      (let [{:keys [card dashcard result]}         part
-            {card-id :id card-name :name :as card} card
-            title                                  (or (-> dashcard :visualization_settings :card.title)
-                                                       card-name)
-            rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-            title-link                             (when-not (= :table-editable (:display card))
-                                                     (urls/card-url card-id))]
-        (conj (maybe-append-params-block
-               [{:type "section"
-                 :text {:type     "mrkdwn"
-                        :text     (mkdwn-link-text title-link title)
-                        :verbatim true}}]
-               (-> dashcard  :visualization_settings :inline_parameters))
-              (if (:render/text rendered-info)
-                {:type "section"
-                 :text {:type "plain_text"
-                        :text (:render/text rendered-info)}}
-                {:type       "image"
-                 :slack_file {:id (-> rendered-info
-                                      (channel.render/png-from-render-info slack-width)
-                                      (slack/upload-file! (format "%s.png" title))
-                                      :id)}
-                 :alt_text   title})))
+  ([part]
+   (part->sections! {} part))
+  ([all-params part]
+   (let [part (channel.shared/maybe-realize-data-rows part)]
+     (case (:type part)
+       :card
+       (binding [urls/*dashcard-parameters* all-params]
+         (let [{:keys [card dashcard result]}         part
+               {card-id :id card-name :name :as card} card
+               title                                  (or (-> dashcard :visualization_settings :card.title)
+                                                          card-name)
+               rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+               title-link                             (if dashcard
+                                                        (urls/dashcard-url dashcard)
+                                                        (when-not (= :table-editable (:display card))
+                                                          (urls/card-url card-id)))]
+           (conj (maybe-append-params-block
+                  [{:type "section"
+                    :text {:type     "mrkdwn"
+                           :text     (mkdwn-link-text title-link title)
+                           :verbatim true}}]
+                  (-> dashcard  :visualization_settings :inline_parameters))
+                 (if (:render/text rendered-info)
+                   {:type "section"
+                    :text {:type "plain_text"
+                           :text (:render/text rendered-info)}}
+                   {:type       "image"
+                    :slack_file {:id (-> rendered-info
+                                         (channel.render/png-from-render-info slack-width)
+                                         (slack/upload-file! (format "%s.png" title))
+                                         :id)}
+                    :alt_text   title}))))
 
-      :heading
-      [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]
+       :heading
+       [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]
 
-      :text
-      [(maybe-append-params-block (text->markdown-section (:text part)) (:inline_parameters part))]
+       :text
+       [(maybe-append-params-block (text->markdown-section (:text part)) (:inline_parameters part))]
 
-      :tab-title
-      [(text->markdown-section (format "# %s" (:text part)))])))
+       :tab-title
+       [(text->markdown-section (format "# %s" (:text part)))]))))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -190,7 +195,7 @@
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
         blocks           (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
-                               (mapcat part->sections! (:dashboard_parts payload))]
+                               (mapcat (partial part->sections! all-params) (:dashboard_parts payload))]
                               flatten
                               (remove nil?))]
     (for [channel-id (map notification-recipient->channel recipients)]
