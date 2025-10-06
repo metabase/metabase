@@ -52,9 +52,10 @@
                          ::lib.schema.metadata/database
                          (ms/InstanceOf :model/Database)
                          [:= ::db-from-store]]]
-   (let [database (if (= database ::db-from-store)
-                    (lib.metadata/database (qp.store/metadata-provider))
-                    database)]
+   (when-let [database (if (= database ::db-from-store)
+                         (when (qp.store/initialized?)
+                           (lib.metadata/database (qp.store/metadata-provider)))
+                         database)]
      (when (driver.u/supports? driver :set-timezone database)
        (valid-timezone-id (report-timezone-id*))))))
 
@@ -67,7 +68,8 @@
    (valid-timezone-id
     (or *database-timezone-id-override*
         (let [database (if (= database ::db-from-store)
-                         (lib.metadata/database (qp.store/metadata-provider))
+                         (when (qp.store/initialized?)
+                           (lib.metadata/database (qp.store/metadata-provider)))
                          database)]
           (:timezone database))))))
 
