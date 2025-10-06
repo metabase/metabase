@@ -6,7 +6,15 @@ import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Flex, Stack, Tooltip, useMantineTheme } from "metabase/ui";
+import {
+  Badge,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+  useMantineTheme,
+} from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -140,6 +148,14 @@ export function PreviousValueComparison({
         >
           {fittedDetailDisplay}
         </VariationDetails>
+
+        {tooltipComparisons.length > 1 && (
+          <Badge ml="xs" px="xs" size="xs" variant="light">
+            <Group align="center" h="100%">
+              <Icon name="ellipsis" size={12} />
+            </Group>
+          </Badge>
+        )}
       </Flex>
     </Tooltip>
   );
