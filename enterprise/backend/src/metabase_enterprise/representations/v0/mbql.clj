@@ -248,9 +248,13 @@
       (assoc :data (encode-mbql-data (select-keys mbql-data-rep [:query :result_metadata])))
       (dissoc :query :result_metadata)))
 
+(defmethod import/decode-data :v0/mbql-data
+  [representation]
+  (update representation :data decode-mbql-data))
+
 (defmethod import/yaml->toucan :v0/mbql-data
   [representation _ref-index]
-  (decode-mbql-data (:data representation)))
+  (:data representation))
 
 (defmethod import/persist! :v0/mbql-data
   [representation _ref-index]

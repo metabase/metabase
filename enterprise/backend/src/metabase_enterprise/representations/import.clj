@@ -53,15 +53,22 @@
     representation
     (update representation :type versioned-type)))
 
+(defmulti decode-data
+  "If any data is base64-encoded, decodes it."
+  {:arglists '[[entity]]}
+  :type)
+
+(defmethod decode-data :default [representation] representation)
+
 (defn normalize-representation
-  "fiddlesticks"
+  "Ensures type is set correctly and de-encodes base64 if necessary."
   [representation]
   (let [representation' (normalize-type representation)]
     (if-let [entity-type (:type representation')]
       (let [schema (type->schema entity-type)]
         (if-not schema
           (throw (ex-info (str "Unknown type: " entity-type) {:type entity-type}))
-          (mu/validate-throw schema representation')))
+          (decode-data (mu/validate-throw schema representation'))))
       (throw (ex-info "Missing required field: type" {:representation representation})))))
 
 (defn order-representations
