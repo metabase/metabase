@@ -107,12 +107,17 @@ export function getNodeLabel(node: DependencyNode | DependentNode) {
 
 export function getNodeIcon(node: DependencyNode | DependentNode): IconName {
   switch (node.type) {
-    case "question":
-      return visualizations.get(node.data.display)?.iconName ?? "table2";
-    case "model":
-      return "model";
-    case "metric":
-      return "metric";
+    case "card":
+      switch (node.data.type) {
+        case "question":
+          return visualizations.get(node.data.display)?.iconName ?? "table2";
+        case "model":
+          return "model";
+        case "metric":
+          return "metric";
+        default:
+          return "unknown";
+      }
     case "table":
       return "table";
     case "snippet":

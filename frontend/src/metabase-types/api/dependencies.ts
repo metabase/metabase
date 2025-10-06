@@ -5,14 +5,15 @@ import type { Transform } from "./transform";
 
 export type DependencyId = number;
 
-export type DependencyType = CardType | "table" | "transform" | "snippet";
+export type DependencyType = "card" | "table" | "transform" | "snippet";
+export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
   id: DependencyId;
   type: DependencyType;
 };
 
-export type DependentStats = Partial<Record<DependencyType, number>>;
+export type DependentStats = Partial<Record<DependencyGroupType, number>>;
 
 type BaseDependencyNode<TType, TData> = {
   id: DependencyId;
@@ -40,7 +41,7 @@ export type TransformDependentNodeData = TransformDependencyNodeData;
 
 export type CardDependencyNodeData = Pick<
   Card,
-  "name" | "display" | "database_id"
+  "name" | "type" | "display" | "database_id"
 >;
 
 export type CardDependentNodeData = CardDependencyNodeData &
@@ -70,24 +71,15 @@ export type TransformDependentNode = BaseDependentNode<
   TransformDependentNodeData
 >;
 
-type CardDependencyNode<TType> = BaseDependencyNode<
-  TType,
+export type CardDependencyNode = BaseDependencyNode<
+  "card",
   CardDependencyNodeData
 >;
 
-type CardDependentNode<TType> = BaseDependentNode<TType, CardDependentNodeData>;
-
-export type QuestionDependencyNode = CardDependencyNode<"question">;
-
-export type QuestionDependentNode = CardDependentNode<"question">;
-
-export type ModelDependencyNode = CardDependencyNode<"model">;
-
-export type ModelDependentNode = CardDependentNode<"model">;
-
-export type MetricDependencyNode = CardDependencyNode<"metric">;
-
-export type MetricDependentNode = CardDependentNode<"metric">;
+export type CardDependentNode = BaseDependentNode<
+  "card",
+  CardDependentNodeData
+>;
 
 export type SnippetDependencyNode = BaseDependencyNode<
   "snippet",
@@ -102,17 +94,13 @@ export type SnippetDependentNode = BaseDependentNode<
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
-  | QuestionDependencyNode
-  | ModelDependencyNode
-  | MetricDependencyNode
+  | CardDependencyNode
   | SnippetDependencyNode;
 
 export type DependentNode =
   | TableDependentNode
   | TransformDependentNode
-  | QuestionDependentNode
-  | ModelDependentNode
-  | MetricDependentNode
+  | CardDependentNode
   | SnippetDependentNode;
 
 export type DependencyEdge = {

@@ -23,8 +23,8 @@ const GRAPH: DependencyGraph = {
   nodes: [
     {
       id: 1,
-      type: "model",
-      data: { name: "Account", display: "table" },
+      type: "card",
+      data: { name: "Account", type: "model", display: "table" },
       dependents: { question: 10 },
     },
     {
@@ -42,9 +42,9 @@ const GRAPH: DependencyGraph = {
   edges: [
     {
       from_entity_id: 1,
-      from_entity_type: "model",
+      from_entity_type: "card",
       to_entity_id: 1,
-      to_entity_type: "model",
+      to_entity_type: "table",
     },
   ],
 };
