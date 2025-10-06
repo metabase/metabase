@@ -69,7 +69,7 @@ export function echartsIcon(name, isSelected = false) {
 
 export function chartGridLines() {
   return echartsContainer().find(
-    "path[stroke='var(--mb-color-border)'][fill='transparent']",
+    "path[stroke='var(--mb-color-border-subtle)'][fill='transparent']",
   );
 }
 
