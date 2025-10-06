@@ -10,8 +10,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-
-import type { SuggestionModel } from "../types";
+import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
 import S from "./MenuItems.module.css";
 
@@ -29,6 +28,7 @@ export interface MenuItem {
   model?: SuggestionModel;
   id?: number | string;
   href?: string;
+  hasSubmenu?: boolean;
 }
 
 export const MenuItemComponent = ({
@@ -65,6 +65,10 @@ export const MenuItemComponent = ({
           </Text>
         )}
       </Stack>
+
+      {item.hasSubmenu && (
+        <Icon name="chevronright" size=".75rem" color="text-light" />
+      )}
     </Group>
   </UnstyledButton>
 );
