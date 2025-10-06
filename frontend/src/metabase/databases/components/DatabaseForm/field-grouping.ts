@@ -1,3 +1,5 @@
+import { partition } from "underscore";
+
 import type { EngineField, FieldGroupConfig } from "metabase-types/api";
 
 export class GroupedFields {
@@ -18,34 +20,30 @@ export function groupFields({
     return fields;
   }
 
-  // Indexes of the fields to combine into one group field
-  const fieldIndexes = fields
-    .filter((field) => {
-      if (field instanceof GroupedFields) {
-        return false;
-      }
-
-      return fieldGroupConfig.id === field["group-id"];
-    })
-    .map((field) => (field ? fields.indexOf(field) : -1))
-    .filter((index) => index !== -1);
+  const fieldIndexes = fields.reduce<number[]>((acc, field, index) => {
+    if (
+      field instanceof GroupedFields ||
+      fieldGroupConfig.id !== field["group-id"]
+    ) {
+      return acc;
+    }
+    return [...acc, index];
+  }, []);
 
   // If we haven't found all the fields, return the original fields
   if (fieldIndexes.length === 0) {
     return fields;
   }
 
-  // Combine the fields into a group field
+  const [fieldsToGroup, filteredFields] = partition(fields, (_field, index) => {
+    return fieldIndexes.includes(index);
+  });
+
   const groupedFields = new GroupedFields(
-    fieldIndexes.map((index) => fields[index] as EngineField),
+    fieldsToGroup as EngineField[],
     fieldGroupConfig,
   );
 
-  // Remove the fields that were combined into a group field
-  const filteredFields: Array<EngineField | GroupedFields> = fields.filter(
-    (_field, index) => !fieldIndexes.includes(index),
-  );
-
   // Insert the group field at the position of the first field from the group
-  return [...filteredFields].toSpliced(fieldIndexes[0], 0, groupedFields);
+  return filteredFields.toSpliced(fieldIndexes[0], 0, groupedFields);
 }
