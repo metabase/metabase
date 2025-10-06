@@ -85,7 +85,7 @@ export const navigateToEntitySelectionStep = (
     cy.findByText(labelByExperience).click();
   }
 
-  // exploration template does not have the entity selection step
+  // exploration and metabot experience does not have the entity selection step
   if (hasEntitySelection && options.resourceName) {
     cy.log("navigate to the entity selection step");
 
