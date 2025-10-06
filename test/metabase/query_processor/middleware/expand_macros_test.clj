@@ -27,13 +27,11 @@
   (testing "no Segment should yield exact same query"
     (is (=? (lib.tu.macros/mbql-query venues
               {:filter   [:> $price 1]
-               :breakout [$category-id]
-               :breakout-idents {0 "jnTPEtySlo9dp0rsXIZjy"}})
+               :breakout [$category-id]})
             (expand-macros
              (lib.tu.macros/mbql-query venues
                {:filter   [:> $price 1]
-                :breakout [$category-id]
-                :breakout-idents {0 "jnTPEtySlo9dp0rsXIZjy"}}))))))
+                :breakout [$category-id]}))))))
 
 (def ^:private mock-metadata-provider
   (lib.tu/mock-metadata-provider
@@ -55,8 +53,7 @@
                          [:or
                           [:is-null $category-id]
                           [:> $price 1]]]
-              :breakout [$category-id]
-              :breakout-idents {0 "tSQXJ8zkCoNrXgc4tkaPo"}})
+              :breakout [$category-id]})
            (expand-macros
             (lib.tu.macros/mbql-query venues
               {:filter   [:and
@@ -64,8 +61,7 @@
                           [:or
                            [:segment 2]
                            [:> $price 1]]]
-               :breakout [$category-id]
-               :breakout-idents {0 "tSQXJ8zkCoNrXgc4tkaPo"}}))))))
+               :breakout [$category-id]}))))))
 
 (deftest ^:parallel nested-segments-test
   (let [metadata-provider (lib.tu/mock-metadata-provider

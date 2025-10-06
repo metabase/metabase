@@ -22,6 +22,7 @@
 ;;    *  venue_id
 ;;    *  date
 ;; *  products - 200 rows
+;;    *  id
 ;;    *  ean
 ;;    *  title
 ;;    *  category
@@ -30,6 +31,7 @@
 ;;    *  rating
 ;;    *  created_at
 ;; *  people - 2500 rows
+;;    *  id
 ;;    *  address
 ;;    *  email
 ;;    *  password
@@ -43,12 +45,14 @@
 ;;    *  latitude
 ;;    *  created_at
 ;; *  reviews - 1112 rows
+;;    *  id
 ;;    *  product_id
 ;;    *  reviewer
 ;;    *  rating
 ;;    *  body
 ;;    *  created_at
 ;; *  orders - 18760 rows
+;;    *  id
 ;;    *  user_id
 ;;    *  product_id
 ;;    *  subtotal

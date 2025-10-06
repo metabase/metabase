@@ -62,7 +62,7 @@ describe("PublicOrEmbeddedQuestion", () => {
       await userEvent.hover(getIcon("download"));
 
       expect(
-        fetchMock.calls(`path:/app/locales/${expectedLocale}.json`),
+        fetchMock.callHistory.calls(`path:/app/locales/${expectedLocale}.json`),
       ).toHaveLength(1);
     });
   });

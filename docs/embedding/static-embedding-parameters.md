@@ -1,5 +1,6 @@
 ---
 title: Parameters for static embeds
+summary: Using parameters to customize embedded static questions and dashboards.
 redirect_from:
   - /docs/latest/embedding/signed-embedding-parameters
 ---
@@ -56,33 +57,33 @@ If you want to set a default value for your [editable filter widget](#adding-a-f
 your_embedding_url?parameter_name=value
 ```
 
-Let's say your embedded dashboard has a filter connected to an editable parameter called "Breakfast". If you want to set the default value for the "Breakfast" filter to "Scrambled eggs":
+For example, if your embedded dashboard has a filter connected to an editable parameter called "Breakfast", and you want to set the default value to "Hash browns":
 
 ```
-your_embedding_url?breakfast=Scrambled_eggs
+your_embedding_url?breakfast=Hash_browns
 ```
 
-To specify default values for more than one filter, separate the filters with ampersands (&):
+To specify default values for multiple filters, separate them with ampersands (&):
 
 ```
-your_embedding_url?breakfast=Scrambled_eggs&lunch=Grilled_cheese
+your_embedding_url?breakfast=Hash_browns&lunch=Sandwich
 ```
 
-You can set multiple default values for a filter by separating the `key=value` pairs with ampersands (&):
+You can set multiple default values for a single filter by separating the values with ampersands (&):
 
 ```
-your_embedding_url?breakfast=Scrambled_eggs&breakfast=Bacon
+your_embedding_url?breakfast=Hash_browns&breakfast=Pancakes
 ```
 
 ## Hiding filter widgets from a static embed
 
-If you have a lot of editable parameters (resulting in a lot of filter widgets), you can hide them from your static embed by adding `#hide_parameters` to the end of the URL in your iframe's `src` attribute:
+If you have multiple editable parameters (resulting in multiple filter widgets), you can hide specific ones from your static embed by adding `#hide_parameters` to the end of the URL in your iframe's `src` attribute:
 
 ```
 your_embedding_url#hide_parameters=parameter_name
 ```
 
-For example, if you want to hide a filter called "Breakfast" from your embedded dashboard:
+For example, to hide a filter called "Breakfast" from your embedded dashboard:
 
 ```
 your_embedding_url#hide_parameters=breakfast
@@ -97,7 +98,7 @@ your_embedding_url#hide_parameters=breakfast,lunch
 You can also simultaneously assign a parameter a default value _and_ hide its filter widget:
 
 ```
-your_embedding_url?breakfast=Scrambled_eggs#hide_parameters=breakfast
+your_embedding_url?breakfast=Hash_browns#hide_parameters=breakfast
 ```
 
 ## Unsigned parameter syntax
@@ -182,16 +183,16 @@ your_embedding_url#theme=night&bordered=false&titled=true
 
 You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name             | Possible values                                                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `background`               | true (default), false. Dashboards only.                                                                                                        |
-| `bordered`                 | true (default), false.                                                                                                                         |
-| `locale\*`                 | E.g., `locale=ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                          |
-| `titled`                   | true (default), false.                                                                                                                         |
-| `theme`                    | null (default), night. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
-| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
-| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
-| `downloads`\*\*            | true (default), false.                                                                                                                         |
+| Parameter name             | Possible values                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `background`               | `true` (default), `false`. Dashboards only.                                                                                                        |
+| `bordered`                 | `true` (default), `false`.                                                                                                                         |
+| `locale`\*                 | E.g., `ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                                     |
+| `titled`                   | `true` (default), `false`.                                                                                                                         |
+| `theme`                    | `null` (default), `night`. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                             |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                      |
+| `downloads`\*\*            | `true` (default), `false`, `results`, `pdf`                                                                                                        |
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
@@ -203,19 +204,19 @@ For global appearance settings, such as the colors and fonts used across your en
 
 {% include plans-blockquote.html feature="Locales for static embeds" %}
 
-To change the UI language for a static embed, you can set its [locale](../configuring-metabase/localization.md#supported-languages). For example, to set a public link's language to Korean, you could append `#locale=ko`.
+To change the UI language for a static embed, you can set its [locale](../configuring-metabase/localization.md#supported-languages). For example, to set a public link's language to Korean, append `#locale=ko`:
 
 ```
 https://metabase.example.com/public/dashboard/7b6e347b-6928-4aff-a56f-6cfa5b718c6b?category=&city=&state=#locale=ko
 ```
 
-If you have multiple params, separated them with an ampersand `&`:
+If you have multiple parameters, separate them with an ampersand (`&`):
 
 ```
 category=Gadget&state=Vermont#theme=night&locale=ko
 ```
 
-The `locale` param only changes the language for Metabase UI elements. The _content_'s language is defined by whomever created the item. So for example Metabase wouldn't translate the name of a question, but Metabase _would_ translate the UI text "Export to PDF".
+The `locale` parameter changes the language for Metabase UI elements, like the label of "Export to PDF" button. To change the _content_'s language in a static embed (like names of questions and dashboards), you'll need to [upload a translation dictionary](./translations.md).
 
 ## Transparent backgrounds for embeds
 
@@ -228,13 +229,24 @@ Making an embed transparent depends on the type of embed:
 
 {% include plans-blockquote.html feature="Disabling downloads" %}
 
-By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards. You can remove the option to download results by setting `downloads=false` in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+By default, Metabase will include a **Download** button on embedded questions, and an **Export to PDF** option on embedded dashboards.
 
-If the download option is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `downloads=true`.
+You can configure these options with the `downloads` parameter in the embedding URL in the iframe's `src` attribute, see [customizing the appearance of static embeds](./static-embedding.md#customizing-the-appearance-of-static-embeds).
+
+`downloads` accepts the following values:
+
+- `true` (default): include both the Download and Export to PDF options.
+- `false`: hide both the Download and Export to PDF options.
+- `results`: show the Download option.
+- `pdf`: show the Export to PDF option (dashboards only).
+
+You can combine the explicit options: `downloads=results,pdf` is the same as `downloads=true`.
+
+The `downloads` parameter replaces the legacy `hide_download_button` parameter.
 
 ## Maximum request size
 
-The maximum length of a static embedding URL (including all parameters) is the value of your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
+The maximum length of a static embedding URL (including all parameters) is determined by your [`MB_JETTY_REQUEST_HEADER_SIZE`](../configuring-metabase/environment-variables.md#mb_jetty_request_header_size) environment variable. The default is 8192 bytes.
 
 If your static embedding URL exceeds the maximum header size, you'll see a log message like `URI too long`. You can update the environment variable to accept larger headers. If you're using a proxy server, you may need to set a corresponding property on the server as well.
 

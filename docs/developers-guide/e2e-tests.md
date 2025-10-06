@@ -6,6 +6,8 @@ title: End-to-end tests with Cypress
 
 Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
 
+_Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed._
+
 ## Getting Started
 
 Metabase’s Cypress tests are located in the `e2e/test/scenarios` source tree, in a structure that roughly mirrors Metabase’s URL structure. For example, tests for the admin “datamodel” pages are located in `e2e/test/scenarios/admin/datamodel`.
@@ -162,7 +164,7 @@ We have a few helpers for dealing with tests involving snowplow
    partial-match the payload provided. This is simply a convenience function for comparing
    `event.unstruct_event.data.data` rather than the entire `event`. Most of our events are unstructured events, so this is handy.
 1. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
-   *no* unstructured events match the payload.
+   _no_ unstructured events match the payload.
 1. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
@@ -188,48 +190,7 @@ Cypress._.times(N, () => {
 
 ### Embedding SDK tests
 
-Tests located in `e2e/test-component/scenarios/embedding-sdk/` are used to run automated checks for the Embedding SDK.
-
-In order to run the tests locally, see [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md)
-
-### Sample Apps compatibility with Embedding SDK tests
-
-In order to check compatibility between Sample Apps and Embedding SDK, we have a special test suite for each sample app that pulls this Sample App, starts it and runs its Cypress tests against the local `metabase.jar` and local `@metabase/embedding-sdk-react` package.
-
-#### Local runs
-
-To run these tests locally, run:
-```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
-```
-
-For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
-```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
-```
-
-##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
-For the Shoppy's Sample App Tests (`TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase Instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
-
-You can get it by:
-- Enabling the `Tailscale` and logging in using your work email address.
-- Running `pg_dump "postgres://{{ username }}:{{ password }}@{{ host }}:{{ port }}/{{ database }}" > ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql` command.
-  - See the `Shoppy Coredev Appdb` record in `1password` for credentials.
-
-#### CI runs
-
-On our CI, test failures do not block the merging of a pull request (PR). However, if a test fails, it’s most likely due to one of the following reasons:
-
-- **Build Failure**:
-
-  The failure occurs during the build of a local `@metabase/embedding-sdk-react` dist. This indicates there is likely a syntax or type error in the front-end code.
-- **Test Run Failure**:
-
-  The failure occurs during the actual test execution. In this case, the PR may have introduced a change that either:
-  - Breaks the entire Metabase or Embedding SDK, or
-  - Breaks the compatibility between the Embedding SDK and the Sample Apps.
-
-If a PR breaks compatibility between the Embedding SDK and the Sample Apps, the PR can still be merged. However, for each Sample App affected, a separate PR should be created to restore compatibility with the new `@metabase/embedding-sdk-react` version when it is released. These compatibility PRs should be merged only once the Embedding SDK version containing breaking changes is officially released.
+See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/dev.md)
 
 ## DB Snapshots
 
@@ -255,15 +216,17 @@ Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITI
 
 **Enterprise instance will start without a premium token!**
 
-If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
-You should provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/). (note: only a few tests require the no features token)
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests.
+You should provide 4 tokens:
 
-- `CYPRESS_ALL_FEATURES_TOKEN`
-- `CYPRESS_NO_FEATURES_TOKEN`
+- MB_ALL_FEATURES_TOKEN: all feature enabled, including new feature not released yet to customers
+- MB_STARTER_CLOUD_TOKEN: only 'hosting' feature enabled to simulate the starter plan on cloud
+- MB_PRO_CLOUD_TOKEN: PRO features enabled + 'hosting' to simulate the pro plan on cloud
+- MB_PRO_SELF_HOSTED_TOKEN: PRO features but no 'hosting' to simulate the pro self-hosted plan
 
-```
-MB_EDITION=ee ENTERPRISE_TOKEN=xxxxxx yarn test-cypress
-```
+You can configure these via ENVs or via the `cypress.env.json` file (see `cypress.env.json.example` for an example).
+
+For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
 
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 

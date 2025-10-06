@@ -1,0 +1,35 @@
+.sortableField {
+  /* make border-radius of focus state match border-radius of .card */
+  border-radius: var(--default-border-radius);
+}
+
+.active {
+  border-color: var(--mb-color-brand) !important;
+}
+
+.card {
+  box-shadow: 0 2px 4px 0 hsla(0, 0%, 0%, 0.05) !important;
+
+  &.draggable {
+    cursor: grab;
+  }
+
+  &:hover {
+    &:not(.active) {
+      background-color: var(--mb-color-brand-lighter) !important;
+    }
+
+    .grabber {
+      color: var(--mb-color-brand);
+    }
+  }
+}
+
+.icon {
+  color: var(--mb-color-brand);
+}
+
+.label {
+  overflow: hidden;
+  overflow-wrap: break-word;
+}

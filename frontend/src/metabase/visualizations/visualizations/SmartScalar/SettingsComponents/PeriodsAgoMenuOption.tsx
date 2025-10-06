@@ -48,7 +48,7 @@ export function PeriodsAgoMenuOption({
 
   const value = editedValue?.value ?? MIN_VALUE;
   const handleInputChange = useCallback(
-    (value: number | "") => {
+    (value: number | string) => {
       if (message) {
         setMessage(null);
       }
@@ -68,12 +68,6 @@ export function PeriodsAgoMenuOption({
         return;
       }
 
-      if (!Number.isInteger(value)) {
-        onChange({ type, value: Math.floor(value) ?? MIN_VALUE });
-        reSelectInput();
-        return;
-      }
-
       onChange({ type, value });
     },
     [maxValue, message, onChange, reSelectInput, type],
@@ -81,6 +75,9 @@ export function PeriodsAgoMenuOption({
 
   const handleInputEnter = useCallback(
     (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.nativeEvent.isComposing) {
+        return;
+      }
       if (e.key === "Enter") {
         onChange({ type, value }, true);
       }
@@ -100,7 +97,7 @@ export function PeriodsAgoMenuOption({
       <Box px="sm" onClick={() => onChange({ type, value }, true)}>
         <Group gap="sm">
           <NumberInputStyled
-            type="number"
+            allowDecimal={false}
             value={value}
             onChange={(value) => handleInputChange(value)}
             onKeyPress={handleInputEnter}

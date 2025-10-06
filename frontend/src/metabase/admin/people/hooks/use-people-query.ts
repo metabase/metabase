@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { usePagination } from "metabase/hooks/use-pagination";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import { USER_STATUS, type UserStatus } from "../constants";
@@ -31,10 +31,13 @@ export const usePeopleQuery = (pageSize: number) => {
     return () => clearTimeout(timerId);
   }, [searchInputValue, setPage]);
 
-  const updateStatus = (status: UserStatus) => {
-    setPage(0);
-    setStatus(status);
-  };
+  const updateStatus = useCallback(
+    (status: UserStatus) => {
+      setPage(0);
+      setStatus(status);
+    },
+    [setPage],
+  );
 
   const query = useMemo(
     () => ({

@@ -8,8 +8,8 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import EntityItem from "metabase/components/EntityItem";
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
+import EntityItem from "metabase/common/components/EntityItem";
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
   ItemNameCell,
@@ -17,10 +17,10 @@ import {
   TBody,
   Table,
   TableColumn,
-} from "metabase/components/ItemsTable/BaseItemsTable.styled";
-import { Columns } from "metabase/components/ItemsTable/Columns";
-import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import Bookmarks from "metabase/entities/bookmarks";
 import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
@@ -32,9 +32,9 @@ import {
   Icon,
   type IconName,
   Menu,
+  Repeat,
   Skeleton,
 } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import {
@@ -45,6 +45,7 @@ import {
   TableRow,
 } from "../components/BrowseTable.styled";
 
+import { trackMetricBookmarked } from "./analytics";
 import type { MetricResult, SortColumn } from "./types";
 import { getMetricDescription, sortMetrics } from "./utils";
 
@@ -360,6 +361,8 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
             id: metric.id,
             type: "card",
           });
+
+          trackMetricBookmarked();
           dispatch(Bookmarks.actions.invalidateLists());
         },
       });

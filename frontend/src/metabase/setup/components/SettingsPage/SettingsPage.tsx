@@ -1,8 +1,9 @@
-import LogoIcon from "metabase/components/LogoIcon";
+import { getLocalizationNoticeText } from "metabase/common/components/CommunityLocalizationNotice";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
-import { getIsEmbeddingUseCase, getSteps } from "metabase/setup/selectors";
+import { getSteps } from "metabase/setup/selectors";
 import type { SetupStep } from "metabase/setup/types";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
 
 import { CloudMigrationHelp } from "../CloudMigrationHelp";
 import { CompletedStep } from "../CompletedStep";
@@ -32,8 +33,15 @@ const STEP_COMPONENTS: Partial<
 
 export const SettingsPage = (): JSX.Element => {
   const steps = useSelector(getSteps);
-  const isEmbeddingUseCase = useSelector(getIsEmbeddingUseCase);
   const SELECT_WIDTH = "10rem";
+  const tooltipText = getLocalizationNoticeText({ mentionMetabase: true });
+  const TOOLTIP_WIDTH = 220;
+
+  const label = (
+    <Text size="sm" c="text-white">
+      {tooltipText}
+    </Text>
+  );
 
   return (
     <div data-testid="setup-forms">
@@ -42,7 +50,21 @@ export const SettingsPage = (): JSX.Element => {
           <Box w={SELECT_WIDTH} className={S.Decoy} />
           <LogoIcon height={51} />
           <Box w={SELECT_WIDTH}>
-            {isEmbeddingUseCase && <LanguageSelector />}
+            <Flex align="center" justify="space-between" gap="sm">
+              <LanguageSelector />
+              <div>
+                <Tooltip
+                  label={label}
+                  position="bottom"
+                  withArrow
+                  multiline
+                  w={TOOLTIP_WIDTH}
+                  ta="center"
+                >
+                  <Icon name="info" aria-label={tooltipText} />
+                </Tooltip>
+              </div>
+            </Flex>
           </Box>
         </Flex>
       </Box>

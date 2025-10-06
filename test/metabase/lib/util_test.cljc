@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
@@ -81,6 +82,20 @@
                                  :strategy     :left-join
                                  :fk-field-id  (meta/id :venues :category-id)}]}}))))
 
+(deftest ^:parallel pipeline-joins-test-2
+  (testing "Make sure we don't add unnecessary stages to joins when pipelining"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:stages [{}]}]}]}
+              (lib.util/pipeline query))))))
+
 (deftest ^:parallel pipeline-source-metadata-test
   (testing "`:source-metadata` should get moved to the previous stage as `:lib/stage-metadata`"
     (is (=? {:lib/type :mbql/query
@@ -99,41 +114,51 @@
   (is (=? {:lib/type     :mbql.stage/mbql
            :source-table 1}
           (lib.util/query-stage {:database 1
-                                 :type     :query
-                                 :query    {:source-table 1}}
-                                0)))
+                                 :lib/type :mbql/query
+                                 :stages   [{:lib/type     :mbql.stage/mbql
+                                             :source-table 1}]}
+                                0))))
+
+(deftest ^:parallel query-stage-test-2
   (are [index expected] (=? expected
                             (lib.util/query-stage {:database 1
-                                                   :type     :query
-                                                   :query    {:source-query {:source-table 1}}}
+                                                   :lib/type :mbql/query
+                                                   :stages   [{:lib/type     :mbql.stage/mbql
+                                                               :source-table 1}
+                                                              {:lib/type     :mbql.stage/mbql}]}
                                                   index))
     0 {:lib/type     :mbql.stage/mbql
        :source-table 1}
-    1 {:lib/type :mbql.stage/mbql})
+    1 {:lib/type :mbql.stage/mbql}))
+
+(deftest ^:parallel query-stage-test-3
   (testing "negative index"
     (are [index expected] (=? expected
                               (lib.util/query-stage {:database 1
-                                                     :type     :query
-                                                     :query    {:source-query {:source-table 1}}}
+                                                     :lib/type :mbql/query
+                                                     :stages   [{:lib/type     :mbql.stage/mbql
+                                                                 :source-table 1}
+                                                                {:lib/type     :mbql.stage/mbql}]}
                                                     index))
       -1 {:lib/type :mbql.stage/mbql}
       -2 {:lib/type     :mbql.stage/mbql
-          :source-table 1}))
+          :source-table 1})))
+
+(deftest ^:parallel query-stage-test-4
   (testing "Out of bounds"
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs js/Error)
-         #"Stage 2 does not exist"
-         (lib.util/query-stage {:database 1
-                                :type     :query
-                                :query    {:source-query {:source-table 1}}}
-                               2)))
-    (is (thrown-with-msg?
-         #?(:clj Throwable :cljs js/Error)
-         #"Stage -3 does not exist"
-         (lib.util/query-stage {:database 1
-                                :type     :query
-                                :query    {:source-query {:source-table 1}}}
-                               -3)))))
+    (let [query {:database 1
+                 :lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1}
+                            {:lib/type     :mbql.stage/mbql}]}]
+      (is (thrown-with-msg?
+           #?(:clj Throwable :cljs js/Error)
+           #"Stage 2 does not exist"
+           (lib.util/query-stage query 2)))
+      (is (thrown-with-msg?
+           #?(:clj Throwable :cljs js/Error)
+           #"Stage -3 does not exist"
+           (lib.util/query-stage query -3))))))
 
 (deftest ^:parallel update-query-stage-test
   (is (=? {:database 1
@@ -287,6 +312,34 @@
               (unique-name :y "A")
               (unique-name :y "A")])))))
 
+(deftest ^:parallel unique-name-generator-zero-arity-test
+  (let [f (lib.util/unique-name-generator)]
+    (is (= ["A" "B" "A" "A_2" "A_2"]
+           [(f :x "A")
+            (f :x "B")
+            (f :x "A")
+            (f :y "A")
+            (f :y "A")]))
+    (let [f' (f)]
+      (is (= ["A" "B" "A" "A_2" "A_2"]
+             [(f' :x "A")
+              (f' :x "B")
+              (f' :x "A")
+              (f' :y "A")
+              (f' :y "A")]))
+      (let [f'' (f')]
+        (is (= ["A" "B" "A" "A_2" "A_2"]
+               [(f'' :x "A")
+                (f'' :x "B")
+                (f'' :x "A")
+                (f'' :y "A")
+                (f'' :y "A")]))))))
+
+(deftest ^:parallel non-truncating-unique-name-generator-test
+  (let [f (lib.util/non-truncating-unique-name-generator)]
+    (is (= "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+           (f "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count")))))
+
 (deftest ^:parallel strip-id-test
   (are [exp in] (= exp (lib.util/strip-id in))
     "foo"            "foo"
@@ -359,3 +412,139 @@
     (is (not= (get-in query       aggregation-ref-path)
               (get-in fresh-query aggregation-ref-path)))
     (is (lib.equality/= query fresh-query))))
+
+(def ^:private single-stage-query
+  (lib.tu/venues-query))
+
+(def ^:private two-stage-query
+  (-> (lib/append-stage single-stage-query)
+      (lib/filter (lib/= 1 (meta/field-metadata :venues :id)))))
+
+(deftest ^:parallel first-stage?-test
+  (testing "should return true for the first stage"
+    (is (true? (lib.util/first-stage? single-stage-query 0)))
+    (is (true? (lib.util/first-stage? two-stage-query 0))))
+  (testing "should return false for the second stage"
+    (is (false? (lib.util/first-stage? two-stage-query 1))))
+  (testing "should throw for invalid index"
+    (are [form] (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"Stage .* does not exist"
+                 form)
+      (lib.util/first-stage? single-stage-query 1)
+      (lib.util/first-stage? single-stage-query -2)
+      (lib.util/first-stage? two-stage-query 2)
+      (lib.util/first-stage? two-stage-query -3))))
+
+(deftest ^:parallel last-stage?-test
+  (testing "should return true for the last stage"
+    (is (true? (lib.util/last-stage? single-stage-query 0)))
+    (is (true? (lib.util/last-stage? two-stage-query 1))))
+  (testing "should return false for a non-last stage"
+    (is (false? (lib.util/last-stage? two-stage-query 0))))
+  (testing "should throw for invalid index"
+    (are [form] (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"Stage .* does not exist"
+                 form)
+      (lib.util/last-stage? single-stage-query 1)
+      (lib.util/last-stage? single-stage-query -2)
+      (lib.util/last-stage? two-stage-query 2)
+      (lib.util/last-stage? two-stage-query -3))))
+
+(deftest ^:parallel drop-later-stages-test
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages single-stage-query 0))))
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages single-stage-query -1))))
+  (is (= single-stage-query (lib.util/drop-later-stages single-stage-query 0)))
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages two-stage-query 0))))
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages two-stage-query -2))))
+  (is (= 2 (lib/stage-count (lib.util/drop-later-stages two-stage-query 1))))
+  (is (= 2 (lib/stage-count (lib.util/drop-later-stages two-stage-query -1))))
+  (is (= two-stage-query (lib.util/drop-later-stages two-stage-query -1))))
+
+(deftest ^:parallel find-stage-index-and-clause-by-uuid-test
+  (let [query {:database 1
+               :lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 2
+                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]}
+                          {:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                                       [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+                                       "wow"]]}]}]
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000001")))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (lib.util/find-stage-index-and-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
+    (is (= [1 [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
+    (is (= [1 [:=
+               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+               [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+               "wow"]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "a1898aa6-4928-4e97-837d-e440ce21085e")))
+    (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000002")))
+    (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query 0 "a1898aa6-4928-4e97-837d-e440ce21085e")))))
+
+(deftest ^:parallel do-not-add-extra-stages-to-join-test
+  (is (=? {:stages [{:source-table 45060
+                     :joins        [{:alias  "PRODUCTS__via__PRODUCT_ID"
+                                     :stages [{:source-table 45050
+                                               :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                              [:field 45507 {:base-type :type/Text}]]}]}]}]}
+          (lib.util/pipeline '{:database 45001
+                               :type     :query
+                               :query    {:source-table 45060
+                                          :joins        [{:strategy     :left-join
+                                                          :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                          :fk-field-id  45607
+                                                          :condition    [:=
+                                                                         [:field 45607 nil]
+                                                                         [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                          :source-query {:source-table 45050
+                                                                         :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                        [:field 45507 {:base-type :type/Text}]]}}]}}))))
+
+(deftest ^:parallel pipeline-puts-join-metadata-in-the-correct-place-test
+  (testing "Should be able to convert a query with metadata to MBQL 5 correctly (without normalization errors)"
+    (let [query {:database 83001
+                 :type     :query
+                 :query    {:joins        [{:alias           "Q1"
+                                            :fields          :all
+                                            :condition       [:=
+                                                              [:field "CC" {:base-type :type/Integer}]
+                                                              [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]
+                                            :source-query    {:expressions     {"CC" [:+ 1 1]}
+                                                              :source-query    {:source-table 83050
+                                                                                :aggregation  [[:count]]
+                                                                                :breakout     [[:field 83502 nil]]}
+                                                              :source-metadata [{:name "CATEGORY"}
+                                                                                {:name "count"}]}
+                                            :source-metadata [{:name "CATEGORY"}
+                                                              {:name "count"}
+                                                              {:name "CC", :lib/expression-name "CC"}]}]
+                            :source-query {:expressions  {"CC" [:+ 1 1]}
+                                           :source-query {:source-table 83050
+                                                          :aggregation  [[:count]]
+                                                          :breakout     [[:field 83502 nil]]}}}}]
+      (is (=? {:stages [{:source-table 83050
+                         :aggregation  [[:count]]
+                         :breakout     [[:field 83502 nil]]}
+                        {:expressions {"CC" [:+ 1 1]}}
+                        {:joins [{:alias           "Q1"
+                                  :fields          :all
+                                  :source-metadata (symbol "nil #_\"key is not present.\"")
+                                  :conditions      [[:=
+                                                     [:field "CC" {:base-type :type/Integer}]
+                                                     [:field "CC" {:base-type :type/Integer, :join-alias "Q1"}]]]
+                                  :stages          [{:source-table       83050
+                                                     :aggregation        [[:count]]
+                                                     :breakout           [[:field 83502 nil]]
+                                                     :lib/stage-metadata {:columns [{:name "CATEGORY"}
+                                                                                    {:name "count"}]}}
+                                                    {:expressions        {"CC" [:+ 1 1]}
+                                                     :lib/stage-metadata {:columns [{:name "CATEGORY"}
+                                                                                    {:name "count"}
+                                                                                    {:name "CC", :lib/expression-name "CC"}]}}]}]}]}
+              (lib.util/pipeline query))))))

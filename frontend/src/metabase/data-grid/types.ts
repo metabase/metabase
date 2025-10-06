@@ -27,6 +27,8 @@ declare module "@tanstack/react-table" {
     enableReordering?: boolean;
     enableSelection?: boolean;
     headerClickTargetSelector?: string;
+    formatter?: CellFormatter<TValue>;
+    clipboardFormatter?: PlainCellFormatter<TValue>;
   }
 }
 
@@ -69,6 +71,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
+  /** Custom cell render template for cells in editing state */
+  editingCell?: (props: CellContext<TRow, TValue>) => React.JSX.Element;
+
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -76,10 +81,18 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   cellVariant?: BodyCellVariant;
 
   /** Function to determine CSS class names for cells */
-  getCellClassName?: (value: TValue, rowIndex: number) => string;
+  getCellClassName?: (
+    value: TValue,
+    rowIndex: number,
+    columnId: string,
+  ) => string;
 
   /** Function to determine CSS styles for cells */
-  getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
+  getCellStyle?: (
+    value: TValue,
+    rowIndex: number,
+    columnId: string,
+  ) => React.CSSProperties;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
@@ -104,12 +117,21 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values for display */
   formatter?: CellFormatter<TValue>;
+
+  /** Function to format cell values when copying to clipboard */
+  clipboardFormatter?: PlainCellFormatter<TValue>;
+
+  /** Function to determine if a cell is in editing state */
+  getIsEditing?: (columnId: string, rowIndex: number) => boolean;
 }
 
 /**
  * Configuration for the row ID column
  */
 export interface RowIdColumnOptions {
+  /** Index in rows array of corresponding expanded row, if any (i.e. DetailViewSidesheet) */
+  expandedIndex: number | undefined;
+
   /** Display style of the row ID column */
   variant: RowIdVariant;
 
@@ -226,12 +248,20 @@ export type CellFormatter<TValue> = (
   columnId: string,
 ) => React.ReactNode;
 
+export type PlainCellFormatter<TValue> = (
+  value: TValue,
+  rowIndex: number,
+  columnId: string,
+) => string;
+
 export type ExpandedColumnsState = Record<string, boolean>;
 
 export type DataGridSelection = {
-  selectedCells: SelectedCell[];
+  selectedCells: CellId[];
+  focusedCell: CellId | null;
   isEnabled: boolean;
   isCellSelected: (cell: Cell<any, any>) => boolean;
+  isCellFocused: (cell: Cell<any, any>) => boolean;
   isRowSelected: (rowId: string) => boolean;
   handlers: {
     handleCellMouseDown: (
@@ -246,11 +276,11 @@ export type DataGridSelection = {
       e: React.MouseEvent<HTMLElement>,
       cell: Cell<any, any>,
     ) => void;
-    handleCellsKeyDown: (e: React.KeyboardEvent<HTMLElement>) => void;
+    handleCellDoubleClick: (cell: Cell<any, any>) => void;
   };
 };
 
-export type SelectedCell = {
+export type CellId = {
   rowId: string;
   columnId: string;
   cellId: string;

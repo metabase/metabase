@@ -130,7 +130,10 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
-    H.dragField(1, 0);
+    H.moveDnDKitListElement("drag-handle", {
+      startIndex: 1,
+      dropIndex: 0,
+    });
 
     // One field should now be empty
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -677,16 +680,6 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           assertOnPivotFields();
         });
 
-        // Skipped to avoid flake
-        it.skip("should display pivot table in an embed preview", () => {
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(/Embed in your application/).click();
-          // we use preview endpoints when MB is iframed in itself
-          // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText(test.subject);
-          H.getIframeBody().within(assertOnPivotFields);
-        });
-
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
@@ -739,35 +732,39 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     H.popover().findByText(HINT_TEXT).should("not.exist");
   });
 
-  it.skip("should work for user without data permissions (metabase#14989)", () => {
-    cy.request("POST", "/api/card", {
-      name: "14989",
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
-            ["field-id", PRODUCTS.CATEGORY],
-          ],
+  it(
+    "should work for user without data permissions (metabase#14989)",
+    { tags: "@skip" },
+    () => {
+      cy.request("POST", "/api/card", {
+        name: "14989",
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+              ["field-id", PRODUCTS.CATEGORY],
+            ],
+          },
+          type: "query",
         },
-        type: "query",
-      },
-      display: "pivot",
-      visualization_settings: {},
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      cy.signIn("nodata");
-      H.visitQuestion(QUESTION_ID);
-    });
+        display: "pivot",
+        visualization_settings: {},
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        cy.signIn("nodata");
+        H.visitQuestion(QUESTION_ID);
+      });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grand totals");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Row totals");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("200");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Grand totals");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Row totals");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("200");
+    },
+  );
 
   it("should work with custom mapping of display values (metabase#14985)", () => {
     cy.intercept("POST", "/api/dataset/pivot").as("datasetPivot");
@@ -1010,7 +1007,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     function assertTopMostRowTotalValue(value) {
       // Warning: Fragile selector!
       // TODO: refactor once we have a better HTML structure for tables.
-      cy.get("[role=rowgroup] > div").eq(5).invoke("text").should("eq", value);
+      cy.get("[role=row] > div").eq(5).invoke("text").should("eq", value);
     }
   });
 
@@ -1083,16 +1080,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("should persist column sizes in visualization settings", () => {
       H.visitQuestionAdhoc({ dataset_query: testQuery, display: "pivot" });
-      const leftHeaderColHandle = cy
-        .findAllByTestId("pivot-table-resize-handle")
-        .first();
-      // eslint-disable-next-line no-unsafe-element-filtering
-      const totalHeaderColHandle = cy
-        .findAllByTestId("pivot-table-resize-handle")
-        .last();
+      const leftHeaderColHandle = () =>
+        cy.findAllByTestId("pivot-table-resize-handle").first();
+      const totalHeaderColHandle = () =>
+        // eslint-disable-next-line no-unsafe-element-filtering
+        cy.findAllByTestId("pivot-table-resize-handle").last();
 
-      dragColumnHeader(leftHeaderColHandle, -100);
-      dragColumnHeader(totalHeaderColHandle, 100);
+      dragColumnHeader(leftHeaderColHandle(), -100);
+      dragColumnHeader(totalHeaderColHandle(), 100);
 
       cy.findByTestId("pivot-table").within(() => {
         cy.findByText("User → Source").should(($headerTextEl) => {
@@ -1302,7 +1297,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
       cy.findByTestId("pivot-table").findByText("KS").click();
-      H.popover().findByText("Zoom in").click();
+      H.popover().findByText("Zoom in: State").click();
 
       cy.log("Filter pills");
       cy.findByTestId("filter-pill").should("have.text", "User → State is KS");

@@ -21,14 +21,13 @@
     But they will also be automatically deleted when the Full FieldValues of the same Field got updated.
 
   There is also more written about how these are used for remapping in the docstrings
-  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-dimension-projections]]."
+  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-remaps]]."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.app-db.core :as app-db]
-   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -234,8 +233,16 @@
 (defn inactive?
   "If FieldValues have not been accessed recently they are considered inactive."
   [field-values]
-  (and field-values (t/before? (:last_used_at field-values)
-                               (t/minus (t/offset-date-time) active-field-values-cutoff))))
+  (let [cutoff (t/minus (t/offset-date-time) active-field-values-cutoff)]
+    (and
+     field-values
+     (not (or
+           (t/after? (:last_used_at field-values)
+                     cutoff)
+           ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
+           (t/after? (t2/select-one-fn :max-last-used-at [:model/FieldValues [[:max :last_used_at] :max-last-used-at]]
+                                       {:where [:= :field_id (:field_id field-values)]})
+                     cutoff))))))
 
 (defn field-should-have-field-values?
   "Should this `field` be backed by a corresponding FieldValues object?"
@@ -375,9 +382,8 @@
   (try
     (let [result          ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
                            (:table_id field)
-                           {:breakout        [[:field (u/the-id field) nil]]
-                            :breakout-idents (lib.ident/indexed-idents 1)
-                            :limit           *absolute-max-distinct-values-limit*}
+                           {:breakout [[:field (u/the-id field) nil]]
+                            :limit    *absolute-max-distinct-values-limit*}
                            (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values

@@ -6,6 +6,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.options :as lib.options]
@@ -238,7 +239,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        columns (lib/filterable-columns query)
+        columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      (lib/filterable-columns query))
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
@@ -256,8 +259,8 @@
             "Venues__LATITUDE"
             "Venues__LONGITUDE"
             "Venues__PRICE"
-            "CATEGORIES__via__CATEGORY_ID__ID"
-            "CATEGORIES__via__CATEGORY_ID__NAME"]
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
+            "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
            (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
@@ -288,24 +291,6 @@
                  "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
-
-(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
-  (testing "filterable-columns should exclude expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/filterable-columns query)))))))
 
 (deftest ^:parallel filter-clause-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -489,14 +474,14 @@
          :display-name   "Last Online Time"
          :base-type      :type/Time
          :effective-type :type/Time
-         :semantic-type  :type/Time))
+         :semantic-type  :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
          :display-name   "Is Active"
          :base-type      :type/Boolean
          :effective-type :type/Boolean
-         :semantic-type  :type/Boolean))
+         :semantic-type  nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
@@ -640,6 +625,17 @@
        :name "Created At excludes 3 quarter of year selections"}
       {:clause [:not-in (lib/get-quarter created-at) 1 2 3]
        :name "Created At excludes 3 quarter of year selections"}
+
+      {:clause [:= (lib/get-year created-at) 2001]
+       :name "Created At is in 2001"}
+      {:clause [:= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At is one of 3 year of era selections"}
+      {:clause [:!= (lib/get-year created-at) 2001]
+       :name "Created At excludes 2001"}
+      {:clause [:!= (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
+      {:clause [:not-in (lib/get-year created-at) 2001 2002 2003]
+       :name "Created At excludes 3 year of era selections"}
 
       {:clause [:is-null created-at]
        :name "Created At is empty"}
@@ -914,7 +910,7 @@
                                     {:column-type :type/Boolean :v true}
                                     {:column-type :type/Coordinate :v 1}}
           [query desired] (matrix/test-queries column-type)]
-    (let [col (matrix/find-first desired (lib/filterable-columns query))
+    (let [col (matrix/find-first query desired (lib/filterable-columns query))
           query' (lib/filter query (lib/= col v))
           parts (lib/expression-parts query' (first (lib/filters query')))]
       (is (=? (lib.filter.operator/filter-operators {:lib/type :metadata/column :name "expected" :base-type column-type})
@@ -977,3 +973,14 @@
                         {:lib/uuid "00000000-0000-0000-0000-000000000004"}
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]]]}))))
+
+(deftest ^:parallel filter-display-name-for-year-bucketing-test
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS;")]
+    (is (= "Created At is Jan 1 – Dec 31, 2023"
+           (lib/display-name query [:= {:lib/uuid "79e513f8-af80-4c15-96b6-e72eff7f37cc"}
+                                    [:field {:effective-type :type/Integer
+                                             :base-type      :type/DateTime
+                                             :temporal-unit  :year
+                                             :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
+                                     "CREATED_AT"]
+                                    "2023-01-01T00:00:00Z"])))))

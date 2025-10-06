@@ -1,4 +1,3 @@
-/* eslint-disable import/no-duplicates */
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
@@ -7,6 +6,8 @@ import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
+import add_comment_component from "./add_comment.svg?component";
+import add_comment_source from "./add_comment.svg?source";
 import add_data_component from "./add_data.svg?component";
 import add_data_source from "./add_data.svg?source";
 import add_folder_component from "./add_folder.svg?component";
@@ -95,8 +96,14 @@ import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
 import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
+import code_block_component from "./code_block.svg?component";
+import code_block_source from "./code_block.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import comment_component from "./comment.svg?component";
+import comment_source from "./comment.svg?source";
+import company_component from "./company.svg?component";
+import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -105,6 +112,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import currency_component from "./currency.svg?component";
+import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
 import curve_source from "./curve.svg?source";
 import curved_component from "./curved.svg?component";
@@ -123,10 +132,18 @@ import dyno_component from "./dyno.svg?component";
 import dyno_source from "./dyno.svg?source";
 import edit_document_component from "./edit_document.svg?component";
 import edit_document_source from "./edit_document.svg?source";
+import edit_document_outlined_component from "./edit_document_outlined.svg?component";
+import edit_document_outlined_source from "./edit_document_outlined.svg?source";
 import ellipsis_component from "./ellipsis.svg?component";
 import ellipsis_source from "./ellipsis.svg?source";
 import embed_component from "./embed.svg?component";
 import embed_source from "./embed.svg?source";
+import embed_interactive_component from "./embed_interactive.svg?component";
+import embed_interactive_source from "./embed_interactive.svg?source";
+import embed_modular_component from "./embed_modular.svg?component";
+import embed_modular_source from "./embed_modular.svg?source";
+import embed_static_component from "./embed_static.svg?component";
+import embed_static_source from "./embed_static.svg?source";
 import empty_component from "./empty.svg?component";
 import empty_source from "./empty.svg?source";
 import enter_or_return_component from "./enter_or_return.svg?component";
@@ -169,6 +186,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gear_settings_filled_component from "./gear_settings_filled.svg?component";
+import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
 import globe_component from "./globe.svg?component";
@@ -197,8 +216,6 @@ import index_component from "./index.svg?component";
 import index_source from "./index.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
-import info_filled_component from "./info_filled.svg?component";
-import info_filled_source from "./info_filled.svg?source";
 import info_outline_component from "./info_outline.svg?component";
 import info_outline_source from "./info_outline.svg?source";
 import insight_component from "./insight.svg?component";
@@ -275,6 +292,8 @@ import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
+import ordered_list_component from "./ordered_list.svg?component";
+import ordered_list_source from "./ordered_list.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -309,6 +328,10 @@ import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
+import quote_component from "./quote.svg?component";
+import quote_source from "./quote.svg?source";
+import receipt_component from "./receipt.svg?component";
+import receipt_source from "./receipt.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
 import redo_component from "./redo.svg?component";
@@ -329,16 +352,22 @@ import ruler_component from "./ruler.svg?component";
 import ruler_source from "./ruler.svg?source";
 import sankey_component from "./sankey.svg?component";
 import sankey_source from "./sankey.svg?source";
+import schema_component from "./schema.svg?component";
+import schema_source from "./schema.svg?source";
 import search_component from "./search.svg?component";
 import search_source from "./search.svg?source";
 import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
+import send_component from "./send.svg?component";
+import send_source from "./send.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
+import shield_outline_component from "./shield_outline.svg?component";
+import shield_outline_source from "./shield_outline.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -349,6 +378,10 @@ import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
+import smile_component from "./smile.svg?component";
+import smile_source from "./smile.svg?source";
+import snail_component from "./snail.svg?component";
+import snail_source from "./snail.svg?source";
 import snippet_component from "./snippet.svg?component";
 import snippet_source from "./snippet.svg?source";
 import sort_component from "./sort.svg?component";
@@ -391,6 +424,18 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import test_tube_component from "./test_tube.svg?component";
+import test_tube_source from "./test_tube.svg?source";
+import text_bold_component from "./text_bold.svg?component";
+import text_bold_source from "./text_bold.svg?source";
+import text_italic_component from "./text_italic.svg?component";
+import text_italic_source from "./text_italic.svg?source";
+import text_strike_component from "./text_strike.svg?component";
+import text_strike_source from "./text_strike.svg?source";
+import thumbs_down_component from "./thumbs_down.svg?component";
+import thumbs_down_source from "./thumbs_down.svg?source";
+import thumbs_up_component from "./thumbs_up.svg?component";
+import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
 import trash_component from "./trash.svg?component";
@@ -425,6 +470,8 @@ import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
 import warning_round_filled_component from "./warning_round_filled.svg?component";
 import warning_round_filled_source from "./warning_round_filled.svg?source";
+import warning_triangle_filled_component from "./warning_triangle_filled.svg?component";
+import warning_triangle_filled_source from "./warning_triangle_filled.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
@@ -459,6 +506,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     add_to_dash: {
       component: add_to_dash_component,
       source: add_to_dash_source,
+    },
+    add_comment: {
+      component: add_comment_component,
+      source: add_comment_source,
     },
     ai: {
       component: ai_component,
@@ -572,6 +623,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: check_filled_component,
       source: check_filled_source,
     },
+    code_block: {
+      component: code_block_component,
+      source: code_block_source,
+    },
     chevrondown: {
       component: chevrondown_component,
       source: chevrondown_source,
@@ -624,6 +679,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: combine_component,
       source: combine_source,
     },
+    company: {
+      component: company_component,
+      source: company_source,
+    },
+    comment: {
+      component: comment_component,
+      source: comment_source,
+    },
     connections: {
       component: connections_component,
       source: connections_source,
@@ -635,6 +698,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     copy: {
       component: copy_component,
       source: copy_source,
+    },
+    currency: {
+      component: currency_component,
+      source: currency_source,
     },
     curved: {
       component: curved_component,
@@ -671,6 +738,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     edit_document: {
       component: edit_document_component,
       source: edit_document_source,
+    },
+    edit_document_outlined: {
+      component: edit_document_outlined_component,
+      source: edit_document_outlined_source,
     },
     ellipsis: {
       component: ellipsis_component,
@@ -768,6 +839,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: gear_component,
       source: gear_source,
     },
+    gear_settings_filled: {
+      component: gear_settings_filled_component,
+      source: gear_settings_filled_source,
+    },
     gem: {
       component: gem_component,
       source: gem_source,
@@ -819,10 +894,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     info: {
       component: info_component,
       source: info_source,
-    },
-    info_filled: {
-      component: info_filled_component,
-      source: info_filled_source,
     },
     info_outline: {
       component: info_outline_component,
@@ -1036,9 +1107,25 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: progress_component,
       source: progress_source,
     },
+    embed_interactive: {
+      component: embed_interactive_component,
+      source: embed_interactive_source,
+    },
+    embed_modular: {
+      component: embed_modular_component,
+      source: embed_modular_source,
+    },
+    embed_static: {
+      component: embed_static_component,
+      source: embed_static_source,
+    },
     pulse: {
       component: pulse_component,
       source: pulse_source,
+    },
+    receipt: {
+      component: receipt_component,
+      source: receipt_source,
     },
     recents: {
       component: recents_component,
@@ -1047,6 +1134,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     revert: {
       component: revert_component,
       source: revert_source,
+    },
+    schema: {
+      component: schema_component,
+      source: schema_source,
     },
     sankey: {
       component: sankey_component,
@@ -1096,6 +1187,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: question_component,
       source: question_source,
     },
+    quote: {
+      component: quote_component,
+      source: quote_source,
+    },
     return: {
       component: return_component,
       source: return_source,
@@ -1136,9 +1231,17 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: segment_component,
       source: segment_source,
     },
+    send: {
+      component: send_component,
+      source: send_source,
+    },
     shield: {
       component: shield_component,
       source: shield_source,
+    },
+    shield_outline: {
+      component: shield_outline_component,
+      source: shield_outline_source,
     },
     sidebar_closed: {
       component: sidebar_closed_component,
@@ -1159,6 +1262,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     smartscalar: {
       component: smartscalar_component,
       source: smartscalar_source,
+    },
+    smile: {
+      component: smile_component,
+      source: smile_source,
+    },
+    snail: {
+      component: snail_component,
+      source: snail_source,
     },
     snippet: {
       component: snippet_component,
@@ -1209,6 +1320,26 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       // for questions with table visualizations
       component: table2_component,
       source: table2_source,
+    },
+    text_bold: {
+      component: text_bold_component,
+      source: text_bold_source,
+    },
+    text_italic: {
+      component: text_italic_component,
+      source: text_italic_source,
+    },
+    text_strike: {
+      component: text_strike_component,
+      source: text_strike_source,
+    },
+    thumbs_down: {
+      component: thumbs_down_component,
+      source: thumbs_down_source,
+    },
+    thumbs_up: {
+      component: thumbs_up_component,
+      source: thumbs_up_source,
     },
     time_history: {
       component: time_history_component,
@@ -1266,6 +1397,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: official_collection_component,
       source: official_collection_source,
     },
+    ordered_list: {
+      component: ordered_list_component,
+      source: ordered_list_source,
+    },
     verified_filled: {
       component: verified_filled_component,
       source: verified_filled_source,
@@ -1281,6 +1416,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     warning_round_filled: {
       component: warning_round_filled_component,
       source: warning_round_filled_source,
+    },
+    warning_triangle_filled: {
+      component: warning_triangle_filled_component,
+      source: warning_triangle_filled_source,
     },
     waterfall: {
       component: waterfall_component,
@@ -1318,6 +1457,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
     beaker: { component: formula_component, source: formula_source },
+    test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
   };
 
@@ -1331,6 +1471,7 @@ export type IconName =
   | "add_folder"
   | "add_row"
   | "add_to_dash"
+  | "add_comment"
   | "ai"
   | "alert"
   | "alert_filled"
@@ -1359,6 +1500,7 @@ export type IconName =
   | "calendar"
   | "check"
   | "check_filled"
+  | "code_block"
   | "chevrondown"
   | "chevronleft"
   | "chevronright"
@@ -1372,6 +1514,9 @@ export type IconName =
   | "cloud_filled"
   | "compare"
   | "combine"
+  | "company"
+  | "comment"
+  | "currency"
   | "connections"
   | "contract"
   | "copy"
@@ -1384,8 +1529,12 @@ export type IconName =
   | "download"
   | "dyno"
   | "edit_document"
+  | "edit_document_outlined"
   | "ellipsis"
   | "embed"
+  | "embed_interactive"
+  | "embed_modular"
+  | "embed_static"
   | "empty"
   | "enter_or_return"
   | "expand"
@@ -1408,6 +1557,7 @@ export type IconName =
   | "folder_filled"
   | "gauge"
   | "gear"
+  | "gear_settings_filled"
   | "gem"
   | "globe"
   | "grabber"
@@ -1421,7 +1571,6 @@ export type IconName =
   | "horizontal_bar"
   | "hourglass"
   | "info"
-  | "info_filled"
   | "info_outline"
   | "insight"
   | "int"
@@ -1476,10 +1625,13 @@ export type IconName =
   | "popular"
   | "progress"
   | "pulse"
+  | "receipt"
   | "recents"
   | "revert"
   | "sankey"
   | "share"
+  | "send"
+  | "smile"
   | "split"
   | "sql"
   | "subscription"
@@ -1490,6 +1642,7 @@ export type IconName =
   | "sum"
   | "sync"
   | "question"
+  | "quote"
   | "redo"
   | "return"
   | "reference"
@@ -1497,15 +1650,18 @@ export type IconName =
   | "refresh_downstream"
   | "rocket"
   | "ruler"
+  | "schema"
   | "search"
   | "section"
   | "segment"
   | "shield"
+  | "shield_outline"
   | "sidebar_closed"
   | "sidebar_open"
   | "slack"
   | "slack_colorized"
   | "smartscalar"
+  | "snail"
   | "snippet"
   | "sparkles"
   | "star_filled"
@@ -1518,6 +1674,11 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "text_bold"
+  | "text_italic"
+  | "text_strike"
+  | "thumbs_down"
+  | "thumbs_up"
   | "time_history"
   | "trash"
   | "trash_filled"
@@ -1532,10 +1693,12 @@ export type IconName =
   | "variable"
   | "verified"
   | "official_collection"
+  | "ordered_list"
   | "verified_filled"
   | "view_archive"
   | "warning"
   | "warning_round_filled"
+  | "warning_triangle_filled"
   | "waterfall"
   | "webhook"
   | "10k"
@@ -1548,6 +1711,7 @@ export type IconName =
   | "table_spaced"
   | "collection"
   | "beaker"
+  | "test_tube"
   | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];

@@ -12,6 +12,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [toucan2.core :as t2]))
 
 (defn- compute-new-visibility-type [db field-metadata]
@@ -96,14 +97,17 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           {:base_type           new-base-type
-            :effective_type      new-base-type
-            :coercion_strategy   nil
-            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
-            :fingerprint_version 0
-            :fingerprint         nil
-            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
-            :semantic_type       nil})
+           (doto
+            {:base_type           new-base-type
+             :effective_type      new-base-type
+             :coercion_strategy   nil
+                ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+             :fingerprint_version 0
+             :fingerprint         nil
+                ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
+             :semantic_type       nil}
+             ;; we must override user-set values
+             (->> (schema.field-user-settings/upsert-user-settings metabase-field))))
          (when new-semantic-type?
            (log/infof "Semantic type of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)

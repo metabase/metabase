@@ -74,7 +74,9 @@
 
 (defonce ^:private servers* (atom nil))
 
-(defn- stop-mock-servers! []
+(defn stop-mock-servers!
+  "Stops mock ssh servers"
+  []
   (doseq [^SshServer server @servers*]
     (try
       (log/debugf "Stop mock server %s" server)
@@ -83,7 +85,9 @@
         (log/error e "Error stopping mock server"))))
   (reset! servers* nil))
 
-(defn- start-mock-servers! []
+(defn start-mock-servers!
+  "Starts mock ssh servers"
+  []
   (try
     (doseq [start-server! [start-ssh-mock-server-with-password!
                            #(start-ssh-mock-server-with-public-key!

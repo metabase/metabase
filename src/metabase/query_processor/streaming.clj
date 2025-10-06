@@ -1,5 +1,12 @@
 (ns metabase.query-processor.streaming
+  (:refer-clojure :exclude [every? some])
   (:require
+   [clojure.string :as str]
+   [metabase.analytics.core :as analytics]
+   [metabase.driver :as driver]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -12,7 +19,8 @@
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some]])
   (:import
    (clojure.core.async.impl.channels ManyToManyChannel)
    (java.io OutputStream)
@@ -27,21 +35,34 @@
          qp.json/keep-me
          qp.xlsx/keep-me)
 
+(defn safe-filename-prefix
+  "Generate a safe filename prefix from a card name. Trims whitespace, slugifies the name,
+  and limits to 200 characters to respect filesystem limitations. Falls back to 'question' if empty."
+  [card-name]
+  (or (some-> card-name
+              str/trim
+              not-empty
+              (u/slugify {:max-length 200}))
+      "question"))
+
 (defn- deduplicate-col-names
   "Deduplicate column names that would otherwise conflict.
 
   TODO: This function includes logic that is normally is done by the annotate middleware, but hasn't been run yet
-  at this point in the code. We should eventually refactor this (#17195)"
+  at this point in the code. We should eventually refactor this (#17195)
+
+  TODO (Cam 9/23/25) -- We should use [[metabase.lib.field.util/add-deduplicated-names]] to do this."
   [cols]
   (map (fn [col unique-name]
-         (let [col-with-display-name (if (:display_name col)
-                                       col
-                                       (assoc col :display_name (:name col)))]
-           (assoc col-with-display-name :name unique-name)))
+         (-> col
+             (cond-> (not (:display_name col)) (assoc :display_name (:name col)))
+             (assoc :name unique-name)))
        cols
+       ;; existing usage -- do not use going forward
+       #_{:clj-kondo/ignore [:deprecated-var]}
        (mbql.u/uniquify-names (map :name cols))))
 
-(defn- validate-table-columms
+(defn- validate-table-columns
   "Validate that all of the columns in `table-columns` correspond to actual columns in `cols`, correlating them by
   field ref or name. Returns `nil` if any do not, so that we fall back to using `cols` directly for the export (#19465).
   Otherwise returns `table-columns`."
@@ -52,6 +73,29 @@
                                       (col-names (::mb.viz/table-column-name table-col))))
                   table-columns)
       table-columns)))
+
+(defn- not-explicitly-excluded-columns
+  "If a column is not explicitly excluded (it doesn't have a row in `table-columns` that marks it as disabled), we
+  should include it. This way, if e.g. the query has changed from `SELECT id FROM ...` to `SELECT id, created_at FROM
+  ...`, we'll include the new columns. (This is the same behavior as the UI.)"
+  [table-columns cols]
+  (let [{:keys [name->table field-ref->table]} (reduce (fn [m {n ::mb.viz/table-column-name
+                                                               fr ::mb.viz/table-column-field-ref
+                                                               :as table}]
+                                                         (cond-> m
+                                                           true (assoc-in [:name->table n] table)
+                                                           fr (assoc-in [:field-ref->table fr] table)))
+                                                       {}
+                                                       table-columns)]
+    (for [col cols
+          :when (and (not (get name->table (:name col)))
+                     (not (get field-ref->table (:field_ref col))))
+          :let [col-name (:name col)
+                id-or-name (or (:id col) col-name)
+                field-ref (:field_ref col)]]
+      {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
+       ::mb.viz/table-column-enabled   true
+       ::mb.viz/table-column-name      col-name})))
 
 (defn- pivot-grouping-exists?
   "Returns `true` if there's a column with the :name \"pivot-grouping\",
@@ -69,7 +113,10 @@
     ;; If the columns contain a pivot-grouping, we're exporting a pivot and the cols order is not used,
     ;; so we can just pass the indices in order.
     (range (count cols))
-    (let [table-columns'     (or (validate-table-columms table-columns cols)
+    (let [table-columns'     (or (when-let [tcs (seq (validate-table-columns table-columns cols))]
+                                   (concat
+                                    (filter ::mb.viz/table-column-enabled tcs)
+                                    (not-explicitly-excluded-columns table-columns cols)))
                                  ;; If table-columns is not provided (e.g. for saved cards), we can construct a fake one
                                  ;; that retains the original column ordering in `cols`
                                  (for [col cols]
@@ -79,7 +126,6 @@
                                      {::mb.viz/table-column-field-ref (or field-ref [:field id-or-name nil])
                                       ::mb.viz/table-column-enabled   true
                                       ::mb.viz/table-column-name      col-name})))
-          enabled-table-cols (filter ::mb.viz/table-column-enabled table-columns')
           cols-vector        (into [] cols)
           ;; cols-index is a map from keys representing fields to their indices into `cols`
           cols-index         (reduce-kv (fn [m i col]
@@ -104,7 +150,7 @@
 
                   (not remapped-from-name)
                   index)))
-            enabled-table-cols)
+            table-columns')
            (remove nil?)))))
 
 (defn order-cols
@@ -134,6 +180,7 @@
          {:data initial-metadata})
 
         ([result]
+         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))
@@ -185,13 +232,20 @@
                         (f rff))
                       (catch Throwable e
                         e))]
-         (assert (some? result) "QP unexpectedly returned nil.")
-        ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
-        ;; question to return a response directly instead of a core.async channel
-         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-         (when (or (instance? Throwable result)
-                   (= (:status result) :failed))
-           (streaming-response/write-error! os result export-format)))))))
+         (if (nil? result)
+           (do
+             (assert (qp.pipeline/canceled?* canceled-chan)
+                     "QP unexpectedly returned nil.")
+             ;; Create a cancelled result to trigger possible proper cleanup?
+             ;; If canceled, nobody should be receiving the stream.
+             {:status :canceled, :row_count 0, :data {:cols []}})
+           (do
+             ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
+             ;; question to return a response directly instead of a core.async channel
+             (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+             (when (or (instance? Throwable result)
+                       (= (:status result) :failed))
+               (streaming-response/write-error! os result export-format)))))))))
 
 (defn transforming-query-response
   "Decorate the streaming rff to transform the top-level payload."

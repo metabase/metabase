@@ -2,6 +2,7 @@
  * NOTE: KEEP SYNCHRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/lib/colors/palette.ts
+ * frontend/src/metabase/lib/colors/colors.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
  * frontend/src/metabase/styled-components/theme/css-variables.ts
  */
@@ -21,7 +22,13 @@
 
 :root {
   /* Semantic colors */
+  --mb-color-metabase-brand: var(
+    --mb-base-color-blue-40
+  ); /* does not get whitelabeled */
+
   --mb-color-brand: var(--mb-base-color-blue-40);
+  --mb-color-brand-darker: var(--mb-base-color-brand-70);
+  --mb-color-brand-dark: var(--mb-base-color-brand-60);
   --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
   --mb-color-brand-lighter: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
   --mb-color-brand-alpha-04: color-mix(
@@ -55,6 +62,7 @@
     transparent
   );
   --mb-color-success: #84bb4c;
+  --mb-color-success-darker: var(--mb-base-color-palm-50);
   --mb-color-summarize: #88bf4d;
   --mb-color-error: var(--mb-base-color-lobster-50);
   --mb-color-danger: var(--mb-base-color-lobster-50);
@@ -62,6 +70,7 @@
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
   --mb-color-bg-black: #2e353b;
+  --mb-color-bg-darker: var(--mb-base-color-orion-70);
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: var(--mb-base-color-gray-5);
@@ -69,7 +78,8 @@
   --mb-color-bg-error: var(--mb-base-color-lobster-10);
   --mb-color-bg-night: #42484e;
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
-  --mb-color-border: #eeecec;
+  --mb-color-border: var(--mb-base-color-orion-20);
+  --mb-color-border-dark: var(--mb-base-color-orion-60);
   --mb-color-filter: #7172ad;
   --mb-color-focus: var(--mb-base-color-blue-20);
   --mb-color-warning: #f9cf48;
@@ -107,6 +117,7 @@
   --mb-color-syntax-parameters: var(--mb-base-color-mango-40);
   --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
   --mb-color-switch-off: var(--mb-base-color-orion-10);
+  --mb-color-shadow-embedding-hub-card: rgba(162, 197, 228, 0.7);
 
   /**
     * Base colors
@@ -199,10 +210,10 @@
   --mb-base-color-orion-alpha-60: hsla(204, 66%, 8%, 0.62);
   --mb-base-color-orion-alpha-50: hsla(204, 66%, 8%, 0.51);
   --mb-base-color-orion-alpha-40: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.44);
+  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.29);
+  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.14);
+  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.05);
+  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.02);
 
   /* Lobster */
   --mb-base-color-lobster-100: hsla(0, 81%, 11%, 1);
@@ -356,6 +367,11 @@
 
 .textTertiary {
   color: var(--mb-color-text-tertiary);
+}
+
+.bgBrandLighter,
+.bgBrandLighterHover:hover {
+  background-color: var(--mb-color-brand-lighter);
 }
 
 .bgLight,

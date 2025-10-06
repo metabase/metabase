@@ -20,6 +20,7 @@ describe("parameters/utils/field-filters", () => {
       isCountry: () => false,
       isNumeric: () => false,
       isString: () => false,
+      isStringLike: () => false,
       isBoolean: () => false,
       isAddress: () => false,
       isCoordinate: () => false,
@@ -106,6 +107,17 @@ describe("parameters/utils/field-filters", () => {
           }),
         },
       ],
+      [
+        { type: "string/=" },
+        {
+          type: "string",
+          field: () => ({
+            ...field,
+            isString: () => false,
+            isStringLike: () => true,
+          }),
+        },
+      ],
     ].forEach(([parameter, dimension]) => {
       it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
         const predicate = dimensionFilterForParameter(
@@ -165,5 +177,5 @@ function createMockDimension(
     metadata,
     question.legacyNativeQuery() as NativeQuery,
   );
-  return Object.assign({}, dimension, mocks);
+  return Object.assign(dimension, mocks);
 }

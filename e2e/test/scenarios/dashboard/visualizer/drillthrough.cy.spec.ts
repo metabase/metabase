@@ -66,7 +66,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     });
   });
 
-  it("should work", () => {
+  it("should work", { tags: "@flaky" }, () => {
     createDashboardWithVisualizerDashcards();
 
     const ORDERS_SERIES_COLOR = "#88BF4D";
@@ -85,7 +85,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText("Created At is Sep 1–30, 2022");
+    H.queryBuilderFiltersPanel().findByText(
+      "Created At: Month is Sep 1–30, 2022",
+    );
     H.assertQueryBuilderRowCount(9);
     H.tableInteractiveHeader().findByText("Price"); // ensure we're on the Products table
 
@@ -104,7 +106,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     cy.wait("@dataset");
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
-    H.queryBuilderFiltersPanel().findByText("Created At is Sep 1–30, 2022");
+    H.queryBuilderFiltersPanel().findByText(
+      "Created At: Month is Sep 1–30, 2022",
+    );
     H.assertQueryBuilderRowCount(5);
     H.echartsContainer().within(() => {
       cy.findByText("Affiliate").should("exist");
@@ -114,7 +118,9 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
-    H.getDashboardCard(0).within(() => H.chartLegendItem("Count").click());
+    H.getDashboardCard(0).within(() =>
+      H.chartLegendItem(ORDERS_COUNT_BY_CREATED_AT.name).click(),
+    );
     cy.wait("@cardQuery");
     H.queryBuilderHeader()
       .findByText(ORDERS_COUNT_BY_CREATED_AT.name)
@@ -124,7 +130,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(0).within(() =>
-      H.chartLegendItem(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).click(),
+      H.chartLegendItem(PRODUCTS_COUNT_BY_CREATED_AT.name).click(),
     );
     cy.wait("@cardQuery");
     H.queryBuilderHeader()
@@ -148,7 +154,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderHeader().findByLabelText("Back to Test Dashboard").click();
 
     H.getDashboardCard(1).within(() =>
-      H.chartPathWithFillColor(PRODUCTS_SERIES_COLOR).eq(0).click(),
+      H.chartPathWithFillColor("#EF8C8C").eq(0).click(),
     );
     H.clickActionsPopover().button(">").click();
     cy.wait("@dataset");
@@ -197,4 +203,46 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.tableInteractiveHeader().findByText("Views").should("exist");
     H.assertQueryBuilderRowCount(1);
   });
+
+  it("should allow brush filtering single-series timeseries charts (VIZ-979)", () => {
+    createDashboardWithVisualizerDashcards();
+
+    // Ensure the brush is disabled for multi-series charts
+    H.getDashboardCard(0).within(() => {
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should(
+        "have.length",
+        2,
+      );
+      applyBrush(200, 300);
+      cy.get("@dataset.all").should("have.length", 0);
+    });
+
+    H.getDashboardCard(3).within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      applyBrush(200, 300);
+      cy.wait("@dataset");
+    });
+
+    H.queryBuilderFiltersPanel()
+      .findByText(/Created At: Month is May 1/)
+      .should("exist");
+    H.assertQueryBuilderRowCount(9);
+    H.queryBuilderMain().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis
+      cy.findByText("Created At: Month").should("exist"); // x-axis
+      cy.findByText("May 2023").should("exist");
+      cy.findByText("December 2023").should("exist");
+    });
+  });
 });
+
+function applyBrush(left: number, right: number) {
+  H.echartsContainer()
+    .trigger("mousedown", left, 100)
+    .trigger("mousemove", left, 100)
+    .trigger("mouseup", right, 100);
+}

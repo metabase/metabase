@@ -81,13 +81,40 @@ function getJoinedQuery() {
 
   const stageIndex = -1;
   const condition = Lib.joinConditionClause(
-    query,
-    stageIndex,
     defaultOperator,
     ordersProductId,
     productsId,
   );
 
+  const join = Lib.withJoinFields(
+    Lib.joinClause(table, [condition], defaultStrategy),
+    "all",
+  );
+
+  return Lib.join(query, stageIndex, join);
+}
+
+type FindColumn = (tableName: string, columnName: string) => Lib.ColumnMetadata;
+type CreateExpression = (findColumn: FindColumn) => Lib.ExpressionClause;
+
+function getJoinedQueryWithCustomExpressions(
+  createLhsExpression: CreateExpression,
+  createRhsExpression: CreateExpression,
+) {
+  const query = createQuery({ metadata });
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(query, 0, PRODUCTS_ID);
+  const stageIndex = -1;
+  const condition = Lib.joinConditionClause(
+    defaultOperator,
+    createLhsExpression(findLHSColumn),
+    createRhsExpression(findRHSColumn),
+  );
   const join = Lib.withJoinFields(
     Lib.joinClause(table, [condition], defaultStrategy),
     "all",
@@ -111,8 +138,6 @@ function getJoinedQueryWithMultipleConditions() {
   const productsCreatedAt = findRHSColumn("PRODUCTS", "CREATED_AT");
 
   const condition = Lib.joinConditionClause(
-    query,
-    0,
     defaultOperator,
     ordersCreatedAt,
     productsCreatedAt,
@@ -185,15 +210,12 @@ function setup({
     const fields = Lib.joinFields(join);
 
     const conditions = Lib.joinConditions(join).map((condition) => {
-      const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
-        query,
-        step.stageIndex,
-        condition,
-      );
+      const { operator, lhsExpression, rhsExpression } =
+        Lib.joinConditionParts(condition);
       return {
-        operator: Lib.displayInfo(query, step.stageIndex, operator),
-        lhsColumn: Lib.displayInfo(query, step.stageIndex, lhsColumn),
-        rhsColumn: Lib.displayInfo(query, step.stageIndex, rhsColumn),
+        operator,
+        lhsExpression: Lib.displayInfo(query, step.stageIndex, lhsExpression),
+        rhsExpression: Lib.displayInfo(query, step.stageIndex, rhsExpression),
       };
     });
 
@@ -207,6 +229,20 @@ function setup({
   }
 
   return { getRecentJoin, mockWindowOpen };
+}
+
+async function enterCustomExpression(expression: string) {
+  const input = screen.getByTestId("custom-expression-query-editor");
+  await waitFor(() => expect(input).toHaveProperty("readOnly", false));
+  await userEvent.clear(input);
+  await userEvent.type(input, expression);
+  await userEvent.tab();
+}
+
+async function submitCustomExpression() {
+  const button = screen.getByRole("button", { name: /(Done|Update)/ });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
 }
 
 describe("Notebook Editor > Join Step", () => {
@@ -342,9 +378,9 @@ describe("Notebook Editor > Join Step", () => {
     const { conditions } = getRecentJoin();
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
-    expect(condition.operator.shortName).toBe("=");
-    expect(condition.lhsColumn.longDisplayName).toBe("User ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("People - User → ID");
+    expect(condition.operator).toBe("=");
+    expect(condition.lhsExpression.longDisplayName).toBe("User ID");
+    expect(condition.rhsExpression.longDisplayName).toBe("People - User → ID");
   });
 
   it("should allow to change the RHS table when there are no suggested join conditions", async () => {
@@ -368,9 +404,9 @@ describe("Notebook Editor > Join Step", () => {
     const { conditions } = getRecentJoin();
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
-    expect(condition.operator.shortName).toBe("=");
-    expect(condition.lhsColumn.longDisplayName).toBe("Total");
-    expect(condition.rhsColumn.longDisplayName).toBe("Reviews → ID");
+    expect(condition.operator).toBe("=");
+    expect(condition.lhsExpression.longDisplayName).toBe("Total");
+    expect(condition.rhsExpression.longDisplayName).toBe("Reviews → ID");
   });
 
   it("should highlight selected LHS column", async () => {
@@ -433,9 +469,9 @@ describe("Notebook Editor > Join Step", () => {
     const { conditions } = getRecentJoin();
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
-    expect(condition.operator.shortName).toBe("=");
-    expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
+    expect(condition.operator).toBe("=");
+    expect(condition.lhsExpression.longDisplayName).toBe("Product ID");
+    expect(condition.rhsExpression.longDisplayName).toBe("Products → ID");
   });
 
   it("should change LHS column", async () => {
@@ -449,8 +485,10 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(within(popover).getByText("User ID"));
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.lhsColumn.longDisplayName).toBe("User ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products - User → ID");
+    expect(condition.lhsExpression.longDisplayName).toBe("User ID");
+    expect(condition.rhsExpression.longDisplayName).toBe(
+      "Products - User → ID",
+    );
   });
 
   it("should change RHS column", async () => {
@@ -464,8 +502,8 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(within(popover).getByText("Price"));
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products → Price");
+    expect(condition.lhsExpression.longDisplayName).toBe("Product ID");
+    expect(condition.rhsExpression.longDisplayName).toBe("Products → Price");
   });
 
   it("shouldn't allow removing an incomplete condition", async () => {
@@ -523,7 +561,7 @@ describe("Notebook Editor > Join Step", () => {
     expect(notEqualsOperator).toHaveAttribute("aria-selected", "true");
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.operator.shortName).toBe("!=");
+    expect(condition.operator).toBe("!=");
   });
 
   it("should reset the draft join condition state when the rhs table is changed", async () => {
@@ -888,10 +926,12 @@ describe("Notebook Editor > Join Step", () => {
       const { conditions } = getRecentJoin();
       const [condition1, condition2] = conditions;
 
-      expect(condition1.lhsColumn.longDisplayName).toBe("Product ID");
-      expect(condition1.rhsColumn.longDisplayName).toBe("Products → ID");
-      expect(condition2.lhsColumn.longDisplayName).toBe("Created At: Month");
-      expect(condition2.rhsColumn.longDisplayName).toBe(
+      expect(condition1.lhsExpression.longDisplayName).toBe("Product ID");
+      expect(condition1.rhsExpression.longDisplayName).toBe("Products → ID");
+      expect(condition2.lhsExpression.longDisplayName).toBe(
+        "Created At: Month",
+      );
+      expect(condition2.rhsExpression.longDisplayName).toBe(
         "Products → Created At: Month",
       );
     });
@@ -961,8 +1001,8 @@ describe("Notebook Editor > Join Step", () => {
       const { conditions } = getRecentJoin();
       const [condition] = conditions;
       expect(conditions).toHaveLength(1);
-      expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-      expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
+      expect(condition.lhsExpression.longDisplayName).toBe("Product ID");
+      expect(condition.rhsExpression.longDisplayName).toBe("Products → ID");
     });
 
     it("shouldn't allow removing a single complete condition", async () => {
@@ -1021,8 +1061,8 @@ describe("Notebook Editor > Join Step", () => {
 
         const { conditions } = getRecentJoin();
         const [condition] = conditions;
-        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
-        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.lhsExpression.displayName).toBe(expectedColumnName);
+        expect(condition.rhsExpression.displayName).toBe(expectedColumnName);
       },
     );
 
@@ -1107,10 +1147,145 @@ describe("Notebook Editor > Join Step", () => {
 
         const { conditions } = getRecentJoin();
         const [condition] = conditions;
-        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
-        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.lhsExpression.displayName).toBe(expectedColumnName);
+        expect(condition.rhsExpression.displayName).toBe(expectedColumnName);
       },
     );
+  });
+
+  describe("expressions in conditions", () => {
+    it("should allow to create a new join condition with custom expressions", async () => {
+      const { getRecentJoin } = setup();
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("button"),
+      );
+      await waitForLoaderToBeRemoved();
+      const modal = await screen.findByTestId("entity-picker-modal");
+      await userEvent.click(await within(modal).findByText("Reviews"));
+
+      const lhsPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsPicker).getByText("Custom Expression"));
+      await enterCustomExpression("[[Total] + [[Subtotal]");
+      await submitCustomExpression();
+
+      const rhsPicker = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsPicker).getByText("Custom Expression"));
+      await enterCustomExpression("[[ID] + [[Rating]");
+      await submitCustomExpression();
+
+      const [condition] = getRecentJoin().conditions;
+      expect(condition.lhsExpression.longDisplayName).toBe("Total + Subtotal");
+      expect(condition.rhsExpression.longDisplayName).toBe("ID + Rating");
+    });
+
+    it("should be able to update a LHS expression with a custom expression", async () => {
+      const query = getJoinedQuery();
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+      const lhsPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsPicker).getByText("Custom Expression"));
+      await enterCustomExpression("[[Product ID] + 1");
+      await submitCustomExpression();
+
+      const [condition] = getRecentJoin().conditions;
+      expect(condition.lhsExpression.longDisplayName).toBe("Product ID + 1");
+    });
+
+    it("should be able to update a RHS expression with a custom expression", async () => {
+      const query = getJoinedQuery();
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Right column"));
+      const rhsPicker = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsPicker).getByText("Custom Expression"));
+      await enterCustomExpression("[[Products → ID] + 1");
+      await submitCustomExpression();
+
+      const [condition] = getRecentJoin().conditions;
+      expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
+    });
+
+    it("should display the literal value for a LHS literal", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            () =>
+              Lib.expressionClause("value", [10], {
+                "base-type": "type/Integer",
+                "effective-type": "type/Integer",
+              }),
+            (findRHSColumn) =>
+              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+          ),
+        }),
+      });
+      const lhsButton = screen.getByLabelText("Left column");
+      const rhsButton = screen.getByLabelText("Right column");
+      expect(lhsButton).toHaveTextContent("10");
+      expect(rhsButton).toHaveTextContent("ID");
+    });
+
+    it("should display the literal for a RHS literal", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            (findLHSColumn) =>
+              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
+            () =>
+              Lib.expressionClause("value", ["abc"], {
+                "base-type": "type/Text",
+                "effective-type": "type/Text",
+              }),
+          ),
+        }),
+      });
+      const lhsButton = screen.getByLabelText("Left column");
+      const rhsButton = screen.getByLabelText("Right column");
+      expect(lhsButton).toHaveTextContent("Product ID");
+      expect(rhsButton).toHaveTextContent('"abc"');
+    });
+
+    it("should display 'Custom expression' for a LHS custom expression", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            (findLHSColumn) =>
+              Lib.expressionClause("+", [
+                findLHSColumn("ORDERS", "PRODUCT_ID"),
+                1,
+              ]),
+            (findRHSColumn) =>
+              Lib.expressionClause(findRHSColumn("PRODUCTS", "ID")),
+          ),
+        }),
+      });
+      const lhsButton = screen.getByLabelText("Left column");
+      const rhsButton = screen.getByLabelText("Right column");
+      expect(lhsButton).toHaveTextContent("Custom expression");
+      expect(rhsButton).toHaveTextContent("ID");
+    });
+
+    it("should display 'Custom expression' for a RHS custom expression", () => {
+      setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            (findLHSColumn) =>
+              Lib.expressionClause(findLHSColumn("ORDERS", "PRODUCT_ID")),
+            (findRHSColumn) =>
+              Lib.expressionClause("+", [findRHSColumn("PRODUCTS", "ID"), 1]),
+          ),
+        }),
+      });
+      const lhsButton = screen.getByLabelText("Left column");
+      const rhsButton = screen.getByLabelText("Right column");
+      expect(lhsButton).toHaveTextContent("Product ID");
+      expect(rhsButton).toHaveTextContent("Custom expression");
+    });
   });
 
   describe("read-only", () => {

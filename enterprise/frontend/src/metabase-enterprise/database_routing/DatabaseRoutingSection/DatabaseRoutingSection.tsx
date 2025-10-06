@@ -12,6 +12,8 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
+import { useSetting } from "metabase/common/hooks";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -30,6 +32,7 @@ import {
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
+import { isEngineKey } from "metabase-types/guards";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
@@ -42,9 +45,19 @@ export const DatabaseRoutingSection = ({
 }) => {
   const dispatch = useDispatch();
 
+  const engines = useSetting("engines");
+
   const isAdmin = useSelector(getUserIsAdmin);
   const userAttribute = database.router_user_attribute ?? undefined;
-  const shouldHideSection = database.is_attached_dwh || database.is_sample;
+  const dbSupportsRouting = database.features?.includes("database-routing");
+  const engineKey = isEngineKey(database.engine) ? database.engine : undefined;
+  const engine = engineKey ? engines[engineKey] : undefined;
+  const dbRoutingInfo =
+    engine?.["extra-info"]?.["db-routing-info"]?.text ??
+    // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
+    t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`;
+  const shouldHideSection =
+    database.is_attached_dwh || database.is_sample || !dbSupportsRouting;
 
   const [tempEnabled, setTempEnabled] = useState(false);
   const enabled = tempEnabled || hasDbRoutingEnabled(database);
@@ -103,8 +116,7 @@ export const DatabaseRoutingSection = ({
   return (
     <DatabaseInfoSection
       name={t`Database routing`}
-      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
-      description={t`When someone views a question using data from this database, Metabase will send the queries to the destination database set by the person's user attribute. Each destination database must have identical schemas.`}
+      description={dbRoutingInfo}
       data-testid="database-routing-section"
     >
       <Flex justify="space-between" align="center">
@@ -114,7 +126,7 @@ export const DatabaseRoutingSection = ({
           </Label>
           {error ? (
             <Error role="alert" color="error">
-              {String(error)}
+              {getErrorMessage(error)}
             </Error>
           ) : null}
         </Stack>

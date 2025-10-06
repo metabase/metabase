@@ -13,8 +13,8 @@ This guide sets up the embedded analytics SDK with a [sample React app](https://
 ## Prerequisites
 
 - [Node.js 20.x LTS or higher](https://nodejs.org/en) (for the sample application).
-- [Metabase version v1.52 or higher](https://www.metabase.com/docs/latest/releases).
-- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup)
+- [Metabase version v1.52 or higher](https://github.com/metabase/metabase/releases).
+- [A Metabase Pro or Enterprise license](https://www.metabase.com/pricing/) (If you don't have a license, check out [this quickstart](./quickstart.md) that lacks the paid JWT SSO setup.)
 - (Optional): [Docker](https://www.docker.com/)
 
 ## Two ways to set up the sample app with Metabase
@@ -29,9 +29,9 @@ This quick setup will run a Docker container with the sample app and a sample Me
 1. Copy `.env.docker.example` to `.env.docker`.
 2. In the `.env.docker` file, replace `<your_enterprise_token>` with your premium embedding token.
 3. In the top-level directory, run:
-    ```bash
-    yarn start
-    ```
+   ```bash
+   yarn start
+   ```
 
 This script will:
 
@@ -94,20 +94,22 @@ If you get stuck, check out our [installation docs](../../installation-and-opera
 
 ## Activate your license
 
-To enable SSO with JWT when self-hosting, you'll need to [activate your license](https://www.metabase.com/docs/latest/paid-features/activating-the-enterprise-edition). Metabase Pro plans on Cloud take care of this for you.
+To enable SSO with JWT when self-hosting, you'll need to [activate your license](../../installation-and-operation/activating-the-enterprise-edition.md). Metabase Pro plans on Cloud take care of this for you.
 
 ## Enable embedding in Metabase
 
-From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Embedding**.
+From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Embedding**.
 
 Turn on:
 
-- Embedded analytics SDK
+- Embedded analytics SDK (it's in in the **Modular** section)
 - Static embedding
 
 Otherwise, this whole thing is hopeless.
 
 ## Enable SSO with JWT
+
+We'll also need to update our JWT Provider URI in Metabase. By default, this URI is where the SDK will redirect login requests.
 
 From any Metabase page, click on the **gear** icon in the upper right and select **Admin Settings** > **Settings** > **Authentication**.
 
@@ -118,10 +120,10 @@ On the card that says **JWT**, click the **Setup** button.
 In **JWT IDENTITY PROVIDER URI** field, paste
 
 ```txt
-localhost:9090/sso/metabase
+http://localhost:9090/sso/metabase
 ```
 
-Or substitute your Cloud URL for `localhost`.
+Or substitute your Cloud URL for `http://localhost`.
 
 ### String used by the JWT signing key
 
@@ -171,7 +173,6 @@ Your `.env` will look something like:
 # FRONTEND
 CLIENT_PORT=3100
 VITE_METABASE_INSTANCE_URL="http://localhost:3000"
-VITE_AUTH_PROVIDER_URI="http://localhost:9090/sso/metabase"
 
 # BACKEND
 AUTH_PROVIDER_PORT=9090

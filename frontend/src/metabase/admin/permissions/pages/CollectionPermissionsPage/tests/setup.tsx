@@ -5,6 +5,7 @@ import {
   setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
   setupGroupsEndpoint,
+  setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -134,6 +135,8 @@ export function setup({
     collections,
     rootCollection,
   });
+
+  setupTokenStatusEndpoint({ valid: true });
 
   setupCollectionPermissionsGraphEndpoint(permissionsGraph);
   setupGroupsEndpoint(permissionGroups);

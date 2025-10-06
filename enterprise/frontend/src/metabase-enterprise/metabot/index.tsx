@@ -1,18 +1,48 @@
 import { useMemo } from "react";
+import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
+import { createAdminRouteGuard } from "metabase/admin/utils";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { Route } from "metabase/hoc/Title";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { trackMetabotChatOpened } from "./analytics";
 import { Metabot } from "./components/Metabot";
+import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
+import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
+  PLUGIN_METABOT.isEnabled = () => true;
   PLUGIN_METABOT.Metabot = Metabot;
+
+  PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
+
+  PLUGIN_METABOT.getAdminPaths = () => [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
+  PLUGIN_METABOT.getAdminRoutes = () => (
+    <Route
+      key="metabot"
+      path="metabot"
+      component={createAdminRouteGuard("metabot")}
+    >
+      <IndexRoute component={MetabotAdminPage} />
+      <Route path=":metabotId" component={MetabotAdminPage} />
+    </Route>
+  );
 
   PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
   PLUGIN_METABOT.MetabotContext = MetabotContext;
@@ -21,7 +51,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { submitInput, setVisible } = useMetabotAgent();
+    const { startNewConversation, visible } = useMetabotAgent();
 
     return useMemo(() => {
       const ret: PaletteAction[] = [
@@ -33,26 +63,37 @@ if (hasPremiumFeature("metabot_v3")) {
           section: "metabot",
           keywords: searchText,
           icon: "metabot",
-          perform: (_currentActionImpl) => {
-            setVisible(true);
-            if (searchText) {
-              submitInput(searchText);
+          perform: () => {
+            if (!visible) {
+              trackMetabotChatOpened("command_palette");
             }
-            // HACK: if the user opens the command palette via the search button bar focus
-            // will be moved back to the search button bar if the metabot option is chosen
-            setTimeout(() => {
-              document.getElementById("metabot-chat-input")?.focus();
-            }, 100);
+            startNewConversation(searchText);
           },
         },
       ];
       return ret;
-    }, [searchText, submitInput, setVisible]);
+    }, [searchText, startNewConversation, visible]);
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;
+  PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
+} else if (hasPremiumFeature("offer_metabase_ai")) {
+  PLUGIN_METABOT.getAdminPaths = () => [
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
+  ];
+  PLUGIN_METABOT.getAdminRoutes = () => (
+    <Route path="metabot" component={createAdminRouteGuard("metabot")}>
+      <Route title={t`AI`} component={AdminSettingsLayout}>
+        <IndexRoute component={MetabotPurchasePage} />
+      </Route>
+    </Route>
+  );
 }
 
 /**

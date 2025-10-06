@@ -380,16 +380,16 @@ describe("scenarios > browse > metrics", () => {
   describe("verified metrics", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
-    it("should not the verified metrics filter when there are no verified metrics", () => {
+    it("should not show the verified metrics filter when there are no verified metrics", () => {
       createMetrics();
       cy.visit("/browse/metrics");
 
       cy.findByLabelText("Table of metrics").should("be.visible");
 
-      cy.findByLabelText("Filters").should("not.exist");
+      cy.findByLabelText(/show.*verified.*metrics/i).should("not.exist");
     });
 
     it("should show the verified metrics filter when there are verified metrics", () => {
@@ -444,10 +444,11 @@ describe("scenarios > browse > metrics", () => {
       cy.visit("/browse/metrics");
       verifyMetric(ORDERS_SCALAR_METRIC);
 
-      cy.findByLabelText("Filters").should("be.visible").click();
-      H.popover()
-        .findByLabelText("Show verified metrics only")
-        .should("be.checked");
+      cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
+        "have.attr",
+        "aria-selected",
+        "true",
+      );
 
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
@@ -457,10 +458,11 @@ describe("scenarios > browse > metrics", () => {
       });
 
       cy.visit("/browse/metrics");
-      cy.findByLabelText("Filters").should("be.visible").click();
-      H.popover()
-        .findByLabelText("Show verified metrics only")
-        .should("not.be.checked");
+      cy.findByRole("switch", { name: /show.*verified.*metrics/i }).should(
+        "have.attr",
+        "aria-selected",
+        "false",
+      );
     });
   });
 });
@@ -521,7 +523,5 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
 }
 
 function toggleVerifiedMetricsFilter() {
-  cy.findByLabelText("Filters").should("be.visible").click();
-  H.popover().findByText("Show verified metrics only").click();
-  cy.findByLabelText("Filters").should("be.visible").click();
+  cy.findByLabelText(/show.*verified.*metrics/i).click();
 }

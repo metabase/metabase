@@ -22,7 +22,7 @@ import {
   getSnippetCollectionId,
 } from "../selectors";
 
-import { updateQuestion } from "./core";
+import { updateQuestion } from "./core/updateQuestion";
 import { SET_UI_CONTROLS } from "./ui";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
@@ -78,15 +78,6 @@ export const TOGGLE_TEMPLATE_TAGS_EDITOR =
 export const toggleTemplateTagsEditor = createAction(
   TOGGLE_TEMPLATE_TAGS_EDITOR,
 );
-
-export const SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR =
-  "metabase/qb/SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR";
-export const setIsShowingTemplateTagsEditor = (
-  isShowingTemplateTagsEditor: boolean,
-) => ({
-  type: SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  isShowingTemplateTagsEditor,
-});
 
 export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
 export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR);
@@ -146,10 +137,7 @@ export const insertSnippet =
       query.queryText().slice(0, selectionStart) +
       `{{snippet: ${name}}}` +
       query.queryText().slice(nativeEditorCursorOffset);
-    const datasetQuery = query
-      .setQueryText(newText)
-      .updateSnippetsWithIds([snippet])
-      .datasetQuery();
+    const datasetQuery = query.setQueryText(newText).datasetQuery();
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 
@@ -172,14 +160,16 @@ export const setTemplateTag = createThunkAction(
 export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
 export const setTemplateTagConfig = createThunkAction(
   SET_TEMPLATE_TAG_CONFIG,
-  (tag: TemplateTag, parameter: ParameterValuesConfig) => {
+  (tag: TemplateTag, parameterConfig: ParameterValuesConfig) => {
     return (dispatch: Dispatch, getState: GetState) => {
       const question = getQuestion(getState());
       if (!question) {
         return;
       }
       const query = question.legacyNativeQuery() as NativeQuery;
-      const newQuestion = query.setTemplateTagConfig(tag, parameter).question();
+      const newQuestion = query
+        .setTemplateTagConfig(tag, parameterConfig)
+        .question();
       dispatch(updateQuestion(newQuestion));
     };
   },

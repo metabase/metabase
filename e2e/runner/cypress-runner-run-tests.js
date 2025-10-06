@@ -1,41 +1,73 @@
 const cypress = require("cypress");
 
+const { BACKEND_PORT } = require("./constants/backend-port");
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
 const { parseArguments, args } = require("./cypress-runner-utils");
 const {
+  HOST_APP_SETUP_CONFIGS,
+} = require("./embedding-sdk/host-apps/constants/host-app-setup-configs");
+const {
   SAMPLE_APP_SETUP_CONFIGS,
-} = require("./sample-apps-shared/constants/sample-app-setup-configs");
+} = require("./embedding-sdk/sample-apps/constants/sample-app-setup-configs");
 
-const DEFAULT_PORT = 4000;
-const getHost = (port = null) =>
-  `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
+const getHost = (port = BACKEND_PORT) => `http://localhost:${port}`;
+
+const getEmbeddingSdkAppE2eConfig = async ({
+  baseUrl,
+  env,
+  project,
+  specPattern,
+}) => {
+  process.env = {
+    ...process.env,
+    ...env,
+  };
+
+  const defaultConfig = {
+    browser: process.env.CYPRESS_BROWSER ?? "chrome",
+    project,
+    configFile: "e2e/support/cypress.config.js",
+    config: {
+      baseUrl,
+      specPattern,
+      env,
+    },
+    testingType: "e2e",
+    openMode: args["--open"] || process.env.OPEN_UI === "true",
+  };
+
+  const userArgs = await parseArguments(args);
+
+  return Object.assign({}, defaultConfig, userArgs);
+};
 
 const getSampleAppE2eConfig = (suite) => ({
   [suite]: async () => {
     const { appName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
     const { CLIENT_PORT } = env;
 
-    process.env = {
-      ...process.env,
-      ...env,
-    };
-
-    const defaultConfig = {
-      browser: "chrome",
+    return getEmbeddingSdkAppE2eConfig({
+      // If the `clientPort` is not set, it means we have multiple apps running on different ports,
+      // so we control the `baseUrl` based on other `env` variables on the Sample App tests level.
+      baseUrl: CLIENT_PORT ? getHost(CLIENT_PORT) : "",
+      env,
       project: ["e2e/tmp", appName].join("/"),
-      configFile: "e2e/support/cypress.config.js",
-      config: {
-        // If the `CLIENT_PORT` is not set, it means we have multiple apps running on different ports,
-        // so we control the `baseUrl` based on other `env` variables.
-        baseUrl: CLIENT_PORT ? getHost(CLIENT_PORT) : "",
-      },
-      testingType: "e2e",
-      openMode: args["--open"] || process.env.OPEN_UI === "true",
-    };
+    });
+  },
+});
 
-    const userArgs = await parseArguments(args);
+const getHostAppE2eConfig = (suite) => ({
+  [suite]: async () => {
+    const { appName, env } = HOST_APP_SETUP_CONFIGS[suite];
 
-    return Object.assign({}, defaultConfig, userArgs);
+    return getEmbeddingSdkAppE2eConfig({
+      baseUrl: getHost(),
+      env,
+      specPattern: [
+        "e2e/test-host-app/shared/**/*.cy.spec.{js,ts}",
+        ["e2e/test-host-app", appName, "**/*.cy.spec.{js,ts}"].join("/"),
+      ],
+    });
   },
 });
 
@@ -43,7 +75,7 @@ const getSampleAppE2eConfig = (suite) => ({
 const configs = {
   e2e: async () => {
     const defaultConfig = {
-      browser: "chrome",
+      browser: process.env.CYPRESS_BROWSER ?? "chrome",
       configFile: "e2e/support/cypress.config.js",
       config: {
         baseUrl: getHost(),
@@ -60,6 +92,10 @@ const configs = {
   ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("metabase-nextjs-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("shoppy-e2e"),
+  ...getHostAppE2eConfig("vite-6-host-app-e2e"),
+  ...getHostAppE2eConfig("next-15-app-router-host-app-e2e"),
+  ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
+  ...getHostAppE2eConfig("angular-20-host-app-e2e"),
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
     // when it comes to the snapshot generation.
@@ -67,7 +103,7 @@ const configs = {
     const { browser } = await parseArguments(args);
 
     const snapshotConfig = {
-      browser: browser ?? "chrome",
+      browser: browser ?? process.env.CYPRESS_BROWSER ?? "chrome",
       configFile: "e2e/support/cypress-snapshots.config.js",
       config: {
         baseUrl: getHost(),
@@ -82,7 +118,7 @@ const configs = {
     const { browser } = await parseArguments(args);
 
     const sdkComponentConfig = {
-      browser: browser ?? "chrome",
+      browser: browser ?? process.env.CYPRESS_BROWSER ?? "chrome",
       configFile: "e2e/support/cypress-embedding-sdk-component-test.config.js",
       config: {
         baseUrl: getHost(),
@@ -91,7 +127,10 @@ const configs = {
       openMode: args["--open"] || process.env.OPEN_UI === "true",
     };
 
-    return sdkComponentConfig;
+    const userArgs = await parseArguments(args);
+
+    const finalConfig = Object.assign({}, sdkComponentConfig, userArgs);
+    return finalConfig;
   },
 };
 

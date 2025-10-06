@@ -14,10 +14,6 @@
 
   - Column header
 
-  Requirements:
-
-  - Column not `type/Structured`
-
   Query transformation:
 
   - None/identity. The FE will show the FilterPicker and not call `drillThru` for this drill.
@@ -25,9 +21,7 @@
   Question transformation:
   - None"
   (:require
-   [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
-   [metabase.lib.equality :as lib.equality]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.schema :as lib.schema]
@@ -67,7 +61,7 @@
                         ;;
                         ;; So if neither of those cases apply, we can just return the original query and stage index.
                         (not (or (= (:lib/source column) :source/aggregations)
-                                 (and (= (:lib/source column) :source/breakouts)
+                                 (and (:lib/breakout? column)
                                       (= adding :expression))))
                         {:query        query
                          :stage-number stage-number}
@@ -79,12 +73,8 @@
                         ;; And if there isn't a later stage, add one.
                         :else      {:query        (lib.stage/append-stage query)
                                     :stage-number -1})
-        columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
-        filter-column (or (lib.equality/find-matching-column
-                           (:query base) (:stage-number base) column-ref columns)
-                          (and (:lib/source-uuid column)
-                               (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
-                                             columns)))]
+        filter-column (lib.drill-thru.common/matching-filterable-column
+                       (:query base) (:stage-number base) column-ref column)]
     ;; If we cannot find the matching column, don't allow to drill
     (when filter-column
       (assoc base :column filter-column))))
@@ -100,8 +90,7 @@
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
-             (nil? value)
-             (not (lib.types.isa/structured? column)))
+             (nil? value))
     ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
     (when-let [drill-details (prepare-query-for-drill-addition query stage-number column column-ref :filter)]
       (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.

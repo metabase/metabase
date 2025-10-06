@@ -6,96 +6,90 @@ redirect_from:
 
 # Charts with multiple series
 
-Data in isolation is rarely all that useful. One of the best ways to add context and clarity when communicating with data is to show data side-by-side with other data. Here are just a few examples of data that is better together than apart.
+One of the best ways to add context and clarity when communicating with data is to show data side-by-side with other data. For example:
 
-- Your company’s revenue vs. its costs over time.
-- Average order price this month and user signups for that month.
-- New users per day vs. returning users per day.
-- Orders per day from a few different product lines.
+- Your company's revenue vs. its costs over time
+- Average order price this month and user signups for that month
+- Orders per day from a few different product lines
 
 ## Displaying data side by side
 
-There are two main ways to visualize data side by side:
+There are two main ways to visualize multiple series in Metabase:
 
-1. [**Ask a question that involves multiple dimensions**](#ask-a-question-that-involves-multiple-dimensions) with the query builder (or in SQL, if you’re fancy). Example: the count of users by region over time.
-
-2. [**Combine two saved questions**](#combining-two-saved-questions) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
+- [**Ask a question that involves multiple dimensions**](#ask-a-question-that-involves-multiple-dimensions) with the query builder (or in SQL, if you're using SQL). For example, the count of users by region over time.
+- [**Combine multiple questions on one dashboard card**](#combining-multiple-questions-on-one-dashboard-card) that share a common dimension (like time) on a dashboard. For example, you could look at revenue over time and costs over time together.
 
 ## Ask a question that involves multiple dimensions
 
-If you’re creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it into two groups.
+If you're creating a new question, you can view the results as a multi-series visualization by summarizing your data and grouping it by two or more dimensions.
 
-As an example, we might want to see which website or service is referring the most people to our website. In the **Sample Database** that ships with Metabase, you would group by the `Source` and `Created At` columns of the **People** table.
+For example, we might want to see sales by month and product category. In the **Sample Database** that ships with Metabase, you would count the number of rows, then group by the `Product -> Category` and `Created At`:
 
-To create the multi-series chart, select the **People** table, click on the **Summarize** button in the upper right, then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is selected by default). Be sure to click the plus button to the right of your selection, so Metabase knows to add the grouping; otherwise, Metabase will switch to that grouping. [Learn more about asking questions](../questions/start.md).
+![Orders by product category](./images/editor-orders-by-product-category.png)
 
-Metabase will automatically display a multi-series line chart visualization of how each referrer has performed for us.
+Metabase will automatically display a multi-series line chart, with each series representing a different category.
 
-![multi-series in the query builder](./images/multi-series_query_builder.png)
+![Multi-series in the query builder](./images/multi-series_query_builder.png)
 
-You can also create a multi-series chart by composing a custom question in the notebook editor. All you need to do is summarize your data (e.g., count the rows) and group that data into multiple groups (e.g. `Created At` by month and Product Category).
+Metabase can visualize up to 100 distinct values of a dimension at once, so if you're selecting a field that contains many values, you might need to filter the values.
 
-![Composing a multi-series question in the notebook editor](./images/notebook_editor_multi-series.png)
+## Combining multiple questions on one dashboard card
 
-Note: you won’t be able to add another saved question to multi-series visualizations made in this fashion. Metabase can visualize up to 100 distinct values of a dimension at once, so if you're selecting a field that contains a lot of values, you might need to filter the values.
+You can layer multiple questions on a single dashboard card. You can even layer questions that query different databases, as long as they share the same datetime dimension.
 
-## Combining two saved questions
+1. **Create a dashboard and enter dashboard edit mode**. On a dashboard, click the **Pencil** icon to enter editing mode.
 
-If you already have two or more saved questions you’d like to compare, and they have the same first dimension, they can be combined onto a single dashboard card. You can even compare questions that pull data from different databases. Here’s how:
+2. **Add a question** with a dimension like time or category to a dashboard. In practice, questions you'll typically want to overlay will be line or bar charts.
 
-1. Add a question with a dimension like time or category to a dashboard. In practice, these will usually be line charts or bar charts.
+3. **Edit the card's visualization**. Still in dashboard edit mode, hover over the question's card and click the **Pencil** icon to edit the card's visualization.
 
-2. While in edit mode on the dashboard, hovering over a card will display some editing options in the upper right of the question, including an option to **add a line**, as well as a **gear** icon. Click on the add a line option (the **+** with a line and the word "Add" next to it).
+![Edit visualization](./images/edit-visualization.png)
 
-![add multi-series](./images/add_series.png)
+4. **Add more data**. In the Manage data sidebar on the left, click on **Add more data**.
 
-3. In the Edit Data modal, you’ll see the original question on the left, with a list of compatible questions you can choose from on the right. Search question(s) to add, and check the box next to each question you’d like to see alongside with the original. Metabase will add the question(s) to the same chart.
+![Manage data sidebar](./images/add-data.png)
 
-![multi-series edit modal](./images/edit_modal.png)
+Metabase will list questions in the left sidebar. Valid questions that you can plot on the card will have a plus sign **+**. You can also swap out the card's current question for a different question, which may update the list of compatible questions.
 
 If necessary, the X and Y axes will automatically update. Metabase will create a legend using the existing card titles to help you understand which question maps to which series on the chart. Repeat this process as many times as you need.
 
-![Edit modal with multi-series](images/edit_modal_multi-series.png)
+You can also swap out the chart's original question entirely, for example if you want to start over, or to reset the question's visualization to its original settings.
 
-To remove a series, simply uncheck its box.
+5. (Optional) **Rename your chart** to reflect the combined data.
 
-Once you have your chart looking how you’d like, hit done. Metabase will show your changes on the card in the dashboard. Depending on how dense your data is, at this point you might want to consider enlarging your chart to make sure the data is legible.
+6. **Save** your changes.
 
-> **SQL questions may not work**. Metabase has less information about SQL-based questions, so we cannot guarantee they can be added reliably. You'll see a little warning sign next to SQL questions to indicate this uncertainty, so be aware that adding these kinds of questions may not work.
+## Combining number charts
 
-## Combining Number charts
+If you need to compare single numbers to get a sense of how they differ, Metabase can turn multiple number charts into a funnel or bar chart.
 
-If you need to compare single numbers to get a sense of how they differ, Metabase can turn multiple number charts into a bar chart.
+1. **Add a number chart to a dashboard.**
 
-As above, while editing a dashboard, hover over a number chart of your choice, and click on the icon with the **+** and bar chart icon to add a saved question.
+2. **Visualize as a funnel chart**. (Yes, we know you're going for a bar chart, bear with us, you're going to switch the funnel's type to a bar chart.) In dashboard edit mode, hover over the card and click on **Visualize another way**. Metabase will change the visualization to a funnel chart.
 
-Use the search bar to find other saved question(s) that you’d like to see represented on the bar chart, and click the checkbox to add them to your chart. In this case, we added **Widget orders** to compare them to **Gadget orders**.
+![Visualize another way](./images/visualize-another-way.png)
 
-![From numbers to bar chart](./images/numbers_to_bar_chart.png)
+3. **Add more data**. Add another question that returns a single number to the chart.
+
+4. **Set the Funnel type to a bar chart**. Click **Settings** and change **Funnel type** to "Bar chart".
+
+![Set Funnel chart to Bar chart](./images/set-to-bar-chart.png)
 
 ## Multi-series charts, values, and legibility
 
-When displaying multiple series, it’s important to keep legibility in mind. Combining many series can sometimes decrease the communication value of the data.
+When displaying multiple series, it's important to keep legibility in mind. Combining many series can sometimes decrease the communication value of the data.
 
-Metabase allows you to add values to multi-series charts, but go easy on this feature, especially on charts with lots of data points. Adding values to multiple series, each with many data points, can make charts more difficult to read.
+Metabase allows you to add values to multi-series charts, but use this feature sparingly, especially on charts with many data points. Adding values to multiple series, each with many data points, can make charts _more_ difficult to read.
 
-From the **Visualization > Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to (begrudgingly) show values for all data points, by setting the **Values to show** to **All**.
+From the **Visualization > Display** options, you can toggle the option: **Show values on data points**. Metabase will do its best to fit as many values as can fit nicely. You can also force Metabase to show values for all data points by setting the **Values to show** to **All**.
 
-![add values to multi-series chart](./images/add_values.png)
+![Add values to multi-series chart](./images/add_values.png)
 
-You can also toggle values for each individual series. If you have three series, for example, you can show values on one, two, or all three series.
+Additionally, you can configure the formatting of the values:
 
-- For a question with multiple dimensions, go to **Visualization > Data** tab, click on the three dots menu **...** to the right of a series, and toggle **Show values for this series** to show or hide its values.
-
-- For a dashboard card that combines multiple saved questions, go to the **Visualization > Display** tab, click on the down arrow to the right of a series to expand its details, and toggle **Show values for this series** to show or hide its values.
-
-You can also toggle values for the whole chart, then selectively hide values for individual series until you have your chart looking just right.
-
-Additionally, there is an option to configure the formatting of the values:
-
-- **Auto**. Metabase selects the appropriate style for you
-- **Compact**. Metabase abbreviates values, e.g., 1,000 becomes 1K.
-- **Full**. Values are displayed in their natural beauty.
+- **Auto**: Metabase selects the appropriate style for you
+- **Compact**: Metabase abbreviates values, e.g., 1,000 becomes 1K
+- **Full**: Values are displayed in their natural form
 
 Now go forth and start letting your data get to know each other!
 

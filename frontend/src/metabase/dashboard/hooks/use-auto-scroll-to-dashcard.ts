@@ -6,7 +6,7 @@ import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import type { DashCardId } from "metabase-types/api";
 
-interface UseAutoScrollToDashcardResult {
+export interface UseAutoScrollToDashcardResult {
   autoScrollToDashcardId: DashCardId | undefined;
   reportAutoScrolledToDashcard: () => void;
 }

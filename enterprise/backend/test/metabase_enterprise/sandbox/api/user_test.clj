@@ -91,3 +91,29 @@
         (mt/user-http-request :crowberto :put 200 (format "mt/user/%d/attributes" id) {:login_attributes {"foo" "bar"}})
         (is (= {"foo" "bar"}
                (t2/select-one-fn :login_attributes :model/User :id id)))))))
+
+(deftest attributes-endpoint-includes-jwt-attributes-test
+  (testing "GET /api/mt/user/attributes includes keys from jwt_attributes"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [:model/User _ {:login_attributes {"department" "engineering"
+                                                       "role" "developer"}}
+                     :model/User _ {:jwt_attributes {"session_id" "abc123"
+                                                     "scope" "read-write"}}
+                     :model/User _ {:login_attributes {"team" "backend"}
+                                    :jwt_attributes {"auth_level" "admin"
+                                                     "region" "us-east"}}]
+        (let [response (mt/user-http-request :crowberto :get 200 "mt/user/attributes")]
+          (testing "includes keys from login_attributes"
+            (is (contains? (set response) "department"))
+            (is (contains? (set response) "role"))
+            (is (contains? (set response) "team")))
+
+          (testing "includes keys from jwt_attributes"
+            (is (contains? (set response) "session_id"))
+            (is (contains? (set response) "scope"))
+            (is (contains? (set response) "auth_level"))
+            (is (contains? (set response) "region")))
+
+          (testing "does not include duplicate keys"
+            (let [response-counts (frequencies response)]
+              (is (every? #(= 1 %) (vals response-counts))))))))))

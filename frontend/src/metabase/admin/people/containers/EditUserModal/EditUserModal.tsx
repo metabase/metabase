@@ -6,7 +6,7 @@ import {
   useGetUserQuery,
   useUpdateUserMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Modal } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
@@ -53,6 +53,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
           onCancel={onClose}
           initialValues={initialValues}
           onSubmit={handleSubmit}
+          userId={userId}
         />
       </LoadingAndErrorWrapper>
     </Modal>

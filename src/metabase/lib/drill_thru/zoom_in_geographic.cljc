@@ -74,6 +74,7 @@
 
      2b. Otherwise if `:bin-width` is < 20°, replace them with the current `:bin-width` divided by 10, and add
          `:>=`/`:<` filters for the clicked latitude/longitude values."
+  (:refer-clojure :exclude [some])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -88,8 +89,9 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
-   [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some]]))
 
 (def ^:private ContextWithLatLon
   [:merge
@@ -104,15 +106,14 @@
   [query                      :- ::lib.schema/query
    stage-number               :- :int
    {:keys [row], :as context} :- ::lib.schema.drill-thru/context]
-  (let [stage (lib.util/query-stage query stage-number)
-        ;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
+  (let [;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
         [lat-column lon-column] (some
                                  (fn [columns]
                                    (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
                                      (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
                                        [lat-column lon-column])))
-                                 [(lib.metadata.calculation/returned-columns query stage-number stage)
-                                  (lib.metadata.calculation/visible-columns query stage-number stage)])]
+                                 [(lib.metadata.calculation/returned-columns query stage-number)
+                                  (lib.metadata.calculation/visible-columns query stage-number)])]
     (when (and lat-column lon-column)
       (letfn [(same-column? [col-x col-y]
                 (if (:id col-x)
@@ -138,15 +139,20 @@
   [{:keys [column value lat-column lon-column], :as _context} :- ContextWithLatLon
    lat-lon-bin-width                                          :- ::lib.schema.binning/bin-width]
   (when value
-    {:lib/type  :metabase.lib.drill-thru/drill-thru
-     :type      :drill-thru/zoom-in.geographic
-     :subtype   :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
-     :column    column
-     :value     value
-     :latitude  {:column    lat-column
-                 :bin-width lat-lon-bin-width}
-     :longitude {:column    lon-column
-                 :bin-width lat-lon-bin-width}}))
+    {:lib/type     :metabase.lib.drill-thru/drill-thru
+     :type         :drill-thru/zoom-in.geographic
+     :subtype      :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+     :column       column
+     :value        value
+     :display-name (case (:semantic-type column)
+                     :type/City (i18n/tru "Zoom in: City")
+                     :type/State (i18n/tru "Zoom in: State")
+                     :type/Country (i18n/tru "Zoom in: Country")
+                     (i18n/tru "Zoom in"))
+     :latitude     {:column    lat-column
+                    :bin-width lat-lon-bin-width}
+     :longitude    {:column    lon-column
+                    :bin-width lat-lon-bin-width}}))
 
 (mu/defn- country->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   [{:keys [column], :as context} :- ContextWithLatLon]
@@ -165,9 +171,13 @@
 
 (mu/defn- binned-lat-lon->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]
   [metadata-providerable                                             :- ::lib.schema.metadata/metadata-providerable
-   {:keys [lat-column lon-column lat-value lon-value], :as _context} :- ContextWithLatLon]
+   {:keys [column lat-column lon-column lat-value lon-value], :as _context} :- ContextWithLatLon]
   (when (and lat-value
-             lon-value)
+             lon-value
+             ;; Only display this drill for latitude columns.  We only display this drill when we have both latitude
+             ;; and longitude columns, so by default, we get this drill twice whenever it shows up.  Only displaying
+             ;; it for one column type fixes that.
+             (= (:semantic-type column) :type/Latitude))
     (when-let [{lat-bin-width :bin-width} (lib.binning/resolve-bin-width metadata-providerable lat-column lat-value)]
       (when-let [{lon-bin-width :bin-width} (lib.binning/resolve-bin-width metadata-providerable lon-column lon-value)]
         (let [[new-lat-bin-width new-lon-bin-width] (if (and (>= lat-bin-width 20)
@@ -175,17 +185,18 @@
                                                       [10 10]
                                                       [(/ lat-bin-width 10.0)
                                                        (/ lon-bin-width 10.0)])]
-          {:lib/type  :metabase.lib.drill-thru/drill-thru
-           :type      :drill-thru/zoom-in.geographic
-           :subtype   :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
-           :latitude  {:column    lat-column
-                       :bin-width new-lat-bin-width
-                       :min       lat-value
-                       :max       (+ lat-value lat-bin-width)}
-           :longitude {:column    lon-column
-                       :bin-width new-lon-bin-width
-                       :min       lon-value
-                       :max       (+ lon-value lon-bin-width)}})))))
+          {:lib/type     :metabase.lib.drill-thru/drill-thru
+           :type         :drill-thru/zoom-in.geographic
+           :subtype      :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+           :display-name (i18n/tru "Zoom in: Lat/Lon")
+           :latitude     {:column    lat-column
+                          :bin-width new-lat-bin-width
+                          :min       lat-value
+                          :max       (+ lat-value lat-bin-width)}
+           :longitude     {:column    lon-column
+                           :bin-width new-lon-bin-width
+                           :min       lon-value
+                           :max       (+ lon-value lon-bin-width)}})))))
 
 (mu/defn zoom-in-geographic-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic]
   "Return a `:drill-thru/zoom-in.geographic` drill if appropriate. See docstring

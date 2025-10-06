@@ -442,7 +442,10 @@ describe("scenarios > collections > trash", () => {
     // });
 
     toggleEllipsisMenuFor("Dashboard A");
-    H.popover().findByText("Delete permanently").click();
+    H.popover()
+      .should("contain", "Delete permanently")
+      .findByText("Delete permanently")
+      .click();
     H.modal().findByText("Delete Dashboard A permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
@@ -450,7 +453,10 @@ describe("scenarios > collections > trash", () => {
     });
 
     toggleEllipsisMenuFor("Question A");
-    H.popover().findByText("Delete permanently").click();
+    H.popover()
+      .should("contain", "Delete permanently")
+      .findByText("Delete permanently")
+      .click();
     H.modal().findByText("Delete Question A permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
@@ -861,12 +867,11 @@ describe("scenarios > collections > trash", () => {
 });
 
 function toggleEllipsisMenuFor(item) {
-  collectionTable().within(() => {
-    cy.findByText(item)
-      .closest("tr")
-      .find(".Icon-ellipsis")
-      .click({ force: true });
-  });
+  collectionTable()
+    .findByText(item)
+    .closest("tr")
+    .find(".Icon-ellipsis")
+    .click();
 }
 
 function createCollection(collectionInfo, archive) {

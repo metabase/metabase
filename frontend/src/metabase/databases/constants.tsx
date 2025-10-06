@@ -4,9 +4,9 @@ import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/sa
 
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
 import DatabaseAuthProviderSectionField from "./components/DatabaseAuthProviderSectionField";
-import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
+import { DatabaseCacheScheduleField } from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
-import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
+import { DatabaseConnectionSectionField } from "./components/DatabaseConnectionSectionField";
 import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";
 import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
@@ -22,6 +22,13 @@ export const SAVED_QUESTIONS_DATABASE = {
   is_saved_questions: true,
   features: ["basic-aggregations"],
 };
+
+/**
+ * How many of the (elevated) engines we want to show in the DatabaseEngineList widget/component.
+ * This should ensure that the list still looks visually pleasing in the modal even if we alter
+ * the ELEVATED_ENGINES array.
+ */
+export const MAX_INITIAL_ENGINES_SHOWN = 6;
 
 export const ELEVATED_ENGINES = [
   "mysql",

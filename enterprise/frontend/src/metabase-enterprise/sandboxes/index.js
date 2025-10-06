@@ -22,14 +22,14 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import sandboxingReducer from "./actions";
-import { LoginAttributesWidget } from "./components/LoginAttributesWidget";
+import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Sandboxed`,
+  label: t`Row and column security`,
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
   iconColor: "brand",
@@ -75,7 +75,7 @@ if (hasPremiumFeature("sandboxes")) {
   );
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
-    label: t`Edit sandboxed access`,
+    label: t`Edit row and column security`,
     iconColor: "brand",
     icon: "pencil",
     actionCreator: (entityId, groupId, view) =>

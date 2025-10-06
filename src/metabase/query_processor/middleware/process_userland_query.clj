@@ -5,6 +5,7 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
+  (:refer-clojure :exclude [every?])
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
@@ -12,8 +13,10 @@
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -22,7 +25,8 @@
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
-                             (- (System/currentTimeMillis) start-time-ms)))
+                             ;; Consider having `:start_time_nanos` instead, to avoid the pitfalls of system clocks.
+                             (u/since-ms-wall-clock start-time-ms)))
       (dissoc :start_time_millis)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -115,7 +119,7 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn- query-execution-info
+(mu/defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
@@ -123,8 +127,8 @@
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
-    mirror-database-id             :mirror-database/id
-    :as                            query}]
+    destination-database-id        :destination-database/id
+    :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
                      (-> original-query
@@ -132,7 +136,7 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or mirror-database-id database-id)
+    {:database_id       (or destination-database-id database-id)
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id
@@ -162,7 +166,7 @@
 
   4. Submit a background job to analyze field usages"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
     (if-not (qp.util/userland-query? query)
       (qp query rff)

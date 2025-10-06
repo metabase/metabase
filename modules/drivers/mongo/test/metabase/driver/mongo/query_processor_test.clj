@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.query-processor-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -13,9 +12,7 @@
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -245,19 +242,6 @@
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
-          (testing "Parent fields are removed from projections when child fields are included (#19135)"
-            (let [table       (t2/select-one :model/Table :db_id (mt/id))
-                  fields      (t2/select :model/Field :table_id (u/the-id table))
-                  projections (-> (mongo.qp/mbql->native
-                                   (mt/mbql-query tips {:fields (mapv (fn [f]
-                                                                        [:field (u/the-id f) nil])
-                                                                      fields)}))
-                                  :projections
-                                  set)]
-              ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
-              ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
-              ;; see docstring on mongo.qp/remove-parent-fields for full details
-              (is (empty? (set/intersection projections #{"source" "url" "venue"})))))
           (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
             (let [query (mt/mbql-query tips
                           {:joins [{:alias "Tips"
@@ -575,7 +559,7 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest ^:parallel uniqe-alias-index-test
+(deftest ^:parallel unique-alias-index-test
   (mt/test-driver
     :mongo
     (testing "Field aliases have deterministic unique indices"
@@ -602,7 +586,7 @@
             indices (reduce (fn [acc lookup-stage]
                               (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (parse-long (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
                                 (is (not (contains? acc index)))
                                 (conj acc index)))
@@ -630,21 +614,61 @@
            (qp/process-query
             (mt/mbql-query times {:fields [$t]})))))))
 
+(deftest ^:parallel join-preserves-$$-variable-prefix-test
+  (mt/test-driver :mongo
+    (testing "$$variable references in join conditions are preserved when rhs is a literal value (QUE-1500)"
+      (let [query (mt/mbql-query users
+                    {:joins    [{:condition    [:and
+                                                [:= $id &c.checkins.user_id]
+                                                [:= $name [:value "Felipinho Asklepios" {:base_type :type/Text}]]]
+                                 :source-table $$checkins
+                                 :alias        "c"
+                                 :fields       [&c.checkins.date]}]
+                     :fields   [$id $name &c.checkins.date]
+                     :order-by [[:asc $id]
+                                [:asc &c.checkins.id]]
+                     :limit    3})]
+        (testing "qp.compile"
+          (is (= [{"$lookup"
+                   {:as "join_alias_c"
+                    :from "checkins"
+                    :let {"let__id___1" "$_id",
+                          "let_name___2" "$name"}
+                    :pipeline
+                    [{"$project" {"_id" "$_id", "date" "$date", "user_id" "$user_id", "venue_id" "$venue_id"}}
+                     {"$match"
+                      {"$and" [{"$expr" {"$eq" ["$$let__id___1" "$user_id"]}}
+                               {"$expr" {"$eq" ["$$let_name___2" "Felipinho Asklepios"]}}]}}]}}
+                  {"$unwind" {:path "$join_alias_c"
+                              :preserveNullAndEmptyArrays true}}
+                  {"$sort" {"_id" 1
+                            "join_alias_c._id" 1}}
+                  {"$project" {"_id" "$_id"
+                               "c__date" "$join_alias_c.date"
+                               "name" "$name"}}
+                  {"$limit" 3}]
+                 (:query (qp.compile/compile query)))))
+        (testing "qp.process-query"
+          (is (= [[1 "Plato Yeshua" nil]
+                  [2 "Felipinho Asklepios" "2013-11-19T00:00:00Z"]
+                  [2 "Felipinho Asklepios" "2015-03-06T00:00:00Z"]]
+                 (mt/rows (qp/process-query query)))))))))
+
 (deftest ^:parallel mongo-multiple-joins-test
   (testing "should be able to join multiple mongo collections"
     (mt/test-driver :mongo
       (mt/dataset (mt/dataset-definition "multi-join-db"
-                                         ["table_a"
-                                          [{:field-name "a_id" :base-type :type/Text}
-                                           {:field-name "b_id" :base-type :type/Text}]
-                                          [["a_id" "b_id"]]]
-                                         ["table_b"
-                                          [{:field-name "b_id" :base-type :type/Text}
-                                           {:field-name "c_id" :base-type :type/Text}]
-                                          [["b_id" "c_id"]]]
-                                         ["table_c"
-                                          [{:field-name "c_id" :base-type :type/Text}]
-                                          [["c_id"]]])
+                                         [["table_a"
+                                           [{:field-name "a_id" :base-type :type/Text}
+                                            {:field-name "b_id" :base-type :type/Text}]
+                                           [["a_id" "b_id"]]]
+                                          ["table_b"
+                                           [{:field-name "b_id" :base-type :type/Text}
+                                            {:field-name "c_id" :base-type :type/Text}]
+                                           [["b_id" "c_id"]]]
+                                          ["table_c"
+                                           [{:field-name "c_id" :base-type :type/Text}]
+                                           [["c_id"]]]])
         (let [mp (mt/metadata-provider)
               table-a (lib.metadata/table mp (mt/id :table_a))
               table-b (lib.metadata/table mp (mt/id :table_b))
@@ -663,7 +687,7 @@
 #_(deftest ^:parallel filter-uuids-with-string-patterns-test
     (mt/test-driver :mongo
       (mt/dataset uuid-dogs
-        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [mp (mt/metadata-provider)
               dogs (lib.metadata/table mp (mt/id :dogs))
               person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
           (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))

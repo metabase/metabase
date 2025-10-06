@@ -5,8 +5,7 @@ import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -22,7 +21,6 @@ import {
   getDatabase,
   getError,
   getField,
-  getForeignKeys,
   getIsEditing,
   getIsFormulaExpanded,
   getLoading,
@@ -82,7 +80,6 @@ const mapStateToProps = (state, props) => {
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
     user: getUser(state, props),
-    foreignKeys: getForeignKeys(state, props),
     isEditing: getIsEditing(state, props),
     isFormulaExpanded: getIsFormulaExpanded(state, props),
   };
@@ -102,7 +99,6 @@ const propTypes = {
   table: PropTypes.object,
   user: PropTypes.object.isRequired,
   database: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object,
   isEditing: PropTypes.bool,
   startEditing: PropTypes.func.isRequired,
   endEditing: PropTypes.func.isRequired,
@@ -124,7 +120,6 @@ const FieldDetail = (props) => {
     loadingError,
     loading,
     user,
-    foreignKeys,
     isEditing,
     startEditing,
     endEditing,
@@ -193,8 +188,8 @@ const FieldDetail = (props) => {
                 CS.bordered,
               )}
             >
-              <List>
-                <li className={CS.relative}>
+              <ul>
+                <li>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -205,7 +200,7 @@ const FieldDetail = (props) => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -214,7 +209,7 @@ const FieldDetail = (props) => {
                     />
                   </li>
                 )}
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this field is interesting`}
@@ -224,7 +219,7 @@ const FieldDetail = (props) => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this field`}
@@ -236,7 +231,7 @@ const FieldDetail = (props) => {
                 </li>
 
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <Detail
                       id="base_type"
                       name={t`Data type`}
@@ -244,18 +239,18 @@ const FieldDetail = (props) => {
                     />
                   </li>
                 )}
-                <li className={CS.relative}>
+                <li>
                   <FieldTypeDetail
                     databaseId={table.db_id}
                     field={entity}
-                    foreignKeys={foreignKeys}
                     fieldTypeFormField={getFormField("semantic_type")}
                     foreignKeyFormField={getFormField("fk_target_field_id")}
+                    fieldSettingsFormField={getFormField("settings")}
                     isEditing={isEditing}
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <UsefulQuestions
                       questions={interestingQuestions(
                         props.database,
@@ -266,7 +261,7 @@ const FieldDetail = (props) => {
                     />
                   </li>
                 )}
-              </List>
+              </ul>
             </div>
           </div>
         )}

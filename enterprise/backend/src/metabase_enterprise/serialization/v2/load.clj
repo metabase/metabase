@@ -8,6 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models.serialization :as serdes]
+   [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -24,7 +25,8 @@
   keys to remove from the model so that we'll be able to successfully load it. You can remove keys in vectors using :* to
   indicate that all items in that vector should have a key removed."
   {"Dashboard" #{:dashcards}
-   "Card"      #{:dashboard_id}})
+   "Document"  #{:document}
+   "Card"      #{:dashboard_id :document_id}})
 
 (defn- keys-to-strip [ingested]
   (let [model (-> ingested :serdes/meta last :model)]
@@ -58,6 +60,8 @@
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       (mapv (partial into {}) path)
+     :local-id   (when-let [entity (serdes/load-find-local path)]
+                   ((t2/select-pks-fn entity) entity))
      :deps-chain expanding
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
@@ -152,30 +156,38 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error]
+  [ingestion & {:keys [backfill? continue-on-error reindex?]
                 :or   {backfill?         true
-                       continue-on-error false}}]
-  (t2/with-transaction [_tx]
-    ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
-    ;; guide the import, and make sure all containers are imported before contents, etc.
-    (when backfill?
-      (serdes.backfill/backfill-ids!))
-    (let [contents (serdes.ingest/ingest-list ingestion)
-          ctx      {:expanding #{}
-                    :seen      #{}
-                    :circular  #{}
-                    :ingestion ingestion
-                    :from-ids  (m/index-by :id contents)
-                    :errors    []}]
-      (log/infof "Starting deserialization, total %s documents" (count contents))
-      (reduce (fn [ctx item]
-                (try
-                  (load-one! ctx item)
-                  (catch Exception e
-                    (when-not continue-on-error
-                      (throw e))
-                    ;; eschew big and scary stacktrace
-                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
-                    (update ctx :errors conj e))))
-              ctx
-              contents))))
+                       continue-on-error false
+                       reindex?          true}}]
+  (u/prog1
+    (t2/with-transaction [_tx]
+      ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
+      ;; guide the import, and make sure all containers are imported before contents, etc.
+      (when backfill?
+        (serdes.backfill/backfill-ids!))
+      (let [contents (serdes.ingest/ingest-list ingestion)
+            ctx      {:expanding #{}
+                      :seen      #{}
+                      :circular  #{}
+                      :ingestion ingestion
+                      :from-ids  (m/index-by :id contents)
+                      :errors    []}]
+        (log/infof "Starting deserialization, total %s documents" (count contents))
+        (reduce (fn [ctx item]
+                  (try
+                    (load-one! ctx item)
+                    (catch Exception e
+                      (when-not continue-on-error
+                        (throw e))
+                      ;; eschew big and scary stacktrace
+                      (log/warnf (u/strip-error e "Skipping deserialization error"))
+                      (update ctx :errors conj e))))
+                ctx
+                contents)))
+    (when reindex?
+    ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
+    ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
+    ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
+    ;;       while we're figuring that out, here's a crude stopgap.
+      (search/reindex!))))

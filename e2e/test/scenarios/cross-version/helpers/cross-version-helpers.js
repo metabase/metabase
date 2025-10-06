@@ -30,6 +30,12 @@ export function parseVersionString(versionString) {
 // Versions in which a breaking GUI change was introduced. For example, version
 // 32 added a "What will you use Metabase for?" stage in the initial setup.
 
+// Change: Makes the "Sample Database" in setup more prominent
+// GitHub PR: https://github.com/metabase/metabase/pull/60511
+// Date: 2025-07-08
+// Author: nemanjaglumac
+const moreProminentSampleDbInSetupVersion = 56;
+
 // Change: Adds "What will you use Metabase for?" stage in the initial setup.
 // Git sha: d88d32e5e021ad4f47b5d740b78df73945e8ff82
 // Date: 2024-02-08
@@ -107,7 +113,12 @@ export function setupInstance({ version, majorVersion }) {
     cy.button("Next").click();
   }
 
-  cy.findByText("I'll add my data later").click();
+  const continueWithoutAddingDatabaseCopy =
+    majorVersion >= moreProminentSampleDbInSetupVersion
+      ? "Continue with sample data"
+      : "I'll add my data later";
+
+  cy.findByText(continueWithoutAddingDatabaseCopy).click();
   cy.findByText("I'll add my own data later");
 
   // Collection defaults to on and describes data collection

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { CopyTextInput } from "metabase/components/CopyTextInput";
+import { CopyTextInput } from "metabase/common/components/CopyTextInput";
 import CS from "metabase/css/core/index.css";
 import { Button, Flex, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
@@ -36,7 +36,7 @@ export const SecretKeyModal = ({
       />
       <Flex direction="row" gap="md">
         <Icon
-          name="info_filled"
+          name="info"
           size={22}
           className={CS.textMedium}
           style={{ marginTop: "-4px" }}

@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { MouseEventHandler, ReactNode } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { Box, Center, Group, Paper, Stack, Text, Title } from "metabase/ui";
 
 import S from "./SharingPaneButton.module.css";
@@ -16,6 +16,7 @@ type SharingOptionProps = {
   "data-testid"?: string;
   isDisabled?: boolean;
   disabledLink: string;
+  actionHint?: ReactNode;
 };
 
 export const SharingPaneButton = ({
@@ -27,6 +28,7 @@ export const SharingPaneButton = ({
   "data-testid": dataTestId,
   isDisabled,
   disabledLink,
+  actionHint,
 }: SharingOptionProps) => {
   return (
     <Paper
@@ -42,14 +44,27 @@ export const SharingPaneButton = ({
       w="22rem"
       aria-label={title}
     >
-      <Stack pb={isDisabled ? "md" : undefined}>
-        <Center mb={32}>{illustration}</Center>
-        <Group align="center" gap="sm">
-          <Title order={2}>{title}</Title>
-          {badge}
-        </Group>
-        {children}
+      <Stack justify="space-between" h="100%">
+        <Stack pb={isDisabled ? "md" : undefined}>
+          <Center mb={32}>{illustration}</Center>
+          <Group align="center" gap="sm">
+            {badge}
+            <Title order={2}>{title}</Title>
+          </Group>
+          {children}
+        </Stack>
+
+        {!isDisabled && (
+          <Stack mt="lg" w="100%" align="flex-end">
+            {actionHint ?? (
+              <Text c="brand" fw="bold">
+                {t`Embed`}
+              </Text>
+            )}
+          </Stack>
+        )}
       </Stack>
+
       {isDisabled && (
         <Box
           pos="absolute"

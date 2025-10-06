@@ -42,7 +42,9 @@ const VisualizationMock = ({
     <div>
       <div>
         {rows[0].map((value, i) => (
-          <span key={i}>{value}</span>
+          <span key={i}>
+            {typeof value === "object" ? JSON.stringify(value) : value}
+          </span>
         ))}
       </div>
       <div data-testid="settings">

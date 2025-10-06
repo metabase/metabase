@@ -60,32 +60,37 @@ describe("issue 18384", () => {
   });
 
   it("should be able to open field properties even when one of the tables is hidden (metabase#18384)", () => {
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+    });
 
-    cy.findByTestId("column-ADDRESS").find(".Icon-gear").click();
+    H.DataModel.TableSection.clickField("Address");
 
     cy.location("pathname").should(
       "eq",
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}/general`,
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}/field/${PEOPLE.ADDRESS}`,
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Address – Field Settings/i);
+    H.DataModel.FieldSection.getNameInput()
+      .should("be.visible")
+      .and("have.value", "Address");
   });
 });
 
 describe("issue 21984", () => {
-  const reviewsDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`;
-
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
 
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit(reviewsDataModelPage);
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+    });
     cy.wait("@tableMetadata");
 
     cy.findByDisplayValue("ID");
@@ -111,9 +116,6 @@ describe("issue 15542", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.wrap(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
-    ).as("ORDERS_PRODUCT_ID_URL");
     cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
   });
 
@@ -129,43 +131,37 @@ describe("issue 15542", () => {
     cy.findByText("Orders").click();
   }
 
-  function exitAdmin() {
-    // Navigate without reloading the page
-    cy.findByText("Exit admin").click();
-  }
-
   function openOrdersProductIdSettings() {
     // Navigate without reloading the page
     H.appBar().icon("gear").click();
     H.popover().findByText("Admin settings").click();
 
     H.appBar().findByText("Table Metadata").click();
-    cy.findByText("Orders").click();
-
-    cy.findByTestId("column-PRODUCT_ID").icon("gear").click();
-  }
-
-  function select(name: string) {
-    return cy.findAllByTestId("select-button").contains(name);
+    H.DataModel.TablePicker.getTable("Orders").click();
+    H.DataModel.TableSection.clickField("Product ID");
   }
 
   it("should be possible to use the foreign key field display values immediately when changing the setting", () => {
     // This test does manual naviation instead of using openOrdersTable and similar
     // helpers because they use cy.visit under the hood and that reloads the page,
     // clearing the in-browser cache, which is what we are testing here.
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
 
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
-
-    select("Plain input box").click();
+    H.DataModel.FieldSection.getFilteringInput().click();
     H.popover().findByText("A list of all values").click();
 
-    select("Use original value").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use foreign key").click();
     H.popover().findByText("Title").click();
 
     cy.wait("@fieldDimensionUpdate");
 
-    exitAdmin();
+    cy.findByRole("link", { name: "Exit admin" }).click();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -178,10 +174,10 @@ describe("issue 15542", () => {
 
     openOrdersProductIdSettings();
 
-    select("Use foreign key").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use original value").click();
 
-    exitAdmin();
+    cy.findByRole("link", { name: "Exit admin" }).click();
     openOrdersTable();
 
     H.tableHeaderClick("Product ID");
@@ -224,14 +220,14 @@ describe("issue 53595", () => {
   });
 
   it("all options are visibile while filtering the list of entity types (metabase#53595)", () => {
-    cy.visit("/admin/datamodel");
-    cy.wait("@getSchema");
-    cy.findAllByTestId("admin-metadata-table-list-item").eq(0).click();
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+      fieldId: PEOPLE.ID,
+    });
 
-    cy.findByTestId("column-ID")
-      .findByPlaceholderText("Select a semantic type")
-      .clear()
-      .type("cu");
+    H.DataModel.FieldSection.getSemanticTypeInput().focus().clear().type("cu");
 
     H.popover().findByText("Currency").should("be.visible");
     H.popover().then(($popover) => {
@@ -377,11 +373,12 @@ describe("issues 55617, 55618", () => {
     cy.findByPlaceholderText("Select a target")
       .should("have.value", "People → ID")
       .click();
+    H.main().scrollTo("bottom"); // scroll to bottom so the popover drops up
     H.popover().within(() => {
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible").click();
+      cy.findByText("Orders → ID").should("exist");
+      cy.findByText("People → ID").should("exist");
+      cy.findByText("Products → ID").should("exist");
+      cy.findByText("Reviews → ID").should("exist").click();
     });
     cy.findByPlaceholderText("Select a target").should(
       "have.value",
@@ -398,6 +395,76 @@ describe("issues 55617, 55618", () => {
       "No semantic type",
     );
   });
+});
+
+describe("issue 55619", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it(
+    "should allow you to change the currency where you can set a semantic type (metabase#55619)",
+    { tags: "@flaky" },
+    () => {
+      cy.log("set a non-default value");
+      cy.request("PUT", `/api/field/${ORDERS.DISCOUNT}`, {
+        settings: { currency: "CAD" },
+      });
+
+      cy.log("data reference - field list");
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields`,
+      );
+      H.main().within(() => {
+        cy.button(/Edit/).click();
+        cy.findByDisplayValue("Canadian Dollar").click();
+      });
+      H.popover().findByText("Euro").click();
+      H.main().within(() => {
+        cy.findByDisplayValue("Euro").should("be.visible");
+        cy.button(/Save/).click();
+        cy.button(/Edit/).should("be.visible");
+      });
+
+      cy.log("data reference - field details");
+      H.main().within(() => {
+        cy.findByRole("link", { name: /Discount/ }).click();
+        cy.button(/Edit/).click();
+        cy.findByDisplayValue("Euro").click();
+      });
+      H.popover().findByText("Australian Dollar").click();
+      H.main().within(() => {
+        cy.findByDisplayValue("Australian Dollar").should("be.visible");
+        cy.button(/Save/).click();
+        cy.button(/Edit/).should("be.visible");
+      });
+
+      cy.log("model metadata");
+      H.navigationSidebar().findByText("Models").click();
+      H.main().within(() => {
+        cy.findByLabelText("Create a new model").click();
+        cy.findByText("Use the notebook editor").click();
+      });
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      H.runButtonOverlay().click();
+      cy.findByTestId("editor-tabs-columns-name").click();
+      H.openColumnOptions("Discount");
+      cy.findByTestId("sidebar-content")
+        .findByDisplayValue("Australian Dollar")
+        .click();
+      H.popover().findByText("Euro").click();
+      cy.findByTestId("sidebar-content")
+        .findByDisplayValue("Euro")
+        .should("be.visible");
+      H.datasetEditBar().button("Save").click();
+      H.modal().button("Save").click();
+      H.tableHeaderColumn("Discount (€)").should("be.visible");
+    },
+  );
 });
 
 function waitForFieldSyncToFinish(iteration = 0) {

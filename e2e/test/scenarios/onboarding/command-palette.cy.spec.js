@@ -238,10 +238,7 @@ describe("command palette", () => {
         H.commandPaletteAction("Performance").should("not.exist");
         H.commandPaletteInput().clear();
 
-        // Tools and Troubleshooting
-
-        H.commandPaletteInput().type("Troub");
-        H.commandPaletteAction("Troubleshooting").should("not.exist");
+        // Tools
         H.commandPaletteInput().clear().type("tool");
         H.commandPaletteAction("Tools").should("not.exist");
         H.commandPaletteInput().clear();
@@ -260,7 +257,7 @@ describe("command palette", () => {
         // setup
         cy.log("setup permissions");
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         cy.visit("/admin/permissions/application");
 
         const SETTINGS_INDEX = 0;
@@ -300,10 +297,7 @@ describe("command palette", () => {
           H.commandPaletteAction("Settings - General").should("exist");
           H.commandPaletteInput().clear();
 
-          // Tools and Troubleshooting
-
-          H.commandPaletteInput().type("Troub");
-          H.commandPaletteAction("Troubleshooting").should("exist");
+          // Tools
           H.commandPaletteInput().clear().type("tool");
           H.commandPaletteAction("Tools").should("exist");
           H.commandPaletteInput().clear();
@@ -393,6 +387,31 @@ describe("command palette", () => {
       cy.findByText("Report an issue").should("be.visible");
     });
   });
+
+  describe("ee", () => {
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+    });
+
+    it("should show the 'Create a new embed' command palette item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/ }).click();
+
+      H.commandPalette().within(() => {
+        H.commandPaletteInput().should("exist").type("new embed");
+        cy.findByText("Create a new embed").should("be.visible");
+      });
+    });
+
+    it("should have a 'New document' item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/ }).click();
+      H.commandPalette().within(() => {
+        cy.findByText("New document").should("be.visible").click();
+        cy.location("pathname").should("eq", "/document/new");
+      });
+    });
+  });
 });
 
 H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
@@ -413,7 +432,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     H.shortcutModal().within(() => {
       cy.findByRole("tab", { name: "General" }).should("exist");
-      cy.findByRole("tab", { name: "Dashboard" }).should("exist");
+      cy.findByRole("tab", { name: "Dashboards" }).should("exist");
     });
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
@@ -422,7 +441,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     H.shortcutModal().should("not.exist");
 
     H.appBar().findByRole("img", { name: /gear/ }).click();
-    H.popover().findByText("Keyboard Shortcuts").click();
+    H.popover().findByText("Keyboard shortcuts").click();
     H.shortcutModal().should("exist");
     cy.realPress("Escape");
     H.shortcutModal().should("not.exist");
@@ -535,9 +554,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("3");
+    cy.realPress("4");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("7");
+    cy.realPress("8");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 

@@ -1,10 +1,10 @@
 ---
 title: "Interactive embedding quickstart"
-redirect_from:
-  - /learn/customer-facing-analytics/interactive-embedding-quick-start
 ---
 
 # Interactive embedding quickstart
+
+> If you are just starting out with Metabase embedding, consider using [Embedded Analytics JS](./embedded-analytics-js.md) - an improved, more customizable option for embedding interactive Metabase elements. Interactive embedding remains fully supported.
 
 You'll embed the full Metabase application in your app. Once logged in, people can view a Metabase dashboard in your web app, and be able to use the full Metabase application to explore their data, and only their data.
 
@@ -29,9 +29,9 @@ You could also use the dashboard's [Entity ID](../installation-and-operation/ser
 
 ### Enable interactive embedding
 
-In Metabase, click on the **gear** icon in the upper right and go to **Admin settings** > **Settings** > **Embedding**. Look for **Interactive Embedding** and click on the **Enabled** toggle.
+In Metabase, click on the **gear** icon in the upper right and go to **Admin > Embedding > Interactive Embedding** and toggle on **Enable interactive embedding**.
 
-Click on the **Configure** button under **Interactive Embedding**. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
+Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 
@@ -41,11 +41,11 @@ If you're embedding Metabase in a different domain, you may need to [set the ses
 
 #### Enable authentication with JWT
 
-While still in the Admin panel's **Settings** section, click on **Authentication**.
+While still in the **Interactive embedding** section, click on **Authentication** under **Related settings**.
 
 On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
 
-![Admin settings: Authentication > JTW setup.](./images/jwt-setup.png)
+![Admin settings: Authentication > JWT setup.](./images/jwt-setup.png)
 
 #### Set JWT Identity provider URI
 
@@ -169,9 +169,11 @@ In Metabase, click the **gear** icon and go to **Admin settings** > **People** >
 
 You'll map this string in the `groups` key to a Metabase group, so that when the person signs in via SSO, Metabase automatically assigns them to the appropriate Metabase group.
 
-In Metabase's admin section, go to **Settings** > **Authentication**. Scroll to the **JWT** card and click **Edit**.
+In Metabase's admin section, go to **Authentication > JWT** and click **Edit**.
 
-In the **Group schema** section, toggle on **Synchronize group memberships**. For each group you want to sync, add a group mapping. When you click **New mapping**, enter "Customer-Acme", the string that you included in the `groups` array in your JWT payload. You can then associate that group name with the Metabase group "Customer Acme" that we created earlier.
+In the **Group schema** section, toggle on **Synchronize group memberships**. If the names of groups in the `groups` array match Metabase group names exactly (e.g. both are `"Customer Acme"`), then the groups will be mapped automatically.
+
+If the JWT group names and Metabase group names don't match, then for each group you want to sync, add a group mapping. When you click **New mapping**, enter "Customer-Acme", the string that you included in the `groups` array in your JWT payload. You can then associate that group name with the Metabase group "Customer Acme" that we created earlier.
 
 ![Mapping user attributes to groups.](./images/sync-groups.png)
 
@@ -213,33 +215,31 @@ If you're using our sample app, edit the `signUserToken` function used to create
 {% include_file "{{ dirname }}/snippets/interactive-embedding-quick-start-guide/sso-with-jwt.ts" snippet="user-attribute-sign-user-token-helper" %}
 ```
 
-That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute to sandbox the Invoices table, so people will only see rows in that table that contain their account ID.
+That user ID will correspond to the `Account ID` column in the Sample Database's Invoices table. We'll use this `account_id` user attribute for row and column security on the Invoices table, so people will only see rows in that table that contain their account ID.
 
 Note that to persist the user attribute in Metabase, you'll need to log in. Log in to your app as a non-admin, and visit the page with your embedded Metabase.
 
-### Set row-level permissions with data sandboxing
+### Set row-level permissions
 
 In Metabase, go to **Admin settings** > **Permissions**. Under the **Data** tab on the left, click on a group. For "Sample Database", change its **Data access** column to **Granular**.
 
-Metabase will display a list of the tables in the database. Next, change **Data access** for the "Invoices" table to **Sandboxed**.
+Metabase will display a list of the tables in the database. Next, change **View data access** for the "Invoices" table to **Row and column security**.
 
-![Sandboxing a table.](./images/sandboxed-invoices-table.png)
+![Adding row and column security to a table.](./images/secured-invoices-table.png)
 
 Next, Metabase will prompt you with a modal to associate a column in that table with a user attribute.
 
 Leave the **Filter by a column in a table** option checked, and associate the "Account ID" column in the Invoices table with the user attribute `account_id`. (Note that Metabase will only display the user attributes if the user has signed in through SSO before.)
 
-![Mapping a column in the sandboxed table to a user attribute.](./images/map-user-attribute.png)
-
 Click **Save** to confirm your select. Then click the **Save changes** button in the upper right.
 
-Metabase will ask if you're sure you want to do this. You are sure.
+Metabase will ask if you're sure you want to do this. You _are_ sure.
 
-### CHECKPOINT: view sandboxed dashboard
+### CHECKPOINT: view secured dashboard
 
 Make sure you've logged out of your previous session.
 
-Log in to your app, navigate to `/analytics`. The dashboard will now present different information, since only a subset of the data is visible to this person. Click on **Browse Data** at the bottom of the left nav. View your sandboxed **Invoices** table, and you should only see rows in that table that are associated with the person's account.
+Log in to your app, navigate to `/analytics`. The dashboard will now present different information, since only a subset of the data is visible to this person. Click on **Browse Data** at the bottom of the left nav. View your secured **Invoices** table, and you should only see rows in that table that are associated with the person's account.
 
 ## Hiding Metabase elements
 

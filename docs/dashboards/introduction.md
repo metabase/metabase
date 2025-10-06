@@ -66,7 +66,7 @@ Each text card has two modes: writing and previewing. When you click to focus on
 
 ![Markdown](images/markdown.png)
 
-You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
+You can use [Markdown](https://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
 
 ![Result](images/result.png)
 
@@ -179,7 +179,7 @@ Duplication only includes the dashboard, its card layout, filters, and (optional
 
 To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
 
-### Editing cards
+### Moving cards around
 
 Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
@@ -193,6 +193,8 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card. You can only replace a question with another question, not another type of card (like a text card).
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
+
+To edit the cards themselves, see [Editing dashboard cards](#editing-dashboard-cards).
 
 ### Dashboard sections
 
@@ -227,13 +229,26 @@ You can change the width of a dashboard by going into the three dots menu in the
 - **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 - **Full width**. The layout and cards will expand to take up the full width of the screen.
 
+## Editing dashboard cards
+
+To edit a card's:
+
+- **Underlying query**: click on the card's title while _not_ in dashboard editing mode. If the card displays multiple questions, pick the question you want to edit from the dropdown.
+- **Visualization settings**, see [changing a card's visualization settings](#changing-a-cards-visualization-settings).
+
 ## Changing a card's visualization settings
 
 You can change a card's visualization settings (to add a goal line, for example). Changing a card's visualization settings will only affect how the question appears on that dashboard card; these changes won't affect the original question's visualization settings.
 
-Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **palette** icon to edit a card's visualization's settings.
+Click on the **pencil** icon to enter dashboard edit mode, hover over the question you want to edit, and click on the **pencil** icon or **palette** icon (depending on the chart type) to edit a card's visualization's settings.
 
 ![Visualization settings](images/visualization-settings.png)
+
+If you clicked the pencil icon, look for **Settings** button in the bottom right.
+
+![Settings sidebar](./images/settings-sidebar.png)
+
+You can also [add more data to the chart](./multiple-series.md).
 
 ### Hiding a card when it doesn't return results
 
@@ -241,8 +256,8 @@ One neat thing to call out: if you have a question card that rarely returns resu
 
 When in dashboard edit mode, click on the **Visualization settings** for the card.
 
-- If the card displays a table, the option is in the **Columns** tab.
-- If the card displays a chart, the option is in the **Display** tab.
+- For tables, the option is in the **Columns** tab.
+- For other charts, the option is in the **Display** tab.
 
 Toggle the option **Hide this card if there are no results**. When you turn on this option, the query will still run in the background, but the dashboard won't display the card. If the query returns results, the dashboard will display the card, moving the other cards around to make room for it according to how you've arranged the cards in dashboard edit mode.
 
@@ -253,9 +268,16 @@ If you want to revert a dashboard card to its original visualization settings (i
 1. Go to your dashboard and click the **pencil icon** to go into edit mode.
 2. Hover over the card (question) that you want to edit.
 3. Click the **palette icon** to bring up the visualization settings for that card.
-4. Click **Reset to defaults**.
+4. Click **Reset to defaults** (bottom right).
 5. Click **Done** to save the card's visualization settings.
 6. Click **Save** to save the dashboard.
+
+If you don't see the palette icon, you'll need to:
+
+1. Click the **pencil icon** to edit the card's visualization settings.
+2. Remove the data in the **Manage data** section.
+3. Re-add the question to the card.
+4. **Save** your changes.
 
 ## Fullscreen dashboards
 
@@ -289,7 +311,7 @@ If your Metabase administrator has enabled [public sharing](../embedding/public-
 
 ![Share icon](./images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
 ## Exporting results from a dashboard
 

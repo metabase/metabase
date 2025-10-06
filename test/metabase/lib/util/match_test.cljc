@@ -93,7 +93,7 @@
              (let [some-pred? (constantly true)]
                (lib.util.match/match another-query
                  :field
-                 (when some-pred?
+                 (when (some-pred? &match)
                    &match)))))))
 
 (t/deftest ^:parallel match-&parents-test
@@ -316,3 +316,71 @@
 
                  [:field (id :guard id-is-datetime-field?) opts]
                  [:field id (assoc opts :temporal-unit :day)]))))))
+
+(t/deftest ^:parallel match-lite-test
+  (t/is (= 6 (lib.util.match/match-lite [1 2 3]
+               [a b c] (+ a b c))))
+  (t/is (= 5 (lib.util.match/match-lite [1 :value1 4]
+               [var1 :value1 var2] (+ var1 var2))))
+  (t/is (= [1 2 [3 4 5]] (lib.util.match/match-lite [1 2 3 4 5]
+                           [a b & rest] [a b rest])))
+  (t/is (= 48 (lib.util.match/match-lite [2 4 6]
+                [a (b :guard even?) c] (* a b c))))
+  (t/is (= "matched odd"
+           (lib.util.match/match-lite [1 3 5]
+             [a (b :guard even?) c] "matched even"
+             [a b c] "matched odd")))
+  (t/is (= "fallback: not a vector"
+           (lib.util.match/match-lite "not a vector"
+             x (str "fallback: " x))))
+  ;; Rest with guard
+  (t/is (= "a=1 b=2 rest=(3 4 5)"
+           (lib.util.match/match-lite [1 2 3 4 5]
+             [a b & (rst :guard (> (count rst) 2))] (str "a=" a " b=" b " rest=" rst))))
+
+  (t/testing "Edge cases"
+    (t/testing "Empty collections"
+      (t/is (= :empty-vec (lib.util.match/match-lite []
+                            [] :empty-vec)))
+      (t/is (= :empty-map (lib.util.match/match-lite {}
+                            {} :empty-map))))
+    (t/testing "Nil values"
+      (t/is (= :nil-value (lib.util.match/match-lite nil
+                            nil :nil-value
+                            _ :not-nil))))
+    (t/testing "Boolean values"
+      (t/is (= :true-value (lib.util.match/match-lite true
+                             true :true-value
+                             false :false-value)))
+      (t/is (= :false-value (lib.util.match/match-lite false
+                              true :true-value
+                              false :false-value))))))
+
+(t/deftest ^:parallel same-result-with-different-bindings-test
+  (t/testing "result here should not be treated as a common because it refers to different bindings in branches"
+    (t/is (= 1 (lib.util.match/match-lite [1 2]
+                 [(a :guard (odd? a)) (b :guard (even? b))] (- b a)
+                 [(b :guard (even? b)) (a :guard (odd? a))] (- b a))))))
+
+(t/deftest ^:parallel guard-predicate-test
+  (t/is (= -2 (lib.util.match/match-lite [2]
+                [(a :guard odd?)] a
+                [(b :guard even?)] (- b))))
+  (t/is (= -2 (lib.util.match/match-lite [2]
+                [(a :guard (odd? a))] a
+                [(b :guard (even? b))] (- b))))
+  (t/is (= -2 (lib.util.match/match-lite [2]
+                [(_ :guard odd?)] 1
+                [(_ :guard even?)] -2)))
+  (t/is (= 2 (lib.util.match/match-lite [{:b 2}]
+               [(_ :guard :a)] 1
+               [(_ :guard :b)] 2)))
+  (t/is (= :ok (lib.util.match/match-lite [3]
+                 [(_ :guard #{1 2 3})] :ok)))
+
+  #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
+                         (eval '(lib.util.match/match-lite [1]
+                                  [(a :guard #(odd? %))] a)))))
+  #?(:clj (t/is (thrown? clojure.lang.Compiler$CompilerException
+                         (eval '(lib.util.match/match-lite [1]
+                                  [(a :guard (fn [x] (odd? x)))] a))))))

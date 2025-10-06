@@ -2,9 +2,10 @@ import { useEffect } from "react";
 import { tinykeys } from "tinykeys";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 
+import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
 import { MetabotChat } from "./MetabotChat";
@@ -13,23 +14,20 @@ export interface MetabotProps {
   hide?: boolean;
 }
 
-export const Metabot = ({ hide }: MetabotProps) => {
-  const currentUser = useSelector(getCurrentUser);
-
+export const MetabotAuthenticated = ({ hide }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent();
 
   useEffect(() => {
-    if (!currentUser) {
-      return () => {};
-    }
-
     return tinykeys(window, {
       "$mod+b": (e) => {
         e.preventDefault(); // prevent FF from opening bookmark menu
+        if (!visible) {
+          trackMetabotChatOpened("keyboard_shortcut");
+        }
         setVisible(!visible);
       },
     });
-  }, [visible, setVisible, currentUser]);
+  }, [visible, setVisible]);
 
   useEffect(
     function closeViaPropChange() {
@@ -49,4 +47,17 @@ export const Metabot = ({ hide }: MetabotProps) => {
       <MetabotChat />
     </ErrorBoundary>
   );
+};
+
+export const Metabot = (props: MetabotProps) => {
+  const currentUser = useSelector(getUser);
+
+  // NOTE: do not render Metabot if the user is not authenticated.
+  // doing so will cause a redirect for unauthenticated requests
+  // which will break interactive embedding. See (metabase#58687).
+  if (!currentUser) {
+    return null;
+  }
+
+  return <MetabotAuthenticated {...props} />;
 };

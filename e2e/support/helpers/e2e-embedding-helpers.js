@@ -29,12 +29,13 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {object=} options
+ * @param {object} [options]
  * @param {object} [options.setFilters]
- * @param {PageStyle} options.pageStyle
- * @param {object} options.additionalHashOptions
+ * @param {PageStyle} [options.pageStyle]
+ * @param {object} [options.additionalHashOptions]
  * @param {string} [options.additionalHashOptions.locale]
  * @param {string[]} [options.additionalHashOptions.hideFilters]
+ * @param {(window: Window) => void} [options.onBeforeLoad]
  * @param {object} [options.qs]
  *
  * @example
@@ -182,7 +183,7 @@ export function getIframeBody(selector = "iframe") {
     .its("0.contentDocument")
     .should("exist")
     .its("body")
-    .should("not.be.null")
+    .should("not.be.undefined")
     .then(cy.wrap);
 }
 

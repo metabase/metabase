@@ -168,7 +168,7 @@ describe("for your consideration", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.calls(
+        fetchMock.callHistory.calls(
           "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
@@ -183,7 +183,7 @@ describe("for your consideration", () => {
       );
 
       expect(
-        fetchMock.calls(
+        fetchMock.callHistory.calls(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/move-to-dashboard",
           { method: "PUT" },
         ),
@@ -202,7 +202,7 @@ describe("for your consideration", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.called(
+        fetchMock.callHistory.called(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
           { method: "PUT" },
         ),
@@ -221,7 +221,7 @@ describe("for your consideration", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.called(
+        fetchMock.callHistory.called(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
           { method: "PUT" },
         ),
@@ -243,7 +243,7 @@ describe("for your consideration", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.called(
+        fetchMock.callHistory.called(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
           { method: "PUT" },
         ),
@@ -262,7 +262,7 @@ describe("for your consideration", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.called(
+        fetchMock.callHistory.called(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
           { method: "PUT" },
         ),
@@ -281,7 +281,7 @@ describe("for your consideration", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.called(
+        fetchMock.callHistory.called(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
           { method: "PUT" },
         ),

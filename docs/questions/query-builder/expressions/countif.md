@@ -133,10 +133,9 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 - [Spreadsheets](#spreadsheets)
 - [Python](#python)
 
-
 ### Conditional running counts
 
-`CountIf` doesn't do running counts, and [CumulativeCount](../expressions/cumulative) doesn't accept conditions (or any other arguments) . To do conditional running counts, you'll need to be creative: combine [CumulativeSum](../expressions/cumulative) (not `CumulativeCount`! ) with [`case`](./case.md). The idea is to use `case` to return `1` when a condition is satisfied and `0` when it isn't, then compute the running sum of all the 1's.
+`CountIf` doesn't do running counts, and [CumulativeCount](../expressions/cumulative.md) doesn't accept conditions (or any other arguments) . To do conditional running counts, you'll need to be creative: combine [CumulativeSum](../expressions/cumulative.md) (not `CumulativeCount`! ) with [`case`](./case.md). The idea is to use `case` to return `1` when a condition is satisfied and `0` when it isn't, then compute the running sum of all the 1's.
 
 If our sample data is a time series:
 
@@ -165,7 +164,7 @@ You'll also need to set the **Group by** column to "Created Date: Month".
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 If our [sample data](#multiple-conditions) is stored in a PostgreSQL database, the SQL query:
 

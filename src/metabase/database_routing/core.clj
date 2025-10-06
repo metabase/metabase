@@ -24,7 +24,7 @@
   (f))
 
 (defmacro with-database-routing-off
-  "Turns database routing off. Access to a mirror database within this block will result in an error."
+  "Turns database routing off. Access to a destination database within this block will result in an error."
   [& body]
   `(with-database-routing-off-fn
      (fn []

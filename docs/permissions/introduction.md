@@ -6,75 +6,51 @@ redirect_from:
 
 # Permissions introduction
 
-There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they’re supposed to.
+There are always going to be sensitive bits of information in your data, and thankfully Metabase provides a rich set of tools to ensure that people on your team only see the data they're supposed to.
 
 If instead you're wondering about what data Metabase the company can see, check out our page on [data privacy and security](https://www.metabase.com/security).
 
 ## Key points regarding permissions
 
-- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people.
+- Permissions are granted to [groups](../people-and-groups/managing.md#groups), not people. Though you can define user attributes to apply permissions person to person.
 - People can be in more than one group.
 - If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has Curate access to a collection, then that person will have curate access to that collection.
+- By default, everyone is in the All users group, so be sure to block that group's access before granting permissions to other groups. Thankfully, Metabase will warn you if the All users group has more permissive permissions than the group you're restricting.
 
 ## What you can set permissions on
 
-- [Data permissions](#data-permissions)
-- [Collection permissions](#collection-permissions)
-- [Application permissions](#application-permissions)
-- [Snippet folder permissions](#snippet-folder-permissions)
+- [Data permissions](./data.md) - Control access to databases, schemas, and tables, including:
+  - [View data](./data.md#view-data-permissions)
+  - [Create queries](./data.md#create-queries-permissions)
+  - [Download results](./data.md#download-results-permissions)
+  - [Manage database](./data.md#manage-database-permissions)
+- [Collection permissions][collections] - Control access to questions, dashboards, models, metrics, events, and timelines
+- [Application permissions](application.md) - Control access to admin features (Pro and Enterprise plans only):
+  - [Settings tab in Admin panel](application.md#settings-access)
+  - [Monitoring tools and troubleshooting](application.md#monitoring-access)
+  - [Dashboard subscriptions and alerts](application.md#subscriptions-and-alerts)
+- [Snippet folder permissions][snippet-folders] - Control access to SQL snippet folders (available on plans with snippet folders)
 
-### Data permissions
+## Tools for managing multi-tenant setups
 
-[Data permissions](./data.md) allow you to set permissions on database and their schemas and tables.
+At a high-level, Metabase provides several approaches to managing permissions for different multi-tenant setups, depending on how you've segregated your data.
 
-- [View data](./data.md#view-data-permissions)
-- [Create queries](./data.md#create-queries-permissions)
-- [Download results](./data.md#download-results-permissions)
-- [Manage database](./data.md#manage-database-permissions)
+### Your customers share a single database
 
-### Collection permissions
+The [row and column security](./row-and-column-security.md) permission setting lets you restrict rows and columns based on who's logged in.
 
-[Collection permissions][collections] dictate which groups can view/edit items in collections, including:
+### Each customer has their own database
 
-- Questions
-- Dashboards
-- Models
-- Metrics
-- Events
-- Timelines
+With [Database routing](./database-routing.md), you can build a question once, and have Metabase send a query to a different database depending on the customer.
 
-### Application permissions
+### You'd prefer to manage permissions via the database itself
 
-[Application permissions](application.md) (available on [Pro and Enterprise plans](https://www.metabase.com/pricing/)) dictate access to Metabase application-level features, including:
-
-- **Settings**: The Settings tab in the Admin panel.
-- **Monitoring access**: The Tools and Troubleshooting tabs in the Admin panel.
-- **Subscriptions and Alerts**. Which groups can create/edit dashboard subscriptions and alerts.
-
-### Snippet folder permissions
-
-For plans that include [Snippet Folders][snippet-folders], you can also set permissions on those folders.
-
-## Changing permissions
-
-Whenever you change permissions for a group, make sure you:
-
-- Save your changes.
-- Click yes to confirm your choices.
-
-## Further reading
-
-- [Managing people and groups](../people-and-groups/managing.md)
-- [Permissions guide][permissions]
-- [Troubleshooting permissions][troubleshooting-permissions]
+With [Connection impersonation](./impersonation.md), you can manage permissions with roles you define in your database.
 
 [collections]: ../exploration-and-organization/collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
-[data-sandboxing]: ./data-sandboxes.md
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
-[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
-[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [snippet-folders]: ../questions/native-editor/snippets.md
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md

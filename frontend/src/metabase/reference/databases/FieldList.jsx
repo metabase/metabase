@@ -5,10 +5,9 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/common/components/EmptyState";
+import S from "metabase/common/components/List/List.module.css";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -23,7 +22,6 @@ import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 import {
   getError,
   getFieldsByTable,
-  getForeignKeys,
   getIsEditing,
   getLoading,
   getTable,
@@ -42,7 +40,6 @@ const mapStateToProps = (state, props) => {
   return {
     table: getTable(state, props),
     entities: data,
-    foreignKeys: getForeignKeys(state, props),
     loading: getLoading(state, props),
     loadingError: getError(state, props),
     user: getUser(state, props),
@@ -59,7 +56,6 @@ const mapDispatchToProps = {
 const propTypes = {
   style: PropTypes.object.isRequired,
   entities: PropTypes.object.isRequired,
-  foreignKeys: PropTypes.object.isRequired,
   isEditing: PropTypes.bool,
   startEditing: PropTypes.func.isRequired,
   endEditing: PropTypes.func.isRequired,
@@ -79,7 +75,6 @@ const FieldList = (props) => {
   const {
     style,
     entities,
-    foreignKeys,
     table,
     loadingError,
     loading,
@@ -112,6 +107,7 @@ const FieldList = (props) => {
     description: getFormField(`${id}.description`),
     semantic_type: getFormField(`${id}.semantic_type`),
     fk_target_field_id: getFormField(`${id}.fk_target_field_id`),
+    settings: getFormField(`${id}.settings`),
   });
 
   return (
@@ -166,7 +162,7 @@ const FieldList = (props) => {
                     </div>
                   </div>
                 </div>
-                <List>
+                <ul>
                   {Object.values(entities)
                     // respect the column sort order
                     .sort((a, b) => a.position - b.position)
@@ -179,7 +175,6 @@ const FieldList = (props) => {
                             <Field
                               databaseId={table.db_id}
                               field={entity}
-                              foreignKeys={foreignKeys}
                               url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
                               icon={getIconForField(entity)}
                               isEditing={isEditing}
@@ -188,7 +183,7 @@ const FieldList = (props) => {
                           </li>
                         ),
                     )}
-                </List>
+                </ul>
               </div>
             </div>
           ) : (

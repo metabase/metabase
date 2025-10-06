@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
 const { H } = cy;
 
 type CastTestCase = {
@@ -141,7 +143,7 @@ const DATE_TEST_CASES: CastTestCase[] = [
   },
 ];
 
-const DATETIME_TEST_CASES: CastTestCase[] = [
+const DATETIME_STRING_TEST_CASES: CastTestCase[] = [
   {
     name: "String",
     expression: 'datetime("2025-03-20 12:03")',
@@ -156,6 +158,96 @@ const DATETIME_TEST_CASES: CastTestCase[] = [
     filterOperator: "Before",
     filterValue: "March 11, 2025|12:03",
     expectedRowCount: 1,
+  },
+  {
+    name: "StringExpressionWithIsoMode",
+    expression:
+      'datetime(concat("2025-03-", case([ID] = 1, "10", "12"), " 12:03"), "iso")',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
+  {
+    name: "StringWithIsoMode",
+    expression: 'datetime("2025-03-20 12:03", "iso")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringWithSimpleMode",
+    expression: 'datetime("20250320120300", "simple")',
+    filterOperator: "On",
+    filterValue: "March 20, 2025|12:03",
+    expectedRowCount: 200,
+  },
+  {
+    name: "StringExpressionWithSimpleMode",
+    expression:
+      'datetime(concat("202503", case([ID] = 1, "10", "12"), "120300"), "simple")',
+    filterOperator: "Before",
+    filterValue: "March 11, 2025|12:03",
+    expectedRowCount: 1,
+  },
+];
+
+const DATETIME_NUMBER_TEST_CASES: CastTestCase[] = [
+  {
+    name: "NumberUnixSeconds",
+    expression: 'datetime(1741694580, "unixSeconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMilliseconds",
+    expression: 'datetime(1741694580000, "unixMilliseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMicroseconds",
+    expression: 'datetime(1741694580000000, "unixMicroseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixNanoseconds",
+    expression: 'datetime(1741694580000000000, "unixNanoseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+
+  {
+    name: "NumberUnixSecondsExpression",
+    expression: 'datetime(1741694580 * 1, "unixSeconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMillisecondsExpression",
+    expression: 'datetime(1741694580 * 1000, "unixMilliseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixMicrosecondsExpression",
+    expression: 'datetime(1741694580000000 * 1, "unixMicroseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
+  },
+  {
+    name: "NumberUnixNanosecondsExpression",
+    expression: 'datetime(1741694580 * 1000000000, "unixNanoseconds")',
+    filterOperator: "On",
+    filterValue: "March 11, 2025",
+    expectedRowCount: 200,
   },
 ];
 
@@ -201,11 +293,104 @@ describe(
       testFilterWithExpressions(DATE_TEST_CASES, addDateFilter);
     });
 
-    it("should support datetime function", () => {
-      testFilterWithExpressions(DATETIME_TEST_CASES, addDateTimeFilter);
+    it("should support datetime function on strings", () => {
+      testFilterWithExpressions(DATETIME_STRING_TEST_CASES, addDateTimeFilter);
+    });
+
+    it("should support datetime function on numbers", () => {
+      testFilterWithExpressions(DATETIME_NUMBER_TEST_CASES, addDateFilter);
     });
   },
 );
+
+describe("exercise binary datetime() cast function", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const tests = [
+    {
+      query: "SELECT CAST('2024-05-21 10:10:03' AS bytea) AS date_time",
+      expression: 'datetime([date_time], "isobytes")',
+    },
+    {
+      query: "SELECT CAST('20240521101003' AS bytea) AS date_time",
+      expression: 'datetime([date_time], "simplebytes")',
+    },
+  ];
+
+  tests.forEach((test) => {
+    it(`should correctly convert temporal bytes: ${test.expression}`, () => {
+      H.createNativeQuestion(
+        {
+          native: {
+            query: test.query,
+          },
+        },
+        { wrapId: true },
+      ).then((id) => {
+        H.visitQuestionAdhoc(
+          {
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": `card__${id}`,
+              },
+            },
+          },
+          { mode: "notebook" },
+        );
+      });
+
+      addCustomColumn({
+        name: "parsed_date",
+        expression: test.expression,
+      });
+
+      H.visualize();
+
+      cy.findAllByTestId("header-cell")
+        .eq(1)
+        .should("have.text", "parsed_date");
+      cy.findAllByTestId("cell-data")
+        .eq(3)
+        .should("have.text", "May 21, 2024, 10:10 AM");
+    });
+  });
+});
+
+describe("exercise today() function", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should show today's date", () => {
+    startNewQuestion();
+    removeTableFields();
+    H.visualize();
+    H.assertQueryBuilderRowCount(200);
+    H.openNotebook();
+
+    addCustomColumn({
+      name: "TODAY",
+      expression: "today()",
+    });
+
+    const today = new Date();
+    const dateString = today.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    H.visualize();
+    cy.findAllByTestId("header-cell").eq(1).should("have.text", "TODAY");
+    cy.findAllByTestId("cell-data").eq(3).should("have.text", dateString);
+  });
+});
 
 function startNewQuestion() {
   H.startNewQuestion();
@@ -222,7 +407,13 @@ function removeTableFields() {
   cy.realPress("Escape");
 }
 
-function addCustomColumn({ name, expression }: CastTestCase) {
+function addCustomColumn({
+  name,
+  expression,
+}: {
+  name: string;
+  expression: string;
+}) {
   H.getNotebookStep("data").button("Custom column").click();
   H.enterCustomColumnDetails({ formula: expression, name });
   H.popover().button("Done").click();

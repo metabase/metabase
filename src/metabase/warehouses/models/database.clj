@@ -11,6 +11,7 @@
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -24,7 +25,9 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.provider-detection :as provider-detection]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -120,6 +123,11 @@
    (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
+(mu/defmethod mi/visible-filter-clause :model/Database
+  [_model column-or-exp user-info permission-mapping]
+  [:in column-or-exp
+   (perms/visible-database-filter-select user-info permission-mapping)])
+
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
   [{:keys [details is_full_sync is_on_demand cache_field_values_schedule metadata_sync_schedule] :as database}]
@@ -144,7 +152,7 @@
     ;; so we just manually nullify it here
     (assoc database :cache_field_values_schedule nil)))
 
-(defn- is-destination?
+(defn is-destination?
   "Is this database a destination database for some router database?"
   [db]
   (boolean (:router_database_id db)))
@@ -205,8 +213,19 @@
            (log/info (u/format-color :green "Health check: success %s {:id %d}" (:name database) (:id database)))
            (analytics/inc! :metabase-database/status {:driver engine :healthy true})
 
+           ;; Detect and update provider name
+           (let [provider (provider-detection/detect-provider-from-database database)]
+             (when (not= provider (:provider_name database))
+               (try
+                 (log/info (u/format-color :blue "Provider detection: updating %s {:id %d} from '%s' to '%s'"
+                                           (:name database) (:id database)
+                                           (:provider_name database) provider))
+                 (t2/update! :model/Database (:id database) {:provider_name provider})
+                 (catch Throwable provider-e
+                   (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database))))))
+
            (catch Throwable e
-             (let [humanized-message (some->> (.getMessage e)
+             (let [humanized-message (some->> (u/all-ex-messages e)
                                               (driver/humanize-connection-error-message driver))
                    reason (if (keyword? humanized-message) "user-input" "exception")]
                (log/error e (u/format-color :red "Health check: failure with error %s {:id %d :reason %s :message %s}"
@@ -276,22 +295,50 @@
                (m/update-existing-in db [:details :auth-provider] keyword))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-      (driver.impl/registered? driver)
+      (and driver
+           (driver.impl/registered? driver))
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
-      (and (driver.impl/registered? driver)
+      (and driver
+           (driver.impl/registered? driver)
            (map? (:details database))
            (not *normalizing-details*))
       normalize-details)))
+
+(mu/defn- delete-database-fields!
+  "We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with
+  cascade delete foreign key constraints in generated columns. #44866
+
+  Use a join to do this so we don't end up with a mega query with > 64k parameters (#58491)
+
+  TODO -- this is an absolutely horrible way to deal with deleting Fields belonging to a Database, there can be
+  literally hundreds of thousands of fields and we do an individual follow-on DELETE in :model/Field before-delete for
+  each one. I really think we should have kept the FK as an ON DELETE CASCADE. -- Cam"
+  [database-id :- ::lib.schema.id/database]
+  {:pre [(pos-int? database-id)]}
+  (t2/delete! :model/Field (case (mdb/db-type)
+                             (:postgres :h2)
+                             {:where  [:in :id {:select    [[:field.id :id]]
+                                                :from      [[(t2/table-name :model/Field) :field]]
+                                                :left-join [[(t2/table-name :model/Table) :table]
+                                                            [:= :field.table_id :table.id]]
+                                                :where     [:= :table.db_id [:inline database-id]]}]}
+
+                             :mysql
+                             {:delete    [:field]
+                              :from      [[(t2/table-name :model/Field) :field]]
+                              :left-join [[(t2/table-name :model/Table) :table]
+                                          [:= :field.table_id :table.id]]
+                              :where     [:= :table.db_id [:inline database-id]]})))
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
-  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
-  ;; foreign key constraints in generated columns. #44866
-  (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
-    (t2/delete! :model/Field :table_id [:in table-ids]))
+  (delete-database-fields! id)
+  ;; This is a temporary hack to hide these cards from most searches.
+  ;; Once search supports deletion, we should revisit this.
+  (t2/update! :model/Card :database_id id {:archived true})
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -345,6 +392,14 @@
         (when (and (:database-enable-actions (or new-settings existing-settings))
                    (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))
+        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+          (throw (ex-info (trs "The database does not support table editing.")
                           {:status-code     400
                            :existing-engine existing-engine
                            :new-engine      new-engine})))))))
@@ -468,7 +523,7 @@
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
                :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample
-               :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
+               :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                :uploads_schema_name :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
@@ -526,7 +581,8 @@
                   :database-id   false
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :description]
+   :search-terms {:name        search.spec/explode-camel-case
+                  :description true}
    :where        [:= :router_database_id nil]
    :render-terms {:initial-sync-status true}})
 

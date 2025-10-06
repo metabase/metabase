@@ -67,7 +67,15 @@
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
-        (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
+        (log/error e "Problem connecting to LDAP server, will fall back to local authentication"))
+      (catch dev.failsafe.TimeoutExceededException e
+        (log/error e "Timeout from LDAP server, will fall back to local authentication"))
+      ;; Failsafe wraps exceptions in a `FailsafeException` - unwrap these if necessary
+      (catch dev.failsafe.FailsafeException e
+        (let [cause (.getCause e)]
+          (if (instance? LDAPSDKException cause)
+            (log/error cause "Problem connecting to LDAP server, will fall back to local authentication")
+            (throw e)))))))
 
 (mu/defn- email-login :- [:maybe [:map [:key ms/UUIDString]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
@@ -224,7 +232,7 @@
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
           ;; check that the reset was triggered within the last 48 HOURS, after that the token is considered expired
-          (let [token-age (- (System/currentTimeMillis) reset_triggered)]
+          (let [token-age (u/since-ms-wall-clock reset_triggered)]
             (when (< token-age (reset-token-ttl-ms))
               user)))))))
 

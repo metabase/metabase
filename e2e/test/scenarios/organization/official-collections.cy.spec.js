@@ -52,7 +52,7 @@ describe("official collections", () => {
   });
 
   context("premium token with paid features", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should be able to manage collection authority level", () => {
       cy.visit("/collection/root");
@@ -133,7 +133,7 @@ describe("official collections", () => {
   });
 
   context("token expired or removed", () => {
-    beforeEach(() => H.setTokenFeatures("all"));
+    beforeEach(() => H.activateToken("pro-self-hosted"));
 
     it("should not display official collection icon anymore", () => {
       testOfficialBadgePresence(false);
@@ -161,7 +161,7 @@ function testOfficialBadgePresence(expectBadge = true) {
       collection_id: collectionId,
     });
 
-    !expectBadge && H.setTokenFeatures("none");
+    !expectBadge && H.deleteToken();
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -221,7 +221,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
     });
   });
 
-  !expectBadge && H.setTokenFeatures("none");
+  !expectBadge && H.deleteToken();
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();

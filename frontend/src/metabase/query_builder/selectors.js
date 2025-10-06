@@ -4,12 +4,11 @@ import * as d3 from "d3";
 import { merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import { getDashboardById } from "metabase/dashboard/selectors";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/constants";
 import Databases from "metabase/entities/databases";
 import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import { isNotNull } from "metabase/lib/types";
 import {
@@ -22,9 +21,8 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
-  computeTimeseriesDataInverval,
+  computeTimeseriesDataInterval,
   minTimeseriesUnit,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import {
@@ -343,7 +341,7 @@ export const getTableForeignKeys = createSelector(
 export const getPKColumnIndex = createSelector(
   [getFirstQueryResult, getTableId],
   (result, tableId) => {
-    if (!result) {
+    if (!result || !result.data) {
       return;
     }
     const { cols } = result.data;
@@ -361,7 +359,7 @@ export const getPKColumnIndex = createSelector(
 export const getPKRowIndexMap = createSelector(
   [getFirstQueryResult, getPKColumnIndex],
   (result, PKColumnIndex) => {
-    if (!result || !Number.isSafeInteger(PKColumnIndex)) {
+    if (!result || !result.data || !Number.isSafeInteger(PKColumnIndex)) {
       return {};
     }
     const { rows } = result.data;
@@ -495,7 +493,7 @@ export const getIsResultDirty = createSelector(
   ) => {
     const haveParametersChanged = !_.isEqual(lastParameters, nextParameters);
     const isEditable =
-      question && Lib.queryDisplayInfo(question.query()).isEditable;
+      !!question && Lib.queryDisplayInfo(question.query()).isEditable;
 
     return (
       haveParametersChanged ||
@@ -512,7 +510,7 @@ export const getIsResultDirty = createSelector(
 
 export const getZoomedObjectId = (state) => state.qb.zoomedRowObjectId;
 
-const getZoomedObjectRowIndex = createSelector(
+export const getZoomedObjectRowIndex = createSelector(
   [getPKRowIndexMap, getZoomedObjectId],
   (PKRowIndexMap, objectId) => {
     if (!PKRowIndexMap) {
@@ -574,21 +572,6 @@ export const getZoomRow = createSelector(
     }
     return queryResults[0].data.rows[rowIndex];
   },
-);
-
-const isZoomingRow = createSelector(
-  [getZoomedObjectId],
-  (index) => index != null,
-);
-
-export const getMode = createSelector(
-  [getLastRunQuestion],
-  (question) => question && getQuestionMode(question),
-);
-
-export const getIsObjectDetail = createSelector(
-  [getMode, isZoomingRow],
-  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
 export const getIsDirty = createSelector(
@@ -756,11 +739,6 @@ const getNativeEditorSelectedRanges = createSelector(
   (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-export const getIsNativeQueryFixApplied = createSelector(
-  [getUiControls],
-  (uiControls) => uiControls && uiControls.isNativeQueryFixApplied,
-);
-
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   (settings) => settings && isTimeseries(settings),
@@ -793,7 +771,7 @@ const getTimeseriesDataInterval = createSelector(
         isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
       )
       .filter(isNotNull);
-    return computeTimeseriesDataInverval(
+    return computeTimeseriesDataInterval(
       xValues,
       minTimeseriesUnit(columnUnits),
     );
@@ -880,6 +858,7 @@ export const getVisibleTimelineEvents = createSelector(
     _.chain(timelines)
       .map((timeline) => timeline.events)
       .flatten()
+      .compact()
       .filter((event) => visibleTimelineEventIds.includes(event.id))
       .sortBy((event) => event.timestamp)
       .value(),
@@ -959,7 +938,9 @@ export const getIsVisualized = createSelector(
   (question, settings) =>
     question &&
     // table is the default
-    ((question.display() !== "table" && question.display() !== "pivot") ||
+    ((question.display() !== "table" &&
+      question.display() !== "pivot" &&
+      question.display() !== "list") ||
       (settings != null && settings["table.pivot"])),
 );
 
@@ -1038,16 +1019,15 @@ export const getDataReferenceStack = createSelector(
         : [],
 );
 
-export const getDashboardId = (state) => {
-  return state.qb.parentDashboard.dashboardId;
-};
-
 export const getIsEditingInDashboard = (state) => {
-  return state.qb.parentDashboard.isEditing;
+  return (
+    state.qb.parentEntity.model === "dashboard" &&
+    state.qb.parentEntity.isEditing
+  );
 };
 
-export const getDashboard = (state) => {
-  return getDashboardById(state, getDashboardId(state));
+export const getParentEntity = (state) => {
+  return state.qb.parentEntity;
 };
 
 export const getEmbeddingParameters = createSelector([getCard], (card) => {
@@ -1111,3 +1091,8 @@ export const getIsNotebookNativePreviewShown = (state) =>
 
 export const getNotebookNativePreviewSidebarWidth = (state) =>
   getSetting(state, "notebook-native-preview-sidebar-width");
+
+export const getIsListViewConfigurationShown = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.isShowingListViewConfiguration,
+);

@@ -84,9 +84,9 @@
 (deftest schedule-cache-config->card-ids-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
                  :model/Card {card-id-1 :id} {:name "Cached card 1"
-                                              :dataset_query {:database 1}}
+                                              :dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}}
                  :model/Card {card-id-2 :id} {:name "Cached card 2"
-                                              :dataset_query {:database 1}}
+                                              :dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}}
                  :model/DashboardCard {} {:dashboard_id dashboard-id
                                           :card_id      card-id-1}
                  :model/DashboardCard {} {:dashboard_id dashboard-id
@@ -97,7 +97,6 @@
                                           :card_id      card-id-2}]
     (testing "Returns the card ID directly for a question cache config"
       (is (= [card-id-1] (@#'task.cache/schedule-cache-config->card-ids {:model_id card-id-1 :model "question"}))))
-
     (testing "Fetches card IDs associated with a dashboard cache config"
       (is (= [card-id-1 card-id-2] (@#'task.cache/schedule-cache-config->card-ids {:model_id dashboard-id :model "dashboard"}))))))
 
@@ -137,7 +136,7 @@
                 (is (= [nil param-val-2] (map param-vals (to-rerun))))))))))))
 
 (deftest scheduled-base-query-to-rerun-edge-cases-test
-  (let [query {:database 1}]
+  (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query query}
                    :model/Query {} {:query_hash (qp.util/query-hash query)
@@ -170,7 +169,7 @@
           (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))))
 
 (deftest scheduled-parameterized-queries-to-rerun-edge-cases-test
-  (let [query {:database 1}]
+  (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query query}
                    :model/Query {} {:query_hash (qp.util/query-hash query)
@@ -299,8 +298,8 @@
                 (is (= [nil param-val-2] (map param-vals (to-rerun card-id))))))))))))
 
 (deftest duration-base-queries-to-rerun-edge-cases-test
-  (let [query-1            {:database 1}
-        query-2            {:database 2}
+  (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
+        query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}
         query-1-cache-hash (qp.util/query-hash query-1)
         query-2-cache-hash (qp.util/query-hash query-2)]
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
@@ -390,8 +389,8 @@
                                                [question-cache-config-1] false))))))))))
 
 (deftest duration-parameterized-queries-to-rerun-edge-cases-test
-  (let [query-1            {:database 1}
-        query-2            {:database 2}
+  (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
+        query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}
         query-1-cache-hash (qp.util/query-hash query-1)
         query-2-cache-hash (qp.util/query-hash query-2)]
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
@@ -499,7 +498,7 @@
   "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts
   that all relevant fields are the same."
   [original-result cached-result]
-  (let [clean-col    #(dissoc % :ident :lib/source-uuid :lib/source_uuid)
+  (let [clean-col    #(dissoc % :lib/source-uuid :lib/source_uuid)
         clean-result (fn [result]
                        (-> result
                            (dissoc :running_time :average_execution_time :started_at :cached)

@@ -1,4 +1,3 @@
-import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
@@ -6,6 +5,10 @@ import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 addAbbreviatedLocale();
+
+// NOTE for developer:
+// this file is deprecated, do not modify it unless it is really necessary
+// use ./time-dayjs.ts instead
 
 const TIME_FORMAT_24_HOUR = "HH:mm";
 
@@ -75,53 +78,7 @@ function addAbbreviatedLocale() {
   moment.locale(initialLocale);
 }
 
-export function isValidTimeInterval(interval: number, unit: DurationInputArg2) {
-  if (!interval) {
-    return false;
-  }
-
-  const now = moment();
-  const newTime = moment().add(interval, unit);
-  const diff = now.diff(newTime, "years");
-
-  return !Number.isNaN(diff);
-}
-
-export function formatFrame(frame: "first" | "last" | "mid") {
-  switch (frame) {
-    case "first":
-      return t`first`;
-    case "last":
-      return t`last`;
-    case "mid":
-      return t`15th (Midpoint)`;
-    default:
-      return frame;
-  }
-}
-
-export function getDateStyleFromSettings() {
-  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
-  return customFormattingSettings?.["type/Temporal"]?.date_style;
-}
-
-export function getRelativeTime(timestamp: string) {
-  return moment(timestamp).fromNow();
-}
-
-export function getRelativeTimeAbbreviated(timestamp: string) {
-  const locale = moment().locale();
-
-  if (locale === "en") {
-    const ts = moment(timestamp);
-    ts.locale("en-abbreviated");
-    return ts.fromNow();
-  }
-
-  return getRelativeTime(timestamp);
-}
-
-export function getTimeStyleFromSettings() {
+function getTimeStyleFromSettings() {
   const customFormattingSettings = MetabaseSettings.get("custom-formatting");
   return customFormattingSettings?.["type/Temporal"]?.time_style;
 }
@@ -131,31 +88,16 @@ export function has24HourModeSetting() {
   return timeStyle === TIME_FORMAT_24_HOUR;
 }
 
-export function hoursToSeconds(hours: number) {
-  return hours * 60 * 60;
-}
-
-export function msToHours(ms: number) {
-  const hours = msToMinutes(ms) / 60;
-  return hours;
-}
-
-export function msToMinutes(ms: number) {
-  return msToSeconds(ms) / 60;
-}
-
-export function msToSeconds(ms: number) {
-  return ms / 1000;
-}
-
 export function parseTime(value: moment.Moment | string) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string") {
-    return moment(value, [
-      "HH:mm:ss.sss[Z]",
-      "HH:mm:SS.sss",
-      "HH:mm:SS",
+    // removing the timezone part if it exists, so we can parse the time correctly
+    return moment(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm:ss",
       "HH:mm",
     ]);
   }

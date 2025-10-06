@@ -19,8 +19,8 @@
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
-    "@octokit/rest": "^20.1.2",
-    "@slack/web-api": "^6.12.1",
+    "@octokit/rest": "^21.1.1",
+    "@slack/web-api": "^7.9.3",
     "dayjs": "^1.11.10",
     "dotenv": "^16.3.1",
     "esbuild": "^0.25.0",
@@ -44,6 +44,7 @@
     "regenerator-runtime": "^0.14.0"
   },
   "resolutions": {
-    "axios": "^1.8.2"
+    "axios": "^1.8.2",
+    "form-data": "^4.0.4"
   }
 }

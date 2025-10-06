@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import FormInput from "metabase/core/components/FormInput";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import FormInput from "metabase/common/components/FormInput";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { InviteInfo, UserInfo } from "metabase-types/store";
@@ -46,7 +46,7 @@ export const InviteUserForm = ({
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form>
+      <Form data-testid="invite-user-form">
         <UserFieldGroup>
           <FormInput
             name="first_name"

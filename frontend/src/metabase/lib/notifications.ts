@@ -7,7 +7,7 @@ import { getEmailDomain, isEmail } from "metabase/lib/email";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatTimeWithUnit } from "metabase/lib/formatting/time";
 import MetabaseSettings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time";
+import { formatFrame } from "metabase/lib/time-dayjs";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_TIMESERIES_GOAL,

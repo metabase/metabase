@@ -1,13 +1,20 @@
 import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
+import { getStore } from "__support__/entities-store";
 import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
   ColumnOptions,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { publicReducers } from "metabase/reducers-public";
 import { Checkbox, Flex } from "metabase/ui";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { DataGrid } from "./DataGrid";
 import classes from "./DataGrid.module.css";
@@ -25,14 +32,21 @@ export default {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
-        <Story />
-      </div>
+      <MetabaseReduxProvider store={store}>
+        <div style={{ height: "calc(100vh - 2rem)", overflow: "hidden" }}>
+          <Story />
+        </div>
+      </MetabaseReduxProvider>
     ),
   ],
 } as Meta<typeof DataGrid>;
 
 type Story = StoryFn<typeof DataGrid>;
+
+const initialState = createMockState({
+  settings: createMockSettingsState(),
+});
+const store = getStore(publicReducers, initialState, []);
 
 const sampleData = Array.from({ length: 2000 }, (_, rowIndex) => {
   return {
@@ -232,6 +246,7 @@ export const CombinedFeatures: Story = () => {
   const rowId: RowIdColumnOptions = useMemo(
     () => ({
       variant: "indexExpand",
+      expandedIndex: undefined,
       getBackgroundColor: (rowIndex: number) =>
         rowIndex % 2 === 0 ? "#f0f0f0" : "transparent",
     }),

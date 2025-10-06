@@ -1,8 +1,8 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -41,6 +41,11 @@
    :type     :query
    :query    query})
 
+(defn- remove-irrelevant-keys [col]
+  (as-> col col
+    (dissoc col :field_ref)
+    (m/filter-keys simple-keyword? col)))
+
 (defn- default-result-with-inner-query
   ([inner-query]
    (default-result-with-inner-query inner-query ::infer))
@@ -52,12 +57,12 @@
          result-metadata (not-empty (for [col (if (= metadata ::infer)
                                                 (qp.preprocess/query->expected-cols outer-query)
                                                 metadata)]
-                                      (dissoc col :field_ref)))]
+                                      (remove-irrelevant-keys col)))]
      (cond-> outer-query
        result-metadata
        (assoc-in [:query :source-metadata] result-metadata)))))
 
-(def ^:private mock-metadata-provider
+(defn- mock-metadata-provider []
   (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
    meta/metadata-provider
    [(lib.tu.macros/mbql-query venues)
@@ -65,7 +70,7 @@
 
 (deftest ^:parallel resolve-mbql-queries-test
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (is (=? (assoc (default-result-with-inner-query
                       {:source-query {:source-table (meta/id :venues)}}
                       (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
@@ -77,7 +82,7 @@
 
 (deftest ^:parallel resolve-mbql-queries-test-2
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (testing "with aggregations/breakouts"
         (is (=? (assoc (default-result-with-inner-query
                         {:aggregation  [[:count]]
@@ -94,7 +99,7 @@
 
 (deftest ^:parallel resolve-mbql-queries-test-3
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves MBQL queries"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (testing "with filters"
         (is (=? (assoc (default-result-with-inner-query
                         {:source-query {:source-table (meta/id :checkins)}
@@ -112,7 +117,7 @@
 
 (deftest resolve-mbql-queries-test-4
   (testing "respects `enable-nested-queries` server setting when true"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       ;; by default nested queries are enabled:
       (is (true? (lib-be/enable-nested-queries)))
       (is (some? (resolve-source-cards (lib.tu.macros/mbql-query nil {:source-table "card__1"})))))))
@@ -122,7 +127,7 @@
     ;; if the env var is set, the setting respects it:
     (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
       (is (false? (lib-be/enable-nested-queries))))
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
 
 ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
       (is (thrown-with-msg? Exception
@@ -171,7 +176,7 @@
                    (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues)))
                   (assoc-in [:query :source-query :source-metadata]
                             (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                              (dissoc col :field_ref)))
+                              (remove-irrelevant-keys col)))
                   (assoc :info {:card-id 2}
                          :qp/source-card-id 2))
               (resolve-source-cards
@@ -179,7 +184,7 @@
                 {:source-table "card__2", :limit 25})))))))
 
 (defn- nested-nested-app-db-provider []
-  (let [base     (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [base     (-> (mt/metadata-provider)
                      (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                       [(mt/mbql-query venues {:limit 100})
                        {:database lib.schema.id/saved-questions-virtual-database-id
@@ -187,11 +192,9 @@
                         :query    {:source-table "card__1"
                                    :limit        50}}]))
         card     (lib.metadata/card base 1)
-        eid      (lib/random-ident)
-        metadata (mapv #(update % :ident lib/model-ident eid) (:result-metadata card))]
+        metadata (:result-metadata card)]
     (lib.tu/merged-mock-metadata-provider base {:cards [{:id              1
                                                          :type            :model
-                                                         :entity-id       eid
                                                          :result-metadata metadata}]})))
 
 (deftest ^:parallel nested-nested-queries-test-2
@@ -245,10 +248,10 @@
   (qp.store/with-metadata-provider joins-metadata-provider
     (testing "Are `card__id` source tables resolved in `:joins`?"
       (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:source-query    {:source-table $$categories, :limit 100}
-                          :alias           "c"
-                          :condition       [:= $category-id [:field %categories.id {:join-alias "c"}]]
-                          :source-metadata joins-metadata}]})
+                {:joins [{:source-query {:source-query    {:source-table $$categories, :limit 100}
+                                         :source-metadata joins-metadata}
+                          :alias        "c"
+                          :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:joins [{:source-table "card__1"
@@ -274,11 +277,11 @@
     (testing "Are `card__id` source tables resolved in JOINs inside nested source queries?"
       (is (=? (lib.tu.macros/mbql-query venues
                 {:source-query {:source-table $$venues
-                                :joins        [{:source-query    {:source-table $$categories
-                                                                  :limit        100}
-                                                :alias           "c"
-                                                :condition       [:= $category-id [:field %categories.id {:join-alias "c"}]]
-                                                :source-metadata joins-metadata}]}})
+                                :joins        [{:source-query {:source-query    {:source-table $$categories
+                                                                                 :limit        100}
+                                                               :source-metadata joins-metadata}
+                                                :alias        "c"
+                                                :condition    [:= $category-id [:field %categories.id {:join-alias "c"}]]}]}})
               (resolve-source-cards
                (lib.tu.macros/mbql-query venues
                  {:source-query
@@ -300,13 +303,13 @@
                                                   :result-metadata (qp.preprocess/query->expected-cols query)})]}))
     (testing "Can we recursively resolve multiple card ID `:source-table`s in Joins?"
       (is (=? (lib.tu.macros/mbql-query venues
-                {:joins [{:alias           "c"
-                          :condition       [:= $category-id &c.$categories.id]
-                          :source-query    {:source-query    {:source-table $$categories
-                                                              :limit        100}
-                                            :source-metadata joins-metadata
-                                            :limit           200}
-                          :source-metadata (map #(select-keys % [:field_ref]) joins-metadata)}]})
+                {:joins [{:alias        "c"
+                          :condition    [:= $category-id &c.$categories.id]
+                          :source-query {:source-query    {:source-query    {:source-table $$categories
+                                                                             :limit        100}
+                                                           :source-metadata joins-metadata
+                                                           :limit           200}
+                                         :source-metadata [{} {}]}}]})
               (clean-metadata
                (resolve-source-cards
                 (lib.tu.macros/mbql-query venues
@@ -371,13 +374,13 @@
 
 (deftest ^:parallel dont-overwrite-existing-card-id-test
   (testing "Don't overwrite existing values of `[:info :card-id]`"
-    (qp.store/with-metadata-provider mock-metadata-provider
+    (qp.store/with-metadata-provider (mock-metadata-provider)
       (let [query (assoc (lib.tu.macros/mbql-query nil {:source-table "card__1"})
                          :info {:card-id Integer/MAX_VALUE})]
         (is (=? (assoc (lib.tu.macros/mbql-query nil
                          {:source-query    {:source-table (meta/id :venues)}
                           :source-metadata (for [col (qp.preprocess/query->expected-cols (lib.tu.macros/mbql-query venues))]
-                                             (dissoc col :field_ref))})
+                                             (remove-irrelevant-keys col))})
                        :info {:card-id Integer/MAX_VALUE}
                        :qp/source-card-id 1)
                 (resolve-source-cards query)))))))

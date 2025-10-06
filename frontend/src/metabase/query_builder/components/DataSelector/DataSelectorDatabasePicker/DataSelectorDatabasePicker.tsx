@@ -1,7 +1,10 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -22,17 +25,13 @@ type DataSelectorDatabasePickerProps = {
   onBack?: () => void;
   onChangeDatabase: (database: Database) => void;
   onChangeSchema: (item: { schema?: Schema }) => void;
+  databaseIsDisabled?: (database: Database) => boolean;
 };
 
 type Item = {
   name: string;
   index: number;
   database: Database;
-};
-
-type Section = {
-  name?: JSX.Element;
-  items?: Item[];
 };
 
 const DataSelectorDatabasePicker = ({
@@ -42,9 +41,10 @@ const DataSelectorDatabasePicker = ({
   hasNextStep,
   onBack,
   hasInitialFocus,
+  databaseIsDisabled,
 }: DataSelectorDatabasePickerProps) => {
   const sections = useMemo(() => {
-    const sections: Section[] = [];
+    const sections: Section<Item>[] = [];
 
     if (onBack) {
       sections.push({ name: <RawDataBackButton /> });
@@ -62,7 +62,7 @@ const DataSelectorDatabasePicker = ({
   }, [databases, onBack]);
 
   const handleChangeSection = useCallback(
-    (section: Section, sectionIndex: number) => {
+    (_section: Section<Item>, sectionIndex: number) => {
       const isNavigationSection = onBack && sectionIndex === 0;
       if (isNavigationSection) {
         onBack();
@@ -77,7 +77,7 @@ const DataSelectorDatabasePicker = ({
   }
 
   return (
-    <AccordionList
+    <AccordionList<Item>
       id="DatabasePicker"
       key="databasePicker"
       className={CS.textBrand}
@@ -85,6 +85,7 @@ const DataSelectorDatabasePicker = ({
       sections={sections}
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
+      itemIsClickable={(item: Item) => !databaseIsDisabled?.(item.database)}
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }

@@ -31,8 +31,6 @@ dataset_query:
           - v_tasks
           - duration_seconds
         - base-type: type/Float
-    aggregation-idents:
-      0: aggregation_LN9YtKcxZk_kybyRjJx1J@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -48,9 +46,6 @@ dataset_query:
         - name
       - base-type: type/Text
         join-alias: Databases - Database Qualified
-    breakout-idents:
-      0: breakout_LN9YtKcxZk_kybyRjJx1J@0__0
-      1: breakout_LN9YtKcxZk_kybyRjJx1J@0__1
     filter:
     - and
     - - =
@@ -87,7 +82,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Databases - Database Qualified
       fields: all
-      ident: join_LN9YtKcxZk_kybyRjJx1J@0__Databases - Database Qualified
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
     source-table: PKhlEfegdbTozSMfj0aLB
@@ -114,7 +108,6 @@ result_metadata:
   - public
   - v_tasks
   - started_at
-  ident: fDxH2yqCHnftKx3IkW8ra
   name: started_at
   nfc_path: null
   parent_id: null
@@ -150,30 +143,24 @@ result_metadata:
   - public
   - v_databases
   - name
-  ident: LMqtaUMyPJJMZqYYeSRbs
   name: name
   nfc_path: null
-  options:
-    metabase.query-processor.middleware.add-dimension-projections/new-field-dimension-id: 19
   parent_id: null
   position: 4
   semantic_type: type/Name
   settings: null
   source: breakout
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
   - v_databases
   visibility_type: normal
-- aggregation_index: 0
-  base_type: type/Float
+- base_type: type/Float
   display_name: Sum of Duration Seconds
   effective_type: type/Float
   field_ref:
   - aggregation
   - 0
-  ident: aggregation_LN9YtKcxZk_kybyRjJx1J@0__0
   name: sum
   semantic_type: type/Quantity
   settings: null

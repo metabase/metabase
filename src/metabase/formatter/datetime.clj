@@ -5,15 +5,20 @@
    [java-time.api :as t]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming.common :as streaming.common]
-   [metabase.system.core :as system]
    [metabase.util.date-2 :as u.date]
    [metabase.util.formatting.constants :as constants]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
    (java.util Locale)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:dynamic *formatting-locale*
+  "Dynamic var to hold the current locale for datetime formatting.
+  Defaults to the site locale from system settings."
+  (i18n/site-locale))
 
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
@@ -27,29 +32,29 @@
      (catch Exception _e false))))
 
 (defn- reformat-temporal-str [timezone-id s new-format-string]
-  (t/format new-format-string (u.date/parse s timezone-id)))
+  (u.date/format new-format-string (u.date/parse s timezone-id) *formatting-locale*))
 
 (defn- day-of-week
   [n abbreviate]
-  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "EEE" "EEEE"))]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "EEE" "EEEE") *formatting-locale*)]
     (.format fmtr (java.time.DayOfWeek/of n))))
 
 (defn- month-of-year
   [n abbreviate]
-  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "MMM" "MMMM"))]
+  (let [fmtr (java.time.format.DateTimeFormatter/ofPattern (if abbreviate "MMM" "MMMM") *formatting-locale*)]
     (.format fmtr (java.time.Month/of n))))
 
 (defn- x-of-y
   "Format an integer as x-th of y, for example, 2nd week of year."
   [n]
-  (let [nf (RuleBasedNumberFormat. (Locale. (system/site-locale)) RuleBasedNumberFormat/ORDINAL)]
+  (let [nf (RuleBasedNumberFormat. ^Locale *formatting-locale* RuleBasedNumberFormat/ORDINAL)]
     (.format nf n)))
 
 (defn- hour-of-day
   [s time-style]
   (let [n  (parse-long s)
         ts (u.date/parse "2022-01-01-00:00:00")]
-    (u.date/format time-style (t/plus ts (t/hours n)))))
+    (u.date/format time-style (t/plus ts (t/hours n)) *formatting-locale*)))
 
 (defn- viz-settings-for-col
   "Get the column-settings map for the given column from the viz-settings."
@@ -215,7 +220,7 @@
                                 time-style
                                 (str ", " time-style))
         default-format-string (post-process-date-style date-time-style viz-settings)]
-    (t/format default-format-string (u.date/parse temporal-str timezone-id))))
+    (u.date/format default-format-string (u.date/parse temporal-str timezone-id) *formatting-locale*)))
 
 (defmethod format-timestring :default [timezone-id temporal-str {:keys [unit] :as col} {:keys [date-style] :as viz-settings}]
   (if (= :default unit)
@@ -240,10 +245,10 @@
   "Return a formatter which, given a temporal literal string, reformats it by combining time zone, column, and viz
   setting information to create a final desired output format."
   [timezone-id col viz-settings]
-  (Locale/setDefault (Locale. (system/site-locale)))
   (let [merged-viz-settings (streaming.common/normalize-keys
                              (streaming.common/viz-settings-for-col col viz-settings))]
     (fn [temporal-str]
       (if (str/blank? temporal-str)
         ""
-        (format-timestring timezone-id temporal-str col merged-viz-settings)))))
+        (binding [*formatting-locale* (i18n/user-locale)]
+          (format-timestring timezone-id temporal-str col merged-viz-settings))))))

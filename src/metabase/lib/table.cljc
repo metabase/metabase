@@ -1,11 +1,12 @@
 (ns metabase.lib.table
   (:require
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/table
   [_query _stage-number table-metadata _style]
@@ -27,30 +28,13 @@
             (lib.metadata.calculation/display-name query stage-number table-metadata :long))
           (i18n/tru "Table {0}" (pr-str source-table))))))
 
-(defn- remove-hidden-default-fields
-  "Remove Fields that shouldn't be visible from the default Fields for a source Table.
-  See [[metabase.query-processor.middleware.add-implicit-clauses/table->sorted-fields*]]."
-  [field-metadatas]
-  (remove (fn [{:keys [visibility-type], active? :active, :as _field-metadata}]
-            (or (false? active?)
-                (#{:sensitive :retired} (some-> visibility-type keyword))))
-          field-metadatas))
-
-(defn- sort-default-fields
-  "Sort default Fields for a source Table. See [[metabase.warehouse-schema.models.table/field-order-rule]]."
-  [field-metadatas]
-  (sort-by (fn [{field-name :name, :keys [position], :as _field-metadata}]
-             [(or position 0) (u/lower-case-en (or field-name ""))])
-           field-metadatas))
-
-(defmethod lib.metadata.calculation/returned-columns-method :metadata/table
-  [query _stage-number table-metadata {:keys [unique-name-fn], :as _options}]
-  (when-let [field-metadatas (lib.metadata/fields query (:id table-metadata))]
-    (->> field-metadatas
-         remove-hidden-default-fields
-         sort-default-fields
-         (map (fn [col]
-                (assoc col
-                       :lib/source               :source/table-defaults
-                       :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
+(mu/defmethod lib.metadata.calculation/returned-columns-method :metadata/table :- ::lib.metadata.calculation/returned-columns
+  [query _stage-number table-metadata _options]
+  (into []
+        (comp (map #(assoc % :lib/source :source/table-defaults))
+              ;; don't truncate column names, if the database says they're ok we should assume they are and we need to
+              ;; refer back to them using their original names anyway. Note that returned columns for a table ARE NOT
+              ;; equal to returned columns for a stage with this source table and nothing else... those SHOULD get
+              ;; truncated desired aliases when they stage returned columns are calculated.
+              (lib.field.util/add-source-and-desired-aliases-xform query (lib.util/non-truncating-unique-name-generator)))
+        (lib.metadata/active-fields query (:id table-metadata))))

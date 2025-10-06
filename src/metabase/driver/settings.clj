@@ -1,4 +1,5 @@
 (ns metabase.driver.settings
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
@@ -117,6 +118,16 @@
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
 
+(def ^:dynamic *allow-testing-h2-connections*
+  "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
+  H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
+  needed for tests."
+  ;; you can disable this flag with the env var below, please do not use it under any circumstances, it is only here so
+  ;; existing e2e tests will run without us having to update a million tests. We should get rid of this and rework those
+  ;; e2e tests to use SQLite ASAP.
+  (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
+      false))
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
       (long (/ *query-timeout-ms* 1000))))
@@ -166,3 +177,13 @@
   :getter     (fn []
                 ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
   :doc        false)
+
+(defsetting sync-leaf-fields-limit
+  (deferred-tru
+   (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
+        " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
+        " from root to leaf are synced as well."))
+  :visibility :internal
+  :export? true
+  :type :integer
+  :default 1000)

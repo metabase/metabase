@@ -5,11 +5,11 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/components/EmptyState";
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import ListItem from "metabase/components/ListItem";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/common/components/EmptyState";
+import List from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import ListItem from "metabase/common/components/ListItem";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
@@ -84,7 +84,6 @@ export const separateTablesBySchema = (
 
 class TableList extends Component {
   static propTypes = {
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     database: PropTypes.object.isRequired,
     hasSingleSchema: PropTypes.bool,
@@ -93,19 +92,13 @@ class TableList extends Component {
   };
 
   render() {
-    const {
-      entities,
-      style,
-      database,
-      hasSingleSchema,
-      loadingError,
-      loading,
-    } = this.props;
+    const { entities, database, hasSingleSchema, loadingError, loading } =
+      this.props;
 
     const tables = Object.values(entities);
 
     return (
-      <div style={style} className={CS.full} data-testid="table-list">
+      <div data-testid="table-list">
         <ReferenceHeader
           name={t`Tables in ${database.name}`}
           type="tables"

@@ -1,5 +1,7 @@
 ---
 title: Embedded analytics SDK
+redirect_from:
+  - /docs/latest/embedding/sdk
 ---
 
 # Embedded analytics SDK
@@ -34,21 +36,56 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-Enable the Embedded analytics SDK by going to **Admin settings > Settings > Embedding**. Toggle on the SDK, and hit **Configure**. Enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
+1. Enable the Embedded analytics SDK by going to **Admin settings > Embedding > Modular**.
+2. Toggle on **SDK for React**.
+3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
 ### Install the SDK in your React application
 
-You can install the Embedded analytics SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 53-stable for Metabase 53:
+You can install the Embedded analytics SDK for React via npm. Make sure to use the dist-tag that corresponds to your Metabase version, example: 56-stable for Metabase 56:
 
 ```bash
-npm install @metabase/embedding-sdk-react@53-stable
+npm install @metabase/embedding-sdk-react@56-stable
 ```
 
-or with yarn:
+or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@53-stable
+yarn add @metabase/embedding-sdk-react@56-stable
 ```
+
+### Resolving `@types/react` version mismatches
+
+In rare scenarios, the Embedding SDK and your application may use different major versions of `@types/react`, causing TypeScript conflicts.
+
+To enforce a single `@types/react` version across all dependencies, add an `overrides` (npm) or `resolutions` (Yarn) section to your `package.json` and specify the `@types/react` version your application uses.
+
+#### npm set @types/react version
+
+```json
+{
+  "overrides": {
+    "@types/react": "..."
+  }
+}
+```
+
+#### Yarn set @types/react version
+
+```json
+{
+  "resolutions": {
+    "@types/react": "..."
+  }
+}
+```
+
+## Architecture
+
+Starting with Metabase 57, the SDK consists of two parts:
+
+- **SDK Package** – The `@metabase/embedding-sdk-react` npm package is a lightweight bootstrapper library. Its primary purpose is to load and run the main SDK Bundle code.
+- **SDK Bundle** – The full SDK code, served directly from your self-hosted Metabase instance or Metabase Cloud, and it's the part of the Metabase. This ensures that the main SDK code is always compatible with its corresponding Metabase instance.
 
 ## Developing with the Embedded analytics SDK
 
@@ -56,6 +93,7 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 - [Authentication](./authentication.md)
 - [Questions](./questions.md)
+- [AI chat](./ai-chat.md)
 - [Dashboards](./dashboards.md)
 - [Appearance](./appearance.md)
 - [Collections](./collections.md)
@@ -72,13 +110,15 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 
 View the SDK's changelog:
 
-* [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-* [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-* [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
+- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
+- [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
-## Embedded analytics SDK on NPM
+## Embedded analytics SDK on npm
 
-Check out the Metabase Embedded analytics SDK on NPM: [metaba.se/sdk](https://metaba.se/sdk).
+Check out the Metabase Embedded analytics SDK on npm: [metaba.se/sdk-npm](https://metaba.se/sdk-npm).
 
 ## SDK limitations
 
@@ -89,7 +129,11 @@ The SDK doesn't support:
 - Subscriptions
 - Alerts
 - Server-side rendering (SSR)
+
+Other limitations:
+
 - Multiple _interactive_ dashboards on the same application page. If you need to embed multiple dashboards on the same application page, you can embed static dashboards.
+- If you have Leaflet 1.x as a dependency in your app, you may run into compatibility issues. You can try using Leaflet 2.x instead.
 
 ## Issues, feature requests and support
 

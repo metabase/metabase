@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
@@ -16,6 +15,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -113,16 +113,20 @@
   [dashboard-id :- ms/PositiveInt
    slug->value  :- :map]
   (let [parameters (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)
-        slug->id   (into {} (map (juxt :slug :id)) parameters)]
+        slug->id (into {} (map (juxt :slug :id)) parameters)
+        slug->type (into {} (map (juxt :slug :type)) parameters)]
     (vec (for [[slug value] slug->value
-               :let         [slug (u/qualified-name slug)]]
-           {:slug  slug
-            :id    (or (get slug->id slug)
-                       (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
-                                       {:status-code          400
-                                        :slug                 slug
-                                        :dashboard-parameters parameters})))
-            :value value}))))
+               :let [slug (u/qualified-name slug)
+                     param-type (get slug->type slug)
+                     default-options (parameters.dashboard/param-type->default-options param-type)]]
+           (cond-> {:slug slug
+                    :id    (or (get slug->id slug)
+                               (throw (ex-info (tru "No matching parameter with slug {0}. Found: {1}" (pr-str slug) (pr-str (keys slug->id)))
+                                               {:status-code          400
+                                                :slug                 slug
+                                                :dashboard-parameters parameters})))
+                    :value value}
+             default-options (assoc :options default-options))))))
 
 (mu/defn parse-query-params :- :map
   "Parses parameter values from the query string in a backward compatible way.
@@ -310,6 +314,12 @@
               :qp          qp
               options)))
 
+(defn unsigned-token->card-id
+  "Get the Card ID from an unsigned token."
+  [unsigned-token]
+  (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+       (eid-translation/->id :model/Card)))
+
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
 (defn- remove-locked-parameters [dashboard embedding-params]
@@ -325,13 +335,18 @@
         field-ids-to-maybe-remove (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-remove))
         field-ids-to-keep         (set (mapcat (params/get-linked-field-ids (:dashcards dashboard)) param-ids-to-keep))
         field-ids-to-remove       (set/difference field-ids-to-maybe-remove field-ids-to-keep)
-        remove-parameters         (fn [dashcard]
+        remove-parameter-mappings (fn [dashcard]
                                     (update dashcard :parameter_mappings
                                             (fn [param-mappings]
                                               (remove (fn [{:keys [parameter_id]}]
-                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))]
+                                                        (contains? param-ids-to-remove parameter_id)) param-mappings))))
+        remove-inline-parameters  (fn [dashcard]
+                                    (update dashcard :inline_parameters
+                                            (fn [inline-params]
+                                              (remove (fn [id] (contains? param-ids-to-remove id)) inline-params))))]
     (-> dashboard
-        (update :dashcards #(map remove-parameters %))
+        (update :dashcards #(map remove-parameter-mappings %))
+        (update :dashcards #(map remove-inline-parameters %))
         ;; TODO cleanup
         (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
 
@@ -470,7 +485,8 @@
                       (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-(defn- unsigned-token->dashboard-id
+(defn unsigned-token->dashboard-id
+  "Get the Dashboard ID from an unsigned token."
   [unsigned-token]
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
        (eid-translation/->id :model/Dashboard)))

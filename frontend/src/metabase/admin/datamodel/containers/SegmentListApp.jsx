@@ -6,8 +6,8 @@ import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import Button from "metabase/common/components/Button";
+import Link from "metabase/common/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Segments from "metabase/entities/segments";
@@ -18,7 +18,10 @@ class SegmentListAppInner extends Component {
     const { segments, tableSelector, setArchived } = this.props;
 
     return (
-      <div className={cx(CS.px3, CS.pb2)} data-testid="segment-list-app">
+      <div
+        className={cx(CS.px3, CS.pb2, CS.wrapper, CS.scrollY, CS.bgWhite)}
+        data-testid="segment-list-app"
+      >
         <div className={cx(CS.flex, CS.py2)}>
           {tableSelector}
           <Link to="/admin/datamodel/segment/create" className={CS.mlAuto}>

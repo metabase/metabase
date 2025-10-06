@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
 import { Box, Button, Flex, Radio, Stack, Tooltip } from "metabase/ui";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {

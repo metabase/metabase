@@ -1,0 +1,1 @@
+export { AddDataModal } from "./AddDataModal";

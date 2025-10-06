@@ -1,4 +1,4 @@
-import type { PartialBy } from "metabase/core/types";
+import type { PartialBy } from "metabase/common/types";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type { DatabaseId, GroupId, Impersonation } from "metabase-types/api";

@@ -9,7 +9,6 @@
    [hiccup.page :refer [html5]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common]
    [metabase.channel.render.core :as channel.render]
@@ -133,7 +132,7 @@
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
        [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
-  (validation/check-has-application-permission :subscription false)
+  (perms/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
@@ -204,9 +203,9 @@
                                           [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
   ;; do various perms checks
   (try
-    (validation/check-has-application-permission :monitoring)
+    (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-has-application-permission :subscription false)))
+      (perms/check-has-application-permission :subscription false)))
 
   (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
@@ -244,7 +243,7 @@
 (api.macros/defendpoint :get "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
-  (validation/check-has-application-permission :subscription false)
+  (perms/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.slack/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
@@ -341,15 +340,18 @@
 (def ^:private preview-card-width 400)
 
 (api.macros/defendpoint :get "/preview_card_png/:id"
-  "Get PNG rendering of a Card with `id`."
+  "Get PNG rendering of a Card with `id`. Optionally specify `width` as a query parameter."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   {:keys [width]} :- [:map
+                       [:width {:optional true} [:maybe ms/PositiveInt]]]]
   (let [card   (api/read-check :model/Card id)
         result (pulse-card-query-results card)
+        width  (or width preview-card-width)
         ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
                                                         card
                                                         result
-                                                        preview-card-width
+                                                        width
                                                         {:channel.render/include-title? true})]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 

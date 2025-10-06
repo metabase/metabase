@@ -3,14 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.card :as lib.card]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
-   [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -84,7 +82,7 @@
 (deftest ^:parallel internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (qp.test-util/field-values-from-def defs/test-data :categories :name))
       (let [{:keys [rows cols]} (qp.test-util/rows-and-cols
@@ -96,7 +94,7 @@
                                      :limit       5})))]
         (is (=? [(assoc (qp.test-util/breakout-col :venues :category_id) :remapped_to "Category ID [internal remap]")
                  (qp.test-util/aggregate-col :count)
-                 (#'qp.add-dimension-projections/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
+                 (#'qp.add-remaps/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
                 cols))
         (is (= [[2 8 "American"]
                 [3 2 "Artisan"]
@@ -108,7 +106,7 @@
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       (mt/id :venues :category_id)
                                       (mt/id :categories :name))
       (doseq [[sort-order expected] {:desc ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse"
@@ -225,8 +223,11 @@
                        :breakout    [[:field %latitude {:binning {:strategy :default}}]]})
                     qp.test-util/cols
                     first
-                    (dissoc :base_type :effective_type)))))
+                    (dissoc :base_type :effective_type))))))))
 
+(deftest ^:parallel binning-info-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "Validate binning info is returned with the binning-strategy"
       (testing "binning-strategy = num-bins: 5"
         (is (=? (assoc (dissoc (qp.test-util/breakout-col :venues :latitude) :base_type :effective_type)
                        :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
@@ -246,7 +247,7 @@
 (deftest ^:parallel binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:fields [{:id          (mt/id :venues :latitude)
                                                  :fingerprint {:type {:type/Number {:min nil, :max nil}}}}]})
       (is (=? {:status :failed
@@ -293,22 +294,20 @@
                     :breakout     [[:field %latitude {:binning {:strategy :default}}]]}
                    :order-by [[:asc $latitude]]}))))))))
 
-(deftest bin-nested-queries-no-fingerprint-test
+(deftest ^:parallel bin-nested-queries-no-fingerprint-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
     (testing "Binning is not supported when there is no fingerprint to determine boundaries"
-      ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in
-      ;; metadata from the source query, so disable that for now so we can make sure the `update-binning-strategy`
-      ;; middleware is doing the right thing
-      (with-redefs [lib.card/card-metadata-columns                     (constantly nil)
-                    qp.add-source-metadata/mbql-source-query->metadata (constantly nil)]
-        (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
-                                          [(mt/mbql-query venues)])
-          (is (thrown-with-msg?
-               Exception
-               #"Cannot update binned field: query is missing source-metadata"
-               (qp.test-util/rows
-                (qp/process-query
-                 (nested-venues-query 1))))))))))
+      (qp.store/with-metadata-provider (-> (qp.test-util/metadata-provider-with-cards-for-queries
+                                            [(mt/mbql-query venues)])
+                                           (lib.tu/merged-mock-metadata-provider
+                                            {:fields [{:id          (mt/id :venues :latitude)
+                                                       :fingerprint nil}]}))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"\QUnable to bin Field without a min/max value (missing or incomplete fingerprint)\E"
+             (qp.test-util/rows
+              (qp/process-query
+               (nested-venues-query 1)))))))))
 
 (deftest ^:parallel field-in-breakout-and-fields-test
   (mt/test-drivers (mt/normal-drivers)
@@ -320,6 +319,7 @@
                 {:breakout [$price]
                  :fields   [$price]})))))))
 
+;;; TODO (Cam 8/6/25) -- move this and other binning-related tests to `binning-test`
 (deftest ^:parallel binning-with-source-card-with-explicit-joins-test
   (testing "Make sure binning works with a source card that contains explicit joins"
     (mt/test-drivers (mt/normal-drivers-with-feature :binning :nested-queries :left-join)
@@ -347,4 +347,86 @@
                   _                (is (some? binning-strategy))
                   query            (-> query
                                        (lib/breakout (lib/with-binning people-longitude binning-strategy)))]
-              (mt/rows (qp/process-query query)))))))))
+              ;; only check the query for H2; other databases might name `LONGITUDE` differently
+              (when (= driver/*driver* :h2)
+                (is (=? {:stages [{:source-card 1
+                                   :aggregation [[:count {}]]
+                                   :breakout    [[:field
+                                                  {:binning {:strategy :bin-width, :bin-width 20.0}}
+                                                  "People__LONGITUDE"]]}]}
+                        query)))
+              (is (= [[-180.0 75]
+                      [-160.0 383]
+                      [-140.0 879]
+                      [-120.0 3803]
+                      [-100.0 11345]
+                      [-80.0  2275]]
+                     (mt/formatted-rows [1.0 int] (qp/process-query query)))))))))))
+
+(deftest ^:parallel breakout-and-fields-test
+  (mt/test-drivers (mt/normal-drivers)
+    (testing "adding a breakout to a query with fields works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [[2] [3] [4]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :venues :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :venues :name)))])
+                   (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [int])))))))))
+
+(deftest ^:parallel breakout-and-join-fields-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing "adding a breakout to a query with fields from joins works"
+      (let [mp (mt/metadata-provider)]
+        (is (= [["Doohickey"] ["Gadget"] ["Gizmo"]]
+               (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                   (lib/with-fields [(lib/ref (lib.metadata/field mp (mt/id :orders :id)))
+                                     (lib/ref (lib.metadata/field mp (mt/id :orders :total)))])
+                   (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                              [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                                      (-> (lib.metadata/field mp (mt/id :products :id))
+                                                          (lib/with-join-alias "Products")))]))
+                   (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
+                   (lib/limit 3)
+                   (qp/process-query)
+                   (->> (mt/formatted-rows [str])))))))))
+
+(deftest ^:parallel breakout-with-expressions-test
+  (let [mp    (lib.tu/mock-metadata-provider
+               (mt/metadata-provider)
+               {:cards [{:id            1
+                         :type          :model
+                         :name          "Model A"
+                         :dataset-query (mt/mbql-query products
+                                          {:source-table $$products
+                                           :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                        {:id            2
+                         :type          :model
+                         :dataset-query (mt/mbql-query orders
+                                          {:source-table $$orders
+                                           :joins        [{:source-table "card__1"
+                                                           :alias        "model A - Product"
+                                                           :fields       :all
+                                                           :condition    [:=
+                                                                          $orders.product_id
+                                                                          [:field %products.id
+                                                                           {:join-alias "model A - Product"}]]}]})}]})
+        query (lib/query
+               mp
+               {:database (mt/id)
+                :stages   [{:lib/type    :mbql.stage/mbql
+                            :source-card 2
+                            :expressions [[:abs {:lib/expression-name "pivot-grouping"} 0]]
+                            :aggregation [[:sum {:lib/uuid "06f3200a-519c-45fe-ab3a-35dfb44bb623"} [:field {:base-type :type/Number} "SUBTOTAL"]]]
+                            :breakout    [[:field {:base-type :type/Number, :join-alias "model A - Product"}
+                                           "Rating Bucket"]
+                                          [:expression {:base-type :type/Integer, :effective-type :type/Integer}
+                                           "pivot-grouping"]]
+                            :limit       3}]
+                :lib/type :mbql/query})]
+    (is (= [[0.0 0 172500.71]
+            [2.0 0 36791.99]
+            [3.0 0 454525.88]]
+           (mt/formatted-rows [1.0 int 2.0] (qp/process-query query))))))

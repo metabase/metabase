@@ -153,6 +153,14 @@ jobs:
           list-tests: failed
           fail-on-error: false
 
+      - name: Upload Logs on Failure
+        if: always() && !success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}
+          path: logs/test-log.json
+          retention-days: 1
+
   # checks that all the namespaces we actually ship can be compiled, without any dependencies that we don't ship (such
   # as `:dev` dependencies). See #27009 for more context.
   be-check:

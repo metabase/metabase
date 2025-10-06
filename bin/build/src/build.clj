@@ -108,7 +108,7 @@
             steps   (keys all-steps)}}]
    (let [version (or version
                      (version-properties/current-snapshot-version edition))
-         start-time-ms (System/currentTimeMillis)]
+         timer         (u/start-timer)]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
@@ -121,7 +121,7 @@
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]
          (step-fn {:version version, :edition edition})
-         (u/announce "Did %s in %d ms." step-name (- (System/currentTimeMillis) start-time-ms)))
+         (u/announce "Did %s in %d ms." step-name (u/since-ms timer)))
        (u/announce "All build steps finished.")))))
 
 (defn build-cli

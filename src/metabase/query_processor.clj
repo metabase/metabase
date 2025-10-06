@@ -7,6 +7,7 @@
   Various REST API endpoints, such as `POST /api/dataset`, return the results of queries; they usually
   use [[userland-query]] or [[userland-query-with-default-constraints]] (see below)."
   (:require
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.debug :as qp.debug]
@@ -74,13 +75,20 @@
   ([query]
    (process-query query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (qp.setup/with-qp-setup [query query]
      (let [rff (or rff qp.reducible/default-rff)]
        (process-query* query rff)))))
 
-(mu/defn userland-query :- ::qp.schema/query
+(mu/defn compile-query-with-metadata-provider
+  "Compiles a given query with the provided metadata provider."
+  [metadata-providerable :- :metabase.lib.schema.metadata/metadata-providerable
+   query                 :- ::qp.schema/any-query]
+  (-> (lib/query metadata-providerable query)
+      qp.compile/compile))
+
+(mu/defn userland-query :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query, which slightly changes the QP
   behavior:
 
@@ -94,13 +102,13 @@
   ([query]
    (userland-query query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (assoc-in [:middleware :userland-query?] true)
        (update :info merge info))))
 
-(mu/defn userland-query-with-default-constraints :- ::qp.schema/query
+(mu/defn userland-query-with-default-constraints :- ::qp.schema/any-query
   "Add middleware options and `:info` to a `query` so it is ran as a 'userland' query. QP behavior changes are the same
   as those for [[userland-query]], *plus* the default userland constraints (limits) are applied --
   see [[qp.constraints/add-default-userland-constraints]].
@@ -109,7 +117,7 @@
   ([query]
    (userland-query-with-default-constraints query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     info  :- [:maybe ::lib.schema.info/info]]
    (-> query
        (userland-query info)

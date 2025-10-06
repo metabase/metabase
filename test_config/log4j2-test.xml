@@ -2,17 +2,38 @@
 <Configuration>
   <Appenders>
     <Console name="Console" target="SYSTEM_OUT" follow="true">
-      <PatternLayout pattern="[%t] %-5level %logger{36} - %msg%n"/>
+      <PatternLayout pattern="[%t] %-5level %logger{36} - %msg %notEmpty{%X}%n"/>
+      <Filters>
+        <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
+      </Filters>
     </Console>
+    <Console name="ConsoleInfoLevel" target="SYSTEM_OUT" follow="true">
+      <PatternLayout pattern="[%t] %-5level %logger{36} - %msg %notEmpty{%X}%n"/>
+      <Filters>
+        <ThresholdFilter level="FATAL" onMatch="ACCEPT" onMismatch="DENY"/>
+      </Filters>
+    </Console>
+    <File name="File" fileName="logs/test-log.json" append="false">
+      <JsonLayout locationInfo="false" properties="true" compact="true" eventEol="true"/>
+      <Filters>
+        <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
+      </Filters>
+    </File>
   </Appenders>
   <Loggers>
-    <Logger name="liquibase" level="FATAL"/>
-    <Logger name="metabase" level="FATAL"/>
-    <Logger name="metabase-enterprise" level="FATAL"/>
-    <Logger name="metabase.test.gentest" level="INFO"/>
+    <Logger name="liquibase" level="INFO"/>
+    <Logger name="metabase" level="INFO"/>
+    <Logger name="metabase-enterprise" level="INFO"/>
 
-    <Root level="FATAL">
+    <Logger name="metabase.test.gentest" level="INFO" additivity="false">
+      <AppenderRef ref="ConsoleInfoLevel"/>
       <AppenderRef ref="Console"/>
+      <AppenderRef ref="File"/>
+    </Logger>
+
+    <Root level="INFO">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="File"/>
     </Root>
   </Loggers>
 </Configuration>

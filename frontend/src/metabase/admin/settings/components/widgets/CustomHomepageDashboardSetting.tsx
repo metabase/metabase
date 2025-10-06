@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import { DashboardSelector } from "metabase/components/DashboardSelector";
+import { DashboardSelector } from "metabase/common/components/DashboardSelector";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshCurrentUser } from "metabase/redux/user";
 import { Stack } from "metabase/ui";
@@ -66,7 +66,7 @@ export function CustomHomepageDashboardSetting() {
     <Stack data-testid="custom-homepage-setting">
       <SettingHeader
         id="custom-homepage"
-        title={t`Custom Homepage`}
+        title={t`Custom homepage`}
         description={description}
       />
       <BasicAdminSettingInput

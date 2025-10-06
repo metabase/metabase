@@ -4,21 +4,18 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [toucan2.core :as t2]))
 
 (deftest dataset-with-custom-pk-test
-  (mt/test-drivers (->> (mt/normal-drivers-with-feature :metadata/key-constraints)
-                        (filter (mt/sql-jdbc-drivers))
-                        ;; Timeseries drivers currently support only testing with pre-loaded dataset
-                        (remove (tqpt/timeseries-drivers)))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:metadata/key-constraints]})
     (mt/dataset (mt/dataset-definition "custom-pk"
-                                       ["user"
-                                        [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
-                                        [[1]]]
-                                       ["group"
-                                        [{:field-name "user_custom_id" :base-type :type/Integer :fk "user"}]
-                                        [[1]]])
+                                       [["user"
+                                         [{:field-name "custom_id" :base-type :type/Integer :pk? true}]
+                                         [[1]]]
+                                        ["group"
+                                         [{:field-name "user_custom_id" :base-type :type/Integer :fk "user"}]
+                                         [[1]]]])
       (let [user-fields  (t2/select [:model/Field :name :semantic_type :fk_target_field_id] :table_id (mt/id :user))
             group-fields (t2/select [:model/Field :name :semantic_type :fk_target_field_id] :table_id (mt/id :group))
             format-name  #(ddl.i/format-name driver/*driver* %)]
@@ -43,10 +40,8 @@
     [[1 2]]]])
 
 (deftest dataset-with-custom-composite-pk-test
-  (mt/test-drivers (->> (mt/normal-drivers-with-feature :metadata/key-constraints)
-                        (filter (mt/sql-jdbc-drivers))
-                        ;; Timeseries drivers currently support only testing with pre-loaded dataset
-                        (remove (tqpt/timeseries-drivers)))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:metadata/key-constraints]})
     (mt/dataset composite-pk
       (let [format-name #(ddl.i/format-name driver/*driver* %)]
         (testing "(artist_id, song_id) is a PK"

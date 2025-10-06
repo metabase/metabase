@@ -76,11 +76,28 @@
            (formatted-value :date/single end locale))
       "")))
 
+(defn- singularize-unit
+  [unit-str]
+  (keyword (str/replace unit-str #"s$" "")))
+
 (defn- format-relative-date
   [prefix n interval]
   (let [n #?(:clj (Integer/valueOf ^String n) :cljs (js/parseInt n))
-        n (if (= prefix "past") (- n) n)]
-    (lib/describe-temporal-interval n (keyword interval))))
+        n (if (= prefix "past") (- n) n)
+        unit-kw (singularize-unit interval)]
+    (lib/describe-temporal-interval n unit-kw)))
+
+(defn- format-relative-date-with-offset
+  [prefix n1 unit1 n2 unit2]
+  (let [n1-num    #?(:clj (Integer/valueOf ^String n1) :cljs (js/parseInt n1))
+        n2-num    #?(:clj (Integer/valueOf ^String n2) :cljs (js/parseInt n2))
+        n1-num    (if (= prefix "past") (- n1-num) n1-num)
+        n2-num    (if (= prefix "past") (- n2-num) n2-num)
+        unit1-kw  (singularize-unit unit1)
+        unit2-kw  (singularize-unit unit2)
+        interval1 (lib/describe-temporal-interval n1-num unit1-kw)
+        interval2 (lib/describe-relative-datetime n2-num unit2-kw)]
+    (str interval1 ", " interval2)))
 
 (defmethod formatted-value :date/relative
   [_ value _]
@@ -91,7 +108,8 @@
     #"^thismonth$"                          (lib/describe-temporal-interval 0 :month)
     #"^thisquarter$"                        (lib/describe-temporal-interval 0 :quarter)
     #"^thisyear$"                           (lib/describe-temporal-interval 0 :year)
-    #"^(past|next)([0-9]+)([a-z]+)s~?$" :>> (fn [matches] (apply format-relative-date matches))))
+    #"^(past|next)([0-9]+)([a-z]+)s~?$" :>> (fn [matches] (apply format-relative-date matches))
+    #"^(past|next)([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$" :>> (fn [matches] (apply format-relative-date-with-offset matches))))
 
 (defn- format-day [value locale]
   (-> value

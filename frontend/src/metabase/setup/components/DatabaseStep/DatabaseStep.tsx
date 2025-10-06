@@ -1,8 +1,17 @@
 import { updateIn } from "icepick";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  getDatabase,
+  getDatabaseEngine,
+  getInvite,
+  getIsEmailConfigured,
+  getUser,
+} from "metabase/setup";
+import { Text } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 import type { InviteInfo } from "metabase-types/store";
 
@@ -12,21 +21,12 @@ import {
   submitUserInvite,
   updateDatabaseEngine,
 } from "../../actions";
-import {
-  getDatabase,
-  getDatabaseEngine,
-  getInvite,
-  getIsEmailConfigured,
-  getUser,
-} from "../../selectors";
 import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
 import { InviteUserForm } from "../InviteUserForm";
 import { SetupSection } from "../SetupSection";
 import type { NumberedStepProps } from "../types";
-
-import { StepDescription } from "./DatabaseStep.styled";
 
 export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const { isStepActive, isStepCompleted } = useStep("db_connection");
@@ -37,6 +37,7 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const isEmailConfigured = useSelector(getIsEmailConfigured);
 
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const handleEngineChange = (engine?: string) => {
     dispatch(updateDatabaseEngine(engine));
@@ -45,13 +46,16 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
   const handleDatabaseSubmit = async (database: DatabaseData) => {
     try {
       await dispatch(submitDatabase(database)).unwrap();
+      sendToast({
+        message: c("{0} is a database name").t`Connected to ${database.name}`,
+      });
     } catch (error) {
       throw getSubmitError(error);
     }
   };
 
-  const handleInviteSubmit = (invite: InviteInfo) => {
-    dispatch(submitUserInvite(invite));
+  const handleInviteSubmit = async (invite: InviteInfo) => {
+    await dispatch(submitUserInvite(invite)).unwrap();
   };
 
   const handleStepCancel = () => {
@@ -68,20 +72,25 @@ export const DatabaseStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
     );
   }
 
+  const optional = <strong key="optional">{t`(optional)`}</strong>;
+
   return (
     <ActiveStep
       title={getStepTitle(database, invite, isStepCompleted)}
       label={stepLabel}
     >
-      <StepDescription>
-        <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
-      </StepDescription>
+      <Text mt="sm" mb="md">
+        {c("{0} referes to the word '(optional)'")
+          .jt`Are you ready to start exploring your data? Add it below ${optional}.`}
+      </Text>
+
       <DatabaseForm
         initialValues={database}
         onSubmit={handleDatabaseSubmit}
         onEngineChange={handleEngineChange}
         onCancel={handleStepCancel}
+        showSampleDatabase={true}
+        location="setup"
       />
       {isEmailConfigured && (
         <SetupSection

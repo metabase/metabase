@@ -1,6 +1,7 @@
 import {
   EditableDashboard,
   InteractiveDashboard,
+  InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
 
 const { H } = cy;
@@ -10,12 +11,10 @@ import {
   cartesianChartCircle,
   popover,
 } from "e2e/support/helpers";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -26,6 +25,30 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     // Make the PRODUCT_ID column a URL column for click behavior tests, to avoid having to create a new model
     cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
       semantic_type: "type/URL",
+    });
+
+    // Create a question with custom column that returns a url as a string
+    H.createQuestion({
+      name: "Orders with URL Expression",
+      query: {
+        "source-table": ORDERS_ID,
+        expressions: {
+          // NOTE: this is a question, so it won't have semantic_type set as url, we'll need a model for that
+          url_column: [
+            "concat",
+            "https://example.org/",
+            ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          ],
+        },
+        fields: [
+          ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
+          ["expression", "url_column", { "base-type": "type/Text" }],
+          ["field", ORDERS.PRODUCT_ID, null],
+        ],
+        limit: 5,
+      },
+    }).then(({ body: question }) => {
+      cy.wrap(question.id).as("questionId");
     });
 
     H.createDashboardWithQuestions({
@@ -62,7 +85,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
       ],
       cards: [
         {
-          size_x: 12,
+          size_x: 24,
           col: 0,
           visualization_settings: {
             column_settings: {
@@ -79,7 +102,7 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
         },
         {
           size_x: 12,
-          col: 12,
+          col: 0,
           visualization_settings: {
             click_behavior: {
               type: "link",
@@ -192,8 +215,126 @@ describe("scenarios > embedding-sdk > dashboard-click-behavior", () => {
     cy.wait(["@getCard", "@datasetMetadata"]);
 
     getSdkRoot().within(() => {
-      cy.findByText("New question").should("be.visible");
       cy.findByTestId("visualization-root").should("be.visible");
+    });
+  });
+
+  it("columns that return a string url should be rendered as a link", () => {
+    cy.get<string>("@questionId").then((questionId) => {
+      mountSdkContent(<InteractiveQuestion questionId={questionId} />);
+    });
+
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.wait("@getCard");
+
+    cy.findByRole("link", { name: "https://example.org/448" })
+      .should("have.length", 1)
+      .should("have.attr", "href", "https://example.org/448");
+  });
+
+  it("columns that have 'type/URL' semantic type should be rendered as a link", () => {
+    cy.signIn("admin");
+
+    cy.get<string>("@questionId").then((questionId) => {
+      // Convert question to model
+      cy.request("GET", `/api/card/${questionId}`)
+        .then((response) => {
+          const questionData = response.body;
+          return cy.request("PUT", `/api/card/${questionId}`, {
+            ...questionData,
+            type: "model",
+          });
+        })
+        .then(() => {
+          // re-fetch it as model
+          return cy.request("GET", `/api/card/${questionId}`);
+        })
+        .then((modelResponse) => {
+          // Update model column semantic type for url_column to type/URL
+
+          const modelData = modelResponse.body;
+          const updatedMetadata = modelData.result_metadata.map((col: any) => {
+            if (col.name === "url_column") {
+              return { ...col, semantic_type: "type/URL" };
+            }
+            return col;
+          });
+
+          return cy.request("PUT", `/api/card/${questionId}`, {
+            ...modelData,
+            result_metadata: updatedMetadata,
+          });
+        })
+        .then(() => {
+          // Create dashboard with the model
+          H.createDashboardWithQuestions({
+            dashboardName: "URL Dashboard",
+            questions: [
+              {
+                name: "Orders with URLs",
+                query: {
+                  "source-table": `card__${questionId}`,
+                  limit: 5,
+                },
+              },
+            ],
+          }).then(({ dashboard }) => {
+            mountSdkContent(
+              <InteractiveDashboard dashboardId={dashboard.id} />,
+            );
+
+            getSdkRoot().within(() => {
+              H.getDashboardCard(0)
+                .findByRole("link", {
+                  name: "https://example.org/448",
+                })
+                .should("have.attr", "href", "https://example.org/448");
+            });
+          });
+        });
+    });
+  });
+
+  it("columns that have 'Display as Link' should be rendered as a link and use the custom rendering", () => {
+    cy.signIn("admin");
+    cy.intercept("GET", "/api/card/*").as("getCard");
+
+    cy.get<string>("@questionId").then((questionId) => {
+      H.createDashboardWithQuestions({
+        dashboardName: "URL Dashboard",
+        questions: [
+          {
+            name: "Orders with URLs",
+            query: {
+              "source-table": `card__${questionId}`,
+              limit: 5,
+            },
+          },
+        ],
+        cards: [
+          {
+            visualization_settings: {
+              column_settings: {
+                [JSON.stringify(["name", "ID"])]: {
+                  view_as: "link",
+                  link_text: "Link to {{ID}}",
+                  link_url: "https://example.org/{{ID}}",
+                },
+              },
+            },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        mountSdkContent(<EditableDashboard dashboardId={dashboard.id} />);
+
+        getSdkRoot().within(() => {
+          H.getDashboardCard(0)
+            .findByRole("link", {
+              name: "Link to 448",
+            })
+            .should("have.attr", "href", "https://example.org/448");
+        });
+      });
     });
   });
 });

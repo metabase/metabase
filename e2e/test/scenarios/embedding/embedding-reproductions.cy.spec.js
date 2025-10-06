@@ -1,11 +1,11 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
 import { defer } from "metabase/lib/promise";
-
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-describe.skip("issue 15860", () => {
+describe("issue 15860", { tags: "@skip" }, () => {
   const q1IdFilter = {
     name: "Q1 ID",
     slug: "q1_id",
@@ -658,7 +658,7 @@ describe("issue 30535", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.sandboxTable({
       table_id: PRODUCTS_ID,
@@ -957,24 +957,28 @@ describe("issue 40660", () => {
     });
   });
 
-  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-    });
+  it(
+    "static dashboard content shouldn't overflow its container (metabase#40660)",
+    { tags: "@flaky" },
+    () => {
+      H.openStaticEmbeddingModal({
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
 
-    H.getIframeBody().within(() => {
-      cy.findByTestId("embed-frame").scrollTo("bottom");
+      H.getIframeBody().within(() => {
+        cy.findByTestId("embed-frame").scrollTo("bottom");
 
-      cy.findByRole("link", { name: "Powered by Metabase" }).should(
-        "be.visible",
-      );
-    });
-  });
+        cy.findByRole("link", { name: "Powered by Metabase" }).should(
+          "be.visible",
+        );
+      });
+    },
+  );
 });
 
 // Skipped since it does not make sense when CSP is disabled
-describe.skip("issue 49142", () => {
+describe("issue 49142", { tags: "@skip" }, () => {
   const questionDetails = {
     name: "Products",
     query: { "source-table": PRODUCTS_ID, limit: 2 },
@@ -1013,7 +1017,7 @@ describe("issue 8490", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -1035,10 +1039,10 @@ describe("issue 8490", () => {
               ],
             ],
             filter: [
-              "time-interval",
+              "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              -12,
-              "month",
+              "2024-01-01",
+              "2025-01-01",
             ],
           },
           limit: 100,
@@ -1161,7 +1165,9 @@ describe("issue 8490", () => {
     });
 
     // Loading...
-    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+    cy.findByTestId("embed-frame")
+      .findByText("로드 중...")
+      .should("be.visible");
 
     cy.log("test a static embedded question");
     cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
@@ -1215,14 +1221,14 @@ describe("issue 8490", () => {
         "static embeddings with `#locale` should show a translated the loading message",
       );
       // Loading...
-      cy.findByText("로딩...")
+      cy.findByText("로드 중...")
         .should("be.visible")
         .then(resolveDashboardLoaderPromise);
 
       cy.log("assert the line chart");
       H.getDashboardCard(0).within(() => {
         // X-axis labels: Jan 2024 (or some other year)
-        cy.findByText(/1월 20\d\d\b/).should("be.visible");
+        cy.findByText(/^1월 20\d\d\b/).should("be.visible");
         // Aggregation "count"
         cy.findByText("카운트").should("be.visible");
       });
@@ -1322,18 +1328,19 @@ describe("issue 51934 (EMB-189)", () => {
   const COLLECTION_NAME = "Model Collection";
   const MODEL_IN_ROOT_NAME = "Products Model";
   const MODEL_IN_COLLECTION_NAME = "QA Postgres12 Orders Model";
+  const QUESTION_IN_COLLECTION_NAME = "Orders Question";
 
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     H.createModelFromTableName({
       tableName: "products",
       modelName: MODEL_IN_ROOT_NAME,
     });
     H.createCollection({
       name: COLLECTION_NAME,
-      alias: "modelCollectionId",
+      alias: "collectionId",
     });
     H.createModelFromTableName({
       tableName: "orders",
@@ -1341,8 +1348,24 @@ describe("issue 51934 (EMB-189)", () => {
       idAlias: "modelId",
     });
     moveToCollection({
-      collectionIdAlias: "modelCollectionId",
+      collectionIdAlias: "collectionId",
       cardIdAlias: "modelId",
+    });
+    H.createQuestion(
+      {
+        name: QUESTION_IN_COLLECTION_NAME,
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "questionId",
+      },
+    );
+    moveToCollection({
+      collectionIdAlias: "collectionId",
+      cardIdAlias: "questionId",
     });
   });
 
@@ -1379,14 +1402,44 @@ describe("issue 51934 (EMB-189)", () => {
     });
 
     cy.log(
-      "select a model as a data source should open the model step in the same collection as the data source",
+      "select a question as a data source should open the saved question step in the same collection as the data source (metabase#58357)",
     );
     H.popover().within(() => {
+      cy.findByText("Saved Questions").click();
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
+      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME }).click();
+    });
+
+    cy.log("the join popover is automatically opened");
+    H.popover().within(() => {
+      cy.log("the collection of the data source should be selected");
+      cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
+        "have.css",
+        "background-color",
+        // brand color
+        "rgb(80, 158, 227)",
+      );
+      cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
+        .should("be.visible")
+        .click();
+    });
+
+    cy.log(
+      "select a model as a data source should open the model step in the same collection as the data source",
+    );
+    H.getNotebookStep("data").findByText(QUESTION_IN_COLLECTION_NAME).click();
+
+    H.popover().within(() => {
+      // Go back to the "Bucket" step
+      cy.findByText("Saved Questions").click();
+
+      // We're now at the "Bucket" step
       cy.findByText("Models").click();
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).click();
       cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME }).click();
     });
 
+    cy.log("the join popover is automatically opened");
     H.popover().within(() => {
       cy.log("the collection of the data source should be selected");
       cy.findByRole("menuitem", { name: COLLECTION_NAME }).should(
@@ -1424,17 +1477,12 @@ describe("issue 51934 (EMB-189)", () => {
   });
 
   function startNewEmbeddingQuestion() {
-    cy.intercept("GET", "/api/search*", (req) => {
-      if (req.query.limit === "0") {
-        req.continue((res) => {
-          // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
-          res.body.total = 100;
-        });
-      }
-    });
-
     H.visitFullAppEmbeddingUrl({
       url: "/question/notebook",
+      qs: {
+        data_picker: "staged",
+        entity_types: "table,model,question",
+      },
     });
   }
 
@@ -1447,4 +1495,27 @@ describe("issue 51934 (EMB-189)", () => {
       });
     });
   }
+});
+
+describe("issue 63687", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should properly display pin map tiles without auth errors for a valid JWT token", () => {
+    H.createNativeQuestion(questionAsPinMapWithTiles, {
+      visitQuestion: true,
+    });
+
+    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    cy.intercept("/api/embed/tiles/**").as("getTiles");
+
+    H.visitIframe();
+
+    cy.wait("@getTiles").then(({ response: tileResponse }) => {
+      expect(tileResponse?.statusCode).to.equal(200);
+    });
+  });
 });

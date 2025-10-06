@@ -1,8 +1,12 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { TableSchema } from "metabase/schema";
 import type {
-  Field,
+  ForeignKey,
+  GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
   Table,
+  TableData,
   TableId,
   TableListQuery,
   UpdateTableFieldsOrderRequest,
@@ -19,6 +23,7 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,6 +34,10 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [TableSchema])),
+        ),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -36,6 +45,10 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, TableSchema)),
+        ),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -44,8 +57,18 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, TableSchema)),
+        ),
     }),
-    listTableForeignKeys: builder.query<Field[], TableId>({
+    getTableData: builder.query<TableData, GetTableDataRequest>({
+      query: ({ tableId }) => ({
+        method: "GET",
+        url: `/api/table/${tableId}/data`,
+      }),
+    }),
+    listTableForeignKeys: builder.query<ForeignKey[], TableId>({
       query: (id) => ({
         method: "GET",
         url: `/api/table/${id}/fks`,
@@ -99,6 +122,20 @@ export const tableApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    syncTableSchema: builder.mutation<void, TableId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/table/${id}/sync_schema`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [
+          idTag("table", id),
+          listTag("field"),
+          listTag("field-values"),
+          listTag("parameter-values"),
+          tag("card"),
+        ]),
+    }),
     discardTableFieldValues: builder.mutation<void, TableId>({
       query: (id) => ({
         method: "POST",
@@ -114,10 +151,13 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useGetTableDataQuery,
+  useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
   useUpdateTableFieldsOrderMutation,
   useRescanTableFieldValuesMutation,
+  useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;

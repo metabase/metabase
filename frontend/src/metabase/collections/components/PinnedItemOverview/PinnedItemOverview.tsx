@@ -10,7 +10,7 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
+import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
@@ -47,6 +47,7 @@ function PinnedItemOverview({
     dashboard: dashboardItems = [],
     dataset: modelItems = [],
     metric: metricItems = [],
+    document: documentItems = [],
   } = _.groupBy(sortedItems, "model");
   const cardGroups = _.partition(cardItems, isPreviewShown);
   const metricGroups = _.partition(metricItems, isPreviewShown);
@@ -175,6 +176,44 @@ function PinnedItemOverview({
                   <PinnedItemSortDropTarget
                     isBackTarget
                     itemModel="dashboard"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                </div>
+              ))}
+            </Grid>
+          </div>
+        )}
+
+        {documentItems.length > 0 && (
+          <div>
+            <SectionTitle title={t`Documents`} icon="document" />
+            <Grid>
+              {documentItems.map((item) => (
+                <div key={item.id} className={CS.relative}>
+                  <PinnedItemSortDropTarget
+                    isFrontTarget
+                    itemModel="document"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                  <ItemDragSource item={item} collection={collection}>
+                    <div>
+                      <PinnedItemCard
+                        databases={databases}
+                        bookmarks={bookmarks}
+                        createBookmark={createBookmark}
+                        deleteBookmark={deleteBookmark}
+                        item={item}
+                        collection={collection}
+                        onCopy={onCopy}
+                        onMove={onMove}
+                      />
+                    </div>
+                  </ItemDragSource>
+                  <PinnedItemSortDropTarget
+                    isBackTarget
+                    itemModel="document"
                     pinIndex={item.collection_position}
                     enableDropTargetBackground={false}
                   />

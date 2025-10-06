@@ -1,12 +1,18 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import {
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
-import type { Database, Table } from "metabase-types/api";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { Database, SearchModel, Table } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import {
   createMockSettingsState,
   createMockState,
@@ -22,12 +28,16 @@ const storeInitialState = createMockState({
   }),
 });
 
-const AVAILABLE_MODELS: Record<AvailableModels, ("dataset" | "table")[]> = {
+const AVAILABLE_MODELS: Record<
+  AvailableModels,
+  Extract<SearchModel, "table" | "dataset" | "card">[]
+> = {
   "tables-only": ["table"],
-  "tables-and-models": ["dataset", "table"],
+  "with-models": ["table", "dataset"],
+  "with-questions": ["table", "card"],
 };
 
-type AvailableModels = "tables-only" | "tables-and-models";
+type AvailableModels = "tables-only" | "with-models" | "with-questions";
 
 interface SetupOpts {
   databases?: Database[];
@@ -37,6 +47,7 @@ interface SetupOpts {
     id: number;
     databaseId: number;
   };
+  entityTypes?: EmbeddingEntityType[];
 }
 
 function setup({
@@ -44,17 +55,16 @@ function setup({
   isJoinStep = false,
   availableModels = "tables-only",
   selectedTable,
+  entityTypes,
 }: SetupOpts = {}) {
-  fetchMock.get(
-    {
-      url: "path:/api/search",
-      query: {
-        calculate_available_models: true,
-        limit: 0,
-        models: ["dataset"],
-      },
+  fetchMock.get({
+    url: "path:/api/search",
+    query: {
+      calculate_available_models: true,
+      limit: 0,
+      models: ["dataset"],
     },
-    {
+    response: {
       data: [],
       limit: 0,
       models: ["dataset"],
@@ -64,19 +74,30 @@ function setup({
       total: 1,
       available_models: AVAILABLE_MODELS[availableModels],
     },
+  });
+
+  setupDatabasesEndpoints(
+    databases,
+    { hasSavedQuestions: availableModels === "with-questions" },
+    { saved: true },
   );
 
-  setupDatabasesEndpoints(databases, undefined, { saved: true });
+  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionItemsEndpoint({
+    collection: ROOT_COLLECTION,
+    collectionItems: [],
+  });
 
   return renderWithProviders(
     <DataSourceSelector
       isInitiallyOpen
-      isQuerySourceModel={false}
+      querySourceType={undefined}
       canChangeDatabase={!isJoinStep}
       selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
-      canSelectModel={true}
-      canSelectTable={true}
+      canSelectModel={entityTypes ? entityTypes.includes("model") : true}
+      canSelectTable={entityTypes ? entityTypes.includes("table") : true}
+      canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
       triggerElement={<div>Click me to open or close data picker</div>}
       setSourceTableFn={jest.fn()}
     />,
@@ -163,7 +184,7 @@ describe("DataSourceSelector", () => {
 
   describe("both models and tables are available", () => {
     const setupOpts: SetupOpts = {
-      availableModels: "tables-and-models",
+      availableModels: "with-models",
     };
 
     it("should only show data from the selected database when joining data", async () => {
@@ -194,6 +215,32 @@ describe("DataSourceSelector", () => {
       expect(await screen.findByText("Raw Data")).toBeInTheDocument();
       expect(screen.getByText("Many tables Database")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step", async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Models")).toBeInTheDocument();
+    });
+  });
+
+  describe("both questions and tables are available", () => {
+    const setupOpts: SetupOpts = {
+      availableModels: "with-questions",
+    };
+
+    it("should skip the bucket step and show the SavedEntityPicker right away if there is only questions in the bucket step", async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["question"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
   });
 });

@@ -2,7 +2,9 @@
   "Test for the logic that syncs Table models with the metadata fetched from a DB."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -40,6 +42,22 @@
              (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
+(deftest transform-temp-tables-are-skipped-test
+  (mt/when-ee-evailable
+   (let [temp-table   {:name   "mb_transform_temp_table_temp_123"
+                       :schema "public"}
+         normal-table {:name   "orders"
+                       :schema "public"}
+         db-metadata  {:tables #{temp-table normal-table}}]
+     (testing "table-set excludes transform temporary tables when flagged and has transforms feature"
+       (mt/with-premium-features #{:transforms}
+         (is (= #{normal-table}
+                (#'sync-tables/table-set db-metadata)))))
+     (testing "ignroe it if transform feature is disabled"
+       (mt/with-premium-features #{}
+         (is (= #{normal-table temp-table}
+                (#'sync-tables/table-set db-metadata))))))))
+
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
     (mt/with-temp [:model/Database db {}
@@ -52,7 +70,7 @@
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"
     (let [dbdef (mt/dataset-definition "sync-retired-table"
-                                       ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
+                                       [["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]]])]
       (mt/dataset dbdef
         (t2/update! :model/Table (mt/id :user) {:active false})
         ;; table description is changed
@@ -159,3 +177,123 @@
        (is (= #{["employees" :cruft]
                 ["transactions" nil]}
               (t2/select-fn-set (juxt :name :visibility_type) :model/Table :db_id (u/the-id db))))))))
+
+(deftest archive-tables-test
+  (testing "Tables deactivated for more than 14 days should be archived"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table-1 {:name "old_table"
+                                         :db_id (u/the-id db)
+                                         :active false
+                                         :deactivated_at (t/minus (t/offset-date-time) (t/days 15))}
+                   :model/Table table-2 {:name "recent_table"
+                                         :db_id (u/the-id db)
+                                         :active false
+                                         :deactivated_at (t/minus (t/offset-date-time) (t/days 7))}
+                   :model/Table table-3 {:name "active_table"
+                                         :db_id (u/the-id db)
+                                         :active true}]
+      (#'sync-tables/archive-tables! db)
+
+      (testing "Old deactivated table is archived with suffix"
+        (let [archived-table (t2/select-one :model/Table (:id table-1))]
+          (is (some? (:archived_at archived-table)))
+          (is (str/starts-with? (:name archived-table) "old_table__mbarchiv__"))))
+
+      (testing "Recently deactivated table is not archived"
+        (let [recent-table (t2/select-one :model/Table (:id table-2))]
+          (is (nil? (:archived_at recent-table)))
+          (is (= "recent_table" (:name recent-table)))))
+
+      (testing "Active table is not affected"
+        (let [active-table (t2/select-one :model/Table (:id table-3))]
+          (is (nil? (:archived_at active-table)))
+          (is (= "active_table" (:name active-table)))
+          (is (true? (:active active-table))))))))
+
+(deftest archive-tables-already-archived-test
+  (testing "Already archived tables should not be processed again"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "already_archived"
+                                       :db_id (u/the-id db)
+                                       :active false
+                                       :deactivated_at (t/minus (t/offset-date-time) (t/days 20))
+                                       :archived_at (t/minus (t/offset-date-time) (t/days 5))}]
+      (let [original-name (:name table)
+            original-archived-at (:archived_at table)]
+        (#'sync-tables/archive-tables! db)
+
+        (let [updated-table (t2/select-one :model/Table (:id table))]
+          (is (= original-name (:name updated-table)))
+          (is (= original-archived-at (:archived_at updated-table))))))))
+
+(deftest deactivated-at-timestamp-test
+  (testing "deactivated_at is set when table becomes inactive"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table table {:name "test_table"
+                                       :db_id (u/the-id db)
+                                       :active true}]
+      (testing "Initially active table has no deactivated_at"
+        (is (nil? (:deactivated_at (t2/select-one :model/Table (:id table))))))
+
+      (testing "Setting active to false sets deactivated_at"
+        (t2/update! :model/Table (:id table) {:active false})
+        (let [updated-table (t2/select-one :model/Table (:id table))]
+          (is (some? (:deactivated_at updated-table)))
+          (is (false? (:active updated-table)))))
+
+      (testing "Reactivating table clears deactivated_at and archived_at"
+        (t2/update! :model/Table (:id table) {:archived_at (t/offset-date-time)})
+
+        (t2/update! :model/Table (:id table) {:active true})
+        (let [reactivated-table (t2/select-one :model/Table (:id table))]
+          (is (nil? (:deactivated_at reactivated-table)))
+          (is (nil? (:archived_at reactivated-table)))
+          (is (true? (:active reactivated-table))))))))
+
+(deftest archive-tables-permissions-security-test
+  (testing "Archival prevents permission inheritance on table recreation"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table original-table {:name "sensitive_table"
+                                                :db_id (u/the-id db)
+                                                :active false
+                                                :deactivated_at (t/minus (t/offset-date-time) (t/days 20))}]
+      (#'sync-tables/archive-tables! db)
+
+      (testing "the original table was archived and renamed"
+        (let [archived-table (t2/select-one :model/Table (:id original-table))]
+          (is (some? (:archived_at archived-table)))
+          (is (str/starts-with? (:name archived-table) "sensitive_table__mbarchiv__"))))
+
+      (mt/with-temp [:model/Table new-table {:name "sensitive_table"
+                                             :db_id (u/the-id db)
+                                             :active true}]
+
+        (testing "the new table should be treated as completely separate"
+          (is (not= (:id original-table) (:id new-table)))
+          (is (= "sensitive_table" (:name new-table)))
+          (is (nil? (:archived_at new-table))))))))
+
+(deftest sample-database-tables-data-authority-test
+  (testing "Tables from sample databases should be marked as :ingested"
+    (mt/with-temp [:model/Database sample-db {:is_sample true}
+                   :model/Database normal-db {:is_sample false}]
+      (let [sample-table-metadata {:name "sample_table"}
+            normal-table-metadata {:name "normal_table"}]
+
+        (testing "creating a table in a sample database"
+          (let [created-table (sync-tables/create-table! sample-db sample-table-metadata)]
+            (is (= :ingested (:data_authority created-table)))))
+
+        (testing "creating a table in a normal database"
+          (let [created-table (sync-tables/create-table! normal-db normal-table-metadata)]
+            (is (= :unconfigured (:data_authority created-table)))))
+
+        (testing "reactivating a table in a sample database"
+          (mt/with-temp [:model/Table existing-table {:db_id          (:id sample-db)
+                                                      :name           "existing_sample_table"
+                                                      :active         false
+                                                      :data_authority :computed}]
+            (sync-tables/create-or-reactivate-table! sample-db {:name "existing_sample_table"})
+            (let [updated-table (t2/select-one :model/Table (:id existing-table))]
+              (is (= :ingested (:data_authority updated-table)))
+              (is (:active updated-table)))))))))

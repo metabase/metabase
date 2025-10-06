@@ -9,7 +9,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import ActionButton from "metabase/common/components/ActionButton";
 import CS from "metabase/css/core/index.css";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import {
@@ -18,11 +18,11 @@ import {
 } from "metabase/lib/notifications";
 import {
   getHasConfiguredAnyChannel,
-  getHasConfiguredEmailChannel,
+  getHasConfiguredEmailOrSlackChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
-import { updateUrl } from "metabase/query_builder/actions";
+import { updateUrl } from "metabase/query_builder/actions/url";
 import {
   getQuestion,
   getVisualizationSettings,
@@ -71,13 +71,13 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
   goal_above: {
     value: "goal_above" as const,
     get label() {
-      return t`When results go above the goal line`;
+      return t`When results go above the goal`;
     },
   },
   goal_below: {
     value: "goal_below" as const,
     get label() {
-      return t`When results go below the goal line`;
+      return t`When results go below the goal`;
     },
   },
 };
@@ -136,7 +136,8 @@ export const CreateOrEditQuestionAlertModal = ({
     useSendUnsavedNotificationMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
-  const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
+  const hasConfiguredEmailOrSlackChannel =
+    getHasConfiguredEmailOrSlackChannel(channelSpec);
 
   const triggerOptions = useMemo(
     () =>
@@ -189,16 +190,18 @@ export const CreateOrEditQuestionAlertModal = ({
       }
 
       if (result.error) {
+        const errorText =
+          getResponseErrorMessage(result.error) ?? t`An error occurred`;
+
         dispatch(
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message:
-              getResponseErrorMessage(result.error) ?? t`An error occurred`,
+            message: t`Failed save alert. ${errorText}`,
           }),
         );
 
-        // need to throw to show error in ButtonWithStatus
+        // need to throw to show error in ActionButton
         throw result.error;
       }
 
@@ -229,8 +232,7 @@ export const CreateOrEditQuestionAlertModal = ({
           addUndo({
             icon: "warning",
             toastColor: "error",
-            message:
-              getResponseErrorMessage(result.error) ?? t`An error occurred`,
+            message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
       }
@@ -239,7 +241,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const channelRequirementsMet = userCanAccessSettings
     ? hasConfiguredAnyChannel
-    : hasConfiguredEmailChannel;
+    : hasConfiguredEmailOrSlackChannel; // webhooks are available only for users with "Settings access" permission - WRK-63
 
   const handleScheduleChange = useCallback(
     (updatedSubscription: NotificationCronSubscription) => {
@@ -356,7 +358,7 @@ export const CreateOrEditQuestionAlertModal = ({
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
-            label={t`Only send this alert once`}
+            label={t`Delete this Alert after it's triggered`}
             styles={{
               label: {
                 lineHeight: "1.5rem",
@@ -393,13 +395,13 @@ export const CreateOrEditQuestionAlertModal = ({
         </Button>
         <div>
           <Button onClick={onClose} className={CS.mr2}>{t`Cancel`}</Button>
-          <ButtonWithStatus
-            titleForState={{
-              default: isEditMode && hasChanges ? t`Save changes` : t`Done`,
-            }}
+          <ActionButton
+            primary
             disabled={!isValid}
-            onClickOperation={onCreateOrEditAlert}
-          />
+            actionFn={onCreateOrEditAlert}
+          >
+            {isEditMode && hasChanges ? t`Save changes` : t`Done`}
+          </ActionButton>
         </div>
       </Flex>
     </Modal>

@@ -31,7 +31,7 @@
     ;; making use of the functionality in the [[metabase.app-db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
     (mt/with-premium-features #{:serialization}
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         ;; create a single dummy User to own a Card and a Database for it to reference
         (let [user  (t2/insert! (t2/table-name :model/User)
                                 :email        "nobody@nowhere.com"
@@ -155,7 +155,7 @@
                                 (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
 
         (testing "load should fail"
-          (mt/with-empty-h2-app-db
+          (mt/with-empty-h2-app-db!
             (is (thrown-with-msg? Exception #"Please upgrade"
                                   (cmd/load dump-dir
                                             "--mode"     "update"
@@ -175,7 +175,7 @@
 (deftest snowplow-events-test
   (testing "Snowplow events are correctly sent"
     (mt/with-premium-features #{:serialization}
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (snowplow-test/with-fake-snowplow-collector
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
             (let [coll (ts/create! :model/Collection :name "coll")
@@ -190,7 +190,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           3
+                         "count"           11
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -205,8 +205,8 @@
                          "direction"     "import"
                          "duration_ms"   pos?
                          "source"        "cli"
-                         "models"        "Card,Collection,Setting"
-                         "count"         3
+                         "models"        "Card,Collection,Setting,TransformJob,TransformTag"
+                         "count"         11
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))

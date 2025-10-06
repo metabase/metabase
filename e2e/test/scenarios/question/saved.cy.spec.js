@@ -17,73 +17,77 @@ describe("scenarios > question > saved", () => {
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
-  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
-    H.openOrdersTable();
-    H.openNotebook();
+  it(
+    "should should correctly display 'Save' modal (metabase#13817)",
+    { tags: "@skip" },
+    () => {
+      H.openOrdersTable();
+      H.openNotebook();
 
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Count of rows").click();
-    H.addSummaryGroupingField({ field: "Total" });
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Count of rows").click();
+      H.addSummaryGroupingField({ field: "Total" });
 
-    // Test save modal and nested entity picker can be closed via consecutive escape key presses
-    H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByTestId("dashboard-and-collection-picker-button").click();
-      // wait for focus to be removed from clicked element to avoid test flakes
-      // cypress executes faster than ui updates causing the focus position to lag behind on save modal
+      // Test save modal and nested entity picker can be closed via consecutive escape key presses
+      H.queryBuilderHeader().button("Save").click();
+      cy.findByTestId("save-question-modal").within(() => {
+        cy.findByTestId("dashboard-and-collection-picker-button").click();
+        // wait for focus to be removed from clicked element to avoid test flakes
+        // cypress executes faster than ui updates causing the focus position to lag behind on save modal
+        cy.findByTestId("dashboard-and-collection-picker-button").should(
+          "not.be.focused",
+        );
+      });
+      H.entityPickerModal().should("exist");
+      cy.realPress("{esc}");
+      H.entityPickerModal().should("not.exist");
+      cy.findByTestId("save-question-modal").should("exist");
       cy.findByTestId("dashboard-and-collection-picker-button").should(
-        "not.be.focused",
+        "be.focused",
       );
-    });
-    H.entityPickerModal().should("exist");
-    cy.realPress("{esc}");
-    H.entityPickerModal().should("not.exist");
-    cy.findByTestId("save-question-modal").should("exist");
-    cy.findByTestId("dashboard-and-collection-picker-button").should(
-      "be.focused",
-    );
-    cy.realPress("{esc}");
-    cy.findByTestId("save-question-modal").should("not.exist");
+      cy.realPress("{esc}");
+      cy.findByTestId("save-question-modal").should("not.exist");
 
-    // Save the question
-    H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@cardCreate");
-    cy.button("Not now").click();
+      // Save the question
+      H.queryBuilderHeader().button("Save").click();
+      cy.findByTestId("save-question-modal").within((modal) => {
+        cy.findByText("Save").click();
+      });
+      cy.wait("@cardCreate");
+      cy.button("Not now").click();
 
-    // Add a filter in order to be able to save question again
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
+      // Add a filter in order to be able to save question again
+      // eslint-disable-next-line no-unsafe-element-filtering
+      cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
-    H.popover().findByText("Total: Auto binned").click();
-    H.selectFilterOperator("Greater than");
+      H.popover().findByText("Total: Auto binned").click();
+      H.selectFilterOperator("Greater than");
 
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("60");
-      cy.button("Add filter").click();
-    });
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("60");
+        cy.button("Add filter").click();
+      });
 
-    H.queryBuilderHeader().button("Save").click();
+      H.queryBuilderHeader().button("Save").click();
 
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save question").should("be.visible");
-      cy.findByTestId("save-question-button").should("be.enabled");
+      cy.findByTestId("save-question-modal").within((modal) => {
+        cy.findByText("Save question").should("be.visible");
+        cy.findByTestId("save-question-button").should("be.enabled");
 
-      cy.findByText("Save as new question").click();
-      cy.findByLabelText("Name")
-        .click()
-        .type("{selectall}{backspace}", { delay: 50 })
-        .blur();
-      cy.findByLabelText("Name").should("be.empty");
-      cy.findByLabelText("Description").should("be.empty");
-      cy.findByTestId("save-question-button").should("be.disabled");
+        cy.findByText("Save as new question").click();
+        cy.findByLabelText("Name")
+          .click()
+          .type("{selectall}{backspace}", { delay: 50 })
+          .blur();
+        cy.findByLabelText("Name").should("be.empty");
+        cy.findByLabelText("Description").should("be.empty");
+        cy.findByTestId("save-question-button").should("be.disabled");
 
-      cy.findByText(/^Replace original question,/).click();
-      cy.findByTestId("save-question-button").should("be.enabled");
-    });
-  });
+        cy.findByText(/^Replace original question,/).click();
+        cy.findByTestId("save-question-button").should("be.enabled");
+      });
+    },
+  );
 
   it("view and filter saved question", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
@@ -420,19 +424,23 @@ describe("scenarios > question > saved", () => {
 
   it("should always be possible to view the full title text of the saved question", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
-    const savedQuestionTitle = cy.findByTestId("saved-question-header-title");
-    savedQuestionTitle.clear();
-    savedQuestionTitle.type(
-      "Space, the final frontier. These are the voyages of the Starship Enterprise.",
-    );
-    savedQuestionTitle.blur();
+    cy.findByTestId("saved-question-header-title")
+      .as("savedQuestionTitle")
+      .should("be.visible")
+      .clear()
+      .type(
+        "Space, the final frontier. These are the voyages of the Starship Enterprise.",
+      )
+      .blur();
 
-    savedQuestionTitle.should("be.visible").should(($el) => {
-      // clientHeight: height of the textarea
-      // scrollHeight: height of the text content, including content not visible on the screen
-      const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
-      expect(heightDifference).to.eq(0);
-    });
+    cy.get("@savedQuestionTitle")
+      .should("be.visible")
+      .should(($el) => {
+        // clientHeight: height of the textarea
+        // scrollHeight: height of the text content, including content not visible on the screen
+        const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
+        expect(heightDifference).to.eq(0);
+      });
   });
 
   it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
@@ -466,22 +474,25 @@ describe("scenarios > question > saved", () => {
 
     const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
 
-    function hideTable(name, visibilityType) {
-      cy.visit("/admin/datamodel");
-      H.sidebar().findByText(name).click();
-      H.main().findByText("Hidden").click();
-
-      if (visibilityType === "technical") {
-        H.main().findByText("Technical Data").click();
-      }
-      if (visibilityType === "cruft") {
-        H.main().findByText("Irrelevant/Cruft").click();
+    function hideTable({ name, id, visibilityType }) {
+      // Since v56 it's no longer possible to specify the reason (e.g. "technical" or "cruft")
+      // for hiding the table via UI.
+      // We still want to support cases where visibility type has been set to such values in
+      // the past, so we simulate it with API call.
+      if (visibilityType === "technical" || visibilityType === "cruft") {
+        cy.request("PUT", `/api/table/${id}`, {
+          visibility_type: visibilityType,
+        });
+      } else {
+        H.DataModel.visit();
+        H.DataModel.TablePicker.getTable(name).click();
+        H.DataModel.TablePicker.getTable(name).button("Hide table").click();
       }
     }
 
     HIDDEN_TYPES.forEach((visibilityType) => {
       it(`should show a View-only tag when the source table is marked as ${visibilityType}`, () => {
-        hideTable("Orders", visibilityType);
+        hideTable({ name: "Orders", id: ORDERS_ID, visibilityType });
 
         H.visitQuestion(ORDERS_QUESTION_ID);
 
@@ -498,7 +509,7 @@ describe("scenarios > question > saved", () => {
 
       it(`should show a View-only tag when a joined table is marked as ${visibilityType}`, () => {
         cy.signInAsAdmin();
-        hideTable("Products", visibilityType);
+        hideTable({ name: "Products", id: PRODUCTS_ID, visibilityType });
         H.createQuestion(
           {
             name: "Joined question",
@@ -584,11 +595,11 @@ describe("scenarios > question > saved", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = true;
+          res.body["token-features"].development_mode = true;
         });
       });
 
@@ -726,7 +737,7 @@ describe(
     });
 
     // There is no api to test individual hooks for new Question Alerts
-    it.skip("should allow you to test a webhook", () => {
+    it("should allow you to test a webhook", { tags: "@skip" }, () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.findByTestId("sharing-menu-button").click();
@@ -748,9 +759,8 @@ describe(
         `${H.WEBHOOK_TEST_HOST}/api/session/${H.WEBHOOK_TEST_SESSION_ID}/requests`,
       ).then(({ body }) => {
         expect(body).to.have.length(1);
-        const payload = cy.wrap(atob(body[0].content_base64));
 
-        payload
+        cy.wrap(atob(body[0].content_base64))
           .should("have.string", "alert_creator_name")
           .and("have.string", "Bobby Tables");
       });

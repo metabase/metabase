@@ -12,11 +12,18 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
-import { useModalOpen } from "metabase/hooks/use-modal-open";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { useModalOpen } from "metabase/common/hooks/use-modal-open";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import resizeObserver from "metabase/lib/resize-observer";
-import { Box, Flex, Icon, Modal, Skeleton, TextInput } from "metabase/ui";
-import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
+import {
+  Box,
+  Flex,
+  Icon,
+  Modal,
+  Repeat,
+  Skeleton,
+  TextInput,
+} from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
@@ -175,7 +182,7 @@ export function EntityPickerModal<
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   useDebounce(() => setDebouncedSearchQuery(searchQuery), 200, [searchQuery]);
 
-  const { data, isFetching } = useSearchQuery(
+  const { data, isFetching, requestId } = useSearchQuery(
     {
       q: debouncedSearchQuery,
       models: searchModels,
@@ -256,6 +263,9 @@ export function EntityPickerModal<
             isLoading={isFetching}
             searchScope={searchScope}
             searchResults={finalSearchResults ?? []}
+            searchEngine={data?.engine}
+            searchRequestId={requestId}
+            searchTerm={searchQuery}
             selectedItem={selectedItem}
             onItemSelect={onItemSelect}
             onSearchScopeChange={setSearchScope}
@@ -484,7 +494,7 @@ const assertValidProps = (
 };
 
 const EntityPickerLoadingSkeleton = () => (
-  <Box data-testid="loading-indicator">
+  <Box data-testid="loading-indicator" className={S.loadingSkeleton}>
     <Flex px="2rem" gap="1.5rem" mb="3.5rem">
       <Repeat times={3}>
         <Skeleton h="2rem" w="5rem" mb="0.5rem" />

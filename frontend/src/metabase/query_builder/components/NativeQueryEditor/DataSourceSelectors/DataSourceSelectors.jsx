@@ -10,6 +10,7 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+import { Flex } from "metabase/ui";
 
 const DataSourceSelectorsPropTypes = {
   isNativeEditorOpen: PropTypes.bool,
@@ -19,6 +20,7 @@ const DataSourceSelectorsPropTypes = {
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
   editorContext: PropTypes.oneOf(["action", "question"]),
+  databaseIsDisabled: PropTypes.func,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -29,6 +31,7 @@ const PopulatedDataSourceSelectorsPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
+  databaseIsDisabled: PropTypes.func,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -36,6 +39,7 @@ const DatabaseSelectorPropTypes = {
   databases: PropTypes.array,
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
+  databaseIsDisabled: PropTypes.func,
 };
 
 const SingleDatabaseNamePropTypes = {
@@ -62,6 +66,7 @@ const DataSourceSelectors = ({
   setDatabaseId,
   setTableId,
   editorContext,
+  databaseIsDisabled,
 }) => {
   const database = question.database();
 
@@ -95,6 +100,7 @@ const DataSourceSelectors = ({
       readOnly={readOnly}
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
+      databaseIsDisabled={databaseIsDisabled}
     />
   );
 };
@@ -108,6 +114,7 @@ const PopulatedDataSourceSelectors = ({
   readOnly,
   setDatabaseId,
   setTableId,
+  databaseIsDisabled,
 }) => {
   const dataSourceSelectors = [];
 
@@ -124,6 +131,7 @@ const PopulatedDataSourceSelectors = ({
         key="db_selector"
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
+        databaseIsDisabled={databaseIsDisabled}
       />,
     );
   } else if (database) {
@@ -153,7 +161,13 @@ const checkIfThereAreMultipleDatabases = (database, databases) =>
   database == null ||
   (databases.length > 1 && databases.some((db) => db.id === database.id));
 
-const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
+const DatabaseSelector = ({
+  database,
+  databases,
+  readOnly,
+  setDatabaseId,
+  databaseIsDisabled,
+}) => (
   <div
     className={cx(
       QueryBuilderS.GuiBuilderSection,
@@ -168,8 +182,9 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
       databases={databases}
       selectedDatabaseId={database?.id}
       setDatabaseFn={setDatabaseId}
-      isInitiallyOpen={database == null}
+      isInitiallyOpen={database == null && databases.length > 1}
       readOnly={readOnly}
+      databaseIsDisabled={databaseIsDisabled}
     />
   </div>
 );
@@ -177,9 +192,15 @@ const DatabaseSelector = ({ database, databases, readOnly, setDatabaseId }) => (
 DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
-  <div className={cx(CS.p2, CS.textBold)} data-testid="selected-database">
+  <Flex
+    h="55px"
+    px="md"
+    align="center"
+    fw="bold"
+    data-testid="selected-database"
+  >
     {database.name}
-  </div>
+  </Flex>
 );
 
 SingleDatabaseName.propTypes = SingleDatabaseNamePropTypes;
@@ -215,9 +236,13 @@ const Placeholder = ({ query, editorContext }) => {
 
   const language = getNativeQueryLanguage(query.engine());
   return (
-    <div className={cx(CS.ml2, CS.p2, CS.textMedium)}>
+    <Flex
+      align="center"
+      h="55px"
+      className={cx(CS.textNoWrap, CS.ml2, CS.px2, CS.textMedium)}
+    >
       {t`This question is written in ${language}.`}
-    </div>
+    </Flex>
   );
 };
 

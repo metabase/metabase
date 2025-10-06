@@ -160,7 +160,7 @@ describe(
       // to test database picker behavior in the action editor
       H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
@@ -270,9 +270,9 @@ describe(
         cy.wait("@executeAction");
 
         cy.findByLabelText("User ID").should("not.exist");
-        cy.findByLabelText("User ID: This User_id does not exist.").should(
-          "exist",
-        );
+        cy.findByLabelText(
+          'User ID: This value does not exist in table "people".',
+        ).should("exist");
 
         cy.findByText("Unable to update the record.").should("exist");
       });
@@ -715,7 +715,7 @@ describe(
           role,
           `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
         );
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.queryWritableDB(sql);
 
         cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {
@@ -812,10 +812,7 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
 }
 
 function assertQueryEditorDisabled() {
-  // Ace doesn't act as a normal input, so we can't use `should("be.disabled")`
-  // Instead we'd assert that a user can't type in the editor
-  H.fillActionQuery("QWERTY");
-  cy.findByText("QWERTY").should("not.exist");
+  H.NativeEditor.get().should("have.attr", "contenteditable", "false");
 }
 
 function enableSharingFor(actionName, { publicUrlAlias }) {

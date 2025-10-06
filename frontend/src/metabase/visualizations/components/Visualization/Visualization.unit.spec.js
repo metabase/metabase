@@ -115,7 +115,7 @@ describe("Visualization", () => {
       {},
       createMockSettings({
         "token-features": createMockTokenFeatures({
-          "development-mode": true,
+          development_mode: true,
         }),
       }),
     );
@@ -246,5 +246,17 @@ describe("Visualization", () => {
         expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
     });
+  });
+
+  it("should not show loader and error at the same time (metabase#63410)", async () => {
+    await renderViz(undefined, {
+      error: new Error("This is my error message"),
+      isRunning: true,
+    });
+
+    expect(
+      screen.queryByText("This is my error message"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 });

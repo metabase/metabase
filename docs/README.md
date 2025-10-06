@@ -18,7 +18,7 @@ Metabase is an open-source business intelligence platform. You can use Metabase 
 
 ### Metabase Cloud
 
-The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](./cloud/cloud-vs-self-hosting.md). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
 
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
@@ -34,7 +34,7 @@ With your data connected, get started asking questions, creating dashboards, and
 
 ### [A tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase)
 
-Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and data sandboxing, and more.
+Metabase is a deep product with a lot of tools to simplify business intelligence, from embeddable charts and interactive dashboards, to GUI and SQL editors, to auditing and row and column security, and more.
 
 ## Documentation topics
 
@@ -49,6 +49,7 @@ Metabase's reference documentation.
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
+- [Development instances](./installation-and-operation/development-instance.md)
 - [Serialization](./installation-and-operation/serialization.md)
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
@@ -119,6 +120,10 @@ Metabase's reference documentation.
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
 
+### Documents
+
+- [Introduction to documents](./documents/introduction.md)
+
 ### Data modeling
 
 - [Data modeling overview](./data-modeling/start.md)
@@ -126,7 +131,7 @@ Metabase's reference documentation.
 - [Model persistence](./data-modeling/model-persistence.md)
 - [Metrics](./data-modeling/metrics.md)
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
-- [Field types](./data-modeling/field-types.md)
+- [Field types](./data-modeling/semantic-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
 - [Working with JSON](./data-modeling/json-unfolding.md)
 - [Segments](./data-modeling/segments.md)
@@ -138,11 +143,18 @@ Metabase's reference documentation.
 - [Basic actions](./actions/basic.md)
 - [Custom actions](./actions/custom.md)
 
-### Organization
+### AI
+
+- [AI overview](./ai/start.md)
+- [Metabot](./ai/metabot.md)
+- [Setting up Metabot](./ai/settings.md)
+
+### Exploration and organization
 
 - [Organization overview](./exploration-and-organization/start.md)
 - [Basic exploration](./exploration-and-organization/exploration.md)
 - [Collections](./exploration-and-organization/collections.md)
+- [Keyboard shortcuts](./exploration-and-organization/keyboard-shortcuts.md)
 - [History](./exploration-and-organization/history.md)
 - [Trash](./exploration-and-organization/delete-and-restore.md)
 - [Data reference](./exploration-and-organization/data-model-reference.md)
@@ -179,10 +191,13 @@ Metabase's reference documentation.
 - [Data permissions](./permissions/data.md)
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
-- [Data sandboxes](./permissions/data-sandboxes.md)
-- [Data sandbox examples](./permissions/data-sandbox-examples.md)
+- [Row and column security](./permissions/row-and-column-security.md)
+- [Row and column security examples](./permissions/row-and-column-security-examples.md)
+- [Connection impersonation](./permissions/impersonation.md)
+- [Database routing](./permissions/database-routing.md)
 - [Snippets folder permissions](./permissions/snippets.md)
 - [Notification permissions](./permissions/notifications.md)
+- [Configuring permissions for embedding](./permissions/embedding.md)
 
 ### Embedding
 
@@ -192,6 +207,7 @@ Metabase's reference documentation.
 - [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
 - [Static embedding](./embedding/static-embedding.md)
 - [Parameters for static embeds](./embedding/static-embedding-parameters.md)
+- [Securing embedded Metabase](./embedding/securing-embeds.md)
 
 ### Configuration
 
@@ -217,9 +233,9 @@ Metabase's reference documentation.
 - [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
 
-### Cloud
+### Metabase Cloud
 
-- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
+- [Documentation for Metabase Cloud and Store](./cloud/start.md)
 
 ### Metabase API
 
@@ -251,10 +267,6 @@ Metabase's reference documentation.
 ### [Discussion](https://discourse.metabase.com)
 
 Share and connect with other Metabasers.
-
-### [Metabase Cloud](https://www.metabase.com/docs/latest/cloud/start)
-
-For docs specific to Metabase Cloud plans.
 
 ### [Community stories](https://www.metabase.com/community)
 
@@ -291,3 +303,5 @@ Data jargon explained.
 ### [Metabase Experts](https://www.metabase.com/partners/)
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/).
+
+<!-- bump 2 -->

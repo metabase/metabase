@@ -83,7 +83,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        cols (m/index-by :id (lib/filterable-columns query))
+        cols (->> (lib/filterable-columns query)
+                  (map #(m/filter-vals some? %))
+                  (m/index-by :id))
         user-id-col (cols (meta/id :users :id))
         checkins-user-id-col (cols (meta/id :checkins :user-id))
         user-last-login-col (cols (meta/id :users :last-login))
@@ -101,7 +103,7 @@
                  :id (:id checkins-user-id-col)
                  :display-name "User ID: Auto binned"
                  :metabase.lib.join/join-alias "Checkins"}
-                (assoc (meta/field-metadata :users :id) :display-name "ID: Auto binned")]}
+                (assoc (m/filter-vals some? (meta/field-metadata :users :id)) :display-name "ID: Auto binned")]}
               (lib/expression-parts query (lib/= (lib/with-binning checkins-user-id-col {:strategy :default})
                                                  (lib/with-binning user-id-col {:strategy :default}))))))
     (testing "bucketing"
@@ -116,7 +118,7 @@
                  :metabase.lib.field/temporal-unit :day
                  :display-name "Date: Day"
                  :metabase.lib.join/join-alias "Checkins"}
-                (assoc (meta/field-metadata :users :last-login) :display-name "Last Login: Day")]}
+                (assoc (m/filter-vals some? (meta/field-metadata :users :last-login)) :display-name "Last Login: Day")]}
               (lib/expression-parts query (lib/= (lib/with-temporal-bucket checkins-date-col :day)
                                                  (lib/with-temporal-bucket user-last-login-col :day))))))))
 
@@ -145,9 +147,8 @@
                  :name (:name col)
                  :display-name (:display-name col)}
                 (lib/expression-parts query stage-number (lib.ref/ref col))))))
-
     (testing "unknown column reference"
-      (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 100]]
+      (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 12345678]]
         (mu/disable-enforcement
           (is (=? {:lib/type :metadata/column
                    :display-name "Unknown Field"}
@@ -172,7 +173,6 @@
                  :name segment-name
                  :description segment-description}
                 (lib/expression-parts query stage-number (lib.ref/ref segment))))))
-
     (testing "unknown segment reference"
       (let [unknown-ref [:segment {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -199,7 +199,6 @@
                  :name metric-name
                  :description metric-description}
                 (lib/expression-parts query stage-number (lib.ref/ref metric))))))
-
     (testing "unknown metric reference"
       (let [unknown-ref [:metric {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -252,7 +251,7 @@
                                                                 1)))))
 
 (deftest ^:parallel normalize-expression-clause-test
-  (let [column (meta/field-metadata :checkins :date)]
+  (let [column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "normalizes week-mode correctly"
       (doseq [[expected strings] {:us ["US" "us" "Us"], :iso ["ISO" "iso" "Iso"]}
               week-mode strings]
@@ -263,11 +262,10 @@
                                              :args [column week-mode]}))))))))
 
 (deftest ^:parallel case-or-if-parts-test
-  (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        int-field    (meta/field-metadata :venues :category-id)
-        string-field (meta/field-metadata :venues :name)
-        dt-field     (meta/field-metadata :users :last-login)
-        boolean-field (meta/field-metadata :venues :category-id)
+  (let [query         (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        int-field     (m/filter-vals some? (meta/field-metadata :venues :category-id))
+        other-int-field     (m/filter-vals some? (meta/field-metadata :venues :price))
+        boolean-field (m/filter-vals some? (meta/field-metadata :venues :category-id))
         test-cases {(lib/case [[boolean-field int-field]])
                     {:operator :case
                      :options {}
@@ -278,25 +276,25 @@
                      :options {}
                      :args [boolean-field int-field]}
 
-                    (lib/case [[boolean-field int-field]] string-field)
+                    (lib/case [[boolean-field int-field]] other-int-field)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field string-field]}
+                     :args [boolean-field int-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]])
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]])
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field]}
+                     :args [boolean-field int-field boolean-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]] nil)
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]] nil)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field]}
+                     :args [boolean-field int-field boolean-field other-int-field]}
 
-                    (lib/case [[boolean-field int-field] [boolean-field string-field]] dt-field)
+                    (lib/case [[boolean-field int-field] [boolean-field other-int-field]] other-int-field)
                     {:operator :case
                      :options {}
-                     :args [boolean-field int-field boolean-field string-field dt-field]}}]
+                     :args [boolean-field int-field boolean-field other-int-field other-int-field]}}]
     (testing "case pairs should be flattened in expression parts"
       (doseq [[clause parts] test-cases]
         (let [{:keys [operator options args]} parts
@@ -328,15 +326,14 @@
 
 (deftest ^:parallel nested-case-or-if-parts-test
   (let [query        (lib/query meta/metadata-provider (meta/table-metadata :venues))
-        int-field    (meta/field-metadata :venues :category-id)
-        string-field (meta/field-metadata :venues :name)
-        boolean-field (meta/field-metadata :venues :category-id)]
+        string-field  (m/filter-vals some? (meta/field-metadata :venues :name))
+        boolean-field (m/filter-vals some? (meta/field-metadata :venues :category-id))]
     (testing "deeply nested case/if should round-trip through expression-parts and expression-clause"
       (doseq [parts [{:lib/type :mbql/expression-parts
                       :operator :case
                       :options {}
                       :args [boolean-field
-                             int-field
+                             string-field
                              "default"]}
 
                      {:lib/type :mbql/expression-parts
@@ -351,7 +348,7 @@
                                       :operator :case
                                       :options {}
                                       :args [boolean-field
-                                             int-field
+                                             string-field
                                              "default"]}]}]}
 
                      {:lib/type :mbql/expression-parts
@@ -374,7 +371,7 @@
 
 (deftest ^:parallel string-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :venues :name)]
+        column (m/filter-vals some? (meta/field-metadata :venues :name))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-empty column)
                               {:operator :is-empty, :column column}
@@ -441,11 +438,17 @@
             filter-clause (lib/= (m/find-first #(= (:name %) "NAME") (lib/filterable-columns query)) "test")
             filter-parts  (lib.fe-util/string-filter-parts query -1 filter-clause)]
         (is (=? {:field-id (meta/id :venues :name)}
-                (lib.field/field-values-search-info query (:column filter-parts))))))))
+                (lib.field/field-values-search-info query (:column filter-parts))))))
+    (testing "should create case-insensitive filter clauses unless `case-sensitive` is explicitly set to `true`"
+      (doseq [operator [:contains :does-not-contain :starts-with :ends-with]]
+        (are [expected options] (=? expected (lib/options (lib.fe-util/string-filter-clause operator column ["A"] options)))
+          {:case-sensitive false} {}
+          {:case-sensitive false} {:case-sensitive false}
+          {:case-sensitive true} {:case-sensitive true})))))
 
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)
-        column        (meta/field-metadata :venues :price)
+        column        (m/filter-vals some? (meta/field-metadata :venues :price))
         bigint-value  (u.number/bigint "9007199254740993")
         bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
@@ -481,8 +484,8 @@
 
 (deftest ^:parallel coordinate-filter-parts-test
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
-        lat-column    (meta/field-metadata :people :latitude)
-        lon-column    (meta/field-metadata :people :longitude)
+        lat-column    (m/filter-vals some? (meta/field-metadata :people :latitude))
+        lon-column    (m/filter-vals some? (meta/field-metadata :people :longitude))
         bigint-value  (u.number/bigint "9007199254740993")
         bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
@@ -582,7 +585,7 @@
 
 (deftest ^:parallel specific-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :checkins :date)]
+        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= column "2024-11-28")
                               {:operator   :=
@@ -647,7 +650,7 @@
 
 (deftest ^:parallel relative-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :checkins :date)]
+        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/time-interval column 0 :day)
                               {:column column
@@ -703,7 +706,7 @@
 
 (deftest ^:parallel exclude-date-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :checkins :date)]
+        column (m/filter-vals some? (meta/field-metadata :checkins :date))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)
                               {:operator :is-null
@@ -789,7 +792,7 @@
 
 (deftest ^:parallel time-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (assoc (meta/field-metadata :checkins :date)
+        column (assoc (m/filter-vals some? (meta/field-metadata :checkins :date))
                       :base-type      :type/Time
                       :effective-type :type/Time)]
     (testing "clause to parts roundtrip"
@@ -836,7 +839,7 @@
 
 (deftest ^:parallel default-filter-parts-test
   (let [query  (lib.tu/venues-query)
-        column (meta/field-metadata :venues :price)]
+        column (m/filter-vals some? (meta/field-metadata :venues :price))]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}}]
@@ -851,8 +854,79 @@
         (lib.filter/> column 10)
         (lib.filter/and (lib.filter/is-null column) true)))))
 
+(deftest ^:parallel aggregation-ref-parts-test
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+        sum   (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+        query (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) "2*sum"))]
+    (is (=? {:lib/type :mbql/expression-parts,
+             :operator :*,
+             :options  {:name "2*sum", :display-name "2*sum"},
+             :args     [2
+                        {:lib/type :metadata/column
+                         :base-type :type/Float
+                         :name "sum"
+                         :display-name "Sum of Total"
+                         :effective-type :type/Float
+                         :lib/source :source/aggregations
+                         :lib/source-uuid string?}]}
+            (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
+
+(deftest ^:parallel join-condition-clause-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (=? [:= {} lhs rhs]
+            (lib.fe-util/join-condition-clause := lhs rhs)))))
+
+(deftest ^:parallel join-condition-parts-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (= {:operator :=, :lhs-expression lhs, :rhs-expression rhs}
+           (lib.fe-util/join-condition-parts (lib/= lhs rhs))))))
+
+(deftest ^:parallel join-condition-lhs-or-rhs-literal?-test
+  (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        products          (meta/table-metadata :products)
+        lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+        lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+        rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+    (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs))
+      (lib.expression/value 10)
+      (lib.expression/value "abc")
+      (lib.expression/value true)
+      (lib.expression/value false))
+    (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-literal? lhs-or-rhs))
+      (lib/ref lhs-order-tax)
+      (lib/ref rhs-product-price)
+      (lib/+ lhs-order-tax 1)
+      (lib/+ lhs-order-tax lhs-order-tax)
+      (lib/+ 1 rhs-product-price)
+      (lib/+ rhs-product-price rhs-product-price))))
+
+(deftest ^:parallel join-condition-lhs-or-rhs-column?-test
+  (let [query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                              (lib/expression "double-total" (lib/* (meta/field-metadata :orders :total) 2)))
+        products          (meta/table-metadata :products)
+        lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+        lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+        rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+        rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)
+        lhs-custom-column (m/find-first (comp #{"double-total"} :name) lhs-columns)]
+    (are [lhs-or-rhs] (true? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      (lib/ref lhs-order-tax)
+      (lib/ref rhs-product-price)
+      (lib/ref lhs-custom-column))
+    (are [lhs-or-rhs] (false? (lib.fe-util/join-condition-lhs-or-rhs-column? lhs-or-rhs))
+      (lib.expression/value 1)
+      (lib/+ lhs-order-tax 1)
+      (lib/+ lhs-order-tax lhs-order-tax)
+      (lib/+ 1 rhs-product-price)
+      (lib/+ rhs-product-price rhs-product-price))))
+
 (deftest ^:parallel date-parts-display-name-test
-  (let [created-at (meta/field-metadata :products :created-at)
+  (let [created-at (m/filter-vals some? (meta/field-metadata :products :created-at))
         date-arg-1 "2023-11-02"
         date-arg-2 "2024-01-03"
         datetime-arg "2024-12-05T22:50:27"]
@@ -977,7 +1051,85 @@
                         {:type :table,    :id "card__1"}]
                        (lib/dependent-metadata query 1 :metric))
         query
-        (lib/append-stage query)))))
+        (lib/append-stage query))))
+  (testing "Native query snippets should be included in dependent metadata"
+    (let [;; lib/native-query would try to look up the snippets:
+          query {:lib/type :mbql/query
+                 :database 1
+                 :stages [{:lib/type :mbql.stage/native
+                           :native "SELECT * WHERE {{snippet: filter1}} AND {{snippet: filter2}}"
+                           :template-tags {"snippet: filter1" {:type :snippet
+                                                               :snippet-id 10
+                                                               :snippet-name "filter1"
+                                                               :name "snippet: filter1"
+                                                               :display-name "Filter 1"
+                                                               :id "def456"}
+                                           "snippet: filter2" {:type :snippet
+                                                               :snippet-id 20
+                                                               :snippet-name "filter2"
+                                                               :name "snippet: filter2"
+                                                               :display-name "Filter 2"
+                                                               :id "ghi789"}}}]}]
+      (is (=? [{:type :database}
+               {:type :schema}
+               {:type :native-query-snippet :id 10}
+               {:type :native-query-snippet :id 20}]
+              (lib/dependent-metadata query nil :question))))))
+
+(deftest ^:parallel recursive-snippet-dependencies-test
+  (testing "Recursive snippet dependencies should be resolved"
+    (let [metadata-provider (lib.tu/mock-metadata-provider
+                             {:native-query-snippets
+                              [{:lib/type :metadata/native-query-snippet
+                                :id 10
+                                :name "filter1"
+                                :template-tags {"snippet: nested1" {:type :snippet
+                                                                    :snippet-id 30
+                                                                    :snippet-name "nested1"
+                                                                    :name "snippet: nested1"
+                                                                    :display-name "Nested 1"
+                                                                    :id "test-id-30"}
+                                                "snippet: nested2" {:type :snippet
+                                                                    :snippet-id 40
+                                                                    :snippet-name "nested2"
+                                                                    :name "snippet: nested2"
+                                                                    :display-name "Nested 2"
+                                                                    :id "test-id-40"}}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 30
+                                :name "nested1"
+                                :template-tags {"snippet: deeply-nested" {:type :snippet
+                                                                          :snippet-id 50
+                                                                          :snippet-name "deeply-nested"
+                                                                          :name "snippet: deeply-nested"
+                                                                          :display-name "Deeply Nested"
+                                                                          :id "test-id-50"}}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 40
+                                :name "nested2"
+                                :template-tags {}}
+                               {:lib/type :metadata/native-query-snippet
+                                :id 50
+                                :name "deeply-nested"
+                                :template-tags {}}]})
+          query (lib/query metadata-provider
+                           {:lib/type :mbql/query
+                            :database 1
+                            :stages [{:lib/type :mbql.stage/native
+                                      :native "SELECT * WHERE {{snippet: filter1}}"
+                                      :template-tags {"snippet: filter1" {:type :snippet
+                                                                          :snippet-id 10
+                                                                          :snippet-name "filter1"
+                                                                          :name "snippet: filter1"
+                                                                          :display-name "Filter 1"
+                                                                          :id "test-id-1"}}}]})]
+      (is (=? [{:type :database}
+               {:type :schema}
+               {:type :native-query-snippet :id 10}
+               {:type :native-query-snippet :id 30}
+               {:type :native-query-snippet :id 50}
+               {:type :native-query-snippet :id 40}]
+              (lib/dependent-metadata query nil :question))))))
 
 (deftest ^:parallel table-or-card-dependent-metadata-test
   (testing "start from table"

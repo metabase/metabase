@@ -1,5 +1,9 @@
 (ns metabase.query-processor.dashboard-test
   "There are more e2e tests in [[metabase.dashboards.api-test]]."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
+                       ;; metadata providers.
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.dashboards.api-test :as api.dashboard-test]
@@ -452,8 +456,8 @@
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
                      :model/Card {card-id :id} {:dataset_query (mt/native-query
-                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
-                                                                  :template-tags {}})}
+                                                                {:query "SELECT COUNT(*) FROM \"ORDERS\""
+                                                                 :template-tags {}})}
                      :model/DashboardCard {dashcard-id :id} {:card_id card-id
                                                              :dashboard_id dashboard-id}]
         (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]

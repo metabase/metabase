@@ -21,7 +21,7 @@
    data))
 
 (deftest seed-notification!-is-idempotent
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (let [get-notifications-data #(-> (t2/select :model/Notification)
                                       models.notification/hydrate-notification
                                       nullify-timestamp)
@@ -31,7 +31,7 @@
                (notification.seed/seed-notification!))))
       (let [before (get-notifications-data)]
         (testing "skip all since none of the notifications were changed"
-          (is (= {:skip 3}
+          (is (= {:skip (count @@#'notification.seed/default-notifications)}
                  (notification.seed/seed-notification!))))
         (testing "it equals to the data before "
           (is (= before (get-notifications-data))))))))

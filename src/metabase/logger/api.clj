@@ -5,9 +5,9 @@
    [flatland.ordered.map :as ordered-map]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.logger.core :as logger]
+   [metabase.permissions.core :as perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -21,7 +21,7 @@
 (api.macros/defendpoint :get "/logs"
   "Logs."
   []
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (logger/messages))
 
 (defn- all-namespace-names

@@ -1,12 +1,11 @@
 import type { Query } from "history";
-import { Priority, useKBar, useRegisterActions } from "kbar";
-import { useMemo, useState } from "react";
+import { Priority, VisualState, useKBar, useRegisterActions } from "kbar";
+import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
-import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
@@ -32,6 +31,7 @@ import {
   isRecentTableItem,
 } from "metabase-types/api";
 
+import { getAdminSettingsSections } from "../constants";
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
@@ -43,6 +43,9 @@ export const useCommandPalette = ({
   const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const { isVisible } = useKBar((s) => ({
+    isVisible: s.visualState !== VisualState.hidden,
+  }));
 
   const isAdmin = useSelector(getUserIsAdmin);
   const canUserAccessSettings = useSelector(canAccessSettings);
@@ -60,10 +63,10 @@ export const useCommandPalette = ({
 
   useDebounce(
     () => {
-      setDebouncedSearchText(trimmedQuery);
+      setDebouncedSearchText(isVisible ? trimmedQuery : "");
     },
-    SEARCH_DEBOUNCE_DURATION,
-    [trimmedQuery],
+    isVisible ? SEARCH_DEBOUNCE_DURATION : 0,
+    [trimmedQuery, isVisible],
   );
 
   const hasQuery = searchQuery.length > 0;
@@ -72,6 +75,7 @@ export const useCommandPalette = ({
     currentData: searchResults,
     isFetching: isSearchLoading,
     error: searchError,
+    requestId: searchRequestId,
   } = useSearchQuery(
     {
       q: debouncedSearchText,
@@ -85,16 +89,15 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems } = useListRecentsQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery();
+  useEffect(() => {
+    if (isVisible) {
+      refetchRecents();
+    }
+  }, [isVisible, refetchRecents]);
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
-  const settingsSections = useMemo<Record<string, any>>(
-    () => getSectionsWithPlugins(),
-    [],
-  );
 
   const docsAction = useMemo<PaletteAction[]>(() => {
     const link = debouncedSearchText
@@ -178,7 +181,16 @@ export const useCommandPalette = ({
             keywords: debouncedSearchText,
             icon: "link" as IconName,
             perform: () => {
-              trackSearchClick("view_more", 0, "command-palette");
+              trackSearchClick({
+                itemType: "view_more",
+                position: 0,
+                context: "command-palette",
+                searchEngine: searchResults?.engine || "unknown",
+                requestId: searchRequestId,
+                entityModel: null,
+                entityId: null,
+                searchTerm: debouncedSearchText,
+              });
             },
             priority: Priority.HIGH,
             extra: {
@@ -198,7 +210,16 @@ export const useCommandPalette = ({
               keywords: debouncedSearchText,
               priority: Priority.NORMAL - index,
               perform: () => {
-                trackSearchClick("item", index, "command-palette");
+                trackSearchClick({
+                  itemType: "item",
+                  position: index,
+                  context: "command-palette",
+                  searchEngine: searchResults?.engine || "unknown",
+                  requestId: searchRequestId,
+                  entityModel: result.model,
+                  entityId: typeof result.id === "number" ? result.id : null,
+                  searchTerm: debouncedSearchText,
+                });
               },
               extra: {
                 moderatedStatus: result.moderated_status,
@@ -231,6 +252,7 @@ export const useCommandPalette = ({
     searchResults,
     locationQuery,
     isSearchTypeaheadEnabled,
+    searchRequestId,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -288,9 +310,9 @@ export const useCommandPalette = ({
       return [];
     }
 
-    return Object.entries(settingsSections)
-      .filter(([slug, section]) => {
-        if (section.getHidden?.(settingValues)) {
+    return Object.entries(getAdminSettingsSections(settingValues))
+      .filter(([_slug, section]) => {
+        if (section.hidden) {
           return false;
         }
 
@@ -298,7 +320,7 @@ export const useCommandPalette = ({
           return false;
         }
 
-        return !slug.includes("/");
+        return true;
       })
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
@@ -310,7 +332,7 @@ export const useCommandPalette = ({
           href: `/admin/settings/${slug}`,
         },
       }));
-  }, [canUserAccessSettings, isAdmin, settingsSections, settingValues]);
+  }, [canUserAccessSettings, isAdmin, settingValues]);
 
   useRegisterActions(hasQuery ? [...adminActions, ...settingsActions] : [], [
     adminActions,

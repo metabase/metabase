@@ -61,5 +61,5 @@ E.g.,
 
 ## Further reading
 
-- [Metabase releases on Github](https://github.com/metabase/metabase/releases)
+- [Metabase releases on GitHub](https://github.com/metabase/metabase/releases)
 - [Metabase release blog posts](https://www.metabase.com/releases)

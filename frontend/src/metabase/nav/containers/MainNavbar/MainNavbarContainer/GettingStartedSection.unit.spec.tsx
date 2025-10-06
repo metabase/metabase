@@ -1,26 +1,35 @@
+import userEvent from "@testing-library/user-event";
+
 import { renderWithProviders, screen } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import { createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { GettingStartedSection } from "./GettingStartedSection";
 
 const setup = ({
   hasChildren = true,
-  isEmbeddingIframe,
+  isAdmin = true,
 }: {
   hasChildren?: boolean;
-  isEmbeddingIframe?: boolean;
+  isAdmin?: boolean;
 } = {}) => {
-  if (isEmbeddingIframe) {
-    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
-  }
+  const onAddDataModalOpen = jest.fn();
 
-  return renderWithProviders(
-    <GettingStartedSection nonEntityItem={{ type: "collection" }}>
+  renderWithProviders(
+    <GettingStartedSection
+      nonEntityItem={{ type: "collection" }}
+      onAddDataModalOpen={onAddDataModalOpen}
+    >
       {hasChildren && "Child"}
     </GettingStartedSection>,
-    { storeInitialState: createMockState() },
+    {
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      }),
+    },
   );
+
+  return { onAddDataModalOpen };
 };
 
 describe("GettingStartedSection", () => {
@@ -46,15 +55,19 @@ describe("GettingStartedSection", () => {
     expect(screen.getByText("How to use Metabase")).toBeInTheDocument();
   });
 
-  it("should not render the onboarding link within embedding iframe", () => {
-    setup({ isEmbeddingIframe: true });
-    expect(screen.getByText("Getting Started")).toBeInTheDocument();
-    expect(screen.queryByText("How to use Metabase")).not.toBeInTheDocument();
+  it("should render the 'Add data' button", () => {
+    setup();
+    expect(screen.getByLabelText("Add data")).toBeInTheDocument();
   });
 
-  it("should not render if empty", () => {
-    setup({ hasChildren: false, isEmbeddingIframe: true });
-    expect(screen.queryByText("Getting Started")).not.toBeInTheDocument();
-    expect(screen.queryByText("How to use Metabase")).not.toBeInTheDocument();
+  it("should not render the 'Add data' button if the user is not an admin", () => {
+    setup({ isAdmin: false });
+    expect(screen.queryByLabelText("Add data")).not.toBeInTheDocument();
+  });
+
+  it("should trigger the modal on 'Add data' click", async () => {
+    const { onAddDataModalOpen } = setup();
+    await userEvent.click(screen.getByText("Add data"));
+    expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
   });
 });

@@ -17,6 +17,7 @@ import type {
   BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import { createAxisVisibilityOption } from "metabase/visualizations/echarts/cartesian/option/axis";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
 import type {
@@ -38,6 +39,7 @@ import {
 import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
+import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import {
   getHoveredEChartsSeriesDataKeyAndIndex,
   getHoveredSeriesDataKey,
@@ -45,6 +47,7 @@ import {
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
+  containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
   option: EChartsCoreOption,
@@ -69,6 +72,7 @@ export const useChartEvents = (
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
+  useTooltipMouseLeave(chartRef, onHoverChange, containerRef);
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
@@ -107,15 +111,29 @@ export const useChartEvents = (
         return;
       }
 
-      const yAxisShowOption = [{ show: true }, { show: true }];
-      if (hoveredSeriesDataKey != null) {
-        const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
-          hoveredSeriesDataKey,
-        )
-          ? 1
-          : 0;
+      let yAxisShowOption: ReturnType<typeof createAxisVisibilityOption>[];
 
-        yAxisShowOption[hiddenYAxisIndex].show = false;
+      const noSeriesHovered = hoveredSeriesDataKey == null;
+      const leftAxisSeriesHovered =
+        hoveredSeriesDataKey != null &&
+        chartModel.leftAxisModel?.seriesKeys.includes(hoveredSeriesDataKey);
+
+      if (noSeriesHovered) {
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+          createAxisVisibilityOption({ show: true, splitLineVisible: false }),
+        ];
+      } else if (leftAxisSeriesHovered) {
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
+        ];
+      } else {
+        // right axis series hovered
+        yAxisShowOption = [
+          createAxisVisibilityOption({ show: false, splitLineVisible: false }),
+          createAxisVisibilityOption({ show: true, splitLineVisible: true }),
+        ];
       }
 
       chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
@@ -156,7 +174,11 @@ export const useChartEvents = (
           }
 
           if (event.seriesId === GOAL_LINE_SERIES_ID) {
-            const eventData = getGoalLineHoverData(settings, event);
+            const eventData = getGoalLineHoverData(
+              settings,
+              event,
+              chartModel.leftAxisModel?.formatGoal,
+            );
 
             onHoverChange?.(eventData);
             return;
@@ -223,7 +245,7 @@ export const useChartEvents = (
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
           const eventData = getBrushData(
-            rawSeries,
+            isVisualizerViz ? visualizerRawSeries : rawSeries,
             metadata,
             chartModel,
             event,
@@ -250,6 +272,8 @@ export const useChartEvents = (
       onDeselectTimelineEvents,
       onOpenQuestion,
       rawSeries,
+      visualizerRawSeries,
+      isVisualizerViz,
       metadata,
       onChangeCardAndRun,
     ],

@@ -82,6 +82,11 @@
   [_ _ expr]
   (h2x/->timestamp [:from_unixtime expr]))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:hive-like :milliseconds]
+  [_ _ expr]
+  (-> [:timestamp_millis expr]
+      (h2x/with-database-type-info "timestamp")))
+
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
 
@@ -223,6 +228,10 @@
 (defmethod sql.qp/datetime-diff [:hive-like :second]
   [_driver _unit x y]
   [:- [:unix_timestamp y] [:unix_timestamp x]])
+
+(defmethod sql.qp/cast-temporal-string [:hive-like :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:to_timestamp expr (h2x/literal "yyyyMMddHHmmss")])
 
 (def ^:dynamic *inline-param-style*
   "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a

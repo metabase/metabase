@@ -380,8 +380,8 @@
         (is (= (inc (count before-joins))
                (count after-joins)))
         (testing "at the end"
-          (let [summaries? (or (seq (lib/aggregations after))
-                               (seq (lib/breakouts after)))]
+          (let [summaries? (or (seq (lib/aggregations after stage-number))
+                               (seq (lib/breakouts after stage-number)))]
             (is (=? {:lib/type   :mbql/join
                      :strategy   strategy
                      :alias      string?
@@ -423,6 +423,18 @@
       (is (empty? (all-stage-parts after -1))))))
 
 ;; Generator internals ===========================================================================
+(defn history-seq
+  "Returns the sequence of contexts, newest first."
+  [ctx]
+  (->> ctx
+       (iterate :previous)
+       (take-while some?)))
+
+(defn step-seq
+  "Returns the sequence of steps that brought about this query, oldest first."
+  [ctx]
+  (->> ctx history-seq reverse next (map :step)))
+
 (defn- run-step
   "Applies a step, returning the updated context."
   [{:keys [query] :as ctx} step]
@@ -441,7 +453,11 @@
   (let [{after :query :as ctx'} (run-step ctx step)]
     ;; Run the before/after tests. Throws if the tests fail.
     (try
-      (before-and-after before after step)
+      (testing (str "\n\nwith before steps\n" (str/join "\n" (map pr-str (step-seq ctx)))
+                    "\n\nwith before query\n" (u/pprint-to-str before)
+                    "\n\nwith current step\n" (pr-str step)
+                    "\n\nwith after query\n"  (u/pprint-to-str after))
+        (before-and-after before after step))
       ctx'
 
       (catch #?(:clj Throwable :cljs js/Error) e
@@ -449,18 +465,6 @@
                                                             (dissoc :query)
                                                             (assoc :before before, :after after, :step step))
                         e))))))
-
-(defn history-seq
-  "Returns the sequence of contexts, newest first."
-  [ctx]
-  (->> ctx
-       (iterate :previous)
-       (take-while some?)))
-
-(defn step-seq
-  "Returns the sequence of steps that brought about this query, oldest first."
-  [ctx]
-  (->> ctx history-seq reverse next (map :step)))
 
 (defn query->context
   "Retrieves the generator context from the metadata on a generated query."

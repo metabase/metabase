@@ -1,9 +1,14 @@
+import { registerVisualization } from "metabase/visualizations";
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   createMockCard,
   createMockTableColumnOrderSetting,
 } from "metabase-types/api/mocks";
 
 import { extendCardWithDashcardSettings, mergeSettings } from "./typed-utils";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(BarChart);
 
 describe("mergeSettings (metabase#14597)", () => {
   it("should merge with second overriding first", () => {
@@ -145,5 +150,25 @@ describe("extendCardWithDashcardSettings", () => {
     const result = extendCardWithDashcardSettings(card, undefined);
 
     expect(result.visualization_settings).toEqual({ foo: "bar" });
+  });
+
+  it("should omit settings that are hidden on dashboards (metabase#61112)", () => {
+    const card = createMockCard({
+      display: "bar" as const,
+      visualization_settings: { "graph.metrics": ["count"] },
+    });
+
+    const result = extendCardWithDashcardSettings(card, {
+      // non-dashboard settings that should be filtered out
+      "graph.dimensions": ["any_value"],
+      "graph.metrics": ["avg"],
+      // dashboard setting that should be preserved
+      "graph.goal_label": "goal label",
+    });
+
+    expect(result.visualization_settings).toEqual({
+      "graph.metrics": ["count"],
+      "graph.goal_label": "goal label",
+    });
   });
 });

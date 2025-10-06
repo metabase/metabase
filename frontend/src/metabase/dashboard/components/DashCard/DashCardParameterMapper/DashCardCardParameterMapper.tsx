@@ -4,6 +4,7 @@ import { isActionDashCard } from "metabase/actions/utils";
 import {
   getDashcardParameterMappingOptions,
   getEditingParameter,
+  getEditingParameterInlineDashcard,
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
@@ -41,6 +42,7 @@ const mapStateToProps = (
     target: getParameterTarget(state, props),
     question: getQuestionByCard(state, props),
     mappingOptions: getDashcardParameterMappingOptions(state, props),
+    editingParameterInlineDashcard: getEditingParameterInlineDashcard(state),
     isRecentlyAutoConnected: getIsRecentlyAutoConnectedDashcard(
       state,
       props,
@@ -59,6 +61,8 @@ interface DashcardCardParameterMapperProps {
   question?: Question;
   mappingOptions: ParameterMappingOption[];
   isRecentlyAutoConnected: boolean;
+  editingParameterInlineDashcard?: DashboardCard;
+  compact?: boolean;
 }
 
 export function DashCardCardParameterMapper({
@@ -70,6 +74,8 @@ export function DashCardCardParameterMapper({
   question,
   mappingOptions,
   isRecentlyAutoConnected,
+  editingParameterInlineDashcard,
+  compact,
 }: DashcardCardParameterMapperProps) {
   const isQuestion = isQuestionDashCard(dashcard);
   const hasSeries = isQuestion && dashcard.series && dashcard.series.length > 0;
@@ -91,14 +97,24 @@ export function DashCardCardParameterMapper({
   const shouldShowAutoConnectHint =
     isRecentlyAutoConnected && !!selectedMappingOption;
 
+  const additionalActionParametersContent =
+    target && isParameterVariableTarget(target) && isAction
+      ? editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
+        ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+        : t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
+      : undefined;
+
+  const shouldShowActionParametersWarningInTooltip =
+    isMobile || dashcard.size_y * dashcard.size_x <= 30 || dashcard.size_x < 4;
+
   return (
     <Flex
       direction="column"
       align="center"
       w="100%"
-      p="xs"
       pos="relative"
       my={!isMobile && dashcard.size_y < 2 ? "0" : "0.5rem"}
+      py="lg"
     >
       {hasSeries && (
         <Box maw="100px" mb="sm" fz="0.83em" className={S.CardLabel}>
@@ -114,11 +130,18 @@ export function DashCardCardParameterMapper({
         editingParameter={editingParameter}
         mappingOptions={mappingOptions}
         isQuestion={isQuestion}
+        editingParameterInlineDashcard={editingParameterInlineDashcard}
         card={card}
         selectedMappingOption={selectedMappingOption}
         target={target}
         shouldShowAutoConnectHint={shouldShowAutoConnectHint}
         layoutHeight={layoutHeight}
+        compact={compact}
+        additionalActionParametersContent={
+          (shouldShowActionParametersWarningInTooltip &&
+            additionalActionParametersContent) ||
+          undefined
+        }
       />
       <Transition
         mounted={shouldShowAutoConnectHint && layoutHeight > 3}
@@ -133,7 +156,7 @@ export function DashCardCardParameterMapper({
               mt="sm"
               align="center"
               pos="absolute"
-              bottom={-20}
+              bottom={0}
               style={styles}
             >
               <Icon name="sparkles" size="16" />
@@ -149,17 +172,10 @@ export function DashCardCardParameterMapper({
           );
         }}
       </Transition>
-      {target && isParameterVariableTarget(target) && (
-        <span className={S.Warning}>
-          {editingParameter && isDateParameter(editingParameter) // Date parameters types that can be wired to variables can only take a single value anyway, so don't explain it in the warning.
-            ? isAction
-              ? t`Action parameters do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-              : t`Native question variables do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-            : isAction
-              ? t`Action parameters only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`
-              : t`Native question variables only accept a single value. They do not support dropdown lists or search box filters, and can't limit values for linked filters.`}
-        </span>
-      )}
+      {additionalActionParametersContent &&
+        !shouldShowActionParametersWarningInTooltip && (
+          <span className={S.Warning}>{additionalActionParametersContent}</span>
+        )}
     </Flex>
   );
 }

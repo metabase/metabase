@@ -6,13 +6,14 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
 
@@ -86,7 +87,6 @@
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
             (is (mr/validate ::lib.schema/query query))
-            (is (string? (-> resolved lib.options/ident not-empty)))
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
@@ -105,8 +105,7 @@
   (let [query (lib.tu/venues-query-with-last-stage
                {:expressions [[:+
                                {:lib/uuid (str (random-uuid))
-                                :lib/expression-name "prev_month"
-                                :ident               (u/generate-nano-id)}
+                                :lib/expression-name "prev_month"}
                                (lib.tu/field-clause :users :last-login)
                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
@@ -282,19 +281,19 @@
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer, :ident string?} 100]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer} 100]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text} "value"]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.23]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float} 1.23]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 1.23)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean} false]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" false)
               (lib/expressions)))))
@@ -305,33 +304,47 @@
                   (lib/expression "b" 2))
         expressionable-expressions-for-position (fn [pos]
                                                   (some->> (lib/expressionable-columns query pos)
-                                                           (map :lib/desired-column-alias)))]
+                                                           (map :lib/source-column-alias)))]
     ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
     ;; so the first two calls behave the same as the last two.
-    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
+    (is (= ["ID" "NAME" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
 
-(deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
-  (testing "expressionable-columns should filter out expressions which contain :offset"
-    (let [query (-> (lib.tu/venues-query)
-                    (lib/order-by (meta/field-metadata :venues :id) :asc)
-                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
-                    (lib/expression "Nested Offset"
-                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
-      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
-        (is (=? [{:id (meta/id :venues :id) :name "ID"}
-                 {:id (meta/id :venues :name) :name "NAME"}
-                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
-                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
-                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
-                 {:id (meta/id :venues :price) :name "PRICE"}
-                 {:id (meta/id :categories :id) :name "ID"}
-                 {:id (meta/id :categories :name) :name "NAME"}]
-                (lib/expressionable-columns query -1 2)))))))
+(deftest ^:parallel expressions-cannot-contain-aggregation-functions
+  (testing "expressions should not contain aggregation function calls (#41344)"
+    (let [mp lib.tu/metadata-provider-with-metric
+          query (lib/query mp (meta/table-metadata :checkins))
+          user-id-col (meta/field-metadata :checkins :user-id)]
+      (testing "Single arg functions"
+        (are [f] #?(:clj (thrown-with-msg? clojure.lang.ExceptionInfo #"non-aggregation expression"
+                                           (lib/expression query "expr" (f user-id-col)))
+                    :cljs (false? (mr/validate ::lib.schema/query (lib/expression query "expr" (f user-id-col)))))
+          lib/avg
+          lib/distinct
+          lib/max
+          lib/median
+          lib/min
+          lib/stddev
+          lib/sum
+          lib/cum-sum
+          lib/var))
+      (testing "Special functions and nesting"
+        (are [e] #?(:clj (thrown-with-msg? clojure.lang.ExceptionInfo #"non-aggregation expression"
+                                           (lib/expression query "expr" e))
+                    :cljs (false? (mr/validate ::lib.schema/query (lib/expression query "expr" e))))
+          (lib/cum-count)
+          (lib/count-where (lib/< user-id-col 2))
+          (lib/distinct-where user-id-col (lib/< user-id-col 2))
+          (lib/percentile user-id-col 0.75)
+          (lib/share (lib/< user-id-col 2))
+          (lib/sum-where user-id-col (lib/< user-id-col 2))
+          (lib/* 2 (lib.metadata/metric mp 1))
+          (lib/- (lib/* 100 (lib/count)) 42)
+          (lib/* 100 (lib/offset user-id-col -1)))))))
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
@@ -425,9 +438,7 @@
       (is (= "newly-named-expression"
              (lib/display-name query expr)))
       (is (not= (lib.options/uuid orig-expr)
-                (lib.options/uuid expr)))
-      (is (= (lib.options/ident orig-expr)
-             (lib.options/ident expr))))
+                (lib.options/uuid expr))))
     (testing "aggregation expressions can be renamed"
       (is (= "my count"
              (lib/display-name query agg)))
@@ -443,9 +454,7 @@
       (is (= "my count"
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
-                (lib.options/uuid agg)))
-      (is (= (lib.options/ident orig-expr)
-             (lib.options/ident expr))))
+                (lib.options/uuid agg))))
     (testing "filter expressions can be renamed"
       (is (= "my filter"
              (lib/display-name query new-filter)))
@@ -593,6 +602,20 @@
         [:min [:offset {:lib/uuid (str (random-uuid))} [:field 42] 1]]            "Offset"
         [:offset {:lib/uuid (str (random-uuid))} [:sum [:cum-sum [:field 42]]] 1] "CumulativeSum"))))
 
+(deftest ^:parallel diagnose-expression-cyclic-aggregation-tests
+  (testing "self loop"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total))))
+          sum (->> (lib/aggregable-columns query nil)
+                   (m/find-first (comp #{"sum"} :name)))
+          expr-name "2*sum"
+          query2 (lib/aggregate query (lib/with-expression-name (lib/* 2 sum) expr-name))
+          expr (->> (lib/aggregable-columns query2 nil)
+                    (m/find-first (comp #{expr-name} :name))
+                    (lib/* 2))]
+      (is (=? {:message (str "Cycle detected: " expr-name " → " expr-name)}
+              (lib.expression/diagnose-expression query2 0 :aggregation expr 1))))))
+
 (deftest ^:parallel date-and-time-string-literals-test-1-dates
   (are [types input] (= types (lib.schema.expression/type-of input))
     #{:type/Date :type/Text} "2024-07-02"))
@@ -648,3 +671,103 @@
     [:value {:base-type :type/Integer} 123]      123
     [:value {:base-type :type/Boolean} false]    false
     [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))
+
+(deftest ^:parallel coalese-type-test
+  (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          price (-> (lib/ref (meta/field-metadata :venues :price))
+                    (lib.options/update-options dissoc :base-type :effective-type))]
+      (are [expr expected-type] (= expected-type
+                                   (lib.metadata.calculation/type-of query expr))
+        (lib/coalesce price 1)
+        :type/Integer
+
+        ;; so apparently `:type/Float` is the common ancestor of `:type/Integer` and `:type/Float` as of #36558... I'm
+        ;; certain this is wrong but I can't fix every single querying bug all at once. See Slack thread for more
+        ;; discussion https://metaboat.slack.com/archives/C0645JP1W81/p1749169799757029
+        (lib/coalesce price 1.01)
+        :type/Float
+
+        ;; this is still Integer on JS because Integers are stored as floats and thus 1.0 === 1
+        (lib/coalesce price 1.0)
+        #?(:clj  :type/Float
+           :cljs :type/Integer)
+
+        ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+        ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+        (lib/coalesce (meta/field-metadata :people :created-at)  ; :type/DateTimeWithLocalTZ
+                      (meta/field-metadata :people :birth-date)) ; :type/Date
+        :type/DateTime))))
+
+(deftest ^:parallel case-type-test
+  (testing "Should be able to calculate type info for :case with field refs without type info (#30397, QUE-147)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          price (-> (lib/ref (meta/field-metadata :venues :price))
+                    (lib.options/update-options dissoc :base-type :effective-type))]
+      (are [expr expected-type] (= expected-type
+                                   (lib.metadata.calculation/type-of query expr))
+        (lib/case
+         [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500]]
+          600)
+        :type/Integer
+
+        ;; see explanation in test above
+        (lib/case
+         [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.01]]
+          600)
+        :type/Float
+
+        ;; [:if ...] is allegedly an alias of [:case ...]
+        (let [[_case & args] (lib/case
+                              [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+                               [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.0]]
+                               "600")]
+          (into [:if] args))
+        :type/*
+
+        ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+        ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+        (lib/case
+         [[(lib/= (meta/field-metadata :people :name) "A")
+           (meta/field-metadata :people :created-at)]  ; :type/DateTimeWithLocalTZ
+          [(lib/= (meta/field-metadata :people :name) "B")
+           (meta/field-metadata :people :birth-date)]]) ; :type/Date
+        :type/DateTime))))
+
+(deftest ^:parallel case-type-of-test-47887
+  (testing "Case expression with type/Date default value and type/DateTime case value has Date filter popover enabled (#47887)"
+    (let [clause (lib/case
+                  [[(lib/= (meta/field-metadata :people :name) "A")
+                    (meta/field-metadata :people :created-at)]
+                   [(lib/= (meta/field-metadata :people :name) "B")
+                    (meta/field-metadata :people :birth-date)]])
+          query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                    (lib/expression "expr" clause))]
+      ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+      ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+      (is (= :type/DateTime
+             (lib/type-of query clause)))
+      (let [col (m/find-first #(= (:name %) "expr")
+                              (lib/filterable-columns query))]
+        (assert (some? col))
+        (is (lib.types.isa/date-or-datetime? col))))))
+
+(deftest ^:parallel relative-datetime-current-test
+  (testing "Should be able to create a :relative-datetime clause with one arg (:current)"
+    (is (=? [:relative-datetime {:lib/uuid string?} :current]
+            (lib.expression/relative-datetime :current)))))
+
+(deftest ^:parallel relative-datetime-raw-temporal-bucket-test
+  (are [clause expected] (= expected
+                            (lib/raw-temporal-bucket clause))
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} 0 :month]
+    :month
+
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} :current]
+    nil))
+
+(deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
+  (is (= :day
+         (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))

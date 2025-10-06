@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
-import Input from "metabase/core/components/Input";
+import Input from "metabase/common/components/Input";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 import { Icon } from "metabase/ui";
 
 export const OptionsIcon = styled(Icon)`
@@ -17,8 +17,8 @@ export const OptionsIcon = styled(Icon)`
 export const SeriesNameInput = styled(InputBlurChange)`
   width: auto;
 
-  ${({ subtitle }) =>
-    subtitle &&
+  ${({ description }) =>
+    description &&
     `
     ${Input.Field} {
       padding-top: 1rem;

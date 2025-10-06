@@ -15,6 +15,7 @@
 
 (t2/define-after-update :hook/search-index
   [instance]
+
   (search/update! instance)
   nil)
 

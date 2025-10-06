@@ -119,7 +119,8 @@ export const PublicOrEmbeddedQuestion = ({
       return;
     }
 
-    const parameters = card.parameters || getParametersFromCard(card);
+    const parameters =
+      card.parameters || getParametersFromCard(card, metadataRef.current);
 
     try {
       setResult(null);
@@ -203,7 +204,7 @@ export const PublicOrEmbeddedQuestion = ({
         theme={theme}
         titled={titled}
         setCard={setCard}
-        downloadsEnabled={downloadsEnabled.results}
+        downloadsEnabled={downloadsEnabled}
       />
     </LocaleProvider>
   );

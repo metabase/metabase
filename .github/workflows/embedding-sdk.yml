@@ -1,10 +1,7 @@
-name: Embedding SDK
+name: SDK
 
 on:
-  push:
-
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -16,8 +13,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      documentation: ${{ steps.changes.outputs.documentation }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
       frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -31,8 +29,9 @@ jobs:
     needs: [files-changed]
     if: |
       !cancelled() &&
-      (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+      (needs.files-changed.outputs.e2e_embedding_sdk == 'true' ||
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+      needs.files-changed.outputs.embedding_documentation == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
@@ -44,7 +43,7 @@ jobs:
         with:
           m2-cache-key: "cljs"
       - name: Build Embedding SDK package
-        run: yarn build-embedding-sdk
+        run: yarn build-embedding-sdk-package
       - name: Prepare Embedding SDK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -73,7 +72,7 @@ jobs:
   embedding-sdk-docs-snippets-type-check:
     needs: [files-changed, build]
     if: |
-      needs.files-changed.outputs.documentation == 'true' &&
+      needs.files-changed.outputs.embedding_documentation == 'true' &&
       needs.build.result == 'success'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
@@ -89,7 +88,7 @@ jobs:
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:docs-snippets:type-check
 
-  embedding-sdk-no-exposed-internal-types-validate:
+  embedding-sdk-api-documentation-generation-validation:
     needs: [files-changed, build]
     if: |
       needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
@@ -107,52 +106,61 @@ jobs:
         with:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ github.workspace }}/resources/embedding-sdk
-      - name: Run no exposed internal types validation
+      - name: Generate documentation to check for generation errors
+        id: docs-generation
+        continue-on-error: true
+        shell: bash
         run: |
-          output="$(yarn embedding-sdk:docs:generate:pure --emit none 2>&1)" || {
-            if [[ "$output" == *"not included in the documentation"* ]]; then
-              echo "$output"
-              exit 1
-            fi
-          }
-      - name: Comment on PR if docs need update
+          set -o pipefail
+          yarn embedding-sdk:docs:generate:pure --emit none 2>&1 \
+          | tee /dev/stdout \
+          | tee >( tail -n 10 \
+          | sed '1s/^/output<<EOF\n/' \
+                   | sed '$aEOF' \
+                   >> "$GITHUB_OUTPUT" )
+          exit ${PIPESTATUS[0]}
+      - name: Comment on PR if 'not included in the documentation' error happens
         uses: ./.github/actions/notify-pull-request
-        if: success() || failure()
         with:
           remove-previous-comment: true
-          add-new-comment: ${{ job.status == 'failure' }}
-          message: "📝 One or more internal Metabase types were accidentally exported from the `@metabase/embedding‑sdk‑react` package in this pull request.<br/><br/>Publishing these types would change the public API and may drastically change generated SDK documentation.<br/><br/>Please update the code so internal types remain private and the public API stays unchanged."
+          add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'not included in the documentation') }}
+          message: "📝 Some exported types from `@metabase/embedding-sdk-react` reference other types that are not exported, i.e. internal types.<br><br>The internal type reference breaks API documentation generation for the SDK and also may unexpectedly increase the output size of the type declaration file.<br><br>Please check the CI logs to find the name of such type.<br><br>- If a type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, refactor types to prevent referencing other types that are not exported from SDK.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to  verify that the issue has been resolved."
           include-log: true
+      - name: Comment on PR if 'Failed to resolve link' error happens
+        uses: ./.github/actions/notify-pull-request
+        with:
+          remove-previous-comment: true
+          add-new-comment: ${{ steps.docs-generation.outcome == 'failure' && contains(steps.docs-generation.outputs.output, 'Failed to resolve link') }}
+          message: "📝 A typedoc `{@link <TYPE_NAME>}` annotation is found that can't be resolved.<br><br>Most likely it happens when the referenced type is not exported. Please check the CI logs to find the name of such type.<br><br>- If a referenced in `{@link}` type should be publicly available in the SDK, add a description to it or a TypeDoc annotation and export it from SDK.<br>- If a type is internal and should _not_ be publicly exposed, change types to prevent unexported type reference in `{@link}` annotation.<br><br>You can run `yarn embedding-sdk:docs:generate` locally to verify that the issue has been resolved."
+          include-log: true
+      - name: Fail Job
+        if: ${{ steps.docs-generation.outcome == 'failure' }}
+        run: exit 1
 
+  # See `Component e2e tests` in `enterprise/frontend/src/embedding-sdk-package/dev.md`
   sdk-e2e-tests:
+    name: "SDK e2e tests"
     uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
     needs: [build]
     secrets: inherit
     with:
       cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
-  e2e-component-tests-embedding-sdk-cross-version:
-    # run on: every push on release branches, and every pr that targets a release branch
-    if: ${{ startsWith(github.ref, 'refs/heads/release-x.') || (github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.')) }}
-    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
-    secrets: inherit
-
-  cross-version-for-breaking-changes:
-    # run on: every pr that targets a release branch
-    if: ${{ github.event_name == 'pull_request' && startsWith(github.base_ref, 'release-x.') }}
-    uses: ./.github/workflows/e2e-cross-version-for-breaking-changes.yml
+  e2e-component-tests-embedding-sdk-backward-compatibility:
+    name: "SDK e2e backward compatibility tests"
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-backward-compatibility.yml
+    needs: [build]
     secrets: inherit
     with:
-      fe-ref: ${{ github.base_ref }}
-      be-ref: ${{ github.head_ref }}
+      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
 
   embedding-sdk-tests-result:
     needs:
       - embedding-sdk-cli-snippets-type-check
       - embedding-sdk-docs-snippets-type-check
-      - embedding-sdk-no-exposed-internal-types-validate
+      - embedding-sdk-api-documentation-generation-validation
       - sdk-e2e-tests
-      - e2e-component-tests-embedding-sdk-cross-version
+      - e2e-component-tests-embedding-sdk-backward-compatibility
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 5

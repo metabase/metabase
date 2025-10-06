@@ -96,18 +96,13 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       H.modal().findByTestId("alert-goal-select").should("be.enabled").click();
 
       H.popover().within(() => {
-        cy.findByText("When results go above the goal line").should(
-          "be.visible",
-        );
-        cy.findByText("When results go below the goal line").should(
-          "be.visible",
-        );
-
-        cy.findByText("When results go above the goal line").click();
+        cy.findByText("When results go above the goal").should("be.visible");
+        cy.findByText("When results go below the goal").should("be.visible");
+        cy.findByText("When results go above the goal").click();
       });
 
       H.modal().within(() => {
-        cy.findByText("Only send this alert once").click();
+        cy.findByText("Delete this Alert after it's triggered").click();
 
         cy.button("Done").click();
       });

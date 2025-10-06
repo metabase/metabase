@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Box, Switch, Text } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 

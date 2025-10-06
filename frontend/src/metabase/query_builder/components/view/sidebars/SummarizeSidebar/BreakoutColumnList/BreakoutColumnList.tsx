@@ -1,8 +1,8 @@
 import { type ChangeEvent, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import Input from "metabase/common/components/Input";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { isNotNull } from "metabase/lib/types";
 import {

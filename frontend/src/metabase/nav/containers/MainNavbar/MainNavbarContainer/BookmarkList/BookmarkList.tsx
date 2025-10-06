@@ -11,8 +11,8 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import CollapseSection from "metabase/components/CollapseSection";
-import { Sortable } from "metabase/core/components/Sortable";
+import CollapseSection from "metabase/common/components/CollapseSection";
+import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
@@ -51,6 +51,7 @@ interface CollectionSidebarBookmarksProps {
 interface BookmarkItemProps {
   bookmark: Bookmark;
   index: number;
+  isDraggable?: boolean;
   isSorting: boolean;
   selectedItem?: SelectedItem;
   onSelect: () => void;
@@ -68,6 +69,7 @@ function isBookmarkSelected(bookmark: Bookmark, selectedItem?: SelectedItem) {
 
 const BookmarkItem = ({
   bookmark,
+  isDraggable,
   isSorting,
   selectedItem,
   onSelect,
@@ -92,6 +94,7 @@ const BookmarkItem = ({
         icon={icon}
         isSelected={isSelected}
         isDragging={isSorting}
+        isDraggable={isDraggable}
         hasDefaultIconStyle={!isIrregularCollection}
         onClick={onSelect}
         right={
@@ -172,6 +175,7 @@ const BookmarkList = ({
             {orderedBookmarks.map((bookmark, index) => (
               <BookmarkItem
                 bookmark={bookmark}
+                isDraggable={orderedBookmarks.length > 1}
                 isSorting={isSorting}
                 key={index}
                 index={index}

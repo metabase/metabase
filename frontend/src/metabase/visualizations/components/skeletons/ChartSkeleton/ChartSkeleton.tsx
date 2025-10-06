@@ -9,6 +9,7 @@ import MapSkeleton from "metabase/visualizations/components/skeletons/MapSkeleto
 import PieSkeleton from "metabase/visualizations/components/skeletons/PieSkeleton";
 import ProgressSkeleton from "metabase/visualizations/components/skeletons/ProgressSkeleton";
 import RowSkeleton from "metabase/visualizations/components/skeletons/RowSkeleton";
+import SankeySkeleton from "metabase/visualizations/components/skeletons/SankeySkeleton";
 import ScalarSkeleton from "metabase/visualizations/components/skeletons/ScalarSkeleton/ScalarSkeleton";
 import ScatterSkeleton from "metabase/visualizations/components/skeletons/ScatterSkeleton";
 import SkeletonCaption from "metabase/visualizations/components/skeletons/SkeletonCaption";
@@ -54,6 +55,8 @@ const skeletonComponent: (display?: CardDisplayType) => JSX.Element | null = (
       return <ProgressSkeleton />;
     case "row":
       return <RowSkeleton />;
+    case "sankey":
+      return <SankeySkeleton />;
     case "scatter":
       return <ScatterSkeleton />;
     case "waterfall":

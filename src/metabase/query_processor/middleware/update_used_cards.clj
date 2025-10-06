@@ -28,18 +28,17 @@
     (try
       ;; need to use a shared lock for all updates to the card table
       (cluster-lock/with-cluster-lock cluster-lock/card-statistics-lock
-        (t2/update! :model/Card :id [:in (keys card-id->timestamp)]
-                    {:last_used_at (into [:case]
-                                         (mapcat (fn [[id timestamp]]
-                                                   [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
-                                                 card-id->timestamp))
-                     ;; Set updated_at to its current value to prevent it from updating automatically
-                     :updated_at :updated_at}))
+        (t2/query {:update [(t2/table-name :model/Card)]
+                   :where  [:in :id (keys card-id->timestamp)]
+                   :set    {:last_used_at (into [:case]
+                                                (mapcat (fn [[id timestamp]]
+                                                          [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                        card-id->timestamp))
+                            :updated_at :updated_at}}))
       (catch Throwable e
         (log/error e "Error updating used cards")))))
 
-(defonce ^:private
-  update-used-cards-queue
+(defonce ^:private update-used-cards-queue
   (delay
     (grouper/start!
      #'update-used-cards!*
@@ -57,7 +56,7 @@
   - dashcard on dashboard
   - alert/pulse"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
     (let [now  (t/offset-date-time)
           rff* (fn [metadata]

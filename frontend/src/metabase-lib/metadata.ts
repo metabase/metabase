@@ -1,6 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
 import type {
+  Field as ApiField,
   CardId,
   CardType,
   DatabaseId,
@@ -32,8 +33,6 @@ import type {
   DrillThruDisplayInfo,
   FilterOperator,
   FilterOperatorDisplayInfo,
-  JoinConditionOperator,
-  JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
   MetadataProvider,
@@ -133,11 +132,6 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  joinConditionOperator: JoinConditionOperator,
-): JoinConditionOperatorDisplayInfo;
-declare function DisplayInfoFn(
-  query: Query,
-  stageIndex: number,
   drillThru: DrillThru,
 ): DrillThruDisplayInfo;
 declare function DisplayInfoFn(
@@ -201,7 +195,7 @@ export function returnedColumns(
 export function fromLegacyColumn(
   query: Query,
   stageIndex: number,
-  columnOrField: DatasetColumn | Field,
+  columnOrField: DatasetColumn | Field | ApiField,
 ): ColumnMetadata {
   return ML.legacy_column__GT_metadata(query, stageIndex, columnOrField);
 }

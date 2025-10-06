@@ -3,13 +3,13 @@
   (:require
    [clj-http.client :as http]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.druid.execute :as druid.execute]
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.driver.druid.sync :as druid.sync]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
-   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.json :as json]))
 
 (driver/register! :druid)
@@ -18,7 +18,8 @@
                               :expression-literals            true
                               :schemas                        false
                               :set-timezone                   true
-                              :temporal/requires-default-unit true}]
+                              :temporal/requires-default-unit true
+                              :database-routing               true}]
   (defmethod driver/database-supports? [:druid feature] [_driver _feature _db] supported?))
 
 (defmethod driver/can-connect? :druid
@@ -38,7 +39,7 @@
   [_ database]
   (druid.sync/dbms-version database))
 
-(defmethod driver/describe-database :druid
+(defmethod driver/describe-database* :druid
   [_ database]
   (druid.sync/describe-database database))
 
@@ -55,7 +56,7 @@
 (defmethod driver/execute-reducible-query :druid
   [_driver query _context respond]
   (druid.execute/execute-reducible-query
-   (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
+   (partial druid.client/do-query-with-cancellation (driver-api/canceled-chan))
    (update-in query [:native :query] add-timeout-to-query driver.settings/*query-timeout-ms*)
    respond))
 

@@ -1,9 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { setupValidFilterFieldsEndpoint } from "__support__/server-mocks";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as dashboardActions from "metabase/dashboard/actions/parameters";
+import { checkNotNull } from "metabase/lib/types";
+import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { FieldId } from "metabase-types/api";
+import { ORDERS, PEOPLE, PRODUCTS } from "metabase-types/api/mocks/presets";
 import type { ValuesSourceType } from "metabase-types/api/parameters";
 
 import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
@@ -11,10 +16,16 @@ import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
 interface SetupOpts {
   parameter: UiParameter;
   otherParameters: UiParameter[];
+  filteringIdsByFilteredId?: Record<FieldId, FieldId[]>;
 }
 
-const setup = ({ parameter, otherParameters }: SetupOpts) => {
+const setup = ({
+  parameter,
+  otherParameters,
+  filteringIdsByFilteredId = {},
+}: SetupOpts) => {
   const onChangeFilteringParameters = jest.fn();
+  setupValidFilterFieldsEndpoint(filteringIdsByFilteredId);
 
   renderWithProviders(
     <ParameterLinkedFilters
@@ -33,18 +44,66 @@ describe("ParameterLinkedFilters", () => {
       parameter: createMockUiParameter({
         id: "p1",
         name: "P1",
+        fields: [checkNotNull(SAMPLE_METADATA.field(PRODUCTS.CATEGORY))],
       }),
       otherParameters: [
         createMockUiParameter({
           id: "p2",
           name: "P2",
+          fields: [checkNotNull(SAMPLE_METADATA.field(PRODUCTS.VENDOR))],
         }),
       ],
+      filteringIdsByFilteredId: {
+        [PRODUCTS.CATEGORY]: [PRODUCTS.VENDOR],
+      },
     });
 
-    await userEvent.click(screen.getByRole("switch"));
+    await userEvent.click(await screen.findByRole("switch"));
 
     expect(onChangeFilteringParameters).toHaveBeenCalledWith(["p2"]);
+  });
+
+  it("should display parameters that cannot be linked in a separate section", async () => {
+    setup({
+      parameter: createMockUiParameter({
+        id: "p1",
+        name: "P1",
+        fields: [
+          checkNotNull(SAMPLE_METADATA.field(PRODUCTS.CREATED_AT)),
+          checkNotNull(SAMPLE_METADATA.field(ORDERS.CREATED_AT)),
+        ],
+      }),
+      otherParameters: [
+        createMockUiParameter({
+          id: "p2",
+          name: "P2",
+          fields: [
+            checkNotNull(SAMPLE_METADATA.field(ORDERS.ID)),
+            checkNotNull(SAMPLE_METADATA.field(PEOPLE.CREATED_AT)),
+          ],
+        }),
+        createMockUiParameter({
+          id: "p3",
+          name: "P3",
+          fields: [checkNotNull(SAMPLE_METADATA.field(PEOPLE.CREATED_AT))],
+        }),
+      ],
+      filteringIdsByFilteredId: {
+        [PRODUCTS.CREATED_AT]: [ORDERS.CREATED_AT, ORDERS.ID],
+      },
+    });
+
+    const compatibleSection = await screen.findByTestId(
+      "compatible-parameters",
+    );
+    const incompatibleSection = screen.getByTestId("incompatible-parameters");
+    expect(within(compatibleSection).getByText("P2")).toBeInTheDocument();
+    expect(within(incompatibleSection).getByText("P3")).toBeInTheDocument();
+
+    await userEvent.hover(getIcon("info"));
+    expect(
+      await screen.findByText(/foreign-key relationship/),
+    ).toBeInTheDocument();
   });
 
   it.each(["static-list", "card"])(

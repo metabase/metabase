@@ -8,6 +8,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -59,7 +60,9 @@ export async function setup({
   }
 
   renderWithProviders(
-    <DashboardSettingsSidebar dashboard={dashboard} onClose={onClose} />,
+    <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
+      <DashboardSettingsSidebar />
+    </MockDashboardContext>,
     { storeInitialState: state },
   );
   await waitForLoaderToBeRemoved();

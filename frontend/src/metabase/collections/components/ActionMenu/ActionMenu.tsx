@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
+import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -19,7 +20,7 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
@@ -113,8 +114,13 @@ function ActionMenu({
     if (!createBookmark && !deleteBookmark) {
       return undefined;
     }
+
     const handler = () => {
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+      if (!isBookmarked) {
+        trackCollectionItemBookmarked(item);
+      }
       toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
     };
     return handler;

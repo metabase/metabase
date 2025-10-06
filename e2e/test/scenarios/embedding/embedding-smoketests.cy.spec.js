@@ -6,18 +6,14 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
-const embeddingPage = "/admin/settings/embedding-in-other-applications";
-const standalonePath =
-  "/admin/settings/embedding-in-other-applications/standalone";
-const upgradeUrl = "https://www.metabase.com/upgrade";
-const embeddingDescription =
-  "Embed dashboards, questions, or the entire Metabase app into your application. Integrate with your server code to create a secure environment, limited to specific users or organizations.";
+const standalonePath = "/admin/embedding/static";
 
 // These tests will run on both OSS and EE instances. Both without a token!
 describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.updateSetting("show-sdk-embed-terms", false);
   });
 
   it("should not offer to share or embed models (metabase#20815)", () => {
@@ -42,71 +38,15 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
       resetEmbedding();
     });
 
-    it("should display the embedding page correctly", () => {
-      cy.visit("/admin/settings/setup");
-      sidebar().within(() => {
-        cy.findByRole("link", { name: "Embedding" }).click();
-      });
+    it("should show the sdk upsell link in oss", () => {
+      cy.visit("/admin/embedding/modular");
 
-      cy.location("pathname").should("eq", embeddingPage);
-      mainPage().findByText(embeddingDescription).should("be.visible");
-      cy.log(
-        "With the embedding enabled, we should now see two new sections on the main page",
-      );
-      cy.log("The first section: 'Static embedding'");
-      cy.findByRole("article", { name: "Static embedding" }).within(() => {
-        // FE unit tests are making sure this section doesn't exist when a valid token is provided,
-        // so we don't have to do it here using conditional logic
-        assertLinkMatchesUrl("upgrade to a specific paid plan", upgradeUrl);
-
-        cy.findByRole("link", { name: "Manage" })
-          .should("have.attr", "href")
-          .and("eq", standalonePath);
-        cy.findByText("Static embedding");
-        cy.findByText("Manage").click();
-        cy.location("pathname").should("eq", standalonePath);
-      });
-
-      cy.log("Standalone embeds page");
-      // TODO: Remove this when the actual BE is implemented, this flag still controls the static embedding
-      // I've tried to change this but it failed like 500 BE tests.
-      cy.request("PUT", "/api/setting/enable-embedding-static", {
-        value: true,
-      });
       mainPage().within(() => {
-        cy.findByLabelText("Enable Static embedding")
-          .click({ force: true })
-          .should("be.checked");
-        cy.findByTestId("embedding-secret-key-setting").within(() => {
-          cy.findByText("Embedding secret key");
-          cy.findByText(
-            "Standalone Embed Secret Key used to sign JSON Web Tokens for requests to /api/embed endpoints. This lets you create a secure environment limited to specific users or organizations.",
-          );
-          getTokenValue().should("have.length", 64);
-          cy.button("Regenerate key");
-        });
-
-        cy.findByTestId("embedded-resources").within(() => {
-          cy.findByText("Embedded Dashboards");
-          cy.findByText("No dashboards have been embedded yet.");
-
-          cy.findByText("Embedded Questions");
-          cy.findByText("No questions have been embedded yet.");
-        });
-      });
-
-      cy.go("back");
-      cy.location("pathname").should("eq", embeddingPage);
-
-      cy.log("The second section: 'Interactive embedding'");
-      cy.findByRole("article", { name: "Interactive embedding" }).within(() => {
-        cy.findByText("Interactive embedding");
-
-        cy.findByRole("link", { name: "Learn More" })
+        cy.findByRole("link", { name: "Try for free" })
           .should("have.attr", "href")
           .and(
             "eq",
-            "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=embed-settings",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=embedding-page&source_plan=oss",
           );
       });
     });
@@ -317,10 +257,9 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         cy.signInAsAdmin();
         cy.visit(standalonePath);
 
-        cy.findByLabelText("Embedding secret key").should(
-          "have.value",
-          METABASE_SECRET_KEY,
-        );
+        cy.findByTestId("embedding-secret-key-setting")
+          .findByRole("textbox")
+          .should("have.value", METABASE_SECRET_KEY);
 
         cy.button("Regenerate key").click();
 
@@ -362,16 +301,6 @@ function resetEmbedding() {
   H.updateSetting("embedding-secret-key", null);
 }
 
-function getTokenValue() {
-  return cy.get("#setting-embedding-secret-key").invoke("val");
-}
-
-function assertLinkMatchesUrl(text, url) {
-  cy.findByRole("link", { name: text })
-    .should("have.attr", "href")
-    .and("contain", url);
-}
-
 function ensureEmbeddingIsDisabled() {
   H.openSharingMenu();
   H.sharingMenu()
@@ -396,10 +325,6 @@ function visitAndEnableSharing(object, acceptTerms = true) {
   }
 
   H.openStaticEmbeddingModal({ acceptTerms });
-}
-
-function sidebar() {
-  return cy.findByTestId("admin-layout-sidebar");
 }
 
 function mainPage() {

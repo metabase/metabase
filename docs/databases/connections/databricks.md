@@ -10,6 +10,10 @@ You can edit these settings at any time. Just remember to save your changes.
 
 ## Edit connection details
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -33,26 +37,32 @@ There are two ways to authenticate with Databricks. You can use a personal acces
 The Databricks driver supports both options. Use the toggle to select the authentication method you want to use.
 
 #### Personal access token authentication
+
 See [Personal Access Token (PAT)](https://docs.databricks.com/en/dev-tools/auth/pat.html).
 
 #### Authenticate access with a service principal using OAuth (OAuth M2M)
 
 See [Authenticate access with a service principal using OAuth](https://docs.databricks.com/en/dev-tools/auth/oauth-m2m.html).
 
-### Catalog
-For now, you can only select one catalog. Metabase doesn't support multi-catalog connections. If you want to use more than one catalog in Metabase, you can set up multiple connections, each selecting a different catalog.
+### Enable multiple catalogs
+
+Toggle on to sync multiple catalogs. If you enable this, you'll be able to [specify which catalogs to sync](#catalogs-and-schemas).
+
+### Default catalog
+
+Required. You must specify a default catalog (so you don't have to deal with catalog qualification in native queries).
 
 You can't sync Databricks's legacy catalogs, however, including the `samples` or `hive_metastore` catalogs.
 
-### Schemas
+### Catalogs and schemas
 
-You can specify which schemas you want to sync and scan. Options are:
+You can specify which catalogs and schemas you want to sync and scan. Options are:
 
 - All
 - Only these...
 - All except...
 
-For the **Only these** and **All except** options, you can input a comma-separated list of values to tell Metabase which schemas you want to include (or exclude). For example:
+For the **Only these** and **All except** options, you can input a comma-separated list of values to tell Metabase which catalogs and schemas you want to include (or exclude). For example:
 
 ```
 foo,bar,baz
@@ -94,6 +104,14 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Model features
 
 There aren't (yet) any model features available for Databricks.
+
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+When **multi-catalog is not enabled**, you can route between catalogs on the same host. If multi-catalog is enabled, then you can only route between databases on separate hosts.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

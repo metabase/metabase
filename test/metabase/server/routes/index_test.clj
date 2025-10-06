@@ -24,7 +24,7 @@
                             "plural-forms"              "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Your database has been added!" {"msgstr" ["¡Tu base de datos ha sido añadida!"]}}}}
            (some->
-            (binding [i18n/*user-locale* "es"]
+            (binding [i18n/*user-locale* "es_for_test"]
               (#'index/load-localization nil))
             json/decode
             (update "translations" select-keys [""])
@@ -61,7 +61,7 @@
             "translations" {"" {"Your database has been added!" {"msgstr" ["¡Tu base de datos ha sido añadida!"]}}}}
            (some->
             (binding [i18n/*user-locale* "xx"]
-              (#'index/load-localization "es"))
+              (#'index/load-localization "es_for_test"))
             json/decode
             (update "translations" select-keys [""])
             (update-in ["translations" ""] select-keys ["Your database has been added!"])))))

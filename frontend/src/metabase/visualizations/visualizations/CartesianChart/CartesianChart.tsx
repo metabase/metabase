@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import React from "react";
 import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/lib/browser";
@@ -28,6 +29,9 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
+
+const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
+const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
 
 function _CartesianChart(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,10 +65,18 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(
-    () => getGridSizeAdjustedSettings(originalSettings, gridSize),
-    [originalSettings, gridSize],
-  );
+  const settings = useMemo(() => {
+    const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
+    if (isDashboard) {
+      if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.y_axis.labels_enabled"] = false;
+      }
+      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.x_axis.labels_enabled"] = false;
+      }
+    }
+    return settings;
+  }, [originalSettings, gridSize, isDashboard, outerWidth, outerHeight]);
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
@@ -101,7 +113,7 @@ function _CartesianChart(props: VisualizationProps) {
         const svg = containerRef.current?.querySelector("svg");
         if (svg) {
           const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
-          clipPaths.forEach((cp) => cp.remove());
+          clipPaths.forEach((cp) => cp.setAttribute("id", ""));
         }
       });
     }
@@ -122,6 +134,7 @@ function _CartesianChart(props: VisualizationProps) {
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
+    containerRef,
     chartModel,
     timelineEventsModel,
     option,
@@ -134,7 +147,9 @@ function _CartesianChart(props: VisualizationProps) {
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
-  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+  const canSelectTitle =
+    !!onChangeCardAndRun &&
+    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
 
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,

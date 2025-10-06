@@ -1,8 +1,8 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions";
-import { isEmbeddingSdk } from "metabase/env";
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { open } from "metabase/lib/dom";
 
 export function performAction(
@@ -20,7 +20,7 @@ export function performAction(
   }
   if (action.url) {
     // (metabase#51099) disable url click behavior when in sdk
-    if (isEmbeddingSdk) {
+    if (isEmbeddingSdk()) {
       return true;
     }
 
@@ -74,6 +74,25 @@ export function performDefaultAction(actions, props) {
   const action = _.find(actions, (action) => action.defaultAlways === true);
   if (action) {
     return performAction(action, props);
+  }
+
+  // TODO: Consider refactoring (@kulyk)
+  if (actions.length <= 2) {
+    const sortAsc = actions.find((action) => action.name === "sort.ascending");
+    const sortDesc = actions.find(
+      (action) => action.name === "sort.descending",
+    );
+    if (sortAsc && sortDesc) {
+      performAction(sortAsc, props);
+    }
+  }
+
+  if (
+    actions.length === 1 &&
+    (actions[0].name === "sort.ascending" ||
+      actions[0].name === "sort.descending")
+  ) {
+    performAction(actions[0], props);
   }
 
   return false;

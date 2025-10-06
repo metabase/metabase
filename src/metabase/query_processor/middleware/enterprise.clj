@@ -8,15 +8,17 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.i18n :as i18n]))
+   [metabase.query-processor.schema :as qp.schema]
+   [metabase.util.i18n :as i18n]
+   [metabase.util.malli :as mu]))
 
 ;;;; Pre-processing middleware
 
 ;;; (f query) => query
 
-(defenterprise attach-mirror-db-middleware
-  "Pre-processing middleware. Calculates the mirror database that should be used for this query, e.g. for caching
-  purposes. Does not make any changes to the query besides (possibly) adding a `:mirror-database/id` key."
+(defenterprise attach-destination-db-middleware
+  "Pre-processing middleware. Calculates the destination database that should be used for this query, e.g. for caching
+  purposes. Does not make any changes to the query besides (possibly) adding a `:destination-database/id` key."
   metabase-enterprise.database-routing.middleware
   [query]
   query)
@@ -24,7 +26,7 @@
 (defenterprise apply-sandboxing
   "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
   restrict the rows returned, based on presence of sandboxes."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [query]
   query)
 
@@ -59,18 +61,18 @@
 
 ;;; (f qp) => qp
 
-(defenterprise swap-mirror-db
+(defenterprise swap-destination-db
   "Must be the last middleware before we actually hit the database. If a Router Database is specified, swaps out the
-   Metadata Provider for one that has the appropriate mirror database."
+   Metadata Provider for one that has the appropriate destination database."
   metabase-enterprise.database-routing.middleware
   [qp]
   qp)
 
-(defn swap-mirror-db-middleware
-  "Helper middleware wrapper for [[swap-mirror-db]] to make sure we do [[defenterprise]] dispatch correctly on each QP run rather than just once when we combine all of the QP middleware"
-  [qp]
+(mu/defn swap-destination-db-middleware :- ::qp.schema/qp
+  "Helper middleware wrapper for [[swap-destination-db]] to make sure we do [[defenterprise]] dispatch correctly on each QP run rather than just once when we combine all of the QP middleware"
+  [qp :- ::qp.schema/qp]
   (fn [query rff]
-    ((swap-mirror-db qp) query rff)))
+    ((swap-destination-db qp) query rff)))
 
 (defenterprise check-download-permissions
   "Middleware for queries that generate downloads, which checks that the user has permissions to download the results
@@ -89,19 +91,6 @@
   (fn [query rff]
     ((check-download-permissions qp) query rff)))
 
-(defenterprise maybe-apply-column-level-perms-check
-  "Execution middleware. Check column-level permissions if applicable."
-  metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check
-  [qp]
-  qp)
-
-(defn maybe-apply-column-level-perms-check-middleware
-  "Helper middleware wrapper for [[maybe-apply-column-level-perms-check]] to make sure we do [[defenterprise]] dispatch
-  correctly on each QP run rather than just once when we combine all of the QP middleware."
-  [qp]
-  (fn [query rff]
-    ((maybe-apply-column-level-perms-check qp) query rff)))
-
 ;;;; Post-processing middleware
 
 ;;; (f query rff) => rff
@@ -116,7 +105,7 @@
 
 (defenterprise merge-sandboxing-metadata
   "Post-processing middleware. Merges in column metadata from the original, unsandboxed version of the query."
-  metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
   [_query rff]
   rff)
 

@@ -46,16 +46,12 @@ describe("scenarios > admin > people", () => {
 
       // A small sidebar selector
       cy.findByTestId("admin-layout-sidebar").within(() => {
-        cy.findAllByTestId("left-nav-pane-item")
-          .contains("People")
-          .should("have.attr", "data-selected", "true");
+        cy.contains("People").should("have.attr", "data-active", "true");
         cy.log("Switch to 'Groups' and make sure it renders properly");
-        cy.findByText("Groups").as("groupsTab").click();
-        cy.findAllByTestId("left-nav-pane-item")
-          .contains("Groups")
-          .should("have.attr", "data-selected", "true");
+        cy.findByText("Groups").click();
+        cy.contains("Groups").should("have.attr", "data-active", "true");
       });
-      cy.findByTestId("admin-pane-page-title").contains("Groups");
+      cy.findByTestId("admin-layout-content").findByText("Groups");
       assertTableRowsCount(TOTAL_GROUPS);
 
       cy.log(
@@ -76,7 +72,7 @@ describe("scenarios > admin > people", () => {
       // Navigate to the collection group using the UI
       const GROUP = "collection";
 
-      cy.get("@groupsTab").click();
+      cy.findByTestId("admin-layout-sidebar").findByText("Groups").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(GROUP).closest("tr").contains("4");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -104,9 +100,7 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("2 members");
 
-      cy.findByRole("list", { name: "admin-list-items" })
-        .findByRole("link", { name: /people/i })
-        .click();
+      cy.findByTestId("admin-layout-sidebar").findByText("People").click();
 
       showUserOptions(noCollectionUserName);
 
@@ -187,6 +181,38 @@ describe("scenarios > admin > people", () => {
       clickButton("Create");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Email address already in use.");
+    });
+
+    it("should immediately reflect admin privileges when creating user with admin group (metabase#60241)", () => {
+      const { first_name, last_name, email } = TEST_USER;
+      const FULL_NAME = `${first_name} ${last_name}`;
+
+      cy.visit("/admin/people");
+      clickButton("Invite someone");
+
+      // Fill in user details
+      cy.findByLabelText("First name").type(first_name);
+      cy.findByLabelText("Last name").type(last_name);
+      cy.findByLabelText(/Email/).type(email);
+
+      // Add user to Administrators group
+      H.modal().findByText("Default").click();
+      H.popover().findByText("Administrators").click();
+
+      clickButton("Create");
+
+      // Close the success modal
+      H.modal().findByText(`${FULL_NAME} has been added`);
+      H.modal().findByText("Done").click();
+
+      // Verify the user appears in the list with Admin role
+      cy.findByTestId("admin-people-list-table").within(() => {
+        cy.findByText(FULL_NAME)
+          .closest("tr")
+          .within(() => {
+            cy.findByText("Admin").should("exist");
+          });
+      });
     });
 
     it("'Invite someone' button shouldn't be covered/blocked on smaller screen sizes (metabase#16350)", () => {
@@ -282,7 +308,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should not offer to reset passwords when password login is disabled", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.request("PUT", "/api/google/settings", {
         "google-auth-auto-create-accounts-domain": null,
         "google-auth-client-id": "example1.apps.googleusercontent.com",
@@ -338,6 +364,8 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should allow group creation and deletion", () => {
+      const longGroupName =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
       cy.intercept("POST", "/api/permissions/group").as("createGroup");
       cy.intercept("DELETE", "/api/permissions/group/*").as("deleteGroup");
 
@@ -349,10 +377,39 @@ describe("scenarios > admin > people", () => {
         cy.findByPlaceholderText(/something like/i).type("My New Group");
         cy.button("Add").click();
         cy.wait(["@createGroup", "@getGroups"]);
-
-        cy.findByText("My New Group").closest("tr").icon("ellipsis").click();
       });
 
+      cy.log("should show API errors from group endpoints (metabase#52886)");
+
+      cy.findByTestId("admin-panel").within(() => {
+        cy.button("Create a group").click();
+        cy.findByPlaceholderText(/something like/i).type(longGroupName);
+        cy.button("Add").click();
+      });
+
+      cy.findByTestId("alert-modal").should("exist");
+      H.modal().findByText("Ok").click();
+
+      cy.findByTestId("admin-panel").within(() => {
+        cy.findByText("My New Group").closest("tr").icon("ellipsis").click();
+      });
+      H.popover().findByText("Edit Name").click();
+      cy.findByTestId("admin-panel").within(() => {
+        cy.findByDisplayValue("My New Group").clear().type(longGroupName);
+        cy.button("Done").click();
+      });
+
+      cy.findByTestId("alert-modal").should("exist");
+      H.modal().findByText("Ok").click();
+      cy.findByTestId("admin-panel")
+        .findByRole("button", { name: "Cancel" })
+        .click();
+
+      cy.findByTestId("admin-panel")
+        .findByText("My New Group")
+        .closest("tr")
+        .icon("ellipsis")
+        .click();
       H.popover().findByText("Remove Group").click();
       H.modal().button("Remove group").click();
 
@@ -516,7 +573,7 @@ describe("scenarios > admin > people", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
@@ -615,7 +672,7 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -635,7 +692,7 @@ describe("scenarios > admin > people > group managers", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.findByTestId("admin-left-nav-pane").within(() => {
+      cy.findByTestId("admin-layout-sidebar").within(() => {
         cy.findByTextEnsureVisible("Groups").click();
       });
 
@@ -710,7 +767,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.url().should("match", /\/$/);
     });
 
-    it("can manage members from the people page", () => {
+    it("can manage members from the people page", { tags: "@flaky" }, () => {
       // Open membership select for a user
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)
@@ -768,7 +825,7 @@ describe("scenarios > admin > people > group managers", () => {
   });
 
   it("after removing the last group redirects to the home page", () => {
-    cy.findByTestId("admin-left-nav-pane").findByText("Groups").click();
+    cy.findByTestId("admin-layout-sidebar").findByText("Groups").click();
 
     removeFirstGroup();
     cy.url().should("match", /\/admin\/people\/groups$/);
@@ -797,7 +854,7 @@ describe("issue 23689", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 

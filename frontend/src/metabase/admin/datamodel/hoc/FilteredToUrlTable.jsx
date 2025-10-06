@@ -4,7 +4,7 @@ import { Component } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { FieldSet } from "metabase/components/FieldSet";
+import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";

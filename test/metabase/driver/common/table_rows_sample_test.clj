@@ -3,10 +3,10 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
-   [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
    [metabase.test :as mt]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
@@ -22,7 +22,7 @@
   false)
 
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
     (let [expected [["20th Century Cafe"]
                     ["25°"]
                     ["33 Taps"]
@@ -60,12 +60,52 @@
           (with-redefs [driver.u/supports? (constantly false)]
             (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
-      (testing "pre-existing json fields are still marked as `:type/Text`"
+      (testing "serialized json stored in text columns is treated as text (potentially large, OOM risk)"
         (let [table (mi/instance :model/Table {:id 1234})
               fields [(mi/instance :model/Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
           (with-redefs [driver.u/supports? (constantly true)]
             (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
-              (is (empty? (get-in query [:query :expressions]))))))))))
+              (is (seq (get-in query [:query :expressions])))))))
+      (testing "substring is not called upon type/Text derivates"
+        (doseq [base-type (filter #(not (or (isa? % :Semantic/*)
+                                            (isa? % :Relation/*)))
+                                  (descendants :type/Text))]
+          (let [table (mi/instance :model/Table {:id 1234})
+                fields [(mi/instance :model/Field {:id 4321, :base_type base-type})]]
+            (with-redefs [driver.u/supports? (constantly true)]
+              (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
+                (is (empty? (get-in query [:query :expressions]))))))))
+      (testing "primary check is on effective_type"
+        (with-redefs [driver.u/supports? (constantly true)]
+          (let [table (mi/instance :model/Table {:id 1234})
+                fields [(mi/instance :model/Field {:id 4321, :base_type :type/Number :effective_type :type/Text})]
+                query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
+            (is (seq (get-in query [:query :expressions])))))))))
+
+(deftest ^:synchronized coerced-field-substring-integration-test
+  (testing "For coerced fields, effective type is used for fingerprinting (string -> number exmaple)"
+    (mt/dataset
+      coerced-string-nums-db
+      (doseq [id (t2/select-fn-vec :id :model/Field :table_id (mt/id :string_nums))]
+        (t2/update! :model/Field :id id {:fingerprint nil
+                                         :fingerprint_version 0}))
+      (let [fingerprints (atom [])
+            fingerprint-query (atom nil)
+            orig-table-rows-sample-query @#'table-rows-sample/table-rows-sample-query]
+        (with-redefs [fingerprint/save-fingerprint! (fn [_field fingerprint]
+                                                      (swap! fingerprints conj fingerprint))
+                      table-rows-sample/table-rows-sample-query (fn [& args]
+                                                                  (reset! fingerprint-query
+                                                                          (apply orig-table-rows-sample-query args)))]
+          (fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :string_nums)))
+          (testing "empty expressions = no substring optimization in sample query = use of effective type"
+            (is (empty? (-> @fingerprint-query :query :expressions)))
+            (is (seq (-> @fingerprint-query :query :fields))))
+          (testing "query returns number types due coercion -> numbers are fingerprinted"
+            (is (=? [{:type {:type/Number {}}}
+                     {:type {:type/Number {}}}
+                     {:type {:type/Number {}}}]
+                    @fingerprints))))))))
 
 (deftest mbql-on-table-requires-filter-will-include-the-filter-test
   (mt/with-temp
@@ -86,14 +126,3 @@
                   (table-rows-sample/table-rows-sample table [] (constantly conj))))
           (is (=? {:filter [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]}
                   @query)))))))
-
-(deftest ^:parallel text-field?-test
-  (testing "recognizes fields suitable for fingerprinting"
-    (doseq [field [{:base_type :type/Text}
-                   {:base_type :type/Text :semantic_type :type/State}
-                   {:base_type :type/Text :semantic_type :type/URL}]]
-      (is (#'table-rows-sample/text-field? field)))
-    (doseq [field [{:base_type :type/JSON} ; json fields in pg
-                   {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
-                   {:base_type :type/Text :semantic_type :type/XML}]]
-      (is (not (#'table-rows-sample/text-field? field))))))

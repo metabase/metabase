@@ -1,62 +1,43 @@
-import { useEffect } from "react";
-import { usePrevious } from "react-use";
+import { useCallback, useEffect, useRef } from "react";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { getEventHandlers } from "embedding-sdk/store/selectors";
-import {
-  getIsLoading,
-  getIsLoadingWithoutCards,
-} from "metabase/dashboard/selectors";
+import { getEventHandlers } from "embedding-sdk-bundle/store/selectors";
 import { useSelector } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { getErrorPage } from "metabase/selectors/app";
 import type { Dashboard } from "metabase-types/api";
 
 export const useDashboardLoadHandlers = ({
-  dashboard,
   onLoad,
   onLoadWithoutCards,
-}: {
-  dashboard: Dashboard | null;
-} & PublicOrEmbeddedDashboardEventHandlersProps) => {
-  const isLoading = useSelector(getIsLoading);
-  const isLoadingWithoutCards = useSelector(getIsLoadingWithoutCards);
-  const isErrorPage = useSelector(getErrorPage);
-
-  const previousIsLoading = usePrevious(isLoading);
-  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
-
+}: PublicOrEmbeddedDashboardEventHandlersProps) => {
   const sdkEventHandlers = useSelector(getEventHandlers);
+  // Hack: since we're storing functions in the redux store there are issues
+  // with timing and serialization. We'll need to do something about this in the future
+  const sdkEventHandlersRef = useRef(sdkEventHandlers);
 
   useEffect(() => {
-    if (
-      !isLoadingWithoutCards &&
-      previousIsLoadingWithoutCards &&
-      !isErrorPage
-    ) {
-      sdkEventHandlers?.onDashboardLoadWithoutCards?.(dashboard);
+    sdkEventHandlersRef.current = sdkEventHandlers;
+  }, [sdkEventHandlers]);
+
+  // Use the ref in your callbacks
+  const handleLoadWithoutCards = useCallback(
+    (dashboard: Dashboard) => {
       onLoadWithoutCards?.(dashboard);
-    }
-  }, [
-    isLoadingWithoutCards,
-    isErrorPage,
-    previousIsLoadingWithoutCards,
-    dashboard,
-    sdkEventHandlers,
-    onLoadWithoutCards,
-  ]);
+      sdkEventHandlersRef.current?.onDashboardLoadWithoutCards?.(dashboard);
+    },
+    [onLoadWithoutCards],
+  );
 
-  useEffect(() => {
-    if (!isLoading && previousIsLoading && !isErrorPage) {
-      sdkEventHandlers?.onDashboardLoad?.(dashboard);
+  const handleLoad = useCallback(
+    (dashboard: Dashboard) => {
       onLoad?.(dashboard);
-    }
-  }, [
-    isLoading,
-    isErrorPage,
-    previousIsLoading,
-    sdkEventHandlers,
-    dashboard,
-    onLoad,
-  ]);
+      sdkEventHandlersRef.current?.onDashboardLoad?.(dashboard);
+    },
+    [onLoad],
+  );
+
+  return {
+    handleLoad,
+    handleLoadWithoutCards,
+  };
 };

@@ -16,7 +16,7 @@ import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 import { AIQuestionAnalysisSidebar } from "./AIQuestionAnalysisSidebar";
 
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
-  getBase64ChartImage: () => Promise.resolve("test-base64"),
+  getChartImagePngDataUri: () => Promise.resolve("test-base64"),
   getChartSelector: () => "#chart",
 }));
 
@@ -134,7 +134,7 @@ describe("AIQuestionAnalysisSidebar", () => {
       expect(screen.getByText("Filtered analysis")).toBeInTheDocument();
     });
 
-    const lastCallRequest = fetchMock.lastCall(
+    const lastCallRequest = fetchMock.callHistory.lastCall(
       "path:/api/ee/ai-entity-analysis/analyze-chart",
     )?.request;
     const body = await lastCallRequest?.json();

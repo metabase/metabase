@@ -14,8 +14,9 @@ import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { sumArray } from "metabase/lib/arrays";
 import {
   COLUMN_SHOW_TOTALS,
@@ -133,14 +134,16 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     const leftHeaderRef = useRef<Collection>(null);
     const topHeaderRef = useRef<Collection>(null);
 
+    const tc = useTranslateContent();
+
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
         const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
           columnIndex
         ];
-        return getTitleForColumn(column, settings);
+        return tc(getTitleForColumn(column, settings));
       },
-      [data, settings],
+      [data, settings, tc],
     );
 
     function isColumnCollapsible(columnIndex: number) {

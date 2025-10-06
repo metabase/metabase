@@ -5,7 +5,6 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -27,7 +26,8 @@
   "Get basic Metadata about a `database` and its Tables. Doesn't include information about the Fields."
   [database :- i/DatabaseInstance]
   (log-if-error "db-metadata"
-    (driver/describe-database (driver.u/database->driver database) database)))
+    (let [driver (driver.u/database->driver database)]
+      (driver/describe-database driver database))))
 
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."
@@ -35,7 +35,7 @@
   (let [driver (driver.u/database->driver database)]
     (cond-> fields
       (driver.u/supports? driver :nested-field-columns database)
-      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+      (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database table)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's

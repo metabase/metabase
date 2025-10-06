@@ -120,8 +120,8 @@ class LogoIcon extends Component {
   }
 
   render() {
-    const { dark, style = {}, className } = this.props;
-    style.height ||= "32px";
+    const { dark, style = {}, height, className } = this.props;
+
     return (
       <span
         ref={(c) => (this._container = c)}
@@ -132,7 +132,10 @@ class LogoIcon extends Component {
           { [CS.textWhite]: dark },
           className,
         )}
-        style={style}
+        style={{
+          ...style,
+          height: style.height || height || "32px",
+        }}
         data-testid="main-logo"
       />
     );

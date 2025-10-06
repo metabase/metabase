@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   type ItemCallback,
-  Layout,
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
 
@@ -199,18 +198,18 @@ export function GridLayout<T extends { id: number | null }>(
   // https://github.com/react-grid-layout/react-grid-layout#performance
   const children = useMemo(() => items.map(renderItem), [items, renderItem]);
 
-  // // prevent user selection when dragging metabase#53842
-  const originalUserSelect = useRef(document.body.style.userSelect);
+  // Hide text selection during drag without affecting auto-scroll metabase#53842
   const disableTextSelection = useCallback<ItemCallback>(
     (...params) => {
-      document.body.style.userSelect = "none";
+      document.body.classList.add("react-grid-layout-dragging");
       otherProps.onDragStart?.(...params);
     },
     [otherProps],
   );
+
   const enableTextSelection = useCallback<ItemCallback>(
     (...params) => {
-      document.body.style.userSelect = originalUserSelect.current;
+      document.body.classList.remove("react-grid-layout-dragging");
       otherProps.onDragStop?.(...params);
     },
     [otherProps],
@@ -235,6 +234,7 @@ export function GridLayout<T extends { id: number | null }>(
       onDragStop={enableTextSelection}
       onResizeStart={disableTextSelection}
       onResizeStop={enableTextSelection}
+      draggableCancel="[data-dontdrag]"
     >
       {children}
     </ReactGridLayout>

@@ -9,7 +9,7 @@ redirect_from:
 
 This page covers how to convert a Metabase that's been using the built-in application database, H2, to a production-ready instance PostgreSQL. For more on why you should use Postgres as your app DB, check out [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
-If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
+If you'd rather move to Metabase Cloud, check out [Migrate to Metabase Cloud](../cloud/migrate/guide.md).
 
 ## Metabase's application database
 
@@ -25,7 +25,7 @@ The migration process is a one-off process. You can execute the migration script
 
 One important thing here is that the version of Metabase you use during the migration process must be the same. Meaning, the Metabase you use to run the migration command must be the same one that was last used to create or update H2 file, which must be the same version you'll be using in production. Only _after_ completing the migration should you consider upgrading.
 
-You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](https://www.metabase.com/docs/latest/cloud/migrate/guide).
+You could also choose to run Metabase on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, which takes care of all of this stuff for you. If you have an existing Metabase, here's how you can [migrate to Metabase Cloud](../cloud/migrate/guide.md).
 
 ## Supported databases for storing your Metabase application data
 
@@ -53,7 +53,7 @@ You must be able to connect to the target application database in whatever envir
 
 ### 2. Shut down your Metabase instance
 
-You don't want people creating new stuff in your Metabase while you're migrating. Ideally, if you're running the Metabase JAR in production, you're [running Metabase as a service](./running-metabase-on-debian.md).
+You don't want people creating new stuff in your Metabase while you're migrating. Ideally, if you're running the Metabase JAR in production, you're [running Metabase as a service](./running-metabase-as-service.md).
 
 ### 3. Back up your H2 application database
 

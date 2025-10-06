@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Flex, HoverCard, Icon, Stack, Switch, Text } from "metabase/ui";
@@ -10,7 +9,7 @@ interface RequiredParamToggleProps {
   uniqueId: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  disabledTooltip: ReactNode;
+  disabledTooltip: React.ReactNode;
 }
 
 export function RequiredParamToggle(props: RequiredParamToggleProps) {
@@ -31,7 +30,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
           {disabled && (
             <HoverCard position="top-end" shadow="xs">
               <HoverCard.Target>
-                <Icon name="info_filled" />
+                <Icon name="info" />
               </HoverCard.Target>
               <HoverCard.Dropdown w={320}>
                 <Stack p="md" gap="sm">

@@ -724,9 +724,9 @@ describe("Custom columns visualization settings", () => {
   it("should not show 'Save' after modifying minibar settings for a custom column", () => {
     goToExpressionSidebarVisualizationSettings();
     H.popover().within(() => {
-      const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click({ force: true });
-      miniBarSwitch.should("be.checked");
+      cy.findByLabelText("Show a mini bar chart")
+        .click({ force: true })
+        .should("be.checked");
     });
     saveModifiedQuestion();
   });
@@ -735,8 +735,7 @@ describe("Custom columns visualization settings", () => {
     goToExpressionSidebarVisualizationSettings();
 
     H.popover().within(() => {
-      const viewAsDropdown = cy.findByLabelText("Display as");
-      viewAsDropdown.click();
+      cy.findByLabelText("Display as").as("viewAsDropdown").click();
     });
 
     cy.findAllByRole("option", { name: "Email link" }).click();
@@ -754,9 +753,9 @@ describe("Custom columns visualization settings", () => {
       cy.findByRole("button", { name: /gear icon/i }).click();
     });
     H.popover().within(() => {
-      const miniBarSwitch = cy.findByLabelText("Show a mini bar chart");
-      miniBarSwitch.click({ force: true });
-      miniBarSwitch.should("be.checked");
+      cy.findByLabelText("Show a mini bar chart")
+        .click({ force: true })
+        .should("be.checked");
     });
 
     saveModifiedQuestion();

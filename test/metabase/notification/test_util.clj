@@ -7,6 +7,7 @@
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.slack :as slack]
    [metabase.notification.core :as notification]
    [metabase.notification.events.notification :as events.notification]
    [metabase.notification.models :as models.notification]
@@ -38,7 +39,7 @@
   message)
 
 (defmethod channel/render-notification [:channel/metabase-test :notification/testing]
-  [_channel-type notification-info _template _recipients]
+  [_channel-type notification-info _handler]
   [notification-info])
 
 (defmethod notification.payload/payload :notification/testing
@@ -195,9 +196,15 @@
 (def channel-type->fixture
   {:channel/email (fn [thunk] (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                                                  email-smtp-port 587
-                                                                 site-url        "https://testmb.com/"]
+                                                                 site-url        "https://testmb.com/"
+                                                                 site-name       "Metabase Test"]
                                 (thunk)))
-   :channel/slack (fn [thunk] (thunk))})
+   :channel/slack (fn [thunk] (mt/with-temporary-setting-values [site-url  "https://testmb.com/"
+                                                                 site-name "Metabase Test"]
+                                (mt/with-dynamic-fn-redefs [slack/upload-file! (fn [_file fname]
+                                                                                 {:url (format "https://uploaded.com/%s" fname)
+                                                                                  :id  fname})]
+                                  (thunk))))})
 
 (defn apply-channel-fixtures
   [channel-types thunk]
@@ -289,7 +296,8 @@
 
 (def channel-template-email-with-handlebars-body
   "A :model/ChannelTemplate for email channels that has a :event/handlebars-text template."
-  {:channel_type :channel/email
+  {:name         "Email default test template"
+   :channel_type :channel/email
    :details      {:type    :email/handlebars-text
                   :subject "Welcome {{payload.event_info.object.first_name}} to {{context.site_name}}"
                   :body    "Hello {{payload.event_info.object.first_name}}! Welcome to {{context.site_name}}!"}})

@@ -13,11 +13,10 @@
 
 ### JavaScript/TypeScript
 
-- **Lint:** `yarn lint-eslint`
-- **Test:** `yarn test-unit path/to/file.unit.spec.js` or `yarn test-unit -t "pattern"`
-- **Watch:** `yarn test-unit-watch path/to/file.unit.spec.js`
+- **Lint:** `yarn lint-eslint-pure`
+- **Test:** `yarn test-unit-keep-cljs path/to/file.unit.spec.js` or `yarn test-unit-keep-cljs -t "pattern"`
 - **Format:** `yarn prettier`
-- **Type Check:** `yarn type-check`
+- **Type Check:** `yarn type-check-pure`
 
 ### Clojure
 
@@ -30,7 +29,8 @@
   - Use the linter as a way to know that you are adhering to conventions in place in the codebase
 - **Lint Changes:** `./bin/mage kondo-updated HEAD`
 - **Format:** `./bin/mage cljfmt-files [path]`
-- **Test file:** `clojure -X:dev:test :only namespace/test-name`
+- **Run a test:** `./bin-mage run-tests namespace/test-name`
+- **Run all tests in a namespace:** `./bin-mage run-tests namespace`
 - **Check Code Readability** `./bin/mage -check-readable` with optional line-number
   - Run this after every change to Clojure code, only accept readable code
 - **Evaluating Clojure Code** `./bin/mage -repl '<code>'`
@@ -144,6 +144,7 @@ For effective REPL usage:
 
 - End all files with a newline.
 - When editing tabular code, where the columns line up, try to keep them aligned.
+- Spaces on a line with nothing after it is not allowed
 
 ## Critical REPL Usage Rules
 

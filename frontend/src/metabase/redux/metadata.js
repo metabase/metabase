@@ -59,11 +59,6 @@ export const updateTable = (table) => {
   return Tables.actions.update(slimTable);
 };
 
-export const fetchTables = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchTables");
-  return Tables.actions.fetchList(null, { reload });
-};
-
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
@@ -97,7 +92,6 @@ export const updateFieldValues = (fieldId, fieldValuePairs) => {
 
 export { ADD_FIELDS } from "metabase/entities/fields";
 export const addFields = (fields) => {
-  deprecated("metabase/redux/metadata addFields");
   return Fields.actions.addFields(fields);
 };
 
@@ -255,21 +249,4 @@ export const fetchRemapping = createThunkAction(
         }
       }
     },
-);
-
-const FETCH_REAL_DATABASES_WITH_METADATA =
-  "metabase/metadata/FETCH_REAL_DATABASES_WITH_METADATA";
-export const fetchRealDatabasesWithMetadata = createThunkAction(
-  FETCH_REAL_DATABASES_WITH_METADATA,
-  (reload = false) => {
-    return async (dispatch, getState) => {
-      await dispatch(fetchRealDatabases());
-      const databases = getIn(getState(), ["entities", "databases"]);
-      await Promise.all(
-        Object.values(databases).map((database) =>
-          dispatch(fetchDatabaseMetadata(database.id)),
-        ),
-      );
-    };
-  },
 );

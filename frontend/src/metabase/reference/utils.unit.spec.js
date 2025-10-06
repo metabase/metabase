@@ -1,7 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import { separateTablesBySchema } from "metabase/reference/databases/TableList";
-import { databaseToForeignKeys, getQuestion } from "metabase/reference/utils";
-import { TYPE } from "metabase-lib/v1/types/constants";
+import { getQuestion } from "metabase/reference/utils";
 import {
   createMockDatabase,
   createMockField,
@@ -10,60 +9,6 @@ import {
 } from "metabase-types/api/mocks";
 
 describe("Reference utils.js", () => {
-  describe("databaseToForeignKeys()", () => {
-    it("should build foreignKey viewmodels from database", () => {
-      const database = {
-        tables_lookup: {
-          1: {
-            id: 1,
-            display_name: "foo",
-            schema_name: "PUBLIC",
-            fields: [
-              {
-                id: 1,
-                semantic_type: TYPE.PK,
-                display_name: "bar",
-                description: "foobar",
-              },
-            ],
-          },
-          2: {
-            id: 2,
-            display_name: "bar",
-            schema_name: "public",
-            fields: [
-              {
-                id: 2,
-                semantic_type: TYPE.PK,
-                display_name: "foo",
-                description: "barfoo",
-              },
-            ],
-          },
-          3: {
-            id: 3,
-            display_name: "boo",
-            schema_name: "TEST",
-            fields: [
-              {
-                id: 3,
-                display_name: "boo",
-                description: "booboo",
-              },
-            ],
-          },
-        },
-      };
-
-      const foreignKeys = databaseToForeignKeys(database);
-
-      expect(foreignKeys).toEqual({
-        1: { id: 1, name: "Public.foo → bar", description: "foobar" },
-        2: { id: 2, name: "bar → foo", description: "barfoo" },
-      });
-    });
-  });
-
   describe("tablesToSchemaSeparatedTables()", () => {
     it("should add schema separator to appropriate locations and sort tables by name", () => {
       const tables = {
@@ -104,6 +49,7 @@ describe("Reference utils.js", () => {
     const fieldId = field.id;
     const table = createMockTable({
       id: tableId,
+      db_id: dbId,
       fields: [field],
       segments: [segment],
     });

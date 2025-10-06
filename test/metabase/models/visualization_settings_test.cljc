@@ -1,46 +1,12 @@
 (ns metabase.models.visualization-settings-test
   "Tests for the shared visualization-settings namespace functions"
-  #?@
-   (:clj
-    [(:require
-      [clojure.spec.test.alpha :as stest]
-      [clojure.test :as t]
-      [clojure.walk :as walk]
-      [metabase.models.visualization-settings :as mb.viz])]
-    :cljs
-    [(:require
-      [clojure.spec.test.alpha :as stest]
-      [clojure.test :as t]
-      [clojure.walk :as walk]
-      [goog.string :as gstring]
-      [metabase.models.visualization-settings :as mb.viz])]))
-
-(def all-instrument-fns
-  [`mb.viz/field-id->column-ref
-   `mb.viz/column-name->column-ref
-   `mb.viz/field-str->column-ref
-   `mb.viz/keyname
-   `mb.viz/parse-json-string
-   `mb.viz/encode-json-string
-   `mb.viz/parse-db-column-ref
-   `mb.viz/with-col-settings
-   `mb.viz/crossfilter-click-action
-   `mb.viz/url-click-action
-   `mb.viz/entity-click-action
-   `mb.viz/with-click-action
-   `mb.viz/with-entity-click-action
-   `mb.viz/fk-parameter-mapping])
-
-(defn with-spec-instrumentation-fixture
-  "`clojure.test` fixture that turns on instrumentation of all specs in the viz settings namespace, then turns it off."
-  [f]
-  (stest/instrument `all-instrument-fns)
-  (f)
-  (stest/unstrument `all-instrument-fns))
+  (:require #?@(:cljs [[goog.string :as gstring]]
+                :default [])
+            [clojure.test :as t]
+            [clojure.walk :as walk]
+            [metabase.models.visualization-settings :as mb.viz]))
 
 (def fmt #?(:clj format :cljs gstring/format))
-
-(t/use-fixtures :once with-spec-instrumentation-fixture)
 
 (t/deftest parse-column-ref-strings-test
   (t/testing "Column ref strings are parsed correctly"

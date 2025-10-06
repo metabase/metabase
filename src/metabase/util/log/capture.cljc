@@ -16,10 +16,11 @@
 
   The impl can store the logs in an atom or whatever that you can get later."
   (:require
-   #?@(:cljs
+   #?@(:clj
+       [[clojure.spec.alpha :as s]]
+       :cljs
        [[goog.string :as gstring]])
    [clojure.set :as set]
-   [clojure.spec.alpha :as s]
    [clojure.string :as str]))
 
 (def ^:dynamic ^{:arglists '([namespace-str level-int])} *capture-logs-fn*
@@ -80,22 +81,25 @@
                                       f2          f2)))]
       (f (fn [] @logs)))))
 
-(s/def ::namespace
-  (some-fn symbol? string?))
+;; Make sure that Spec is not pulled into Clojurescript bundle.
+#?(:clj
+   (do
+     (s/def ::namespace
+       (some-fn symbol? string?))
 
-(s/def ::level
-  #{:explode :fatal :error :warn :info :debug :trace :whisper})
+     (s/def ::level
+       #{:explode :fatal :error :warn :info :debug :trace :whisper})
 
-(s/def ::with-log-messages-for-level-args
-  (s/cat :bindings (s/spec (s/+ (s/cat :messages-fn-binding symbol?
-                                       :ns-level            (s/or :ns-level (s/spec (s/cat :ns-str ::namespace
-                                                                                           :level  ::level))
-                                                                  :ns       ::namespace
-                                                                  :level    ::level))))
-         :body     (s/+ any?)))
+     (s/def ::with-log-messages-for-level-args
+       (s/cat :bindings (s/spec (s/+ (s/cat :messages-fn-binding symbol?
+                                            :ns-level            (s/or :ns-level (s/spec (s/cat :ns-str ::namespace
+                                                                                                :level  ::level))
+                                                                       :ns       ::namespace
+                                                                       :level    ::level))))
+              :body     (s/+ any?)))
 
-(defmacro with-log-messages-for-level
-  "Capture log messages at a given level in a given namespace and all 'child' namespaces inside `body`.
+     (defmacro with-log-messages-for-level
+       "Capture log messages at a given level in a given namespace and all 'child' namespaces inside `body`.
 
   Captured logs can be accessed by invoking `messages-fn-binding`. `ns-level` can be either a namespace, level, or
   both, i.e. one of the following options:
@@ -125,24 +129,24 @@
 
   You can pass multiple bindings to this macro without them affecting one another, regardless of whether the things
   they capture overlap or not. See [[metabase.util.log.capture-test/multiple-captures-test]] for an example."
-  {:arglists '([[messages-fn-binding ns-level & more-bindings] & body])}
-  [& args]
-  (let [{:keys [bindings body]} (s/conform ::with-log-messages-for-level-args args)]
-    (reduce
-     (fn [form bindings]
-       (let [{:keys [messages-fn-binding ns-level]} bindings
-             [ns-level-type ns-level]               ns-level
-             {:keys [ns-str level]}                 (case ns-level-type
-                                                      :ns-level ns-level
-                                                      :ns       {:ns-str ns-level, :level :trace}
-                                                      :level    {:ns-str "metabase", :level ns-level})]
-         `(do-with-log-messages-for-level ~(str ns-str) ~(level->int level) (fn [~messages-fn-binding] ~form))))
-     `(do ~@body)
-     bindings)))
+       {:arglists '([[messages-fn-binding ns-level & more-bindings] & body])}
+       [& args]
+       (let [{:keys [bindings body]} (s/conform ::with-log-messages-for-level-args args)]
+         (reduce
+          (fn [form bindings]
+            (let [{:keys [messages-fn-binding ns-level]} bindings
+                  [ns-level-type ns-level]               ns-level
+                  {:keys [ns-str level]}                 (case ns-level-type
+                                                           :ns-level ns-level
+                                                           :ns       {:ns-str ns-level, :level :trace}
+                                                           :level    {:ns-str "metabase", :level ns-level})]
+              `(do-with-log-messages-for-level ~(str ns-str) ~(level->int level) (fn [~messages-fn-binding] ~form))))
+          `(do ~@body)
+          bindings)))
 
-(s/fdef with-log-messages-for-level
-  :args ::with-log-messages-for-level-args
-  :ret  any?)
+     (s/fdef with-log-messages-for-level
+       :args ::with-log-messages-for-level-args
+       :ret  any?)))
 
 ;;; The macroexpansion of something like
 ;;;

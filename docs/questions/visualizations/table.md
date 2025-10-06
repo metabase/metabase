@@ -6,9 +6,11 @@ redirect_from:
 
 # Tables
 
-The **Table** option is good for looking at tabular data (duh), or for lists of things like users or orders. The visualization options for tables allow you to add, hide, or rearrange fields in the table you're looking at, as well as modify their formatting. Check out [Everything you can do with the table visualization](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/visualization/table).
+![A table in Metabase](../images/table.png)
 
-## Rearranging, adding, and removing columns
+Tables are data's natural habitat.
+
+## Rearranging, adding, and hiding columns
 
 Open up the settings for your table visualization and you'll see the Columns tab, which displays all the columns currently being shown in the table. To hide a column, click the eye icon.
 
@@ -18,11 +20,22 @@ When viewing tables, you can click on the **gear** icon in the bottom left to br
 
 ![Adding or removing columns](../images/column-selection.png)
 
-Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
+Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#field-visibility).
 
-> **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder. 
+> **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder.
 
 To rearrange the order of the columns, simply click and drag any of the columns in the sidebar. You can also click on a column's heading in the table and drag the column to another position in the table.
+
+## Custom columns
+
+![Add column](../images/add-column.png)
+
+To add a column, you can click the **+** button in the upper right of the table. From here you can:
+
+- Extract part of column (like extracting part of a URL or date)
+- Combine columns (like concatenating columns for first name and last name)
+
+For more complicated calculations, you can use the editor to [add a custom column](../query-builder/editor.md#custom-columns).
 
 ## Add row numbers to a table
 
@@ -35,6 +48,8 @@ To number the rows of a table, click on the **gear** icon in bottom left to brin
 To change the width of a column, you can click and drag the edges of the column's header.
 
 ## Column heading options for filtering and summarizing
+
+![Column actions](../images/column-actions.png)
 
 Click on a column heading and Metabase will present quick options for filtering and summarizing the data. The options for the column depend on the column's data type (ID, Text, Number, Date).
 
@@ -97,6 +112,18 @@ Grab the domain or host from a URL or email. So if you have `https://www.example
 
 Add up all the values and group by a time period, generally by month.
 
+## Table cell click options
+
+![Clicking on a table cell gives you different options depending on the column's data type](../images/cell-action-string.png)
+
+Clicking on a table cell will give you different options based on the data type and its values.
+
+## Detail views
+
+![Detail view](../images/detail-view.png)
+
+To make records easier to read, you can click on an entity key column (either a primary or foreign key) to bring up a detail view. For example, clicking on an order `ID` will bring up details from that order.
+
 ## Column formatting options
 
 To format the display of any column in a table, click on the column heading and choose the `Formatting` option (you can also get there by clicking on the gear on any column when in the `Columns` tab of the visualization settings).
@@ -111,11 +138,11 @@ The options you see will differ depending on the type of column you're viewing:
 
 You can rename the column.
 
-## Align text
+### Align text
 
 You can display the text on the left, right, or in the middle (i.e., centered) of the column.
 
-## Wrap text
+### Wrap text
 
 You can toggle text wrapping, which is useful for columns with long text values like comments.
 
@@ -127,7 +154,7 @@ You can display a column as:
 - [Link](#display-text-as-a-link)
 - Email link
 - [Image](#display-url-as-an-image)
-- Automatic (Metabase guesses based on the values). 
+- Automatic (Metabase guesses based on the values).
 
 #### Display text as a link
 
@@ -261,6 +288,10 @@ When you add a new rule, you'll first need to pick which column(s) should be aff
 
 You can set as many rules on a table as you want, and change the order in which those rules are applied. If two or more rules disagree with each other, the rule that's on the top of your list of rules will win. You can click and drag your rules to reorder them, and click on a rule to edit it.
 
+## Adding tables to dashboards
+
+When you add a table to a dashboard, you can add [custom destinations](../../dashboards/interactive.md#custom-destinations) to individual columns, wire up filter widgets, and more. To see an example of a table used in a dashboard, check out our article on [building a record lookup tool with Metabase](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/build-a-record-lookup-tool).
+
 ## Table pagination on dashboard cards
 
 When you add a table to dashboard, the table will be scrollable by default. You can paginate the rows by:
@@ -271,10 +302,18 @@ When you add a table to dashboard, the table will be scrollable by default. You 
 
 ![Paginate table results on dashboard card](../images/paginate-table-on-dashboard-card.png)
 
+## Foreign key remapping
+
+Here's one last cool feature, though it requires an admin to change some settings in the Data Model section. Foreign keys are useful, but they're generally not meaningful for (human) readers. Instead of displaying a foreign key as a number, say a product ID, it'd be nice to display the values as the product's `Title`. Metabase can substitute foreign keys with values from the foreign table that are associated with that entity key. What this means is that instead of showing the `Product_ID` value, you can set it up so that people will instead see the product `Title`, like "Lightweight Wool Computer." Your Metabase admins can set this up in the **Admin Panel** in the **Data Model tab**. In this case, we'll select the `Orders` table, and change the foreign key from the `Products` table to instead display in the Order table as the `Product → Title`.
+
 ### Pivoted tables
 
 > This auto-pivoting is distinct from the [pivot table](./pivot-table.md) visualization.
 
-If your table is a result that contains one numeric column and two grouping columns, Metabase will also automatically "pivot" your table, like in the example below. Pivoting takes one of your columns and rotates it 90 degrees ("pivots" it) so that each of its values becomes a column heading. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong; or you can also turn the pivoting behavior off entirely.
+If your table is a result that contains one numeric column and two grouping columns, Metabase can "pivot" your table, like in the example below, where row values for the `Category` column (`Doohickey`, `Gadget`, `Gizmo` and `Widget`) become column headings. If you open up the visualization settings by clicking the gear icon, you can choose which column to pivot in case Metabase got it wrong. You can also turn off the pivoting behavior entirely.
 
 ![Pivot table](../images/pivot.png)
+
+## Table export options
+
+See [Exporting results](../exporting-results.md).

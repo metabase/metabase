@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { c, t } from "ttag";
 
-import type { CollectionPickerValueItem } from "metabase/common/components/CollectionPicker";
-import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import {
+  CollectionPickerModal,
+  type CollectionPickerValueItem,
+} from "metabase/common/components/Pickers/CollectionPicker";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import Styles from "./ArchivedEntityBanner.module.css";

@@ -10,7 +10,6 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
     :as bigquery.qp.reconciliation-tu]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -22,18 +21,24 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+   [metabase.test.data.impl :as data.impl]
+   [metabase.test.data.interface :as tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
 
-(def ^:private test-db-name (bigquery.tx/test-dataset-id "test_data"))
+(defn ^:private get-test-data-name
+  []
+  (bigquery.tx/test-dataset-id
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
 
 (defn- with-test-db-name
   "Replaces instances of v4_test_data with the full per-test-run DB name (aka dataset ID)"
   [x]
   (cond
-    (string? x) (str/replace x "v4_test_data" test-db-name)
+    (string? x) (str/replace x "v4_test_data" (get-test-data-name))
     (map? x)    (update-vals x with-test-db-name)
     (vector? x) (mapv with-test-db-name x)
     (list?   x) (map with-test-db-name x)
@@ -46,49 +51,44 @@
            (mt/rows
             (qp/process-query
              (mt/native-query
-               {:query (with-test-db-name
-                         (str "SELECT `v4_test_data.venues`.`id` "
-                              "FROM `v4_test_data.venues` "
-                              "ORDER BY `v4_test_data.venues`.`id` DESC "
-                              "LIMIT 2;"))})))))))
+              {:query (with-test-db-name
+                        (str "SELECT `v4_test_data.venues`.`id` "
+                             "FROM `v4_test_data.venues` "
+                             "ORDER BY `v4_test_data.venues`.`id` DESC "
+                             "LIMIT 2;"))})))))))
 
 (deftest ^:parallel native-query-test-2
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
                   "post-processing ordering shouldn't apply (metabase#2821)")
-      (let [eid (u/generate-nano-id)]
-        (is (= [{:name         "venue_id"
-                 :display_name "venue_id"
-                 :ident        (lib/native-ident "venue_id" eid)
-                 :source       :native
-                 :base_type    :type/Integer
-                 :effective_type :type/Integer
-                 :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
-                {:name         "user_id"
-                 :display_name "user_id"
-                 :ident        (lib/native-ident "user_id" eid)
-                 :source       :native
-                 :base_type    :type/Integer
-                 :effective_type :type/Integer
-                 :field_ref    [:field "user_id" {:base-type :type/Integer}]}
-                {:name         "checkins_id"
-                 :display_name "checkins_id"
-                 :ident        (lib/native-ident "checkins_id" eid)
-                 :source       :native
-                 :base_type    :type/Integer
-                 :effective_type :type/Integer
-                 :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
-               (mt/cols
-                (qp/process-query
-                 {:native   {:query (with-test-db-name
-                                      (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                           "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
-                                           "       `v4_test_data.checkins`.`id` AS `checkins_id` "
-                                           "FROM `v4_test_data.checkins` "
-                                           "LIMIT 2"))}
-                  :type     :native
-                  :info     {:card-entity-id eid}
-                  :database (mt/id)}))))))))
+      (is (=? [{:name         "venue_id"
+                :display_name "venue_id"
+                :source       :native
+                :base_type    :type/Integer
+                :effective_type :type/Integer
+                :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
+               {:name         "user_id"
+                :display_name "user_id"
+                :source       :native
+                :base_type    :type/Integer
+                :effective_type :type/Integer
+                :field_ref    [:field "user_id" {:base-type :type/Integer}]}
+               {:name         "checkins_id"
+                :display_name "checkins_id"
+                :source       :native
+                :base_type    :type/Integer
+                :effective_type :type/Integer
+                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
+              (mt/cols
+               (qp/process-query
+                {:native   {:query (with-test-db-name
+                                     (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                          "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
+                                          "       `v4_test_data.checkins`.`id` AS `checkins_id` "
+                                          "FROM `v4_test_data.checkins` "
+                                          "LIMIT 2"))}
+                 :type     :native
+                 :database (mt/id)})))))))
 
 (deftest ^:parallel native-query-test-3
   (mt/test-driver :bigquery-cloud-sdk
@@ -282,7 +282,7 @@
                                                       (merge (meta/field-metadata :venues :name)
                                                              {:table-id  1
                                                               :name      "name"
-                                                              :base_type :type/Text})]}))
+                                                              :base-type :type/Text})]}))
         (is (= (with-test-db-name
                  (str "SELECT `v4_test_data.venues`.`id` AS `id`,"
                       " `v4_test_data.venues`.`name` AS `name` "
@@ -303,11 +303,11 @@
              (mt/rows
               (qp/process-query
                (mt/native-query
-                 {:query  (with-test-db-name
-                            (str "SELECT `v4_test_data.venues`.`name` AS `name` "
-                                 "FROM `v4_test_data.venues` "
-                                 "WHERE `v4_test_data.venues`.`name` = ?"))
-                  :params ["Red Medicine"]}))))))))
+                {:query  (with-test-db-name
+                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                "FROM `v4_test_data.venues` "
+                                "WHERE `v4_test_data.venues`.`name` = ?"))
+                 :params ["Red Medicine"]}))))))))
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -317,10 +317,10 @@
       [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
       (meta/field-metadata :checkins :date)                                 :date)))
 
-(deftest reconcile-temporal-types-test
+(deftest ^:parallel reconcile-temporal-types-test
   (doseq [test-case (bigquery.qp.reconciliation-tu/test-cases)]
-    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case)))
-      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case))))
+    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case)))
+      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case))))
 
 (deftest reconcile-temporal-types-date-extraction-filters-test
   (mt/with-report-timezone-id! nil
@@ -347,7 +347,7 @@
       (mt/with-report-timezone-id! nil
         (mt/dataset test-data
           (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                            (mt/metadata-provider)
                                             {:fields [{:id                (mt/id :reviews :rating)
                                                        :coercion-strategy :Coercion/UNIXMilliSeconds->DateTime
                                                        :effective-type    :type/Instant}]})
@@ -359,7 +359,7 @@
                                                [:field %id {:add/source-table $$reviews}]]]
                                    :limit    1})
                   filter-clause (get-in query [:query :filter])]
-              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" test-db-name)
+              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" (get-test-data-name))
                            " = "
                            "TIMESTAMP_TRUNC(TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 day), day)")]
                      (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
@@ -495,8 +495,7 @@
                                    :base-type          :type/Date
                                    ::add/source-table  ::add/source
                                    ::add/source-alias  "date"
-                                   ::add/desired-alias "date"
-                                   ::add/position      0}])))))))))
+                                   ::add/desired-alias "date"}])))))))))
 
 (deftest ^:parallel between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
@@ -607,7 +606,7 @@
                            :type       :native
                            :native     {:query         (str "SELECT count(*)\n"
                                                             (format "FROM `%s.attempts`\n"
-                                                                    (bigquery.tx/test-dataset-id "attempted_murders"))
+                                                                    (get-test-data-name))
                                                             "WHERE {{d}}")
                                         :template-tags {"d" {:name         "d"
                                                              :display-name "Date"
@@ -691,7 +690,7 @@
                            :type :native
                            :native {:query (str "SELECT count(*)\n"
                                                 (format "FROM `%s.attempts`\n"
-                                                        (bigquery.tx/test-dataset-id "attempted_murders"))
+                                                        (get-test-data-name))
                                                 "WHERE {{d}}")
                                     :template-tags {"d" {:name         "d"
                                                          :display-name "Date"
@@ -988,11 +987,11 @@
                 [int]
                 (qp/process-query
                  (mt/native-query
-                   {:query  (with-test-db-name
-                              (str "SELECT count(*) AS `count` "
-                                   "FROM `v4_test_data.venues` "
-                                   "WHERE `v4_test_data.venues`.`name` = ?"))
-                    :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+                  {:query  (with-test-db-name
+                             (str "SELECT count(*) AS `count` "
+                                  "FROM `v4_test_data.venues` "
+                                  "WHERE `v4_test_data.venues`.`name` = ?"))
+                   :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest ^:parallel escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"
@@ -1022,7 +1021,7 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "We should remove diacriticals and other disallowed characters from field aliases (#14933)"
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
-                                        (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                        (mt/metadata-provider)
                                         {:tables [{:id (mt/id :venues), :name "Organização"}]})
         (let [query (mt/mbql-query checkins
                       {:fields [$id $venue-id->venues.name]
@@ -1132,7 +1131,7 @@
                                         "  `v4_sample_dataset.orders`"
                                         "LIMIT"
                                         "  10"]]
-                              (str/replace line #"\Qv4_sample_dataset\E" test-db-name))}
+                              (str/replace line #"\Qv4_sample_dataset\E" (get-test-data-name)))}
                (-> (mt/mbql-query orders
                      {:aggregation [[:aggregation-options
                                      [:percentile $orders.quantity 0.5]
@@ -1218,7 +1217,7 @@
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -1263,7 +1262,7 @@
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
-                 (str/replace #"v4_test_data__transient_\d+" "test_data")
+                 (str/replace #"sha_[a-z0-9]+_test_data" "test_data")
                  str/split-lines))))))
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test

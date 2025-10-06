@@ -1,5 +1,4 @@
 import type {
-  AIDashboardAnalysisParams,
   AIEntityAnalysisResponse,
   AIQuestionAnalysisParams,
 } from "metabase-types/api";
@@ -28,27 +27,7 @@ export const aiEntityAnalysisApi = EnterpriseApi.injectEndpoints({
         };
       },
     }),
-
-    analyzeDashboard: builder.mutation<
-      AIEntityAnalysisResponse,
-      AIDashboardAnalysisParams
-    >({
-      query: ({ imageBase64, name, description, tabName }) => {
-        return {
-          url: "/api/ee/ai-entity-analysis/analyze-dashboard",
-          method: "POST",
-          body: {
-            image_base64: imageBase64,
-            name,
-            description,
-            tab_name: tabName,
-          },
-          signal: AbortSignal.timeout(DEFAULT_TIMEOUT),
-        };
-      },
-    }),
   }),
 });
 
-export const { useAnalyzeChartMutation, useAnalyzeDashboardMutation } =
-  aiEntityAnalysisApi;
+export const { useAnalyzeChartMutation } = aiEntityAnalysisApi;

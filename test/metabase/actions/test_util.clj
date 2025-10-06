@@ -80,13 +80,14 @@
   You can use [[with-actions-test-data-tables]] if you need something other than the `categories` table, e.g. for
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
+(map :table-name actions-test-data)
 
 (defn do-with-dataset-definition
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
   [dataset-definition thunk]
   ;; use a unique DB name each time so this is thread-safe
   (let [db                 (atom nil)
-        dataset-definition (tx/get-dataset-definition dataset-definition)
+        dataset-definition (tx/map->DatabaseDefinition (into {} (tx/get-dataset-definition dataset-definition)))
         dataset-definition (update dataset-definition :database-name #(str % "-" (u.random/random-name)))]
     (try
       (data/dataset dataset-definition
@@ -104,6 +105,12 @@
   [& body]
   `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
 
+(defmacro with-actions-temp-db
+  "Sets the current dataset to a freshly-loaded [[dataset-definition]] that gets destroyed at the conclusion of `body`."
+  {:style/indent 1}
+  [dataset-definition & body]
+  `(do-with-dataset-definition ~dataset-definition (fn [] ~@body)))
+
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created table-definitions that gets destroyed at the conclusion of `body`.
    Use this to test destructive actions that may modify the data.
@@ -116,7 +123,7 @@
       ...)"
   {:style/indent :defn}
   [table-definitions & body]
-  `(do-with-dataset-definition (apply tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition "temp-test-data" ~table-definitions) (fn [] ~@body)))
 
 (defmacro with-empty-db
   "Sets the current dataset to a freshly created db that gets destroyed at the conclusion of `body`.
@@ -125,7 +132,7 @@
    reuse a single database for all tests."
   {:style/indent :defn}
   [& body]
-  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db") (fn [] ~@body)))
+  `(do-with-dataset-definition (tx/dataset-definition "empty-test-db" []) (fn [] ~@body)))
 
 (defn- delete-categories-1-query []
   (sql.qp/format-honeysql
@@ -290,8 +297,8 @@
 
 (defn do-with-actions-set!
   "Impl for [[with-actions-enabled]]."
-  [enable? thunk]
-  (tu/with-temp-vals-in-db :model/Database (data/id) {:settings {:database-enable-actions enable?}}
+  [db-id enable? thunk]
+  (tu/with-temp-vals-in-db :model/Database db-id {:settings {:database-enable-actions enable?}}
     (thunk)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-enabled!` and remove the `:clj-kondo/ignore`
@@ -300,7 +307,7 @@
   "Execute `body` with Actions enabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-set! true (fn [] ~@body)))
+  `(do-with-actions-set! (data/id) true (fn [] ~@body)))
 
 ;;; TODO -- FIXME, rename this to `with-actions-disabled!` and remove the `:clj-kondo/ignore`
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -308,7 +315,7 @@
   "Execute `body` with Actions disabled for the current test Database."
   {:style/indent 0}
   [& body]
-  `(do-with-actions-set! false (fn [] ~@body)))
+  `(do-with-actions-set! (data/id) false (fn [] ~@body)))
 
 ;;; TODO FIXME -- rename this to [[with-actions!]] and then remove the Kondo ignore comment below
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}

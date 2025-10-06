@@ -1,4 +1,4 @@
-import * as d3 from "d3";
+import { scaleLinear, scaleQuantile } from "d3-scale";
 
 export const getColorScale = (
   extent: [number, number],
@@ -6,7 +6,7 @@ export const getColorScale = (
   isQuantile: boolean = false,
 ) => {
   if (isQuantile) {
-    return d3.scaleQuantile<string>(extent, colors);
+    return scaleQuantile<string>(extent, colors);
   } else {
     const [start, end] = extent;
 
@@ -15,7 +15,7 @@ export const getColorScale = (
         ? [start, start + (end - start) / 2, end]
         : [start, end];
 
-    return d3.scaleLinear<string>(domain, colors);
+    return scaleLinear<string>(domain, colors);
   }
 };
 

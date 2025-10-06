@@ -28,21 +28,22 @@
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
   Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
+  (:refer-clojure :exclude [mapv every? some select-keys])
   (:require
-   #?(:clj [metabase.util.performance :as perf]
-      :cljs [clojure.walk :as walk])
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.normalize :as lib.normalize]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [mapv every? some select-keys]]
    [metabase.util.time :as u.time]))
 
 (defn- mbql-clause?
@@ -81,7 +82,7 @@
 ;;; |                                                NORMALIZE TOKENS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare normalize-tokens)
+(declare normalize-tokens path->special-token-normalization-fn)
 
 (defmulti ^:private normalize-mbql-clause-tokens
   {:arglists '([mbql-clause])}
@@ -94,15 +95,15 @@
     (some? option) (conj option)))
 
 (defn- normalize-ref-opts [opts]
-  (let [opts (normalize-tokens opts :ignore-path)]
+  (let [opts (normalize-tokens opts nil)]
     (cond-> opts
-      (:base-type opts)      (update :base-type keyword)
-      (:effective-type opts) (update :effective-type keyword)
-      (:temporal-unit opts)  (update :temporal-unit keyword)
-      (:inherited-temporal-unit opts)  (update :inherited-temporal-unit keyword)
-      (:binning opts)        (update :binning (fn [binning]
-                                                (cond-> binning
-                                                  (:strategy binning) (update :strategy keyword)))))))
+      (:base-type opts)               (update :base-type keyword)
+      (:effective-type opts)          (update :effective-type keyword)
+      (:temporal-unit opts)           (update :temporal-unit keyword)
+      (:inherited-temporal-unit opts) (update :inherited-temporal-unit keyword)
+      (:binning opts)                 (update :binning (fn [binning]
+                                                         (cond-> binning
+                                                           (:strategy binning) (update :strategy keyword)))))))
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
@@ -112,10 +113,6 @@
                                   expression-name)]
         opts (->> opts
                   normalize-ref-opts
-                  ;; Only keep fields required for handling binned&datetime expressions (#33528)
-                  ;; Allowing added alias-info through here breaks
-                  ;; [[metabase.query-processor.util.nest-query-test/nest-expressions-ignore-source-queries-test]]
-                  (m/filter-keys #{:base-type :temporal-unit :binning})
                   not-empty)]
     (cond-> expression
       opts (conj opts))))
@@ -126,7 +123,7 @@
   [[_ field strategy-name strategy-param]]
   (if strategy-param
     (conj (normalize-mbql-clause-tokens [:binning-strategy field strategy-name]) strategy-param)
-    [:binning-strategy (normalize-tokens field :ignore-path) (maybe-normalize-token strategy-name)]))
+    [:binning-strategy (normalize-tokens field nil) (maybe-normalize-token strategy-name)]))
 
 (defmethod normalize-mbql-clause-tokens :field
   [[_ id-or-name opts]]
@@ -148,17 +145,17 @@
   ;; normalize the unit, and `:as` (if present) tokens, and the Field."
   [[_ field as-or-unit maybe-unit]]
   (if maybe-unit
-    [:datetime-field (normalize-tokens field :ignore-path) :as (maybe-normalize-token maybe-unit)]
-    [:datetime-field (normalize-tokens field :ignore-path) (maybe-normalize-token as-or-unit)]))
+    [:datetime-field (normalize-tokens field nil) :as (maybe-normalize-token maybe-unit)]
+    [:datetime-field (normalize-tokens field nil) (maybe-normalize-token as-or-unit)]))
 
 (defmethod normalize-mbql-clause-tokens :time-interval
   ;; `time-interval`'s `unit` should get normalized, and `amount` if it's not an integer."
   [[_ field amount unit options]]
   (if options
     (conj (normalize-mbql-clause-tokens [:time-interval field amount unit])
-          (normalize-tokens options :ignore-path))
+          (normalize-tokens options nil))
     [:time-interval
-     (normalize-tokens field :ignore-path)
+     (normalize-tokens field nil)
      (if (integer? amount)
        amount
        (maybe-normalize-token amount))
@@ -166,7 +163,7 @@
 
 (defmethod normalize-mbql-clause-tokens :relative-time-interval
   [[_ col & [_value _bucket _offset-value _offset-bucket :as args]]]
-  (into [:relative-time-interval (normalize-tokens col :ignore-path)]
+  (into [:relative-time-interval (normalize-tokens col nil)]
         (map maybe-normalize-token)
         args))
 
@@ -186,48 +183,61 @@
 
 (defmethod normalize-mbql-clause-tokens :datetime-add
   [[_ field amount unit]]
-  [:datetime-add (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+  [:datetime-add (normalize-tokens field nil) amount (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :datetime-subtract
   [[_ field amount unit]]
-  [:datetime-subtract (normalize-tokens field :ignore-path) amount (maybe-normalize-token unit)])
+  [:datetime-subtract (normalize-tokens field nil) amount (maybe-normalize-token unit)])
+
+(defmethod normalize-mbql-clause-tokens :datetime
+  [[_ field options]]
+  (if (empty? options)
+    [:datetime (normalize-tokens field nil)]
+    [:datetime (normalize-tokens field nil)
+     (let [options (normalize-tokens options nil)]
+       (cond-> options
+         (contains? options :mode)
+         (update :mode lib.schema.expression.temporal/normalize-datetime-mode)))]))
 
 (defmethod normalize-mbql-clause-tokens :get-week
   [[_ field mode]]
   (if mode
-    [:get-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
-    [:get-week (normalize-tokens field :ignore-path)]))
+    [:get-week (normalize-tokens field nil) (maybe-normalize-token mode)]
+    [:get-week (normalize-tokens field nil)]))
 
 (defmethod normalize-mbql-clause-tokens :get-day-of-week
   [[_ field mode]]
   (if mode
-    [:get-day-of-week (normalize-tokens field :ignore-path) (maybe-normalize-token mode)]
-    [:get-day-of-week (normalize-tokens field :ignore-path)]))
+    [:get-day-of-week (normalize-tokens field nil) (maybe-normalize-token mode)]
+    [:get-day-of-week (normalize-tokens field nil)]))
 
 (defmethod normalize-mbql-clause-tokens :temporal-extract
   [[_ field unit mode]]
   (if mode
-    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit) (maybe-normalize-token mode)]
-    [:temporal-extract (normalize-tokens field :ignore-path) (maybe-normalize-token unit)]))
+    [:temporal-extract (normalize-tokens field nil) (maybe-normalize-token unit) (maybe-normalize-token mode)]
+    [:temporal-extract (normalize-tokens field nil) (maybe-normalize-token unit)]))
 
 (defmethod normalize-mbql-clause-tokens :datetime-diff
   [[_ x y unit]]
   [:datetime-diff
-   (normalize-tokens x :ignore-path)
-   (normalize-tokens y :ignore-path)
+   (normalize-tokens x nil)
+   (normalize-tokens y nil)
    (maybe-normalize-token unit)])
 
 (defmethod normalize-mbql-clause-tokens :during
   [[_ field value unit]]
-  [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
+  [:during (normalize-tokens field nil) value (maybe-normalize-token unit)])
 
 (defn- normalize-value-opts
   [opts]
-  (some-> opts
-          lib.schema.common/normalize-map
-          ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-          (m/update-existing :base_type keyword)
-          (m/update-existing :semantic_type keyword)))
+  (when opts
+    (-> opts
+        (perf/update-keys (fn [k]
+                            (keyword (u/->snake_case_en k))))
+        (m/update-existing :base_type      keyword)
+        (m/update-existing :effective_type keyword)
+        (m/update-existing :semantic_type  keyword)
+        (m/update-existing :unit           keyword))))
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
@@ -237,15 +247,15 @@
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
-  {:pre [(= (count clause) 4)]}
-  (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
-    [:offset opts (normalize-tokens expr :ignore-path) n]))
+  (when (= (count clause) 4)
+    (let [opts (lib.normalize/normalize :metabase.lib.schema.common/options (or opts {}))]
+      [:offset opts (normalize-tokens expr nil) n])))
 
 (defmethod normalize-mbql-clause-tokens :default
   ;; MBQL clauses by default are recursively normalized.
   ;; This includes the clause name (e.g. `[\"COUNT\" ...]` becomes `[:count ...]`) and args.
   [[clause-name & args]]
-  (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % :ignore-path)) args))
+  (into [(maybe-normalize-token clause-name)] (map #(normalize-tokens % nil)) args))
 
 (defn- aggregation-subclause?
   [x]
@@ -276,7 +286,7 @@
     (mapv normalize-ag-clause-tokens ag-clause)
 
     :else
-    (normalize-tokens ag-clause :ignore-path)))
+    (normalize-tokens ag-clause nil)))
 
 (defn- normalize-expressions-tokens
   "For expressions, we don't want to normalize the name of the expression; keep that as is, and make it a string;
@@ -284,7 +294,7 @@
   [expressions-clause]
   (into {} (for [[expression-name definition] expressions-clause]
              [(u/qualified-name expression-name)
-              (normalize-tokens definition :ignore-path)])))
+              (normalize-tokens definition nil)])))
 
 (defn- normalize-order-by-tokens
   "Normalize tokens in the order-by clause, which can have different syntax when using MBQL 95 or 98
@@ -308,7 +318,7 @@
        ;; if there's not a special transform function for the key in the map above, just wrap the key-value
        ;; pair in a dummy map and let [[normalize-tokens]] take care of it. Then unwrap
        (fn [v]
-         (-> (normalize-tokens {k v} :ignore-path)
+         (-> (normalize-tokens {k v} nil)
              (get k)))))
 
 (defn- normalize-template-tag-definition
@@ -350,22 +360,23 @@
     id                   (update :id u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     param-type           (update :type maybe-normalize-token)
-    target               (update :target #(normalize-tokens % :ignore-path))
-    values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % :ignore-path))
-    values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % :ignore-path))))
+    target               (update :target #(normalize-tokens % nil))
+    values_source_config (update-in [:values_source_config :label_field] #(normalize-tokens % nil))
+    values_source_config (update-in [:values_source_config :value_field] #(normalize-tokens % nil))))
 
 (defn- normalize-source-query [source-query]
-  (let [{native? :native, :as source-query} (update-keys source-query maybe-normalize-token)]
+  (let [{native? :native, :as source-query} (perf/update-keys source-query maybe-normalize-token)]
     (if native?
       (-> source-query
           (set/rename-keys {:native :query})
-          (normalize-tokens [:native])
+          (normalize-tokens (:native path->special-token-normalization-fn))
           (set/rename-keys {:query :native}))
-      (normalize-tokens source-query [:query]))))
+      (normalize-tokens source-query (:query path->special-token-normalization-fn)))))
 
 (defn- normalize-join [join]
   ;; path in call to `normalize-tokens` is [:query] so it will normalize `:source-query` as appropriate
-  (let [{:keys [strategy fields], join-alias :alias, :as join} (normalize-tokens join :query)]
+  (let [{:keys [strategy fields], join-alias :alias, :as join}
+        (normalize-tokens join (:query path->special-token-normalization-fn))]
     (cond-> join
       strategy
       (update :strategy maybe-normalize-token)
@@ -383,41 +394,50 @@
   [clause]
   (-> clause normalize-tokens canonicalize-mbql-clauses))
 
-(defn- update-existing! [transient-map k f]
-  (if-some [v (get transient-map k)]
-    (assoc! transient-map k (f v))
-    transient-map))
+(mu/defn- normalize-fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
+  [fingerprint :- [:maybe :map]]
+  (when fingerprint
+    (lib.normalize/normalize ::lib.schema.metadata.fingerprint/fingerprint fingerprint)))
 
-(defn normalize-source-metadata
+(mu/defn normalize-source-metadata
   "Normalize source/results metadata for a single column."
-  [metadata]
-  {:pre [(map? metadata)
-         #?(:clj  (instance? clojure.lang.IEditableCollection metadata)
-            :cljs (implements? cljs.core.IEditableCollection metadata))]}
-  (let [m (transient metadata)]
-    (-> (reduce #(update-existing! %1 %2 keyword) m
-                [:base_type :effective_type :semantic_type :visibility_type :source :unit])
-        (update-existing! :field_ref normalize-field-ref)
-        (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
-        (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))
-        persistent!)))
+  [metadata :- :map]
+  {:pre [(map? metadata)]}
+  (into (empty metadata)
+        (comp (remove (fn [[k _v]]
+                        (= k :ident))) ; ignore legacy `:ident` key
+              (map (fn [[k v]]
+                     (let [k (keyword k)
+                           k ((if (simple-keyword? k)
+                                u/->snake_case_en
+                                u/->kebab-case-en) k)
+                           v (case k
+                               (:semantic_type
+                                :visibility_type
+                                :source
+                                :unit
+                                :lib/source) (keyword v)
+                               (:effective_type
+                                :base_type)  (or (keyword v) :type/*)
+                               :field_ref    (normalize-field-ref v)
+                               :fingerprint  (normalize-fingerprint v)
+                               :binning_info (m/update-existing v :binning_strategy keyword)
+                               #_else
+                               v)]
+                       [k v]))))
+        metadata))
 
-(defn- normalize-native-query
+(mu/defn- normalize-native-query :- [:maybe :map]
   "For native queries, normalize the top-level keys, and template tags, but nothing else."
-  [native-query]
-  (let [native-query (update-keys native-query maybe-normalize-token)]
+  [native-query :- [:maybe :map]]
+  (let [native-query (perf/update-keys native-query maybe-normalize-token)]
     (cond-> native-query
       (seq (:template-tags native-query)) (update :template-tags normalize-template-tags))))
 
 (defn- normalize-actions-row [row]
-  (cond-> row
-    (map? row) (update-keys u/qualified-name)))
 
-(defn- normalize-ident-index [index]
-  (cond
-    (string? index)  (parse-long index)
-    (keyword? index) (-> index name parse-long)
-    :else            index))
+  (cond-> row
+    (map? row) (perf/update-keys u/qualified-name)))
 
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
@@ -427,10 +447,7 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents #(update-keys % normalize-ident-index)
-                     :breakout-idents    #(update-keys % normalize-ident-index)
                      :expressions        normalize-expressions-tokens
-                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
                      :order-by           normalize-order-by-tokens
                      :source-query       normalize-source-query
                      :source-metadata    {::sequence normalize-source-metadata}
@@ -440,6 +457,7 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
+                     :pivot/result-metadata   identity
                      ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings  identity
                      :context                 maybe-normalize-token}
@@ -447,9 +465,14 @@
    ;; TODO -- when does query ever have a top-level `:context` key??
    :context         #(some-> % maybe-normalize-token)
    :source-metadata {::sequence normalize-source-metadata}
-   :viz-settings    maybe-normalize-token
+   :viz-settings    maybe-normalize-token ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row      normalize-actions-row
-   :update-row      normalize-actions-row})
+   :update-row      normalize-actions-row
+   ;;
+   ;; HACK TODO (Cam 7/17/25) -- seems icky for the legacy MBQL schema to have to know about namespaced keys like
+   ;; this. I guess this can go away once we stop converting back and forth between MBQL 4 and 5 inside the QP
+   :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
+   identity})
 
 (defn normalize-tokens
   "Recursively normalize tokens in `x`.
@@ -460,47 +483,52 @@
 
   In some cases, dealing with the path isn't desirable, but we don't want to accidentally trigger normalization
   functions (such as accidentally normalizing the `:type` key in something other than the top-level of the query), so
-  by convention please pass `:ignore-path` to avoid accidentally triggering path functions."
-  [x & [path]]
-  (let [path       (if (keyword? path)
-                     [path]
-                     (vec path))
-        special-fn (when (seq path)
-                     (get-in path->special-token-normalization-fn path))]
-    (try
-      (cond
-        (fn? special-fn)
-        (special-fn x)
+  by convention please pass `nil` to avoid accidentally triggering special path functions."
+  ([x] (normalize-tokens x path->special-token-normalization-fn))
+  ([x special-fns]
+   (let [special-fn (when (and special-fns (fn? special-fns))
+                      special-fns)]
+     (try
+       (cond
+         special-fn
+         (special-fn x)
 
-        ;; Skip record types because this query is an `expanded` query, which is not going to play nice here. Hopefully we
-        ;; can remove expanded queries entirely soon.
-        (record? x)
-        x
+         ;; Skip record types because this query is an `expanded` query, which is not going to play nice here. Hopefully we
+         ;; can remove expanded queries entirely soon.
+         (record? x)
+         x
 
-        ;; maps should just get the keys normalized and then recursively call normalize-tokens on the values.
-        ;; Each recursive call appends to the keypath above so we can handle top-level clauses in a special way if needed
-        (map? x)
-        (into {} (for [[k v] x
-                       :let  [k (maybe-normalize-token k)]]
-                   [k (normalize-tokens v (conj (vec path) k))]))
+         ;; maps should just get the keys normalized and then recursively call normalize-tokens on the values.
+         ;; Each recursive call peels away one level from special-fns map so we can handle top-level clauses in a special way if needed
+         (map? x)
+         (reduce-kv (fn [m k v]
+                      (let [k' (maybe-normalize-token k)
+                            v' (normalize-tokens v (get special-fns k'))]
+                        (if (identical? k k')
+                          (if (identical? v v')
+                            m
+                            (assoc m k v'))
+                          (-> m (dissoc k) (assoc k' v')))))
+                    x x)
 
-        ;; MBQL clauses handled above because of special cases
-        (mbql-clause? x)
-        (normalize-mbql-clause-tokens x)
+         ;;          MBQL clauses handled above because of special cases
+         (mbql-clause? x)
+         (normalize-mbql-clause-tokens x)
 
-        ;; for non-mbql sequential collections (probably something like the subclauses of :order-by or something like
-        ;; that) recurse on all the args.
-        ;;
-        ;; To signify that we're recursing into a sequential collection, this appends `::sequence` to path
-        (sequential? x)
-        (mapv #(normalize-tokens % (conj (vec path) ::sequence)) x)
+         ;; for non-mbql sequential collections (probably something like the subclauses of :order-by or something like
+         ;; that) recurse on all the args.
+         ;;
+         ;; To signify that we're recursing into a sequential collection, this peels away `::sequence` from special-fns
+         (sequential? x)
+         (let [special-fns (::sequence special-fns)]
+           (mapv #(normalize-tokens % special-fns) x))
 
-        :else
-        x)
-      (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
-                        {:form x, :path path, :special-fn special-fn}
-                        e))))))
+         :else
+         x)
+       (catch #?(:clj Throwable :cljs js/Error) e
+         (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
+                         {:form x, :special-fn special-fn}
+                         e)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
@@ -532,14 +560,16 @@
   (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
-  [[_ id-or-name opts]]
-  {:pre [((some-fn map? nil?) opts)]}
-  (if (is-clause? :field id-or-name)
-    (let [[_ nested-id-or-name nested-opts] id-or-name]
-      (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
-    ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
-    ;; afterwards
-    [:field id-or-name (not-empty opts)]))
+  [[_ id-or-name opts, :as clause]]
+  (if-not ((some-fn map? nil?) opts)
+    ;; this is an MBQL 5+ clause, ignore it.
+    clause
+    (if (is-clause? :field id-or-name)
+      (let [[_ nested-id-or-name nested-opts] id-or-name]
+        (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+      ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
+      ;; afterwards
+      [:field id-or-name (not-empty opts)])))
 
 (defmethod canonicalize-mbql-clause :aggregation
   [[_tag index opts]]
@@ -577,6 +607,7 @@
     3
     (let [[_ field unit] clause]
       (-> (canonicalize-implicit-field-id field)
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (mbql.u/with-temporal-unit unit)))
 
     4
@@ -597,6 +628,7 @@
 
 ;; For `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing.
 (defn- canonicalize-compound-filter-clause [[filter-name & args]]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (mbql.u/simplify-compound-filter
    (into [filter-name]
          ;; we need to canonicalize any other mbql clauses that might show up in args here because
@@ -714,7 +746,7 @@
     [[_ clauses options]]
     (if options
       (conj (canonicalize-mbql-clause [tag clauses])
-            (normalize-tokens options :ignore-path))
+            (normalize-tokens options nil))
       [tag (vec (for [[pred expr] clauses]
                   [(canonicalize-mbql-clause pred) (canonicalize-mbql-clause expr)]))])))
 
@@ -1021,100 +1053,97 @@
 (defn- replace-legacy-filters
   "Replaces legacy filter clauses with modern alternatives."
   [query]
-  (try
-    (lib.util.match/replace query
-      (filter-clause :guard mbql.preds/Filter?)
+  (lib.util.match/replace query
+    (filter-clause :guard mbql.preds/Filter?)
+    (try
       (-> filter-clause
           replace-relative-date-filters
-          replace-exclude-date-filters))
-    (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info (i18n/tru "Error replacing legacy filters")
-                      {:query query}
-                      e)))))
+          replace-exclude-date-filters)
+      (catch #?(:clj Throwable :cljs :default) e
+        (throw (ex-info (i18n/tru "Error replacing legacy filters")
+                        {:filter-clause filter-clause, :query query}
+                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             REMOVING EMPTY CLAUSES                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(declare remove-empty-clauses)
+(declare remove-empty-clauses path->special-remove-empty-clauses-fn)
 
-(defn- remove-empty-clauses-in-map [m path]
-  (let [m (into (empty m) (for [[k v] m
-                                :let  [v (remove-empty-clauses v (conj path k))]
-                                :when (some? v)]
-                            [k v]))]
-    (when (seq m)
-      m)))
+(defn- remove-empty-clauses-in-map [m special-fns]
+  (not-empty (reduce-kv (fn [m k v]
+                          (let [v' (remove-empty-clauses v (get special-fns k))]
+                            (cond (nil? v') (dissoc m k)
+                                  (identical? v v') m
+                                  :else (assoc m k v'))))
+                        m m)))
 
-(defn- remove-empty-clauses-in-sequence* [xs path]
-  (let [xs (mapv #(remove-empty-clauses % (conj path ::sequence))
-                 xs)]
+(defn- remove-empty-clauses-in-sequence* [xs special-fns]
+  (let [special-fns (::sequence special-fns)
+        xs (#?(:clj perf/mapv :default mapv) #(remove-empty-clauses % special-fns) xs)]
     (when (some some? xs)
       xs)))
 
 (defmulti ^:private remove-empty-clauses-in-mbql-clause
-  {:arglists '([clause path])}
-  (fn [[tag] _path]
+  {:arglists '([clause special-fns])}
+  (fn [[tag] _special-fns]
     tag))
 
 (defmethod remove-empty-clauses-in-mbql-clause :default
-  [clause path]
-  (remove-empty-clauses-in-sequence* clause path))
+  [clause special-fns]
+  (remove-empty-clauses-in-sequence* clause special-fns))
 
 (defmethod remove-empty-clauses-in-mbql-clause :offset
-  [[_tag opts expr n] path]
-  [:offset opts (remove-empty-clauses expr (conj path :offset)) n])
+  [[_tag opts expr n] special-fns]
+  [:offset opts (remove-empty-clauses expr (:offset special-fns)) n])
 
-(defn- remove-empty-clauses-in-sequence [x path]
+(defn- remove-empty-clauses-in-sequence [x special-fns]
   (if (mbql-clause? x)
-    (remove-empty-clauses-in-mbql-clause x path)
-    (remove-empty-clauses-in-sequence* x path)))
+    (remove-empty-clauses-in-mbql-clause x special-fns)
+    (remove-empty-clauses-in-sequence* x special-fns)))
 
 (defn- remove-empty-clauses-in-join [join]
-  (remove-empty-clauses join [:query]))
+  (remove-empty-clauses join (:query path->special-remove-empty-clauses-fn)))
 
 (defn- remove-empty-clauses-in-source-query [{native? :native, :as source-query}]
   (if native?
-    (-> source-query
-        (set/rename-keys {:native :query})
-        (remove-empty-clauses [:native])
-        (set/rename-keys {:query :native}))
-    (remove-empty-clauses source-query [:query])))
+    source-query
+    (remove-empty-clauses source-query (:query path->special-remove-empty-clauses-fn))))
 
 (defn- remove-empty-clauses-in-parameter [parameter]
   (merge
    ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
    ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
    (select-keys parameter [:value])
-   (remove-empty-clauses-in-map parameter [:parameters ::sequence])))
+   (remove-empty-clauses-in-map parameter (-> path->special-remove-empty-clauses-fn :parameters ::sequence))))
 
 (def ^:private path->special-remove-empty-clauses-fn
   {:native       identity
    :query        {:source-query remove-empty-clauses-in-source-query
                   :joins        {::sequence remove-empty-clauses-in-join}}
    :parameters   {::sequence remove-empty-clauses-in-parameter}
-   :viz-settings identity
+   :viz-settings identity ; TODO (Cam 8/8/25) -- we also have [[metabase.models.interface/normalize-visualization-settings]]
    :create-row   identity
    :update-row   identity})
 
 (defn- remove-empty-clauses
   "Remove any empty or `nil` clauses in a query."
   ([query]
-   (remove-empty-clauses query []))
+   (remove-empty-clauses query path->special-remove-empty-clauses-fn))
 
-  ([x path]
+  ([x special-fns]
    (try
-     (let [special-fn (when (seq path)
-                        (get-in path->special-remove-empty-clauses-fn path))]
+     (let [special-fn (when (and special-fns (fn? special-fns))
+                        special-fns)]
        (cond
-         (fn? special-fn) (special-fn x)
+         special-fn       (special-fn x)
          (record? x)      x
-         (map? x)         (remove-empty-clauses-in-map x path)
-         (sequential? x)  (remove-empty-clauses-in-sequence x path)
+         (map? x)         (remove-empty-clauses-in-map x special-fns)
+         (sequential? x)  (remove-empty-clauses-in-sequence x special-fns)
          :else            x))
      (catch #?(:clj Throwable :cljs js/Error) e
        (throw (ex-info "Error removing empty clauses from form."
-                       {:form x, :path path}
+                       {:form x}
                        e))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

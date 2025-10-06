@@ -6,7 +6,6 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { Box } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   getFilterArgumentFormatOptions,
@@ -14,7 +13,11 @@ import {
 } from "metabase-lib/v1/operators/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
-import type { Dashboard, RowValue } from "metabase-types/api";
+import {
+  getIsMultiSelect,
+  hasValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { CardId, DashboardId, RowValue } from "metabase-types/api";
 
 import { Footer } from "../Widget";
 import { MIN_WIDTH } from "../constants";
@@ -29,8 +32,8 @@ interface ParameterFieldWidgetProps {
   parameters?: UiParameter[];
   setValue: (value: RowValue[]) => void;
   value?: string | string[];
-  question?: Question;
-  dashboard?: Dashboard | null;
+  cardId?: CardId;
+  dashboardId?: DashboardId;
 }
 
 export function ParameterFieldWidget({
@@ -40,8 +43,8 @@ export function ParameterFieldWidget({
   fields,
   parameter,
   parameters,
-  question,
-  dashboard,
+  cardId,
+  dashboardId,
 }: ParameterFieldWidgetProps) {
   const [unsavedValue, setUnsavedValue] = useState<RowValue[]>(() =>
     normalizeValue(value),
@@ -50,8 +53,7 @@ export function ParameterFieldWidget({
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
 
-  const supportsMultipleValues =
-    multi && !parameter.hasVariableTemplateTagTarget;
+  const supportsMultipleValues = multi && getIsMultiSelect(parameter);
 
   const isValid =
     unsavedValue.every((value) => value != null) &&
@@ -61,7 +63,14 @@ export function ParameterFieldWidget({
 
   const handleFormSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!isValid || (isRequired && isEmpty)) {
+    if (!isValid) {
+      return;
+    }
+
+    if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default as RowValue[]);
+      }
       return;
     }
 
@@ -93,8 +102,8 @@ export function ParameterFieldWidget({
               value={value}
               parameter={parameter}
               parameters={parameters}
-              question={question}
-              dashboard={dashboard}
+              cardId={cardId}
+              dashboardId={dashboardId}
               onChange={onValueChange}
               placeholder={isEditing ? t`Enter a default value…` : undefined}
               fields={fields}

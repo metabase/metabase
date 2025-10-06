@@ -87,18 +87,18 @@
                [:= [:field 2 nil] "threecan"]]))
           ":or filters with no temporal filters should return nil"))))
 
-(defn- do-query->native! [query]
+(defn- do-query->native [query]
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
-      (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
+      (binding [druid.qp/*random-query-id* (constantly "<Query ID>")]
         (qp.compile/compile query)))))
 
-(defmacro ^:private query->native! [query]
-  `(do-query->native!
+(defmacro ^:private query->native [query]
+  `(do-query->native
     (mt/mbql-query ~'checkins
       ~query)))
 
-(deftest compile-topN-test
+(deftest ^:parallel compile-topN-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (is (= {:projections [:venue_price :__count_0 :expression]
@@ -122,12 +122,12 @@
                               :aggregator {:type :count, :name "__count_0"}}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
-             (query->native!
+             (query->native
               #_:clj-kondo/ignore
               {:aggregation [[:* [:count $id] 10]]
                :breakout    [$venue_price]}))))))
 
-(deftest compile-topN-with-order-by-test
+(deftest ^:parallel compile-topN-with-order-by-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (is (= {:projections [:venue_category_name :__count_0]
@@ -146,13 +146,13 @@
                                             :round      true}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
-             (query->native!
+             (query->native
               #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))))))
 
-(deftest compile-groupBy-test
+(deftest ^:parallel compile-groupBy-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (is (= {:projections [:venue_category_name :user_name :__count_0]
@@ -173,13 +173,13 @@
                                                      {:dimension "user_name", :direction :ascending}]}}
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
-             (query->native!
+             (query->native
               #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))))))
 
-(deftest compile-groupBy-with-limit-test
+(deftest ^:parallel compile-groupBy-with-limit-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (is (= {:projections [:venue_category_name :user_name :__count_0]
@@ -201,13 +201,13 @@
                                            :limit   5}}
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
-             (query->native!
+             (query->native
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
                :limit       5}))))))
 
-(deftest finalizing-field-access-test
+(deftest ^:parallel finalizing-field-access-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "`distinct` when used in post aggregations should have type `:finalizingFieldAccess`"
@@ -230,7 +230,7 @@
                                                    {:type :finalizingFieldAccess, :fieldName "__distinct_0"}]}]}
                 :query-type  ::druid.qp/total
                 :mbql?       true}
-               (query->native!
+               (query->native
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []
@@ -282,7 +282,7 @@
                              :database (mt/id)})
           (m/dissoc-in [:data :results_metadata])))))
 
-(deftest native-query-test
+(deftest ^:parallel native-query-test
   (mt/test-driver :druid
     (is (partial=
          {:row_count 2
@@ -335,7 +335,7 @@
     :aggregations [{:type :count
                     :name :count}]}))
 
-(deftest native-query-test-2
+(deftest ^:parallel native-query-test-2
   (testing "make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409"
     (mt/test-driver :druid
       (is (= :completed
@@ -350,7 +350,7 @@
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(mt/rows (druid-query ~@body)))
 
-(deftest start-of-week-test
+(deftest ^:parallel start-of-week-test
   (mt/test-driver :druid
     (testing "Count the number of events in the given week."
       (is (= [["2015-10-04" 9]]
@@ -359,7 +359,7 @@
                 :aggregation [[:count $id]]
                 :breakout    [!week.timestamp]}))))))
 
-(deftest sum-aggregation-test
+(deftest ^:parallel sum-aggregation-test
   (mt/test-driver :druid
     (testing "sum, *"
       (is (= [["1" 110688.0]
@@ -370,7 +370,7 @@
                {:aggregation [[:sum [:* $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
-(deftest min-aggregation-test
+(deftest ^:parallel min-aggregation-test
   (mt/test-driver :druid
     (testing "min, +"
       (is (= [["1"  4.0]
@@ -381,7 +381,7 @@
                {:aggregation [[:min [:+ $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
-(deftest max-aggregation-test
+(deftest ^:parallel max-aggregation-test
   (mt/test-driver :druid
     (testing "max, /"
       (is (= [["1" 1000.0]
@@ -392,7 +392,7 @@
                {:aggregation [[:max [:/ $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
-(deftest avg-aggregation-test
+(deftest ^:parallel avg-aggregation-test
   (mt/test-driver :druid
     (testing "avg, -"
       (is (= [["1" 500.85067873303166]
@@ -403,28 +403,28 @@
                {:aggregation [[:avg [:* $id $venue_price]]]
                 :breakout    [$venue_price]}))))))
 
-(deftest share-aggregation-test
+(deftest ^:parallel share-aggregation-test
   (mt/test-driver :druid
     (testing "share"
       (is (= [[0.951]]
              (druid-query-returning-rows
                {:aggregation [[:share [:< $venue_price 4]]]}))))))
 
-(deftest count-where-aggregation-test
+(deftest ^:parallel count-where-aggregation-test
   (mt/test-driver :druid
     (testing "count-where"
       (is (= [[951]]
              (druid-query-returning-rows
                {:aggregation [[:count-where [:< $venue_price 4]]]}))))))
 
-(deftest sum-where-aggregation-test
+(deftest ^:parallel sum-where-aggregation-test
   (mt/test-driver :druid
     (testing "sum-where"
       (is (= [[1796.0]]
              (druid-query-returning-rows
                {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))))))
 
-(deftest count-aggregation-test
+(deftest ^:parallel count-aggregation-test
   (mt/test-driver :druid
     (testing "aggregation w/o field"
       (is (= [["1" 222.0]
@@ -435,7 +435,7 @@
                {:aggregation [[:+ 1 [:count]]]
                 :breakout    [$venue_price]}))))))
 
-(deftest expression-aggregations-test
+(deftest ^:parallel expression-aggregations-test
   (mt/test-driver :druid
     (testing "post-aggregation math w/ 2 args: count + sum"
       (is (= [["1"  442.0]
@@ -507,7 +507,7 @@
                                [:min [:- $venue_price $id]]]]
                 :breakout    [$venue_price]}))))))
 
-(deftest named-top-level-aggregation-test
+(deftest ^:parallel named-top-level-aggregation-test
   (mt/test-driver :druid
     (testing "check that we can name an expression aggregation w/ aggregation at top-level"
       (is (= [["1"  442.0]
@@ -519,7 +519,7 @@
                 {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
                  :breakout    [$venue_price]})))))))
 
-(deftest named-expression-aggregations-test
+(deftest ^:parallel named-expression-aggregations-test
   (mt/test-driver :druid
     (testing "check that we can name an expression aggregation w/ expression at top-level"
       (is (= {:rows    [["1"  180.0]
@@ -532,7 +532,7 @@
                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
                  :breakout    [$venue_price]})))))))
 
-(deftest distinct-count-of-two-dimensions-test
+(deftest ^:parallel distinct-count-of-two-dimensions-test
   (mt/test-driver :druid
     (is (= {:rows    [[979]]
             :columns ["count"]}
@@ -540,7 +540,7 @@
             (druid-query
               {:aggregation [[:distinct [:+ $id $checkins.venue_price]]]}))))))
 
-(deftest order-by-aggregation-test
+(deftest ^:parallel order-by-aggregation-test
   (mt/test-driver :druid
     (doseq [[direction expected-rows] {:desc [["Bar" "Felipinho Asklepios"      8]
                                               ["Bar" "Spiros Teofil"            8]
@@ -560,7 +560,7 @@
                   :order-by    [[direction [:aggregation 0]] [:asc $checkins.venue_category_name]]
                   :limit       5})))))))
 
-(deftest hll-count-test
+(deftest ^:parallel hll-count-test
   (mt/test-driver :druid
     (testing "Do we generate the correct count clause for HLL fields?"
       (is (= [["Bar"      "Szymon Theutrich"    13]
@@ -574,7 +574,7 @@
                 :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
                 :limit      5}))))))
 
-(deftest numeric-filter-test
+(deftest ^:parallel numeric-filter-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (letfn [(compiled [query]
@@ -633,7 +633,7 @@
                          :venue_price [221])
                        (mt/first-row (qp/process-query query))))))))))))
 
-(deftest parse-filter-test
+(deftest ^:parallel parse-filter-test
   (mt/test-driver :druid
     (testing "parse-filter should generate the correct filter clauses"
       (tqpt/with-flattened-dbdef
@@ -653,7 +653,7 @@
 
                        [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
 
-(deftest multiple-filters-test
+(deftest ^:parallel multiple-filters-test
   (mt/test-driver :druid
     (testing "Should be able to filter by both a temporal and a non-temporal filter (#15903)"
       (tqpt/with-flattened-dbdef
@@ -665,7 +665,7 @@
                                  [:= $venue_category_name "Mexican"]
                                  [:= !month.timestamp "2015-09"]]}))))))))
 
-(deftest open-ended-temporal-filter-test
+(deftest ^:parallel open-ended-temporal-filter-test
   (mt/test-driver :druid
     (testing "Should be able to filter by an open-ended absolute temporal moment (#15902)"
       (tqpt/with-flattened-dbdef

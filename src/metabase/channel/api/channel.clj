@@ -4,11 +4,11 @@
   Currently only used for http channels."
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.core :as channel]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
@@ -50,7 +50,7 @@
                                       [:type        ChannelType]
                                       [:details     :map]
                                       [:active      {:optional true} [:maybe {:default true} :boolean]]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (when (t2/exists? :model/Channel :name channel-name)
     (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
@@ -103,4 +103,5 @@
    {:keys [type details]} :- [:map
                               [:type    ChannelType]
                               [:details :map]]]
+  (perms/check-has-application-permission :setting)
   (test-channel-connection! type details))

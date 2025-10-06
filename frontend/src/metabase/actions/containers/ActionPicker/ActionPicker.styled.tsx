@@ -3,14 +3,13 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import CollapseSection from "metabase/components/CollapseSection";
-import UnstyledEmptyState from "metabase/components/EmptyState";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import CollapseSection from "metabase/common/components/CollapseSection";
+import UnstyledEmptyState from "metabase/common/components/EmptyState";
 import { alpha } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 export const ModelCollapseSection = styled(CollapseSection)`
-  margin-bottom: ${space(1)};
+  margin-bottom: var(--mantine-spacing-sm);
 `;
 
 export const ActionsList = styled.ul`
@@ -25,7 +24,7 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;
-  border-radius: ${space(0)};
+  border-radius: var(--mantine-spacing-xs);
   cursor: pointer;
 
   ${({ isSelected, theme }) =>
@@ -40,11 +39,11 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
 `;
 
 export const EmptyState = styled(UnstyledEmptyState)`
-  margin-bottom: ${space(2)};
+  margin-bottom: var(--mantine-spacing-md);
 `;
 
 export const EmptyModelStateContainer = styled.div`
-  padding: ${space(2)};
+  padding: var(--mantine-spacing-md);
   color: var(--mb-color-text-medium);
   text-align: center;
 `;

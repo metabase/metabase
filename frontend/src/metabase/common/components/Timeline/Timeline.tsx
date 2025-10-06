@@ -1,9 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
 import { color } from "metabase/lib/colors";
-import { getRelativeTime } from "metabase/lib/time";
+import { getRelativeTime } from "metabase/lib/time-dayjs";
 import type { RevisionOrModerationEvent } from "metabase/plugins";
 import { Icon, Tooltip } from "metabase/ui";
 import type { Revision } from "metabase-types/api";
@@ -16,6 +17,7 @@ import {
   TimelineEvent,
   Timestamp,
 } from "./Timeline.styled";
+import { trackVersionRevertClicked } from "./analytics";
 
 interface TimelineProps {
   events: RevisionOrModerationEvent[];
@@ -23,6 +25,7 @@ interface TimelineProps {
   canWrite: boolean;
   revert: (revision: Revision) => void;
   className?: string;
+  entity: "card" | "dashboard";
 }
 
 export function Timeline({
@@ -31,6 +34,7 @@ export function Timeline({
   canWrite,
   revert,
   className,
+  entity,
 }: TimelineProps) {
   return (
     <TimelineContainer className={className} data-testid={dataTestId}>
@@ -52,16 +56,21 @@ export function Timeline({
                       icon="revert"
                       onlyIcon
                       borderless
-                      onClick={() => revert(revision)}
+                      onClick={() => {
+                        trackVersionRevertClicked(entity);
+                        revert(revision);
+                      }}
                       data-testid="question-revert-button"
                       aria-label={t`revert to ${title}`}
                     />
                   </Tooltip>
                 )}
               </EventHeader>
-              <Timestamp dateTime={timestamp}>
-                {getRelativeTime(timestamp)}
-              </Timestamp>
+              <Tooltip position="bottom" label={getFormattedTime(timestamp)}>
+                <Timestamp dateTime={timestamp}>
+                  {getRelativeTime(timestamp)}
+                </Timestamp>
+              </Tooltip>
               {revision?.has_multiple_changes && <div>{description}</div>}
             </EventBody>
           </TimelineEvent>

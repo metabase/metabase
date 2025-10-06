@@ -3,6 +3,7 @@ import xlsx, { type Sheet } from "xlsx";
 import {
   getDashboardCard,
   getDashboardCardMenu,
+  getEmbeddedDashboardCardMenu,
 } from "./e2e-dashboard-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
@@ -96,6 +97,7 @@ export function downloadAndAssert(
   if (isDashboard) {
     if (isEmbed) {
       getDashboardCard().realHover();
+      getEmbeddedDashboardCardMenu().click();
     } else {
       getDashboardCardMenu().click();
     }

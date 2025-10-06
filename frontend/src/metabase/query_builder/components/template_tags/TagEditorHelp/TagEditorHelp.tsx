@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
+import Button from "metabase/common/components/Button";
+import Code from "metabase/common/components/Code";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import Code from "metabase/components/Code";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { uuid } from "metabase/lib/uuid";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -259,7 +259,7 @@ export const TagEditorHelp = ({
   );
 
   return (
-    <div className={cx(CS.px3, CS.textSpaced)}>
+    <div className={CS.textSpaced}>
       <h4>{t`What's this for?`}</h4>
       <p>
         {t`Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL.`}

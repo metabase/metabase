@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useSelector } from "metabase/lib/redux";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
 
@@ -26,9 +26,8 @@ const useFormattingLabel = ({
   isFormattingEnabled: boolean;
 }) => {
   const applicationName = useSelector(getApplicationName);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
-  return match({ isFormattingEnabled, isEmbeddingSdk })
+  return match({ isFormattingEnabled, isEmbeddingSdk: isEmbeddingSdk() })
     .with(
       { isEmbeddingSdk: true, isFormattingEnabled: true },
       () =>
@@ -87,6 +86,11 @@ export const ExportSettingsWidget = ({
         data={formatOptions}
         value={selectedFormat}
         onChange={onChangeFormat}
+        styles={{
+          root: {
+            backgroundColor: "var(--mb-color-background-light)",
+          },
+        }}
       />
 
       {canConfigureFormatting ? (
@@ -96,7 +100,15 @@ export const ExportSettingsWidget = ({
           checked={isFormattingEnabled}
           onChange={() => onToggleFormatting()}
           description={formattingLabel}
-          styles={{ inner: { alignSelf: "flex-start" } }}
+          styles={{
+            inner: { alignSelf: "flex-start" },
+            label: {
+              color: "var(--mb-color-text-primary)",
+            },
+            description: {
+              color: "var(--mb-color-text-secondary)",
+            },
+          }}
         />
       ) : null}
       {arePivotedExportsEnabled && canConfigurePivoting ? (
@@ -105,6 +117,11 @@ export const ExportSettingsWidget = ({
           label={t`Keep the data pivoted`}
           checked={isPivotingEnabled}
           onChange={() => onTogglePivoting()}
+          styles={{
+            label: {
+              color: "var(--mb-color-text-primary)",
+            },
+          }}
         />
       ) : null}
     </Stack>

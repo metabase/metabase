@@ -2,11 +2,13 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [honey.sql :as sql]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -20,22 +22,17 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
+   [potemkin :as p]
    [toucan2.core :as t2]
+   [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------- Type Mappings --------------------------------------------------
+(comment metabase.lib.schema.metadata/keep-me)
 
-(def visibility-types
-  "Possible values for `Field.visibility_type`."
-  #{:normal         ; Default setting.  field has no visibility restrictions.
-    :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
-    :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
-    :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
-    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
-
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
+(p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
@@ -46,7 +43,7 @@
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
-    (when-let [k (keyword k)]
+    (when-let [k (some-> k keyword)]
       (when-not (some
                  (partial isa? k)
                  ancestor-types)
@@ -75,15 +72,18 @@
   {:in  (hierarchy-keyword-in  :base_type :ancestor-types [:type/*])
    :out (hierarchy-keyword-out :base_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(def ^:private transform-field-effective-type
+(def transform-field-effective-type
+  "Transform effective_type"
   {:in  (hierarchy-keyword-in  :effective_type :ancestor-types [:type/*])
    :out (hierarchy-keyword-out :effective_type :ancestor-types [:type/*], :fallback-type :type/*)})
 
-(def ^:private transform-field-semantic-type
+(def transform-field-semantic-type
+  "Transform semantic_type"
   {:in  (hierarchy-keyword-in  :semantic_type :ancestor-types [:Semantic/* :Relation/*])
    :out (hierarchy-keyword-out :semantic_type :ancestor-types [:Semantic/* :Relation/*], :fallback-type nil)})
 
-(def ^:private transform-field-coercion-strategy
+(def transform-field-coercion-strategy
+  "Transform coercion_strategy"
   {:in  (hierarchy-keyword-in  :coercion_strategy :ancestor-types [:Coercion/*])
    :out (hierarchy-keyword-out :coercion_strategy :ancestor-types [:Coercion/*], :fallback-type nil)})
 
@@ -131,17 +131,45 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
+(def field-user-settings
+  "Set of user-settable values for a Field"
+  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id
+    :caveats :points_of_interest :nfc_path :json_unfolding :settings})
+
+(defn- ensure-field-user-settings-exist-for-fk-target-field [field]
+  (let [q {:select [:id]
+           :from [:metabase_field]
+           :where [:and
+                   [:= :fk_target_field_id (:id field)]
+                   [:not [:in :id {:select [:field_id]
+                                   :from [:metabase_field_user_settings]}]]]}
+        sql (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))]
+    (t2/insert! :model/FieldUserSettings
+                (map (fn [{:keys [id]}] {:field_id id})
+                     (t2/query sql)))))
+
+(defn- sync-user-settings [field]
+  ;; we transparently prevent updates that would override user-set values
+  (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
+        updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
+    (t2.protocols/with-current field updated-field)))
+
 (t2/define-before-update :model/Field
   [field]
-  (u/prog1 (t2/changes field)
-    (when (false? (:active <>))
-      (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
-                                                                  :fk_target_field_id nil}))))
+  (when (false? (:active (t2/changes field)))
+    (ensure-field-user-settings-exist-for-fk-target-field field)
+    (let [k {:fk_target_field_id (:id field)}
+          upds {:semantic_type      nil
+                :fk_target_field_id nil}]
+      (t2/update! :model/Field k upds)
+      ;; we must explicitely clear user-set fks in this case
+      (t2/update! :model/FieldUserSettings k upds)))
+  (sync-user-settings field))
 
 (t2/define-before-delete :model/Field
   [field]
-  ; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
-  ; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
+  ;; Cascading deletes through parent_id cannot be done with foreign key constraints in the database
+  ;; because parent_id constributes to a generated column, and MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :parent_id (:id field)))
 

@@ -23,19 +23,14 @@
     background-color: var(--mb-color-bg-night);
   }
 
-  &.isUsuallySlow {
-    border-color: var(--slow-card-border-color);
-  }
-
   &.hasHiddenBackground {
     border: 0 !important;
     background: transparent !important;
-    box-shadow: none !important;
   }
 
   &.shouldForceHiddenBackground {
     background: var(--mb-color-bg-light);
-    box-shadow: none !important;
+    border: none !important;
 
     &.isNightMode {
       background: var(--mb-color-bg-black);

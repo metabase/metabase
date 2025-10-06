@@ -1,8 +1,11 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
+   [medley.core :as m]
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.config.core :as config]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -39,6 +42,56 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
+(mr/def ::capabilities
+  [:set :string])
+
+(defn backend-metabot-capabilities
+  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this capability."
+  []
+  ;; 20 ns per call, safe to keep unmemoized
+  (for [[[_method url _params] _spec] (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
+                                          meta
+                                          :api/endpoints)]
+    (str "backend:/api/ee/metabot-tools" url)))
+
+(defn- database-tables-for-context
+  "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
+   Removes duplicate tables by id while preserving first occurrence order."
+  [{:keys [query]}]
+  (try
+    (if query
+      (let [used-tables (table-utils/used-tables query)
+            tables (table-utils/enhanced-database-tables (:database query)
+                                                         {:priority-tables used-tables
+                                                          :all-tables-limit (count used-tables)})]
+        (m/distinct-by :id tables))
+      [])
+    (catch Exception e
+      (log/error e "Error getting database tables for context")
+      [])))
+
+(defn- enhance-context-with-schema
+  "Enhance context by adding table schema information for native queries"
+  [context]
+  (if-let [user-viewing (get context :user_is_viewing)]
+    (let [enhanced-viewing
+          (mapv (fn [item]
+                  (if (and (#{:native "native"} (get-in item [:query :type]))
+                           (get-in item [:query :database]))
+                    (let [tables (database-tables-for-context {:query (:query item)})]
+                      (if (seq tables)
+                        (assoc item :used_tables tables)
+                        item))
+                    item))
+                user-viewing)]
+      (assoc context :user_is_viewing enhanced-viewing))
+    context))
+
+(defn- add-backend-capabilities
+  "Add backend capabilities to context, merging with any existing capabilities."
+  [context]
+  (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
+
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
   (let [offset-time (or (some-> context :current_time_with_timezone OffsetDateTime/parse)
@@ -53,4 +106,7 @@
    (create-context context nil))
   ([context :- ::context
     opts    :- [:maybe [:map-of :keyword :any]]]
-   (set-user-time context opts)))
+   (-> context
+       enhance-context-with-schema
+       add-backend-capabilities
+       (set-user-time opts))))

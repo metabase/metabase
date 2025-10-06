@@ -1,39 +1,23 @@
 import { t } from "ttag";
 
-import type { AdminSettingComponentProps } from "metabase/admin/settings/components/EmbeddingSettings/types";
+import {
+  RelatedSettingsSection,
+  getInteractiveEmbeddingRelatedSettingItems,
+} from "metabase/admin/components/RelatedSettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SetByEnvVarWrapper } from "metabase/admin/settings/components/SettingsSetting";
-import { SwitchWithSetByEnvVar } from "metabase/admin/settings/components/widgets/EmbeddingOption/SwitchWithSetByEnvVar";
-import { SettingTextInput } from "metabase/admin/settings/components/widgets/SettingTextInput";
-import { useMergeSetting } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
-import { getDocsUrl } from "metabase/selectors/settings";
-import { Box, Button, Stack } from "metabase/ui";
-import type { SessionCookieSameSite } from "metabase-types/api";
+import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { UpsellDevInstances } from "metabase/admin/upsells";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
+import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
-import {
-  EmbeddingAppSameSiteCookieDescription,
-  SameSiteSelectWidget,
-} from "./EmbeddingAppSameSiteCookieDescription";
-
-const INTERACTIVE_EMBEDDING_ORIGINS_SETTING = {
-  key: "embedding-app-origins-interactive",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  display_name: t`Authorized origins`,
-  description: <EmbeddingAppOriginDescription />,
-  placeholder: "https://*.example.com",
-} as const;
-
-const SAME_SITE_SETTING = {
-  key: "session-cookie-samesite",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  display_name: t`SameSite cookie setting`,
-  description: <EmbeddingAppSameSiteCookieDescription />,
-  widget: SameSiteSelectWidget,
-} as const;
+import { SameSiteSelectWidget } from "./EmbeddingAppSameSiteCookieDescription";
 
 const utmTags = {
   utm_source: "product",
@@ -42,90 +26,49 @@ const utmTags = {
   utm_content: "embedding-interactive-admin",
 };
 
-export function InteractiveEmbeddingSettings({
-  updateSetting,
-}: AdminSettingComponentProps) {
-  function handleToggleInteractiveEmbedding(value: boolean) {
-    updateSetting({ key: "enable-embedding-interactive" }, value);
-  }
-
-  const quickStartUrl = useSelector((state) =>
-    // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
-    getDocsUrl(state, {
-      page: "embedding/interactive-embedding-quick-start-guide",
+export function InteractiveEmbeddingSettings() {
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- This is used in admin settings
+  const { url: quickStartUrl } = useDocsUrl(
+    "embedding/interactive-embedding-quick-start-guide",
+    {
       utm: utmTags,
-    }),
+    },
   );
-
-  const interactiveEmbeddingOriginsSetting = useMergeSetting(
-    INTERACTIVE_EMBEDDING_ORIGINS_SETTING,
-  );
-
-  function handleChangeInteractiveEmbeddingOrigins(value: string | null) {
-    updateSetting({ key: interactiveEmbeddingOriginsSetting.key }, value);
-  }
-
-  const sameSiteSetting = useMergeSetting(SAME_SITE_SETTING);
-
-  function handleChangeSameSite(value: SessionCookieSameSite) {
-    updateSetting({ key: sameSiteSetting.key }, value);
-  }
 
   return (
-    <Box p="0.5rem 1rem 0">
-      <Stack gap="2.5rem">
-        <Breadcrumbs
-          size="large"
-          crumbs={[
-            [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Interactive embedding`],
-          ]}
-        />
-        <SwitchWithSetByEnvVar
+    <SettingsPageWrapper title={t`Interactive embedding`}>
+      <SettingsSection>
+        <EmbeddingToggle
           settingKey="enable-embedding-interactive"
-          onChange={handleToggleInteractiveEmbedding}
-          label={t`Enable Interactive embedding`}
+          label={t`Enable interactive embedding`}
         />
 
         <Box>
           <SettingHeader id="get-started" title={t`Get started`} />
           <Button
+            mt="xs"
             variant="outline"
             component={ExternalLink}
             href={quickStartUrl}
           >{t`Check out the Quickstart`}</Button>
         </Box>
 
-        <Box>
-          <SettingHeader
-            id={interactiveEmbeddingOriginsSetting.key}
-            title={interactiveEmbeddingOriginsSetting.display_name}
-            description={interactiveEmbeddingOriginsSetting.description}
-          />
-          <SetByEnvVarWrapper setting={interactiveEmbeddingOriginsSetting}>
-            <SettingTextInput
-              id={interactiveEmbeddingOriginsSetting.key}
-              setting={interactiveEmbeddingOriginsSetting}
-              onChange={handleChangeInteractiveEmbeddingOrigins}
-              type="text"
-            />
-          </SetByEnvVarWrapper>
-        </Box>
+        <AdminSettingInput
+          name="embedding-app-origins-interactive"
+          title={t`Authorized origins`}
+          description={<EmbeddingAppOriginDescription />}
+          placeholder="https://*.example.com"
+          inputType="text"
+        />
 
-        <Box>
-          <SettingHeader
-            id={sameSiteSetting.key}
-            title={sameSiteSetting.display_name}
-            description={sameSiteSetting.description}
-          />
-          <SetByEnvVarWrapper setting={sameSiteSetting}>
-            <SameSiteSelectWidget
-              setting={sameSiteSetting}
-              onChange={handleChangeSameSite}
-            />
-          </SetByEnvVarWrapper>
-        </Box>
-      </Stack>
-    </Box>
+        <SameSiteSelectWidget />
+      </SettingsSection>
+
+      <RelatedSettingsSection
+        items={getInteractiveEmbeddingRelatedSettingItems()}
+      />
+
+      <UpsellDevInstances location="embedding-page" />
+    </SettingsPageWrapper>
   );
 }

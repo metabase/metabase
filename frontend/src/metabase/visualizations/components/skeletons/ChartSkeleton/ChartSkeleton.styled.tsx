@@ -3,18 +3,18 @@ import { css, keyframes } from "@emotion/react";
 
 const fadingKeyframes = keyframes`
   0% {
-    opacity: 0.5;
+    opacity: 0.0625;
   }
 
   50% {
-    opacity: 1;
+    opacity: 0.125;
   }
 
   100% {
-    opacity: 0.5;
+    opacity: 0.0625;
   }
 `;
 export const animationStyles = css`
-  color: var(--mb-color-bg-medium);
+  opacity: 0.1;
   animation: ${fadingKeyframes} 1.5s infinite;
 `;

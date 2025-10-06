@@ -1,9 +1,10 @@
 (ns metabase.lib.types.isa
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
-  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
+  (:refer-clojure :exclude [isa? any? boolean? number? string? integer? some])
   (:require
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.types.core]))
+   [metabase.types.core]
+   [metabase.util.performance :refer [some]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -141,8 +142,7 @@
 (defn ^:export date-or-datetime?
   "Is `column` a date or datetime?"
   [column]
-  (or (clojure.core/isa? (:effective-type column) :type/Date)
-      (clojure.core/isa? (:effective-type column) :type/DateTime)))
+  (clojure.core/isa? (:effective-type column) :type/HasDate))
 
 (defn ^:export date-without-time?
   "Is `column` a date without time?"

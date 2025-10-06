@@ -5,6 +5,7 @@ import {
   setupAuditInfoEndpoint,
   setupCardEndpoints,
   setupRevisionsEndpoints,
+  setupTokenStatusEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
@@ -12,7 +13,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getQuestion } from "metabase/query_builder/selectors";
 import type { Card, Settings, User } from "metabase-types/api";
 import {
   createMockCard,
@@ -38,7 +39,7 @@ export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
   user,
-  hasEnterprisePlugins,
+  hasEnterprisePlugins = false,
 }: SetupOpts = {}) => {
   const currentUser = createMockUser(user);
   setupCardEndpoints(card);
@@ -56,13 +57,14 @@ export const setup = async ({
       questions: [card],
     }),
   });
-  const metadata = getMetadata(state);
-  const question = checkNotNull(metadata.question(card.id));
+  const question = checkNotNull(getQuestion(state));
   const onSave = jest.fn();
 
   if (hasEnterprisePlugins) {
     setupEnterprisePlugins();
   }
+
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const TestQuestionInfoSidebar = () => (
     <QuestionInfoSidebar question={question} onSave={onSave} />

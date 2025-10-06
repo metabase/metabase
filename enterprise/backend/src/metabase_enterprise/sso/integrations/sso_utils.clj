@@ -29,7 +29,8 @@
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`
    [:sso_source       [:enum :saml :jwt]]
-   [:login_attributes [:maybe :map]]])
+   [:login_attributes {:optional true} [:maybe :map]]
+   [:jwt_attributes   {:optional true} [:maybe :map]]])
 
 (defn- maybe-throw-user-provisioning
   [user-provisioning-type]
@@ -74,19 +75,28 @@
       (throw (ex-info (trs "Error creating new SSO user")
                       {:user user})))))
 
-(defn fetch-and-update-login-attributes!
-  "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
-  This call is a no-op if the mentioned key values are equal."
-  [{:keys [email] :as user-from-sso}]
-  (when-let [{:keys [id] :as user} (t2/select-one :model/User :%lower.email (u/lower-case-en email))]
-    (let [user-keys (keys user-from-sso)
-          ;; remove keys with `nil` values
-          user-data (into {} (filter second user-from-sso))]
-      (if (= (select-keys user user-keys) user-data)
-        user
-        (do
-          (t2/update! :model/User id user-data)
-          (t2/select-one :model/User :id id))))))
+(mu/defn fetch-and-update-login-attributes!
+  "Updates `UserAttributes` for the user at `email`, if they exist, returning the user afterwards.
+  Only updates if the `UserAttributes` are unequal to the current values.
+
+  If a user exists but `is_active` is `false`, will return the user only if `reactivate?` is `true`. Otherwise it will
+  be as if this user does not exist."
+  [{:keys [email] :as user-from-sso} :- UserAttributes
+   reactivate? :- ms/BooleanValue]
+  (let [;; if the user is not active, we will want to mark them as active if they are actually reactivated.
+        new-user-data (merge user-from-sso {:is_active true})
+        user-keys (keys new-user-data)]
+    (when-let [{:keys [id] :as user} (t2/select-one (into [:model/User :id :last_login] user-keys)
+                                                    :%lower.email (u/lower-case-en email))]
+      (when (or (:is_active user)
+                reactivate?)
+        (let [;; remove keys with `nil` values
+              user-data (into {} (filter second new-user-data))]
+          (if (= (select-keys user user-keys) user-data)
+            user
+            (do
+              (t2/update! :model/User id user-data)
+              (t2/select-one :model/User :id id))))))))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."
@@ -115,3 +125,13 @@
       (throw (ex-info (tru "Invalid redirect URL")
                       {:status-code  400
                        :redirect-url redirect-url})))))
+
+(defn filter-non-stringable-attributes
+  "Removes vectors and map json attribute values that cannot be turned into strings."
+  [attrs]
+  (->> attrs
+       (keep (fn [[key value]]
+               (if (or (vector? value) (map? value) (nil? value))
+                 (log/warnf "Dropping attribute '%s' with non-stringable value: %s" (name key) value)
+                 [key value])))
+       (into {})))

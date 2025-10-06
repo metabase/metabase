@@ -6,9 +6,9 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.api.permission-graph :as api.permission-graph]
    [metabase.permissions.core :as perms]
@@ -16,6 +16,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-revision :as perms-revision]
    [metabase.permissions.util :as perms.u]
+   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -47,7 +48,7 @@
 
 (defenterprise upsert-sandboxes!
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
-  metabase-enterprise.sandbox.models.group-table-access-policy
+  metabase-enterprise.sandbox.models.sandbox
   [_sandboxes]
   (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 
@@ -183,8 +184,10 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (first (t2/insert-returning-instances! :model/PermissionsGroup
-                                         :name name)))
+  (u/prog1 (t2/insert-returning-instance! :model/PermissionsGroup
+                                          :name name)
+    (events/publish-event! :event/group-create {:object <>
+                                                :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
@@ -194,18 +197,26 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (validation/check-manager-of-group group-id)
-  (api/check-404 (t2/exists? :model/PermissionsGroup :id group-id))
-  (t2/update! :model/PermissionsGroup group-id
-              {:name name})
-  ;; return the updated group
-  (t2/select-one :model/PermissionsGroup :id group-id))
+  (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+    (api/check-404 group)
+    (t2/update! :model/PermissionsGroup group-id
+                {:name name})
+    ;; return the updated group
+    (u/prog1 (t2/select-one :model/PermissionsGroup :id group-id)
+      (events/publish-event! :event/group-update
+                             {:user-id api/*current-user-id*
+                              :object <>
+                              :previous-object group}))))
 
 (api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [{:keys [group-id]} :- [:map
                           [:group-id ms/PositiveInt]]]
   (validation/check-manager-of-group group-id)
-  (t2/delete! :model/PermissionsGroup :id group-id)
+  (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
+    (t2/delete! :model/PermissionsGroup :id group-id)
+    (events/publish-event! :event/group-delete {:object group
+                                                :user-id api/*current-user-id*}))
   api/generic-204-no-content)
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------

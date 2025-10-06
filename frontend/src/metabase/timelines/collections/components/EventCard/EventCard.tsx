@@ -1,11 +1,10 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/components/EntityMenu";
-import Link from "metabase/core/components/Link";
+import EntityMenu from "metabase/common/components/EntityMenu";
+import Link from "metabase/common/components/Link";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Settings from "metabase/lib/settings";
-import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
@@ -114,7 +113,7 @@ const getMenuItems = (
 };
 
 const getDateMessage = (event: TimelineEvent) => {
-  const date = parseTimestamp(event.timestamp);
+  const date = event.timestamp;
   const options = Settings.formattingOptions();
 
   if (event.time_matters) {

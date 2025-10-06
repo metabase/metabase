@@ -2,7 +2,10 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupParameterValuesEndpoints,
+  setupTokenStatusEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type {
@@ -41,7 +44,7 @@ const TextEditorMock = ({
   );
 };
 
-jest.mock("metabase/components/CodeEditor", () => ({
+jest.mock("metabase/common/components/CodeEditor", () => ({
   CodeEditor: TextEditorMock,
 }));
 
@@ -78,6 +81,7 @@ export async function setup({
     values: [],
     has_more_values: false,
   });
+  setupTokenStatusEndpoint({ valid: hasEnterprisePlugins });
 
   const settings = mockSettings({
     "enable-embedding": true,

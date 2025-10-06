@@ -1,15 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import type { InputProps } from "metabase/core/components/Input";
-import CS from "metabase/css/core/index.css";
-
-import {
-  LicenseErrorMessage,
-  LicenseInputContainer,
-  LicenseTextInput,
-} from "./LicenseInput.styled";
+import type { InputProps } from "metabase/common/components/Input";
+import { Button, Flex, TextInput } from "metabase/ui";
 
 export interface LicenseInputProps {
   token?: string;
@@ -17,7 +10,6 @@ export interface LicenseInputProps {
   onUpdate: (license: string) => void;
   disabled?: boolean;
   loading?: boolean;
-  invalid?: boolean;
   placeholder?: string;
 }
 
@@ -27,7 +19,6 @@ export const LicenseInput = ({
   error,
   onUpdate,
   loading,
-  invalid,
   placeholder,
 }: LicenseInputProps) => {
   const [value, setValue] = useState(token ?? "");
@@ -42,10 +33,10 @@ export const LicenseInput = ({
 
   return (
     <>
-      <LicenseInputContainer>
-        <LicenseTextInput
-          fullWidth
-          error={invalid}
+      <Flex w="100%" gap="sm">
+        <TextInput
+          w="100%"
+          error={error}
           data-testid="license-input"
           disabled={isDisabled}
           onChange={handleChange}
@@ -58,14 +49,12 @@ export const LicenseInput = ({
         <Button
           disabled={isDisabled}
           data-testid="activate-button"
-          className={CS.px2}
           onClick={handleActivate}
+          style={{ flexShrink: 0 }}
         >
-          {t`Activate`}
+          {value.length || !token ? t`Activate` : t`Remove`}
         </Button>
-      </LicenseInputContainer>
-
-      {error && <LicenseErrorMessage>{error}</LicenseErrorMessage>}
+      </Flex>
     </>
   );
 };

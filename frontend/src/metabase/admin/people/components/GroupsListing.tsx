@@ -1,16 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
-import { Component } from "react";
+import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { useListApiKeysQuery } from "metabase/api";
-import { AdminContentTable } from "metabase/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import UserAvatar from "metabase/components/UserAvatar";
-import Link from "metabase/core/components/Link";
+import { getErrorMessage } from "metabase/api/utils";
+import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import Link from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import {
   getGroupNameLocalized,
@@ -374,95 +374,67 @@ interface GroupsListingProps {
   delete: (group: GroupInfo, groupCount: number) => Promise<void>;
 }
 
-interface GroupsListingState {
-  text: string;
-  showAddGroupRow: boolean;
-  groupBeingEdited: GroupInfo | null;
-  alertMessage: string | null;
-}
+export const GroupsListing = (props: GroupsListingProps) => {
+  const [text, setText] = useState("");
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [groupBeingEdited, setGroupBeingEdited] = useState<GroupInfo | null>(
+    null,
+  );
+  const [
+    isShowingAddGroupRow,
+    { open: showAddGroupRow, close: hideAddGroupRow },
+  ] = useDisclosure(false);
 
-export class GroupsListing extends Component<
-  GroupsListingProps,
-  GroupsListingState
-> {
-  constructor(props: GroupsListingProps, context: any) {
-    super(props, context);
-    this.state = {
-      text: "",
-      showAddGroupRow: false,
-      groupBeingEdited: null,
-      alertMessage: null,
-    };
-  }
+  const onAddGroupCanceled = () => {
+    hideAddGroupRow();
+  };
 
-  alert(alertMessage: string) {
-    this.setState({ alertMessage });
-  }
+  const onDismissAlert = () => {
+    setAlertMessage(null);
+  };
 
-  onAddGroupCanceled() {
-    this.setState({
-      showAddGroupRow: false,
-    });
-  }
-
-  async onAddGroupCreateButtonClicked() {
+  const onAddGroupCreateButtonClicked = async () => {
+    const { create } = props;
     try {
-      await this.props.create({ name: this.state.text.trim() });
-      this.setState({
-        showAddGroupRow: false,
-        text: "",
-      });
+      await create({ name: text.trim() });
+      hideAddGroupRow();
+      setText("");
     } catch (error: any) {
       console.error("Error creating group:", error);
-      if (error.data && typeof error.data === "string") {
-        this.alert(error.data);
+      if (error.data) {
+        const errorMessage = getErrorMessage(error);
+        setAlertMessage(errorMessage);
       }
     }
-  }
+  };
 
-  onAddGroupTextChanged(newText: string) {
-    this.setState({
-      text: newText,
-    });
-  }
+  const onCreateAGroupButtonClicked = () => {
+    setText("");
+    showAddGroupRow();
+    setGroupBeingEdited(null);
+  };
 
-  onCreateAGroupButtonClicked() {
-    this.setState({
-      text: "",
-      showAddGroupRow: true,
-      groupBeingEdited: null,
-    });
-  }
+  const onEditGroupClicked = (group: GroupInfo) => {
+    setGroupBeingEdited({ ...group });
+    setText("");
+    hideAddGroupRow();
+  };
 
-  onEditGroupClicked(group: GroupInfo) {
-    this.setState({
-      groupBeingEdited: { ...group },
-      text: "",
-      showAddGroupRow: false,
-    });
-  }
-
-  onEditGroupTextChange(newText: string) {
-    const { groupBeingEdited } = this.state;
-
+  const onEditGroupTextChange = (newText: string) => {
     if (!groupBeingEdited) {
       throw new Error("Group being edited not found");
     }
 
-    this.setState({
-      groupBeingEdited: { ...groupBeingEdited, name: newText },
-    });
-  }
+    setGroupBeingEdited({ ...groupBeingEdited, name: newText });
+  };
 
-  onEditGroupCancelClicked() {
-    this.setState({
-      groupBeingEdited: null,
-    });
-  }
+  const onEditGroupCancelClicked = () => {
+    setGroupBeingEdited(null);
+  };
 
-  async onEditGroupDoneClicked() {
-    const { groups } = this.props;
-    const group = this.state.groupBeingEdited;
+  const onEditGroupDoneClicked = async () => {
+    const { groups, update } = props;
+    const group = groupBeingEdited;
 
     if (!group) {
       throw new Error("There is currently no group being edited");
@@ -480,70 +452,70 @@ export class GroupsListing extends Component<
 
     // if name hasn't changed there is nothing to do
     if (originalGroup.name === group.name) {
-      this.setState({ groupBeingEdited: null });
+      setGroupBeingEdited(null);
     } else {
       // ok, fire off API call to change the group
       try {
-        await this.props.update({ id: group.id, name: group.name.trim() });
-        this.setState({ groupBeingEdited: null });
+        await update({ id: group.id, name: group.name.trim() });
+        setGroupBeingEdited(null);
       } catch (error: any) {
         console.error("Error updating group name:", error);
-        if (error.data && typeof error.data === "string") {
-          this.alert(error.data);
-        }
+        const errorMessage = getErrorMessage(error);
+
+        setAlertMessage(errorMessage);
       }
     }
-  }
+  };
 
-  async onDeleteGroupClicked(groups: GroupInfo[], group: GroupInfo) {
+  const onDeleteGroupClicked = async (
+    groups: GroupInfo[],
+    group: GroupInfo,
+  ) => {
     try {
-      await this.props.delete(group, groups.length);
+      await props.delete(group, groups.length);
     } catch (error: any) {
       console.error("Error deleting group: ", error);
-      if (error.data && typeof error.data === "string") {
-        this.alert(error.data);
-      }
+      const errorMessage = getErrorMessage(error);
+
+      setAlertMessage(errorMessage);
     }
-  }
+  };
 
-  render() {
-    const { groups, isAdmin } = this.props;
-    const { alertMessage } = this.state;
+  const { groups, isAdmin } = props;
 
-    return (
-      <AdminPaneLayout
-        title={t`Groups`}
-        buttonText={isAdmin ? t`Create a group` : undefined}
-        buttonAction={
-          this.state.showAddGroupRow
-            ? undefined
-            : this.onCreateAGroupButtonClicked.bind(this)
-        }
-        description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
-      >
-        <GroupsTable
-          groups={groups}
-          text={this.state.text}
-          showAddGroupRow={this.state.showAddGroupRow}
-          groupBeingEdited={this.state.groupBeingEdited}
-          onAddGroupCanceled={this.onAddGroupCanceled.bind(this)}
-          onAddGroupCreateButtonClicked={this.onAddGroupCreateButtonClicked.bind(
-            this,
-          )}
-          onAddGroupTextChanged={this.onAddGroupTextChanged.bind(this)}
-          onEditGroupClicked={this.onEditGroupClicked.bind(this)}
-          onEditGroupTextChange={this.onEditGroupTextChange.bind(this)}
-          onEditGroupCancelClicked={this.onEditGroupCancelClicked.bind(this)}
-          onEditGroupDoneClicked={this.onEditGroupDoneClicked.bind(this)}
-          onDeleteGroupClicked={(group) =>
-            this.onDeleteGroupClicked(groups, group)
-          }
-        />
-        <Alert
-          message={alertMessage}
-          onClose={() => this.setState({ alertMessage: null })}
-        />
-      </AdminPaneLayout>
-    );
-  }
-}
+  return (
+    <AdminPaneLayout
+      buttonText={isAdmin ? t`Create a group` : undefined}
+      buttonAction={
+        isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
+      }
+      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
+    >
+      <GroupsTable
+        groups={groups}
+        text={text}
+        showAddGroupRow={isShowingAddGroupRow}
+        groupBeingEdited={groupBeingEdited}
+        onAddGroupCanceled={onAddGroupCanceled}
+        onAddGroupCreateButtonClicked={onAddGroupCreateButtonClicked}
+        onAddGroupTextChanged={setText}
+        onEditGroupClicked={onEditGroupClicked}
+        onEditGroupTextChange={onEditGroupTextChange}
+        onEditGroupCancelClicked={onEditGroupCancelClicked}
+        onEditGroupDoneClicked={onEditGroupDoneClicked}
+        onDeleteGroupClicked={(group) => onDeleteGroupClicked(groups, group)}
+      />
+      <ConfirmModal
+        onClose={onDismissAlert}
+        onConfirm={onDismissAlert}
+        opened={!!alertMessage}
+        message={alertMessage}
+        closeButtonText={null}
+        withCloseButton={false}
+        confirmButtonText={t`Ok`}
+        confirmButtonProps={{ color: "brand" }}
+        data-testid="alert-modal"
+      />
+    </AdminPaneLayout>
+  );
+};

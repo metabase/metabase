@@ -11,6 +11,7 @@ export const SERIES_COLORS_SETTING_KEY = "series_settings.colors";
 export const getSeriesColors = (
   seriesVizSettingsKeys: string[],
   settings: VisualizationSettings,
+  seriesVizSettingsDefaultKeys: string[],
 ) => {
   const assignments = _.chain(seriesVizSettingsKeys)
     .map((key) => [key, getIn(settings, [SERIES_SETTING_KEY, key, "color"])])
@@ -27,7 +28,12 @@ export const getSeriesColors = (
     }
   }
 
-  return getColorsForValues(seriesVizSettingsKeys, assignments);
+  return getColorsForValues(
+    seriesVizSettingsKeys,
+    assignments,
+    undefined,
+    seriesVizSettingsDefaultKeys,
+  );
 };
 
 export const getSeriesDefaultDisplay = (cardDisplay: string, index: number) => {

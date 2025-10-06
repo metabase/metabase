@@ -6,7 +6,7 @@
 ;; Options ========================================================================================================
 (defn- default-decimal-places [{:keys [currency number-style]}]
   (if (and currency (= number-style "currency"))
-    (let [places (-> currency keyword (@currency/currency-map) :decimal_digits)]
+    (let [places (-> currency keyword currency/currency-map :decimal_digits)]
       {:minimum-fraction-digits places
        :maximum-fraction-digits places})
     {:maximum-fraction-digits 2}))

@@ -88,9 +88,8 @@
            ~reverse-migration-body)))))
 
 (defn no-op
-  "No-op logging rollback function"
-  [n]
-  (log/info "No rollback for: " n))
+  "No-op rollback function; does not log to avoid confusion #44400"
+  [_n])
 
 (defmacro define-migration
   "Define a custom migration without a reverse migration."
@@ -1759,3 +1758,38 @@
 ;; [[metabase.notification.task.send/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
+
+(define-reversible-migration MigrateClickHouseDetailsToMultiDB
+  (let [update-one! (fn [{:keys [id details]}]
+                      (let [decrypted-details (encrypted-json-out details)
+                            scan-all-databases? (boolean (:scan-all-databases decrypted-details))
+                            db-filters-type (if scan-all-databases? "all" "inclusion")
+                            dbname (:dbname decrypted-details)
+                            db-filters-patterns (if (and (string? dbname) (seq dbname))
+                                                  (str/join ", " (str/split (str/trim dbname) #" +"))
+                                                  "default")
+                            new-details (merge decrypted-details
+                                               {:enable-multiple-db true}
+                                               {:db-filters-type db-filters-type}
+                                               (when-not scan-all-databases?
+                                                 {:db-filters-patterns db-filters-patterns}))
+                            encrypted-details (encrypted-json-in new-details)]
+                        (t2/query {:update :metabase_database
+                                   :set    {:details encrypted-details}
+                                   :where  [:= :id id]})))]
+    (run! update-one! (t2/reducible-query {:select [:id :details]
+                                           :from   [:metabase_database]
+                                           :where  [:= :engine "clickhouse"]})))
+  (let [rollback-one! (fn [{:keys [id details]}]
+                        (let [decrypted-details (encrypted-json-out details)
+                              new-details (dissoc decrypted-details
+                                                  :enable-multiple-db
+                                                  :db-filters-type
+                                                  :db-filters-patterns)
+                              encrypted-details (encrypted-json-in new-details)]
+                          (t2/query {:update :metabase_database
+                                     :set    {:details encrypted-details}
+                                     :where  [:= :id id]})))]
+    (run! rollback-one! (t2/reducible-query {:select [:id :details]
+                                             :from   [:metabase_database]
+                                             :where  [:= :engine "clickhouse"]}))))

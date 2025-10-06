@@ -26,7 +26,7 @@ Click on the **gear** icon > **Admin settings** > **People**. You'll see a list 
 
 Admins can add people to their Metabase. To add a new person manually, click on the gear icon and select **Admin settings**. Under the **People** tab, click **Invite someone** in the upper right corner. You’ll be prompted to enter their email, and optionally their first and last names–only the email is required.
 
-Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](https://www.metabase.com/docs/latest/cloud/how-billing-works)).
+Click **Create** to activate an account. An account becomes active once you click **Create**, even if the person never signs into the account. The account remains active until you [deactivate the account](#deactivating-an-account). If you're on a Pro or Enterprise Metabase plan, all active accounts will count toward your user account total. If one person has more than one account, each account will count toward the total (see [how billing works](../cloud/how-billing-works.md)).
 
 If you’ve already [configured Metabase to use email](../configuring-metabase/email.md), Metabase will send the person an email inviting them to log into Metabase. If you haven't yet setup email for your Metabase, Metabase will give you a temporary password that you’ll have to manually send to the person.
 
@@ -50,12 +50,12 @@ To add a user attribute manually:
 4. Click **+ Add an attribute**.
 5. Add the name of the user attribute under "Key". For example, "Department".
 6. Add the value that applies to the specific person. For example, "Engineering".
-7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permissions, such as "Sandboxed people".
+7. Optional: [create a group](#creating-a-group) to organize people who will get get row and column security.
 8. Add the person to the group.
 
 You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
 
-User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
+User attributes are required for [row and column security](../permissions/row-and-column-security.md) permissions.
 
 You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonated-view-data-permission).
 
@@ -223,4 +223,4 @@ To promote someone to become a group manager:
 
 - [Configure Single Sign-On (SSO)](./start.md#authentication).
 - [Permissions strategies](https://www.metabase.com/learn/metabase-basics/administration/permissions/strategy).
-- [Multi-tenant permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions).
+- [Embedding permissions](../permissions/embedding.md).

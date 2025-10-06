@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from "react";
+import { type RefObject, useContext, useEffect, useMemo } from "react";
 
 import { PLUGIN_METABOT } from "metabase/plugins";
 import type { MetabotChatContext } from "metabase-types/api";
@@ -6,10 +6,16 @@ import type { State } from "metabase-types/store";
 
 export type ChatContextProviderFn = (
   state: State,
-) => Partial<MetabotChatContext> | void;
+) => Promise<Partial<MetabotChatContext> | void>;
+
 export type DeregisterChatContextProviderFn = () => void;
+
 export interface MetabotContext {
-  getChatContext: () => MetabotChatContext;
+  prompt: string;
+  setPrompt: (prompt: string) => void;
+  promptInputRef: RefObject<HTMLTextAreaElement> | undefined;
+
+  getChatContext: () => Promise<MetabotChatContext>;
   registerChatContextProvider: (
     fn: ChatContextProviderFn,
   ) => DeregisterChatContextProviderFn;

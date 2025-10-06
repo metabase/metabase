@@ -1,4 +1,4 @@
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
 
 const arg = require("arg");
 const chalk = require("chalk");
@@ -31,7 +31,21 @@ async function parseArguments(args) {
 }
 
 function shell(command, options = {}) {
-  const { quiet = false, cwd, env } = options;
+  const { detached, quiet = false, cwd, env } = options;
+
+  if (detached) {
+    const child = spawn(command, {
+      shell: true,
+      detached: true,
+      stdio: quiet ? "ignore" : "inherit",
+      cwd,
+      env: env ? { PATH: process.env.PATH, ...env } : process.env,
+    });
+
+    child.unref();
+
+    return child.pid;
+  }
 
   const output = execSync(command, {
     stdio: quiet ? "pipe" : "inherit",
@@ -43,6 +57,7 @@ function shell(command, options = {}) {
         }
       : undefined,
   });
+
   return output?.toString()?.trim();
 }
 

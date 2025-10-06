@@ -70,7 +70,7 @@ export const WidgetStatus = ({
         </Tooltip>
       )}
 
-      {status === "empty" && <Icon name="chevrondown" />}
+      {status === "empty" && <Icon size={16} name="chevrondown" />}
 
       {status === "none" && <Icon name="empty" />}
     </Flex>

@@ -1,8 +1,8 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import type {
   Collection,
@@ -81,7 +81,7 @@ const getInitialValues = (
     timestamp: "",
     timeline_id: defaultTimeline?.id,
     icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
-    timezone: moment.tz.guess(),
+    timezone: dayjs.tz.guess(),
     time_matters: false,
     archived: false,
     source,

@@ -1,10 +1,4 @@
-import type {
-  DatabaseId,
-  FieldId,
-  SchemaId,
-  TableId,
-  UserId,
-} from "metabase-types/api";
+import type { DatabaseId, UserId } from "metabase-types/api";
 
 export function newUser() {
   return `/admin/people/new`;
@@ -50,45 +44,10 @@ export function dataModelDatabase(databaseId: DatabaseId) {
   return `/admin/datamodel/database/${databaseId}`;
 }
 
-export function dataModelSchema(databaseId: DatabaseId, schemaId: SchemaId) {
-  const databaseUrl = dataModelDatabase(databaseId);
-  return `${databaseUrl}/schema/${schemaId}`;
+export function uploadsSettings() {
+  return "/admin/settings/uploads";
 }
 
-export function dataModelTable(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-) {
-  const schemaUrl = dataModelSchema(databaseId, schemaId);
-  return `${schemaUrl}/table/${tableId}`;
-}
-
-export function dataModelTableSettings(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-) {
-  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
-  return `${tableUrl}/settings`;
-}
-
-export function dataModelField(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-  fieldId: FieldId,
-) {
-  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
-  return `${tableUrl}/field/${fieldId}/general`;
-}
-
-export function dataModelFieldFormatting(
-  databaseId: DatabaseId,
-  schemaId: SchemaId,
-  tableId: TableId,
-  fieldId: FieldId,
-) {
-  const tableUrl = dataModelTable(databaseId, schemaId, tableId);
-  return `${tableUrl}/field/${fieldId}/formatting`;
+export function adminLicense() {
+  return "/admin/settings/license";
 }

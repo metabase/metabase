@@ -5,9 +5,13 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.channel.api.email :as api.email]
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.notification.send :as notification.send]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -72,7 +76,9 @@
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port 587]
-      (f))))
+      (binding [notification.send/*default-options* (assoc notification.send/*default-options*
+                                                           :notification/sync? true)]
+        (f)))))
 
 ;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -135,6 +141,11 @@
   (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map :subject emails)))))
+
+(defn email-subjects
+  [user-or-email]
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))]
+    (into #{} (map :subject) (get @inbox address))))
 
 (defn received-email-body?
   "Indicate whether a user received an email whose body matches the `regex`. First argument should be a keyword
@@ -260,7 +271,7 @@
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=
-           [{:from     (str (channel.settings/email-from-name) " <" (channel.settings/email-from-address) ">")
+           [{:from     "Lucky <lucky@metabase.com>"
              :to       ["test@test.com"]
              :subject  "101 Reasons to use Metabase"
              :reply-to (channel.settings/email-reply-to)
@@ -363,6 +374,47 @@
                    #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
                    (m/mapply email/send-message! params-with-problematic-file))))))))))
 
+(deftest send-message!-cloud-test
+  (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
+    (with-redefs [premium-features/is-hosted? (constantly true)]
+      (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
+                                         email-from-name "From Name"
+                                         email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
+                                         email-smtp-host-override "cloud.metabase.com"
+                                         email-from-address-override "cloud@metabase.com"
+                                         smtp-override-enabled true]
+        (testing "Sends to cloud email settings when enabled"
+          (is (=
+               [{:from     "From Name <cloud@metabase.com>"
+                 :to       ["test@test.com"]
+                 :subject  "101 Reasons to use Metabase"
+                 :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
+                 :body     [{:type    "text/html; charset=utf-8"
+                             :content "101. Metabase will make you a better person"}]}]
+               (with-fake-inbox
+                 (email/send-message!
+                  :subject "101 Reasons to use Metabase"
+                  :recipients ["test@test.com"]
+                  :message-type :html
+                  :message "101. Metabase will make you a better person")
+                 (@inbox "test@test.com")))))
+        (testing "Sends to standard email settings when disabled, even if cloud settings are set"
+          (tu/with-temporary-setting-values [smtp-override-enabled false]
+            (is (=
+                 [{:from     "From Name <standard@metabase.com>"
+                   :to       ["test@test.com"]
+                   :subject  "101 Reasons to use Metabase"
+                   :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
+                   :body     [{:type    "text/html; charset=utf-8"
+                               :content "101. Metabase will make you a better person"}]}]
+                 (with-fake-inbox
+                   (email/send-message!
+                    :subject "101 Reasons to use Metabase"
+                    :recipients ["test@test.com"]
+                    :message-type :html
+                    :message "101. Metabase will make you a better person")
+                   (@inbox "test@test.com"))))))))))
+
 (deftest throttle-test
   (let [send-email (fn [recipients]
                      (with-redefs [postal/send-message (fn [& args] (last args))]
@@ -440,3 +492,34 @@
                               :done?       some?
                               :timeout-ms  200
                               :interval-ms 10}))))))))
+
+(def ^:private mb-to-smtp-override-settings
+  {:email-smtp-host-override     :host
+   :email-smtp-username-override :user
+   :email-smtp-password-override :pass
+   :email-smtp-port-override     :port
+   :email-smtp-security-override :security})
+
+(deftest humanize-error-messages-test
+  (testing "host and port"
+    (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
+           (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings
+                                            {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
+    (is (= {:errors {:email-smtp-host-override "Wrong host or port", :email-smtp-port-override "Wrong host or port"}}
+           (#'email/humanize-error-messages mb-to-smtp-override-settings
+                                            {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")}))))
+  (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
+         (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings
+                                          {::email/error (Exception. "Some unexpected message")})))
+  (testing "Checks error classes for auth errors (#23918)"
+    (let [exception (javax.mail.AuthenticationFailedException.
+                     "" ;; Office365 returns auth exception with no message so we only saw "Read timed out" prior
+                     (javax.mail.MessagingException.
+                      "Exception reading response"
+                      (java.net.SocketTimeoutException. "Read timed out")))]
+      (is (= {:errors {:email-smtp-username "Wrong username or password"
+                       :email-smtp-password "Wrong username or password"}}
+             (#'email/humanize-error-messages @#'api.email/mb-to-smtp-settings {::email/error exception})))
+      (is (= {:errors {:email-smtp-username-override "Wrong username or password"
+                       :email-smtp-password-override "Wrong username or password"}}
+             (#'email/humanize-error-messages mb-to-smtp-override-settings {::email/error exception}))))))

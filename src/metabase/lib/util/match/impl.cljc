@@ -1,5 +1,8 @@
 (ns metabase.lib.util.match.impl
-  "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly.")
+  "Internal implementation of the MBQL `match` and `replace` macros. Don't use these directly."
+  (:refer-clojure :exclude [mapv])
+  (:require
+   [metabase.util.performance :refer [mapv]]))
 
 ;; have to do this at runtime because we don't know if a symbol is a class or pred or whatever when we compile the macro
 (defn match-with-pred-or-class
@@ -66,3 +69,35 @@
   (if-not (seq (get-in m ks))
     m
     (apply update-in m ks f args)))
+
+(defn vector!
+  "Return nil if `obj` is not a vector, otherwise return `obj`."
+  [obj]
+  (when (vector? obj) obj))
+
+(defn map!
+  "Return nil if `obj` is not a map, otherwise return `obj`."
+  [obj]
+  (when (map? obj) obj))
+
+(defn count=
+  "Return true if collection `coll` has precisely `cnt` elements in it."
+  [coll cnt]
+  (= (count coll) cnt))
+
+(defn match-lite-in-collection
+  "Internal impl for `match-lite`. If `form` is a collection, call `match-fn` to recursively look for matches in it."
+  [match-fn form]
+  {:pre [(fn? match-fn)]}
+  (cond
+    (map? form)
+    (reduce-kv (fn [_ _ v]
+                 (when-let [match (match-fn v)]
+                   (reduced match)))
+               nil form)
+
+    (sequential? form)
+    (reduce (fn [_ v]
+              (when-let [match (match-fn v)]
+                (reduced match)))
+            nil form)))

@@ -1,26 +1,32 @@
 (ns user
   (:require
+   [cider.nrepl :as cider-nrepl]
    [clojure.java.io :as io]
+   [clojure.tools.cli :as cli]
    [environ.core :as env]
    [hashp.preload]
    [metabase.classloader.core :as classloader]
    [metabase.core.bootstrap]
    [metabase.util :as u]
-   [nrepl.cmdline]))
+   [nrepl.server :as nrepl-server]
+   [refactor-nrepl.middleware]))
 
 (set! *warn-on-reflection* true)
 
 (comment
   metabase.core.bootstrap/keep-me
-  hashp.preload/keep-me)
+  hashp.preload/keep-me
+  refactor-nrepl.middleware/keep-me)
 
 ;; Load all user.clj files (including the system-wide one).
 (when *file* ; Ensure we don't load ourselves recursively, just in case.
   (->> (.getResources (.getContextClassLoader (Thread/currentThread)) "user.clj")
        enumeration-seq
        rest ; First file in the enumeration will be this file, so skip it.
-       (run! #(do (println "Loading" (str %))
-                  (clojure.lang.Compiler/load (io/reader %))))))
+       (run! #(do
+                #_:clj-kondo/ignore
+                (println "Loading" (str %))
+                (clojure.lang.Compiler/load (io/reader %))))))
 
 ;; Wrap these with ignore-exceptions to reduce the "required" deps of this namespace
 ;; We sometimes need to run cmd stuffs like `clojure -M:migrate rollback n 3` and these
@@ -51,7 +57,16 @@
   (in-ns 'dev)
   :loaded)
 
-(def ^:dynamic *enable-hot-reload* false)
+(def ^{:dynamic true
+       :doc "When true, the backend code will be reloaded on every request.
+             This value is set by the `--hot` command line argument to the `:dev-start` alias."}
+  *enable-hot-reload* false)
+
+(def cli-spec [["-h" "--help" "Show this help text"]
+               ["-H" "--hot" "Enable hot reloading"] ;
+               ["-p" "--port PORT" "Port to run the nREPL server on"
+                :default 50605
+                :parse-fn #(Integer/parseInt %)]])
 
 (defn -main
   "This is called by the `:dev-start` cli alias.
@@ -62,8 +77,27 @@
 
   `--hot` - Checks for modified files and reloads them during a request."
   [& args]
-  (when (contains? (set args) "--hot")
-    (alter-var-root #'*enable-hot-reload* (constantly true)))
-  (future (nrepl.cmdline/-main "-p" "50605" "-b" "0.0.0.0"))
+  (let [{:keys [help hot port]} (:options (cli/parse-opts args cli-spec))]
+    (when help
+      #_:clj-kondo/ignore
+      (do
+        (println "Usage: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev [options]")
+        (println "Options:")
+        (println (:summary (cli/parse-opts [] cli-spec))))
+      (System/exit 0))
+    (when hot
+      #_:clj-kondo/ignore
+      (println "Enabling hot reloading of code. Backend code will reload on every request.")
+      (alter-var-root #'*enable-hot-reload* (constantly true)))
+    (future
+      #_:clj-kondo/ignore
+      (println "Starting Metabase cider repl on port" port)
+      (spit ".nrepl-port" port)
+      (nrepl-server/start-server
+       :port port
+       :bind "0.0.0.0"
+       ;; this handler has cider middlewares installed:
+       :handler (apply nrepl-server/default-handler
+                       (conj cider-nrepl/cider-middleware 'refactor-nrepl.middleware/wrap-refactor)))))
   ((requiring-resolve 'dev/start!))
   (deref (promise)))

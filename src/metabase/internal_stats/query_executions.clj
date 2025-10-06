@@ -7,6 +7,7 @@
 (def ^:private query-execution-statistics
   [:model/QueryExecution
    [(u/count-case [:= :embedding_client "embedding-sdk-react"]) :sdk_embed]
+   [(u/count-case [:= :embedding_client "embedding-simple"]) :simple_embed]
    [(u/count-case [:and [:= :embedding_client "embedding-iframe"]
                    [:!= :executor_id nil]])
     :interactive_embed]
@@ -17,12 +18,16 @@
                    [:or [:= :embedding_client nil]
                     [:!= :embedding_client "embedding-sdk-react"]]
                    [:or [:= :embedding_client nil]
+                    [:!= :embedding_client "embedding-simple"]]
+                   [:or [:= :embedding_client nil]
                     [:!= :embedding_client "embedding-iframe"]]
                    [:like :context "public-%"]])
     :public_link]
    [(u/count-case [:and
                    [:or [:= :embedding_client nil]
                     [:!= :embedding_client "embedding-sdk-react"]]
+                   [:or [:= :embedding_client nil]
+                    [:!= :embedding_client "embedding-simple"]]
                    [:or [:= :embedding_client nil]
                     [:!= :embedding_client "embedding-iframe"]]
                    [:not [:like :context "public-%"]]])

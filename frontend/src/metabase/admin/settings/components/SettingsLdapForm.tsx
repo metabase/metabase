@@ -1,14 +1,21 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
-import { updateLdapSettings } from "metabase/admin/settings/settings";
-import type { SettingElement } from "metabase/admin/settings/types";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import CS from "metabase/css/core/index.css";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
+import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+  useUpdateLdapMutation,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,
@@ -16,13 +23,11 @@ import {
   FormRadioGroup,
   FormSection,
   FormSubmitButton,
-  FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { connect } from "metabase/lib/redux";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
-import { Group, Radio, Stack } from "metabase/ui";
-import type { SettingKey, Settings } from "metabase-types/api";
+import { Box, Divider, Flex, Group, Radio, Stack } from "metabase/ui";
+import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -31,232 +36,224 @@ const testParentheses: TestConfig<string | null | undefined> = {
     (value?.match(/\(/g) || []).length === (value?.match(/\)/g) || []).length,
 };
 
-const testPort: TestConfig<string | null | undefined> = {
-  name: "test-port",
-  message: "That's not a valid port number",
-  test: (value) => Boolean((value || "").trim().match(/^\d*$/)),
-};
-
 const LDAP_SCHEMA = Yup.object({
-  "ldap-port": Yup.string().nullable().test(testPort),
+  "ldap-port": Yup.number().integer().nullable(),
   "ldap-user-filter": Yup.string().nullable().test(testParentheses),
   "ldap-group-membership-filter": Yup.string().nullable().test(testParentheses),
 });
 
-export type SettingValues = Partial<Settings>;
+export type LdapSettings = Pick<
+  EnterpriseSettings,
+  | "ldap-enabled"
+  | "ldap-host"
+  | "ldap-port"
+  | "ldap-security"
+  | "ldap-bind-dn"
+  | "ldap-password"
+  | "ldap-user-base"
+  | "ldap-user-filter"
+  | "ldap-attribute-email"
+  | "ldap-attribute-firstname"
+  | "ldap-attribute-lastname"
+  | "ldap-group-base"
+  | "ldap-group-membership-filter"
+>;
 
-type LdapFormValues = Omit<SettingValues, "ldap-port"> & {
-  "ldap-port"?: string;
-};
-
-type LdapFormSettingElement = Omit<SettingElement, "key"> & {
-  key: string; // ensuring key is required
-  is_env_setting?: boolean;
-  env_name?: string;
-  default?: any;
-};
-
-type Props = {
-  elements: LdapFormSettingElement[];
-  settingValues: SettingValues;
-  onSubmit: (values: SettingValues) => void;
-};
-
-export const SettingsLdapFormView = ({
-  elements = [],
-  settingValues,
-  onSubmit,
-}: Props) => {
-  const isEnabled = settingValues["ldap-enabled"];
-
-  const settings = useMemo(() => {
-    return _.indexBy(elements, "key");
-  }, [elements]);
-
-  const fields = useMemo(() => {
-    return _.mapObject(settings, (setting) => ({
-      name: setting.key,
-      label: setting.display_name,
-      description: setting.description,
-      placeholder: setting.is_env_setting
-        ? t`Using ${setting.env_name}`
-        : setting.placeholder || setting.default,
-      default: setting.default,
-      required: setting.required,
-      autoFocus: setting.autoFocus,
-    }));
-  }, [settings]);
-
-  const defaultableAttrs = useMemo(() => {
-    return new Set(PLUGIN_LDAP_FORM_FIELDS.defaultableFormFieldAttributes);
-  }, []);
-
-  const ldapAttributes = useMemo(
-    () => [
-      ...PLUGIN_LDAP_FORM_FIELDS.formFieldAttributes,
-
-      // Server Settings
-      "ldap-host",
-      "ldap-port",
-      "ldap-security",
-      "ldap-bind-dn",
-      "ldap-password",
-
-      // User Schema
-      "ldap-user-base",
-      "ldap-user-filter",
-
-      // Attributes
-      "ldap-attribute-email",
-      "ldap-attribute-firstname",
-      "ldap-attribute-lastname",
-
-      // Group Schema
-      "ldap-group-sync",
-      "ldap-group-base",
-      "ldap-group-membership-filter",
-      "ldap-sync-admin-group",
-    ],
-    [],
-  ) as SettingKey[];
-
-  const attributeValues = useMemo(() => {
-    return getAttributeValues(
-      ldapAttributes,
-      settings,
-      settingValues,
-      defaultableAttrs,
-    );
-  }, [settings, settingValues, ldapAttributes, defaultableAttrs]);
+export const SettingsLdapForm = () => {
+  const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
+  const { data: settingValues } = useGetSettingsQuery();
+  const [updateLdapSettings] = useUpdateLdapMutation();
+  const isEnabled = settingValues?.["ldap-enabled"];
 
   const handleSubmit = useCallback(
-    (values: LdapFormValues) => {
-      return onSubmit({
+    (values: Partial<LdapSettings>) => {
+      return updateLdapSettings({
         ...values,
-        "ldap-port": parseInt(values["ldap-port"]?.trim() || ""),
+        "ldap-port": Number(values["ldap-port"]),
         "ldap-enabled": true,
-      });
+      }).unwrap();
     },
-    [onSubmit],
+    [updateLdapSettings],
   );
+
+  if (!settingValues) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
   return (
-    <FormProvider
-      initialValues={attributeValues}
-      onSubmit={handleSubmit}
-      validationSchema={LDAP_SCHEMA}
-      enableReinitialize
-    >
-      {({ dirty }) => (
-        <Form m="0 1rem" maw="32.5rem">
-          <Breadcrumbs
-            className={CS.mb3}
-            crumbs={[
-              [t`Authentication`, "/admin/settings/authentication"],
-              [t`LDAP`],
-            ]}
-          />
-          <PLUGIN_LDAP_FORM_FIELDS.UserProvisioning
-            fields={fields}
-            settings={settings}
-          />
-          <FormSection title={"Server Settings"}>
-            <Stack gap="md">
-              <FormTextInput {...fields["ldap-host"]} />
-              <FormTextInput {...fields["ldap-port"]} />
-              <FormRadioGroup {...fields["ldap-security"]}>
-                <Group mt={"xs"}>
-                  <Radio value="none" label={t`None`} />
-                  <Radio
-                    value="ssl"
-                    label={c("short for 'Secure Sockets Layer'").t`SSL`}
+    <SettingsPageWrapper title={t`LDAP`}>
+      <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
+      <FormProvider
+        initialValues={getFormValues(settingValues)}
+        onSubmit={handleSubmit}
+        validationSchema={LDAP_SCHEMA}
+        enableReinitialize
+      >
+        {({ dirty }) => (
+          <Form>
+            <SettingsSection>
+              <FormSection title={"Server settings"}>
+                <Stack gap="md">
+                  <FormTextInput
+                    name="ldap-host"
+                    label={t`LDAP host`}
+                    placeholder="ldap.yourdomain.org"
+                    required
+                    autoFocus
+                    {...getExtraFormFieldProps(settingDetails?.["ldap-host"])}
                   />
-                  <Radio value="starttls" label={t`StartTLS`} />
-                </Group>
-              </FormRadioGroup>
-              <FormTextInput {...fields["ldap-bind-dn"]} />
-              <FormTextInput {...fields["ldap-password"]} type="password" />
-            </Stack>
-          </FormSection>
-          <FormSection title={"User Schema"}>
-            <Stack gap="md">
-              <FormTextInput {...fields["ldap-user-base"]} />
-              <FormTextInput {...fields["ldap-user-filter"]} />
-            </Stack>
-          </FormSection>
-          <FormSection title={"Attributes"} collapsible>
-            <Stack gap="md">
-              <FormTextInput {...fields["ldap-attribute-email"]} />
-              <FormTextInput {...fields["ldap-attribute-firstname"]} />
-              <FormTextInput {...fields["ldap-attribute-lastname"]} />
-            </Stack>
-          </FormSection>
-          <FormSection title={"Group Schema"}>
-            <Stack gap={"md"}>
-              <GroupMappingsWidget
-                isFormik
-                setting={{ key: "ldap-group-sync" }}
-                onChange={handleSubmit}
-                settingValues={settingValues}
-                mappingSetting="ldap-group-mappings"
-                groupHeading={t`Group Name`}
-                groupPlaceholder={t`Group Name`}
-              />
-              <FormTextInput {...fields["ldap-group-base"]} />
-              {"ldap-group-membership-filter" in fields &&
-                "ldap-group-membership-filter" in settingValues && (
-                  <FormTextInput {...fields["ldap-group-membership-filter"]} />
-                )}
-              {"ldap-sync-admin-group" in fields &&
-                "ldap-sync-admin-group" in settingValues && (
-                  <FormSwitch {...fields["ldap-sync-admin-group"]} />
-                )}
-            </Stack>
-          </FormSection>
-          <Stack align="start" gap="1rem" mb="1rem">
-            <FormErrorMessage />
-            <FormSubmitButton
-              disabled={!dirty}
-              label={isEnabled ? t`Save changes` : t`Save and enable`}
-              variant="filled"
-            />
-          </Stack>
-        </Form>
-      )}
-    </FormProvider>
+                  <FormTextInput
+                    name="ldap-port"
+                    label={t`LDAP port`}
+                    placeholder="389"
+                    required
+                    type="number"
+                    {...getExtraFormFieldProps(settingDetails?.["ldap-port"])}
+                  />
+                  <FormRadioGroup
+                    name="ldap-security"
+                    label={t`LDAP security`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-security"],
+                    )}
+                    description={null}
+                  >
+                    <Group mt={"xs"}>
+                      <Radio value="none" label={t`None`} />
+                      <Radio
+                        value="ssl"
+                        label={c("short for 'Secure Sockets Layer'").t`SSL`}
+                      />
+                      <Radio value="starttls" label={t`StartTLS`} />
+                    </Group>
+                  </FormRadioGroup>
+                  <FormTextInput
+                    name="ldap-bind-dn"
+                    label={t`Username or DN`}
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-bind-dn"],
+                    )}
+                  />
+                  <FormTextInput
+                    name="ldap-password"
+                    label={t`Password`}
+                    type="password"
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-password"],
+                    )}
+                  />
+                </Stack>
+              </FormSection>
+              <Divider />
+              <FormSection title={"User schema"}>
+                <Stack gap="md">
+                  <FormTextInput
+                    name="ldap-user-base"
+                    placeholder="ou=users,dc=example,dc=org"
+                    label={t`User search base`}
+                    required
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-user-base"],
+                    )}
+                  />
+                  <FormTextInput
+                    name="ldap-user-filter"
+                    label={t`User filter`}
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-user-filter"],
+                    )}
+                  />
+                </Stack>
+              </FormSection>
+              <Divider />
+              <FormSection title={"Attributes"}>
+                <Stack gap="md">
+                  <FormTextInput
+                    name="ldap-attribute-email"
+                    label={t`Email attribute`}
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-attribute-email"],
+                    )}
+                  />
+                  <FormTextInput
+                    name="ldap-attribute-firstname"
+                    label={t`First name attribute`}
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-attribute-firstname"],
+                    )}
+                  />
+                  <FormTextInput
+                    name="ldap-attribute-lastname"
+                    label={t`Last name attribute`}
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-attribute-lastname"],
+                    )}
+                  />
+                </Stack>
+              </FormSection>
+              <Divider />
+              <FormSection title={"Group schema"}>
+                <Stack gap="md">
+                  <GroupMappingsWidget
+                    isFormik
+                    setting={{ key: "ldap-group-sync" }}
+                    onChange={handleSubmit}
+                    settingValues={settingValues}
+                    mappingSetting="ldap-group-mappings"
+                    groupHeading={t`Group name`}
+                    groupPlaceholder={t`Group name`}
+                  />
+                  <FormTextInput
+                    name="ldap-group-base"
+                    label={t`Group search base`}
+                    nullable
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["ldap-group-base"],
+                    )}
+                  />
+                  <PLUGIN_LDAP_FORM_FIELDS.LdapGroupMembershipFilter />
+                </Stack>
+              </FormSection>
+              <Flex justify="end" gap="1rem">
+                <Box>
+                  <FormErrorMessage />
+                </Box>
+                <FormSubmitButton
+                  disabled={!dirty}
+                  label={isEnabled ? t`Save changes` : t`Save and enable`}
+                  variant="filled"
+                />
+              </Flex>
+            </SettingsSection>
+          </Form>
+        )}
+      </FormProvider>
+    </SettingsPageWrapper>
   );
 };
 
-const getAttributeValues = (
-  ldapAttributes: SettingKey[],
-  settings: Record<string, LdapFormSettingElement>,
-  values: SettingValues,
-  defaultableAttrs: Set<string>,
-): LdapFormValues => {
-  const attributeValues = Object.fromEntries(
-    ldapAttributes.map((key) => [
-      key,
-      defaultableAttrs.has(key)
-        ? (values[key] ?? settings[key]?.default)
-        : values[key],
-    ]),
-  );
+export const getFormValues = (allSettings: Partial<Settings>) => {
+  const ldapSettings = _.pick(allSettings, [
+    "ldap-host",
+    "ldap-port",
+    "ldap-security",
+    "ldap-bind-dn",
+    "ldap-password",
+    "ldap-user-base",
+    "ldap-user-filter",
+    "ldap-attribute-email",
+    "ldap-attribute-firstname",
+    "ldap-attribute-lastname",
+    "ldap-group-sync",
+    "ldap-group-base",
+    "ldap-group-membership-filter",
+  ]);
 
-  return {
-    ...attributeValues,
-    // ldap port is number | null, we need to edit as a string if it is a number
-    "ldap-port":
-      typeof attributeValues["ldap-port"] === "number"
-        ? String(attributeValues["ldap-port"])
-        : attributeValues["ldap-port"],
-  };
+  return ldapSettings;
 };
-
-const mapDispatchToProps = {
-  onSubmit: updateLdapSettings,
-};
-
-export const SettingsLdapForm = connect(
-  null,
-  mapDispatchToProps,
-)(SettingsLdapFormView);

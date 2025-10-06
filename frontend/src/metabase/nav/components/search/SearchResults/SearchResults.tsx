@@ -3,10 +3,10 @@ import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
+import EmptyState from "metabase/common/components/EmptyState";
 import { useSearchListQuery } from "metabase/common/hooks";
-import EmptyState from "metabase/components/EmptyState";
+import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import Search from "metabase/entities/search";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,
@@ -168,6 +168,7 @@ export const SearchResults = ({
                 onClick={onClick}
                 index={index}
                 context="search-bar"
+                searchTerm={searchText}
               />
             </li>
           );

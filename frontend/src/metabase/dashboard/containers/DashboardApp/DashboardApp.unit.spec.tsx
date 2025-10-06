@@ -23,8 +23,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { checkNotNull } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -91,7 +91,7 @@ async function setup({ dashboard }: Options = {}) {
     return (
       <main>
         <link rel="icon" />
-        <DashboardAppConnected {...props} />
+        <DashboardApp {...props} />
       </main>
     );
   };
@@ -248,12 +248,12 @@ describe("DashboardApp", () => {
   it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
     const { dashboardId } = await setup();
 
-    const dashboardURL = fetchMock.lastUrl(
+    const dashboardURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}`,
-    );
-    const queryMetadataURL = fetchMock.lastUrl(
+    )?.url;
+    const queryMetadataURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}/query_metadata`,
-    );
+    )?.url;
 
     const dashboardSearchParams = new URLSearchParams(
       dashboardURL?.split("?")[1],
@@ -268,5 +268,15 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  it("should not allow to enter a dashboard name longer than 254 characters", async () => {
+    await setup();
+
+    const input = await screen.findByPlaceholderText("Add title");
+    await userEvent.clear(input);
+    await userEvent.paste("A".repeat(256));
+
+    expect(input).toHaveValue("A".repeat(254));
   });
 });

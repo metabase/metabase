@@ -1,16 +1,15 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { space } from "metabase/styled-components/theme";
+import ExternalLink from "metabase/common/components/ExternalLink";
 
 export const ExplainerTextContainer = styled.p`
-  margin-left: ${space(3)};
-  margin-right: ${space(3)};
+  margin-left: var(--mantine-spacing-xl);
+  margin-right: var(--mantine-spacing-xl);
   color: var(--mb-color-text-medium);
 `;
 
 export const BrandLinkWithLeftMargin = styled(ExternalLink)`
-  margin-left: ${space(1)};
+  margin-left: var(--mantine-spacing-sm);
   color: var(--mb-color-brand);
 `;

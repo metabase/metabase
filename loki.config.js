@@ -4,6 +4,7 @@ module.exports = {
     "DataGrid",
     "static-viz",
     "viz",
+    "Patterns/Upsells",
     "^visualizations/shared",
     "^app/embed",
     "^design system",
@@ -12,6 +13,7 @@ module.exports = {
     "^Components/Parameters/DatePicker",
     "^Components/Buttons/Button Compact size, custom color",
     "^Components/overlays/Tooltip",
+    "^Components/Documents",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

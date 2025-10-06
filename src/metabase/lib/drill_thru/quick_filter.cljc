@@ -38,6 +38,7 @@
   There is a separate function `filterDrillDetails` which returns `query` and `column` used for the `FilterPicker`. It
   should automatically append a query stage and find the corresponding _filterable_ column in this stage. It is used
   for `contains` and `does-not-contain` operators."
+  (:refer-clojure :exclude [select-keys mapv])
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.column-filter :as lib.drill-thru.column-filter]
@@ -55,7 +56,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.util.malli :as mu]
-   [metabase.util.number :as u.number]))
+   [metabase.util.number :as u.number]
+   [metabase.util.performance :refer [select-keys mapv]]))
 
 (defn- maybe-bigint->value-clause
   [value]
@@ -129,8 +131,8 @@
              (or (not (lib.underlying/aggregation-sourced? query column))
                  (seq dimensions))
              (not (lib.types.isa/structured?  column))
-             (not (lib.types.isa/primary-key? column))
-             (not (lib.types.isa/foreign-key? column)))
+             (not (lib.drill-thru.common/primary-key? query stage-number column))
+             (not (lib.drill-thru.common/foreign-key? query stage-number column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition

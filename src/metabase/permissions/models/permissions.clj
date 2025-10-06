@@ -57,7 +57,7 @@
     Segmented permissions allow a User to run ad-hoc MBQL queries against the Table in question; regardless of whether
     they have relevant Collection permissions, queries against the sandboxed Table are rewritten to replace the Table
     itself with a special type of nested query called a
-    [[metabase-enterprise.sandbox.models.group-table-access-policy]], or _GTAP_. Note that segmented permissions are
+    [[metabase-enterprise.sandbox.models.sandbox]], or _GTAP_. Note that segmented permissions are
     both additive and subtractive -- they are additive because they grant (sandboxed) ad-hoc query access for a Table,
     but subtractive in that any access thru a Saved Question will now be sandboxed as well.
 
@@ -68,7 +68,7 @@
     * Only one GTAP may defined per-Group per-Table (this is an application-DB-level constraint). A User may have
       multiple applicable GTAPs if they are members of multiple groups that have sandboxed anti-perms for that Table; in
       that case, the QP signals an error if multiple GTAPs apply to a given Table for the current User (see
-      [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/assert-one-gtap-per-table]]).
+      [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-gtap-per-table]]).
 
     * Segmented (sandboxing) permissions and GTAPs are tied together, and a Group should be given both (or both
       should be deleted) at the same time. This is *not* currently enforced as a hard application DB constraint, but is
@@ -77,12 +77,11 @@
 
     * Segmented permissions can also be used to enforce column-level permissions -- any column not returned by the
       underlying GTAP query is not allowed to be referenced by the parent query thru other means such as filter clauses.
-      See [[metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check]].
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
       something incompatible (this constraint is in place so we other things continue to work transparently regardless
       of whether the Table is swapped out.) See
-      [[metabase-enterprise.sandbox.models.group-table-access-policy/check-columns-match-table]]
+      [[metabase-enterprise.sandbox.models.sandbox/check-columns-match-table]]
 
   * *block \"anti-permissions\"* are per-Group, per-Table grants that tell Metabase to disallow running Saved
     Questions unless the User has data permissions (in other words, disregard Collection permissions). These are
@@ -105,15 +104,6 @@
   [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)
   using [[set-has-full-permissions?]], or for a set of paths using [[set-has-full-permissions-for-set?]].
 
-  Other implementations check whether a user has _partial permissions_ for a path or set
-  using [[set-has-partial-permissions?]] or [[set-has-partial-permissions-for-set?]]. Partial permissions means that
-  the User has permissions for some subpath of the path in question, e.g. `/db/1/read/` is considered to be partial
-  permissions for `/db/1/`. For example the [[metabase.models.interface/can-read?]] implementation for Database checks
-  whether the current User has *any* permissions for that Database; a User can fetch Database 1 from API
-  endpoints (\"read\" it) if they have any permissions starting with `/db/1/`, for example `/db/1/` itself (full
-  permissions) `/db/1/native/` (ad-hoc SQL query permissions) or permissions, or
-  `/db/1/schema/PUBLIC/table/2/query/` (run ad-hoc queries against Table 2 permissions).
-
   ### Determining query permissions
 
   Normally, a User is allowed to view (i.e., run the query for) a Saved Question if they have read permissions for the
@@ -123,7 +113,7 @@
   Users would still be prevented from poking around things on their own, however.
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
-  [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
+  [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing]], and
   [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
@@ -150,7 +140,7 @@
 
   ### Known Permissions Paths
 
-  See [[path-regex-v1]] for an always-up-to-date list of permissions paths.
+  See [[metabase.permissions.util/path-regex-v1]] for an always-up-to-date list of permissions paths.
 
     /collection/:id/                                ; read-write perms for a Coll and its non-Coll children
     /collection/:id/read/                           ; read-only  perms for a Coll and its non-Coll children
@@ -242,21 +232,10 @@
   [permissions-path path]
   (str/starts-with? path permissions-path))
 
-(defn is-partial-permissions-for-object?
-  "Does `permissions-path` grant access full access for `path` *or* for a descendant of `path`?"
-  [permissions-path path]
-  (or (is-permissions-for-object? permissions-path path)
-      (str/starts-with? permissions-path path)))
-
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
   ^Boolean [permissions-set path]
   (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
-
-(defn set-has-partial-permissions?
-  "Does `permissions-set` grant access full access to object with `path` *or* to a descendant of it?"
-  ^Boolean [permissions-set path]
-  (boolean (perf/some #(is-partial-permissions-for-object? % path) permissions-set)))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
@@ -264,14 +243,6 @@
   (let [permissions (or (:as-vec (meta permissions-set))
                         permissions-set)]
     (every? (partial set-has-full-permissions? permissions) paths-set)))
-
-(mu/defn set-has-partial-permissions-for-set? :- :boolean
-  "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `paths-set`?
-   (`permissions-set` must grant partial access to *every* object in `paths-set` set)."
-  [permissions-set paths-set]
-  (let [permissions (or (:as-vec (meta permissions-set))
-                        permissions-set)]
-    (every? (partial set-has-partial-permissions? permissions) paths-set)))
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
@@ -394,23 +365,22 @@
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
-  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`.
-  With > 2 args, grants the data permissions from calling [[data-perms-path]]."
-  ([group-or-id path]
-   (try
-     (t2/insert! :model/Permissions
-                 (map (fn [path-object]
-                        {:group_id (u/the-id group-or-id) :object path-object})
-                      (distinct (conj (perms.u/->v2-path path) path))))
-     (clear-current-user-cached-permissions!)
-     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
-     (catch Throwable e
-       (log/error e (u/format-color 'red "Failed to grant permissions"))
-       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
-       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
-       ;; to pass when they shouldn't. Don't allow this during tests
-       (when config/is-test?
-         (throw e))))))
+  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
+  [group-or-id path]
+  (try
+    (t2/insert! :model/Permissions
+                (map (fn [path-object]
+                       {:group_id (u/the-id group-or-id) :object path-object})
+                     (distinct (conj (perms.u/->v2-path path) path))))
+    (clear-current-user-cached-permissions!)
+    ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
+    (catch Throwable e
+      (log/error e (u/format-color 'red "Failed to grant permissions"))
+      ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
+      ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
+      ;; to pass when they shouldn't. Don't allow this during tests
+      (when config/is-test?
+        (throw e)))))
 
 ;;;; Audit Permissions helper fns
 

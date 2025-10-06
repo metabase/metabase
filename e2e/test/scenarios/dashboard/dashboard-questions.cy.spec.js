@@ -18,7 +18,7 @@ describe("Dashboard > Dashboard Questions", () => {
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("can save a new question to a dashboard and move it to a collection", () => {
@@ -750,8 +750,9 @@ describe("Dashboard > Dashboard Questions", () => {
       H.dashboardCards().findByText("Total Orders");
     });
 
-    // TODO: implement this using the visualizer
-    it.skip("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
+    it("notifies the user about dashboards and dashcard series that a question will be removed from", () => {
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
       H.createQuestion(
         {
           name: "Average Quantity by Month Question",
@@ -856,11 +857,16 @@ describe("Dashboard > Dashboard Questions", () => {
       H.sidebar().findByText("Average Order Total by Month Question").click();
 
       // overlay the quantity series in the purple dashboard
-      H.showDashboardCardActions(0);
-      cy.findByLabelText("Add series").click();
+      H.showDashcardVisualizerModal(0, {
+        isVisualizerCard: false,
+      });
 
-      H.modal().findByLabelText("Average Quantity by Month Question").click();
-      H.modal().button("Done").click();
+      H.modal().within(() => {
+        H.switchToAddMoreData();
+        H.selectDataset("Average Quantity by Month Question");
+        cy.button("Save").click();
+      });
+
       H.saveDashboard();
       H.dashboardCards()
         .findByText(/Average Quantity by Month/)

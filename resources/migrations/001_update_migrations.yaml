@@ -1,48 +1,4 @@
 databaseChangeLog:
-  - property:
-      name: timestamp_type
-      value: timestamp with time zone
-      dbms: postgresql,h2
-  - property:
-      name: timestamp_type
-      value: timestamp(6)
-      dbms: mysql,mariadb
-  - property:
-      name: blob.type
-      value: blob
-      dbms: mysql,h2,mariadb
-  - property:
-      name: blob.type
-      value: bytea
-      dbms: postgresql
-  # In MySQL, use LONGTEXT instead of TEXT (#7006)
-  - property:
-      name: text.type
-      value: text
-      dbms: postgresql,h2
-  - property:
-      name: text.type
-      value: longtext
-      dbms: mysql,mariadb
-  # databasechangelog is uppercase in MySQL and H2 but lower-case in Postgres for reasons
-  - property:
-      name: databasechangelog.name
-      value: DATABASECHANGELOG
-      dbms: h2,mysql,mariadb
-  - property:
-      name: databasechangelog.name
-      value: databasechangelog
-      dbms: postgresql
-  # in MySQL, use bit(1) for booleans instead of tinyint
-  - property:
-      name: boolean.type
-      value: boolean
-      dbms: postgresql,h2
-  - property:
-      name: boolean.type
-      value: bit(1)
-      dbms: mysql,mariadb
-
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 
   - changeSet:
@@ -6502,10 +6458,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:00
       author: calherries
+      dbms: mysql,mariadb
       comment: Make metabase_field.name use case-sensitive collation for MySQL
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_field MODIFY
               name VARCHAR(254)
@@ -6513,7 +6469,6 @@ databaseChangeLog:
               COLLATE utf8mb4_bin;
       rollback:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_field MODIFY
               name VARCHAR(254)
@@ -6646,10 +6601,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
+      dbms: postgresql
       comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
       changes:
         - sql:
-            dbms: postgresql
             sql: DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
       rollback: # We deliberately don't restore this constraint because otherwise it can block downgrading to 48 after load-from-h2
 
@@ -8298,10 +8253,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:05:03
       author: johnswanson
+      dbms: postgresql
       comment: Populate `archived_directly` and `archive_operation_id` (Postgres)
       changes:
         - sqlFile:
-            dbms: postgresql
             path: trash/postgres.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8309,10 +8264,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
+      dbms: h2
       comment: Populate `archived_directly` and `archive_operation_id` (H2)
       changes:
         - sqlFile:
-            dbms: h2
             path: trash/h2.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8320,11 +8275,11 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
+      dbms: mysql
       comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
       validCheckSum: ANY
       changes:
         - sqlFile:
-            dbms: mysql
             path: trash/mysql.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8332,10 +8287,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:15
       author: johnswanson
+      dbms: mariadb
       comment: Populate `archived_directly` and `archive_operation_id` (MariaDB)
       changes:
         - sqlFile:
-            dbms: mariadb
             path: trash/mariadb.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -10274,6 +10229,41 @@ databaseChangeLog:
       rollback: # not needed
 
   - changeSet:
+      id: v52.2025-05-28T00:00:01
+      author: edpaget
+      comment: set perms/download-results to no when a table has perms/view-data blocked
+      preConditions: # change is safe to run regardless
+      changes:
+         - sql:
+            dbms: postgresql,h2
+            sql: >-
+              UPDATE data_permissions as update_dp SET perm_value = 'no'
+              WHERE update_dp.perm_type = 'perms/download-results'
+                  AND update_dp.perm_value <> 'no'
+                  AND EXISTS (
+                  SELECT 1 FROM data_permissions as dp
+                  WHERE dp.group_id = update_dp.group_id
+                      AND dp.db_id = update_dp.db_id
+                      AND dp.table_id = update_dp.table_id
+                      AND dp.perm_type = 'perms/view-data'
+                      AND dp.perm_value = 'blocked'
+                  )
+         - sql:
+            dbms: mariadb,mysql
+            sql: >-
+              UPDATE data_permissions as update_dp
+              INNER JOIN data_permissions as dp
+                  ON dp.group_id = update_dp.group_id
+                  AND dp.db_id = update_dp.db_id
+                  AND dp.table_id = update_dp.table_id
+                  AND dp.perm_type = 'perms/view-data'
+                  AND dp.perm_value = 'blocked'
+              SET update_dp.perm_value = 'no'
+              WHERE update_dp.perm_type = 'perms/download-results'
+                  AND update_dp.perm_value <> 'no'
+      rollback: # not needed
+
+  - changeSet:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
@@ -11073,6 +11063,37 @@ databaseChangeLog:
             columnNames: engine, version, lang_code, status
 
   - changeSet:
+      id: v54.2025-05-26T20:00:00
+      author: qnkhuat
+      comment: Update view v_alerts to correectly classify by the minute and custom schedule
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v3/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v2/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v2/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v2/h2-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
       id: v55.2025-03-24T16:28:41
       author: bshepherdson
       comment: Add report_card.card_schema
@@ -11339,10 +11360,10 @@ databaseChangeLog:
       id: v55.2025-05-19T01:00:00
       validCheckSum: ANY
       author: ranquild
+      dbms: mysql,mariadb
       comment: Make metabase_table.name and schema use case-sensitive collation for MySQL
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
               `name` varchar(254)
@@ -11355,7 +11376,6 @@ databaseChangeLog:
               COLLATE utf8mb4_bin;
       rollback:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
               `name` VARCHAR(254)
@@ -11477,6 +11497,196 @@ databaseChangeLog:
             constraintName: idx_unique_table
 
   - changeSet:
+      id: v55.2025-05-19T16:46:48
+      author: edpaget
+      comment: Add metabot table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot
+      changes:
+        - createTable:
+            tableName: metabot
+            remarks: Metabot configuration
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of the metabot
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Description of the metabot
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the metabot was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the metabot was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-05-19T16:47:48
+      author: edpaget
+      comment: Add metabot entity table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_entity
+      changes:
+        - createTable:
+            tableName: metabot_entity
+            remarks: Entities associated with a metabot
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the entity was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-05-19T16:48:48
+      author: edpaget
+      comment: Add index on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_entity
+                indexName: idx_metabot_entity_metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+
+  - changeSet:
+      id: v55.2025-05-19T16:49:49
+      author: edpaget
+      comment: Add foreign key constraint on metabot_entity.metabot_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_entity_metabot_id
+                foreignKeyTableName: metabot_entity
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_entity
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_entity_metabot_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v55.2025-05-19T16:50:49
+      author: edpaget
+      comment: Create the default metabot instances
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM metabot WHERE entity_id IN ('metabotmetabotmetabot', 'embeddedmetabotmetabo');
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Metabot'
+                  , 'Metabot instance for internal users.'
+                  , 'metabotmetabotmetabot'
+                  , now()
+                  , now()
+              );
+              INSERT INTO metabot (
+                  name
+                  , description
+                  , entity_id
+                  , created_at
+                  , updated_at
+              ) VALUES (
+                  'Embedded Metabot'
+                  , 'Metabot instance for embedded metabase users.'
+                  , 'embeddedmetabotmetabo'
+                  , now()
+                  , now()
+              );
+
+  - changeSet:
       id: v55.2025-05-20T10:00:00
       validCheckSum: 9:1ed306a6b2573b7b140275e5319fae2c
       author: ranquild
@@ -11553,6 +11763,396 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
+
+  - changeSet:
+      id: v55.2025-06-03T16:52:38
+      author: metamben
+      comment: Add metabot prompt table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_prompt
+      changes:
+        - createTable:
+            tableName: metabot_prompt
+            remarks: Prompts of a metabot entity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_entity_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of the entity this prompt is about
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The ID of the model or metric this prompt is about
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The text of the prompt
+                  name: prompt
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the prompt was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the prompt was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-06-03T16:52:48
+      author: metamben
+      comment: Add index on metabot_prompt.metabot_entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_prompt
+                indexName: idx_metabot_prompt_metabot_entity_id
+      changes:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+            columns:
+              - column:
+                  name: metabot_entity_id
+
+  - changeSet:
+      id: v55.2025-06-03T16:52:58
+      author: metamben
+      comment: Add foreign key constraint on metabot_prompt.metabot_entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_prompt_metabot_entity_id
+                foreignKeyTableName: metabot_prompt
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_entity_id
+            referencedTableName: metabot_entity
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_entity_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v55.2025-06-03T16:53:08
+      author: metamben
+      comment: Add index on metabot_prompt.card_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_prompt
+                indexName: idx_metabot_prompt_card_id
+      changes:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v55.2025-06-03T16:53:18
+      author: metamben
+      comment: Add foreign key constraint on metabot_prompt.card_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_prompt_card_id
+                foreignKeyTableName: metabot_prompt
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_card_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v55.2025-06-09T01:00:00
+      author: metabase-dev
+      comment: Add inline_parameters to report_dashboardcard for card-level parameter display
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: report_dashboardcard
+                columnName: inline_parameters
+      changes:
+        - addColumn:
+            tableName: report_dashboardcard
+            columns:
+              - column:
+                  name: inline_parameters
+                  type: ${text.type}
+                  remarks: JSON array of parameter IDs that should be displayed inline with this card
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: report_dashboardcard
+            columnName: inline_parameters
+
+  - changeSet:
+      id: v55.2025-06-16T17:36:06
+      author: nvoxland
+      comment: |
+        In v55 we renamed the `metabase.app_db` namespace which changed checksums.
+        The validCheckSum=ANY allows forward migration, but a rollback doesn't reset the checksums to the value old versions expect
+      changes:
+        - empty: #no-op on forward migration
+      rollback:
+        - sql:
+            sql: >-
+              update ${databasechangelog.name}
+              set md5sum=null
+              where id in (
+                           'v46.00-080',
+                           'v46.00-086',
+                           'v47.00-016',
+                           'v47.00-027',
+                           'v47.00-028',
+                           'v47.00-029',
+                           'v47.00-033',
+                           'v47.00-034',
+                           'v47.00-043',
+                           'v47.00-044',
+                           'v47.00-045',
+                           'v47.00-046',
+                           'v48.00-001',
+                           'v48.00-022',
+                           'v48.00-023',
+                           'v49.00-059',
+                           'v49.2024-01-22T11:52:00',
+                           'v49.2024-04-09T10:00:03',
+                           'v50.2024-03-28T16:30:35',
+                           'v50.2024-04-25T01:04:05',
+                           'v50.2024-04-25T01:04:06',
+                           'v50.2024-04-25T01:04:07',
+                           'v50.2024-05-15T13:13:13',
+                           'v50.2024-05-17T19:54:26',
+                           'v50.2024-05-27T15:55:22',
+                           'v50.2024-06-12T12:33:07',
+                           'v51.2024-05-13T16:00:00',
+                           'v51.2024-08-07T10:00:00',
+                           'v51.2024-08-07T11:00:00',
+                           'v52.2024-10-26T18:42:42',
+                           'v52.2024-11-12T15:13:18',
+                           'v52.2024-12-03T15:55:22',
+                           'v54.2025-02-14T08:05:00'
+                  );
+
+  - changeSet:
+      id: v55.2025-06-23T11:29:00
+      author: bronsa
+      comment: Added 0.55.0 -- add metabase_field_user_settings
+      changes:
+        - createTable:
+            tableName: metabase_field_user_settings
+            remarks: Mirror table of metabase_field to keep track of user-set values (only settable fields are mirrored)
+            columns:
+              - column:
+                  remarks: The related Field
+                  name: field_id
+                  type: int
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: metabase_field
+                    referencedColumnNames: id
+                    foreignKeyName: fk_field_user_setting_field_id
+                    deleteCascade: true
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the user setting was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the user setting was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: User-set semantic_type for the Field
+                  name: semantic_type
+                  type: varchar(254)
+              - column:
+                  remarks: User-set description for the Field
+                  name: description
+                  type: longtext
+              - column:
+                  remarks: User-set display_name for the Field
+                  name: display_name
+                  type: varchar(254)
+              - column:
+                  remarks: User-set visibility_type for the Field
+                  name: visibility_type
+                  type: varchar(32)
+              - column:
+                  remarks: User-set fk_target_field_id for the Field
+                  name: fk_target_field_id
+                  type: int
+              - column:
+                  remarks: User-set has_field_values for the Field
+                  name: has_field_values
+                  type: longtext
+              - column:
+                  remarks: User-set effective_type for the Field
+                  name: effective_type
+                  type: varchar(255)
+              - column:
+                  remarks: User-set coercion_strategy for the Field
+                  name: coercion_strategy
+                  type: varchar(255)
+              # the fields below are never updated by sync, but we keep them for completeness
+              - column:
+                  remarks: User-set caveats for the Field
+                  name: caveats
+                  type: longtext
+              - column:
+                  remarks: User-set points_of_interest for the Field
+                  name: points_of_interest
+                  type: longtext
+              - column:
+                  remarks: User-set nfc_path for the Field
+                  name: nfc_path
+                  type: varchar(254)
+              - column:
+                  remarks: User-set json_unfolding for the Field
+                  name: json_unfolding
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set settings for the Field
+                  name: settings
+                  type: longtext
+
+
+  - changeSet:
+      id: v55.2025-07-02T10:00:00
+      author: ranquild
+      comment: |
+        Update `has_field_values` on FK fields to match PKs. Before this change, the FE always used the corresponding
+        PKs fields for FKs fields in dashboards. Now the FE does not swap fields, and we need to set `has_field_values`
+        to prevent any changes in behavior.
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_field AS fk
+              SET has_field_values = pk.has_field_values
+              FROM metabase_field AS pk
+              WHERE
+                pk.id = fk.fk_target_field_id AND
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_field AS fk
+              JOIN metabase_field AS pk ON pk.id = fk.fk_target_field_id
+              SET fk.has_field_values = pk.has_field_values
+              WHERE
+                pk.has_field_values IS NOT NULL AND
+                pk.has_field_values <> fk.has_field_values AND
+                fk.semantic_type = 'type/FK';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_field AS fk
+              SET has_field_values = (
+                SELECT coalesce(pk.has_field_values, fk.has_field_values)
+                FROM metabase_field AS pk
+                WHERE pk.id = fk.fk_target_field_id
+              )
+              WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK';
+      rollback: # not necessary
+
+  - changeSet:
+      id: v55.2025-07-04T15:00:00
+      author: qnkhuat
+      comment: fix v_alerts where cron string contains slash (#60427)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v4/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v4/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v3/h2-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v55.2025-07-21T10:00:00
+      author: ranquild
+      comment: Remove semantic_type when base_type is type/Boolean and semantic_type is type/Category
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: semantic_type
+                  value: NULL
+            where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
+      rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

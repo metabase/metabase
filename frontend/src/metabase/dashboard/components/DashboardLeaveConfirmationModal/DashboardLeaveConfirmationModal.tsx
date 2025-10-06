@@ -1,9 +1,9 @@
 import { type Route, type WithRouterProps, withRouter } from "react-router";
 import { t } from "ttag";
 
+import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
-import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
@@ -27,12 +27,6 @@ export const DashboardLeaveConfirmationModal = withRouter(
       router,
     });
 
-    const onSave = async () => {
-      dispatch(dismissAllUndo());
-      await dispatch(updateDashboardAndCards());
-      confirm?.();
-    };
-
     const content = isNavigatingToCreateADashboardQuestion(nextLocation)
       ? {
           title: t`Save your changes?`,
@@ -40,6 +34,7 @@ export const DashboardLeaveConfirmationModal = withRouter(
           actionBtn: {
             message: t`Save changes`,
           },
+          onConfirm: () => dispatch(updateDashboardAndCards()),
         }
       : {
           title: t`Discard your changes?`,
@@ -77,7 +72,11 @@ export const DashboardLeaveConfirmationModal = withRouter(
             <Button
               color={content.actionBtn.color}
               variant="filled"
-              onClick={onSave}
+              onClick={async () => {
+                dispatch(dismissAllUndo());
+                await content.onConfirm?.();
+                confirm?.();
+              }}
             >
               {content.actionBtn.message}
             </Button>

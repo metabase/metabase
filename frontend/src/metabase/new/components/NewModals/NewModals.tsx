@@ -5,7 +5,7 @@ import { push } from "react-router-redux";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
 import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
 import Collections from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";

@@ -72,7 +72,7 @@
 
 (driver/register! ::moviedb, :abstract? true)
 
-(defmethod driver/describe-database ::moviedb [_ {:keys [exclude-tables]}]
+(defmethod driver/describe-database* ::moviedb [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals moviedb-tables)
                      :when (not (contains? exclude-tables (:name table)))]
                  (select-keys table [:schema :name]))]

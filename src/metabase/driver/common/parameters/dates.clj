@@ -1,5 +1,7 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  (:refer-clojure :exclude [every? some])
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -14,6 +16,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
@@ -175,6 +178,8 @@
 
 (defn- with-temporal-unit-if-field
   [clause unit]
+  ;; legacy usages -- use Lib in new code going forward
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (cond-> clause
     (mbql.u/is-clause? :field clause) (mbql.u/with-temporal-unit unit)))
 
@@ -334,8 +339,11 @@
     :range  (fn [{:keys [date]} _]
               {:start date :end date :unit (absolute-date->unit date)})
     :filter (fn [{:keys [date]} field-clause]
-              (let [iso8601date (->iso-8601-date date)]
-                [:= (with-temporal-unit-if-field field-clause :day) iso8601date]))}
+              (let [unit        (absolute-date->unit date)
+                    iso8601str  (case unit
+                                  :day    (->iso-8601-date date)
+                                  :minute (->iso-8601-date-time date))]
+                [:= (with-temporal-unit-if-field field-clause unit) iso8601str]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T]+)~([0-9-T]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
@@ -555,8 +563,8 @@
         format-date-range)))
 
 (mu/defn date-string->filter :- mbql.s/Filter
-  "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
-   returns a corresponding MBQL filter clause for a given field reference."
+  "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6', or
+  an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
    field       :- [:or ::lib.schema.id/field mbql.s/Field]]
   (or (execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)

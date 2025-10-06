@@ -11,6 +11,7 @@
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
+   [metabase.store-api.core :as store-api]
    [metabase.task.bootstrap :as task.bootstrap]
    [metabase.task.core :as task]
    [metabase.util :as u]
@@ -76,7 +77,7 @@
 (defn migration-url
   "Store API URL for migrations."
   ([]
-   (str (cloud-migration.settings/store-api-url) "/api/v2/migration"))
+   (str (store-api/store-api-url) "/api/v2/migration"))
   ([external-id path]
    (str (migration-url) "/" external-id path)))
 
@@ -168,7 +169,9 @@
     (if-not (> file-length part-size)
       ;; single put uses SSE, but multipart doesn't support it.
       (put-file upload_url file on-progress :headers {"x-amz-server-side-encryption" "aws:kms"})
-      (let [parts
+      (let [;; seq of up to part-size ranges
+            ;; e.g. for a 250mb file [[0 100e6] [100e6 200e6] [200e6 250e6]]
+            parts
             (partition 2 1 (-> (range 0 file-length part-size)
                                vec
                                (conj file-length)))
@@ -181,11 +184,20 @@
                 json/decode+kw)
 
             etags
-            (->> (map (fn [[start end] [part-number url]]
-                        [part-number
-                         (get-in (put-file url file on-progress :start start :end end)
-                                 [:headers "ETag"])])
-                      parts multipart-urls)
+            (->> parts
+                 (map-indexed (fn [idx [start end]]
+                                (let [;; look up idx in multipart-urls, which starts at :1 up to (count parts)
+                                      part-id (-> idx inc str keyword)
+                                      url (or (multipart-urls part-id)
+                                              (throw (ex-info "Missing upload part url" {:keys (keys multipart-urls)
+                                                                                         :attempted part-id})))
+                                      ;; upload and get the etag from the headers
+                                      resp (put-file url file on-progress :start start :end end)
+                                      etag (or (get-in resp [:headers "ETag"])
+                                               (throw (ex-info "No ETag header returned"
+                                                               {:part-id part-id
+                                                                :headers (-> resp :headers keys)})))]
+                                  [part-id etag])))
                  (into {}))]
         (http/put (migration-url external_id "/multipart/complete")
                   {:form-params  {:multipart_upload_id multipart-upload-id
@@ -267,13 +279,14 @@
   (read-only-mode)
 
   ;; test settings you might want to change manually
-  ;; force prod if even in dev
-  #_(migration-use-staging! false)
+  ;; local HM store api url
+  #_(store-api/store-api-url! "http://localhost:5010")
   ;; make sure to use a version that store supports, and a dump for that version.
-  #_(migration-dump-version! "v0.49.7")
+  #_(cloud-migration.settings/migration-dump-version! "v0.49.7")
   ;; make a new dump with any released metabase jar using the command below:
   ;;   java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar dump-to-h2 dump --dump-plaintext
-  #_(migration-dump-file! "/path/to/dump.mv.db")
+  ;; you can also upload a random file you have lying around if you just want to test file splitting.
+  #_(cloud-migration.settings/migration-dump-file! "/path/to/dump.mv.db")
   ;; force migration with a smaller multipart threshold (~6mb is minimum)
   #_(def ^:private part-size 6e6)
 

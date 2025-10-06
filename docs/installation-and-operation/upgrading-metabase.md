@@ -6,11 +6,15 @@ redirect_from:
 
 # Upgrading Metabase
 
-This page covers how to upgrade to a new [Metabase release](https://github.com/metabase/metabase/releases).
+This page covers how to upgrade to a new Metabase release.
+
+- [Announcement posts for major releases](https://www.metabase.com/releases)
+- [Changelogs](https://www.metabase.com/changelog).
+- [Release notes on GitHub](https://github.com/metabase/metabase/releases).
 
 ## Upgrading Metabase Cloud
 
-If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end. 
+If you're on a [Metabase Cloud](https://www.metabase.com/pricing/) plan, we'll upgrade your Metabase automatically with each new release; no action needed on your end ([unless you're using the Embedded analytics SDK](#instances-using-the-embedded-analtyics-sdk-on-metabase-cloud-must-request-an-upgrade)).
 
 How soon we upgrade you depends on the type of release:
 
@@ -18,6 +22,14 @@ How soon we upgrade you depends on the type of release:
 - Major releases (e.g., x.53.4 to x.54.1): Longer, usually months (just to make sure everything goes smoothly).
 
 Cloud customers can request an early upgrade by emailing support at help@metabase.com. Include the URL of the Metabase you want us to upgrade.
+
+### Instances using the Embedded analtyics SDK on Metabase Cloud must request an upgrade
+
+If you're using the [Embedded analytics SDK](../embedding/sdk/introduction.md) on Metabase Cloud, we pin your version so that it doesn't upgrade automatically, as you should test the changes before upgrading.
+
+To upgrade your Metabase, you'll need to request an upgrade by [contacting support](https://www.metabase.com/help-premium).
+
+See our [upgrade guide for the Embedded analytics SDK](../embedding/sdk/upgrade.md).
 
 ## Upgrading a self-hosted Metabase
 
@@ -107,24 +119,28 @@ With X being the latest version available for each release.
 
 Check out a list of [Metabase releases](https://github.com/metabase/metabase/releases).
 
+When upgrading between major versions (e.g. v53.x to v54.x), use the latest minor version available for that major version. E.g., if you want to upgrade from v50 to v51, use the latest point version available for 51.
+
 ## Upgrading Metabase on other platforms
 
 - [Upgrading Azure Web Apps deployments](running-metabase-on-azure.md#additional-configurations)
 
 ## What happens during an upgrade or downgrade?
 
-During a **major version** upgrade (e.g., 53.1 5o 54.1), Metabase will:
+During a **major version** upgrade (e.g., 53.1 or 54.1), Metabase will:
 
 - Perform all the migrations needed to upgrade to the new version, such as any schema changes to the application database between the two versions.
 - Keep all the metadata it needs to work on the application database.
 
-Metabase will do all this automatically. 
+Metabase will do all this automatically.
 
 If you need to downgrade after a major version upgrade, you'll either need to restore from a backup, or manually migrate to a lower version, otherwise Metabase may refuse to start (see the next section).
 
 Durning a **minor version upgrade** (e.g., 54.1 to 54.2), the new Metabase container or Jar will just work. Only in rare cases will it have to perform a migration, but, like with major version upgrades, Metabase will perform the migration automatically. And of course, you're backing up your application database each time you upgrade, right?
 
 ## Rolling back an upgrade or to an older version
+
+> **The downgrade command must be run on the JAR with the higher version number.**
 
 In general, regular backups (especially backups before upgrading), are the best policy, so we recommend reverting to a backup of your application database to roll back an upgrade.
 
@@ -168,3 +184,5 @@ If you're running Metabase in a cluster:
 1. Reduce the number of nodes to a single node. You can't upgrade all nodes at the same time because the ugprade process works by acquiring a migration lock on the application database from a single client, which performs the migration. If you keep more than one node active when you do a major version upgrade, the application won't behave correctly, as schema changes to the application database could cause problems for nodes that are still running the older version of Metabase.
 2. Perform the upgrade as normal (as outlined above).
 3. Raise the number of nodes to the same number you had before.
+
+Make sure you container orchestrator or cluster manager doesn't kill the Metabase process while it's performing the migrations, otherwise you'll may end up with a corrupted application database and you'll need to restore from a backup.

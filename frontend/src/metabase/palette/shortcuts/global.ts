@@ -22,6 +22,13 @@ export const globalShortcuts = {
     shortcut: ["c d"],
     shortcutGroup: "global" as const,
   },
+  "create-new-document": {
+    get name() {
+      return t`Create a document`;
+    },
+    shortcut: ["c t"],
+    shortcutGroup: "global" as const,
+  },
   "create-new-collection": {
     get name() {
       return t`Create a collection`;
@@ -74,7 +81,7 @@ export const globalShortcuts = {
   },
   "shortcuts-modal": {
     get name() {
-      return t`Toggle Shortcuts Modal`;
+      return t`View shortcuts`;
     },
     shortcut: ["Shift+?"],
     shortcutDisplay: ["?"],
@@ -124,6 +131,15 @@ export const globalShortcuts = {
       return t`Go to home`;
     },
     shortcut: ["g h"],
+    shortcutGroup: "global" as const,
+  },
+
+  "navigate-embed-js": {
+    get name() {
+      return t`Create a new embed`;
+    },
+
+    shortcut: ["c e"],
     shortcutGroup: "global" as const,
   },
 };

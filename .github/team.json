@@ -8,19 +8,9 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "appleby",
-        "uladzimirdev",
         "wzimrin",
-        "ericnormand"
-      ]
-    },
-    {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "kamilmielnik",
-        "lbrdnk",
-        "bronsa"
+        "ericnormand",
+        "galdre"
       ]
     },
     {
@@ -36,10 +26,10 @@
       "label": ".Team/Embedding",
       "members": [
         "WiNloSt",
-        "oisincoveney",
         "npretto",
         "heypoom",
-        "sanex3339"
+        "sanex3339",
+        "lorem--ipsum"
       ]
     },
     {
@@ -49,36 +39,18 @@
         "qnkhuat",
         "piranha",
         "crisptrutski",
-        "deniskaber",
-        "wotbrew",
         "spalt08",
-        "stasgavrylov"
+        "stasgavrylov",
+        "uladzimirdev",
+        "kulyk",
+        "kamilmielnik"
       ]
     },
     {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "npfitz",
-        "johnswanson",
-        "rafpaf",
-        "sloansparger",
-        "iethree",
-        "nvoxland",
-        "fraserdrops",
-        "edpaget"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "alxnddr",
-        "kulyk",
-        "tsplude",
-        "lorem--ipsum",
-        "noahmoss",
-        "bpander"
+        "eliotmetabase"
       ]
     },
     {
@@ -93,13 +65,54 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
-        "somtom"
+        "appleby",
+        "noahmoss",
+        "retro",
+        "sloansparger",
+        "somtom",
+        "wotbrew",
+        "tsplude",
+        "lbrdnk",
+        "bronsa"
       ]
     },
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac"]
+      "members": [
+        "nemanjaglumac",
+        "chodorowicz",
+        "andsalves"
+      ]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": [
+        "filipesilva"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "eliotmetabase"
+      ]
+    },
+    {
+      "name": "UX West",
+      "label": ".Team/UXWest",
+      "members": [
+        "eliotmetabase",
+        "npfitz",
+        "johnswanson",
+        "iethree",
+        "nvoxland",
+        "edpaget",
+        "deniskaber",
+        "alxnddr",
+        "bpander"
+      ]
     }
   ]
 }

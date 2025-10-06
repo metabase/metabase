@@ -1,21 +1,26 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
+  (:refer-clojure :exclude [some select-keys])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.events.core :as events]
+   ;; legacy usage -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
+   ;; Lib soon
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some select-keys]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))

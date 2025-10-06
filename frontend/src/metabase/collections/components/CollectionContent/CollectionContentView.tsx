@@ -6,6 +6,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
   type CollectionContentTableColumn,
@@ -14,6 +15,7 @@ import {
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import type {
+  CollectionOrTableIdProps,
   CreateBookmark,
   DeleteBookmark,
   OnFileUpload,
@@ -23,13 +25,13 @@ import {
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
-import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
-import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
+import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
+import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
+import { useListSelect } from "metabase/common/hooks/use-list-select";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -42,7 +44,6 @@ import type {
 import { SortDirection } from "metabase-types/api/sorting";
 import type { State } from "metabase-types/store";
 
-import type { CollectionOrTableIdProps } from "../ModelUploadModal";
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
 
@@ -171,6 +172,7 @@ const CollectionContentViewInner = ({
 
   const handleCreateBookmark = () => {
     createBookmark(collectionId.toString(), "collection");
+    trackCollectionBookmarked();
   };
 
   const handleDeleteBookmark = () => {

@@ -3,7 +3,6 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -98,7 +97,7 @@
 (deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative sum with a temporally bucketed breakout"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -229,7 +228,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
     (testing "cumulative count with a temporally bucketed breakout"
       (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-        (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        (let [metadata-provider (mt/metadata-provider)
               orders            (lib.metadata/table metadata-provider (mt/id :orders))
               orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
               query             (-> (lib/query metadata-provider orders)
@@ -292,7 +291,7 @@
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -321,7 +320,7 @@
 (deftest ^:parallel expressions-inside-cumulative-aggregations-test
   (testing "Expressions inside of cumulative aggregations should work correctly"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -340,7 +339,7 @@
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           orders            (lib.metadata/table metadata-provider (mt/id :orders))
           orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
           orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -367,7 +366,7 @@
 (deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join :window-functions/cumulative)
     (testing "Query with a filter and a temporally bucketed breakout should work (#41791)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             orders-id         (lib.metadata/field metadata-provider (mt/id :orders :id))
@@ -404,7 +403,7 @@
 (deftest ^:parallel cumulative-sum-ordered-by-aggregation-expression-test
   (testing "Ordering by an expression used in cumulative sum works as expected (#47613)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             orders-subtotal   (lib.metadata/field metadata-provider (mt/id :orders :subtotal))
             products-category (m/find-first (fn [col]
@@ -434,7 +433,7 @@
 (deftest ^:parallel cumulative-count-different-temporal-breakouts-test
   (testing "The finest temporal column comes last in the order-by"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [metadata-provider   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider   (mt/metadata-provider)
             orders              (lib.metadata/table metadata-provider (mt/id :orders))
             created-at          (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             products-category   (m/find-first (fn [col]
@@ -491,9 +490,9 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-different-temporal-fields-test
-  (testing "day is finer than day-of-year"
+  (testing "month-of-year is finer than year (GROUP BY should preserve breakout order; add ORDER BY year, month-of-year)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             birth-date        (->> (lib/breakoutable-columns (lib/query metadata-provider orders))
@@ -521,9 +520,9 @@
                   (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-offset-day-of-year-test
-  (testing "day is finer than day-of-year"
+  (testing "day is finer than day-of-year (GROUP BY should preserve breakout order; add ORDER BY day-of-year, day)"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
-      (let [metadata-provider   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider   (mt/metadata-provider)
             orders              (lib.metadata/table metadata-provider (mt/id :orders))
             created-at          (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             base-query          (-> (lib/query metadata-provider orders)
@@ -552,7 +551,7 @@
 (deftest ^:parallel offset-filtering-test
   (testing "can filter offset aggregations"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             total             (lib.metadata/field metadata-provider (mt/id :orders :total))
@@ -586,7 +585,7 @@
 (deftest ^:parallel offset-function-expression-breakout-test
   (testing "can break out by expression aggregations"
     (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             orders            (lib.metadata/table metadata-provider (mt/id :orders))
             created-at        (lib.metadata/field metadata-provider (mt/id :orders :created_at))
             total             (lib.metadata/field metadata-provider (mt/id :orders :total))

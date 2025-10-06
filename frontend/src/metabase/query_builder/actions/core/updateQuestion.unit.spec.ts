@@ -49,11 +49,11 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import * as native from "../native";
-import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
+import * as url from "../url";
 
+import * as native from "./native";
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
@@ -185,7 +185,6 @@ async function setup({
 
 const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
-  ident: "gxyP-LOf7Zn96z8IWueoH",
   condition: [
     "=",
     ["field", ORDERS.ID, null],
@@ -340,13 +339,13 @@ describe("QB Actions > updateQuestion", () => {
         });
 
         it("updates URL if `shouldUpdateUrl: true` option provided", async () => {
-          const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
+          const updateUrlSpy = jest.spyOn(url, "updateUrl");
           await setup({ card: getCard(), shouldUpdateUrl: true });
           expect(updateUrlSpy).toHaveBeenCalledTimes(1);
         });
 
         it("doesn't update URL if `shouldUpdateUrl: false` option provided", async () => {
-          const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
+          const updateUrlSpy = jest.spyOn(url, "updateUrl");
           await setup({ card: getCard(), shouldUpdateUrl: false });
           expect(updateUrlSpy).not.toHaveBeenCalled();
         });

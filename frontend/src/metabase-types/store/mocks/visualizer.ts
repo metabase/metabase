@@ -19,5 +19,6 @@ export const createMockVisualizerState = (
   loadingDatasets: {},
   error: null,
   draggedItem: null,
+  hoveredItems: null,
   ...opts,
 });

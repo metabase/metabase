@@ -1,6 +1,10 @@
 import type { BarSeriesOption, LineSeriesOption } from "echarts/charts";
 import type { CallbackDataParams } from "echarts/types/dist/shared";
-import type { SeriesLabelOption } from "echarts/types/src/util/types";
+import type {
+  LabelLayoutOptionCallbackParams,
+  LabelOption,
+  SeriesLabelOption,
+} from "echarts/types/src/util/types";
 import _ from "underscore";
 
 import { getTextColorForBackground } from "metabase/lib/colors/palette";
@@ -56,8 +60,7 @@ import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getSeriesYAxisIndex } from "./utils";
 
-const CARTESIAN_LABEL_DENSITY_SCALE_FACTOR = 1.2;
-const WATERFALL_LABEL_DENSITY_SCALE_FACTOR = 0.6;
+const MIN_LABEL_SPACING_PX = 40;
 
 const getBlurLabelStyle = (
   settings: ComputedVisualizationSettings,
@@ -68,30 +71,30 @@ const getBlurLabelStyle = (
 });
 
 export const getBarLabelLayout =
-  (
-    dataset: ChartDataset,
-    settings: ComputedVisualizationSettings,
-    seriesDataKey: DataKey,
-  ): BarSeriesOption["labelLayout"] =>
+  ({
+    settings,
+    getBarDirection,
+    getNegativeBarYOffset,
+  }: {
+    settings: ComputedVisualizationSettings;
+    getBarDirection: (p: LabelLayoutOptionCallbackParams) => RowValue;
+    getNegativeBarYOffset: (p: LabelLayoutOptionCallbackParams) => number;
+  }): BarSeriesOption["labelLayout"] =>
   (params) => {
-    const { dataIndex, rect } = params;
-    if (dataIndex == null) {
+    const barDirection = getBarDirection(params);
+    if (typeof barDirection !== "number") {
       return {};
     }
 
-    const labelValue = dataset[dataIndex][seriesDataKey];
-    if (typeof labelValue !== "number") {
-      return {};
-    }
+    const distance = 5; // https://echarts.apache.org/en/option.html#series-line.label.distance
 
-    const barHeight = rect.height;
-    const labelOffset =
-      barHeight / 2 +
-      CHART_STYLE.seriesLabels.size / 2 +
-      CHART_STYLE.seriesLabels.offset;
     return {
       hideOverlap: settings["graph.label_value_frequency"] === "fit",
-      dy: labelValue < 0 ? labelOffset : -labelOffset,
+      align: "center",
+      dy:
+        barDirection >= 0
+          ? -CHART_STYLE.seriesLabels.size - distance
+          : getNegativeBarYOffset(params) + distance,
     };
   };
 
@@ -191,41 +194,64 @@ function getShowLabelFn(
     return () => true;
   }
 
-  const { averageLabelWidth, totalNumberOfLabels, type } = chartDataDensity;
+  const { averageLabelWidth, totalNumberOfLabels } = chartDataDensity;
   if (totalNumberOfLabels === 0 || averageLabelWidth === 0) {
     return () => true;
   }
 
-  const scaleFactor =
-    type === "combo"
-      ? CARTESIAN_LABEL_DENSITY_SCALE_FACTOR
-      : WATERFALL_LABEL_DENSITY_SCALE_FACTOR;
-  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
-  if (totalNumberOfLabels <= maxNumberOfLabels) {
-    return () => true;
-  }
-
-  const { selectionFrequency, selectionOffset } = getSelectionFrequency(
-    chartDataDensity,
-    maxNumberOfLabels,
-    dataKey,
+  const maxLabelsPerSeries = Math.floor(
+    chartWidth / (averageLabelWidth + MIN_LABEL_SPACING_PX),
   );
 
-  return (params: CallbackDataParams) => {
-    return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
-  };
+  if (chartDataDensity.type === "combo") {
+    const { seriesDataKeysWithLabels, stackedDisplayWithLabels } =
+      chartDataDensity;
+    const numOfSeries =
+      seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
+
+    const avgLabelsPerSeries =
+      numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+    if (avgLabelsPerSeries <= maxLabelsPerSeries) {
+      return () => true;
+    }
+
+    const { selectionFrequency, selectionOffset } = getSelectionFrequency(
+      chartDataDensity,
+      maxLabelsPerSeries,
+      dataKey,
+    );
+
+    return (params: CallbackDataParams) => {
+      return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
+    };
+  } else {
+    if (totalNumberOfLabels <= maxLabelsPerSeries) {
+      return () => true;
+    }
+
+    const { selectionFrequency, selectionOffset } = getSelectionFrequency(
+      chartDataDensity,
+      maxLabelsPerSeries,
+      dataKey,
+    );
+
+    return (params: CallbackDataParams) => {
+      return (params.dataIndex + selectionOffset) % selectionFrequency === 0;
+    };
+  }
 }
 
 function getSelectionFrequency(
   chartDataDensity: ChartDataDensity,
-  maxNumberOfLabels: number,
+  maxLabelsPerSeries: number,
   dataKey: DataKey,
 ) {
   if (chartDataDensity.type === "waterfall") {
     const { totalNumberOfLabels } = chartDataDensity;
 
     const selectionFrequency = Math.ceil(
-      totalNumberOfLabels / maxNumberOfLabels,
+      totalNumberOfLabels / maxLabelsPerSeries,
     );
 
     return { selectionFrequency, selectionOffset: 0 };
@@ -237,19 +263,19 @@ function getSelectionFrequency(
     stackedDisplayWithLabels,
   } = chartDataDensity;
 
-  const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
-
-  const numOfDifferentSeriesWithLabels =
+  const numOfSeries =
     seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
-  const stepOffset = Math.floor(
-    selectionFrequency / numOfDifferentSeriesWithLabels,
-  );
 
-  const seriesIndex = _.findIndex(
-    seriesDataKeysWithLabels,
+  const avgLabelsPerSeries =
+    numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+  const selectionFrequency = Math.ceil(avgLabelsPerSeries / maxLabelsPerSeries);
+
+  const seriesIndex = seriesDataKeysWithLabels.findIndex(
     (seriesDataKey) => seriesDataKey === dataKey,
   );
-  const selectionOffset = seriesIndex * stepOffset;
+
+  const selectionOffset = seriesIndex % selectionFrequency;
 
   return { selectionFrequency, selectionOffset };
 }
@@ -262,7 +288,7 @@ export const buildEChartsLabelOptions = (
   formatter?: LabelFormatter,
   settings?: ComputedVisualizationSettings,
   chartDataDensity?: ChartDataDensity,
-  position?: "top" | "bottom" | "inside",
+  position?: LabelOption["position"],
 ): SeriesLabelOption => {
   const { fontSize } = renderingContext.theme.cartesian.label;
 
@@ -387,7 +413,7 @@ function getDataLabelSeriesOption(
   seriesOption: LineSeriesOption | BarSeriesOption,
   settings: ComputedVisualizationSettings,
   formatter: (params: CallbackDataParams) => string,
-  position: "top" | "bottom",
+  position: LabelOption["position"],
   renderingContext: RenderingContext,
   showInBlur = true,
 ) {
@@ -503,6 +529,7 @@ const buildEChartsBarSeries = (
           labelFormatter,
           settings,
           chartDataDensity,
+          ["50%", 0],
         ),
     labelLayout: isStacked
       ? getBarInsideLabelLayout(
@@ -511,7 +538,16 @@ const buildEChartsBarSeries = (
           seriesModel.dataKey,
           chartMeasurements.stackedBarTicksRotation,
         )
-      : getBarLabelLayout(dataset, settings, seriesModel.dataKey),
+      : getBarLabelLayout({
+          settings,
+          getNegativeBarYOffset: ({ rect }) => rect.height,
+          getBarDirection: ({ dataIndex }) => {
+            if (dataIndex == null) {
+              return null;
+            }
+            return dataset[dataIndex][seriesModel.dataKey];
+          },
+        }),
     itemStyle: {
       color: seriesModel.color,
     },
@@ -546,10 +582,15 @@ const buildEChartsBarSeries = (
               return isZero ? 0 : value;
             },
           ),
-          sign === "+" ? "top" : "bottom",
+          ["50%", 0],
           renderingContext,
           false,
         ),
+        labelLayout: getBarLabelLayout({
+          settings,
+          getBarDirection: () => (sign === "+" ? 1 : -1),
+          getNegativeBarYOffset: () => 0,
+        }),
         type: "bar", // ensure type is bar for typescript
       };
     },
@@ -598,7 +639,6 @@ const buildEChartsLineAreaSeries = (
       },
     },
     blur: {
-      label: getBlurLabelStyle(settings, hasMultipleSeries),
       itemStyle: {
         opacity: isSymbolVisible ? blurOpacity : 0,
       },
@@ -730,15 +770,24 @@ function getShowStackedLabelFn(
     return () => true;
   }
 
-  const scaleFactor = CARTESIAN_LABEL_DENSITY_SCALE_FACTOR;
-  const maxNumberOfLabels = (scaleFactor * chartWidth) / averageLabelWidth;
-  if (totalNumberOfLabels <= maxNumberOfLabels) {
+  const maxLabelsPerSeries = Math.floor(
+    chartWidth / (averageLabelWidth + MIN_LABEL_SPACING_PX),
+  );
+
+  const { stackedDisplayWithLabels, seriesDataKeysWithLabels } =
+    chartDataDensity;
+  const numOfSeries =
+    seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
+  const avgLabelsPerSeries =
+    numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+  if (avgLabelsPerSeries <= maxLabelsPerSeries) {
     return () => true;
   }
 
   const { selectionFrequency, selectionOffset } = getStackedSelectionFrequency(
     chartDataDensity,
-    maxNumberOfLabels,
+    maxLabelsPerSeries,
     stackName,
   );
 
@@ -749,7 +798,7 @@ function getShowStackedLabelFn(
 
 function getStackedSelectionFrequency(
   chartDataDensity: ComboChartDataDensity,
-  maxNumberOfLabels: number,
+  maxLabelsPerSeries: number,
   stackName: string | undefined,
 ) {
   const {
@@ -758,20 +807,20 @@ function getStackedSelectionFrequency(
     stackedDisplayWithLabels,
   } = chartDataDensity;
 
-  const selectionFrequency = Math.ceil(totalNumberOfLabels / maxNumberOfLabels);
-
-  const numOfDifferentSeriesWithLabels =
+  const numOfSeries =
     seriesDataKeysWithLabels.length + stackedDisplayWithLabels.length;
-  const stepOffset = Math.floor(
-    selectionFrequency / numOfDifferentSeriesWithLabels,
-  );
 
-  const stackedIndex = _.findIndex(
-    stackedDisplayWithLabels,
+  const avgLabelsPerSeries =
+    numOfSeries > 0 ? totalNumberOfLabels / numOfSeries : totalNumberOfLabels;
+
+  const selectionFrequency = Math.ceil(avgLabelsPerSeries / maxLabelsPerSeries);
+
+  const stackedIndex = stackedDisplayWithLabels.findIndex(
     (stackDisplay) => stackDisplay === stackName,
   );
-  const selectionOffset =
-    (stackedIndex + seriesDataKeysWithLabels.length) * stepOffset;
+
+  const totalIndex = stackedIndex + seriesDataKeysWithLabels.length;
+  const selectionOffset = totalIndex % selectionFrequency;
 
   return { selectionFrequency, selectionOffset };
 }

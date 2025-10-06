@@ -1,4 +1,5 @@
 (ns metabase.lib.binning
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -14,14 +15,16 @@
    [metabase.util :as u]
    [metabase.util.formatting.numbers :as fmt.num]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv select-keys]]))
 
 (defmulti with-binning-method
   "Implementation for [[with-binning]]. Implement this to tell [[with-binning]] how to add binning to a particular MBQL
   clause."
   {:arglists '([x binning])}
   (fn [x _binning]
-    (lib.dispatch/dispatch-value x)) :hierarchy lib.hierarchy/hierarchy)
+    (lib.dispatch/dispatch-value x))
+  :hierarchy lib.hierarchy/hierarchy)
 
 (mu/defn with-binning
   "Add binning to an MBQL clause or something that can be converted to an MBQL clause.
@@ -67,7 +70,7 @@
   [_query _stage-number _x]
   nil)
 
-(mu/defn available-binning-strategies :- [:sequential [:ref ::lib.schema.binning/binning-option]]
+(mu/defn available-binning-strategies :- [:maybe [:sequential [:ref ::lib.schema.binning/binning-option]]]
   "Get a set of available binning strategies for `x`. Returns nil if none are available."
   ([query x]
    (available-binning-strategies query -1 x))
@@ -227,6 +230,8 @@
     s
     (lib.util/format "%s: %s" s (binning-display-name binning-options semantic-type))))
 
+;;; TODO (Cam 6/13/25) -- only used outside of Lib; Lib doesn't use `snake_cased` keys. We should reconsider if this
+;;; belongs in Lib in its current shape.
 (defn ensure-binning-in-display-name
   "Update results column so binning is contained in its display_name."
   [column]

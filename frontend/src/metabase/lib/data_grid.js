@@ -67,38 +67,56 @@ export function multiLevelPivot(data, settings) {
     );
   };
 
-  const {
-    columnIndex,
-    rowIndex,
-    leftHeaderItems,
-    topHeaderItems,
-    getRowSection,
-  } = Pivot.process_pivot_table(
-    data,
-    rowIndexes,
-    columnIndexes,
-    valueIndexes,
-    columns,
-    topIndexFormatters,
-    leftIndexFormatters,
-    valueFormatters,
-    settings,
-    columnSettings,
-    makeColorGetter,
-  );
+  try {
+    const {
+      columnIndex,
+      rowIndex,
+      leftHeaderItems,
+      topHeaderItems,
+      getRowSection,
+    } = Pivot.process_pivot_table(
+      data,
+      rowIndexes,
+      columnIndexes,
+      valueIndexes,
+      columns,
+      topIndexFormatters,
+      leftIndexFormatters,
+      valueFormatters,
+      settings,
+      columnSettings,
+      makeColorGetter,
+    );
 
-  return {
-    leftHeaderItems,
-    topHeaderItems,
-    rowCount: rowIndex.length,
-    columnCount: columnIndex.length,
-    rowIndex,
-    getRowSection,
-    rowIndexes: rowIndexes,
-    columnIndexes: columnIndexes,
-    valueIndexes: valueIndexes,
-    columnsWithoutPivotGroup: columns,
-  };
+    // Ensure we have valid data structures even when totals are disabled
+    if (
+      !rowIndex ||
+      rowIndex.length === 0 ||
+      !columnIndex ||
+      columnIndex.length === 0
+    ) {
+      console.warn(
+        "Pivot table processing returned empty row or column data, possibly due to disabled totals",
+      );
+      return null;
+    }
+
+    return {
+      leftHeaderItems,
+      topHeaderItems,
+      rowCount: rowIndex.length,
+      columnCount: columnIndex.length,
+      rowIndex,
+      getRowSection,
+      rowIndexes: rowIndexes,
+      columnIndexes: columnIndexes,
+      valueIndexes: valueIndexes,
+      columnsWithoutPivotGroup: columns,
+    };
+  } catch (e) {
+    console.error("Error processing pivot table data:", e);
+    return null;
+  }
 }
 
 // This is the pivot function used in the normal table visualization.
@@ -161,6 +179,7 @@ export function pivot(data, normalCol, pivotCol, cellCol) {
     columns: pivotValues,
     rows: pivotedRows,
     sourceRows,
+    rows_truncated: data.rows_truncated,
   };
 }
 

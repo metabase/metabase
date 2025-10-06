@@ -24,11 +24,17 @@
 (defn- bad-query-preprocessed-schema []
   [:map
    [:database [:= (mt/id)]]
-   [:type     [:= :query]]
-   [:query    [:map
-               [:source-table [:= (mt/id :venues)]]
-               [:fields       [:= [[:field (mt/id :venues :id) {:temporal-unit :month}]]]]
-               [:limit        [:= qp.settings/absolute-max-results]]]]
+   [:lib/type [:= :mbql/query]]
+   [:stages   [:tuple
+               [:map
+                [:source-table [:= (mt/id :venues)]]
+                [:fields       [:tuple
+                                [:tuple
+                                 [:= :field]
+                                 [:map
+                                  [:temporal-unit [:= :month]]]
+                                 [:= (mt/id :venues :id)]]]]
+                [:limit        [:= qp.settings/absolute-max-results]]]]]
    [:driver {:optional true} [:= :h2]]])
 
 (def ^:private bad-query-native-schema

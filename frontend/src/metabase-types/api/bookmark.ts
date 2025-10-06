@@ -1,6 +1,7 @@
 import type { CardId, CardType } from "./card";
 import type { CollectionId } from "./collection";
 import type { DashboardId } from "./dashboard";
+import type { DocumentId } from "./document";
 
 export const BOOKMARK_TYPES = [
   "card",
@@ -8,6 +9,7 @@ export const BOOKMARK_TYPES = [
   "dashboard",
   "snippet",
   "indexed-entity",
+  "document",
 ] as const;
 export type BookmarkType = (typeof BOOKMARK_TYPES)[number];
 export type BookmarkId = string;
@@ -32,12 +34,12 @@ export interface BookmarkOrdering {
 }
 
 export interface CreateBookmarkRequest {
-  id: CardId | CollectionId | DashboardId;
+  id: CardId | CollectionId | DashboardId | DocumentId;
   type: BookmarkType;
 }
 
 export interface DeleteBookmarkRequest {
-  id: CardId | CollectionId | DashboardId;
+  id: CardId | CollectionId | DashboardId | DocumentId;
   type: BookmarkType;
 }
 

@@ -1,16 +1,36 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupSchemaEndpoints } from "__support__/server-mocks";
+import {
+  findRequests,
+  setupDatabaseListEndpoint,
+  setupPropertiesEndpoints,
+  setupSchemaEndpoints,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Database } from "metabase-types/api";
-import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockSettings,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import type { UploadsSettings } from "metabase-types/api/settings";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { UploadSettingsFormView } from "./UploadSettingsForm";
+import {
+  UploadSettingsForm,
+  UploadSettingsFormView,
+} from "./UploadSettingsForm";
 
 const TEST_DATABASES = [
   createMockDatabase({
@@ -88,11 +108,44 @@ function setup({
   return { updateSpy };
 }
 
-describe("Admin > Settings > UploadSettingsForm", () => {
+async function setupOuter({
+  databases = TEST_DATABASES,
+  uploadsSettings = {
+    db_id: null,
+    schema_name: null,
+    table_prefix: null,
+  },
+  isHosted = false,
+}: SetupOpts = {}) {
+  const settings = createMockSettings({
+    "is-hosted?": isHosted,
+    "uploads-settings": uploadsSettings,
+  });
+
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([]);
+  setupUpdateSettingEndpoint();
+  setupDatabaseListEndpoint(databases);
+
+  databases.forEach((db) => {
+    setupSchemaEndpoints(db);
+  });
+
+  renderWithProviders(
+    <>
+      <UploadSettingsForm />
+      <UndoListing />
+    </>,
+  );
+
+  await waitForLoaderToBeRemoved();
+}
+
+describe("Admin > Settings > UploadSettingsFormView", () => {
   it("should render a description", async () => {
     setup();
     expect(
-      screen.getByText("Allow people to upload data to Collections"),
+      screen.getByText("Allow people to upload data to collections"),
     ).toBeInTheDocument();
   });
 
@@ -627,6 +680,53 @@ describe("Admin > Settings > UploadSettingsForm", () => {
         /By enabling uploads to the Sample Database, you agree that you will not upload or otherwise transmit any individually identifiable information/,
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Admin > Settings > UploadSettingsForm", () => {
+  it("should re-fetch databases after update", async () => {
+    await setupOuter({
+      uploadsSettings: {
+        db_id: null,
+        schema_name: null,
+        table_prefix: null,
+      },
+    });
+    await userEvent.click(
+      await screen.findByPlaceholderText("Select a database"),
+    );
+
+    const dbItem = await screen.findByText("Db Uno");
+    await userEvent.click(dbItem);
+    await screen.findByDisplayValue("1");
+
+    const schemaDropdown =
+      await screen.findByPlaceholderText("Select a schema");
+    await waitFor(() => expect(schemaDropdown).toBeEnabled());
+    await userEvent.click(schemaDropdown);
+
+    const schemaItem = await screen.findByText("uploads");
+
+    await userEvent.click(schemaItem);
+
+    const gets = await findRequests("GET");
+    const databaseGets = gets.filter((req) =>
+      req.url.includes("/api/database"),
+    );
+    expect(databaseGets).toHaveLength(2);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Enable uploads" }),
+    );
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+
+    const gets2 = await findRequests("GET");
+    const databaseGets2 = gets2.filter((req) =>
+      req.url.includes("/api/database"),
+    );
+    expect(databaseGets2).toHaveLength(3);
   });
 });
 

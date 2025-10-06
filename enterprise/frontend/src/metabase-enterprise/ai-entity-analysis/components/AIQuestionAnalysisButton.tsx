@@ -1,14 +1,16 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { useDispatch } from "metabase/lib/redux";
-import { onOpenAIQuestionAnalysisSidebar } from "metabase/query_builder/actions";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
+
+import { trackExplainChartClicked } from "../analytics";
 
 export const AIQuestionAnalysisButton = () => {
-  const dispatch = useDispatch();
+  const { submitInput } = useMetabotAgent();
 
   const handleClick = () => {
-    dispatch(onOpenAIQuestionAnalysisSidebar());
+    trackExplainChartClicked();
+    submitInput("Analyze this chart");
   };
 
   const tooltipLabel = t`Explain this chart`;

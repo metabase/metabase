@@ -16,6 +16,7 @@ import {
 } from "./ChartSettingFieldPicker.styled";
 import { ChartSettingSelect } from "./ChartSettingSelect";
 
+const RIGHT_SECTION_PADDING = 16;
 const RIGHT_SECTION_BUTTON_WIDTH = 22;
 
 export const ChartSettingFieldPicker = ({
@@ -28,6 +29,8 @@ export const ChartSettingFieldPicker = ({
   columns,
   showColumnSetting,
   showDragHandle,
+  dragHandleRef,
+  dragHandleListeners,
   columnHasSettings,
   showColorPicker,
   colors,
@@ -84,19 +87,18 @@ export const ChartSettingFieldPicker = ({
 
   const rightSectionWidth =
     [!disabled, !!menuWidgetInfo, !!onRemove].filter(Boolean).length *
-    RIGHT_SECTION_BUTTON_WIDTH;
+      RIGHT_SECTION_BUTTON_WIDTH +
+    RIGHT_SECTION_PADDING;
 
   return (
     <ChartSettingFieldPickerRoot
       className={className}
-      showDragHandle={showDragHandle}
       data-testid="chartsettings-field-picker"
       bg="bg-white"
       align="center"
     >
       <ChartSettingSelect
-        pl="sm"
-        pr="xs"
+        pl={hasLeftSection ? "sm" : 0}
         w="100%"
         defaultDropdownOpened={autoOpenWhenUnset && value === undefined}
         options={options}
@@ -107,11 +109,14 @@ export const ChartSettingFieldPicker = ({
             <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <GrabberHandle
+                  ref={dragHandleRef}
                   name="grabber"
                   noMargin
+                  {...dragHandleListeners}
                   onClick={(e) => e.stopPropagation()}
                   c="text-medium"
                   className={CS.pointerEventsAll}
+                  data-testid="drag-handle"
                 />
               )}
               {showColorPicker && seriesKey && (
@@ -163,9 +168,10 @@ export const ChartSettingFieldPicker = ({
           },
           section: {
             backgroundColor: "unset",
+            zIndex: "initial",
           },
           input: {
-            marginLeft: theme.spacing.xs,
+            marginLeft: hasLeftSection ? theme.spacing.xs : 0,
             textOverflow: "ellipsis",
             fontWeight: "bold",
 

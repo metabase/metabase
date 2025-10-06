@@ -8,7 +8,7 @@ import { EmptyVizState, type EmptyVizStateProps } from "./EmptyVizState";
 import { type ExcludedEmptyVizDisplayTypes, getEmptyVizConfig } from "./utils";
 
 const docsCTAChartTypes = ["funnel", "map", "sankey"] as const;
-const summarizeCTAChartTypes = [
+const CTAChartTypes = [
   "bar",
   "line",
   "pie",
@@ -24,8 +24,8 @@ const summarizeCTAChartTypes = [
   "waterfall",
 ] as const;
 
-const setup = (opts: EmptyVizStateProps = {}) => {
-  renderWithProviders(<EmptyVizState {...opts} />, {
+const setup = (opts: Partial<EmptyVizStateProps> = {}) => {
+  renderWithProviders(<EmptyVizState isNativeView={false} {...opts} />, {
     storeInitialState: createMockState({}),
   });
 };
@@ -75,55 +75,83 @@ describe("EmptyVizState", () => {
     },
   );
 
-  it.each(summarizeCTAChartTypes)(
-    "should prompt to open the summarize sidebar for %s visualization",
-    (chartType) => {
+  describe("QB empty viz state", () => {
+    it.each(CTAChartTypes)(
+      "should prompt to open the summarize sidebar for %s visualization",
+      (chartType) => {
+        const onEditSummary = jest.fn();
+        setup({ chartType, onEditSummary });
+
+        const { secondaryText } = getEmptyVizConfig(chartType);
+
+        expect(
+          screen.getByAltText(`${chartType} chart example illustration`),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/^click on/i)).toBeInTheDocument();
+        // Not matching on `primaryText` because it sometimes contains parentheses.
+        // We'd have to escape the special chars in the regex, which seems like an overkill for this test.
+        expect(screen.getByText(/then pick/i)).toBeInTheDocument();
+        expect(screen.getByText(secondaryText)).toBeInTheDocument();
+        expect(
+          screen.getByLabelText("Open summarize sidebar"),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      },
+    );
+
+    it("should call `onEditSummary` when clicking the Summarize button", async () => {
       const onEditSummary = jest.fn();
-      setup({ chartType, onEditSummary });
+      setup({
+        chartType: "line",
+        onEditSummary,
+        isSummarizeSidebarOpen: false,
+      });
 
-      const { secondaryText } = getEmptyVizConfig(chartType);
+      await userEvent.click(screen.getByLabelText("Open summarize sidebar"));
+      expect(onEditSummary).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not render the summarize CTA button if the sidebar is already open", async () => {
+      const onEditSummary = jest.fn();
+      setup({ chartType: "line", onEditSummary, isSummarizeSidebarOpen: true });
 
       expect(
-        screen.getByAltText(`${chartType} chart example illustration`),
-      ).toBeInTheDocument();
-      expect(screen.getByText(/^click on/i)).toBeInTheDocument();
-      // Not matching on `primaryText` because it sometimes contains parentheses.
-      // We'd have to escape the special chars in the regex, which seems like an overkill for this test.
-      expect(screen.getByText(/then pick/i)).toBeInTheDocument();
-      expect(screen.getByText(secondaryText)).toBeInTheDocument();
+        screen.queryByLabelText("Open summarize sidebar"),
+      ).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Summarize"));
+      expect(onEditSummary).not.toHaveBeenCalled();
+    });
+
+    it("should not render the summarize CTA button if onEditSummary is undefined", async () => {
+      setup({ chartType: "line", onEditSummary: undefined });
+
       expect(
-        screen.getByLabelText("Open summarize sidebar"),
-      ).toBeInTheDocument();
-      expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    },
-  );
-
-  it("should call `onEditSummary` when clicking the Summarize button", async () => {
-    const onEditSummary = jest.fn();
-    setup({ chartType: "line", onEditSummary, isSummarizeSidebarOpen: false });
-
-    await userEvent.click(screen.getByLabelText("Open summarize sidebar"));
-    expect(onEditSummary).toHaveBeenCalledTimes(1);
+        screen.queryByLabelText("Open summarize sidebar"),
+      ).not.toBeInTheDocument();
+    });
   });
 
-  it("should not render the summarize CTA button if the sidebar is already open", async () => {
-    const onEditSummary = jest.fn();
-    setup({ chartType: "line", onEditSummary, isSummarizeSidebarOpen: true });
+  describe("Native empty viz state", () => {
+    it.each(CTAChartTypes)(
+      "should render the native empty state for %s visualization",
+      (chartType) => {
+        setup({ chartType, isNativeView: true });
 
-    expect(
-      screen.queryByLabelText("Open summarize sidebar"),
-    ).not.toBeInTheDocument();
+        const { secondaryText } = getEmptyVizConfig(chartType);
 
-    await userEvent.click(screen.getByText("Summarize"));
-    expect(onEditSummary).not.toHaveBeenCalled();
-  });
-
-  it("should not render the summarize CTA button if onEditSummary is undefined", async () => {
-    setup({ chartType: "line", onEditSummary: undefined });
-
-    expect(
-      screen.queryByLabelText("Open summarize sidebar"),
-    ).not.toBeInTheDocument();
+        expect(
+          screen.getByAltText(`${chartType} chart example illustration`),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/^click on/i)).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            /in the bottom left corner. Then pick one or more metrics for your axes.$/i,
+          ),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(secondaryText)).not.toBeInTheDocument();
+      },
+    );
   });
 });
 

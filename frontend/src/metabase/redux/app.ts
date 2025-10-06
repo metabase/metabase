@@ -12,6 +12,7 @@ import {
 } from "metabase/lib/dom";
 import { combineReducers, handleActions } from "metabase/lib/redux";
 import type {
+  DetailViewState,
   Dispatch,
   TempStorage,
   TempStorageKey,
@@ -31,13 +32,19 @@ interface LocationChangeAction {
   };
 }
 
-export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
-
+const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
     type: SET_ERROR_PAGE,
     payload: error,
+  };
+}
+
+const RESET_ERROR_PAGE = "metabase/app/RESET_ERROR_PAGE";
+export function resetErrorPage() {
+  return {
+    type: RESET_ERROR_PAGE,
   };
 }
 
@@ -61,6 +68,7 @@ export const openUrl =
 const errorPage = handleActions(
   {
     [SET_ERROR_PAGE]: (_, { payload }) => payload,
+    [RESET_ERROR_PAGE]: () => null,
     [LOCATION_CHANGE]: () => null,
   },
   null,
@@ -68,7 +76,8 @@ const errorPage = handleActions(
 
 // regexr.com/7r89i
 // A word boundary is added to /model so it doesn't match /browse/models
-const PATH_WITH_COLLAPSED_NAVBAR = /\/(model\b|question|dashboard|metabot).*/;
+const PATH_WITH_COLLAPSED_NAVBAR =
+  /\/(model\b|question|dashboard|metabot|embed-js|document).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (
@@ -117,6 +126,21 @@ const isErrorDiagnosticsOpen = handleActions(
   false,
 );
 
+export const SET_DETAIL_VIEW = "metabase/app/SET_DETAIL_VIEW";
+
+export const setDetailView = createAction<DetailViewState | null>(
+  SET_DETAIL_VIEW,
+);
+
+const detailView = handleActions(
+  {
+    [SET_DETAIL_VIEW]: {
+      next: (_oldState, { payload: newState }) => newState,
+    },
+  },
+  null,
+);
+
 const tempStorageSlice = createSlice({
   name: "tempStorage",
   initialState: {} as TempStorage,
@@ -137,6 +161,7 @@ export const { setTempSetting } = tempStorageSlice.actions;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default combineReducers({
+  detailView,
   errorPage,
   isNavbarOpen,
   isDndAvailable: (initValue: unknown) => {

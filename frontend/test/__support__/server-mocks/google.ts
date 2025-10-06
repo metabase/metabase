@@ -6,6 +6,6 @@ export function setupUpdateGoogleAuthEndpoint(
   fetchMock.put(
     new RegExp("/api/google/settings"),
     { status },
-    { overwriteRoutes: true },
+    { name: "google-settings-put" },
   );
 }

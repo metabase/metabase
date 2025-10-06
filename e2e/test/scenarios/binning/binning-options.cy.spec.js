@@ -195,24 +195,21 @@ describe("scenarios > binning > binning options", () => {
   });
 
   context("via time series footer (metabase#11183)", () => {
-    // TODO: enable again when metabase#35546 is completed
-    it.skip("should render time series binning options correctly", () => {
+    it("should render time series binning options correctly", () => {
       H.openTable({ table: ORDERS_ID });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Created At").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Distribution").click();
-
+      H.tableHeaderClick("Created At");
+      H.popover().findByText("Distribution").click();
       getTitle("Count by Created At: Month");
-
-      // Check all binning options from the footer
-      cy.findAllByTestId("select-button-content").contains("Month").click();
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      cy.findByTestId("timeseries-bucket-button").click();
+      H.popover().within(() => {
+        cy.findByText("Month")
+          .parent()
+          .should("have.attr", "aria-selected", "true");
+      });
     });
   });
 
-  context.skip("implicit joins (metabase#16674)", () => {
+  context("implicit joins (metabase#16674)", { tags: "@skip" }, () => {
     it("should work for time series", () => {
       chooseInitialBinningOption({
         table: ORDERS_ID,
@@ -244,7 +241,7 @@ describe("scenarios > binning > binning options", () => {
     });
   });
 
-  context.skip("explicit joins (metabase#16675)", () => {
+  context("explicit joins (metabase#16675)", { tags: "@skip" }, () => {
     beforeEach(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
     });

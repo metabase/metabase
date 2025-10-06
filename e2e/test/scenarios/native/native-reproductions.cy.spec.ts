@@ -1,10 +1,16 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
@@ -27,17 +33,17 @@ describe("issue 11727", { tags: "@external" }, () => {
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
-    H.withDatabase(PG_DB_ID, () => {
-      cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
-      cy.wait("@getDatabases");
+    cy.visit("/question#" + H.adhocQuestionHash(questionDetails));
+    cy.wait("@getDatabases");
 
-      H.runNativeQuery({ wait: false });
-      cy.findByText("Doing science...").should("be.visible");
-      cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
-    });
+    H.runNativeQuery({ wait: false });
+    cy.findByTestId("query-builder-main")
+      .findByText("Doing science...")
+      .should("be.visible");
+    cy.get("body").type("{cmd}{enter}");
+    cy.findByTestId("query-builder-main")
+      .findByText("Here's where your results will appear")
+      .should("be.visible");
   });
 });
 
@@ -98,12 +104,12 @@ describe("issue 38083", () => {
       visitQuestion: true,
     });
 
-    cy.get("legend")
-      .contains(QUESTION.native["template-tags"].state["display-name"])
-      .parent("fieldset")
-      .within(() => {
-        cy.icon("revert").should("not.exist");
-      });
+    H.filterWidget()
+      .filter(
+        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
+      )
+      .icon("revert")
+      .should("not.exist");
   });
 });
 
@@ -385,46 +391,21 @@ describe("issues 52811, 52812", () => {
 });
 
 describe("issue 52806", () => {
-  const questionDetails = {
-    name: "SQL",
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "native",
-      native: {
-        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
-        "template-tags": {
-          id: {
-            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-            name: "id",
-            "display-name": "ID",
-            type: "number",
-            default: "1",
-          },
-        },
-      },
-    },
-    visualization_settings: {},
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it(
-    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
-    { tags: "@flaky" },
-    () => {
-      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
-        "candidates",
-      );
-      H.visitQuestionAdhoc(questionDetails);
-      cy.findByTestId("main-logo-link").click();
-      H.modal().button("Discard changes").click();
-      cy.wait("@candidates");
-      cy.location().should((location) => expect(location.search).to.eq(""));
-    },
-  );
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    cy.visit("/");
+    H.newButton("SQL query").click();
+    H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.findByTestId("home-page");
+    cy.location().should((location) => expect(location.search).to.eq(""));
+  });
 });
 
 describe("issue 55951", () => {
@@ -545,7 +526,7 @@ describe("issue 56570", () => {
 
   it("should not push the toolbar off-screen (metabase#56570)", () => {
     cy.findByTestId("visibility-toggler").click();
-    cy.findByTestId("native-query-editor-sidebar").should("be.visible");
+    cy.findByTestId("native-query-editor-action-buttons").should("be.visible");
   });
 });
 
@@ -575,9 +556,300 @@ describe("issue 57441", () => {
 
     H.createSnippet({ name: "snippet 1", content: "select 1" });
 
-    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
     H.rightSidebar().icon("add").click();
     H.popover().findByText("New snippet").click();
     H.modal().findByText("Create your new snippet").should("be.visible");
+  });
+});
+
+describe("issue 56905", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.startNewNativeQuestion();
+  });
+
+  it("It should be possible to run the native query when a parameter value input is focused (metabase#56905)", () => {
+    H.NativeEditor.type("select {{ foo }}");
+    cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("foobar")
+      .should("be.visible");
+  });
+});
+
+describe("issue 57644", () => {
+  describe("with only one database", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should not open the database picker when opening the native query editor when there is only one database (metabase#57644)", () => {
+      cy.findByTestId("native-query-top-bar")
+        .findByText("Select a database")
+        .should("be.visible");
+
+      // The popover should not be visible, we give it a timeout here because the
+      // popover disappears immediately and we don't want that to make the test pass.
+      cy.findAllByRole("dialog", { timeout: 0 }).should("not.exist");
+    });
+  });
+
+  describe("with multiple databases", () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+      cy.signInAsAdmin();
+
+      H.startNewNativeQuestion({
+        database: null,
+        query: "",
+      });
+    });
+
+    it("should open the database picker when opening the native query editor and there are multiple databases (metabase#57644)", () => {
+      H.popover()
+        .should("be.visible")
+        .and("contain", "Sample Database")
+        .and("contain", "QA Postgres12");
+    });
+  });
+});
+
+describe("issue 51679", () => {
+  const questionDetails: NativeQuestionDetails = {
+    native: {
+      query: "SELECT {{var}}",
+      "template-tags": {
+        var: {
+          id: "754ae827-661c-4fc9-b511-c0fb7b6bae2b",
+          name: "var",
+          type: "text",
+          "display-name": "Var",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to change the template tag type when the required field for a field filter is not set (metabase#51679)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderMain().within(() => {
+      cy.findByTestId("visibility-toggler").click();
+      cy.icon("variable").click();
+    });
+    H.rightSidebar().findByTestId("variable-type-select").click();
+    H.popover().findByText("Field Filter").click();
+
+    cy.log("without selecting the field, try to change the type again");
+    H.rightSidebar().findByTestId("variable-type-select").click();
+    H.popover().findByText("Number").click();
+    H.rightSidebar()
+      .findByTestId("variable-type-select")
+      .should("have.value", "Number");
+  });
+});
+
+describe("issue 59110", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow dragging border to completely hide native query editor (metabase#59110)", () => {
+    H.startNewNativeQuestion();
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("not.exist");
+
+    H.NativeEditor.get().then((editor) => {
+      const { height } = editor[0].getBoundingClientRect();
+      const SLOPPY_CLICK_THRESHOLD = 30;
+      const diff = height - SLOPPY_CLICK_THRESHOLD;
+
+      cy.log("drag the border to hide the editor");
+
+      cy.findByTestId("drag-handle").then((handle) => {
+        const coordsDrag = handle[0].getBoundingClientRect();
+
+        cy.wrap(handle)
+          .trigger("mousedown", {
+            clientX: coordsDrag.x,
+            clientY: coordsDrag.y,
+          })
+          .trigger("mousemove", {
+            clientX: coordsDrag.x,
+            clientY: coordsDrag.y - diff,
+          })
+          .trigger("mouseup");
+      });
+    });
+
+    H.NativeEditor.get().should("not.be.visible");
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("be.visible")
+      .click();
+
+    cy.log("verify that editor height is restored");
+    H.NativeEditor.get().then((editor) => {
+      const { height } = editor[0].getBoundingClientRect();
+      expect(height).to.be.greaterThan(100);
+    });
+  });
+});
+
+describe("issue 60719", () => {
+  const question1Details: NativeQuestionDetails = {
+    name: "Q1",
+    native: {
+      query: "select 1 as num",
+      "template-tags": {},
+    },
+  };
+
+  function getQuestion2Details(card1Id: number): StructuredQuestionDetails {
+    return {
+      name: "Q2",
+      query: {
+        "source-table": `card__${card1Id}`,
+      },
+    };
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should prevent saving a native query with a circular reference (metabase#60719)", () => {
+    H.createNativeQuestion(question1Details).then(({ body: card1 }) => {
+      H.createQuestion(getQuestion2Details(card1.id)).then(
+        ({ body: card2 }) => {
+          H.visitQuestion(card1.id);
+          cy.findByTestId("visibility-toggler").click();
+          H.NativeEditor.clear().type(`select * from {{#${card2.id}-q2}}`);
+        },
+      );
+    });
+    H.queryBuilderHeader().button("Save").click();
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.wait("@updateCard");
+      cy.findByText("Cannot save card with cycles.").should("be.visible");
+    });
+  });
+});
+
+describe("issue 59356", () => {
+  function typeRunShortcut() {
+    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+  }
+
+  function getLoader() {
+    return H.queryBuilderMain().findByTestId("loading-indicator");
+  }
+
+  function getEmptyStateMessage() {
+    return H.queryBuilderMain().findByText(
+      "Here's where your results will appear",
+    );
+  }
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should properly cancel the query via the keyboard shortcut (metabase#59356)", () => {
+    cy.log("open the native query");
+    H.startNewNativeQuestion({
+      database: WRITABLE_DB_ID,
+      query: "select pg_sleep(5000)",
+    });
+
+    cy.log("verify that the query is not running");
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 0);
+
+    cy.log("run the query and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("run the query again and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 2);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 2);
+  });
+});
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
   });
 });

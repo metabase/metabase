@@ -54,6 +54,13 @@
     ;; We filter what we can (i.e., everything in a collection) out already when querying
     true))
 
+(defmethod check-permissions-for-model :document
+  [search-ctx instance]
+  (and (premium-features/enable-documents?)
+       (if (:archived? search-ctx)
+         (can-write? search-ctx instance)
+         true)))
+
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
@@ -209,8 +216,7 @@
         ;; It would be good to have a warning on start up for this.
         :search.engine/in-place))
     (first (filter search.engine/supported-engine?
-                   [:search.engine/appdb
-                    :search.engine/in-place]))))
+                   search.engine/fallback-engine-priority))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
@@ -267,7 +273,10 @@
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
-   [:include-metadata?                   {:optional true} [:maybe boolean?]]])
+   [:include-metadata?                   {:optional true} [:maybe boolean?]]
+   [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
+   [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -278,6 +287,7 @@
            created-by
            current-user-id
            current-user-perms
+           display-type
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -295,7 +305,9 @@
            search-native-query
            search-string
            table-db-id
-           verified]} :- ::search-context.input]
+           verified
+           non-temporal-dim-ids
+           has-temporal-dim]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -311,7 +323,7 @@
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
-                                                                 (fvalue :personal-collection-id))
+                                                                 (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
@@ -331,7 +343,10 @@
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
-                 (seq ids)                                   (assoc :ids ids))]
+                 (seq ids)                                   (assoc :ids ids)
+                 (some? non-temporal-dim-ids)                (assoc :non-temporal-dim-ids non-temporal-dim-ids)
+                 (some? has-temporal-dim)                    (assoc :has-temporal-dim has-temporal-dim)
+                 (seq display-type)                          (assoc :display-type display-type))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
@@ -384,17 +399,16 @@
     ;; We get to do this slicing and dicing with the result data because
     ;; the pagination of search is for UI improvement, not for performance.
     ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    (cond->
-     {:data             (cond->> total-results
-                          (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                          (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                          true (map add-perms-for-col))
-      :limit            (:limit-int search-ctx)
-      :models           (:models search-ctx)
-      :offset           (:offset-int search-ctx)
-      :table_db_id      (:table-db-id search-ctx)
-      :engine           (:search-engine search-ctx)
-      :total            (count total-results)}
+    (cond-> {:data             (cond->> total-results
+                                 (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                                 (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
+                                 true (map add-perms-for-col))
+             :limit            (:limit-int search-ctx)
+             :models           (:models search-ctx)
+             :offset           (:offset-int search-ctx)
+             :table_db_id      (:table-db-id search-ctx)
+             :engine           (:search-engine search-ctx)
+             :total            (count total-results)}
 
       (:calculate-available-models? search-ctx)
       (assoc :available_models (model-set-fn search-ctx)))))
@@ -407,14 +421,14 @@
 (defn- add-metadata [search-results]
   (let [card-ids (into #{}
                        (comp
-                        (filter #(= (:model %) "card"))
+                        (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
                         (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
     (map (fn [{:keys [model id] :as item}]
-           (if (= model "card")
+           (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))
              item))
          search-results)))

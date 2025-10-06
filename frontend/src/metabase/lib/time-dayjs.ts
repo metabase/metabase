@@ -1,5 +1,6 @@
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
+import { t } from "ttag";
 
 import type { DatetimeUnit } from "metabase-types/api/query";
 
@@ -28,8 +29,8 @@ export function getDaylightSavingsChangeTolerance(unit: string) {
 
 const TEXT_UNIT_FORMATS = {
   "day-of-week": (value: string) => {
-    const day = dayjs.tz(value, "ddd").startOf("day");
-    return day.isValid() ? day : dayjs.tz(value).startOf("day");
+    const day = dayjs(value, "ddd").startOf("day");
+    return day.isValid() ? day : dayjs(value).startOf("day");
   },
 };
 
@@ -78,9 +79,55 @@ export function parseTimestamp(
   } else if (unit && unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     result = NUMERIC_UNIT_FORMATS[unit](value);
   } else if (typeof value === "number") {
-    result = dayjs.utc(value.toString());
+    // When a unit is provided but not in NUMERIC_UNIT_FORMATS, small numbers
+    // don't make sense as timestamps. For example, parseTimestamp(1, "month")
+    // should not interpret 1 as "1 millisecond since epoch".
+    // Use strict parsing for small numbers to return invalid dates.
+    if (unit && value < 1000) {
+      result = dayjs.utc(value, "", true);
+    } else {
+      result = dayjs.utc(value.toString());
+    }
   } else {
     result = dayjs.utc(value);
   }
   return isLocal ? result.local() : result;
+}
+
+export function getRelativeTime(timestamp: string) {
+  return dayjs(timestamp).fromNow();
+}
+
+export function formatFrame(frame: "first" | "last" | "mid") {
+  switch (frame) {
+    case "first":
+      return t`first`;
+    case "last":
+      return t`last`;
+    case "mid":
+      return t`15th (Midpoint)`;
+    default:
+      return frame;
+  }
+}
+
+export function timezoneToUTCOffset(timezone: string) {
+  // Use a fixed date in winter (non-DST) to get consistent offsets
+  return dayjs("2024-07-01").tz(timezone).format("Z");
+}
+
+export function parseTime(value: Dayjs | string) {
+  if (dayjs.isDayjs(value)) {
+    return value;
+  } else if (typeof value === "string") {
+    // removing the timezone part if it exists, so we can parse the time correctly
+    return dayjs(value.split(/[+-]/)[0], [
+      "HH:mm:ss.SSSZ",
+      "HH:mm:ss.SSS",
+      "HH:mm:ss",
+      "HH:mm",
+    ]);
+  }
+
+  return dayjs.utc(value);
 }

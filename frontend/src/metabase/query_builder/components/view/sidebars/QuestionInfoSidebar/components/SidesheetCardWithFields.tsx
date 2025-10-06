@@ -1,7 +1,7 @@
 import { c, msgid } from "ttag";
 
+import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { SidesheetCard } from "metabase/common/components/Sidesheet";
-import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { Box, Group, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

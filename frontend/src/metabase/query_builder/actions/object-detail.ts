@@ -17,29 +17,19 @@ import {
   getCard,
   getFirstQueryResult,
   getNextRowPKValue,
-  getPKColumnIndex,
   getPreviousRowPKValue,
   getTableForeignKeys,
 } from "../selectors";
 
-import { setCardAndRun } from "./core";
-import { updateUrl } from "./navigation";
-
-export const ZOOM_IN_ROW = "metabase/qb/ZOOM_IN_ROW";
-export const zoomInRow =
-  ({ objectId }: { objectId: ObjectId }) =>
-  (dispatch: Dispatch, getState: GetState) => {
-    dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
-
-    // don't show object id in url if it is a row index
-    const hasPK = getPKColumnIndex(getState()) !== -1;
-    hasPK && dispatch(updateUrl(null, { objectId, replaceState: false }));
-  };
+import { setCardAndRun } from "./core/core";
+import { updateUrl } from "./url";
+import { zoomInRow } from "./zoom";
 
 export const RESET_ROW_ZOOM = "metabase/qb/RESET_ROW_ZOOM";
 export const resetRowZoom = () => (dispatch: Dispatch) => {
   dispatch({ type: RESET_ROW_ZOOM });
-  dispatch(updateUrl());
+
+  dispatch(updateUrl(null, { preserveParameters: false }));
 };
 
 function filterByFk(

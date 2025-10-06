@@ -8,16 +8,16 @@ import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { useFavicon } from "metabase/common/hooks/use-favicon";
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import Bookmark from "metabase/entities/bookmarks";
 import Timelines from "metabase/entities/timelines";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
-import { useFavicon } from "metabase/hooks/use-favicon";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -38,6 +38,7 @@ import type {
 import type { QueryBuilderUIControls, State } from "metabase-types/store";
 
 import * as actions from "../actions";
+import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
 import {
@@ -57,13 +58,11 @@ import {
   getIsLiveResizable,
   getIsLoadingComplete,
   getIsNativeEditorOpen,
-  getIsObjectDetail,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
   getLastRunCard,
   getModalSnippet,
-  getMode,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
   getOriginalCard,
@@ -86,8 +85,10 @@ import {
   getVisibleTimelineEventIds,
   getVisibleTimelineEvents,
   getVisualizationSettings,
+  getZoomedObjectRowIndex,
   isResultsMetadataDirty,
 } from "../selectors";
+import { getIsObjectDetail, getMode } from "../selectors/mode";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
@@ -185,6 +186,8 @@ const mapStateToProps = (state: State, props: EntityListLoaderMergedProps) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
 
+    zoomedRowIndex: getZoomedObjectRowIndex(state),
+
     reportTimezone: getSetting(state, "report-timezone-long"),
     didFirstNonTableChartGenerated: getSetting(
       state,
@@ -230,7 +233,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     initializeQB,
     locationChanged,
     setUIControls,
-    runQuestionOrSelectedQuery,
+    runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
     isBookmarked,
     createBookmark,
@@ -238,6 +241,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     allLoaded,
     showTimelinesForCollection,
     card,
+    isAdmin,
     isLoadingComplete,
     closeQB,
     route,
@@ -253,6 +257,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     (series: Series) => {
       const isNonTable = series[0].card.display !== "table";
       if (
+        isAdmin &&
         !didFirstNonTableChartGenerated &&
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
@@ -261,7 +266,12 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
-    [card, didFirstNonTableChartGenerated, setDidFirstNonTableChartRender],
+    [
+      isAdmin,
+      card,
+      didFirstNonTableChartGenerated,
+      setDidFirstNonTableChartRender,
+    ],
   );
 
   const forceUpdate = useForceUpdate();
@@ -292,13 +302,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   );
 
   const onClickBookmark = () => {
-    const {
-      card: { id },
-    } = props;
+    const { card } = props;
 
     const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
 
-    toggleBookmark(id);
+    if (!isBookmarked) {
+      trackCardBookmarkAdded(card);
+    }
+
+    toggleBookmark(card.id);
   };
 
   /**
@@ -433,11 +445,11 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
   const handleCmdEnter = () => {
     if (queryBuilderMode !== "notebook") {
-      runQuestionOrSelectedQuery();
+      runOrCancelQuestionOrSelectedQuery();
     }
   };
 
-  useHotkeys([["mod+Enter", handleCmdEnter]]);
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   return (
     <>

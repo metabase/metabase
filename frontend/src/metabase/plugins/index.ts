@@ -1,12 +1,14 @@
+import type { Middleware } from "@reduxjs/toolkit";
 import React, {
   type ComponentType,
+  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  useCallback,
   useMemo,
 } from "react";
 import { t } from "ttag";
-import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -22,8 +24,6 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
-import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
-import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
@@ -32,19 +32,23 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
-import type { LinkProps } from "metabase/core/components/Link";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
-import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { LinkProps } from "metabase/common/components/Link";
+import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
 import type { PaletteAction } from "metabase/palette/types";
-import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
+import {
+  NotFoundPlaceholder,
+  PluginPlaceholder,
+} from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import type { HoveredObject } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -54,6 +58,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -62,71 +67,91 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
+  DatabaseData,
+  DatabaseId,
+  DatabaseLocalSettingAvailability,
   Database as DatabaseType,
   Dataset,
-  DatasetError,
-  DatasetErrorType,
+  Document,
   Group,
   GroupPermissions,
   GroupsPermissions,
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSource,
+  PythonTransformTableAliases,
   Revision,
+  Series,
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
+  UpdateSnippetRequest,
+  UpdateTransformRequest,
   User,
+  VisualizationDisplay,
 } from "metabase-types/api";
-import type { AdminPathKey, Dispatch, State } from "metabase-types/store";
-
 import type {
-  GetAuthProviders,
-  PluginGroupManagersType,
-  PluginLLMAutoDescription,
-} from "./types";
+  AdminPath,
+  AdminPathKey,
+  Dispatch as ReduxDispatch,
+  State,
+} from "metabase-types/store";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+
+import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
 // functions called when the application is started
-export const PLUGIN_APP_INIT_FUNCTIONS = [];
+export const PLUGIN_APP_INIT_FUNCTIONS: (() => void)[] = [];
 
-export const PLUGIN_LANDING_PAGE = {
+export const PLUGIN_LANDING_PAGE: {
+  getLandingPage: () => string | null | undefined;
+  LandingPageWidget: ComponentType;
+} = {
   getLandingPage: () => "/",
   LandingPageWidget: PluginPlaceholder,
 };
 
-export const PLUGIN_REDUX_MIDDLEWARES = [];
+export const PLUGIN_REDUX_MIDDLEWARES: Middleware[] = [];
 
 // override for LogoIcon
-export const PLUGIN_LOGO_ICON_COMPONENTS = [];
+export const PLUGIN_LOGO_ICON_COMPONENTS: ComponentType[] = [];
 
 // admin nav items and routes
-export const PLUGIN_ADMIN_NAV_ITEMS = [];
-export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
 
-export const PLUGIN_ADMIN_TOOLS = {
+export const PLUGIN_ADMIN_TOOLS: {
+  COMPONENT: ComponentType | null;
+} = {
   COMPONENT: null,
 };
 
 export const PLUGIN_WHITELABEL = {
-  WhiteLabelSettingsPage: PluginPlaceholder,
+  WhiteLabelBrandingSettingsPage: PluginPlaceholder,
+  WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_TROUBLESHOOTING = {
-  EXTRA_ROUTES: [] as ReactNode[],
-  GET_EXTRA_NAV: (): ReactNode[] => [],
+export const PLUGIN_ADMIN_SETTINGS: {
+  InteractiveEmbeddingSettings: ComponentType | null;
+  LicenseAndBillingSettings: ComponentType;
+  useUpsellFlow: (props: { campaign: string; location: string }) => {
+    triggerUpsellFlow: (() => void) | undefined;
+  };
+} = {
+  InteractiveEmbeddingSettings: null,
+  LicenseAndBillingSettings: PluginPlaceholder,
+  useUpsellFlow: (_props: {
+    campaign: string;
+    location: string;
+  }): {
+    triggerUpsellFlow: (() => void) | undefined;
+  } => ({
+    triggerUpsellFlow: undefined,
+  }),
 };
-
-export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
-};
-
-// functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
-  sections: typeof ADMIN_SETTINGS_SECTIONS,
-) => void)[] = [];
 
 // admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
@@ -205,29 +230,15 @@ export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 export const PLUGIN_AUTH_PROVIDERS = {
   isEnabled: () => false,
   AuthSettingsPage: PluginPlaceholder,
-  UserProvisioningSettings: PluginPlaceholder,
+  UserProvisioningSettings: NotFoundPlaceholder,
+  SettingsSAMLForm: NotFoundPlaceholder,
+  SettingsJWTForm: NotFoundPlaceholder,
   providers: [] as GetAuthProviders[],
 };
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
-  formFieldAttributes: [] as string[],
-  defaultableFormFieldAttributes: [] as string[],
-  formFieldsSchemas: {} as Record<string, AnySchema>,
-  UserProvisioning: (() => null) as ComponentType<{
-    settings: {
-      [setting: string]: {
-        display_name?: string | undefined;
-        description?: string | ReactNode | undefined;
-        note?: string | undefined;
-      };
-    };
-    fields: {
-      [field: string]: {
-        name: string;
-        default: boolean;
-      };
-    };
-  }>,
+  LdapUserProvisioning: PluginPlaceholder,
+  LdapGroupMembershipFilter: PluginPlaceholder,
 };
 
 // Only show the password tab in account settings if these functions all return true.
@@ -244,7 +255,7 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
-const getLoadingMessage = (isSlow: boolean = false) =>
+const getLoadingMessage = (isSlow: boolean | undefined = false) =>
   isSlow ? t`Waiting for results...` : t`Doing science...`;
 
 // selectors that customize behavior between app versions
@@ -261,10 +272,10 @@ export const PLUGIN_SELECTORS = {
   getLandingPageIllustration: (_state: State): IllustrationValue => {
     return defaultLandingPageIllustration;
   },
-  getNoDataIllustration: (_state: State): string => {
+  getNoDataIllustration: (_state: State): string | null => {
     return noResultsSource;
   },
-  getNoObjectIllustration: (_state: State): string => {
+  getNoObjectIllustration: (_state: State): string | null => {
     return noResultsSource;
   },
 };
@@ -296,11 +307,6 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE: PluginDa
   {
     Component: undefined,
   };
-
-export const PLUGIN_LLM_AUTODESCRIPTION: PluginLLMAutoDescription = {
-  isEnabled: () => false,
-  LLMSuggestQuestionInfo: PluginPlaceholder,
-};
 
 const AUTHORITY_LEVEL_REGULAR: CollectionAuthorityLevelConfig = {
   type: null,
@@ -461,11 +467,13 @@ export const PLUGIN_REDUCERS: {
   sandboxingPlugin: any;
   shared: any;
   metabotPlugin: any;
+  documents: any;
 } = {
   applicationPermissionsPlugin: () => null,
   sandboxingPlugin: () => null,
   shared: () => null,
   metabotPlugin: () => null,
+  documents: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -548,8 +556,8 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
   isInteractiveEmbeddingEnabled: (_state: State) => false,
-  SimpleDataPicker: (_props: SimpleDataPickerProps) => null,
-  DataSourceSelector: (_props: DataSourceSelectorProps) => null,
+  SimpleDataPicker: (_props: SimpleDataPickerProps): ReactNode => null,
+  DataSourceSelector: (_props: DataSourceSelectorProps): ReactNode => null,
 };
 
 export interface SimpleDataPickerProps {
@@ -563,6 +571,17 @@ export interface SimpleDataPickerProps {
 
 export const PLUGIN_EMBEDDING_SDK = {
   isEnabled: () => false,
+};
+
+export const PLUGIN_EMBEDDING_IFRAME_SDK = {
+  hasValidLicense: () => false,
+  SdkIframeEmbedRoute: (): ReactNode => null,
+};
+
+export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
+  isFeatureEnabled: () => false,
+  shouldShowEmbedInNewItemMenu: () => false,
+  SdkIframeEmbedSetup: (): ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -607,16 +626,19 @@ type GdriveConnectionModalProps = {
   reconnect: boolean;
 };
 
+type GdriveAddDataPanelProps = {
+  onAddDataModalClose: () => void;
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   FileUploadErrorModal: _FileUploadErrorModal,
   UploadManagementTable: PluginPlaceholder,
   GdriveSyncStatus: PluginPlaceholder,
   GdriveConnectionModal:
     PluginPlaceholder as ComponentType<GdriveConnectionModalProps>,
-  GdriveSidebarMenuItem: PluginPlaceholder as ComponentType<{
-    onClick: () => void;
-  }>,
   GdriveDbMenu: PluginPlaceholder,
+  GdriveAddDataPanel:
+    PluginPlaceholder as ComponentType<GdriveAddDataPanelProps>,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
@@ -627,54 +649,31 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+  areDownloadsEnabled: (_args: {
+    downloads?: string | boolean | null;
+  }): EmbedResourceDownloadOptions => ({
     pdf: true,
     results: true,
   }),
 };
 
 const defaultMetabotContextValue: MetabotContext = {
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
 };
 
-export type FixSqlQueryButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
-  onHighlightLines: (fixedLineNumbers: number[]) => void;
-};
-
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<Record<string, never>>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
   FixSqlQueryButton: PluginPlaceholder,
 };
 
-export type GenerateSqlQueryButtonProps = {
-  className?: string;
-  query: Lib.Query;
-  selectedQueryText?: string;
-  onGenerateQuery: (queryText: string) => void;
-};
-
-export type PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: ComponentType<GenerateSqlQueryButtonProps>;
-  isEnabled: () => boolean;
-  getPlaceholderText: () => string;
-};
-
-export const PLUGIN_AI_SQL_GENERATION: PluginAiSqlGeneration = {
-  GenerateSqlQueryButton: PluginPlaceholder,
-  isEnabled: () => false,
-  getPlaceholderText: () => "",
-};
-
 export interface AIDashboardAnalysisSidebarProps {
-  dashboard: Dashboard;
   onClose?: () => void;
   dashcardId?: DashCardId;
 }
@@ -689,23 +688,24 @@ export interface AIQuestionAnalysisSidebarProps {
 
 export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: ComponentType<any>;
-  AIDashboardAnalysisButton: ComponentType<any>;
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
-  canAnalyzeDashboard: (dashboard: Dashboard) => boolean;
   canAnalyzeQuestion: (question: Question) => boolean;
+  chartAnalysisRenderFormats: {
+    [display in VisualizationDisplay]?: "png" | "svg" | "none";
+  };
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisButton: PluginPlaceholder,
-  AIDashboardAnalysisButton: PluginPlaceholder,
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
-  canAnalyzeDashboard: () => false,
   canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
 };
 
 export const PLUGIN_METABOT = {
+  isEnabled: () => false,
   Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
@@ -719,14 +719,19 @@ export const PLUGIN_METABOT = {
   },
   useMetabotPalletteActions: (_searchText: string) =>
     useMemo(() => [] as PaletteAction[], []),
+  getAdminPaths: () => [] as AdminPath[],
+  getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
+  getMetabotRoutes: () => null as React.ReactElement | null,
+  MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
+  MetabotToggleButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
-  dispatch: Dispatch,
+  dispatch: ReduxDispatch,
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {
@@ -735,6 +740,26 @@ export type PluginDashcardMenu = {
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+};
+
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
+  ContentTranslationConfiguration: PluginPlaceholder,
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
+    // In OSS, the input is not translated
+    return useCallback(<U = T>(arg: U) => arg, []);
+  },
+  translateDisplayNames: <T extends object>(
+    obj: T,
+    _tc: ContentTranslationFunction,
+  ) => obj,
+  useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
+  useTranslateSeries: (obj: Series) => obj,
+  useSortByContentTranslation: () => (a: string, b: string) =>
+    a.localeCompare(b),
 };
 
 export const PLUGIN_DB_ROUTING = {
@@ -752,6 +777,12 @@ export const PLUGIN_DB_ROUTING = {
   ): "default" | "hidden" | "disabled" => "default",
 };
 
+export const PLUGIN_DATABASE_REPLICATION = {
+  DatabaseReplicationSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+  }>,
+};
+
 export const PLUGIN_API = {
   getRemappedCardParameterValueUrl: (
     dashboardId: DashboardId,
@@ -763,4 +794,146 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_SMTP_OVERRIDE: {
+  CloudSMTPConnectionCard: ComponentType;
+  SMTPOverrideConnectionForm: ComponentType<{ onClose: () => void }>;
+} = {
+  CloudSMTPConnectionCard: PluginPlaceholder,
+  SMTPOverrideConnectionForm: PluginPlaceholder,
+};
+
+export const PLUGIN_TABLE_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (_database: DatabaseType): boolean => false,
+  getRoutes: () => null as React.ReactElement | null,
+  getTableEditUrl: (_tableId: TableId, _databaseId: DatabaseId): string => "/",
+  AdminDatabaseTableEditingSection: PluginPlaceholder as ComponentType<{
+    database: DatabaseType;
+    settingsAvailable?: Record<string, DatabaseLocalSettingAvailability>;
+    updateDatabase: (
+      database: { id: DatabaseId } & Partial<DatabaseData>,
+    ) => Promise<void>;
+  }>,
+};
+
+export const PLUGIN_DOCUMENTS = {
+  getRoutes: () => null as React.ReactElement | null,
+  shouldShowDocumentInNewItemMenu: () => false,
+  getCurrentDocument: (_state: any) => null as Document | null,
+  getSidebarOpen: (_state: any) => false,
+  getCommentSidebarOpen: (_state: any) => false,
+  DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
+};
+
+export const PLUGIN_ENTITIES = {
+  entities: {} as Record<string, any>,
+};
+
+export const PLUGIN_SEMANTIC_SEARCH = {
+  SearchSettingsWidget: PluginPlaceholder,
+};
+
+export type TransformsPlugin = {
+  getAdminPaths(): AdminPath[];
+  getAdminRoutes(): ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS: TransformsPlugin = {
+  getAdminPaths: () => [],
+  getAdminRoutes: () => null,
+};
+
+export type PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: ComponentType;
+  SourceSection: ComponentType<{ transform: Transform }>;
+  TransformEditor: ComponentType<{
+    initialSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    };
+    isNew?: boolean;
+    isSaving?: boolean;
+    isRunnable?: boolean;
+    onSave: (newSource: PythonTransformSource) => void;
+    onCancel: () => void;
+  }>;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+  getCreateTransformsMenuItems: () => ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  TransformEditor: NotFoundPlaceholder,
+  SourceSection: PluginPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+  getCreateTransformsMenuItems: () => null,
+};
+
+type DependenciesPlugin = {
+  CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
+  CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
+  CheckDependenciesTitle: ComponentType;
+  useCheckCardDependencies: (
+    props: UseCheckDependenciesProps<Question>,
+  ) => UseCheckDependenciesResult<Question>;
+  useCheckSnippetDependencies: (
+    props: UseCheckDependenciesProps<UpdateSnippetRequest>,
+  ) => UseCheckDependenciesResult<UpdateSnippetRequest>;
+  useCheckTransformDependencies: (
+    props: UseCheckDependenciesProps<UpdateTransformRequest>,
+  ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type CheckDependenciesFormProps = {
+  checkData: CheckDependenciesResponse;
+  onSave: () => void | Promise<void>;
+  onCancel: () => void;
+};
+
+export type CheckDependenciesModalProps = {
+  checkData: CheckDependenciesResponse;
+  opened: boolean;
+  onSave: () => void | Promise<void>;
+  onClose: () => void;
+};
+
+export type UseCheckDependenciesProps<TChange> = {
+  onSave: (change: TChange) => Promise<void>;
+  onError: (error: unknown) => void;
+};
+
+export type UseCheckDependenciesResult<TChange> = {
+  checkData?: CheckDependenciesResponse;
+  isCheckingDependencies: boolean;
+  isConfirmationShown: boolean;
+  handleInitialSave: (change: TChange) => Promise<void>;
+  handleSaveAfterConfirmation: () => Promise<void>;
+  handleCloseConfirmation: () => void;
+};
+
+function useCheckDependencies<TChange>({
+  onSave,
+}: UseCheckDependenciesProps<TChange>): UseCheckDependenciesResult<TChange> {
+  return {
+    isConfirmationShown: false,
+    isCheckingDependencies: false,
+    handleInitialSave: onSave,
+    handleSaveAfterConfirmation: () => Promise.resolve(),
+    handleCloseConfirmation: () => undefined,
+  };
+}
+
+export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  CheckDependenciesForm: PluginPlaceholder,
+  CheckDependenciesModal: PluginPlaceholder,
+  CheckDependenciesTitle: PluginPlaceholder,
+  useCheckCardDependencies: useCheckDependencies,
+  useCheckSnippetDependencies: useCheckDependencies,
+  useCheckTransformDependencies: useCheckDependencies,
 };

@@ -2349,25 +2349,7 @@
         (insert-perm! "perms/view-data" "unrestricted")
         (insert-perm! "perms/create-queries" "no" table-id)
         (migrate! :down 49)
-        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
-
-        (migrate-up!)
-        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
-        (insert-perm! "perms/view-data" "unrestricted")
-        (insert-perm! "perms/create-queries" "query-builder")
-        (migrate! :down 49)
-        (is (= #{(format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
-               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
-
-        (migrate-up!)
-        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
-        (insert-perm! "perms/view-data" "unrestricted")
-        (insert-perm! "perms/create-queries" "no" table-id)
-        (migrate! :down 49)
-        ;; In this scenario, the sandbox path is preserved, but the block path overrides it
-        (is (= #{(format "/block/db/%d/" db-id)
-                 (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
-               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
 
       (testing "Impersonated data access"
         (migrate-up!)
@@ -2740,6 +2722,29 @@
 ;;;
 ;;; 53+ tests should go below this line please <3
 ;;;
+
+(deftest migrate-download-results-perms-test
+  (testing "Download results are set to no if view-data for a table is blocked"
+    (impl/test-migrations "v52.2025-05-28T00:00:01" [migrate!]
+      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database) {:details   "{}"
+                                                                            :engine    "h2"
+                                                                            :is_sample false
+                                                                            :name      "populate-collection-created-at-test-db"
+                                                                            :created_at :%now
+                                                                            :updated_at :%now})
+            table-id-1 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id db-id :name "test-table-1" :active true
+                                                                              :created_at :%now
+                                                                              :updated_at :%now})
+            table-id-2 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id db-id :name "test-table-2" :active true
+                                                                              :created_at :%now
+                                                                              :updated_at :%now})
+            pg-id (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "test-group"})]
+        (t2/insert! (t2/table-name :model/DataPermissions) [{:group_id pg-id :db_id db-id :table_id table-id-1 :perm_type "perms/view-data" :perm_value "blocked"}
+                                                            {:group_id pg-id :db_id db-id :table_id table-id-1 :perm_type "perms/download-results" :perm_value "one-million-rows"}
+                                                            {:group_id pg-id :db_id db-id :table_id table-id-2 :perm_type "perms/view-data" :perm_value "unrestricted"}
+                                                            {:group_id pg-id :db_id db-id :table_id table-id-2 :perm_type "perms/download-results" :perm_value "one-million-rows"}])
+        (migrate!)
+        (is (t2/exists? :model/DataPermissions :table_id table-id-1 :perm_value "no"))))))
 
 (deftest chinese-site-locale-migration-test
   (testing "Site locale is migrated from zh to zh_CN"

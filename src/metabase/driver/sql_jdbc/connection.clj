@@ -1,25 +1,19 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
+  (:refer-clojure :exclude [some select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
-   [metabase.connection-pool :as connection-pool]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.logger.core :as logger]
-   [metabase.models.interface :as mi]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some select-keys]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -99,13 +93,13 @@
    ;; While a couple queries may fail during a reboot, this should allow quicker recovery and less spinning on outdated
    ;; credentials
    ;; However, keep 1 retry for the tests to reduce flakiness.
-   "acquireRetryAttempts"         (if config/is-test? 1 0)
+   "acquireRetryAttempts"         (if driver-api/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
-   "minPoolSize"                  (if (:router-database-id database)
-                                    0 1)
-   "initialPoolSize"              (if (:router-database-id database)
-                                    0 1)
+   ;; In the case of serverless databases, we don't want to periodically
+   ;; wake them up to keep a connection open (#58373).
+   "minPoolSize"                  0
+   "initialPoolSize"              0
    "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
@@ -155,7 +149,7 @@
    ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
    ;; has a smaller-than-average stack).
    "debugUnreturnedConnectionStackTraces" (u/prog1 (driver.settings/jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
-                                            (when (and <> (not (logger/level-enabled? 'com.mchange Level/INFO)))
+                                            (when (and <> (not (driver-api/level-enabled? 'com.mchange Level/INFO)))
                                               (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
                                                         "is enabled, but INFO logging is not enabled for the"
                                                         "com.mchange namespace. You must raise the log level for"
@@ -172,8 +166,8 @@
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
   [{:keys [^DataSource datasource], :as spec} pool-properties]
   (if datasource
-    {:datasource (DataSources/pooledDataSource datasource (connection-pool/map->properties pool-properties))}
-    (connection-pool/connection-pool-spec spec pool-properties)))
+    {:datasource (DataSources/pooledDataSource datasource (driver-api/map->properties pool-properties))}
+    (driver-api/connection-pool-spec spec pool-properties)))
 
 (defn ^:private default-ssh-tunnel-target-port  [driver]
   (when-let [port-info (some
@@ -181,6 +175,11 @@
                         (driver/connection-properties driver))]
     (or (:default port-info)
         (:placeholder port-info))))
+
+(defn- select-internal-keys-for-spec
+  "Keep the ssh tunnel keys and others that might be carried on a connection spec or on details."
+  [spec-or-details]
+  (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
@@ -199,13 +198,14 @@
     (merge
      (connection-pool-spec spec properties)
      ;; also capture entries related to ssh tunneling for later use
-     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host])
+     (select-internal-keys-for-spec details-with-auth)
+     (select-internal-keys-for-spec spec)
      ;; remember when the password expires
      (select-keys details-with-auth [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
-  (connection-pool/destroy-connection-pool! pool-spec)
+  (driver-api/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
@@ -263,18 +263,18 @@
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
   (when-let [db-id (u/id db-or-id-or-spec)]
-    (database-routing/check-allowed-access! db-id))
+    (driver-api/check-allowed-access! db-id))
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? :model/Database db-or-id-or-spec)
-                            (lib.metadata.jvm/instance->metadata db-or-id-or-spec :metadata/database))
+          db          (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+                            (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
                             db-or-id-or-spec)
-                          (qp.store/with-metadata-provider database-id
-                            (lib.metadata/database (qp.store/metadata-provider))))
+                          (driver-api/with-metadata-provider database-id
+                            (driver-api/database (driver-api/metadata-provider))))
           get-fn      (fn [db-id log-invalidation?]
                         (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
@@ -282,7 +282,7 @@
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
                             (:is-audit db)
-                            {:datasource (mdb/data-source)}
+                            {:datasource (driver-api/data-source)}
 
                             (= ::not-found details)
                             nil
@@ -377,3 +377,6 @@
   [driver details]
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
     (can-connect-with-spec? jdbc-spec)))
+
+(defmethod driver/connection-spec :sql-jdbc [_driver db]
+  (db->pooled-connection-spec  db))

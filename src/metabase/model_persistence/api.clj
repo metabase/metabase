@@ -4,7 +4,6 @@
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
@@ -12,6 +11,7 @@
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
@@ -64,7 +64,7 @@
 (api.macros/defendpoint :get "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (let [db-ids (t2/select-fn-set :database_id :model/PersistedInfo)
         writable-db-ids (when (seq db-ids)
                           (->> (t2/select :model/Database :id [:in db-ids])
@@ -115,7 +115,7 @@
    _query-params
    {:keys [cron], :as _body} :- [:map
                                  [:cron CronSchedule]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (when cron
     (when-not (and (string? cron)
                    (org.quartz.CronExpression/isValidExpression cron)
@@ -129,7 +129,7 @@
 (api.macros/defendpoint :post "/enable"
   "Enable global setting to allow databases to persist models."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (log/info "Enabling model persistence")
   (model-persistence.settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
@@ -153,7 +153,7 @@
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (when (model-persistence.settings/persisted-models-enabled)
     (try (model-persistence.settings/persisted-models-enabled! false)
          (disable-persisting)

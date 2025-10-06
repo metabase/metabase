@@ -386,10 +386,10 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset (mt/dataset-definition
                    "naked_json"
-                   ["json_table"
-                    [{:field-name "array_col" :base-type :type/JSON}
-                     {:field-name "string_col" :base-type :type/JSON}]
-                    [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
+                   [["json_table"
+                     [{:field-name "array_col" :base-type :type/JSON}
+                      {:field-name "string_col" :base-type :type/JSON}]
+                     [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
 
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
@@ -623,42 +623,30 @@
             (map lowercase-value)
             (driver/describe-table-indexes driver database table)))))
 
-(defn- do-with-temporary-dataset [dataset thunk]
-  (mt/dataset dataset
-    (try
-      (thunk)
-      (finally
-        ;; clean and destroy the db so this test is repeatable.
-        (t2/delete! :model/Database (mt/id))
-        (u/ignore-exceptions
-          (tx/destroy-db! driver/*driver* dataset))))))
-
 (deftest describe-table-indexes-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition "indexes"
-                            ["single_index"
-                             [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                              {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                             [[1 2]]]
-                            ["composite_index"
-                             [{:field-name "first" :indexed? false :base-type :type/Integer}
-                              {:field-name "second" :indexed? false :base-type :type/Integer}]
-                             [[1 2]]])
-     (fn []
-       (testing "single column indexes are synced correctly"
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "indexed"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info]})
+    (mt/with-temp-test-data
+      [["single_index"
+        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]
+       ["composite_index"
+        [{:field-name "first" :indexed? false :base-type :type/Integer}
+         {:field-name "second" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "single column indexes are synced correctly"
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "indexed"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
 
-       (testing "for composite indexes, we only care about the 1st column"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-         (sync/sync-database! (mt/db))
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "first"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index))))))))))
+      (testing "for composite indexes, we only care about the 1st column"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
+        (sync/sync-database! (mt/db))
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "first"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::unique-index]
   [_driver _feature _database]
@@ -670,38 +658,32 @@
     false))
 
 (deftest describe-table-indexes-unique-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::unique-index)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-unique"
-      ["unique_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "unique index"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "column"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index))))))))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::unique-index]})
+    (mt/with-temp-test-data
+      [["unique_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "unique index"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "column"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index)))))))))
 
 (deftest describe-table-indexes-hashed-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-hashed"
-      ["hashed_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "hashed index"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "column"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index))))))))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info]})
+    (mt/with-temp-test-data
+      [["hashed_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "hashed index"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "column"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::clustered-index]
   [_driver _feature _database]
@@ -712,23 +694,20 @@
   true)
 
 (deftest describe-table-indexes-clustered-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::clustered-index)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-clustered"
-      ["clustered_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "clustered index"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        "CLUSTER clustered_index USING idx_clustered_index_column;")
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "column"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index))))))))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::clustered-index]})
+    (mt/with-temp-test-data
+      [["clustered_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "clustered index"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       "CLUSTER clustered_index USING idx_clustered_index_column;")
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "column"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index)))))))))
 
 ;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
 ;; for those indexes so we can't filter those out.
@@ -741,20 +720,17 @@
   true)
 
 (deftest describe-table-indexes-conditional-index-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info ::conditional-index)
-                                     (mt/sql-jdbc-drivers))
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-conditional"
-      ["conditional_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "conditional index are ignored"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
-         (is (= #{{:type :normal-column-index :value "id"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                             :+features [:index-info ::conditional-index]})
+    (mt/with-temp-test-data
+      [["conditional_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "conditional index are ignored"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
+        (is (= #{{:type :normal-column-index :value "id"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index)))))))))
 
 (deftest describe-fields-are-sorted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)
@@ -800,39 +776,49 @@
 (deftest describe-view-fields
   (mt/test-drivers (set/union (mt/normal-drivers-with-feature ::describe-materialized-view-fields :test/dynamic-dataset-loading)
                               (mt/normal-drivers-with-feature ::describe-view-fields :test/dynamic-dataset-loading))
-    (doseq [materialized? (cond-> []
-                            (driver/database-supports? driver/*driver* ::describe-view-fields nil)
-                            (conj false)
-                            (driver/database-supports? driver/*driver* ::describe-materialized-view-fields nil)
-                            (conj true))
-            :let [view-name (if materialized? "orders_m" "orders_v")
-                  table-name "orders"]]
-      (try
-        (testing (if materialized? "Materialized View" "View")
-          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
-          (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
-          (sync/sync-database! (mt/db) {:scan :schema})
-          (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
-                view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
-                orders-m-id (:id view-instance)
-                non-view-fields (t2/select-fn-vec
-                                 (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                                 :model/Field
-                                 :table_id orders-id
-                                 {:order-by [:database_position]})
-                view-fields (t2/select-fn-vec
-                             (juxt (comp u/lower-case-en :name) :base_type :database_position)
-                             :model/Field
-                             :table_id orders-m-id
-                             {:order-by [:database_position]})]
-            (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
-                           (:name view-instance)))
-            (is (some? orders-m-id))
-            (is (some? orders-id))
-            (is (= 9 (count view-fields)))
-            (is (= non-view-fields view-fields))))
-        (catch Exception e
-          (is (nil? e) "This should not happen")
-          (log/error e "Exception occurred."))
-        (finally
-          (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?}))))))
+    (mt/with-temp-test-data [["orders"
+                              [{:field-name "user_id", :base-type :type/Integer}
+                               {:field-name "product_id", :base-type :type/Integer}
+                               {:field-name "subtotal", :base-type :type/Float}
+                               {:field-name "tax", :base-type :type/Float}
+                               {:field-name "total", :base-type :type/Float}
+                               {:field-name "discount", :base-type :type/Float}
+                               {:field-name "created_at", :base-type :type/DateTimeWithTZ}
+                               {:field-name "quantity", :base-type :type/Integer}]
+                              [[1 14 37.65 2.07 39.72 nil #t "2019-02-11T21:40:27.892Z" 2]]]]
+      (doseq [materialized? (cond-> []
+                              (driver/database-supports? driver/*driver* ::describe-view-fields nil)
+                              (conj false)
+                              (driver/database-supports? driver/*driver* ::describe-materialized-view-fields nil)
+                              (conj true))
+              :let [view-name (if materialized? "orders_m" "orders_v")
+                    table-name "orders"]]
+        (try
+          (testing (if materialized? "Materialized View" "View")
+            (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
+            (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
+            (sync/sync-database! (mt/db) {:scan :schema})
+            (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
+                  view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
+                  orders-m-id (:id view-instance)
+                  non-view-fields (t2/select-fn-vec
+                                   (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                                   :model/Field
+                                   :table_id orders-id
+                                   {:order-by [:database_position]})
+                  view-fields (t2/select-fn-vec
+                               (juxt (comp u/lower-case-en :name) :base_type :database_position)
+                               :model/Field
+                               :table_id orders-m-id
+                               {:order-by [:database_position]})]
+              (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+                             (:name view-instance)))
+              (is (some? orders-m-id))
+              (is (some? orders-id))
+              (is (= 9 (count view-fields)))
+              (is (= non-view-fields view-fields))))
+          (catch Exception e
+            (is (nil? e) "This should not happen")
+            (log/error e "Exception occurred."))
+          (finally
+            (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})))))))

@@ -1,14 +1,12 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import EntityMenu from "metabase/components/EntityMenu";
+import EntityMenu from "metabase/common/components/EntityMenu";
 import { color } from "metabase/lib/colors";
 
 export const CardRoot = styled.div`
   flex: 1;
   max-width: 52rem;
-  border-bottom: 1px solid var(--mb-color-border);
-  padding-bottom: 2rem;
 `;
 
 export const CardHeader = styled.div`

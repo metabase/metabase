@@ -47,7 +47,7 @@ export function LandingPageWidget() {
     <div>
       <SettingHeader
         id="landing-page"
-        title={t`Landing Page`}
+        title={t`Landing page`}
         description={description}
       />
       <TextInput

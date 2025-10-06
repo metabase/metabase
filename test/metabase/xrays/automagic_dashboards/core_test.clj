@@ -337,7 +337,6 @@
                                                               :entity_id       source-eid
                                                               :result_metadata
                                                               (-> source-query
-                                                                  (assoc-in [:info :card-entity-id] source-eid)
                                                                   qp/process-query
                                                                   (get-in [:data :results_metadata :columns]))}
                        :model/Card       {card-id :id}       {:table_id      nil
@@ -477,13 +476,15 @@
         ;; Unlike the above test, we do need to provide a full context to match these fields against the dimension
         ;; definitions.
         (let [source-query (mt/mbql-query orders
-                             {:joins        [{:fields       [&u.people.state
+                             {:joins        [{:alias        "u"
+                                              :fields       [&u.people.state
                                                              &u.people.source
                                                              &u.people.longitude
                                                              &u.people.latitude]
                                               :source-table $$people
                                               :condition    [:= $orders.user_id &u.people.id]}
-                                             {:fields       [&p.products.category
+                                             {:alias        "p"
+                                              :fields       [&p.products.category
                                                              &p.products.price]
                                               :source-table $$products
                                               :condition    [:= $orders.product_id &p.products.id]}]
@@ -1597,7 +1598,7 @@
                            first)
             aggregate (get-in dashcard [:card :dataset_query :query :aggregation])]
         (testing "Fields requiring a join should have :source-field populated in the aggregate."
-          (is (= [["distinct" [:field (mt/id :products :id)
-                               ;; This should be present vs. nil (value before issue)
-                               {:source-field (mt/id :reviews :product_id)}]]]
+          (is (= [[:distinct [:field (mt/id :products :id)
+                              ;; This should be present vs. nil (value before issue)
+                              {:source-field (mt/id :reviews :product_id)}]]]
                  aggregate)))))))

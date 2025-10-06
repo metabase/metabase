@@ -11,7 +11,6 @@ export function snapshot(name) {
  * "setup" |
  * "without-models" |
  * "default" |
- * "withSqlite" |
  * "mongo-5" |
  * "postgres-12" |
  * "postgres-writable" |

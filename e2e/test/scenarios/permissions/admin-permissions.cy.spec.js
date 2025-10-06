@@ -19,7 +19,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   });
 
   it("shows hidden tables", () => {
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
     cy.icon("eye_crossed_out").eq(0).click();
 
     cy.visit(
@@ -310,7 +310,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
 
     context("group focused view", () => {
-      it("shows filterable list of groups", () => {
+      it("shows filterable list of groups", { tags: "@flaky" }, () => {
         cy.visit("/admin/permissions");
 
         // no groups selected initially and it shows an empty state
@@ -436,7 +436,7 @@ describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
@@ -456,11 +456,13 @@ describe("scenarios > admin > permissions", () => {
     cy.signIn("nodata");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question");
-    cy.findByTestId("viz-settings-button").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("not.exist");
+    H.queryBuilderMain().findByText(
+      "Sorry, you don't have permission to run this query.",
+    );
+    H.queryBuilderFooter()
+      .findByTestId("viz-settings-button")
+      .should("not.exist");
+    H.queryBuilderFooter().findByText("Visualization").should("not.exist");
   });
 
   it("shows permission error for cards that use blocked data sources", () => {

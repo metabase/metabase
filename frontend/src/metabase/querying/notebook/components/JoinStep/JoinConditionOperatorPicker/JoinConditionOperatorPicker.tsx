@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import SelectList from "metabase/components/SelectList";
+import SelectList from "metabase/common/components/SelectList";
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -27,11 +27,6 @@ export function JoinConditionOperatorPicker({
 }: JoinConditionOperatorPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const operatorInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, operator),
-    [query, stageIndex, operator],
-  );
-
   const handleChange = (operator: Lib.JoinConditionOperator) => {
     onChange(operator);
     setIsOpened(false);
@@ -51,14 +46,14 @@ export function JoinConditionOperatorPicker({
           aria-label={t`Change operator`}
           onClick={() => setIsOpened(!isOpened)}
         >
-          {operatorInfo.shortName}
+          {operator}
         </button>
       </Popover.Target>
       <Popover.Dropdown>
         <JoinConditionOperatorDropdown
           query={query}
           stageIndex={stageIndex}
-          operatorInfo={operatorInfo}
+          operator={operator}
           onChange={handleChange}
         />
       </Popover.Dropdown>
@@ -69,36 +64,32 @@ export function JoinConditionOperatorPicker({
 interface JoinConditionOperatorDropdownProps {
   query: Lib.Query;
   stageIndex: number;
-  operatorInfo: Lib.JoinConditionOperatorDisplayInfo;
+  operator: Lib.JoinConditionOperator;
   onChange: (operator: Lib.JoinConditionOperator) => void;
 }
 
 function JoinConditionOperatorDropdown({
   query,
   stageIndex,
-  operatorInfo,
+  operator: selectedOperator,
   onChange,
 }: JoinConditionOperatorDropdownProps) {
-  const items = useMemo(
-    () =>
-      Lib.joinConditionOperators(query, stageIndex).map((operator) => ({
-        operator,
-        operatorInfo: Lib.displayInfo(query, stageIndex, operator),
-      })),
+  const availableOperators = useMemo(
+    () => Lib.joinConditionOperators(query, stageIndex),
     [query, stageIndex],
   );
 
   return (
     <SelectList className={S.OperatorList}>
-      {items.map((item, index) => {
+      {availableOperators.map((availableOperator, index) => {
         return (
           <SelectList.Item
             className={S.OperatorListItem}
             id={index}
             key={index}
-            name={item.operatorInfo.shortName}
-            isSelected={operatorInfo.shortName === item.operatorInfo.shortName}
-            onSelect={() => onChange(item.operator)}
+            name={availableOperator}
+            isSelected={selectedOperator === availableOperator}
+            onSelect={() => onChange(availableOperator)}
           />
         );
       })}

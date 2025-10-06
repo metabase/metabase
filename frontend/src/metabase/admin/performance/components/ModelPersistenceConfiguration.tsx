@@ -3,10 +3,14 @@ import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl, useSetting, useToast } from "metabase/common/hooks";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import {
@@ -14,7 +18,7 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { PersistedModelsApi } from "metabase/services";
-import { Box, Stack, Switch, Text } from "metabase/ui";
+import { Switch, Text } from "metabase/ui";
 
 import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
 
@@ -110,16 +114,15 @@ export const ModelPersistenceConfiguration = () => {
   const { url: docsUrl } = useDocsUrl("data-modeling/model-persistence");
 
   return (
-    <Stack gap="xl" maw="40rem">
-      <Box
-        mb="sm"
-        lh="1.5rem"
+    <SettingsPageWrapper
+      title={t`Model persistence`}
+      description={t`Enable model persistence to make your models (and the queries that use them) load faster.`}
+    >
+      <SettingsSection
         className={ModelPersistenceConfigurationS.Explanation}
+        maw="40rem"
       >
-        <p>
-          {t`Enable model persistence to make your models (and the queries that use them) load faster.`}
-        </p>
-        <p>
+        <Text>
           {c(
             '{0} is either "Metabase" or the customized name of the application.',
           )
@@ -133,13 +136,12 @@ export const ModelPersistenceConfiguration = () => {
               >{t`Learn more`}</ExternalLink>
             </>
           )}
-        </p>
+        </Text>
         <DelayedLoadingAndErrorWrapper
           error={null}
           loading={modelPersistenceEnabled === undefined}
         >
           <Switch
-            mt="sm"
             label={
               <Text fw="bold">
                 {modelPersistenceEnabled ? t`Enabled` : t`Disabled`}
@@ -149,22 +151,23 @@ export const ModelPersistenceConfiguration = () => {
             checked={modelPersistenceEnabled}
           />
         </DelayedLoadingAndErrorWrapper>
-      </Box>
-      {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
-      {modelPersistenceEnabled && modelCachingSchedule && (
-        <div>
-          <ModelCachingScheduleWidget
-            value={modelCachingSchedule}
-            options={modelCachingOptions}
-            onChange={async (value: unknown) => {
-              await resolveWithToasts([
-                PersistedModelsApi.setRefreshSchedule({ cron: value }),
-                dispatch(refreshSiteSettings()),
-              ]);
-            }}
-          />
-        </div>
-      )}
-    </Stack>
+
+        {/* modelCachingSchedule is sometimes undefined but TS thinks it is always a string */}
+        {modelPersistenceEnabled && modelCachingSchedule && (
+          <div>
+            <ModelCachingScheduleWidget
+              value={modelCachingSchedule}
+              options={modelCachingOptions}
+              onChange={async (value: unknown) => {
+                await resolveWithToasts([
+                  PersistedModelsApi.setRefreshSchedule({ cron: value }),
+                  dispatch(refreshSiteSettings()),
+                ]);
+              }}
+            />
+          </div>
+        )}
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };

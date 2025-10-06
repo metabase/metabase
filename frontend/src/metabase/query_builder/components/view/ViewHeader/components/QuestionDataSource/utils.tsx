@@ -1,7 +1,7 @@
 import { type ReactElement, isValidElement } from "react";
 import { match } from "ts-pattern";
 
-import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -162,9 +162,9 @@ function QuestionTableBadges({
           <span className={S.IconWrapper}>
             <TableInfoIcon
               table={table}
-              icon="info_filled"
-              size={12}
-              position="bottom"
+              icon="info"
+              size={16}
+              position="top"
               className={HeaderS.HeaderBadgeIcon}
             />
           </span>

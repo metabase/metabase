@@ -66,8 +66,10 @@ jobs:
         docker run -d \
         -v $PWD/my-metabase:/metabase.db \
         -p 3000:3000 \
-        -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.ENTERPRISE_TOKEN }} \
-        -e CYPRESS_NO_FEATURES_TOKEN=${{ secrets.E2E_STARTER_TOKEN }} \
+        -e CYPRESS_MB_ALL_FEATURES_TOKEN=${{ secrets.MB_ALL_FEATURES_TOKEN }} \
+        -e CYPRESS_MB_STARTER_CLOUD_TOKEN=${{ secrets.MB_STARTER_CLOUD_TOKEN }} \
+        -e CYPRESS_MB_PRO_CLOUD_TOKEN=${{ secrets.MB_PRO_CLOUD_TOKEN }} \
+        -e CYPRESS_MB_PRO_SELF_HOSTED_TOKEN=${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }} \
         --name metabase-${{ matrix.version.source }} \
         ${{ env.DOCKER_SOURCE_IMAGE }}
     - name: Wait for Metabase to start on port 3000
@@ -97,8 +99,10 @@ jobs:
         docker run -d \
           -v $PWD/my-metabase:/metabase.db \
           -p 3001:3000 \
-          -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.ENTERPRISE_TOKEN }} \
-          -e CYPRESS_NO_FEATURES_TOKEN=${{ secrets.E2E_STARTER_TOKEN }} \
+          -e CYPRESS_MB_ALL_FEATURES_TOKEN=${{ secrets.MB_ALL_FEATURES_TOKEN }} \
+          -e CYPRESS_MB_STARTER_CLOUD_TOKEN=${{ secrets.MB_STARTER_CLOUD_TOKEN }} \
+          -e CYPRESS_MB_PRO_CLOUD_TOKEN=${{ secrets.MB_PRO_CLOUD_TOKEN }} \
+          -e CYPRESS_MB_PRO_SELF_HOSTED_TOKEN=${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }} \
           --name metabase-${{ matrix.version.target }} \
           ${{ env.DOCKER_TARGET_IMAGE }}
     - name: Wait for Metabase to start on port 3001

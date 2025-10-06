@@ -1,14 +1,12 @@
-import type React from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import Modal from "metabase/components/Modal";
-import QuestionSavedModal from "metabase/components/QuestionSavedModal";
-import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDashModal";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import Modal from "metabase/common/components/Modal";
+import QuestionSavedModal from "metabase/common/components/QuestionSavedModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -28,6 +26,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
+import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
 import { MoveQuestionModal } from "../MoveQuestionModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
@@ -64,7 +63,7 @@ export function QueryModals({
   setQueryBuilderMode,
   originalQuestion,
   onChangeLocation,
-}: QueryModalsProps): React.JSX.Element {
+}: QueryModalsProps) {
   const dispatch = useDispatch();
 
   const initialCollectionId = useGetDefaultCollectionId();
@@ -154,17 +153,26 @@ export function QueryModals({
       },
     ) => {
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
+      const isModel = newQuestion.type() === "model";
 
       if (isDashboardQuestion) {
         navigateToDashboardQuestionDashboard(
           newQuestion,
           options?.dashboardTabId,
         );
+      } else if (isModel) {
+        onCloseModal();
+        setQueryBuilderMode("view");
       } else {
         onOpenModal(MODAL_TYPES.SAVED);
       }
     },
-    [onOpenModal, navigateToDashboardQuestionDashboard],
+    [
+      onOpenModal,
+      navigateToDashboardQuestionDashboard,
+      setQueryBuilderMode,
+      onCloseModal,
+    ],
   );
 
   switch (modal) {
@@ -319,11 +327,7 @@ export function QueryModals({
         </Modal>
       );
     case MODAL_TYPES.PREVIEW_QUERY:
-      return (
-        <Modal fit onClose={onCloseModal}>
-          <PreviewQueryModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <PreviewQueryModal onClose={onCloseModal} />;
     case MODAL_TYPES.QUESTION_EMBED:
       return (
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />

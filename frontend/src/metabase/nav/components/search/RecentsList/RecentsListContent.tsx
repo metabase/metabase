@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
+import EmptyState from "metabase/common/components/EmptyState";
+import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-import EmptyState from "metabase/components/EmptyState";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { getName } from "metabase/lib/name";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import {

@@ -5,14 +5,16 @@
    [colorize.core :as colorize]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [medley.core :as m]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sqlserver :as sqlserver]
+   [metabase.lib.core :as lib]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.limit :as limit]
@@ -23,6 +25,7 @@
    [metabase.test :as mt]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [next.jdbc]))
 
 (set! *warn-on-reflection* true)
@@ -42,11 +45,11 @@
                              :source-query {:source-table 1
                                             :order-by     [[:asc [:field 2 nil]]]
                                             :limit        10}}]}]
-      (is (query= expected
-                  (#'sqlserver/fix-order-bys original)))
+      (is (= expected
+             (#'sqlserver/fix-order-bys original)))
       (testing "Inside `:source-query`"
-        (is (query= {:source-query expected}
-                    (#'sqlserver/fix-order-bys {:source-query original})))))))
+        (is (= {:source-query expected}
+               (#'sqlserver/fix-order-bys {:source-query original})))))))
 
 (deftest ^:parallel fix-order-bys-test-2
   (testing "Add limit for :source-query order bys"
@@ -54,21 +57,21 @@
       (let [original {:source-table 1
                       :order-by     [[:asc 2]]}]
         (testing "Not in a source query -- don't do anything"
-          (is (query= original
-                      (#'sqlserver/fix-order-bys original))))
+          (is (= original
+                 (#'sqlserver/fix-order-bys original))))
         (testing "In source query -- add `:limit`"
-          (is (query= {:source-query (assoc original :limit limit/absolute-max-results)}
-                      (#'sqlserver/fix-order-bys {:source-query original}))))
+          (is (= {:source-query (assoc original :limit limit/absolute-max-results)}
+                 (#'sqlserver/fix-order-bys {:source-query original}))))
         (testing "In source query in source query-- add `:limit` at both levels"
-          (is (query= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
-                                      :order-by     [[:asc [:field 1]]]
-                                      :limit        limit/absolute-max-results}}
-                      (#'sqlserver/fix-order-bys {:source-query {:source-query original
-                                                                 :order-by     [[:asc [:field 1]]]}}))))
+          (is (= {:source-query {:source-query (assoc original :limit limit/absolute-max-results)
+                                 :order-by     [[:asc [:field 1]]]
+                                 :limit        limit/absolute-max-results}}
+                 (#'sqlserver/fix-order-bys {:source-query {:source-query original
+                                                            :order-by     [[:asc [:field 1]]]}}))))
         (testing "In source query inside source query for join -- add `:limit`"
-          (is (query= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
-                      (#'sqlserver/fix-order-bys
-                       {:joins [{:source-query {:source-query original}}]}))))))))
+          (is (= {:joins [{:source-query {:source-query (assoc original :limit limit/absolute-max-results)}}]}
+                 (#'sqlserver/fix-order-bys
+                  {:joins [{:source-query {:source-query original}}]}))))))))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
@@ -174,7 +177,7 @@
                                              :order-by     [[:asc $id]]}
                               :order-by     [[:asc $id]]})
                            qp.preprocess/preprocess
-                           (m/dissoc-in [:query :limit]))]
+                           (lib/limit nil))]
       (mt/with-metadata-provider (mt/id)
         (is (= {:query  ["SELECT"
                          "  \"source\".\"name\" AS \"name\""
@@ -435,7 +438,7 @@
                 {"year"
                  {:expected-sql
                   ["SELECT"
-                   "  CAST(",
+                   "  CAST("
                    "    DATEFROMPARTS(YEAR(dbo.orders.created_at), 1, 1) AS datetime2"
                    "  ) AS created_at,"
                    "  COUNT(*) AS count"
@@ -702,3 +705,69 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
     (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+
+(deftest ^:parallel default-database-role-test
+  (testing "SQL Server default database role handling"
+    (testing "returns role when explicitly configured"
+      (let [database {:details {:user "login_user" :role "db_user"}}]
+        (is (= "db_user" (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "returns nil when no role is configured"
+      (let [database {:details {:user "login_user"}}]
+        (is (nil? (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "returns nil even when user is 'sa'"
+      (let [database {:details {:user "sa"}}]
+        (is (nil? (driver.sql/default-database-role :sqlserver database)))))
+
+    (testing "ignores user field and only uses role field"
+      (let [database {:details {:user "login_user" :role "impersonation_user"}}]
+        (is (= "impersonation_user" (driver.sql/default-database-role :sqlserver database)))))))
+
+(deftest ^:parallel wtf-test
+  (driver/with-driver :sqlserver
+    (qp.store/with-metadata-provider (mt/id)
+      (binding [sql.qp/*inner-query* {:expressions
+                                      {"NameEquals"
+                                       [:=
+                                        [:field
+                                         "LiteralString"
+                                         {:base-type                      :type/Text
+                                          :join-alias                     "JoinedCategories"
+                                          driver-api/qp.add.source-table  "JoinedCategories"
+                                          driver-api/qp.add.source-alias  "LiteralString"
+                                          driver-api/qp.add.desired-alias "JoinedCategories__LiteralString"}]
+                                        [:field
+                                         (mt/id :venues :name)
+                                         {driver-api/qp.add.source-table  (mt/id :venues)
+                                          driver-api/qp.add.source-alias  "name"
+                                          driver-api/qp.add.desired-alias "name"}]]}}]
+
+        (is (= {:where
+                [:=
+                 [::h2x/identifier :field ["JoinedCategories" "LiteralString"]]
+                 [::h2x/typed
+                  [::h2x/identifier :field ["dbo" "venues" "name"]]
+                  {:database-type "varchar"}]]}
+               (sql.qp/apply-top-level-clause
+                :sqlserver
+                :filter
+                {}
+                {:filter [:expression "NameEquals" {:base-type                      :type/Boolean
+                                                    driver-api/qp.add.source-table  driver-api/qp.add.none
+                                                    driver-api/qp.add.desired-alias nil}]})))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct SQL Server types"
+    (are [base-type expected] (= expected (driver/type->database-type :sqlserver base-type))
+      :type/Boolean            [:bit]
+      :type/Date               [:date]
+      :type/DateTime           [:datetime2]
+      :type/DateTimeWithTZ     [:datetimeoffset]
+      :type/Decimal            [:decimal]
+      :type/Float              [:float]
+      :type/Integer            [:int]
+      :type/Number             [:bigint]
+      :type/Text               [:text]
+      :type/Time               [:time]
+      :type/UUID               [:uniqueidentifier])))

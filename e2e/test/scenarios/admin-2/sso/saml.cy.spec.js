@@ -4,18 +4,13 @@ import {
   checkGroupConsistencyAfterDeletingMappings,
   crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import {
-  getSamlCertificate,
-  getSuccessUi,
-  getUserProvisioningInput,
-  setupSaml,
-} from "./shared/helpers";
+import { getSamlCertificate, setupSaml } from "./shared/helpers";
 
 describe("scenarios > admin > settings > SSO > SAML", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("PUT", "/api/setting").as("updateSettings");
     cy.intercept("PUT", "/api/setting/*").as("updateSetting");
     cy.intercept("PUT", "/api/saml/settings").as("updateSamlSettings");
@@ -30,7 +25,7 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Success").should("exist");
 
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+    H.goToAuthOverviewPage();
     getSamlCard().findByText("Active").should("exist");
   });
 
@@ -38,13 +33,17 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    H.typeAndBlurUsingLabel(/SAML Identity Provider URL/, "https://other.test");
+    H.typeAndBlurUsingLabel(
+      /SAML Identity Provider URL/i,
+      "https://other.test",
+    );
     cy.button("Save changes").click();
     cy.wait("@updateSamlSettings");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Success").should("exist");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Success")
+      .should("exist");
 
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
+    H.goToAuthOverviewPage();
     getSamlCard().findByText("Active").should("exist");
   });
 
@@ -79,11 +78,11 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
     setupSaml();
     cy.visit("/admin/settings/authentication/saml");
 
-    getUserProvisioningInput().label.click();
-    cy.button("Save changes").click();
-    cy.wait("@updateSamlSettings");
-
-    getSuccessUi().should("exist");
+    cy.findByTestId("saml-user-provisioning-enabled?-setting")
+      .findByText("Enabled")
+      .click();
+    cy.wait("@updateSetting");
+    H.undoToast().findByText("Changes saved").should("exist");
   });
 
   describe("Group Mappings Widget", () => {
@@ -107,25 +106,29 @@ describe("scenarios > admin > settings > SSO > SAML", () => {
 });
 
 const getSamlCard = () => {
-  return cy.findByText("SAML").parent().parent();
+  return cy
+    .findByTestId("admin-layout-content")
+    .findByText("SAML")
+    .parent()
+    .parent();
 };
 
 const enterSamlSettings = () => {
   getSamlCertificate().then((certificate) => {
     H.typeAndBlurUsingLabel(
-      /SAML Identity Provider URL/,
+      /SAML Identity Provider URL/i,
       "https://example.test",
     );
     H.typeAndBlurUsingLabel(
-      /SAML Identity Provider Issuer/,
+      /SAML Identity Provider Issuer/i,
       "https://example.test/issuer",
     );
     // paste this long value to not waste time typing
-    cy.findByLabelText(/SAML Identity Provider Certificate/)
+    cy.findByLabelText(/SAML Identity Provider Certificate/i)
       .click()
       .invoke("val", certificate);
     // do a little typing to invoke the blur event
-    cy.findByLabelText(/SAML Identity Provider Certificate/)
+    cy.findByLabelText(/SAML Identity Provider Certificate/i)
       .type("a{backspace}")
       .blur();
   });

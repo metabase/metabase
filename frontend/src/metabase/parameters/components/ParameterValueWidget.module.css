@@ -1,16 +1,50 @@
 .parameter {
   align-items: center;
   display: flex;
-  font-weight: 600;
-  min-height: 30px;
-  min-width: 150px;
-  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  height: 32px;
+  min-width: 120px;
+  background: var(--mb-color-background);
+  color: var(--mb-color-text-primary);
+  border: 1px solid var(--mb-color-border);
+  padding-left: var(--mantine-spacing-sm);
+  padding-right: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-sm);
+  transition: all 0.2s ease-in-out;
+
+  &.selected {
+    font-weight: bold;
+    color: var(--mb-color-brand);
+  }
+
+  .Prefix {
+    color: var(--mb-color-text-secondary);
+    font-weight: 400;
+  }
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+    color: var(--mb-color-brand-dark);
+
+    .Prefix,
+    .parameterIcon,
+    .widgetStatus,
+    .widgetStatus button {
+      transition: all 0.2s ease-in-out;
+      color: var(--mb-color-brand-dark);
+    }
+  }
 }
 
-.parameter.selected {
-  font-weight: bold;
-  color: var(--mb-color-brand);
-  border-color: var(--mb-color-brand);
+.Prefix {
+  white-space: nowrap;
+}
+
+.parameterIcon {
+  color: var(--mb-color-text-secondary);
+  flex-shrink: 0;
+  margin-right: 0.5rem;
+  margin-top: 1px;
 }
 
 .parameter input {
@@ -19,7 +53,6 @@
 }
 
 .parameter.noPopover input {
-  width: 100%;
   font-size: 1em;
   font-weight: 600;
   border: none;
@@ -82,4 +115,10 @@
   &.hasValue {
     border-color: var(--mb-color-brand);
   }
+}
+
+.DashboardNight .parameter {
+  --mb-color-border: var(--mb-color-border-dark);
+
+  background-color: transparent;
 }

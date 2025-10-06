@@ -69,6 +69,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
@@ -524,8 +525,6 @@
   (eduction (map (partial log-and-extract-one model opts))
             (extract-query model opts)))
 
-(declare extract-query)
-
 (defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
         entities    (-> (extract-query (name (:model transform))
@@ -555,7 +554,7 @@
   collection."
   [model {:keys [collection-set where] :as opts}]
   (let [spec (make-spec (name model) opts)]
-    (if (or (nil? collection-set)
+    (if (or (empty? collection-set)
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
       (t2/reducible-select model {:where (or where true)})
@@ -577,6 +576,8 @@
   "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities contained or used by this
    entity. e.g. the Dashboard implementation should return pairs for all DashboardCard entities it contains, etc.
 
+   NOTE: This is called during **EXPORT**.
+
    Dispatched on model-name."
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
@@ -584,16 +585,18 @@
 (defmethod descendants :default [_ _]
   nil)
 
-(defmulti ascendants
-  "Return map of `{[model-name database-id] {initiating-model id}}` for all entities containing this entity, required
-  to successfully load this entity in destination db. Notice that ascendants are searched recursively, but their
-  descendants are not analyzed.
+(defmulti required
+  "Returns map of `{[model-name database-id] {initiating-model id}}` for all entities that are necessary to load this
+   entity back. Sort of reverse method for `dependencies`. This method will be called after determining all
+   `descendants` to figure out if we're lacking containers etc.
 
-  Dispatched on model-name."
+   NOTE: This is called during **EXPORT**.
+
+   Dispatched on model-name."
   {:arglists '([model-name db-id])}
   (fn [model-name _] model-name))
 
-(defmethod ascendants :default [_ _]
+(defmethod required :default [_ _]
   nil)
 
 ;;; # Import Process
@@ -693,13 +696,15 @@
   "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
   dependency is represented by its abstract path (its `:serdes/meta` value).
 
+  NOTE: This is called during **LOAD**.
+
   Keyed on the model name for this entity.
-  Default implementation returns an empty vector, so only models that have dependencies need to implement this."
+  Default implementation returns `nil`, so only models that have dependencies need to implement this."
   {:arglists '([ingested])}
   ingested-model)
 
 (defmethod dependencies :default [_]
-  [])
+  nil)
 
 (defmulti load-update!
   "Called by the default [[load-one!]] if there is a corresponding entity already in the appdb.
@@ -843,11 +848,12 @@
     (find-by-identity-hash model id-str)))
 
 (def ^:private max-label-length 100)
+(def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
 
-(defn- truncate-label [s]
-  (if (> (count s) max-label-length)
-    (subs s 0 max-label-length)
-    s))
+(defn- truncate-label [^String s]
+  (-> s
+      (u.str/limit-bytes max-label-bytes)
+      (u.str/limit-chars max-label-length)))
 
 (defn- lower-plural [s]
   (-> s u/lower-case-en (str "s")))

@@ -142,7 +142,7 @@ describe("scenarios > visualizations > sankey", () => {
     it(`should render sankey charts in dashboard context - development-mode: ${devMode}`, () => {
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
-          res.body["token-features"]["development-mode"] = devMode;
+          res.body["token-features"].development_mode = devMode;
         });
       });
       H.createDashboard({

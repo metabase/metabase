@@ -1,10 +1,12 @@
 (ns metabase.lib.schema.aggregation
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 ;; count has an optional expression arg. This is the number of non-NULL values -- corresponds to count(<expr>) in SQL
 (mbql-clause/define-catn-mbql-clause :count :- :type/Integer
@@ -17,12 +19,19 @@
 (mbql-clause/define-tuple-mbql-clause :avg :- :type/Float
   [:schema [:ref ::expression/number]])
 
+(mr/def ::distinct.arg
+  [:and
+   [:ref ::expression/expression]
+   ;; you're not allowed to do distinct values of nil
+   [:some
+    {:error/message "You're not allowed to do distinct values of nil"}]])
+
 ;;; number of distinct values of something.
 (mbql-clause/define-tuple-mbql-clause :distinct :- :type/Integer
-  [:schema [:ref ::expression/expression]])
+  [:schema [:ref ::distinct.arg]])
 
 (mbql-clause/define-tuple-mbql-clause :distinct-where :- :type/Integer
-  [:schema [:ref ::expression/expression]]
+  [:schema [:ref ::distinct.arg]]
   [:schema [:ref ::expression/boolean]])
 
 (mbql-clause/define-tuple-mbql-clause :count-where :- :type/Integer
@@ -96,7 +105,8 @@
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
-(doseq [tag [:avg
+(doseq [tag [:aggregation
+             :avg
              :count
              :cum-count
              :count-where

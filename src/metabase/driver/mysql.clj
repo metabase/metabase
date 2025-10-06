@@ -1,17 +1,16 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.java.io :as jio]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
@@ -25,20 +24,25 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.upload.core :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf :refer [some]])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.sql
+    DatabaseMetaData
+    ResultSet
+    ResultSetMetaData
+    SQLException
+    Types)
+   (java.time
+    LocalDateTime
+    OffsetDateTime
+    OffsetTime
+    ZoneOffset
+    ZonedDateTime)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -74,6 +78,8 @@
                               :schemas                                false
                               :uploads                                true
                               :identifiers-with-spaces                true
+                              :rename                                 true
+                              :atomic-renames                         true
                               :expressions/integer                    true
                               :expressions/float                      true
                               :expressions/date                       true
@@ -83,7 +89,11 @@
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
                               :window-functions/offset                false
-                              :expression-literals                    true}]
+                              :expression-literals                    true
+                              :database-routing                       true
+                              :metadata/table-existence-check         true
+                              :transforms/python                      true
+                              :transforms/table                       true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -92,7 +102,7 @@
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
-(doseq [feature [:actions :actions/custom]]
+(doseq [feature [:actions :actions/custom :actions/data-editing]]
   (defmethod driver/database-supports? [:mysql feature]
     [driver _feat _db]
     ;; Only supported for MySQL right now. Revise when a child driver is added.
@@ -108,11 +118,33 @@
   [driver conn]
   (->> conn (sql-jdbc.sync/dbms-version driver) :flavor (= "MariaDB")))
 
+(defn- partial-revokes-enabled?
+  [driver db]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   db
+   nil
+   (fn [^java.sql.Connection conn]
+     (let [stmt (.prepareStatement conn "SHOW VARIABLES LIKE 'partial_revokes';")
+           rset (.executeQuery stmt)]
+       (when (.next rset)
+         (= "ON" (.getString rset 2)))))))
+
 (defmethod driver/database-supports? [:mysql :table-privileges]
   [_driver _feat _db]
   ;; Disabled completely due to errors when dealing with partial revokes (metabase#38499)
   false
   #_(and (= driver :mysql) (not (mariadb? db))))
+
+(defmethod driver/database-supports? [:mysql :metadata/table-writable-check]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))
+       (not (try
+              (partial-revokes-enabled? driver db)
+              (catch Exception e
+                (log/warn e "Failed to check table writable")
+                false)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -218,22 +250,23 @@
   (h2x/current-datetime-honeysql-form driver))
 
 (defmethod driver/humanize-connection-error-message :mysql
-  [_ message]
-  (condp re-matches message
-    #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    :cannot-connect-check-host-and-port
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
+      :cannot-connect-check-host-and-port
 
-    #"^Unknown database .*$"
-    :database-name-incorrect
+      #"^Unknown database .*$"
+      :database-name-incorrect
 
-    #"Access denied for user.*$"
-    :username-or-password-incorrect
+      #"Access denied for user.*$"
+      :username-or-password-incorrect
 
-    #"Must specify port after ':' in connection string"
-    :invalid-hostname
+      #"Must specify port after ':' in connection string"
+      :invalid-hostname
 
-    ;; else
-    message))
+      ;; else
+      message)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -268,7 +301,20 @@
   [_]
   :sunday)
 
-;;; +----------------------------------------------------------------------------------------------------------------+
+(defmethod driver/rename-tables!* :mysql
+  [_driver db-id sorted-rename-map]
+  (let [rename-clauses (map (fn [[from-table to-table]]
+                              (str (sql/format-entity from-table) " TO " (sql/format-entity to-table)))
+                            sorted-rename-map)
+        sql (str "RENAME TABLE " (str/join ", " rename-clauses))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     :mysql
+     db-id
+     nil
+     (fn [^java.sql.Connection conn]
+       (jdbc/execute! {:connection conn} [sql])))))
+
+;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -290,6 +336,10 @@
 (defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
   (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal expr))
+
+(defmethod sql.qp/cast-temporal-byte [:mysql :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime expr))
 
 (defn- date-format [format-str expr]
   [:date_format expr (h2x/literal format-str)])
@@ -398,18 +448,18 @@
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as mbql-clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         honeysql-expr (parent-method driver mbql-clause)]
     (cond
-      (not (lib.field/json-field? stored-field))
+      (not (driver-api/json-field? stored-field))
       honeysql-expr
 
       (::sql.qp/forced-alias opts)
-      (keyword (::add/source-alias opts))
+      (keyword (driver-api/qp.add.source-alias opts))
 
       :else
-      (walk/postwalk #(if (h2x/identifier? %)
+      (perf/postwalk #(if (h2x/identifier? %)
                         (sql.qp/json-query :mysql % stored-field)
                         %)
                      honeysql-expr))))
@@ -503,7 +553,7 @@
         timestamp? (h2x/is-of-type? expr "timestamp")]
     (sql.u/validate-convert-timezone-args timestamp? target-timezone source-timezone)
     (h2x/with-database-type-info
-     [:convert_tz expr (or source-timezone (qp.timezone/results-timezone-id)) target-timezone]
+     [:convert_tz expr (or source-timezone (driver-api/results-timezone-id)) target-timezone]
      "datetime")))
 
 (defn- timestampdiff-dates [unit x y]
@@ -591,7 +641,7 @@
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
   ;; don't contain a comma; our mb-version-and-process-identifier shouldn't contain one, but just to be on the safe side
   (let [set-prog-nm-fn (fn []
-                         (let [prog-name (str/replace config/mb-version-and-process-identifier "," "_")]
+                         (let [prog-name (str/replace driver-api/mb-version-and-process-identifier "," "_")]
                            (assoc jdbc-spec :connectionAttributes (str "program_name:" prog-name))))]
     (if-let [conn-attrs (get additional-options-map "connectionAttributes")]
       (if (str/includes? conn-attrs "program_name")
@@ -617,7 +667,7 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (mdb/spec :mysql details)
+       (-> (driver-api/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
@@ -658,7 +708,7 @@
 ;; TIMEZONE FIXME — not 100% sure this behavior makes sense
 (defmethod sql-jdbc.execute/set-parameter [:mysql OffsetDateTime]
   [driver ^java.sql.PreparedStatement ps ^Integer i t]
-  (let [zone   (t/zone-id (qp.timezone/results-timezone-id))
+  (let [zone   (t/zone-id (driver-api/results-timezone-id))
         offset (.. zone getRules (getOffset (t/instant t)))
         t      (t/local-date-time (t/with-offset-same-instant t offset))]
     (sql-jdbc.execute/set-parameter driver ps i t)))
@@ -672,7 +722,7 @@
   (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
     (fn read-timestamp-thunk []
       (when-let [t (.getObject rs i LocalDateTime)]
-        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))))
+        (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (driver-api/results-timezone-id))) (t/zone-offset 0))))
     (fn read-datetime-thunk []
       (.getObject rs i LocalDateTime))))
 
@@ -746,6 +796,30 @@
     :metabase.upload/datetime                 [:datetime]
     :metabase.upload/offset-datetime          [:timestamp]))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for MySQL that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:double])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/JSON [_] [:json])
+(defmethod type->database-type :type/SerializedJSON [_] [:json])
+
+(defmethod driver/type->database-type :mysql
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/allowed-promotions :mysql
   [_driver]
   {:metabase.upload/int     #{:metabase.upload/float}
@@ -802,7 +876,7 @@
       offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
   (defmethod value->string OffsetDateTime
     [driver ^OffsetDateTime val]
-    (let [uploads-db (upload/current-database)]
+    (let [uploads-db (driver-api/current-database)]
       (if (mariadb? uploads-db)
         (offset-datetime->unoffset-datetime driver uploads-db val)
         (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
@@ -847,7 +921,7 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tsv")
+    (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
@@ -867,6 +941,12 @@
              (jdbc/execute! {:connection conn} sql))))
         (finally
           (.delete temp-file))))))
+
+(defmethod driver/insert-col->val [:mysql :jsonl-file]
+  [_driver _ column-def v]
+  (if (and (string? v) (isa? (:type column-def) :type/DateTimeWithTZ))
+    (t/offset-date-time v)
+    v))
 
 (defn- parse-grant
   "Parses the contents of a row from the output of a `SHOW GRANTS` statement, to extract the data needed
@@ -1028,7 +1108,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
-  (mdb/query-canceled-exception? :mysql e))
+  (driver-api/query-canceled-exception? :mysql e))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
@@ -1043,3 +1123,7 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :mysql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42S02"))
+
+(defmethod driver.sql/default-schema :mysql
+  [_]
+  nil)

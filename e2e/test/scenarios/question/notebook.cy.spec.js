@@ -228,36 +228,45 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  describe.skip("popover rendering issues (metabase#15502)", () => {
+  describe("popover rendering issues (metabase#15502)", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
       cy.viewport(1280, 720);
       H.startNewQuestion();
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByTextEnsureVisible("Orders").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        H.entityPickerModalItem(2, "Orders").click();
+      });
     });
 
     it("popover should not render outside of viewport regardless of the screen resolution (metabase#15502-1)", () => {
-      // Initial filter popover usually renders correctly within the viewport
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Add filters to narrow your answer").as("filter").click();
+      H.getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
+
       H.popover().isRenderedWithinViewport();
       // Click anywhere outside this popover to close it because the issue with rendering happens when popover opens for the second time
       cy.icon("gear").click();
-      cy.get("@filter").click();
+      H.getNotebookStep("filter")
+        .findByText("Add filters to narrow your answer")
+        .click();
       H.popover().isRenderedWithinViewport();
     });
 
     it("popover should not cover the button that invoked it (metabase#15502-2)", () => {
-      // Initial summarize/metric popover usually renders initially without blocking the button
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Pick a function or metric").as("metric").click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
       // Click outside to close this popover
       cy.icon("gear").click();
       // Popover invoked again blocks the button making it impossible to click the button for the third time
-      cy.get("@metric").click();
-      cy.get("@metric").click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
+      H.getNotebookStep("summarize")
+        .findByText("Pick a function or metric")
+        .click();
     });
   });
 
@@ -466,45 +475,57 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.visualize();
   });
 
-  // flaky test
-  it.skip("should show an info popover when hovering over a field picker option for a table", () => {
-    H.startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Sample Database").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").click();
+  it(
+    "should show an info popover when hovering over a field picker option for a table",
+    { tags: "@flaky" },
+    () => {
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Tables").click();
+        H.entityPickerModalItem(2, "Orders").click();
+      });
+      cy.findByTestId("fields-picker").click();
+      H.popover()
+        .findByText("Total")
+        .closest("label")
+        .findByLabelText("More info")
+        .trigger("mouseover");
 
-    cy.findByTestId("fields-picker").click();
+      H.popover()
+        .should("have.length", 2)
+        // the info popover is the second in the document
+        .last()
+        .contains("The total billed amount.");
+    },
+  );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total").trigger("mouseenter");
+  it(
+    "should show an info popover when hovering over a field picker option for a saved question",
+    { tags: "@flaky" },
+    () => {
+      H.createNativeQuestion({
+        name: "question a",
+        native: { query: "select 'foo' as a_column" },
+      });
+      H.startNewQuestion();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Collections").click();
+        cy.findByText("question a").click();
+      });
+      cy.findByTestId("fields-picker").click();
+      H.popover()
+        .findByText("A_COLUMN")
+        .closest("label")
+        .findByLabelText("More info")
+        .trigger("mouseover");
 
-    H.popover().contains("The total billed amount.");
-    H.popover().contains("80.36");
-  });
-
-  // flaky test
-  it.skip("should show an info popover when hovering over a field picker option for a saved question", () => {
-    H.createNativeQuestion({
-      name: "question a",
-      native: { query: "select 'foo' as a_column" },
-    });
-
-    // start a custom question with question a
-    H.startNewQuestion();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Saved Questions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("question a").click();
-
-    cy.findByTestId("fields-picker").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A_COLUMN").trigger("mouseenter");
-
-    H.popover().contains("A_COLUMN");
-    H.popover().contains("No description");
-  });
+      H.popover()
+        .should("have.length", 2)
+        // the info popover is the second in the document
+        .last()
+        .contains("No description");
+    },
+  );
 
   it("should allow to pick a saved question when there are models", () => {
     H.createNativeQuestion({
@@ -817,75 +838,79 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
-    H.createQuestion(
-      {
-        name: "Revenue",
-        description: "Sum of orders subtotal",
-        type: "metric",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+  it(
+    "should be possible to sort by metric (metabase#8283,metabase#42392)",
+    { tags: "@skip" },
+    () => {
+      H.createQuestion(
+        {
+          name: "Revenue",
+          description: "Sum of orders subtotal",
+          type: "metric",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+          },
         },
-      },
-      {
-        wrapId: true,
-        idAlias: "metricId",
-      },
-    );
-
-    cy.get("@metricId").then((metricId) => {
-      const questionDetails = {
-        query: {
-          "source-table": `card__${metricId}`,
-          aggregation: ["metric", metricId],
+        {
+          wrapId: true,
+          idAlias: "metricId",
         },
-      };
+      );
 
-      H.createQuestion(questionDetails, { visitQuestion: true });
+      cy.get("@metricId").then((metricId) => {
+        const questionDetails = {
+          query: {
+            "source-table": `card__${metricId}`,
+            aggregation: ["metric", metricId],
+          },
+        };
 
-      H.openNotebook();
+        H.createQuestion(questionDetails, { visitQuestion: true });
 
-      cy.findByText("Pick a column to group by").click();
-      cy.findByText("Created At").click();
-      cy.findByText("Sort").click();
+        H.openNotebook();
 
-      // Sorts ascending by default
-      // Revenue appears twice, but it's the only integer column to order by
-      H.popover().icon("int").click();
+        cy.findByText("Pick a column to group by").click();
+        cy.findByText("Created At").click();
+        cy.findByText("Sort").click();
 
-      // Let's make sure it's possible to sort descending as well
-      cy.icon("arrow_up").click();
+        // Sorts ascending by default
+        // Revenue appears twice, but it's the only integer column to order by
+        H.popover().icon("int").click();
 
-      cy.icon("arrow_down").parent().contains("Revenue");
+        // Let's make sure it's possible to sort descending as well
+        cy.icon("arrow_up").click();
 
-      H.visualize();
-      // Visualization will render line chart by default. Switch to the table.
-      cy.icon("table2").click();
+        cy.icon("arrow_down").parent().contains("Revenue");
 
-      cy.findAllByRole("grid").as("table");
-      cy.get("@table")
-        .first()
-        .as("tableHeader")
-        .within(() => {
-          cy.get("[data-testid=cell-data]")
-            .eq(1)
-            .invoke("text")
-            .should("eq", "Revenue");
-        });
+        H.visualize();
+        // Visualization will render line chart by default. Switch to the table.
+        cy.icon("table2").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
-      cy.get("@table")
-        .last()
-        .as("tableBody")
-        .within(() => {
-          cy.get("[data-testid=cell-data]")
-            .eq(1)
-            .invoke("text")
-            .should("eq", "50,072.98");
-        });
-    });
-  });
+        cy.findAllByRole("grid").as("table");
+        cy.get("@table")
+          .first()
+          .as("tableHeader")
+          .within(() => {
+            cy.get("[data-testid=cell-data]")
+              .eq(1)
+              .invoke("text")
+              .should("eq", "Revenue");
+          });
+
+        // eslint-disable-next-line no-unsafe-element-filtering
+        cy.get("@table")
+          .last()
+          .as("tableBody")
+          .within(() => {
+            cy.get("[data-testid=cell-data]")
+              .eq(1)
+              .invoke("text")
+              .should("eq", "50,072.98");
+          });
+      });
+    },
+  );
 
   it("should open only one bucketing popover at a time (metabase#45036)", () => {
     H.visitQuestionAdhoc(
@@ -1168,6 +1193,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
 
       cy.location("pathname").should(
@@ -1176,6 +1202,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       );
 
       H.openQuestionActions("Edit metadata");
+      H.waitForLoaderToBeRemoved();
 
       cy.go("back");
       cy.location("pathname").should(
@@ -1187,7 +1214,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.location("pathname").should(
         "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       H.datasetEditBar().findByText("Query").click();
@@ -1196,7 +1223,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.location("pathname").should(
         "equal",
-        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+        `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       );
 
       cy.go("forward");
@@ -1220,7 +1247,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       // This should work, but doesn't (metabase#55486)
       // cy.location("pathname").should(
       //   "equal",
-      //   `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      //   `/model/${PRODUCT_QUESTION_ID}-products/columns`,
       // );
 
       H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
@@ -1276,6 +1303,40 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       //   `/model/${PRODUCT_QUESTION_ID}-products`,
       // );
     });
+  });
+
+  it("should be possible to select custom expressions in the aggregation picker", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("Distinc");
+      cy.findByText("Number of distinct values of ...").should("be.visible");
+      cy.findByText("DistinctIf").click();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "DistinctIf(column, condition)",
+      );
+    });
+  });
+
+  it("should not render detail view column in preview (metabase#63070)", () => {
+    function openPreview() {
+      cy.findByTestId("step-preview-button").click();
+    }
+
+    function verifyPreviewIsRendered() {
+      cy.findByTestId("table-scroll-container").should("contain", "37.65");
+    }
+
+    function verifyIndexColumnsNotRendered() {
+      cy.findAllByTestId("row-id-cell").should("have.length", 0);
+    }
+
+    H.openOrdersTable({ mode: "notebook" });
+
+    openPreview();
+    verifyPreviewIsRendered();
+    verifyIndexColumnsNotRendered();
   });
 });
 

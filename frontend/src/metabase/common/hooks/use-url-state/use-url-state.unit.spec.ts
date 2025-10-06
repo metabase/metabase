@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import { renderHookWithProviders, waitFor } from "__support__/ui";
+import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockLocation } from "metabase-types/store/mocks";
 
 import type { QueryParam } from "./types";
@@ -81,7 +81,11 @@ describe("useUrlState", () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
-    patchUrlState({ score: 456 });
+
+    act(() => {
+      patchUrlState({ score: 456 });
+    });
+
     const [state] = result.current;
     expect(state).toEqual({ name: "abc", score: 456 });
     expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
@@ -96,7 +100,11 @@ describe("useUrlState", () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
-    patchUrlState({ name: "xyz", score: 456 });
+
+    act(() => {
+      patchUrlState({ name: "xyz", score: 456 });
+    });
+
     const [state] = result.current;
     expect(state).toEqual({ name: "xyz", score: 456 });
     expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");
@@ -111,7 +119,11 @@ describe("useUrlState", () => {
     const location = createLocation("?name=abc&score=123");
     const { result, history } = setup({ location });
     const [_state, { patchUrlState }] = result.current;
-    patchUrlState({ name: null, score: null });
+
+    act(() => {
+      patchUrlState({ name: null, score: null });
+    });
+
     const [state] = result.current;
     expect(state).toEqual({ name: null, score: null });
     expect(history?.getCurrentLocation().search).toEqual("?name=abc&score=123");

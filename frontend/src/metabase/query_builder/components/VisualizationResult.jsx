@@ -4,9 +4,10 @@ import { Component } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { ErrorMessage } from "metabase/components/ErrorMessage";
+import { ErrorMessage } from "metabase/common/components/ErrorMessage";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -23,6 +24,7 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "renderTableHeader",
   "mode",
   "renderEmptyMessage",
+  "zoomedRowIndex",
 ];
 
 export default class VisualizationResult extends Component {
@@ -70,6 +72,9 @@ export default class VisualizationResult extends Component {
     if (noResults && !isRunning && !renderEmptyMessage) {
       const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
 
+      const supportsBackToPreviousResult =
+        !isEmbeddingSdk() || !!onNavigateBack;
+
       // successful query but there were 0 rows returned with the result
       return (
         <div className={cx(className, CS.flex)}>
@@ -92,14 +97,17 @@ export default class VisualizationResult extends Component {
                     )} when there are some results.`}
                   </p>
                 )}
-                <button
-                  className={ButtonsS.Button}
-                  onClick={() =>
-                    onNavigateBack ? onNavigateBack() : window.history.back()
-                  }
-                >
-                  {t`Back to previous results`}
-                </button>
+
+                {supportsBackToPreviousResult && (
+                  <button
+                    className={ButtonsS.Button}
+                    onClick={() =>
+                      onNavigateBack ? onNavigateBack() : window.history.back()
+                    }
+                  >
+                    {t`Back to previous results`}
+                  </button>
+                )}
               </div>
             }
           />
@@ -130,6 +138,7 @@ export default class VisualizationResult extends Component {
             isObjectDetail={false}
             isQueryBuilder={true}
             isShowingSummarySidebar={isShowingSummarySidebar}
+            isRunning={isRunning}
             onEditSummary={onEditSummary}
             queryBuilderMode={queryBuilderMode}
             showTitle={false}

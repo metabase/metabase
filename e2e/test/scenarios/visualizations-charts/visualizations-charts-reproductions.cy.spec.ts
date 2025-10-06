@@ -1,11 +1,12 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -36,7 +37,7 @@ describe("issue 43075", () => {
 });
 
 describe("issue 41133", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -94,7 +95,7 @@ describe("issue 45255", () => {
   });
 });
 
-describe("issue 49874", () => {
+describe("issue 49874, 48847", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -126,12 +127,15 @@ describe("issue 49874", () => {
       cy.findByText("Sum of Total").should("be.visible");
     });
 
+    H.chartGridLines().should("exist");
+
     H.chartPathWithFillColor("#88BF4D").first().realHover();
 
     H.echartsContainer().within(() => {
       cy.findByText("Sum of Quantity").should("be.visible");
       cy.findByText("Sum of Total").should("not.exist");
     });
+    H.chartGridLines().should("exist");
 
     H.chartPathWithFillColor("#98D9D9").first().realHover();
 
@@ -139,6 +143,7 @@ describe("issue 49874", () => {
       cy.findByText("Sum of Quantity").should("not.exist");
       cy.findByText("Sum of Total").should("be.visible");
     });
+    H.chartGridLines().should("exist");
   });
 });
 
@@ -403,5 +408,126 @@ union all select '2020-04-01' x, 40 y`,
       footer: null,
       blurAfter: true,
     });
+  });
+});
+
+describe("issue 59671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when removing dimension aggregation column from the query (metabase#59671)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.removeSummaryGroupingField({
+      field: "Created At: Month",
+      stage: 0,
+      index: 0,
+    });
+    H.visualize();
+  });
+});
+
+describe("issue 59830", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when saved dimension settings refer to a non-existent column (metabase#59830)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [
+          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+        aggregation: [["count"], ["avg", ["field", ORDERS.TOTAL, null]]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["DOES_NOT_EXIST"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
+
+describe("issue 54755", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should show an empty state when no dimensions are available (metabase#54755)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": [],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    cy.icon("warning").should("not.exist");
+    cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
+
+describe("issue 63026", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)", () => {
+    const query = `select '${"a".repeat(1000)}' as category, 45 as count
+union all select 'Short name', 25 as count
+union all select 'Medium length category', 30 as count`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.chartPathWithFillColor("#88BF4D").trigger("mousemove");
+
+    cy.get("[data-testid='echarts-tooltip']")
+      .should("be.visible")
+      .then(($tooltip) => {
+        const width = $tooltip.width();
+        expect(width).to.be.lte(550);
+      });
   });
 });

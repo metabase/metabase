@@ -4,6 +4,8 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
+import { EntityIdCard } from "metabase/common/components/EntityIdCard";
+import Link from "metabase/common/components/Link";
 import {
   Sidesheet,
   SidesheetCard,
@@ -13,8 +15,6 @@ import {
 import { InsightsTabOrLink } from "metabase/common/components/Sidesheet/components/InsightsTabOrLink";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { EntityIdCard } from "metabase/components/EntityIdCard";
-import Link from "metabase/core/components/Link";
 import { InsightsUpsellTab } from "metabase/dashboard/components/DashboardInfoSidebar/components/InsightsUpsellTab";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -97,16 +97,19 @@ export const QuestionInfoSidebar = ({
           <Tabs.Panel value="overview">
             <Stack gap="lg">
               <SidesheetCard pb="md">
-                <Stack gap="sm">
+                <Stack gap={0}>
                   <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
-                  <SidesheetEditableDescription
-                    description={description}
-                    onChange={handleSave}
-                    canWrite={canWrite}
-                  />
-                  <PLUGIN_MODERATION.ModerationReviewTextForQuestion
-                    question={question}
-                  />
+
+                  <Stack gap="sm">
+                    <SidesheetEditableDescription
+                      description={description}
+                      onChange={handleSave}
+                      canWrite={canWrite}
+                    />
+                    <PLUGIN_MODERATION.ModerationReviewTextForQuestion
+                      question={question}
+                    />
+                  </Stack>
                 </Stack>
               </SidesheetCard>
               <SidesheetCard>

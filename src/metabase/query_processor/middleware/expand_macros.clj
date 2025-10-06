@@ -2,6 +2,7 @@
   "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
   (`:segment` forms are expanded into filter clauses.)"
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
@@ -17,7 +18,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro
@@ -44,7 +46,8 @@
      (fn [_query _path stage]
        (lib.util.match/match stage
          [macro-type _opts (id :guard pos-int?)]
-         (conj! ids id))))
+         (conj! ids id))
+       nil))
     (not-empty (persistent! ids))))
 
 ;;; a legacy Segment has one or more filter clauses.
@@ -59,7 +62,7 @@
                                  definition)
                 :database (u/the-id (lib.metadata/database metadata-providerable))}
                (lib/->query metadata-providerable)
-               (lib.util/query-stage -1))
+               (lib/query-stage -1))
     (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]

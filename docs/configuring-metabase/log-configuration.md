@@ -2,23 +2,50 @@
 title: Metabase logs
 redirect_from:
   - /docs/latest/operations-guide/log-configuration
+summary: Configure how much information Metabase displays in its logs.
 ---
 
 # Metabase logs
 
-Metabase logs quite a bit of information by default. It uses [Log4j 2][log4j] under the hood, so you can configure how much information Metabase logs.
+Metabase logs quite a bit of information by default. Metabase uses [Log4j 2](https://logging.apache.org/log4j/2.x/) under the hood, so you can configure how much information Metabase logs.
 
-## Configuring Logging Level
+## View and download Metabase logs
 
-Here is Metabase's [default logging configuration][default-log-config]. You can override this XML file and tell Metabase to use your own logging configuration file by passing a `-Dlog4j.configurationFile` argument when running Metabase. For example, if your custom XML file is found in `/path/to/custom/log4j2.xml`, you can use it like so:
+You can find Metabase logs in **Admin settings** > **Tools** > **Logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
 
+If you're running self-hosted Metabase, you'll also be able see the logs in the terminal.
+
+## How to read Metabase logs
+
+See [How to read logs](../troubleshooting-guide/server-logs.md).
+
+## Configuring logging Level
+
+Metabase uses [log4j](https://logging.apache.org/log4j/2.x/)for logging configuration. Here is Metabase's [default logging configuration](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml). Some troubleshooting tasks might require you to override this logging configuration (for example, to see more details about errors). See Log4j's docs for info on [log levels](https://logging.apache.org/log4j/2.x/manual/customloglevels.html).
+
+### Temporary override logging configuration
+
+To temporarily adjust the logging configuration, go to **Admin settings** > **Tools** > **Logs** and click on **Customize log levels**.
+
+You can select from log level presets for common troubleshooting tasks (for example, troubleshooting sync issues), or provide your own configuration as a JSON. For example, here's an override configuration that increases logging for troubleshooting linked filters:
+
+```json
+{
+  "metabase.parameters.chain-filter": "debug",
+  "metabase.parameters.chain-filter.dedupe-joins": "debug"
+}
 ```
-java -Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml -jar metabase.jar
-```
 
-To get started customizing the logs, make a [copy of the default `log4j2.xml` file][default-log-config] and adjust it to meet your needs. You'll need to restart Metabase for changes to the file to take effect. See Log4j's docs for info on [log levels][levels].
+The override from Admin settings will be temporary. You can select for how long the override should be in place (e.g., 60 minutes). When the override times out, the logging configuration will revert to the default logging configuration (or a custom configuration if you're using a [custom log file](#use-a-custom-log-configuration-file)).
 
-You can set different log levels for different areas of the application, e.g.,:
+### Use a custom log configuration file
+
+You can point Metabase to a custom log configuration file.
+
+1. Make a [copy of the default `log4j2.xml` file](https://github.com/metabase/metabase/blob/master/resources/log4j2.xml)
+2. Adjust it to meet your needs.
+
+   You can set different log levels for different areas of the application, e.g.,:
 
 ```
 <Loggers>
@@ -37,9 +64,21 @@ You can set different log levels for different areas of the application, e.g.,:
 </Loggers>
 ```
 
-Check out [How to read the logs][read-logs].
+3. Stop your Metabase and start it again using the custom log configuration file:
 
-## Jetty logs
+- If you're running Metabase in Docker, you can point Metabase to your custom log file using an environment variable, `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml`:
+
+```
+docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-Dlog4j.configurationFile=file:/tmp/my_log4j2.xml metabase/metabase`
+```
+
+- If you're running Metabase as a JAR file, you can pass a `-Dlog4j.configurationFile` argument. For example, if your custom XML file is found in `/path/to/custom/log4j2.xml`, you can use it like so:
+
+```
+java -Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml -jar metabase.jar
+```
+
+## Configure Jetty logs
 
 You can configure Metabase's web server to provide more detail in the logs by setting the log level to `DEBUG`. Just keep in mind that Jetty's debug logs can be really chatty, which can make it difficult to find the data you're looking for.
 
@@ -49,26 +88,25 @@ To get Jetty logs, add the following lines to the Log4J2 XML file in the <Logger
 <Logger name="org.eclipse.jetty" level="DEBUG"/>
 ```
 
-## Using Log4j 2 with Docker
+## Configure how logs are displayed
 
-Before running the Metabase Docker image, you'll need to pass the custom `log4j.configurationFile` argument. Add a `JAVA_OPTS=-Dlog4j.configurationFile=file:/path/to/custom/log4j2.xml` to the environment variables of the container, like this:
+### Turn off emojis in logs
+
+By default Metabase will include emoji characters in logs, like this:
 
 ```
-docker run -p 3000:3000 -v $PWD/my_log4j2.xml:/tmp/my_log4j2.xml -e JAVA_OPTS=-Dlog4j.configurationFile=file:/tmp/my_log4j2.xml metabase/metabase`
+2025-06-10 21:43:00,243 INFO sync.analyze :: classify-tables Analyzed [*****************************************·········] 😊   84% Table 6 ''PUBLIC.ACCOUNTS'' {mb-quartz-job-type=SyncAndAnalyzeDatabase}
+2025-06-10 21:43:00,244 INFO sync.analyze :: classify-tables Analyzed [***********************************************···] 😎   96% Table 2 ''PUBLIC.ORDERS'' {mb-quartz-job-type=SyncAndAnalyzeDatabase}
+
 ```
 
-## Disable emoji or colorized logging
-
-By default Metabase will include emoji characters in logs. You can disable emoji by using the `MB_EMOJI_IN_LOGS` environment variable:
-
-### Configuring Emoji Logging
+You can disable emoji using the [`MB_EMOJI_IN_LOGS` environment variable](../configuring-metabase/environment-variables.md#mb_emoji_in_logs):
 
 ```
 export MB_EMOJI_IN_LOGS="false"
 java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
 ```
 
-[default-log-config]: https://github.com/metabase/metabase/blob/master/resources/log4j2.xml
-[levels]: https://logging.apache.org/log4j/2.x/manual/customloglevels.html
-[log4j]: https://logging.apache.org/log4j/2.x/
-[read-logs]: ../troubleshooting-guide/server-logs.md
+### Turn off colorized logs
+
+By default, Metabase will use color when displaying logs (both in the Admin **Logs** and in the terminal). You can disable colorized logs using the [`MB_COLORIZE_LOGS` environment variable](../configuring-metabase/environment-variables.md#mb_colorize_logs).

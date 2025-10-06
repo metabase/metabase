@@ -3,8 +3,14 @@ import type {
   DashboardNightModeControls,
   EmbedHideParametersControls,
 } from "metabase/dashboard/types";
-import type Question from "metabase-lib/v1/Question";
-import type { Dashboard, Parameter, ParameterId } from "metabase-types/api";
+import type {
+  CardId,
+  DashboardId,
+  Parameter,
+  ParameterId,
+} from "metabase-types/api";
+
+import type { ParameterWidgetProps } from "../ParameterWidget";
 
 export type ParametersListProps = {
   parameters: Parameter[];
@@ -12,11 +18,13 @@ export type ParametersListProps = {
   {
     className: string;
 
-    question: Question;
-    dashboard: Dashboard | null;
+    cardId?: CardId;
+    dashboardId?: DashboardId;
     editingParameter: Parameter | null | undefined;
+    linkedFilterParameters: Parameter[];
 
     isEditing: boolean;
+    isSortable?: boolean;
     vertical: boolean;
     commitImmediately: boolean;
     setParameterValue: (parameterId: ParameterId, value: any) => void;
@@ -27,6 +35,10 @@ export type ParametersListProps = {
     ) => void;
     setEditingParameter: (parameterId: ParameterId | null) => void;
     enableParameterRequiredBehavior: boolean;
+    widgetsWithinPortal?: boolean;
+    widgetsPopoverPosition: ParameterWidgetProps["popoverPosition"];
+    layout?: "horizontal" | "vertical";
+    hasTestIdProps?: boolean;
   } & Pick<DashboardFullscreenControls, "isFullscreen"> &
     Pick<DashboardNightModeControls, "isNightMode"> &
     Pick<EmbedHideParametersControls, "hideParameters">

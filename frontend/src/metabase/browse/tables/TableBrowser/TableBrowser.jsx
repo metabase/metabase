@@ -1,28 +1,28 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
-import { Fragment } from "react";
 import { t } from "ttag";
 
-import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
-import EntityItem from "metabase/components/EntityItem";
-import { color } from "metabase/lib/colors";
+import { BrowseCard } from "metabase/browse/components/BrowseCard";
+import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
+import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
+import Link from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
+import { trackSimpleEvent } from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { Icon } from "metabase/ui";
+import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
+import { getDatabases } from "metabase/reference/selectors";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { ActionIcon, Group, Icon, Loader, Paper } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
-import { trackTableClick } from "../analytics";
+import { trackBrowseXRayClicked, trackTableClick } from "../analytics";
 
-import {
-  TableActionLink,
-  TableCard,
-  TableGrid,
-  TableGridItem,
-  TableLink,
-} from "./TableBrowser.styled";
+import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
-  database: PropTypes.object,
   tables: PropTypes.array.isRequired,
   getTableUrl: PropTypes.func.isRequired,
   metadata: PropTypes.object,
@@ -33,7 +33,6 @@ const propTypes = {
 };
 
 export const TableBrowser = ({
-  database,
   tables,
   getTableUrl,
   metadata,
@@ -42,7 +41,14 @@ export const TableBrowser = ({
   xraysEnabled,
   showSchemaInHeader = true,
 }) => {
+  const databases = useSelector(getDatabases);
+  const database = databases[dbId];
+  const isAdmin = useSelector(getUserIsAdmin);
   const databaseCrumb = useDatabaseCrumb(dbId);
+  const canEditTables =
+    database &&
+    isAdmin &&
+    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database);
 
   return (
     <>
@@ -55,27 +61,19 @@ export const TableBrowser = ({
           ]}
         />
       </BrowseHeaderContent>
-      <TableGrid>
+      <BrowseGrid pt="lg">
         {tables.map((table) => (
-          <TableGridItem key={table.id}>
-            <TableCard hoverable={!isSyncInProgress(table)}>
-              <TableLink
-                to={
-                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
-                }
-                onClick={() => trackTableClick(table.id)}
-              >
-                <TableBrowserItem
-                  database={database}
-                  table={table}
-                  dbId={dbId}
-                  xraysEnabled={xraysEnabled}
-                />
-              </TableLink>
-            </TableCard>
-          </TableGridItem>
+          <TableBrowserItem
+            key={table.id}
+            table={table}
+            dbId={dbId}
+            getTableUrl={getTableUrl}
+            xraysEnabled={xraysEnabled}
+            metadata={metadata}
+            canEditTables={canEditTables}
+          />
         ))}
-      </TableGrid>
+      </BrowseGrid>
     </>
   );
 };
@@ -83,35 +81,45 @@ export const TableBrowser = ({
 TableBrowser.propTypes = propTypes;
 
 const itemPropTypes = {
-  database: PropTypes.object,
   table: PropTypes.object.isRequired,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
+  metadata: PropTypes.object,
+  getTableUrl: PropTypes.func.isRequired,
+  canEditTables: PropTypes.bool,
 };
 
-const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
+const TableBrowserItem = ({
+  table,
+  dbId,
+  xraysEnabled,
+  metadata,
+  getTableUrl,
+  canEditTables,
+}) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
+  const isTableWritable = table.is_writable;
 
   return (
-    <EntityItem
-      item={table}
-      name={table.display_name || table.name}
-      iconName="table"
-      iconColor={color("accent2")}
-      loading={isLoading}
-      disabled={isLoading}
-      buttons={
-        !isLoading &&
-        !isVirtual && (
+    <BrowseCard
+      to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
+      icon="table"
+      title={table.display_name || table.name}
+      onClick={() => trackTableClick(table.id)}
+    >
+      <>
+        {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
+        {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
             tableId={table.id}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
+            canEditTables={canEditTables && isTableWritable}
           />
-        )
-      }
-    />
+        )}
+      </>
+    </BrowseCard>
   );
 };
 
@@ -121,28 +129,65 @@ const itemButtonsPropTypes = {
   tableId: PropTypes.number,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
+  canEditTables: PropTypes.bool,
 };
 
-const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
+const TableBrowserItemButtons = ({
+  tableId,
+  dbId,
+  xraysEnabled,
+  canEditTables,
+}) => {
+  const handleEditTableClicked = () => {
+    trackSimpleEvent({
+      event: "edit_data_button_clicked",
+      target_id: tableId,
+      triggered_from: "table-browser",
+    });
+  };
+
   return (
-    <Fragment>
-      {xraysEnabled && (
-        <TableActionLink to={`/auto/dashboard/table/${tableId}`}>
-          <Icon
-            name="bolt_filled"
+    <Paper p="sm" className={cx(CS.hoverChild, S.tableBrowserItemButtons)}>
+      <Group gap="sm">
+        {xraysEnabled && (
+          <ActionIcon
+            component={Link}
+            to={`/auto/dashboard/table/${tableId}`}
+            size="sm"
             tooltip={t`X-ray this table`}
-            color={color("warning")}
-          />
-        </TableActionLink>
-      )}
-      <TableActionLink to={`/reference/databases/${dbId}/tables/${tableId}`}>
-        <Icon
-          name="reference"
+            color="warning"
+            aria-label={t`X-ray this table`}
+            onClick={trackBrowseXRayClicked}
+          >
+            <Icon name="bolt" />
+          </ActionIcon>
+        )}
+        {canEditTables && (
+          <ActionIcon
+            component={Link}
+            to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
+            onClick={handleEditTableClicked}
+            size="sm"
+            tooltip={t`Edit this table`}
+            color="text-medium"
+            aria-label={t`Edit this table`}
+            data-testid="edit-table-icon"
+          >
+            <Icon name="pencil" />
+          </ActionIcon>
+        )}
+        <ActionIcon
+          component={Link}
+          to={`/reference/databases/${dbId}/tables/${tableId}`}
+          size="sm"
           tooltip={t`Learn about this table`}
-          color={color("text-medium")}
-        />
-      </TableActionLink>
-    </Fragment>
+          color="text-medium"
+          aria-label={t`Learn about this table`}
+        >
+          <Icon name="reference" />
+        </ActionIcon>
+      </Group>
+    </Paper>
   );
 };
 

@@ -1,5 +1,5 @@
 import { useGetCollectionQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 
 import { CollectionContent } from "../CollectionContent";
 

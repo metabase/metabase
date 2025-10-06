@@ -21,7 +21,7 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage();
 
     // Clicking on metadata should not work until we run a query
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
 
     H.NativeEditor.focus().type("select 42");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -72,7 +72,7 @@ describe("scenarios > models > create", () => {
       .findByText("Use a native query")
       .click();
     H.NativeEditor.focus().type("select 42");
-    cy.findByTestId("native-query-editor-sidebar")
+    cy.findByTestId("native-query-editor-container")
       .findByLabelText("Get Answer")
       .click();
     cy.wait("@previewModel");

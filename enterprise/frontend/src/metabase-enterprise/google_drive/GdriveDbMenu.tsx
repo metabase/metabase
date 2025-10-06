@@ -4,15 +4,16 @@ import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
-import { Button, Flex, Icon, Loader, Menu, Text, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
 import {
   useGetGsheetsFolderQuery,
   useSyncGsheetsFolderMutation,
 } from "metabase-enterprise/api";
 
 import { GdriveConnectionModal } from "./GdriveConnectionModal";
+import { GdriveErrorMenuItem } from "./GdriveErrorMenuItem";
 import { trackSheetConnectionClick } from "./analytics";
-import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
+import { getStatus, useShowGdrive } from "./utils";
 
 export function GdriveDbMenu() {
   const [showModal, setShowModal] = useState(false);
@@ -78,7 +79,6 @@ export function GdriveDbMenu() {
           <Menu.Item
             leftSection={<Icon name="close" />}
             fw="bold"
-            disabled={status === "syncing"}
             onClick={() => setShowModal(true)}
           >
             {t`Disconnect`}
@@ -143,22 +143,7 @@ function MenuSyncStatus() {
     : t`soon` + "™";
 
   if (folderStatus === "error") {
-    const errorMessage = getErrorMessage(
-      folderError,
-      // eslint-disable-next-line no-literal-metabase-strings -- admin UI
-      t`Please check that the folder is shared with the Metabase Service Account.`,
-    );
-
-    return (
-      <Tooltip label={errorMessage} position="bottom" maw="20rem">
-        <Flex align="center" gap="md">
-          <Icon name="warning" c="error" />
-          <Text fz="sm" c="error">
-            {t`Error syncing`}
-          </Text>
-        </Flex>
-      </Tooltip>
-    );
+    return <GdriveErrorMenuItem error={folderError ?? folderInfo} />;
   }
 
   return (

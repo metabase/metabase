@@ -1,9 +1,10 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
-const QUESTION: H.StructuredQuestionDetails = {
+const QUESTION: StructuredQuestionDetails = {
   name: "Return input value",
   display: "scalar",
   query: {
@@ -86,7 +87,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     );
     H.editDashboard();
 
-    openFilterOptions("Filter Two");
+    H.filterWidget({ name: "Filter Two", isEditing: true }).click();
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
@@ -148,7 +149,7 @@ describe("scenarios > dashboard > filters > reset", () => {
     );
     H.editDashboard();
 
-    openFilterOptions("Filter One");
+    H.filterWidget({ name: "Filter One", isEditing: true }).click();
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
@@ -167,10 +168,6 @@ describe("scenarios > dashboard > filters > reset", () => {
     H.filterWidget().contains("Foo").should("be.visible");
   });
 });
-
-function openFilterOptions(name: string) {
-  cy.findByText(name).parent().icon("gear").click();
-}
 
 function clearDefaultFilterValue() {
   cy.findByLabelText("No default").parent().icon("close").click();

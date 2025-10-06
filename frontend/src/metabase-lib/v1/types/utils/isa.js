@@ -40,6 +40,10 @@ export function isTypeFK(type) {
   return isa(type, TYPE.FK);
 }
 
+export function isTypeCurrency(type) {
+  return isa(type, TYPE.Currency);
+}
+
 export function isFieldType(type, field) {
   if (!field) {
     return false;
@@ -120,6 +124,7 @@ export const isFK = (field) => field && isTypeFK(field.semantic_type);
 export const isPK = (field) => field && isTypePK(field.semantic_type);
 export const isEntityName = (field) =>
   field && isa(field.semantic_type, TYPE.Name);
+export const isTitle = (field) => field && isa(field.semantic_type, TYPE.Title);
 export const isAddress = (field) =>
   field && isa(field.semantic_type, TYPE.Address);
 

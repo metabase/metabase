@@ -1,9 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
    [metabase.api.common :as api]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
@@ -15,7 +13,7 @@
   [instance]
   (let [db-id (or (get-in instance [:table :db_id])
                   (database/table-id->database-id (:table_id instance)))]
-    (data-perms/user-has-permission-for-table?
+    (perms/user-has-permission-for-table?
      api/*current-user-id*
      :perms/manage-table-metadata
      :yes
@@ -27,7 +25,7 @@
   in the schema"
   :feature :advanced-permissions
   [db-id schema-name]
-  (data-perms/user-has-permission-for-schema?
+  (perms/user-has-permission-for-schema?
    api/*current-user-id*
    :perms/manage-table-metadata
    :yes
@@ -38,7 +36,7 @@
   "Enterprise version. Returns a boolean whether the current user can write the given db"
   :feature :advanced-permissions
   [db-id]
-  (data-perms/user-has-permission-for-database?
+  (perms/user-has-permission-for-database?
    api/*current-user-id*
    :perms/manage-database
    :yes
@@ -48,7 +46,7 @@
   "Enterprise version."
   :feature :advanced-permissions
   [table]
-  (data-perms/user-has-permission-for-table?
+  (perms/user-has-permission-for-table?
    api/*current-user-id*
    :perms/manage-table-metadata
    :yes
@@ -64,8 +62,8 @@
            {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
-            :can_access_data_model   (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
-            :can_access_db_details   (data-perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
+            :can_access_data_model   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-table-metadata)
+            :can_access_db_details   (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/manage-database)
             :is_group_manager        api/*is-group-manager?*})))
 
 (defenterprise current-user-has-application-permissions?
@@ -95,7 +93,7 @@
     :else
     (filter
      (fn [{table-id :id db-id :db_id}]
-       (data-perms/user-has-permission-for-table?
+       (perms/user-has-permission-for-table?
         api/*current-user-id*
         :perms/manage-table-metadata
         :yes
@@ -117,7 +115,7 @@
     :else
     (filter
      (fn [{db-id :db_id schema :schema}]
-       (data-perms/user-has-permission-for-schema?
+       (perms/user-has-permission-for-schema?
         api/*current-user-id*
         :perms/manage-table-metadata
         :yes
@@ -141,7 +139,7 @@
     :else
     (reduce
      (fn [result {db-id :id tables :tables :as db}]
-       (if (= (data-perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id)
+       (if (= (perms/most-permissive-database-permission-for-user api/*current-user-id* :perms/manage-table-metadata db-id)
               :yes)
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
@@ -165,7 +163,7 @@
                    :group_id group-id)
        (and
         (premium-features/enable-sandboxes?)
-        (t2/exists? :model/GroupTableAccessPolicy
+        (t2/exists? :model/Sandbox
                     :group_id group-id)))
     :blocked
     :unrestricted))
@@ -187,9 +185,9 @@
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists?
-         :model/GroupTableAccessPolicy
+         :model/Sandbox
          {:select [:s.id]
-          :from [[(t2/table-name :model/GroupTableAccessPolicy) :s]]
+          :from [[(t2/table-name :model/Sandbox) :s]]
           :join [[(t2/table-name :model/Table) :t] [:= :t.id :s.table_id]]
           :where [:and
                   [:= :s.group_id group-id]
@@ -203,7 +201,7 @@
   is `unrestricted`."
   :feature :advanced-permissions
   [db-id]
-  (let [all-users-group-id (u/the-id (perms-group/all-users))]
+  (let [all-users-group-id (u/the-id (perms/all-users-group))]
     (if (or
          (t2/exists? :model/DataPermissions
                      :perm_type :perms/view-data
@@ -215,7 +213,7 @@
                      :db_id db-id)
          (and
           (premium-features/enable-sandboxes?)
-          (t2/exists? :model/GroupTableAccessPolicy
+          (t2/exists? :model/Sandbox
                       :group_id all-users-group-id
                       {:from [[:sandboxes :s]]
                        :join [[:metabase_table :t] [:= :s.table_id :t.id]]

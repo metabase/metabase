@@ -8,7 +8,6 @@ import {
 // Configure authentication
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://metabase.example.com", // Required: Your Metabase instance URL
-  authProviderUri: "https://app.example.com/sso/metabase", // Required: An endpoint in your app that signs the user in and returns a session
 });
 
 // See the "Customizing appearance" section for more information

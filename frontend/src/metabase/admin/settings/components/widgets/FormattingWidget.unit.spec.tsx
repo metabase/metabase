@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -8,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -39,13 +38,15 @@ const setup = async () => {
       },
     },
   );
+
+  await screen.findByText("Dates and times");
 };
 
-describe("PublicSharingSettingsPage", () => {
+describe("FormattingWidget", () => {
   it("should render a FormattingWidget", async () => {
-    await act(() => setup());
+    await setup();
     [
-      "Dates and Times",
+      "Dates and times",
       "Date style",
       "Abbreviate days and months",
       "Time style",
@@ -98,38 +99,38 @@ describe("PublicSharingSettingsPage", () => {
   });
 
   it("should update multiple settings", async () => {
-    setup();
+    await setup();
     const blur = async () => {
-      const elementOutside = screen.getByText("Dates and Times");
+      const elementOutside = screen.getByText("Dates and times");
       await userEvent.click(elementOutside); // blur
     };
 
     const dateStyleInput = await screen.findByLabelText("Date style");
-    dateStyleInput.click();
+    await userEvent.click(dateStyleInput);
     await userEvent.click(await screen.findByText("31/1/2018"));
-    blur();
+    await blur();
 
     const dateAbbreviateToggle = await screen.findByRole("switch");
-    dateAbbreviateToggle.click();
-    blur();
+    await userEvent.click(dateAbbreviateToggle);
+    await blur();
 
     const timeStyle24HourRadio = await screen.findByLabelText(/24-hour/i);
-    timeStyle24HourRadio.click();
-    blur();
+    await userEvent.click(timeStyle24HourRadio);
+    await blur();
 
     const seperatorStyleInput = await screen.findByLabelText("Separator style");
     await userEvent.click(seperatorStyleInput);
     await userEvent.click(await screen.findByText("100000.00"));
-    blur();
+    await blur();
 
     const currencyInput = await screen.findByLabelText("Unit of currency");
     await userEvent.click(currencyInput);
     await userEvent.click(await screen.findByText("New Zealand Dollar"));
-    blur();
+    await blur();
 
     const currencyStyleNameRadio = await screen.findByLabelText(/name/i);
     await userEvent.click(currencyStyleNameRadio);
-    blur();
+    await blur();
 
     await waitFor(async () => {
       const puts = await findRequests("PUT");
@@ -162,5 +163,22 @@ describe("PublicSharingSettingsPage", () => {
       const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(6);
     });
+  });
+
+  it("should provide expected number separators (#61854)", async () => {
+    await setup();
+
+    const seperatorStyleInput = await screen.findByLabelText("Separator style");
+    await userEvent.click(seperatorStyleInput);
+
+    const [dropdown] = screen.getAllByRole("listbox");
+    const children = within(dropdown).getAllByRole("option");
+    expect(children.length).toBe(5);
+
+    expect(within(dropdown).getByText("100,000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100 000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100.000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100’000.00")).toBeInTheDocument();
   });
 });

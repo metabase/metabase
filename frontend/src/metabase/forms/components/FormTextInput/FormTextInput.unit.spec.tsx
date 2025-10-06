@@ -102,10 +102,7 @@ describe("FormTextInput", () => {
     await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith(
-        { name: undefined },
-        expect.anything(),
-      );
+      expect(onSubmit).toHaveBeenCalledWith({ name: "" }, expect.anything());
     });
   });
 

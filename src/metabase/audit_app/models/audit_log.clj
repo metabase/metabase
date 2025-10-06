@@ -91,6 +91,14 @@
     :password-reset-successful (select-keys entity [:token])
     {}))
 
+(defmethod model-details :model/PermissionsGroup
+  [permissions-group _event-type]
+  (select-keys permissions-group [:id :name :is_tenant_group :magic_group_type]))
+
+(defmethod model-details :model/PermissionsGroupMembership
+  [membership _event-type]
+  (select-keys membership [:id :user_id :group_id :is_group_manager]))
+
 (defmethod model-details :model/Notification
   [{:keys [subscriptions handlers] :as fully-hydrated-notification} _event-type]
   (merge
@@ -136,12 +144,13 @@
 
 (mr/def ::event-params [:map {:closed true
                               :doc "Used when inserting a value to the Audit Log."}
-                        [:object          {:optional true} [:maybe :map]]
-                        [:previous-object {:optional true} [:maybe :map]]
-                        [:user-id         {:optional true} [:maybe pos-int?]]
-                        [:model           {:optional true} [:maybe [:or :keyword :string]]]
-                        [:model-id        {:optional true} [:maybe pos-int?]]
-                        [:details         {:optional true} [:maybe :map]]])
+                        [:object           {:optional true} [:maybe :map]]
+                        [:previous-object  {:optional true} [:maybe :map]]
+                        [:user-id          {:optional true} [:maybe pos-int?]]
+                        [:model            {:optional true} [:maybe [:or :keyword :string]]]
+                        [:model-id         {:optional true} [:maybe pos-int?]]
+                        [:details          {:optional true} [:maybe :map]]
+                        [:details-changed? {:optional true} [:maybe :boolean]]])
 
 (mu/defn construct-event
   :- [:map

@@ -161,7 +161,7 @@ describe("binning related reproductions", () => {
     });
 
     H.getNotebookStep("summarize").findByText(
-      "18646 - Product → Created At: Month",
+      "18646 - Product → CREATED_AT: Month",
     );
 
     H.visualize();
@@ -300,7 +300,7 @@ describe("binning related reproductions", () => {
     });
   });
 
-  describe.skip("result metadata issues", () => {
+  describe("result metadata issues", { tags: "@skip" }, () => {
     /**
      * Issues that arise only when we save SQL question without running it first.
      * It doesn't load the necessary metadata, which results in the wrong binning results.

@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { MetabotToggleWidget } from "./MetabotToggleWidget";

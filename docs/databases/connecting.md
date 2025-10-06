@@ -5,6 +5,7 @@ redirect_from:
   - /docs/latest/databases/connections/sql-server
   - /docs/latest/administration-guide/databases/h2
   - /docs/latest/databases/connections/h2
+  - /docs/latest/databases/connections
 ---
 
 # Adding and managing databases
@@ -68,7 +69,7 @@ Go to **Admin settings** > **Databases** > your database and click **Remove this
 
 ## Restoring the Sample Database
 
-If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample_database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
+If you've deleted the Metabase [Sample Database](https://www.metabase.com/glossary/sample-database), go to **Admin settings** > **Databases** and click **Bring the Sample Database back**.
 
 ## Troubleshooting
 

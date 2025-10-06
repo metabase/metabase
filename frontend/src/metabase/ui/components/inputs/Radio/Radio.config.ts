@@ -15,6 +15,7 @@ export const radioOverrides = {
       root: RadioStyles.root,
       radio: RadioStyles.radio,
       label: RadioStyles.label,
+      labelWrapper: RadioStyles.labelWrapper,
       description: RadioStyles.description,
       icon: RadioStyles.icon,
     },
@@ -23,5 +24,11 @@ export const radioOverrides = {
         "--radio-size": getSize(SIZES[size]),
       },
     }),
+  }),
+  RadioIndicator: Radio.Indicator.extend({
+    classNames: {
+      // indicator is visually same as Radio so it needs the same styles
+      indicator: RadioStyles.radio,
+    },
   }),
 };

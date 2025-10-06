@@ -5,7 +5,6 @@ import { slugify } from "metabase/lib/formatting";
 import { isNotNull } from "metabase/lib/types";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import Question from "metabase-lib/v1/Question";
-import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   FieldFilterUiParameter,
@@ -24,7 +23,6 @@ import type {
   DashboardCard,
   DashboardParameterMapping,
   Parameter,
-  ParameterMappingOptions,
   ParameterTarget,
   QuestionDashboardCard,
 } from "metabase-types/api";
@@ -34,23 +32,35 @@ type ExtendedMapping = DashboardParameterMapping & {
   card: Card;
 };
 
+export type NewParameterOpts = Pick<Parameter, "name" | "type" | "sectionId">;
+
 export function createParameter(
-  option: ParameterMappingOptions,
+  opts: NewParameterOpts,
   parameters: Parameter[] = [],
-): Parameter {
-  let name = option.combinedName || option.name;
+) {
+  let baseName = opts.name;
   let nameIndex = 0;
-  // get a unique name
-  while (_.any(parameters, (p) => p.name === name)) {
-    name = (option.combinedName || option.name) + " " + ++nameIndex;
+
+  // Extract base name and existing index if present
+  const indexMatch = baseName.match(/^(.+)\s+(\d+)$/);
+  if (indexMatch) {
+    baseName = indexMatch[1];
+    nameIndex = parseInt(indexMatch[2], 10);
+  }
+
+  let name = nameIndex === 0 ? baseName : `${baseName} ${nameIndex}`;
+
+  while (parameters.some((p) => p.name === name)) {
+    nameIndex++;
+    name = `${baseName} ${nameIndex}`;
   }
 
   const parameter: Parameter = {
     name: "",
     slug: "",
     id: generateParameterId(),
-    type: option.type,
-    sectionId: option.sectionId,
+    type: opts.type,
+    sectionId: opts.sectionId,
   };
 
   return setParameterName(parameter, name);
@@ -201,17 +211,12 @@ function buildSavedDashboardParameter(
   const parameterMappings = mappings.filter(
     (mapping) => mapping.parameter_id === parameter.id,
   );
-  const hasNativeQueryTarget = parameterMappings.some(
-    (mapping) => mapping.card.dataset_query?.type === "native",
-  );
   const hasVariableTemplateTagTarget = parameterMappings.some((mapping) =>
     isParameterVariableTarget(mapping.target),
   );
   const parameterFields = (fields?.[parameter.id] ?? [])
     .map((field) => metadata.field(field.id))
-    .filter(isNotNull)
-    // TODO we need to preserve this hack until remapping is migrated to the BE. See #57571
-    .map((field) => (hasNativeQueryTarget ? field : (field.target ?? field)));
+    .filter(isNotNull);
   const uniqueParameterFields = _.uniq(parameterFields, (field) => field.id);
 
   return {
@@ -246,21 +251,12 @@ function buildUnsavedDashboardParameter(
   const mappedFields = uniqueMappingsForParameters.map((mapping) => {
     const { target, card } = mapping;
     if (!isQuestionCard(card)) {
-      return {
-        field: null,
-        shouldResolveFkField: false,
-      };
+      return null;
     }
 
     const question = questions[card.id] ?? new Question(card, metadata);
     try {
-      const field = getParameterTargetField(question, parameter, target);
-
-      return {
-        field,
-        // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-        shouldResolveFkField: card.dataset_query?.type === "query",
-      };
+      return getParameterTargetField(question, parameter, target);
     } catch (e) {
       console.error("Error getting a field from a card", { card });
       throw e;
@@ -271,17 +267,7 @@ function buildUnsavedDashboardParameter(
     return isParameterVariableTarget(mapping.target);
   });
 
-  const fields = mappedFields
-    .filter(
-      (
-        mappedField,
-      ): mappedField is { field: Field; shouldResolveFkField: boolean } => {
-        return mappedField.field != null;
-      },
-    )
-    .map(({ field, shouldResolveFkField }) => {
-      return shouldResolveFkField ? (field.target ?? field) : field;
-    });
+  const fields = mappedFields.filter(isNotNull);
 
   return {
     ...parameter,

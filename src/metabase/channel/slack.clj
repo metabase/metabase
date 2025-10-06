@@ -319,25 +319,19 @@
       (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. message-content if provided should be a map containing :blocks
-  e.g {:blocks [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}"
-  [channel-id  :- ms/NonBlankString
-   text-or-nil :- [:maybe :string]
-   & [message-content]]
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
+  message-blocks if provided should be a map containing slack message blocks
+  e.g [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}]
+  See: https://app.slack.com/block-kit-builder"
+  [message-content :- [:map {:closed true}
+                       [:channel                      :string]
+                       [:blocks      {:optional true} [:sequential :map]]
+                       [:text        {:optional true} :string]
+                       [:attachments {:optional true} [:sequential :map]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (let [base-params {:channel     channel-id
-                     :username    "MetaBot"
-                     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-                     :text        text-or-nil}
-
-        message-content
-        (if (sequential? message-content)
-          {:blocks (mapcat :blocks message-content)}
-          message-content)
-
-        message-params
-        (if (seq (:blocks message-content))
-          {:blocks (json/encode (:blocks message-content))}
-          {})]
+  (let [base-params    {:username "MetaBot"
+                        :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}
+        message-params (update-vals message-content #(if (string? %) % (json/encode %)))]
+    ;; https://api.slack.com/methods/chat.postMessage
     (POST "chat.postMessage"
       {:form-params (merge base-params message-params)})))

@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { PLUGIN_API } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -35,12 +35,22 @@ export const StoreApi = {
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
 
-  // we need to pass pivot_rows & pivot_cols only for ad-hoc queries endpoints
+  // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
   // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols } = getPivotOptions(question);
-      return api({ ...params, pivot_rows, pivot_cols }, ...rest);
+      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
+        getPivotOptions(question);
+      return api(
+        {
+          ...params,
+          pivot_rows,
+          pivot_cols,
+          show_row_totals,
+          show_column_totals,
+        },
+        ...rest,
+      );
     };
   }
 
@@ -70,6 +80,10 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
   return api;
 }
 
+/**
+ * @param {*} question
+ * @param {object} param
+ */
 export async function runQuestionQuery(
   question,
   {
@@ -86,7 +100,7 @@ export async function runQuestionQuery(
   const card = question.card();
 
   if (canUseCardApiEndpoint) {
-    const { dashboardId, dashcardId } = card;
+    const { dashboardId, dashcardId } = question.getDashboardProps();
 
     const queryParams = {
       cardId: question.id(),
@@ -202,25 +216,6 @@ export const AutoApi = {
   }),
 };
 
-export const EmailApi = {
-  updateSettings: PUT("/api/email"),
-  sendTest: POST("/api/email/test"),
-  clear: DELETE("/api/email"),
-};
-
-export const SlackApi = {
-  getManifest: GET("/api/slack/manifest"),
-  updateSettings: PUT("/api/slack/settings"),
-};
-
-export const LdapApi = {
-  updateSettings: PUT("/api/ldap/settings"),
-};
-
-export const SamlApi = {
-  updateSettings: PUT("/api/saml/settings"),
-};
-
 export const MetabaseApi = {
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
@@ -325,16 +320,11 @@ export const UtilApi = {
   get_connection_pool_details_url: () => {
     // this one does not need an HTTP verb because it's opened as an external link
     // and it can be deployed at subpath
-    const path = "/api/util/diagnostic_info/connection_pool_info";
+    const path = "/api/bug-reporting/connection-pool-details";
     const { href } = new URL(api.basename + path, location.origin);
 
     return href;
   },
-};
-
-export const GeoJSONApi = {
-  load: GET("/api/geojson"),
-  get: GET("/api/geojson/:id"),
 };
 
 export function setPublicQuestionEndpoints(uuid) {
@@ -346,11 +336,15 @@ export function setPublicDashboardEndpoints(uuid) {
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setCardEndpoints(`${embedBase}/card/${encodedToken}`);
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
 function GET_with(url, omitKeys) {

@@ -29,9 +29,8 @@
   model-supports-implicit-actions?
   model?
   sole-dashboard-id
+  starting-card-schema-version
   update-card!
-   ;; TODO -- 95% sure this should go in the `dashboards` module rather than here.
-  with-allowed-changes-to-internal-dashboard-card
    ;; TODO -- not convinced whether this belongs here or in `permissions`
   with-can-run-adhoc-query]
  [metabase.queries.models.card.metadata

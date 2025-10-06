@@ -3,8 +3,8 @@ import { jt, t } from "ttag";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -63,7 +63,7 @@ export const DataPermissionsHelp = () => {
                 icon="permissions_limited"
                 iconColor="warning"
                 name={t`Granular`}
-                description={t`The group can view select schemas and tables. Can be combined with SSO user attributes to create Sandboxes that define what data each person can view.`}
+                description={t`The group can view select schemas and tables. Can be combined with user attributes to enable row and column security to control what data each person can view.`}
               />
 
               <PermissionHelpDescription
@@ -79,7 +79,7 @@ export const DataPermissionsHelp = () => {
                   icon="eye"
                   iconColor="accent5"
                   name={t`No self-service (Deprecated)`}
-                  description={t`The group can't use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. ‘Blocked’, ‘Impersonated’ and ‘Sandboxed’ in another group will override ‘No self-service’.`}
+                  description={t`The group can't use the query builder or drill through existing questions. They also can't see the data in the Browse data section. They can still view questions based on this data, if they have permissions to the relevant collection. ‘Blocked‘, ‘Impersonated‘ and ‘Row and column security‘ in another group will override ‘No self-service‘.`}
                 />
               )}
 
@@ -121,7 +121,7 @@ export const DataPermissionsHelp = () => {
                 hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
                 icon="permissions_limited"
                 iconColor="brand"
-                name={t`Sandboxed (Pro)`}
+                name={t`Row and column security (Pro)`}
                 description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
               />
 
@@ -225,7 +225,7 @@ export const DataPermissionsHelp = () => {
 
       <Text component="footer" ta="center" py="1.5rem" fw={600}>
         {jt`${(
-          <ExternalLink href={docsUrl}>{t`Learn more`}</ExternalLink>
+          <ExternalLink key="link" href={docsUrl}>{t`Learn more`}</ExternalLink>
         )} about data permissions`}
       </Text>
     </Flex>

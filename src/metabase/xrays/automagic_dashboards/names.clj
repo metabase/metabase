@@ -7,6 +7,9 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.time :as u.time]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
@@ -55,24 +58,26 @@
                                                   (source-name root)))
        (metric-name metric)))))
 
-(defn question-description
+(mu/defn question-description
   "Generate a description for the question."
-  [root question]
+  [root     :- ::ads/root
+   question :- [:map
+                [:dataset_query ::ads/query]]]
   (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
                           (metric->description root))
         dimensions   (->> (get-in question [:dataset_query :query :breakout])
                           (mapcat magic.util/collect-field-references)
-                          (map (comp :display_name
-                                     (partial magic.util/->field root)))
+                          (map (partial magic.util/->field root))
+                          (map :display_name)
                           join-enumeration)]
     (if dimensions
       (tru "{0} by {1}" aggregations dimensions)
       aggregations)))
 
 (defmulti ^:private humanize-filter-value
-  {:arglists '([fieldset [op & args]])}
-  (fn [_ [op & _args]]
-    (qp.util/normalize-token op)))
+  {:arglists '([root mbql-clause])}
+  (fn [_root [tag]]
+    (qp.util/normalize-token tag)))
 
 (def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
                                 :hour-of-day     (deferred-tru "hour")
@@ -85,9 +90,10 @@
                                 :year            (deferred-tru "year")}
                                qp.util/normalize-token))
 
-(defn item-reference->field
+(mu/defn- item-reference->field
   "Turn a field reference into a field."
-  [root [item-type :as item-reference]]
+  [root :- ::ads/root
+   [item-type :as item-reference]]
   (case item-type
     (:field "field") (let [normalized-field-reference (mbql.normalize/normalize item-reference)
                            temporal-unit              (lib.util.match/match-one normalized-field-reference
@@ -117,7 +123,7 @@
    (cond->> display_name
      (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
-(defn pluralize
+(defn- pluralize
   "Add appropriate pluralization suffixes for integer numbers."
   [x]
   ;; the `int` cast here is to fix performance warnings if `*warn-on-reflection*` is enabled
@@ -127,10 +133,12 @@
     3 (tru "{0}rd" x)
     (tru "{0}th" x)))
 
-(defn humanize-datetime
+(defn- humanize-datetime
   "Convert a time data type into a human friendly string."
-  [t-str unit]
-  (let [dt (u.date/parse t-str)]
+  [t unit]
+  (let [dt (if (integer? t)
+             (u.time/coerce-to-timestamp t {:unit unit})
+             (u.date/parse t))]
     (case unit
       :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
@@ -153,59 +161,68 @@
        :day-of-year
        :week-of-year)  (u.date/extract dt unit))))
 
-(defmethod humanize-filter-value :=
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :=
+  [root :- ::ads/root
+   [_ field-reference value]]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is {1}" item-name (humanize-datetime value unit))
       (tru "{0} is {1}" item-name value))))
 
-(defmethod humanize-filter-value :>=
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :>=
+  [root :- ::ads/root
+   [_ field-reference value]]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is not before {1}" item-name (humanize-datetime value unit))
       (tru "{0} is at least {1}" item-name value))))
 
-(defmethod humanize-filter-value :>
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :>
+  [root :- ::ads/root
+   [_ field-reference value]]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is after {1}" item-name (humanize-datetime value unit))
       (tru "{0} is greater than {1}" item-name value))))
 
-(defmethod humanize-filter-value :<=
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :<=
+  [root :- ::ads/root
+   [_ field-reference value]]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is not after {1}" item-name (humanize-datetime value unit))
       (tru "{0} is no more than {1}" item-name value))))
 
-(defmethod humanize-filter-value :<
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :<
+  [root :- ::ads/root
+   [_ field-reference value]]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is before {1}" item-name (humanize-datetime value unit))
       (tru "{0} is less than {1}" item-name value))))
 
-(defmethod humanize-filter-value :between
-  [root [_ field-reference min-value max-value]]
+(mu/defmethod humanize-filter-value :between
+  [root :- ::ads/root
+   [_ field-reference min-value max-value]]
   (tru "{0} is between {1} and {2}" (item-name root field-reference) min-value max-value))
 
-(defmethod humanize-filter-value :inside
-  [root [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
+(mu/defmethod humanize-filter-value :inside
+  [root :- ::ads/root
+   [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
   (tru "{0} is between {1} and {2}; and {3} is between {4} and {5}"
        (item-name root lon-reference) lon-min lon-max
        (item-name root lat-reference) lat-min lat-max))
 
-(defmethod humanize-filter-value :and
-  [root [_ & clauses]]
+(mu/defmethod humanize-filter-value :and
+  [root :- ::ads/root
+   [_ & clauses]]
   (->> clauses
        (map (partial humanize-filter-value root))
        join-enumeration))
 
-(defmethod humanize-filter-value :default
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :default
+  [root :- ::ads/root
+   [_ field-reference value]]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} relates to {1}" item-name (humanize-datetime value unit))

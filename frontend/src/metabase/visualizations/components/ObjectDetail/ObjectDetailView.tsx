@@ -5,10 +5,10 @@ import _ from "underscore";
 
 import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import { skipToken, useListActionsQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
+import Modal from "metabase/common/components/Modal";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { NotFound } from "metabase/components/ErrorPages";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Modal from "metabase/components/Modal";
 import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
@@ -109,6 +109,8 @@ export function ObjectDetailView({
   const hasFks = !_.isEmpty(tableForeignKeys);
   const hasRelationships = showRelations && hasFks && hasPk;
 
+  const isObjectDetailModal = question?.display() !== "object";
+
   const handleExecuteModalClose = () => {
     setActionId(undefined);
   };
@@ -151,13 +153,18 @@ export function ObjectDetailView({
       return;
     }
 
-    if (table && _.isEmpty(table.fks) && !isVirtualCardId(table.id)) {
+    if (
+      isObjectDetailModal &&
+      table &&
+      _.isEmpty(table.fks) &&
+      !isVirtualCardId(table.id)
+    ) {
       fetchTableFks(table.id as ConcreteTableId);
     }
   });
 
   useEffect(() => {
-    if (hasNotFoundError) {
+    if (hasNotFoundError || !showControls) {
       return;
     }
 
@@ -178,6 +185,7 @@ export function ObjectDetailView({
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [
     hasNotFoundError,
+    showControls,
     viewPreviousObjectDetail,
     viewNextObjectDetail,
     closeObjectDetail,
@@ -354,7 +362,7 @@ export function ObjectDetailView({
               />
             )}
             <ObjectDetailBody
-              data={data}
+              columns={passedData.cols}
               objectName={objectName}
               zoomedRow={zoomedRow ?? []}
               settings={settings}

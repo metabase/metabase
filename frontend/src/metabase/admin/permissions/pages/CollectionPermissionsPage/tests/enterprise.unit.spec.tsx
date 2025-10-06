@@ -101,11 +101,11 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(await screen.findAllByText("View")).toHaveLength(2);
       expect(await screen.findByText("No access")).toBeInTheDocument();
 
-      const lastRequest = await fetchMock
-        .lastCall("path:/api/collection/graph", {
-          method: "PUT",
-        })
-        ?.request?.json();
+      const calls = fetchMock.callHistory.calls("path:/api/collection/graph", {
+        method: "PUT",
+      });
+      const lastCall = calls[calls.length - 1];
+      const lastRequest = await lastCall?.request?.json();
 
       expect(lastRequest).toEqual({
         ...iaPermissionsGraph,

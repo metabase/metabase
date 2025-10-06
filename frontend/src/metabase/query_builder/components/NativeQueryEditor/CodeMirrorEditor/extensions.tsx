@@ -1,41 +1,18 @@
-import {
-  acceptCompletion,
-  autocompletion,
-  moveCompletionSelection,
-} from "@codemirror/autocomplete";
-import { indentMore } from "@codemirror/commands";
-import {
-  foldService,
-  indentUnit,
-  syntaxHighlighting,
-} from "@codemirror/language";
-import { Prec } from "@codemirror/state";
+import { autocompletion } from "@codemirror/autocomplete";
+import { type Extension, Prec } from "@codemirror/state";
 import {
   Decoration,
-  EditorView,
   MatchDecorator,
   ViewPlugin,
-  drawSelection,
   keymap,
 } from "@codemirror/view";
-import {
-  type EditorState,
-  type Extension,
-  type Range,
-  type ReactCodeMirrorRef,
-  StateEffect,
-  StateField,
-  type Transaction,
-} from "@uiw/react-codemirror";
 import cx from "classnames";
-import { getNonce } from "get-nonce";
-import { type RefObject, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
-import { monospaceFontFamily } from "metabase/styled-components/theme";
-import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import * as Lib from "metabase-lib";
 
+import S from "./CodeMirrorEditor.module.css";
 import {
   useCardTagCompletion,
   useKeywordsCompletion,
@@ -75,12 +52,6 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
 
   return useMemo(() => {
     return [
-      nonce(),
-      fonts(),
-      drawSelection({
-        cursorBlinkRate: 1000,
-        drawRangeCursor: false,
-      }),
       language({ engine }),
       autocompletion({
         closeOnBlur: false,
@@ -95,11 +66,18 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
           keywordsCompletion,
         ],
       }),
-      highlighting(),
       highlightTags(),
-      highlightLines(),
-      folds(),
-      keyboardShortcuts({ onRunQuery }),
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-Enter",
+            run: () => {
+              onRunQuery?.();
+              return true;
+            },
+          },
+        ]),
+      ),
     ]
       .flat()
       .filter(isNotNull);
@@ -115,133 +93,6 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
   ]);
 }
 
-type KeyboardShortcutOptions = {
-  onRunQuery?: () => void;
-};
-
-function keyboardShortcuts({ onRunQuery }: KeyboardShortcutOptions) {
-  // Stop Cmd+Enter in CodeMirror from inserting a newline
-  // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
-  return Prec.highest(
-    keymap.of([
-      {
-        key: "Mod-Enter",
-        run: () => {
-          onRunQuery?.();
-          return true;
-        },
-      },
-      {
-        key: "Tab",
-        run: acceptCompletion,
-      },
-      {
-        key: "Tab",
-        run: insertIndent,
-      },
-      {
-        key: "Mod-j",
-        run: moveCompletionSelection(true),
-      },
-      {
-        key: "Mod-k",
-        run: moveCompletionSelection(false),
-      },
-    ]),
-  );
-}
-
-function nonce() {
-  // CodeMirror injects css into the DOM,
-  // to make this work, it needs the have the correct CSP nonce.
-  const nonce = getNonce();
-  if (!nonce) {
-    return null;
-  }
-  return EditorView.cspNonce.of(nonce);
-}
-
-/**
- * A CodeMirror service that folds code based on opening and closing pairs of parentheses, brackets, and braces.
- */
-function folds() {
-  const pairs = {
-    "(": ")",
-    "{": "}",
-    "[": "]",
-  };
-
-  return foldService.of(function (
-    state: EditorState,
-    from: number,
-    to: number,
-  ) {
-    const line = state.doc.sliceString(from, to);
-    const openIndex = line.search(/[({\[]/);
-    if (openIndex === -1) {
-      return null;
-    }
-
-    const left = line.at(openIndex);
-    if (!left || !(left in pairs)) {
-      return null;
-    }
-
-    const right = pairs[left as keyof typeof pairs];
-
-    const start = from + openIndex;
-    const doc = state.doc.sliceString(start);
-
-    let end = null;
-    let open = 0;
-    for (let idx = 1; idx < doc.length; idx++) {
-      const char = doc.charAt(idx);
-      if (char === left) {
-        open++;
-        continue;
-      }
-      if (char === right && open > 0) {
-        open--;
-        continue;
-      }
-      if (char === right && open === 0) {
-        end = start + idx;
-        break;
-      }
-    }
-
-    if (end === null) {
-      return null;
-    }
-
-    if (state.doc.lineAt(start + 1).number === state.doc.lineAt(end).number) {
-      return null;
-    }
-
-    return {
-      from: start + 1,
-      to: end,
-    };
-  });
-}
-
-function fonts() {
-  const shared = {
-    fontSize: "12px",
-    lineHeight: "normal",
-    fontFamily: monospaceFontFamily,
-  };
-
-  return EditorView.theme({
-    "&": shared,
-    ".cm-content": shared,
-  });
-}
-
-function highlighting() {
-  return syntaxHighlighting(metabaseSyntaxHighlighting);
-}
-
 function highlightTags() {
   const decorator = new MatchDecorator({
     regexp: /\{\{([^\}]*)\}\}/g,
@@ -252,7 +103,7 @@ function highlightTags() {
 
       return Decoration.mark({
         tagName: "span",
-        class: cx("cm-tag", {
+        class: cx(S.tag, {
           "cm-tag-variable": !isSnippet && !isCard,
           "cm-tag-snippet": isSnippet,
           "cm-tag-card": isCard,
@@ -276,74 +127,4 @@ function highlightTags() {
       decorations: (instance) => instance.tags,
     },
   );
-}
-
-export function insertIndent({
-  state,
-  dispatch,
-}: {
-  state: EditorState;
-  dispatch: (tr: Transaction) => void;
-}) {
-  if (state.selection.ranges.some((r) => !r.empty)) {
-    return indentMore({ state, dispatch });
-  }
-
-  const indent = state.facet(indentUnit);
-
-  dispatch(
-    state.update(state.replaceSelection(indent), {
-      scrollIntoView: true,
-      userEvent: "input",
-    }),
-  );
-
-  return true;
-}
-
-const highlightLinesEffect = StateEffect.define<Range<Decoration>[]>();
-const highlightLinesDecoration = Decoration.mark({
-  class: "cm-highlight-line",
-});
-
-function highlightLines() {
-  return StateField.define({
-    create() {
-      return Decoration.none;
-    },
-    update(value, transaction) {
-      value = value.map(transaction.changes);
-
-      for (const effect of transaction.effects) {
-        if (effect.is(highlightLinesEffect)) {
-          value = value.update({ filter: () => false });
-          value = value.update({ add: effect.value });
-        }
-      }
-
-      return value;
-    },
-    provide: (field) => EditorView.decorations.from(field),
-  });
-}
-
-export function useHighlightLines(
-  editorRef: RefObject<ReactCodeMirrorRef>,
-  highlightedLineNumbers: number[] = [],
-) {
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view) {
-      return;
-    }
-
-    const lines = highlightedLineNumbers.map((line) =>
-      view.state.doc.line(line),
-    );
-    const lineRanges = lines.map((line) =>
-      highlightLinesDecoration.range(line.from, line.to),
-    );
-
-    view.dispatch({ effects: highlightLinesEffect.of(lineRanges) });
-  }, [editorRef, highlightedLineNumbers]);
 }

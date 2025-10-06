@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
-import { space } from "metabase/styled-components/theme";
+import Button from "metabase/common/components/Button";
 
 export const GroupMappingsWidgetAndErrorRoot = styled.div`
   display: flex;
@@ -25,8 +24,8 @@ export const GroupMappingsWidgetHeader = styled.div`
   border-top-right-radius: 8px;
   display: flex;
   justify-content: space-between;
-  margin-bottom: ${space(2)};
-  padding: ${space(1)} ${space(2)};
+  margin-bottom: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 
   span {
     font-weight: 700;
@@ -39,7 +38,7 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
 
   > * {
     color: var(--mb-color-text-dark);
-    padding-right: ${space(1)};
+    padding-right: var(--mantine-spacing-sm);
     padding-top: 0;
   }
 `;
@@ -51,7 +50,7 @@ export const GroupMappingsWidgetAbout = styled.div`
   flex-direction: row;
 
   span {
-    padding-left: ${space(1)};
+    padding-left: var(--mantine-spacing-sm);
   }
 `;
 
@@ -62,6 +61,6 @@ export const GroupMappingsWidgetAboutContentRoot = styled.div`
 
 export const AddMappingButton = styled(Button)`
   float: right;
-  margin-right: ${space(2)};
+  margin-right: var(--mantine-spacing-md);
   margin-bottom: -40px;
 `;

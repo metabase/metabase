@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Popover from "metabase/components/Popover";
+import Popover from "metabase/common/components/Popover";
 import { Flex, Icon } from "metabase/ui";
 
 import RightClickPopoverS from "./RightClickPopover.module.css";
@@ -10,7 +10,7 @@ interface RightClickPopoverProps {
   canSaveSnippets: boolean;
   target: () => Element | null | undefined;
   runQuery: () => void;
-  openSnippetModalWithSelectedText: () => void;
+  openSnippetModalWithSelectedText?: () => void;
 }
 
 export const RightClickPopover = ({
@@ -26,7 +26,7 @@ export const RightClickPopover = ({
         <Icon mr="sm" name="play" size={16} />
         <h4>{t`Run selection`}</h4>
       </a>
-      {canSaveSnippets && (
+      {canSaveSnippets && openSnippetModalWithSelectedText && (
         <a
           className={RightClickPopoverS.Anchor}
           onClick={openSnippetModalWithSelectedText}

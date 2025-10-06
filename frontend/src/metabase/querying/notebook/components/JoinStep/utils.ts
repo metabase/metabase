@@ -1,20 +1,13 @@
-import * as Lib from "metabase-lib";
+import type { IconName } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 
-export function updateTemporalBucketing(
-  query: Lib.Query,
-  stageIndex: number,
-  condition: Lib.JoinCondition,
-  columns: Lib.ColumnMetadata[],
-) {
-  const bucket =
-    columns
-      .map((column) => Lib.temporalBucket(column))
-      .find((bucket) => bucket != null) ?? null;
+const JOIN_ICONS: Record<string, IconName> = {
+  "left-join": "join_left_outer",
+  "right-join": "join_right_outer",
+  "inner-join": "join_inner",
+  "full-join": "join_full_outer",
+};
 
-  return Lib.joinConditionUpdateTemporalBucketing(
-    query,
-    stageIndex,
-    condition,
-    bucket,
-  );
+export function getJoinStrategyIcon(strategyInfo: Lib.JoinStrategyDisplayInfo) {
+  return JOIN_ICONS[strategyInfo.shortName];
 }

@@ -2,8 +2,8 @@
   "/api/task endpoints"
   (:require
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
+   [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.task.core :as task]
@@ -13,7 +13,7 @@
   "Fetch a list of recent tasks stored as Task History"
   [_
    params :- [:maybe [:merge task-history/FilterParams task-history/SortParams]]]
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   {:total  (task-history/total params)
    :limit  (request/limit)
    :offset (request/offset)
@@ -28,7 +28,7 @@
 (api.macros/defendpoint :get "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
 ;;; TODO -- this is not necessarily a 'task history' thing and maybe belongs in the `task` module's API rather than
@@ -38,5 +38,5 @@
   tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
   reflect that."
   [] :- [:vector string?]
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))

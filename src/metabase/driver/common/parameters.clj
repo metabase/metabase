@@ -16,7 +16,7 @@
 ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
 ;;
 ;; *  A vector of maps like the one above (for multiple values)
-(p.types/defrecord+ FieldFilter [field value]
+(p.types/defrecord+ FieldFilter [field value alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->FieldFilter) (into {} this))))
@@ -25,6 +25,16 @@
   "Is `x` an instance of the `FieldFilter` record type?"
   [x]
   (instance? FieldFilter x))
+
+(p.types/defrecord+ TemporalUnit [field value alias]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->TemporalUnit) (into {} this))))
+
+(defn TemporalUnit?
+  "Is `x` an instance of the `TemporalUnit` record type?"
+  [x]
+  (instance? TemporalUnit x))
 
 ;; A "ReferencedCardQuery" parameter expands to the native query of the referenced card.
 ;;
@@ -88,17 +98,27 @@
   (pretty [_]
     (list (pretty/qualify-symbol-for-*ns* `->Param) k)))
 
+(p.types/defrecord+ FunctionParam [function-name args]
+  pretty/PrettyPrintable
+  (pretty [_]
+    (list (pretty/qualify-symbol-for-*ns* `->FunctionParam) function-name args)))
+
 (p.types/defrecord+ Optional [args]
   pretty/PrettyPrintable
   (pretty [_]
     (cons (pretty/qualify-symbol-for-*ns* `->Optional) args)))
 
-;; `Param?` and `Optional?` exist mostly so you don't have to try to import the classes from this namespace which can
-;; cause problems if the ns isn't loaded first
+;; `Param?`, `FunctionParam?`, and `Optional?` exist mostly so you don't have to try to import the classes from this
+;; namespace which can cause problems if the ns isn't loaded first
 (defn Param?
   "Is `x` an instance of the `Param` record type?"
   [x]
   (instance? Param x))
+
+(defn FunctionParam?
+  "Is `x` an instance of the `FunctionParam` record type?"
+  [x]
+  (instance? FunctionParam x))
 
 (defn Optional?
   "Is `x` an instance of the `Optional` record type?"

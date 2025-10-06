@@ -1,5 +1,5 @@
 const { H } = cy;
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -21,7 +21,7 @@ describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
@@ -248,20 +248,13 @@ describe("scenarios > embedding > full app", () => {
         H.popover().findByText("Orders").click();
 
         // Multi-stage data picker
-        cy.intercept("GET", "/api/search*", (req) => {
-          if (req.query.limit === "0") {
-            req.continue((res) => {
-              // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
-              res.body.total = 100;
-            });
-          }
-        });
         H.visitFullAppEmbeddingUrl({
           url: "/collection/root",
           qs: {
             top_nav: true,
             new_button: true,
             side_nav: false,
+            data_picker: "staged",
           },
         });
 
@@ -415,6 +408,22 @@ describe("scenarios > embedding > full app", () => {
       H.popover().within(() => {
         cy.findByRole("link", { name: "Reviews" }).should("not.exist");
         cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+      });
+
+      cy.log(
+        'test `entity_types=["question"]`, question should be ignored, and use the default value ["model", "table"] (metabase#58357)',
+      );
+      H.createQuestion(ordersCardDetails);
+      startNewEmbeddingQuestion({
+        searchParameters: {
+          entity_types: "question",
+        },
+      });
+      H.popover().within(() => {
+        cy.findByRole("link", { name: "Reviews" }).should("be.visible");
+        cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
+        // Questions shouldn't be shown
+        cy.findByRole("link", { name: "Card" }).should("not.exist");
       });
     });
 
@@ -816,20 +825,11 @@ describe("scenarios > embedding > full app", () => {
       isMultiStageDataPicker = false,
       searchParameters,
     } = {}) {
-      if (isMultiStageDataPicker) {
-        cy.intercept("GET", "/api/search*", (req) => {
-          if (req.query.limit === "0") {
-            req.continue((res) => {
-              // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
-              res.body.total = 100;
-            });
-          }
-        });
-      }
       H.visitFullAppEmbeddingUrl({
         url: "/",
         qs: {
           new_button: true,
+          ...(isMultiStageDataPicker && { data_picker: "staged" }),
           ...searchParameters,
         },
       });
@@ -1706,6 +1706,83 @@ describe("scenarios > embedding > full app", () => {
       cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("not.exist");
     });
+  });
+});
+
+describe("scenarios > embedding > full app - jwt sso integration", () => {
+  /**
+   * These tests are meant to validate the JWT SSO flow.
+   *
+   * We need to mock the JWT provider url even though we only care to check the
+   * redirect URL, this is because if the request fails, cypress will see
+   * `chrome-error://chromewebdata/` as the url.
+   */
+  const baseUrl = Cypress.config("baseUrl");
+  const dashboardId = ORDERS_DASHBOARD_ID;
+  const jwtSecret =
+    "0000000000000000000000000000000000000000000000000000000000000000";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    // enable interactive embedding
+    H.updateSetting("enable-embedding-interactive", true);
+    H.updateSetting("embedding-app-origins-interactive", "http://localhost:*");
+    H.updateSetting("embedding-secret-key", jwtSecret);
+
+    // setup jwt
+    H.updateSetting(
+      "jwt-identity-provider-uri",
+      "http://localhost:8888/jwt-provider",
+    );
+    H.updateSetting("jwt-shared-secret", jwtSecret);
+    H.updateSetting("jwt-enabled", true);
+
+    cy.signOut(); // we *need* to sign out, otherwise the SSO process won't kick in
+  });
+
+  it("when trying to access a resource while un-authenticated, it should pass the path via return_to to the jwt provider", () => {
+    cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
+      req.reply({
+        statusCode: 200,
+        body: "ok",
+      });
+    }).as("jwt-provider");
+
+    H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
+
+    cy.wait("@jwt-provider").then((interception) => {
+      expect(interception.request.url).to.equal(
+        `http://localhost:8888/jwt-provider?return_to=/dashboard/${dashboardId}`,
+      );
+    });
+  });
+
+  it("should authenticate the user correctly if the JWT provider returns a valid JWT token", () => {
+    // 1) sign a jwt for the user
+    cy.task("signJwt", {
+      payload: {
+        email: USERS.normal.email,
+        exp: Math.round(Date.now() / 1000) + 10 * 60,
+      },
+      secret: jwtSecret,
+    }).then((jwtToken) => {
+      // 2) mock the JWT provider to redirect to the auth/sso endpoint with the JWT
+      cy.intercept(/http:\/\/localhost:8888\/.*/, (req) => {
+        const redirectUrl = `${baseUrl}/auth/sso?jwt=${jwtToken}&return_to=/dashboard/${dashboardId}`;
+        req.redirect(redirectUrl);
+      }).as("jwt-provider");
+    });
+
+    // 3) visit the dashboard
+    H.visitFullAppEmbeddingUrl({ url: `/dashboard/${dashboardId}` });
+
+    cy.wait("@jwt-provider");
+
+    // 4) verify the user is authenticated and can access the dashboard
+    cy.url().should("equal", `${baseUrl}/dashboard/${dashboardId}`);
+    H.main().findByText("Orders in a dashboard").should("be.visible");
   });
 });
 

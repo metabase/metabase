@@ -5,12 +5,10 @@ import {
   FIRST_COLLECTION_ENTITY_ID,
   SECOND_COLLECTION_ENTITY_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/component-testing-sdk";
-import {
-  mockAuthProviderAndJwtSignIn,
-  mountSdkContent,
-} from "e2e/support/helpers/component-testing-sdk/component-embedding-sdk-helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing/component-embedding-sdk-helpers";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
 describe("scenarios > embedding-sdk > collection browser", () => {
   describe("personal collection", () => {
@@ -78,6 +76,19 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       signInAsAdminAndEnableEmbeddingSdk();
       cy.signOut();
       mockAuthProviderAndJwtSignIn();
+    });
+
+    it("does not contain parent collection in breadcrumb (EMB-596)", () => {
+      cy.intercept("GET", "/api/collection/*").as("getCollection");
+
+      mountSdkContent(
+        <CollectionBrowser collectionId={SECOND_COLLECTION_ENTITY_ID} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Second collection").should("exist");
+        cy.findByText("First collection").should("not.exist");
+      });
     });
 
     it("can change collection to a different entity id without crashing (metabase#57438)", () => {

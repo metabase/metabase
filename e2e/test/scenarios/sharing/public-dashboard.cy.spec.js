@@ -193,7 +193,7 @@ describe("scenarios > public > dashboard", () => {
     });
 
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
-    cy.button("Apply").should("not.exist");
+    H.applyFilterToast().should("not.exist");
 
     H.filterWidget().click();
     H.popover().within(() => {
@@ -203,8 +203,8 @@ describe("scenarios > public > dashboard", () => {
 
     cy.findByTestId("scalar-value").should("have.text", COUNT_ALL);
 
-    cy.button("Apply").should("be.visible").click();
-    cy.button("Apply").should("not.exist");
+    H.applyFilterButton().click();
+    H.applyFilterToast().should("not.exist");
     cy.findByTestId("scalar-value").should("have.text", COUNT_DOOHICKEY);
   });
 
@@ -315,7 +315,7 @@ describe("scenarios [EE] > public > dashboard", () => {
 
     prepareDashboard();
 
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should set the window title to `{dashboard name} · {application name}`", () => {
@@ -345,5 +345,58 @@ describe("scenarios [EE] > public > dashboard", () => {
     }).should("exist");
 
     cy.url().should("include", "locale=de");
+  });
+
+  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
+    cy.get("@dashboardId").then((id) => {
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+        onBeforeLoad: (window) => {
+          window.overrideIsWithinIframe = true;
+        },
+      });
+    });
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+
+    cy.window().then((win) => {
+      delete win.overrideIsWithinIframe;
+    });
+  });
+
+  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
+    cy.get("@dashboardId").then((id) => {
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+      });
+    });
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "not.have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+  });
+
+  it("should handle /api/session/properties incorrect response (metabase#62501)", () => {
+    cy.intercept("/api/session/properties", {
+      statusCode: 200,
+      headers: {},
+      body: "<html><body><h1>Those aren't the droids you're looking for</h1></body></html>",
+    });
+
+    cy.get("@dashboardId").then(H.visitPublicDashboard);
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.findByText("Test Dashboard").should("exist");
+    });
   });
 });

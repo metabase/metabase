@@ -37,6 +37,10 @@ const theme = defineMetabaseTheme({
     // Default background color
     background: "#FFFFFF",
 
+    // Light background color for some control backgrounds.
+    // Defaults are derived from `background` (slightly darker in light mode, much lighter in dark mode).
+    "background-light": "#F0F2F5",
+
     // Slightly muted background color.
     "background-secondary": "#EDF2F5",
 

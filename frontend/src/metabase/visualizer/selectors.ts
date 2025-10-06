@@ -38,13 +38,13 @@ type State = {
 const getCurrentHistoryItem = (state: State) => state.visualizer.present;
 const getFirstHistoryItem = (state: State) => state.visualizer.past[0];
 
-const getVisualizationColumns = (state: State) =>
+// Public selectors
+
+export const getVisualizationColumns = (state: State) =>
   getCurrentHistoryItem(state).columns;
 
-const getVisualizerColumnValuesMapping = (state: State) =>
+export const getVisualizerColumnValuesMapping = (state: State) =>
   getCurrentHistoryItem(state).columnValuesMapping;
-
-// Public selectors
 
 export const getVisualizerRawSettings = (state: State) =>
   getCurrentHistoryItem(state).settings;
@@ -82,6 +82,9 @@ export const getIsLoading = createSelector(
 export const getDraggedItem = (state: State) =>
   getCurrentHistoryItem(state).draggedItem;
 
+export const getHoveredItems = (state: State) =>
+  getCurrentHistoryItem(state).hoveredItems;
+
 export const getCanUndo = (state: State) => state.visualizer.past.length > 0;
 export const getCanRedo = (state: State) => state.visualizer.future.length > 0;
 
@@ -113,15 +116,11 @@ export const getUsedDataSources = createSelector(
 );
 
 export const getIsMultiseriesCartesianChart = createSelector(
-  [
-    getVisualizationType,
-    getVisualizerColumnValuesMapping,
-    getVisualizerRawSettings,
-  ],
-  (display, columnValuesMapping, settings) =>
+  [getVisualizationType, getVisualizerColumnValuesMapping],
+  (display, columnValuesMapping) =>
     display &&
     isCartesianChart(display) &&
-    shouldSplitVisualizerSeries(columnValuesMapping, settings),
+    shouldSplitVisualizerSeries(columnValuesMapping),
 );
 
 const getVisualizerDatasetData = createSelector(
@@ -177,11 +176,29 @@ export const getVisualizerRawSeries = createSelector(
     getVisualizerFlatRawSeries,
     getVisualizerColumnValuesMapping,
     getIsMultiseriesCartesianChart,
+    getUsedDataSources,
   ],
-  (flatSeries, columnValuesMapping, isMultiseriesCartesianChart): RawSeries => {
-    return isMultiseriesCartesianChart
-      ? splitVisualizerSeries(flatSeries, columnValuesMapping)
+  (
+    flatSeries,
+    columnValuesMapping,
+    isMultiseriesCartesianChart,
+    dataSources,
+  ): RawSeries => {
+    const dataSourceNameMap = Object.fromEntries(
+      dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+    );
+    const series = isMultiseriesCartesianChart
+      ? splitVisualizerSeries(
+          flatSeries,
+          columnValuesMapping,
+          dataSourceNameMap,
+        )
       : flatSeries;
+
+    return series.map((s) => ({
+      ...s,
+      columnValuesMapping,
+    }));
   },
 );
 

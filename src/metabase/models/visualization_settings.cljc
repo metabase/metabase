@@ -19,118 +19,81 @@
   In general, conversion functions in this namespace (i.e. those that convert various pieces from one form to the other)
   will be prefixed with either `db->norm` or `norm->db`, depending on which direction they implement.
   "
-  #?@
-   (:clj
-    [(:require
-      [clojure.set :as set]
-      [clojure.spec.alpha :as s]
-      [medley.core :as m]
-      [metabase.legacy-mbql.normalize :as mbql.normalize]
-      [metabase.util.json :as json])]
-    :cljs
-    [(:require
-      [clojure.set :as set]
-      [clojure.spec.alpha :as s]
-      [medley.core :as m]
-      [metabase.legacy-mbql.normalize :as mbql.normalize])]))
+  (:require
+   #?@(:clj [[metabase.util.json :as json]])
+   [clojure.set :as set]
+   [malli.core :as mc]
+   [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 
 ;;; -------------------------------------------------- Specs --------------------------------------------------
 
-(s/def ::field-id integer?)
-(s/def ::column-name string?)
+(def ^:private field-metadata-schema [:maybe map?])
+;; field-str - a field reference that is a string, which could be a reference to some named field (ex: output of an
+;; aggregation) or to a fully qualified field name (in the context of serialization); we won't attempt to interpret it
+;; here, only report that it's a string and set it in the ref map appropriately
+(def ^:private column-ref-schema
+  [:map
+   [::field-id {:optional true} ::lib.schema.id/field]
+   [::column-name {:optional true} string?]
+   [::field-str {:optional true} string?]
+   [::field-metadata {:optional true} field-metadata-schema]])
 
-;; a field reference that is a string, which could be a reference to some named field (ex: output of an aggregation)
-;; or to a fully qualified field name (in the context of serialization); we won't attempt to interpret it here, only
-;; report that it's a string and set it in the ref map appropriately
-(s/def ::field-str string?)
-
-(s/def ::field-metadata (s/or :nil? nil? :map? map?))
-(s/def ::column-ref (s/keys :opt [::field-id ::column-name ::field-str ::field-metadata]))
-
-(s/def ::column-settings (s/keys))
-(s/def ::click-behavior (s/keys))
-(s/def ::visualization-settings (s/keys :opt [::column-settings ::click-behavior]))
-
-(s/def ::field-id-vec (s/tuple #{"ref"}
-                               (s/tuple #{"field"}
-                                        (s/or :field-id int? :field-str string?)
-                                        (s/or :field-metadata map? :nil nil?))))
-
-(s/def ::expression-vec (s/tuple #{"ref"} (s/tuple #{"expression"} string?)))
-
-(s/def ::db-column-ref-vec (s/or :field ::field-id-vec
-                                 :expression ::expression-vec
-                                 :column-name (s/tuple (partial = "name") string?)))
-
-(s/def ::click-behavior-type keyword? #_(s/or :cross-filter ::cross-filter
-                                              :link         ::link))
-
-(s/def ::click-behavior (s/keys :req [::click-behavior-type]
-                                :opt [::link-type ::parameter-mapping ::link-template ::link-text ::link-target-id]))
+(def ^:private db-column-ref-vec-schema
+  [:orn
+   [:field [:tuple
+            [:= "ref"]
+            [:tuple
+             [:= "field"]
+             [:orn [:field-id ::lib.schema.id/field] [:field-str string?]]
+             [:orn [:field-metadata map?] [:nil nil?]]]]]
+   [:expression [:tuple [:= "ref"] [:tuple [:= "expression"] string?]]]
+   [:column-name [:tuple [:= "name"] string?]]])
 
 ;; TODO: add more specific shape for this one
-(s/def ::parameter-mapping (s/or :nil? nil? :map? map?))
+(def ^:private parameter-mapping-schema [:maybe map?])
 
-;; target ID can be the auto generated ID or fully qualified name for serialization
-(s/def ::link-target-id (s/or :int int? :fully-qualified-name string?))
-(s/def ::link-template string?)
-(s/def ::link-text-template string?)
+(def ^:private click-behavior-schema
+  [:map
+   [::click-behavior-type {:optional true} keyword?]
+   [::link-type {:optional true} :any]
+   [::parameter-mapping {:optional true} parameter-mapping-schema]
+   [::link-template {:optional true} string?]
+   [::link-text {:optional true} string?]
+   ;; target ID can be the auto generated ID or fully qualified name for serialization
+   [::link-target-id {:optional true} [:or ::lib.schema.id/field string?]]])
 
-(s/def ::column-title string?)
-(s/def ::date-style #{"M/D/YYYY" "D/M/YYYY" "YYYY/M/D" "MMMM D, YYYY" "D MMMM, YYYY" "dddd, MMMM D, YYYY"})
-(s/def ::date-abbreviate boolean?)
-(s/def ::date-separator #{"/" "-" "."})
-(s/def ::time-style #{"HH:mm" "h:mm A" "h A"})
-(s/def ::time-enabled #{nil "minutes" "seconds" "milliseconds"})
-(s/def ::decimals pos-int?)
-(s/def ::number-separators #(or nil? (and string? (= 2 (count %)))))
-(s/def ::number-style #{"decimal" "percent" "scientific" "currency"})
-(s/def ::prefix string?)
-(s/def ::suffix string?)
-(s/def ::view-as string?)
-(s/def ::link-text string?)
+(def ^:private db-column-ref-schema
+  [:orn [:string? string?] [:vector? vector?] [:keyword? keyword?]])
 
-(s/def ::param-mapping-id string?)
-
-(s/def ::param-ref-type #{"column" "dimension" "variable" "parameter"})
-(s/def ::param-ref-id string?)
-(s/def ::param-ref-name string?)
-
-(s/def ::param-mapping-source (s/keys :req [::param-ref-id ::param-ref-type] :opt [::param-ref-name]))
-(s/def ::param-mapping-target ::param-mapping-source)
-
-(s/def ::db-column-ref (s/or :string? string? :vector? vector? :keyword? keyword?))
-
-(s/def ::entity-type #{::card ::dashboard})
+(def ^:private entity-type-schema [:or [:= ::card] [:= ::dashboard]])
 
 ;;; ----------------------------------------------- Parsing fns -----------------------------------------------
 
-(defn field-id->column-ref
+(mu/defn field-id->column-ref :- column-ref-schema
   "Creates a normalized column ref map for the given field ID. This becomes a key in the `::column-settings` map.
 
   If passed, `field-metadata` is also included in the map (but not interpreted)."
   {:added "0.40.0"}
-  [field-id & [field-metadata]]
-  (cond-> {::field-id field-id}
-    (some? field-metadata) (assoc ::field-metadata field-metadata)))
+  ([field-id :- ::lib.schema.id/field]
+   {::field-id field-id})
+  ([field-id :- ::lib.schema.id/field
+    field-metadata :- [:maybe field-metadata-schema]]
+   (cond-> {::field-id field-id}
+     (some? field-metadata) (assoc ::field-metadata field-metadata))))
 
-(s/fdef field-id->column-ref
-  :args (s/cat :field-id int? :field-metadata (s/? ::field-metadata))
-  :ret  ::column-ref)
-
-(defn column-name->column-ref
+(mu/defn column-name->column-ref :- column-ref-schema
   "Creates a normalized column ref map for the given `col-name`. This becomes a key in the `::column-settings` map."
   {:added "0.40.0"}
-  [col-name]
+  [col-name :- :string]
   {::column-name col-name})
 
-(s/fdef column-name->column-ref
-  :args (s/cat :col-name string?)
-  :ret  ::column-ref)
-
-(defn field-str->column-ref
+(mu/defn field-str->column-ref :- column-ref-schema
   "Creates a normalized column ref map for the given field string (which could be the name of a \"synthetic\" field,
   such as the output of an aggregation, or a fully qualified field name in the context of serialization. The
   visualization settings code will not make any attempt to interpret this string. It becomes the
@@ -138,15 +101,13 @@
 
   If passed, `field-metadata` is also included in the map (but not interpreted)."
   {:added "0.40.0"}
-  [field-qualified-name & [field-metadata]]
-  (cond-> {::field-str field-qualified-name}
-    (some? field-metadata) (assoc ::field-metadata field-metadata)))
+  ([field-qualified-name :- :string]
+   {::field-str field-qualified-name})
+  ([field-qualified-name :- :string, field-metadata :- [:maybe field-metadata-schema]]
+   (cond-> {::field-str field-qualified-name}
+     (some? field-metadata) (assoc ::field-metadata field-metadata))))
 
-(s/fdef field-str->column-ref
-  :args (s/cat :field-qualified-name string? :field-metadata (s/? ::field-metadata))
-  :ret ::column-ref)
-
-(defn- keyname
+(mu/defn- keyname :- :string
   "Returns the full string name of the keyword `kw`, including any \"namespace\" portion followed by forward slash.
 
   From https://clojuredocs.org/clojure.core/name#example-58264f85e4b0782b632278bf
@@ -154,12 +115,8 @@
   because our \"keyword value\" (as parsed from JSON/YAML/etc.) might actually look like the string version of a
   Clojure vector, which itself can contain a fully qualified name for serialization"
   {:added "0.40.0"}
-  [kw]
+  [kw :- keyword?]
   (str (when-let [kw-ns (namespace kw)] (str kw-ns "/")) (name kw)))
-
-(s/fdef keyname
-  :args (s/cat :kw keyword?)
-  :ret  string?)
 
 (defn- parse-json-string
   "Parse the given `json-str` to a map. In Clojure, this uses Cheshire. In Clojurescript, it calls `.parse` with
@@ -169,10 +126,6 @@
      :cljs (-> (.parse js/JSON json-str)
                js->clj)))
 
-(s/fdef parse-json-string
-  :args (s/cat :json-str string?)
-  :ret  (s/or :map map? :seq seqable?))
-
 (defn- encode-json-string
   "Encode the given `obj` map as a JSON string. In Clojure, this uses Cheshire. In Clojurescript, it uses
   `cljs.core.clj->js` in conjunction with `cljs.js`."
@@ -180,22 +133,18 @@
   #?(:clj  (json/encode obj)
      :cljs (.stringify js/JSON (clj->js obj))))
 
-(s/fdef encode-json-string
-  :args (s/cat :obj (s/or :map map? :seq seqable?))
-  :ret  string?)
-
-(defn db->norm-column-ref
+(mu/defn db->norm-column-ref :- column-ref-schema
   "Converts a (parsed, vectorized) DB-form column ref to the equivalent normal form.
 
   Does the opposite of `norm->db-column-ref`"
-  [column-ref-vec]
-  (let [parsed (s/conform ::db-column-ref-vec column-ref-vec)]
-    (if (s/invalid? parsed)
-      (throw (ex-info "Invalid input" (s/explain-data ::db-column-ref-vec column-ref-vec)))
-      (let [[m parts] parsed]
+  [column-ref-vec :- db-column-ref-vec-schema]
+  (let [parsed (mc/parse db-column-ref-vec-schema column-ref-vec)]
+    (if (= parsed ::mc/invalid)
+      (throw (ex-info "Invalid input" (mr/explain db-column-ref-vec-schema column-ref-vec)))
+      (let [{m :key, parts :value} parsed]
         (case m
           :field
-          (let [[_ [_ [_ [id-or-str v] [_ field-md]]]] parsed]
+          (let [[_ [_ {id-or-str :key, v :value} {field-md :value}]] parts]
             (cond-> (case id-or-str
                       :field-id {::field-id v}
                       :field-str {::field-str v})
@@ -203,14 +152,10 @@
           :column-name
           {::column-name (nth parts 1)}
           :expression
-          (let [[_expression [_ref [_expression column-name]]] parsed]
+          (let [[_ref [_expression column-name]] parts]
             {::column-name column-name}))))))
 
-(s/fdef db->norm-column-ref
-  :args (s/cat :column-ref ::db-column-ref-vec)
-  :ret  ::column-ref)
-
-(defn parse-db-column-ref
+(mu/defn parse-db-column-ref :- column-ref-schema
   "Parses the DB representation of a column reference, and returns the equivalent normal form.
 
   The `column-ref` parameter can be a string, a vector, or keyword.
@@ -229,20 +174,16 @@
   Returns a map representing the column reference (conforming to the normal form `::column-ref` spec), by delegating
   to `db->norm-column-ref`."
   {:added "0.40.0"}
-  [column-ref]
-  (let [parsed (s/conform ::db-column-ref column-ref)]
-    (if (s/invalid? parsed)
-      (throw (ex-info "Invalid input" (s/explain-data ::db-column-ref column-ref)))
-      (let [[k v]    parsed
-            ref->vec (case k
-                       :string?  (comp vec parse-json-string)
-                       :keyword? (comp vec parse-json-string keyname)
-                       :vector?  identity)]
+  [column-ref :- db-column-ref-schema]
+  (let [parsed (mc/parse db-column-ref-schema column-ref)]
+    (if (= parsed ::mc/invalid)
+      (throw (ex-info "Invalid input" (mr/explain db-column-ref-schema column-ref)))
+      (let [{k :key, v :value} parsed
+            ref->vec           (case k
+                                 :string?  (comp vec parse-json-string)
+                                 :keyword? (comp vec parse-json-string keyname)
+                                 :vector?  identity)]
         (db->norm-column-ref (ref->vec v))))))
-
-(s/fdef parse-db-column-ref
-  :args (s/cat :column-ref ::db-column-ref)
-  :ret ::column-ref)
 
 ;;; ------------------------------------------------ Builder fns ------------------------------------------------
 
@@ -258,86 +199,66 @@
     settings
     (assoc settings ::column-settings {})))
 
-(s/fdef with-col-settings
-  :args (s/cat :settings ::visualization-settings)
-  :ret  ::visualization-settings)
-
-(defn crossfilter-click-action
+(mu/defn crossfilter-click-action :- click-behavior-schema
   "Creates a crossfilter click action with the given `param-mapping`, in the normalized form."
   {:added "0.40.0"}
-  [param-mapping]
+  [param-mapping :- parameter-mapping-schema]
   {::click-behavior-type ::cross-filter
    ::parameter-mapping   param-mapping})
 
-(s/fdef crossfilter-click-action
-  :args (s/cat :param-mapping ::parameter-mapping)
-  :ret  ::click-behavior)
-
-(defn url-click-action
+(mu/defn url-click-action :- click-behavior-schema
   "Creates a URL click action linking to a `url-template`, in the normalized form."
   {:added "0.40.0"}
-  [url-template]
+  [url-template :- :string]
   {::click-behavior-type ::link
    ::link-type           ::url
    ::link-template       url-template})
 
-(s/fdef url-click-action
-  :args (s/cat :url-template string?)
-  :ret  ::click-behavior)
-
-(defn entity-click-action
+(mu/defn entity-click-action :- click-behavior-schema
   "Creates a click action linking to an entity having `entity-type` with ID `entity-id`, in the normalized form.
   `parameter-mapping` is an optional argument."
   {:added "0.40.0"}
-  [entity-type entity-id & [parameter-mapping]]
+  [entity-type :- entity-type-schema
+   entity-id :- pos-int?
+   parameter-mapping :- [:maybe parameter-mapping-schema]]
   (cond-> {::click-behavior-type ::link
            ::link-type           entity-type
            ::link-target-id      entity-id}
     (some? parameter-mapping) (assoc ::parameter-mapping parameter-mapping)))
 
-(s/fdef entity-click-action
-  :args (s/cat :entity-type ::entity-type :entity-id int? :parameter-mapping ::parameter-mapping)
-  :ret  ::click-behavior)
-
-(defn with-click-action
+(mu/defn with-click-action :- click-behavior-schema
   "Creates a click action from a given `from-field-id` Field identifier to the given `to-entity-type` having ID
   `to-entity-id`, and adds it to the given `settings`. This happens in the normalized form, and hence this should be
   passed the output of another fn (including, currently, `visualization-settings`). If the given `from-field-id`
   already has a click action, it will be replaced."
   {:added "0.40.0"}
-  [settings col-key action]
+  [settings :- map?, col-key :- column-ref-schema, action :- click-behavior-schema]
   (-> settings
       with-col-settings
       (update ::column-settings assoc col-key {::click-behavior action})))
 
-(s/fdef with-click-action
-  :args (s/cat :settings map? :col-key ::column-ref :action ::click-behavior)
-  :ret  ::click-behavior)
-
-(defn with-entity-click-action
+(mu/defn with-entity-click-action :- click-behavior-schema
   "Creates a click action from a given `from-field-id` Field identifier to the given `to-entity-type` having ID
   `to-entity-id`. This happens in the normalized form, and hence this should be passed the output of another fn
   (including, currently, `visualization-settings`). If the given `from-field-id` already has a click action, it will
   be replaced."
   {:added "0.40.0"}
-  [settings from-field-id to-entity-type to-entity-id & [parameter-mapping]]
+  [settings :- map?
+   from-field-id :- ::lib.schema.id/field
+   to-entity-type :- entity-type-schema
+   to-entity-id :- pos-int?
+   parameter-mapping :- [:maybe parameter-mapping-schema]]
   (with-click-action settings (field-id->column-ref from-field-id) (entity-click-action
                                                                     to-entity-type
                                                                     to-entity-id
                                                                     parameter-mapping)))
 
-(s/fdef with-entity-click-action
-  :args (s/cat :settings          map?
-               :from-field-id     int?
-               :to-entity-type    ::entity-type
-               :to-entity-id      int?
-               :parameter-mapping (s/? ::parameter-mapping))
-  :ret  ::click-behavior)
-
-(defn fk-parameter-mapping
+(mu/defn fk-parameter-mapping :- map?
   "Creates a parameter mapping for `source-col-name` (`source-field-id`) to `target-field-id` in normalized form."
   {:added "0.40.0"}
-  [source-col-name source-field-id target-field-id]
+  [source-col-name :- :string
+   source-field-id :- ::lib.schema.id/field
+   target-field-id :- ::lib.schema.id/field]
   (let [id         [:dimension [:fk-> [:field source-field-id nil] [:field target-field-id nil]]]
         dimension  {:dimension [:field target-field-id {:source-field source-field-id}]}]
     {id #::{:param-mapping-id     id
@@ -347,10 +268,6 @@
             :param-mapping-target #::{:param-ref-type "dimension"
                                       :param-ref-id    id
                                       :param-dimension dimension}}}))
-
-(s/fdef fk-parameter-mapping
-  :args (s/cat :source-col-name string? :source-field-id int? :target-field-id int?)
-  :ret  map?)
 
 ;;; ---------------------------------------------- Conversion fns ----------------------------------------------
 
@@ -435,8 +352,6 @@
 
 (def ^:private norm->db-table-columns-keys
   (set/map-invert db->norm-table-columns-keys))
-
-(s/def ::table-column-field-ref ::field-id-vec)
 
 (defn- db->norm-param-ref [parsed-id param-ref]
   (cond-> (set/rename-keys param-ref db->norm-param-ref-keys)

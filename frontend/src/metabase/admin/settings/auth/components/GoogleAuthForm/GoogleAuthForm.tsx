@@ -2,17 +2,20 @@ import { useMemo } from "react";
 import { jt, t } from "ttag";
 
 import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
   useUpdateGoogleAuthMutation,
 } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import {
   useDocsUrl,
   useHasTokenFeature,
   useSetting,
 } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Form,
   FormErrorMessage,
@@ -20,7 +23,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Stack, Text, Title } from "metabase/ui";
+import { Flex, Stack, Text, Title } from "metabase/ui";
 import type { SettingDefinition, Settings } from "metabase-types/api";
 
 import { GOOGLE_SCHEMA } from "../../constants";
@@ -66,69 +69,67 @@ export const GoogleAuthForm = (): JSX.Element => {
   const isGoogleAuthEnabled = useSetting("google-auth-enabled");
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      enableReinitialize
-      validationSchema={GOOGLE_SCHEMA}
-      validationContext={settingValues}
-      onSubmit={onSubmit}
-    >
-      {({ dirty }) => (
-        <Form disabled={!dirty}>
-          <Breadcrumbs
-            crumbs={[
-              [t`Authentication`, "/admin/settings/authentication"],
-              [t`Google Sign-In`],
-            ]}
-          />
-          <Stack gap="md" maw="32.5rem">
-            <Title order={2} mt="lg">{t`Sign in with Google`}</Title>
-            <Text c="text-medium">
-              {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
-            </Text>
-            <Text c="text-medium">
-              {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
-                <ExternalLink key="link" href={docsUrl}>
-                  {t`here`}
-                </ExternalLink>
-              )}.`}
-            </Text>
-            <FormTextInput
-              name={CLIENT_ID_KEY}
-              label={t`Client ID`}
-              placeholder={t`{your-client-id}.apps.googleusercontent.com`}
-              {...getEnvSettingProps(settingDetails?.[CLIENT_ID_KEY])}
-            />
-            <FormTextInput
-              name={DOMAIN_KEY}
-              label={t`Domain`}
-              description={
-                hasTokenFeature
-                  ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
-                  : t`Allow users to sign up on their own if their Google account email address is from:`
-              }
-              placeholder={
-                hasTokenFeature
-                  ? "mycompany.com, example.com.br, otherdomain.co.uk"
-                  : "mycompany.com"
-              }
-              nullable
-              {...getEnvSettingProps(settingDetails?.[DOMAIN_KEY])}
-            />
-            <Box>
-              <FormSubmitButton
-                label={
-                  isGoogleAuthEnabled ? t`Save changes` : t`Save and enable`
-                }
-                variant="filled"
-                disabled={!dirty}
-              />
-            </Box>
-            <FormErrorMessage />
-          </Stack>
-        </Form>
-      )}
-    </FormProvider>
+    <SettingsPageWrapper title={t`Google auth`}>
+      <SettingsSection>
+        <FormProvider
+          initialValues={initialValues}
+          enableReinitialize
+          validationSchema={GOOGLE_SCHEMA}
+          validationContext={settingValues}
+          onSubmit={onSubmit}
+        >
+          {({ dirty }) => (
+            <Form disabled={!dirty}>
+              <Stack gap="md">
+                <Title order={2}>{t`Sign in with Google`}</Title>
+                <Text c="text-medium">
+                  {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
+                </Text>
+                <Text c="text-medium">
+                  {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
+                    <ExternalLink key="link" href={docsUrl}>
+                      {t`here`}
+                    </ExternalLink>
+                  )}.`}
+                </Text>
+                <FormTextInput
+                  name={CLIENT_ID_KEY}
+                  label={t`Client ID`}
+                  placeholder={t`{your-client-id}.apps.googleusercontent.com`}
+                  {...getEnvSettingProps(settingDetails?.[CLIENT_ID_KEY])}
+                />
+                <FormTextInput
+                  name={DOMAIN_KEY}
+                  label={t`Domain`}
+                  description={
+                    hasTokenFeature
+                      ? t`Allow users to sign up on their own if their Google account email address is from one of the domains you specify here:`
+                      : t`Allow users to sign up on their own if their Google account email address is from:`
+                  }
+                  placeholder={
+                    hasTokenFeature
+                      ? "mycompany.com, example.com.br, otherdomain.co.uk"
+                      : "mycompany.com"
+                  }
+                  nullable
+                  {...getEnvSettingProps(settingDetails?.[DOMAIN_KEY])}
+                />
+                <Flex justify="end">
+                  <FormSubmitButton
+                    label={
+                      isGoogleAuthEnabled ? t`Save changes` : t`Save and enable`
+                    }
+                    variant="filled"
+                    disabled={!dirty}
+                  />
+                </Flex>
+                <FormErrorMessage />
+              </Stack>
+            </Form>
+          )}
+        </FormProvider>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };
 

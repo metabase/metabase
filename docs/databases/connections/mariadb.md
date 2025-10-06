@@ -18,6 +18,10 @@ Metabase supports the oldest supported version of Maria DB through the latest st
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -92,6 +96,16 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 ## Syncing records that include JSON
 
 JSON schema inference doesn't work with MariaDB, due to implementation differences between MySQL and MariaDB.
+
+## Passwords with special characters
+
+If your password contains characters that aren't UTF-8, then you might need to add an additional variable to the connection string `passwordCharacterEncoding=<your_encoding_here>`. This ensures that MariaDB understands the special characters in the password during authentication.
+
+## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

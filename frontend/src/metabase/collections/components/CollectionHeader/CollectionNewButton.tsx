@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/lib/redux";
 import { setOpenModal } from "metabase/redux/ui";
 
@@ -14,6 +14,7 @@ export const CollectionNewButton = () => {
       icon="add_folder"
       aria-label={t`Create a new collection`}
       tooltipLabel={t`Create a new collection`}
+      tooltipPosition="bottom"
       onClick={() => {
         trackNewCollectionFromHeaderInitiated();
         dispatch(setOpenModal("collection"));

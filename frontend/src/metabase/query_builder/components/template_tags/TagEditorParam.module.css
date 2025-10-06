@@ -10,3 +10,7 @@
   align-self: flex-end;
   color: var(--mb-color-brand);
 }
+
+.Parameter {
+  font-size: 17px;
+}

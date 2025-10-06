@@ -107,11 +107,32 @@
 .messageActions {
   opacity: 0;
   transition: all 150ms linear;
+  min-height: 1rem;
 }
 
 .messageContainer:hover .messageActions,
 .messageContainer:last-child.messageContainerAgent .messageActions {
   opacity: 1;
+}
+
+.promptSuggestionsContainer {
+  /* height if there's 3 single-line suggestions
+   * this prevents a jump once suggestions have loaded in most cases */
+  min-height: 106px;
+  flex-shrink: 0;
+}
+
+.promptSuggestionButton {
+  display: block;
+  height: auto;
+  text-align: start;
+  line-height: 1.4;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+
+  span {
+    text-wrap-mode: wrap;
+  }
 }
 
 .textInputContainer {

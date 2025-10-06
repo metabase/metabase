@@ -57,7 +57,9 @@ export function FilterHeaderButton({
       <Popover opened={isOpened} position="bottom-start" onDismiss={close}>
         <Popover.Target>
           <Button
-            className={cx(className, ViewTitleHeaderS.FilterButton)}
+            className={cx(className, ViewTitleHeaderS.FilterButton, {
+              [ViewTitleHeaderS.FiltersActive]: hasFilters,
+            })}
             leftSection={<Icon name={hasFilters ? "filter_plus" : "filter"} />}
             onClick={toggle}
             data-testid="question-filter-header"

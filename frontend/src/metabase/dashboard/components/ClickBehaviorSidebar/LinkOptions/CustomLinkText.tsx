@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 import CS from "metabase/css/core/index.css";
 import type {
   ArbitraryCustomDestinationClickBehavior,

@@ -44,7 +44,7 @@
       (with-redefs [ee-audit/analytics-dir-resource nil]
         (is (nil? @#'ee-audit/analytics-dir-resource))
         (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
@@ -53,7 +53,7 @@
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-      (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
@@ -172,3 +172,86 @@
     (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
+
+(deftest adjust-audit-db-to-source-test
+  (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"
+    (mt/with-temp [:model/Database {audit-db-id :id} {:engine "h2"}
+                   ;; Create tables with both uppercase and lowercase names
+                   :model/Table {upper-table-id :id} {:db_id audit-db-id
+                                                      :schema "public"
+                                                      :name "USERS"}
+                   :model/Table {lower-table-id :id} {:db_id audit-db-id
+                                                      :schema "public"
+                                                      :name "users"}
+                   ;; Create another table that doesn't have a lowercase version
+                   :model/Table {single-table-id :id} {:db_id audit-db-id
+                                                       :schema "public"
+                                                       :name "ORDERS"}
+
+                   ;; Create another table that has a two lower case versions
+                   ;; one without a nil schema
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "accounts"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema nil
+                                   :name "accounts"}
+
+                   ;; Create another table that has both upper and lower case schemas
+                   ;; and table names
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "friends"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "PUBLIC"
+                                   :name "FRIENDS"}
+
+                   :model/Table {no-schema-table :id} {:db_id audit-db-id
+                                                       :schema nil
+                                                       :name "products"}
+
+                   ;; Create fields with both uppercase and lowercase names
+                   :model/Field {upper-field-id :id} {:table_id upper-table-id
+                                                      :name "EMAIL"}
+                   :model/Field {lower-field-id :id} {:table_id lower-table-id
+                                                      :name "email"}
+                   ;; Create another field that doesn't have a lowercase version
+                   :model/Field {single-field-id :id} {:table_id single-table-id
+                                                       :name "PRODUCT"}]
+
+      ;; Call the function we're testing
+      (#'ee-audit/adjust-audit-db-to-source! {:id audit-db-id})
+
+      (testing "Database engine should be set to postgres"
+        (is (= :postgres
+               (t2/select-one-fn :engine :model/Database :id audit-db-id))))
+
+      (testing "Tables with existing lowercase versions should not be modified"
+        (is (= "USERS"
+               (t2/select-one-fn :name :model/Table :id upper-table-id)))
+        (is (= "users"
+               (t2/select-one-fn :name :model/Table :id lower-table-id))))
+
+      (testing "Tables without lowercase versions should be converted to lowercase"
+        (is (= "orders"
+               (t2/select-one-fn :name :model/Table :id single-table-id))))
+
+      (testing "Tables with nil schemas should not be changed if a table with a schema exists"
+        (is (= 2
+               (t2/count :model/Table {:where [:= :name "accounts"]}))))
+
+      (testing "Tables with nil schemas have their schema set to \"public\""
+        (is (= "public"
+               (t2/select-one-fn :schema :model/Table :id no-schema-table))))
+
+      (testing "Fields with existing lowercase versions should not be modified"
+        (is (= "EMAIL"
+               (t2/select-one-fn :name :model/Field :id upper-field-id)))
+        (is (= "email"
+               (t2/select-one-fn :name :model/Field :id lower-field-id))))
+
+      (testing "Fields without lowercase versions should be converted to lowercase"
+        (is (= "product"
+               (t2/select-one-fn :name :model/Field :id single-field-id)))))))

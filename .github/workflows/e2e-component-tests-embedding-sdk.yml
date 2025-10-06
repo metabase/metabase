@@ -9,11 +9,11 @@ on:
 
 jobs:
   files-changed:
-    name: Check which files changed
+    name: "SDK e2e > Check which files changed"
     runs-on: ubuntu-22.04
     timeout-minutes: 3
     outputs:
-      e2e_all: ${{ steps.changes.outputs.e2e_all }}
+      e2e_embedding_sdk: ${{ steps.changes.outputs.e2e_embedding_sdk }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -25,6 +25,7 @@ jobs:
 
   # if this is a test on a release branch, we need to check the build requirements
   get-build-requirements:
+    name: "SDK e2e > [Backport only] Get build requirements"
     if: |
       !cancelled() &&
       contains(github.base_ref || github.ref, 'release-x')
@@ -59,10 +60,11 @@ jobs:
             };
 
   build-uberjar:
+    name: "SDK e2e > Build uberjar"
     needs: [files-changed, get-build-requirements]
     if: |
       !cancelled() &&
-      needs.files-changed.outputs.e2e_all == 'true'
+      needs.files-changed.outputs.e2e_embedding_sdk == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     env:
@@ -90,9 +92,10 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
 
   e2e-tests:
+    name: "SDK e2e > Run e2e tests (React ${{ matrix.react-version }})"
     needs: [get-build-requirements, build-uberjar]
     if: |
       !cancelled() &&
@@ -103,16 +106,17 @@ jobs:
       matrix:
         react-version: [18, 19]
       fail-fast: false
-    name: React ${{ matrix.react-version }}
     env:
       MB_EDITION: ee
       DISPLAY: ""
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
-      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
       CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      CYPRESS_IS_EMBEDDING_SDK: true
+      CYPRESS_IS_EMBEDDING_SDK: "true"
       COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
       TZ: US/Pacific # to make node match the instance tz
       CYPRESS_CI: true
@@ -120,16 +124,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-sdk-tests
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
@@ -180,7 +178,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-      - name: Upload Cypress Artifacts upon failure
+      - name: "SDK e2e > Upload Cypress Artifacts upon failure"
         uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -190,7 +188,7 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
-      - name: Publish Summary
+      - name: "SDK e2e > Publish Summary"
         if: failure()
         uses: actions/github-script@v7
         with:

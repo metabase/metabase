@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -156,6 +156,18 @@ interface SavePdfProps {
   includeBranding: boolean;
 }
 
+async function isValidColor(str: string) {
+  const { default: jspdf } = await import("jspdf");
+  const pdf = new jspdf();
+  try {
+    pdf.setFillColor(str);
+    return true;
+  } catch {
+    console.warn(`Unsupported color string: "${str}"`);
+    return false;
+  }
+}
+
 export const saveDashboardPdf = async ({
   selector,
   dashboardName,
@@ -178,7 +190,7 @@ export const saveDashboardPdf = async ({
 
   const pdfHeader = createHeaderElement(dashboardName, HEADER_MARGIN_BOTTOM);
   const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
@@ -204,9 +216,13 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  let backgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
+
+  if (!(await isValidColor(backgroundColor))) {
+    backgroundColor = "white"; // Fallback to white if the color is invalid
+  }
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(gridNode, {

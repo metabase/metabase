@@ -1,9 +1,9 @@
 (ns metabase.driver.common.table-rows-sample
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as helpers]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -31,17 +31,8 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} (helpers/distinct (helpers/non-empty [:sequential ::mbql.s/OrderBy]))]
+    [:order-by        {:optional true} [:ref ::mbql.s/OrderBys]]
     [:rff             {:optional true} fn?]]])
-
-(defn- text-field?
-  "Identify text fields which can accept our substring optimization.
-
-  JSON and XML fields are now marked as `:type/Structured` but in the past were marked as `:type/Text` so its not
-  enough to just check the base type."
-  [{:keys [base_type semantic_type]}]
-  (and (= base_type :type/Text)
-       (not (isa? semantic_type :type/Structured))))
 
 (defn- table-rows-sample-query
   "Returns the mbql query to query a table for sample rows"
@@ -50,7 +41,7 @@
    {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
   (let [database           (t2/select-one :model/Database (:db_id table))
         driver             (driver.u/database->driver database)
-        text-fields        (filter text-field? fields)
+        text-fields        (filter (comp #{:type/Text} (some-fn :effective_type :base_type)) fields)
         field->expressions (when (and truncation-size (driver.u/supports? driver :expressions database))
                              (into {} (for [field text-fields]
                                         [field [(str (gensym "substring"))
@@ -61,7 +52,6 @@
      :type       :query
      :query      (cond-> {:source-table (u/the-id table)
                           :expressions  expressions
-                          :expression-idents (update-vals expressions (fn [_] (u/generate-nano-id)))
                           :fields       (vec (for [field fields]
                                                (if-let [[expression-name _] (get field->expressions field)]
                                                  [:expression expression-name]

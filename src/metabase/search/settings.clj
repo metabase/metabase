@@ -14,10 +14,11 @@
   :audit      :getter)
 
 (defsetting search-engine
-  (i18n/deferred-tru "Which engine to use when performing search. Supported values are :in-place and :appdb")
-  :visibility :internal
+  (i18n/deferred-tru "Which engine to use by default when performing search. Supported values are :in-place, :appdb, and :semantic")
+  :visibility :authenticated
   :export?    false
-  :default    :in-place
+  :setter     :none
+  :default    :appdb
   :type       :keyword)
 
 (defsetting experimental-search-weight-overrides

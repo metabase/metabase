@@ -7,7 +7,10 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
@@ -59,7 +62,7 @@
                   (lib/breakout (meta/field-metadata :venues :category-id))
                   (lib/limit 100)
                   (lib/append-stage))
-        card-id (:id ((lib.tu/mock-cards) :orders))]
+        card-id (:id (:orders (lib.tu/mock-cards)))]
     (is (= [{:lib/type :mbql.stage/mbql :source-table (meta/id :orders)}]
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
@@ -152,9 +155,12 @@
           false (lib.util/update-query-stage
                  editable 0
                  #(-> %
-                       ; source-card not visible
+                      ;; source-card not visible
                       (assoc :source-card 999999999)
-                      (dissoc :source-table))))))
+                      (dissoc :source-table))))))))
+
+(deftest ^:parallel display-info-test-2
+  (testing "display-info"
     (testing "on native queries (#37765)"
       (let [editable              (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
             ;; Logic for the native-query mock borrowed from metabase.lib.native/has-write-permission-test
@@ -174,7 +180,7 @@
 (deftest ^:parallel convert-from-legacy-preserve-info-test
   (testing ":info key should be converted when converting from legacy to pMBQL"
     (is (=? {:lib/type     :mbql/query
-             :lib/metadata meta/metadata-provider
+             :lib/metadata lib.metadata.protocols/cached-metadata-provider?
              :database     (meta/id)
              :stages       [{:lib/type    :mbql.stage/mbql
                              :source-card 1}]
@@ -187,21 +193,43 @@
 
 (deftest ^:parallel convert-from-legacy-remove-type-test
   (testing "legacy keys like :type and :query should get removed"
-    (is (= {:database               (meta/id)
-            :lib/type               :mbql/query
-            :lib/metadata           meta/metadata-provider
-            :stages                 [{:lib/type :mbql.stage/mbql, :source-table 74040}]
-            :lib.convert/converted? true}
-           (lib.query/query meta/metadata-provider
-                            {:database 74001, :type :query, :query {:source-table 74040}})))))
+    (is (=? {:database               (meta/id)
+             :lib/type               :mbql/query
+             :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
+             :stages                 [{:lib/type :mbql.stage/mbql, :source-table 74040}]
+             :lib.convert/converted? true
+             :type                   (symbol "nil #_\"key is not present.\"")
+             :query                  (symbol "nil #_\"key is not present.\"")}
+            (lib.query/query meta/metadata-provider
+                             {:database 74001, :type :query, :query {:source-table 74040}})))))
+
+(deftest ^:parallel handle-null-collection-test
+  (testing "collection: null doesn't cause errors #59675"
+    (is (=? {:database               (meta/id)
+             :lib/type               :mbql/query
+             :lib/metadata           lib.metadata.protocols/cached-metadata-provider?
+             :stages                 [{:lib/type :mbql.stage/native
+                                       :template-tags {}
+                                       :native "select * from products limit 3;"}]
+             :lib.convert/converted? true
+             :type                   (symbol "nil #_\"key is not present.\"")
+             :query                  (symbol "nil #_\"key is not present.\"")}
+            (lib.query/query meta/metadata-provider
+                             {:database 1703
+                              :type :native
+                              :native {:template-tags {}
+                                       :query "select * from products limit 3;"
+                                       :collection nil}})))))
 
 (deftest ^:parallel can-run-test
   (mu/disable-enforcement
     #_{:clj-kondo/ignore [:equals-true]}
     (are [can-run? card-type query]
-         (= can-run? (lib.query/can-run query card-type))
+         (if (= card-type :question)
+           (= can-run? (lib.query/can-run query card-type) (lib.query/can-preview query))
+           (= can-run? (lib.query/can-run query card-type)))
       true  :question (lib.tu/venues-query)
-      false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
+      false :question (assoc (lib.tu/venues-query) :database nil) ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
       false :question (lib/native-query meta/metadata-provider "")
       false :metric   (lib.tu/venues-query)
@@ -269,36 +297,6 @@
                           (lib/aggregate (lib/count))
                           (lib/append-stage)
                           (lib/aggregate (lib/count))))))
-
-(deftest ^:parallel can-preview-test
-  (mu/disable-enforcement
-    (testing "can-preview"
-      (is (true? (lib/can-preview (lib.tu/venues-query))))
-      (testing "with an offset expression"
-        (let [offset-query (lib/expression (lib.tu/venues-query) "prev_price"
-                                           (lib/offset (meta/field-metadata :venues :price) -1))]
-          (testing "without order-by = false"
-            (is (= false (lib/can-preview offset-query))))
-          (testing "with order-by = true"
-            (is (true?  (-> offset-query
-                            (lib/order-by (meta/field-metadata :venues :latitude))
-                            lib/can-preview))))))
-      (testing "with an offset expression in an earlier stage"
-        (let [offset-query (-> (lib.tu/venues-query)
-                               (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
-                               (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
-                               (lib/aggregate (lib/count))
-                               lib/append-stage)]
-          (testing "without order-by in that stage = false"
-            (is (= false (lib/can-preview offset-query)))
-            ;; order by in the other stage doesn't help
-            (is (= false (-> offset-query
-                             (lib/order-by -1 (meta/field-metadata :venues :latitude) :asc)
-                             lib/can-preview))))
-          (testing "with order-by in that stage = true"
-            (is (true?  (-> offset-query
-                            (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
-                            lib/can-preview)))))))))
 
 (def ^:private query-for-preview
   "\"Christmas tree\" query with anything and everything hanging from its branches, for testing [[preview-query]]."
@@ -542,66 +540,6 @@
                                     "1971-10-12"]]}]}
               (lib/query mp query))))))
 
-#?(:clj
-   (deftest ^:synchronized cache-test
-     (let [query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
-           viz-cols   lib.metadata.calculation/visible-columns-method
-           calls      (atom 0)
-           exp-fields (into #{} cat
-                            [(map #(meta/id :orders %)   (meta/fields :orders))
-                             (map #(meta/id :people %)   (meta/fields :people))
-                             (map #(meta/id :products %) (meta/fields :products))])]
-       (testing "CLJ query cache"
-         (testing "is properly attached, and is maplike"
-           (is (= {} (-> query meta :lib/__cache))))
-
-         (testing "is effective for visible-columns on a whole stage"
-           (with-redefs [lib.metadata.calculation/visible-columns-method
-                         (fn [query stage-number x options]
-                           (when (= x (lib.util/query-stage query stage-number))
-                             (swap! calls inc))
-                           (viz-cols query stage-number x options))]
-             (is (= 0 @calls))
-             (is (= exp-fields
-                    (into #{} (map :id) (lib/visible-columns query))))
-             (is (= 1 @calls))
-             (is (= exp-fields
-                    (into #{} (map :id) (lib/visible-columns query))))
-             (is (= 1 @calls))
-
-             (testing "gets overwritten when the query changes"
-               (reset! calls 0)
-               (let [query'     (-> query
-                                    (lib/aggregate (lib/count))
-                                    (lib/append-stage))
-                     agg-fields [{:name       "count"
-                                  :lib/source :source/previous-stage}]]
-                 (is (= 0 @calls))
-                 (is (=? agg-fields
-                         (lib/visible-columns query')))
-                 (is (= 1 @calls))
-                 (is (=? agg-fields
-                         (lib/visible-columns query')))
-                 (is (= 1 @calls))))
-
-             (testing "but treats duplicate queries separately"
-               (reset! calls 0)
-               (let [query2 (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-                 (is (= 0 @calls))
-                 ;; Call for the original query twice - no new calls recorded since it's cached.
-                 (is (= exp-fields
-                        (into #{} (map :id) (lib/visible-columns query))))
-                 (is (= exp-fields
-                        (into #{} (map :id) (lib/visible-columns query))))
-                 (is (= 0 @calls))
-                 ;; Call for the new query; that adds a call.
-                 (is (= exp-fields
-                        (into #{} (map :id) (lib/visible-columns query2))))
-                 (is (= 1 @calls))
-                 (is (= exp-fields
-                        (into #{} (map :id) (lib/visible-columns query2))))
-                 (is (= 1 @calls))))))))))
-
 (deftest ^:parallel metric-based-question-test
   (let [question-id 100
         model-id 101
@@ -652,3 +590,28 @@
                :source-card model-id
                :aggregation [[:metric {} model-based-metric-id]]}]}
             (lib/query base-mp (lib.metadata/card mp model-based-metric-id))))))
+
+(deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test
+  (testing "Automatically wrap metadata providers to make them CachedMetadataProviders"
+    (let [mp meta/metadata-provider]
+      (is (not (lib.metadata.protocols/cached-metadata-provider? mp)))
+      (let [query (lib/query mp (meta/table-metadata :venues))]
+        (is (lib.metadata.protocols/cached-metadata-provider? (lib.metadata/->metadata-provider query)))))))
+
+(deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-2
+  (testing "Re-wrap things that are CachedMetadataProviders IF they do not have a cache"
+    (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
+              (lib.tu/mock-metadata-provider {}))]
+      (is (lib.metadata.protocols/cached-metadata-provider? mp))
+      (is (not (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)))
+      (is (= (lib.metadata.cached-provider/cached-metadata-provider mp)
+             (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))
+
+(deftest ^:parallel automatically-wrap-metadata-providers-in-cached-metadata-provider-test-3
+  (testing "Do-not re-wrap things that already have a cache"
+    (let [mp (lib.metadata.invocation-tracker/invocation-tracker-provider
+              (lib.metadata.cached-provider/cached-metadata-provider
+               (lib.tu/mock-metadata-provider {})))]
+      (is (lib.metadata.protocols/cached-metadata-provider? mp))
+      (is (lib.metadata.protocols/cached-metadata-provider-with-cache? mp))
+      (is (identical? mp (:lib/metadata (#'lib.query/ensure-cached-metadata-provider {:lib/metadata mp})))))))

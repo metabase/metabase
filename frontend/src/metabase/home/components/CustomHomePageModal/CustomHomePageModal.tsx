@@ -1,17 +1,15 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { trackCustomHomepageDashboardEnabled } from "metabase/admin/settings/analytics";
 import { updateSettings } from "metabase/admin/settings/settings";
-import { DashboardSelector } from "metabase/components/DashboardSelector/DashboardSelector";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button/Button";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { DashboardSelector } from "metabase/common/components/DashboardSelector/DashboardSelector";
+import Link from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Text } from "metabase/ui";
+import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 
 const CUSTOM_HOMEPAGE_SETTING_KEY = "custom-homepage";
@@ -49,7 +47,6 @@ export const CustomHomePageModal = ({
               c="text-white"
               fw={700}
             >{t`This dashboard has been set as your homepage.`}</Text>
-            <br />
             <Text
               span
               c="text-white"
@@ -84,30 +81,35 @@ export const CustomHomePageModal = ({
     onClose();
   }, [onClose, setDashboardId]);
 
-  const applicationName = useSelector(getApplicationName);
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <ModalContent
-        title={t`Customize Homepage`}
-        onClose={handleClose}
-        footer={[
-          <Button onClick={handleClose} key="custom-homepage-modal-cancel">
-            {t`Cancel`}
-          </Button>,
-          <Button
-            primary
-            onClick={handleSave}
-            key="custom-homepage-modal-save"
-            disabled={!dashboardId}
-          >
-            {t`Save`}
-          </Button>,
-        ]}
-      >
-        <p>{t`Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, ${applicationName} will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General.`}</p>
-        <DashboardSelector value={dashboardId} onChange={handleChange} />
-      </ModalContent>
+    <Modal
+      title={t`Pick a dashboard to appear on the homepage`}
+      opened={isOpen}
+      onClose={handleClose}
+      size="544px"
+    >
+      <Box mt="sm">
+        <Text>
+          {t`If anyone lacks permission to see the dashboard you pick, they'll be redirected to the default homepage.`}
+        </Text>
+        <Text mt="sm">{jt`You can always change the homepage in ${(<Link key="link" className={CS.link} to="/admin/settings/general" style={{ textDecoration: "underline" }}>{t`admin settings`}</Link>)} under General.`}</Text>
+        <Box mt="lg">
+          <DashboardSelector
+            value={dashboardId}
+            fullWidth={false}
+            onChange={handleChange}
+          />
+        </Box>
+      </Box>
+
+      <Flex mt="lg" justify="flex-end" gap="0.5rem">
+        <Button variant="subtle" onClick={handleClose}>
+          {t`Cancel`}
+        </Button>
+        <Button variant="filled" disabled={!dashboardId} onClick={handleSave}>
+          {t`Done`}
+        </Button>
+      </Flex>
     </Modal>
   );
 };

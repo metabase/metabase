@@ -7,14 +7,26 @@
    [metabase.audit-app.core :as audit]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
+
+(def ^:private dashboard-statistics-lock
+  "keyword to use for locking dashboard updates that can deadlock"
+  ::dashboard-statistics-lock)
+
+(defn- view-count-lock
+  [model]
+  (case model
+    :model/Card cluster-lock/card-statistics-lock
+    :model/Dashboard dashboard-statistics-lock
+    (keyword "metabase.events.view_log"
+             (str (name (t2/table-name model)) "-view-count"))))
 
 (defn- group-by-frequency
   "Given a list of items, returns a map of frequencies to items.
@@ -36,10 +48,7 @@
                              items)]
       (doseq [[model ids] model->ids]
         (let [cnt->ids (group-by-frequency ids)
-              lock-name (if (= model :model/Card)
-                          cluster-lock/card-statistics-lock ;; need to use a shared lock for all updates to the card table
-                          (keyword "metabase.events.view_log"
-                                   (str (name (t2/table-name model)) "-view-count")))]
+              lock-name (view-count-lock model)]
           (log/debugf "Writing %d items to %s view counts with lock %s" (count ids) model lock-name)
           (cluster-lock/with-cluster-lock lock-name
             (t2/query {:update (t2/table-name model)
@@ -60,12 +69,12 @@
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
-(defn- increment-view-counts!
+(defn increment-view-counts!
   "Increment the view count of the given `model` and `model-id`."
   [model model-id]
   (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
-(mu/defn ^:private record-views!
+(mu/defn record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [view-or-views :- [:or :map [:sequential :map]]]
   (span/with-span!
@@ -73,7 +82,7 @@
     (when (premium-features/log-enabled?)
       (t2/insert! :model/ViewLog view-or-views))))
 
-(defn- generate-view
+(defn generate-view
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
   [& {:keys [model object-id object user-id has-access context]
       :or   {has-access true}}]
@@ -108,11 +117,13 @@
   (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
                                              (fn [xs] (apply t/max (map :timestamp xs))))]
     (try
-      (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
-                  {:last_viewed_at (into [:case]
-                                         (mapcat (fn [[id timestamp]]
-                                                   [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
-                                                 dashboard-id->timestamp))})
+      (cluster-lock/with-cluster-lock dashboard-statistics-lock
+        (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
+                    {:last_viewed_at (into [:case]
+                                           (mapcat (fn [[id timestamp]]
+                                                     [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                   dashboard-id->timestamp))
+                     :updated_at :updated_at})) ;; setting last_viewed_at should not update the updated_at column
       (catch Exception e
         (log/error e "Failed to update dashboard last_viewed_at")))))
 

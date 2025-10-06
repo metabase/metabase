@@ -3,22 +3,23 @@ import type {
   DatabaseId,
   GroupsPermissions,
   SettingDefinition,
-  SettingKey,
 } from "metabase-types/api";
 
 export type AdminPathKey =
   | "data-model"
   | "settings"
+  | "embedding"
+  | "metabot"
   | "people"
   | "databases"
   | "permissions"
-  | "troubleshooting"
   | "audit"
   | "tools"
   | "performance"
   | "performance-models"
   | "performance-dashboards-and-questions"
-  | "performance-databases";
+  | "performance-databases"
+  | "transforms";
 
 export type AdminPath = {
   key: AdminPathKey;
@@ -42,7 +43,6 @@ export interface AdminState {
   };
   settings: {
     settings: SettingDefinition[];
-    warnings: Partial<Record<SettingKey, unknown>>;
   };
   databases: {
     deletionError: null | unknown;
@@ -51,6 +51,5 @@ export interface AdminState {
 }
 
 export interface AdminAppState {
-  isNoticeEnabled: boolean;
   paths: AdminPath[];
 }

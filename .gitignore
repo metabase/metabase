@@ -36,6 +36,7 @@
 /coverage
 /crate-*
 /cypress
+cypress.env.json
 /deploy/artifacts/*
 /docs/**/node_modules
 /docs/**/package.json
@@ -50,6 +51,7 @@
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
+/logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/
@@ -58,7 +60,12 @@
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
+/resources/frontend_client/app/embed.js
+/resources/frontend_client/app/embedding-sdk.js
+/resources/frontend_client/app/embedding-sdk.js.map
+/resources/frontend_client/tmp-*/
 /resources/frontend_client/embed.html
+/resources/frontend_client/embed-sdk.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
 /resources/embedding-sdk
@@ -91,6 +98,13 @@ xcuserdata
 dev/src/dev/nocommit/
 dev/serialization_deltas/
 *~
+
+# TypeScript compilation artifacts
+/build/
+*.tsbuildinfo
+/trace-output/
+/temp-types/
+
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
 /frontend/src/cljs
@@ -143,3 +157,9 @@ llm-payloads
 .aider*
 /config.yml
 CLAUDE.local.md
+.claude/settings.local.json
+
+.eslintcache
+
+/logs
+/.clojure-mcp

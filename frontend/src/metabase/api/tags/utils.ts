@@ -16,6 +16,7 @@ import type {
   DashboardSubscription,
   Database,
   DatabaseXray,
+  Dataset,
   Field,
   FieldDimension,
   FieldId,
@@ -104,6 +105,21 @@ export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+}
+
+export function provideAdhocQueryTags(
+  dataset: Dataset,
+): TagDescription<TagType>[] {
+  return [
+    listTag("database"),
+    idTag("database", dataset.database_id),
+    listTag("field"),
+    ...(dataset.data?.results_metadata?.columns
+      ?.map((column) =>
+        column.id !== undefined ? idTag("field", column.id) : null,
+      )
+      .filter((tag): tag is TagType => tag !== null) ?? []),
+  ];
 }
 
 export function provideAdhocQueryMetadataTags(
@@ -337,6 +353,15 @@ export function provideDashboardTags(
       ? provideCollectionTags(dashboard.collection)
       : []),
   ];
+}
+
+export function provideValidDashboardFilterFieldTags(
+  filteredIds: FieldId[],
+  filteringIds: FieldId[],
+): TagDescription<TagType>[] {
+  return [...filteredIds, ...filteringIds].map((fieldId) =>
+    idTag("field", fieldId),
+  );
 }
 
 export function provideDashboardQueryMetadataTags(
@@ -623,12 +648,14 @@ export function provideTimelineTags(
 }
 
 export function provideUserListTags(
-  users: UserInfo[],
+  users: Pick<UserInfo, "id">[],
 ): TagDescription<TagType>[] {
   return [listTag("user"), ...users.flatMap((user) => provideUserTags(user))];
 }
 
-export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {
+export function provideUserTags(
+  user: Pick<UserInfo, "id">,
+): TagDescription<TagType>[] {
   return [idTag("user", user.id)];
 }
 

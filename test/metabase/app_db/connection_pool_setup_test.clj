@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.app-db.core :as app-db]
    [metabase.app-db.data-source :as mdb.data-source]
    [metabase.connection-pool :as connection-pool]
    [metabase.test :as mt]
@@ -12,7 +13,7 @@
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 C3P0Registry ConnectionCustomizer PoolBackedDataSource)
-   (metabase.app_db.connection_pool_setup DbActivityTracker)))
+   (metabase.app_db.connection_pool_setup MetabaseConnectionCustomizer)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,19 +48,19 @@
   (dotimes [_ 5]
     (t2/count :model/Database)))
 
-(deftest DbActivityTracker-test
+(deftest MetabaseConnectionCustomizer-test
   (testing "connection customizer is registered"
-    (let [customizer (C3P0Registry/getConnectionCustomizer (.getName DbActivityTracker))]
+    (let [customizer (C3P0Registry/getConnectionCustomizer (.getName MetabaseConnectionCustomizer))]
       (is (some? customizer) "ConnectionCustomizer is not registered with c3p0")
       (is (instance? ConnectionCustomizer customizer)
           "checkin tracker must satisfy the c3p0 ConnectionCustomizer interface")
-      (is (instance? DbActivityTracker customizer)
-          "ConnectionCustomizer is not an instance of our DbActivityTracker")))
+      (is (instance? MetabaseConnectionCustomizer customizer)
+          "ConnectionCustomizer is not an instance of our MetabaseConnectionCustomizer")))
   (testing "db activity resets counter"
     (try
       (let [updated? (promise)]
         (add-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                   ::DbActivityTracker-test
+                   ::MetabaseConnectionCustomizer-test
                    (fn [_key _ref _old-state _new-state]
                      (deliver updated? ::completed)))
         (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
@@ -71,12 +72,13 @@
           (is (instance? java.time.temporal.Temporal recent-checkin)
               "recent-checkin should be a temporal type (OffsetDateTime)")))
       (finally (remove-watch (var-get #'mdb.connection-pool-setup/latest-activity)
-                             ::DbActivityTracker-test)))))
+                             ::MetabaseConnectionCustomizer-test)))))
 (deftest recent-activity-test
   ;; these tests are difficult to make non-flaky. Other threads can hit the db of course, and the lifecycle of the
-  ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will
-  ;; take the value of the checkin timestamp and pass it to `recent-activity?*` to act on the value at the time it
-  ;; cares about rather than trying to suppress writes to the `latest-checkin`. If you change this, run the test about 500 times to make sure there aren't flakes.
+  ;; connection pool is worked from other threads. This means we can't isolate the `latest-checkin` atom. Many will take
+  ;; the value of the checkin timestamp and pass it to `recent-activity?*` to act on the value at the time it cares
+  ;; about rather than trying to suppress writes to the `latest-checkin`. If you change this, run the test about 500
+  ;; times to make sure there aren't flakes.
   (testing "If latest-checkin is null"
     (reset! (var-get #'mdb.connection-pool-setup/latest-activity) nil)
     (is (not (#'mdb.connection-pool-setup/recent-activity?* nil (t/millis 10))))
@@ -96,3 +98,20 @@
         (Thread/sleep 30)
         (is (not (#'mdb.connection-pool-setup/recent-activity?* latest-activity (t/millis 10)))
             "recent-window-duration has elapsed but still recent")))))
+
+(deftest reset-read-only-test
+  (testing "For Postgres app DBs, we should be executing `DISCARD ALL` when checking in a connection to reset state including read-only"
+    (when (= (app-db/db-type) :postgres)
+      (let [connection* (promise)]
+        (with-redefs [mdb.connection-pool-setup/on-check-in
+                      (let [orig @#'mdb.connection-pool-setup/on-check-in]
+                        (fn [^java.sql.Connection connection]
+                          (u/prog1 (orig connection)
+                            (deliver connection* (.unwrap connection java.sql.Connection)))))]
+          ;; check out a connection and set it to read-only.
+          (with-open [conn (.getConnection (app-db/app-db))]
+            (.setReadOnly conn true)
+            (is (.isReadOnly conn)))
+          (testing "on-check-in should be called; Connection read-only should be reset after checking in"
+            (let [^java.sql.Connection conn (u/deref-with-timeout connection* (u/seconds->ms 5))]
+              (is (not (.isReadOnly conn))))))))))

@@ -98,7 +98,7 @@
    [:map
 
     [:type [:= :string]]
-    [:format    {:optional true} [:= :binary]]
+    [:format    {:optional true} [:enum :binary "binary" :byte "byte" :uuid "uuid"]]
     [:minLength {:optional true} integer?]
     [:maxLength {:optional true} integer?]
     [:pattern   {:optional true} (ms/InstanceOfClass java.util.regex.Pattern)]]])
@@ -139,7 +139,6 @@
   [:merge
    ::parameter.schema.typed.common
    [:map
-
     [:type                 [:= :object]]
     [:properties           {:optional true} [:map-of :string [:ref ::parameter.schema]]]
     [:additionalProperties {:optional true} [:multi
@@ -155,12 +154,12 @@
    [:map
 
     [:type        [:= :array]]
-    [:items       [:multi
-                   {:dispatch map?}
-                   [true [:ref ::parameter.schema]]
-                   ;; for a tuple. I don't think this is correct, I think you're supposed to use `prefixItems` -- see
-                   ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
-                   [false [:sequential [:ref ::parameter.schema]]]]]
+    [:items           {:optional true} [:multi
+                                        {:dispatch map?}
+                                        [true [:ref ::parameter.schema]]
+                                        ;; for a tuple. I don't think this is correct, I think you're supposed to use `prefixItems` -- see
+                                        ;; https://stackoverflow.com/questions/57464633/how-to-define-a-json-array-with-concrete-item-definition-for-every-index-i-e-a
+                                        [false [:sequential [:ref ::parameter.schema]]]]]
     [:uniqueItems     {:optional true} :boolean]
     [:additionalItems {:optional true} :boolean] ; for tuples
     [:minItems        {:optional true} integer?]
@@ -275,13 +274,26 @@
               [:map
                [:schema ::parameter.schema]]]]])
 
+(mr/def ::path-item.responses
+  [:map-of
+   ;; can be exact status codes: "200" status code ranges: "5XX" and or "default"
+   :string
+   [:map
+    [:description :string]
+    [:content     {:optional true} [:map-of
+                                    [:enum "application/json" "multipart/form-data"]
+                                    [:map [:schema ::parameter.schema]]]]
+    ;; TODO -- headers, links, etc.
+    ]])
+
 (mr/def ::path-item
   [:map
    [:summary     :string]
    [:description :string]
    [:parameters  [:sequential ::parameter]]
    [:requestBody {:optional true} ::path-item.request-body]
-   [:tags        {:optional true} [:sequential :string]]])
+   [:tags        {:optional true} [:sequential :string]]
+   [:responses   ::path-item.responses]])
 
 (mr/def ::components
   [:map

@@ -8,10 +8,9 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -37,6 +36,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
    [ring.util.codec :as codec]
@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers :row-lock))
 
 ;; HELPER FNS
 
@@ -67,7 +67,7 @@
   [_ _]
   "1.0")
 
-(defmethod driver/describe-database ::test-driver
+(defmethod driver/describe-database* ::test-driver
   [_ _]
   {:tables []})
 
@@ -143,7 +143,9 @@
 (defn- ok-mbql-card []
   (assoc (card-with-mbql-query "OK Card"
                                :source-table (mt/id :checkins))
-         :result_metadata [{:name "num_toucans"}]))
+         :result_metadata [{:name         "num_toucans"
+                            :display_name "Num Toucans"
+                            :base_type    :type/Integer}]))
 
 (deftest ^:parallel get-database-test
   (testing "GET /api/database/:id"
@@ -351,6 +353,18 @@
       (is (= {:is_full_sync false}
              (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
 
+(deftest create-db-provider-name-test
+  (testing "POST /api/database"
+    (testing "can we set `provider_name` when creating a Database?"
+      (is (= {:provider_name "AWS RDS"}
+             (select-keys (create-db-via-api! {:provider_name "AWS RDS"}) [:provider_name]))))
+    (testing "provider_name is optional and can be nil"
+      (is (= {:provider_name nil}
+             (select-keys (create-db-via-api! {}) [:provider_name]))))
+    (testing "can explicitly set provider_name to nil"
+      (is (= {:provider_name nil}
+             (select-keys (create-db-via-api! {:provider_name nil}) [:provider_name]))))))
+
 (deftest create-db-ignore-schedules-if-no-manual-sync-test
   (testing "POST /api/database"
     (testing "if `:let-user-control-scheduling` is false it will ignore any schedules provided"
@@ -409,6 +423,8 @@
 (deftest create-db-succesful-track-snowplow-test
   ;; h2 is no longer supported as a db source
   ;; the rests are disj because it's timeouted when adding it as a DB for some reasons
+  ;;
+  ;; TODO (Cam 6/20/25) -- we should NOT be hardcoding driver names in tests
   (mt/test-drivers (disj (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
                          :h2 :bigquery-cloud-sdk :snowflake)
     (snowplow-test/with-fake-snowplow-collector
@@ -471,7 +487,7 @@
                         normalize)))))))))
 
 (defn- api-update-database! [expected-status-code db-or-id changes]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
                           changes)))
 
@@ -540,6 +556,21 @@
             (let [curr-db (t2/select-one [:model/Database :cache_ttl], :id db-id)]
               (is (= nil (:cache_ttl curr-db))))))))))
 
+(deftest update-database-provider-name-test
+  (testing "PUT /api/database/:id"
+    (testing "should be able to set and unset `provider_name`"
+      (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
+        (let [updates1 {:provider_name "AWS RDS"}
+              updates2 {:provider_name nil}
+              updates1! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates1))
+              updates2! (fn [] (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates2))]
+          (updates1!)
+          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
+            (is (= "AWS RDS" (:provider_name curr-db))))
+          (updates2!)
+          (let [curr-db (t2/select-one [:model/Database :provider_name], :id db-id)]
+            (is (= nil (:provider_name curr-db)))))))))
+
 (deftest update-database-audit-log-test
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (mt/with-premium-features #{:audit-app}
@@ -595,7 +626,7 @@
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
       (let [;; 1. create a database and sync
-            database-name      (name (gensym))
+            database-name      (u.random/random-name)
             empty-dbdef        {:database-name database-name}
             _                  (tx/create-db! driver/*driver* empty-dbdef)
             connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)
@@ -635,7 +666,7 @@
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
                    :tables        [(merge
                                     (mt/obj->json->obj (mt/object-defaults :model/Table))
-                                    (t2/select-one [:model/Table :created_at :updated_at] :id (mt/id :categories))
+                                    (t2/select-one [:model/Table :created_at :updated_at :is_writable] :id (mt/id :categories))
                                     {:schema              "PUBLIC"
                                      :name                "CATEGORIES"
                                      :display_name        "Categories"
@@ -960,7 +991,9 @@
 (deftest ^:parallel databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
     (mt/with-temp [:model/Card _ (assoc (card-with-native-query "Some Card")
-                                        :result_metadata [{:name "col_name"}])]
+                                        :result_metadata [{:name         "col_name"
+                                                           :display_name "Col Name"
+                                                           :base_type    :type/Text}])]
       (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id
@@ -1010,10 +1043,13 @@
                                       [:description      [:maybe :string]]]]]])
 
 (defn- check-tables-included [response & tables]
-  (let [response-tables (set (:tables response))]
+  (let [response-tables (:tables response)]
     (doseq [table tables]
       (testing (format "Should include Table %s" (pr-str table))
-        (is (contains? response-tables table))))))
+        (let [response-table (m/find-first #(= (:id %) (:id table))
+                                           response-tables)]
+          (is (=? table
+                  response-table)))))))
 
 (defn- check-tables-not-included [response & tables]
   (let [response-tables (set (:tables response))]
@@ -1074,8 +1110,15 @@
 (deftest ^:parallel databases-list-include-saved-questions-tables-test-4
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should remove Cards that have ambiguous columns"
-      (mt/with-temp [:model/Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])
-                     :model/Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]
+      (mt/with-temp [:model/Card ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name         "cam"
+                                                                                                                      :display_name "Cam"
+                                                                                                                      :base_type    :type/Text}])
+                     :model/Card cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name         "cam"
+                                                                                                                      :display_name "Cam"
+                                                                                                                      :base_type    :type/Text}
+                                                                                                                     {:name         "cam_2"
+                                                                                                                      :display_name "Cam 2"
+                                                                                                                      :base_type    :type/Text}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1090,10 +1133,14 @@
                                                :dataset_query   {:database (u/the-id bad-db)
                                                                  :type     :native
                                                                  :native   {:query "[QUERY GOES HERE]"}}
-                                               :result_metadata [{:name "sparrows"}]
+                                               :result_metadata [{:name         "sparrows"
+                                                                  :display_name "Sparrows"
+                                                                  :base_type    :type/Integer}]
                                                :database_id     (u/the-id bad-db)}
                      :model/Card     ok-card  (assoc (card-with-native-query "OK Card")
-                                                     :result_metadata [{:name "finches"}])]
+                                                     :result_metadata [{:name         "finches"
+                                                                        :display_name "Finches"
+                                                                        :base_type    :type/Integer}])]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1116,7 +1163,9 @@
                                                                    :source-table $$checkins
                                                                    :aggregation  [[:cum-count]]
                                                                    :breakout     [!month.date]))
-                                           {:result_metadata [{:name "num_toucans"}]})]
+                                           {:result_metadata [{:name         "num_toucans"
+                                                               :display_name "Num Toucans"
+                                                               :base_type    :type/Integer}]})]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
                       response))
@@ -1128,9 +1177,9 @@
     (mt/with-temp [:model/Card card (card-with-native-query
                                      "Birthday Card"
                                      :entity_id       "M6W4CLdyJxiW-DyzDbGl4"
-                                     :result_metadata [{:name "age_in_bird_years"
-                                                        :ident (lib/native-ident "age_in_bird_years"
-                                                                                 "M6W4CLdyJxiW-DyzDbGl4")}])]
+                                     :result_metadata [{:name         "age_in_bird_years"
+                                                        :display_name "Age in Bird Years"
+                                                        :base_type    :type/Integer}])]
       (let [response (mt/user-http-request :crowberto :get 200
                                            (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))]
         (is (malli= SavedQuestionsDB
@@ -1139,13 +1188,11 @@
          response
          (assoc (virtual-table-for-card card)
                 :fields [{:name                     "age_in_bird_years"
+                          :display_name             "Age in Bird Years"
                           :table_id                 (str "card__" (u/the-id card))
-                          :id                       ["field" "age_in_bird_years" {:base-type "type/*"}]
-                          :ident                    (lib/native-ident "age_in_bird_years" "M6W4CLdyJxiW-DyzDbGl4")
+                          :id                       ["field" "age_in_bird_years" {:base-type "type/Integer"}]
                           :semantic_type            nil
-                          :base_type                nil
-                          :default_dimension_option nil
-                          :dimension_options        []}]))))))
+                          :base_type                "type/Integer"}]))))))
 
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
@@ -1383,18 +1430,23 @@
         (mt/with-temp [:model/Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                         analyze/analyze-db!             (deliver-when-db analyze-called? db)]
-            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
-            ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
-            ;; however if something went wrong, don't hang forever, eventually timeout and fail
-            (testing "sync called?"
-              (is (true?
-                   (deref sync-called? long-timeout :sync-never-called))))
-            (testing "analyze called?"
-              (is (true?
-                   (deref analyze-called? long-timeout :analyze-never-called))))
-            (testing "audit log entry generated"
-              (is (= db-id
-                     (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))))))))
+            (snowplow-test/with-fake-snowplow-collector
+              (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
+              ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
+              ;; however if something went wrong, don't hang forever, eventually timeout and fail
+              (testing "sync called?"
+                (is (true?
+                     (deref sync-called? long-timeout :sync-never-called))))
+              (testing "analyze called?"
+                (is (true?
+                     (deref analyze-called? long-timeout :analyze-never-called))))
+              (testing "audit log entry generated"
+                (is (= db-id
+                       (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))
+              (testing "triggers snowplow event"
+                (is (=?
+                     {"event" "database_manual_sync", "target_id" db-id}
+                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -1426,19 +1478,24 @@
           (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
                                                                  (when (= (u/the-id synced-db) (u/the-id db))
                                                                    (deliver update-field-values-called? :sync-called)))]
-            (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-            (is (= :sync-called
-                   (deref update-field-values-called? long-timeout :sync-never-called)))
-            (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-            (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                :details :id)))))))))
+            (snowplow-test/with-fake-snowplow-collector
+              (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+              (is (= :sync-called
+                     (deref update-field-values-called? long-timeout :sync-never-called)))
+              (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+              (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                  :details :id)))
+              (testing "triggers snowplow event"
+                (is (=?
+                     {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
-(deftest ^:parallel nonadmins-cant-trigger-rescan
+(deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 (format "database/%d/rescan_values" (mt/id)))))))
 
-(deftest discard-db-fieldvalues
+(deftest discard-db-fieldvalues-test
   (testing "Can we DISCARD all the FieldValues for a DB?"
     (mt/with-temp [:model/Database    db       {:engine "h2", :details (:details (mt/db))}
                    :model/Table       table-1  {:db_id (u/the-id db)}
@@ -1447,8 +1504,16 @@
                    :model/Field       field-2  {:table_id (u/the-id table-2)}
                    :model/FieldValues values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}
                    :model/FieldValues values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]
-      (is (= {:status "ok"}
-             (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
+
+      (snowplow-test/with-fake-snowplow-collector
+        (is (= {:status "ok"}
+               (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
+
+        (testing "triggers snowplow event"
+          (is (=?
+               {"event" "database_discard_field_values", "target_id" (u/the-id db)}
+               (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))
+
       (testing "values-1 still exists?"
         (is (= false
                (t2/exists? :model/FieldValues :id (u/the-id values-1)))))
@@ -1476,11 +1541,11 @@
      :or   {expected-status-code 200
             user                 :crowberto}}
     request-body]
-   (with-redefs [h2/*allow-testing-h2-connections* true]
+   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
 (defn- test-connection-details! [engine details]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
 (deftest validate-database-test
@@ -1564,7 +1629,7 @@
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest ^:parallel get-schemas-test
+(deftest get-schemas-test
   (testing "GET /api/database/:id/schemas"
     (testing "Multiple schemas are ordered by name"
       (mt/with-temp
@@ -1617,6 +1682,14 @@
         (testing "Non-admins don't have permission to see syncable schemas"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%d/syncable_schemas" (mt/id))))))))))
+
+(deftest get-syncable-schemas-checks-permissions-correctly
+  (testing "GET /api/database/:id/syncable_schemas"
+    (testing "Non-admins can get syncable schemas on the attached DWH"
+      (mt/with-temp [:model/Database {id :id} {:is_attached_dwh true}]
+        (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+          (is (= ["PUBLIC"]
+                 (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
 
 (deftest ^:parallel get-schemas-for-schemas-with-no-visible-tables
   (mt/with-temp
@@ -2179,7 +2252,7 @@
       (letfn [(settings []
                 (t2/select-one-fn :settings :model/Database :id (mt/id)))
               (set-settings! [m]
-                (with-redefs [h2/*allow-testing-h2-connections* true]
+                (with-redefs [driver.settings/*allow-testing-h2-connections* true]
                   (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                                  {:settings m})
                     (is (=? {:id (mt/id)}
@@ -2279,3 +2352,81 @@
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))))
+
+(setting/defsetting api-test-missing-premium-feature
+  "A feature used for testing /settings-available (1)"
+  :type :boolean
+  :database-local :only
+  :feature :forever-withheld-feature)
+
+(setting/defsetting api-test-missing-driver-feature
+  "A feature used for testing /settings-available (2)"
+  :type :boolean
+  :database-local :only
+  ;; Something h2 will never support
+  :driver-feature :test/jvm-timezone-setting)
+
+(setting/defsetting api-test-disabled-for-database
+  "A feature used for testing /settings-available (3)"
+  :type :boolean
+  :database-local :only
+  :enabled-for-db? (constantly false))
+
+(setting/defsetting api-test-disabled-for-custom-reasons
+  "A feature used for testing /settings-available (4)"
+  :type :boolean
+  :database-local :only
+  :enabled-for-db? (fn [_]
+                     (setting/custom-disabled-reasons! [{:key :custom/one, :type :warning, :message "Because..."}
+                                                        {:key :custom/two, :type :warning, :message "Also..."}])))
+
+(setting/defsetting api-test-disabled-for-multiple-reasons
+  "A feature used for testing /settings-available (5)"
+  :type :boolean
+  :database-local :only
+  ;; Something h2 will never support
+  :driver-feature :test/jvm-timezone-setting
+  :enabled-for-db? (fn [_]
+                     (setting/custom-disabled-reasons! [{:key :custom/three, :type :error, :message "Never"}])))
+
+(deftest settings-available-test
+  (testing "GET /api/database/:id/settings-available"
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/with-temp [:model/Database {id :id} {:engine :h2}]
+        (testing "returns database-local settings with correct business logic"
+          (let [settings (:settings (mt/user-http-request :rasta :get 200 (str "database/" id "/settings-available")))]
+            (is (= {:unaggregated-query-row-limit
+                    {:enabled true}
+
+                    :api-test-missing-driver-feature
+                    {:enabled false
+                     :reasons [{:key     "driver-feature-missing"
+                                :type    "error"
+                                :message "The H2 driver does not support the `jvm-timezone-setting` feature"}]}
+
+                    :api-test-disabled-for-database
+                    {:enabled false
+                     :reasons [{:key     "disabled-for-db"
+                                :type    "error"
+                                :message "This database does not support this setting"}]}
+
+                    :api-test-disabled-for-custom-reasons
+                    {:enabled true
+                     :reasons [{:key "custom/one", :type "warning", :message "Because..."}
+                               {:key "custom/two", :type "warning", :message "Also..."}]}
+
+                    :api-test-disabled-for-multiple-reasons
+                    {:enabled false
+                     :reasons [{:key     "driver-feature-missing"
+                                :type    "error"
+                                :message "The H2 driver does not support the `jvm-timezone-setting` feature"}
+                               {:key     "custom/three"
+                                :type    "error"
+                                :message "Never"}]}}
+
+                   (select-keys settings [:unaggregated-query-row-limit
+                                          :api-test-missing-premium-feature
+                                          :api-test-missing-driver-feature
+                                          :api-test-disabled-for-database
+                                          :api-test-disabled-for-custom-reasons
+                                          :api-test-disabled-for-multiple-reasons])))))))))

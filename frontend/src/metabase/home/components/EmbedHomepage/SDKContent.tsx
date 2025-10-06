@@ -1,9 +1,7 @@
 import { t } from "ttag";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { Box, Button, Group, Text } from "metabase/ui";
-
-import { Badge } from "./Badge";
 
 type SDKContentProps = {
   sdkQuickstartUrl: string;
@@ -14,18 +12,11 @@ export const SDKContent = ({
   sdkQuickstartUrl,
   sdkDocsUrl,
 }: SDKContentProps) => (
-  <Box>
+  <Box component="section" aria-labelledby="sdk-title">
     <Group gap="sm" align="center" mb="sm">
-      <Text fw="bold" size="lg" color="text-medium">
-        {t`Embedded analytics SDK`}
+      <Text fw="bold" size="lg" color="text-medium" id="sdk-title">
+        {t`Embedded analytics SDK for React`}
       </Text>
-      <Badge
-        color="gray"
-        fz="sm"
-        px="sm"
-        py="xs"
-        uppercase={false}
-      >{t`Beta`}</Badge>
     </Group>
     <Text mb="md">
       {t`Embed individual components like charts, dashboards, the query builder, and more with React. Get advanced customization with CSS styling and manage granular access and interactivity per component.`}

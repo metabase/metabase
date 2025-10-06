@@ -35,7 +35,9 @@ For an introduction to expressions, check out the [overview of custom expression
     - [case](./expressions/case.md)
     - [coalesce](./expressions/coalesce.md)
     - [if](./expressions/case.md)
+    - [in](#in)
     - [isNull](./expressions/isnull.md)
+    - [notIn](#notin)
     - [notNull](#notnull)
 
   - [Math functions](#math-functions)
@@ -44,6 +46,7 @@ For an introduction to expressions, check out the [overview of custom expression
     - [ceil](#ceil)
     - [exp](#exp)
     - [floor](#floor)
+    - [integer](#integer)
     - [log](#log)
     - [power](#power)
     - [round](#round)
@@ -54,11 +57,12 @@ For an introduction to expressions, check out the [overview of custom expression
     - [concat](./expressions/concat.md)
     - [contains](#contains)
     - [date](#date)
+    - [datetime](#datetime)
     - [doesNotContain](#doesnotcontain)
     - [domain](#domain)
     - [endsWith](#endswith)
+    - [float](#float)
     - [host](#host)
-    - [in](#in)
     - [isEmpty](./expressions/isempty.md)
     - [integer](#integer)
     - [lTrim](#ltrim)
@@ -80,6 +84,7 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Date functions](#date-functions)
 
     - [convertTimezone](./expressions/converttimezone.md)
+    - [date](#date)
     - [datetime](#datetime)
     - [datetimeAdd](./expressions/datetimeadd.md)
     - [datetimeDiff](./expressions/datetimediff.md)
@@ -96,6 +101,8 @@ For an introduction to expressions, check out the [overview of custom expression
     - [quarterName](#quartername)
     - [relativeDateTime](#relativedatetime)
     - [second](#second)
+    - [timeSpan](#timespan)
+    - [today](#today)
     - [week](#week)
     - [weekday](#weekday)
     - [year](#year)
@@ -103,6 +110,8 @@ For an introduction to expressions, check out the [overview of custom expression
   - [Type-casting functions](#type-casting-functions)
 
     - [date](#date)
+    - [datetime](#datetime)
+    - [float](#float)
     - [integer](#integer)
     - [text](#text)
 
@@ -289,6 +298,21 @@ Syntax: `if(condition, output, ...)`
 
 Example: `if([Weight] > 200, "Large", [Weight] > 150, "Medium", "Small")` If a `Weight` is 250, the expression would return "Large". In this case, the default value is "Small", so any `Weight` 150 or less would return "Small".
 
+### in
+
+Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
+
+Syntax: `in(value1, value2, ...)`
+
+- `value1`: The column or value to check.
+- `value2, ...`: The list of columns or values to check against.
+
+You can add more values to check against.
+
+Example: `in([Category], "Widget", "Gadget")` would return true for rows where the `Category` is either "Widget" or "Gadget".
+
+Related: [notIn](#notin), [contains](#contains), [startsWith](#startswith), [endsWith](#endswith)
+
 ### [isNull](./expressions/isnull.md)
 
 Returns true if the column is null.
@@ -308,6 +332,21 @@ Syntax: `notNull(column)`
 Example: `notNull([Tax])` would return true if there is a value present in the column for that row.
 
 Related: [isNull](#isnull), [notEmpty](#notempty)
+
+### notIn
+
+Returns true if `value1` doesn't equal `value2` (and `value3`, etc., if specified).
+
+Syntax: `notIn(value1, value2, ...)`
+
+- `value1`: The column or value to check.
+- `value2, ...`: The column or values to look for.
+
+You can add more values to look for.
+
+Example: `notIn([Category], "Widget", "Gadget")` would return true for rows where the `Category` is not "Widget" or "Gadget".
+
+Related: [in](#in), [case](./expressions/case.md)
 
 ## Math functions
 
@@ -391,7 +430,7 @@ Example: `sqrt([Hypotenuse])`.
 
 Databases that don't support `sqrt`: SQLite.
 
-Related: [Power](#power).
+Related: [power](#power).
 
 ## String functions
 
@@ -424,9 +463,10 @@ Related: [doesNotContain](#doesnotcontain), [regexExtract](#regexextract).
 
 ### date
 
-> Only available for PostgreSQL.
+> Unavailable for Oracle or the non-JDBC Apache Druid driver.
 
-Converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format.
+- When used on a string, converts an ISO 8601 date string to a date. The string _must_ be in a valid ISO 8601 format. If the string contains time, the time part is truncated.
+- When used on a datetime value, truncates datetime to a date.
 
 Syntax: `date(value)`
 
@@ -448,6 +488,34 @@ Valid ISO 8601 examples include:
 - Date only: `2025-03-25`
 - Date with time: `2025-03-25T14:30:45`
 - Date with time and timezone offset: `2025-03-25T14:30:45+01:00`
+
+Another example: `date(2025-04-19T17:42:53+01:00)` would return `2025-04-19`.
+
+Related: [datetime](#datetime)
+
+### datetime
+
+> Available on PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake
+
+Converts a datetime string or bytes to a datetime.
+
+Syntax: `datetime(value, mode)`
+
+- `value`: The string, bytes, or number to convert to a datetime.
+- `mode`: Optional. The mode indicating the format. One of: `"simple"`, `"iso"`, `"simpleBytes"`, `"isoBytes"`, `"unixSeconds"`, `"unixMilliseconds"`, `"unixMicroseconds"`, `"unixNanoseconds"`. Default is `"iso"`.
+
+Example: `datetime("2025-03-20 12:45:04")`
+
+`datetime` supports the following datetime string formats:
+
+```txt
+2025-05-15T22:20:01
+2025-05-15 22:20:01
+```
+
+But some databases may also work with other datetime formats.
+
+Related: [date](#date)
 
 ### doesNotContain
 
@@ -489,6 +557,16 @@ Example: `endsWith([Appetite], "hungry")`
 
 Related: [startsWith](#startswith), [contains](#contains), [doesNotContain](#doesnotcontain).
 
+### float
+
+> Available for PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, ClickHouse, and Snowflake.
+
+Converts a string to a floating point value. Useful if you want to do some math on numbers, but your data is stored as strings.
+
+Syntax: `float(value)`
+
+Example: `float("123.45")` would return `123.45` as a floating point value.
+
 ### host
 
 Extracts the host, which is the domain and the TLD, from a URL or email.
@@ -499,20 +577,6 @@ Example: `host([Page URL])`. If the `[Page URL]` column had a value of `https://
 
 Related: [domain](#domain), [path](#path), [subdomain](#subdomain).
 
-### [in](./expressions/in.md)
-
-Returns true if `value1` equals `value2` (or `value3`, etc., if specified).
-
-```
-in(value1, value2, ...)
-```
-
-`value1` is the column or value to check.
-
-`value2, ...` is the list of columns or values to check.
-
-Related: [contains](#contains), [startsWith](#startswith), [endsWith](#endswith).
-
 ### [isEmpty](./expressions/isempty.md)
 
 Returns true if a _string column_ contains an empty string or is null. Calling this function on a non-string column will cause an error. You can use [isNull](#isnull) for non-string columns.
@@ -521,17 +585,22 @@ Syntax: `isEmpty(column)`
 
 Example: `isEmpty([Feedback])` would return true if `Feedback` was an empty string (`''`) or did not contain a value.
 
-Related: [notEmpty](#notempty), [isNull](#isnull)
+Related: [notEmpty](#notempty), [isNull](#isnull).
 
 ### integer
 
-> Only available for PostgreSQL.
+> Only available for BigQuery, ClickHouse, MySQL, PostgreSQL, Amazon Redshift, and Snowflake.
 
-Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+- Converts a string to an integer value. Useful if you want to do some math on numbers, but your data is stored as strings.
+- Converts a floating point value by rounding it to an integer.
 
 Syntax: `integer(value)`
 
-Example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+String example: `integer("123")` would return `123` as an integer. The string must evaluate to an integer (so `integer("123.45")` would return an error.)
+
+Float example: `integer(123.45)` would return `123`.
+
+Related: [round](#round).
 
 ### lTrim
 
@@ -605,7 +674,7 @@ Example: `replace([Title], "Enormous", "Gigantic")`
 
 ### splitPart
 
-> Only available on PostgreSQL.
+> Available in PostgreSQL, MySQL/MariaDB, BigQuery, Redshift, Clickhouse, and Snowflake
 
 Splits a string on a specified delimiter and returns the nth substring.
 
@@ -670,7 +739,7 @@ Related: [regexExtract](#regexextract), [replace](#replace).
 
 ### text
 
-> Only available for PostgreSQL.
+> Unavailable for the non-JDBC Druid driver
 
 Converts a number or date to text (a string). Useful for applying text filters or joining with other columns based on text comparisons.
 
@@ -709,23 +778,6 @@ Syntax: `convertTimezone(column, target, source)`
 Example: `convertTimezone("2022-12-28T12:00:00", "Canada/Pacific", "Canada/Eastern")` would return the value `2022-12-28T09:00:00`, displayed as `December 28, 2022, 9:00 AM`.
 
 See the [database limitations](./expressions/converttimezone.md#limitations) for `convertTimezone`.
-
-### datetime
-
-Converts a datetime string to a datetime.
-
-Syntax: `datetime(column)` 
-
-Example: `datetime("2025-03-20 12:45:04")`
-
-`datetime` supports the following datetime string formats:
-
-```txt
-2025-05-15T22:20:01
-2025-05-15 22:20:01
-```
-
-But some databases may also work with other datetime formats.
 
 ### [datetimeAdd](./expressions/datetimeadd.md)
 
@@ -859,7 +911,7 @@ Syntax: `relativeDateTime(number, text)`
 
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
-`relativeDateTime` can only be used as part of a conditional expression.
+Note that `relativeDateTime()` will truncate the result to the unit specified as its argument.
 
 Example: `[Orders → Created At] < relativeDateTime(-30, "day")` will filter for orders created over 30 days ago from current date.
 
@@ -884,6 +936,16 @@ Syntax: `timeSpan(number, text)`
 `text`: Type of interval like `"day"`, `"month"`, `"year"`
 
 Example: `[Orders → Created At] + timeSpan(7, "day")` will return the date 7 days after the `Created At` date.
+
+### today
+
+Returns the current date (without time).
+
+Syntax: `today()`
+
+Example: `today()` would return the current date, such as `2025-05-04`.
+
+Related: [now](#now).
 
 ### [week](./expressions/week.md)
 
@@ -933,6 +995,8 @@ Example: `year("2021-03-25T12:52:37")` would return the year 2021 as an integer,
 ## Type-casting functions
 
 - [date](#date)
+- [datetime](#datetime)
+- [float](#float)
 - [integer](#integer)
 - [text](#text)
 
@@ -962,7 +1026,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
 
 For more info, check out our page on [Offset](./expressions/offset.md).
 
@@ -984,29 +1048,31 @@ Example: `Offset(Sum([Total]), -1)` would get the `Sum([Total])` value from the 
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
-**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexExtract`.
+**H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**Athena**: `convertTimezone`.
+**Athena**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**Databricks**: `convertTimezone`.
+**Databricks**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`. Function `regexExtract` is only available for the Druid-JDBC driver.
+**Druid**: `Median`, `Percentile`, `StandardDeviation`, `power`, `log`, `exp`, `sqrt`, `Offset`, `datetime`, `float`, `splitPart`. Function `regexExtract` and some [type casting functions](#type-casting-functions) are only available for the Druid-JDBC driver.
 
-**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`
+**MongoDB**: `Median`, `Percentile`, `power`, `log`, `exp`, `sqrt`, `Offset`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
 **MariaDB**: `Median`, `Percentile`, `Offset`.
 
 **MySQL**: `Median`, `Percentile`, `Offset`.
 
-**Presto**: `convertTimezone`. Only provides _approximate_ results for `Median` and `Percentile`.
+**Oracle**: `date`, `datetime`, `float`, `splitPart`.
 
-**SparkSQL**: `convertTimezone`.
+**Presto**: `convertTimezone`, `datetime`, `float`, `splitPart`. Only provides _approximate_ results for `Median` and `Percentile`.
 
-**SQL Server**: `Median`, `Percentile` and `regexExtract`.
+**SparkSQL**: `convertTimezone`, `datetime`, `float`, `splitPart`.
 
-**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt` and `Variance`.
+**SQL Server**: `Median`, `Percentile`, `regexExtract`, `datetime`, `float`, `splitPart`.
 
-**Vertica**: `Median` and `Percentile`.
+**SQLite**: `exp`, `log`, `Median`, `Percentile`, `power`, `regexExtract`, `StandardDeviation`, `sqrt`, `Variance`, `datetime`, `float`, `splitPart`.
+
+**Vertica**: `Median`, `Percentile`, `datetime`, `float`, `splitPart`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 

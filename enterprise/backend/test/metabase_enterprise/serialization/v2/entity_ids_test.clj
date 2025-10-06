@@ -59,7 +59,7 @@
                         (messages)))))))))))
 
 (deftest drop-entity-ids-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (testing "With a temp Collection with an entity ID"
       (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
         (mt/test-helpers-set-global-values!

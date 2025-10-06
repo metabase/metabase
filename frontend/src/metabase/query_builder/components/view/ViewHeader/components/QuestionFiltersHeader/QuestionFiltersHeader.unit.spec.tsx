@@ -2,15 +2,18 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
+import { setupFieldValuesEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { GetFieldValuesResponse } from "metabase-types/api";
 import {
   ORDERS,
   ORDERS_ID,
   PEOPLE,
+  PEOPLE_SOURCE_VALUES,
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -23,14 +26,20 @@ const metadata = createMockMetadata({
 
 type SetupOpts = {
   query?: Lib.Query;
+  fieldValues?: GetFieldValuesResponse;
   isExpanded?: boolean;
 };
 
 function setup({
   query: initialQuery = TEST_MULTISTAGE_QUERY,
+  fieldValues,
   isExpanded = true,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
+
+  if (fieldValues) {
+    setupFieldValuesEndpoint(fieldValues);
+  }
 
   function WrappedFilterHeader() {
     const [query, setQuery] = useState(initialQuery);
@@ -91,7 +100,9 @@ describe("QuestionFiltersHeader", () => {
   });
 
   it("should update a filter on the last stage", async () => {
-    const { getNextQuery, getFilterColumnNameForStage } = setup();
+    const { getNextQuery, getFilterColumnNameForStage } = setup({
+      fieldValues: PEOPLE_SOURCE_VALUES,
+    });
 
     await userEvent.click(screen.getByText("User → Source is Organic"));
     await userEvent.click(await screen.findByLabelText("Filter operator"));
@@ -118,7 +129,7 @@ describe("QuestionFiltersHeader", () => {
       values: [],
       options: {},
     });
-    expect(nextColumnName).toBe("People Via User ID Source");
+    expect(nextColumnName).toBe("User → Source");
   });
 
   it("should update a filter on the previous stage", async () => {

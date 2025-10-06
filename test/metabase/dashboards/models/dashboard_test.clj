@@ -99,30 +99,6 @@
         (is (nil? (t2/select-one :model/Pulse pulse-id)))
         (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
-(deftest post-update-test
-  (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
-                 :model/Collection    {collection-id-2 :id} {}
-                 :model/Dashboard     {dashboard-id :id}    {:name "Lucky the Pigeon's Lucky Stuff", :collection_id collection-id-1}
-                 :model/Card          {card-id :id}         {}
-                 :model/Pulse         {pulse-id :id}        {:dashboard_id dashboard-id, :collection_id collection-id-1}
-                 :model/DashboardCard {dashcard-id :id}     {:dashboard_id dashboard-id, :card_id card-id}
-                 :model/PulseCard     _                     {:pulse_id pulse-id, :card_id card-id, :dashboard_card_id dashcard-id}]
-    (testing "Pulse name and collection-id updates"
-      (t2/update! :model/Dashboard dashboard-id {:name "Lucky's Close Shaves" :collection_id collection-id-2})
-      (is (= "Lucky's Close Shaves"
-             (t2/select-one-fn :name :model/Pulse :id pulse-id)))
-      (is (= collection-id-2
-             (t2/select-one-fn :collection_id :model/Pulse :id pulse-id))))
-    (testing "PulseCard syncing"
-      (mt/with-temp [:model/Card {new-card-id :id}]
-        (dashboard/add-dashcards! dashboard-id [{:card_id new-card-id
-                                                 :row     0
-                                                 :col     0
-                                                 :size_x  4
-                                                 :size_y  4}])
-        (t2/update! :model/Dashboard dashboard-id {:name "Lucky's Close Shaves"})
-        (is (not (nil? (t2/select-one :model/PulseCard :card_id new-card-id))))))))
-
 (deftest parameter-card-test
   (testing "A new dashboard creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}

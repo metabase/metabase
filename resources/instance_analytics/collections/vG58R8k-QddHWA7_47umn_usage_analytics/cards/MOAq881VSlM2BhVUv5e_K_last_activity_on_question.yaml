@@ -72,7 +72,6 @@ dataset_query:
           - full_name
         - base-type: type/Text
           join-alias: People - User
-      ident: join_MOAq881VSlM2BhVUv5e_K@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     - alias: Content - Entity Qualified
@@ -92,7 +91,6 @@ dataset_query:
         - base-type: type/Text
           join-alias: Content - Entity Qualified
       fields: none
-      ident: join_MOAq881VSlM2BhVUv5e_K@0__Content - Entity Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     order-by:
@@ -194,7 +192,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: People - User
   table_id:
   - Internal Metabase Database
   - public

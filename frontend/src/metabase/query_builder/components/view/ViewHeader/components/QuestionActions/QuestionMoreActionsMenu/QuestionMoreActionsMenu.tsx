@@ -2,8 +2,8 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -82,17 +82,17 @@ export const QuestionMoreActionsMenu = ({
 
   const handleEditMetadata = () =>
     onSetQueryBuilderMode("dataset", {
-      datasetEditorTab: "metadata",
+      datasetEditorTab:
+        isModel && question.display() === "list" ? "metadata" : "columns",
     });
 
   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
 
   const handleTurnToModel = () => {
-    if (!ackedModelModal) {
-      const modal = checkCanBeModel(question)
-        ? MODAL_TYPES.TURN_INTO_DATASET
-        : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
-      onOpenModal(modal);
+    if (!checkCanBeModel(question)) {
+      onOpenModal(MODAL_TYPES.CAN_NOT_CREATE_MODEL);
+    } else if (!ackedModelModal) {
+      onOpenModal(MODAL_TYPES.TURN_INTO_DATASET);
     } else {
       dispatch(turnQuestionIntoModel());
     }

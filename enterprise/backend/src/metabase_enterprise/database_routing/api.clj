@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -10,8 +11,8 @@
    [metabase.warehouses.api :as api.database]
    [toucan2.core :as t2]))
 
-(api.macros/defendpoint :post "/mirror-database"
-  "Create new Mirror Databases.
+(api.macros/defendpoint :post "/destination-database"
+  "Create new Destination Databases.
 
   Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.
 
@@ -19,27 +20,27 @@
   [_route-params
    {:keys [check_connection_details]} :- [:map
                                           [:check_connection_details {:optional true} ms/MaybeBooleanValue]]
-   {:keys [router_database_id mirrors]} :- [:map
-                                            [:router_database_id ms/PositiveInt]
-                                            [:mirrors
-                                             [:sequential
-                                              [:map
-                                               [:name               ms/NonBlankString]
-                                               [:details            ms/Map]]]]]]
+   {:keys [router_database_id destinations]} :- [:map
+                                                 [:router_database_id ms/PositiveInt]
+                                                 [:destinations
+                                                  [:sequential
+                                                   [:map
+                                                    [:name               ms/NonBlankString]
+                                                    [:details            ms/Map]]]]]]
   (api/check-400 (t2/exists? :model/DatabaseRouter :database_id router_database_id))
-  (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name mirrors)]))
+  (api/check-400 (not (t2/exists? :model/Database :router_database_id router_database_id :name [:in (map :name destinations)]))
                  "A destination database with that name already exists.")
   (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (t2/select-one :model/Database :id router_database_id)]
-    (if-let [invalid-mirrors (and check_connection_details
-                                  (->> mirrors
-                                       (keep (fn [{details :details n :name}]
-                                               (let [details-or-error (api.database/test-connection-details (name engine) details)
-                                                     valid? (not= (:valid details-or-error) false)]
-                                                 (when-not valid?
-                                                   [n (dissoc details-or-error :valid)]))))
-                                       seq))]
+    (if-let [invalid-destinations (and check_connection_details
+                                       (->> destinations
+                                            (keep (fn [{details :details n :name}]
+                                                    (let [details-or-error (api.database/test-connection-details (name engine) details)
+                                                          valid? (not= (:valid details-or-error) false)]
+                                                      (when-not valid?
+                                                        [n (dissoc details-or-error :valid)]))))
+                                            seq))]
       {:status 400
-       :body (into {} invalid-mirrors)}
+       :body (into {} invalid-destinations)}
       (u/prog1 (t2/insert-returning-instances!
                 :model/Database
                 (map (fn [{:keys [name details]}]
@@ -52,7 +53,7 @@
                         :cache_ttl          nil
                         :router_database_id router_database_id
                         :creator_id         api/*current-user-id*})
-                     mirrors))
+                     destinations))
         (doseq [database <>]
           (events/publish-event! :event/database-create {:object database
                                                          :user-id api/*current-user-id*
@@ -72,6 +73,9 @@
 (defn- create-or-update-router!
   [db-id user-attribute]
   (let [db (t2/select-one :model/Database db-id)]
+    (when-not (driver.u/supports? (:engine db) :database-routing db)
+      (throw (ex-info "This database does not support DB routing" {:status-code 400})))
+
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
@@ -94,7 +98,7 @@
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
     (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
-    (setting/with-database-local-values (:settings db)
+    (setting/with-database db
       (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
       (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
   (if (nil? user_attribute)

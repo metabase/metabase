@@ -1,17 +1,30 @@
-{:min-bb-version "1.12.197"
+{:min-bb-version "1.12.208"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test" "bin/lint-migrations-file/src"]
- :deps           {metosin/malli {:mvn/version "0.17.0"}
-                  table/table   {:mvn/version "0.5.0"}}
+ :deps           {org.babashka/json {:mvn/version "0.1.6"}
+                  metosin/malli     {:mvn/version "0.17.0"}
+                  table/table       {:mvn/version "0.5.0"}
+                  mvxcvi/puget      {:mvn/version "1.3.4"}}
  :tasks
- {:requires [[mage.cli :as cli]]
+ {:requires [[mage.cli :as cli]
+             [mage.color :as c]]
   :init (do (defmacro task! "Binds the parsed command line arguments to `parsed`."
               [& body]
               ;; Can't use ` in this file because it is strictly edn!
               (list 'let
                     (vector 'parsed (list 'cli/parse! (list 'current-task)))
                     (cons 'do body))))
+
+  alias
+  {:doc        "Installs 'mage' alias and autocomplete"
+   :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
+                ["./bin/mage alias zsh" "Prints shell script to put into .zshrc for zsh users"]]
+   :requires   [[mage.alias :as alias]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum "bash" "zsh" "fish"]]]
+   :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
   {:doc      "Runs cljfmt on staged files"
@@ -93,14 +106,18 @@
                   (start-db/start-db (:db-info (current-task)) db version)))}
 
   nrepl
-  {:doc      "Starts the babashka nrepl: helpful for for mage development"
+  {:doc      "Starts the babashka nrepl: helpful for mage development"
    :requires [[babashka.nrepl.server :as nrepl.server]
               [mage.color :as c]]
-   :examples [["./bin/mage nrepl" "Starts the nrepl server"]]
+   :examples [["./bin/mage nrepl" "Starts the nrepl server"]
+              ["./bin/mage nrepl --port 50506" "Starts the nrepl server"]
+              ["./bin/mage nrepl -p 50506" "Starts the nrepl server"]]
+   :options  [["-p" "--port PORT" "optionally provide a port to run the nrepl server on" :default 1667 :parse-fn Integer/parseInt]]
    :task     (task!
-               (spit ".nrepl-port" 1667)
-               (nrepl.server/start-server!)
-               (deref (promise)))}
+              (let [{:keys [port]} (:options parsed)]
+                (spit ".nrepl-port" port)
+                (nrepl.server/start-server! {:port port})
+                (deref (promise))))}
 
   lint-migrations
   {:doc        "Lint migrations files"
@@ -112,18 +129,29 @@
                    (lint-migrations-file/-main))}
 
   jar-download
-  {:doc        "Given a version, downloads a metabase jar"
+  {:doc        "Download (and optionally run) jar for a metabase version or branch"
    :examples   [["./bin/mage jar-download 50" "Download the latest enterprise version of release 50 to ~/path/to/my/metabase/jars"]
                 ["./bin/mage jar-download 1.45.2 -r" "Download and run metabase_1.45.2.jar"]
                 ["./bin/mage jar-download 1.45.2 -d ~/path/to/my/jars" "Download metabase_1.45.2.jar to ~/path/to/my/jars, deleting if it exists"]
-                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
+                ["./bin/mage jar-download master --run --port 3001" "Download and run the latest master branch jar on port 3001"]
+                ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]
+                ["./bin/mage jar-download v1.56.0-beta -r" "Download and run metabase_1.56.0-beta.jar"]]
    :requires   [[mage.jar-download :as jar-download]]
    :options    [["-r" "--run" "run the new jar after downloading it"]
-                ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]]
-   :usage-fn  (fn [_] "note: If you get an error about 'Invalid or corrupt jarfile', run this command again with the -d option.")
+                ["-e" "--env-file FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
+                ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]
+                ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]]
    :arg-schema [:or
                 [:tuple [:string {:desc "version"}]]
                 [:tuple [:string {:desc "version"}] [:string {:desc "path"}]]]
+   :usage-fn  (fn [_]
+                (-> "Version can have the following forms:"
+                    (str "\n  -" (c/green "50")  " for the latest enterprise version of release 50")
+                    (str "\n  -" (c/green "1.45.2")  " for a specific version")
+                    (str "\n  -" (c/green "master")  " for the latest jar created for master")
+                    (str "\n  -" (c/green "any-branch-with-a-pr")  " for the latest uberjar created for that branch")
+                    (str "\n  -" (c/green "1.56.0-beta") " for a specific beta version")
+                    (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
    :task       (task! (jar-download/jar-download parsed))}
 
   setup-stats-repl
@@ -132,19 +160,57 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
-  setup-autocomplete
-  {:doc      "Prints instructions to setup autocomplete"
-   :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
-   :requires [[mage.autotab :as autotab]]
-   :arg-schema [:or
-                [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
-   :task     (task! (autotab/instructions parsed))}
+  notify
+  {:doc      "Send notification for a comment (that already exists)"
+   :requires [[mage.be-dev :refer [nrepl-eval]]]
+   :options  [["-c" "--comment-id ID" "Notify about this comment id"]
+              ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task     (let [opts (:options (cli/parse! (current-task)))
+                   ;; note: no quoting -> expect it to be int
+                   code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
+               (if (:port opts)
+                 (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
+                 (nrepl-eval "metabase-enterprise.comments.core" code)))}
+
+  run-tests
+  {:doc        "Run a tests (or a single test) against nrepl server"
+   :requires   [[clojure.string :as str]
+                [mage.be-dev :refer [nrepl-eval]]]
+   :arg-schema [:tuple [:string {:name "NS/TEST" :desc "or just NS"}]]
+   :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :task       (let [{:keys  [options]
+                      [test] :arguments} (cli/parse! (current-task))
+                     test                (if (or (str/starts-with? test "test/")
+                                                 (str/starts-with? test "enterprise/"))
+                                           ;; paths should come in as strings
+                                           (format "\"%s\"" test)
+                                           ;; ns or var should be a symbol
+                                           (str "'" test))
+                     code (format
+                           "(do ((requiring-resolve 'dev.reload/reload!)) (find-and-run-tests-repl {:only %s}))"
+                           test)]
+                 (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
+
+  ls {:doc      "List all mage public and private tasks"
+      :examples [["./bin/mage ls" "List all tasks"]]
+      :requires [[mage.util :as u]]
+      :task     (task! (u/print-tasks parsed))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
-  ;; - hidden from `./bin/mage` listing and `bb tasks`
-  ;; - start with a `-`
+  ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
+  ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -token-scan
+  {:doc        "Security token scanner for detecting leaked API keys and secrets"
+   :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
+                ["./bin/mage -token-scan -v deps.edn" "Scan with verbose output"]
+                ["./bin/mage -token-scan -a" "Scan all files in the project"]]
+   :requires   [[mage.token-scan :as token-scan]]
+   :options    [["-a" "--all-files" "Scan all files in the project"]
+                ["-v" "--verbose" "Verbose output"]]
+   :arg-schema [:sequential [:string {:description "Files to scan"}]]
+   :task       (task! (token-scan/run-scan parsed))}
 
   -repl
   {:doc      "Eval a string of clojure code in the backend dev server"
@@ -163,8 +229,7 @@
                    code (first (:arguments parsed))
                    port (or (:port (:options parsed))
                             (slurp ".nrepl-port")
-                            (do (println (c/red "No port specified, and no .nrepl-port file found."))
-                                (System/exit 1)))
+                            (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))
                    nns (or (:namespace (:options parsed)) "user")]
                (nrepl-eval nns code port))}
 
@@ -183,34 +248,38 @@
    :task     (let [{:keys [arguments]} (cli/parse! (current-task))]
                (apply readability/check arguments))}
 
+  ;; Uncomment this if you want to play with the example calculator task:
+  #_#_
   -example-calculator
-  {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
-   :doc        "The sample task docstring"
+  {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
+   ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.
+   :doc        "The example calculator's task docstring"
    ;; examples get printed out when you pass -h or --help.
    :examples   [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
                 ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
    ;; The task is the actual code that runs when you run the task.
    :task       (task!
-                (println "Parsed input:") (prn parsed)
-                (let [{:keys [arguments data]} (cli/parse! (current-task))
+                (println "Parsed input:") (u/pp parsed)
+                (let [{:keys [arguments data]} parsed
                       [a op b]                 arguments]
                   (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b)))))
    ;; (optional) `:require` lazily libraries for just your task:
-   :requires   [[mage.color :as c]]
+   :requires   [[mage.color :as c]
+                [mage.util :as u]]
    ;; (optional) `:options` are passed to [[clojure.tools.cli/parse-opts]].
    ;; See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
-   :options    [["-a" "--a-cli-flag" "Check staged files (not actually used)"]
-                ["-p" "--port PORT" "Some port we care about in -example (not actually used)"]]
+   :options    [["-n" "--negate" "Negate the result of the calculation"]
+                ["-a" "--also-add N" "Add N to the result of the calculation"]]
    ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
    :arg-schema [:tuple :int [:enum :+ :-] :int]
-   ;; (optional) `:usage-fn` is a function called with the current-task map
-   ;; and returns a string containing extra-detailed usage information.
-   :usage-fn   (fn [{:keys [doc]}]
-                 (println "Optional extra usage information, if you want.")
-                 (println "Reversed docstring:" (apply str (reverse doc))))
+   ;; (optional) `:usage-fn` is a function called with the current-task map.
+   ;; Returns a string containing extra-detailed usage information.
+   :usage-fn   (fn [{:keys [doc] :as _task}]
+                 (str "Optional extra usage information, for explicit callouts.\n"
+                      "Reversed docstring: '" (c/green (apply str (reverse doc))) "'"))
    ;; (optional) Any other keys are completely allowed. Put things to lookup or that you want to be easy to change
    ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
-   ;; map of ports.
+   ;; top-level map of ports. If something should be easily accessible in the task, put it here.
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
@@ -221,4 +290,23 @@
   -test-examples
   {:doc      "Runs every example and checks that it exits with 0"
    :requires [[mage.examples-test :as examples-test]]
-   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}}}
+   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Personal Tasks:
+  ;; These tasks are for personal use, a place for half baked tasks.
+  ;; Feel free to add your own tasks here, but don't expect them to be run by anyone else, or be listed in the
+  ;; `./bin/mage` listing.
+
+  -escherize-pr-summary
+  {:doc      "Print a day's PR summary for the metabase/metabase repo"
+   :requires [[mage.escherize.pr-summary :as eps]]
+   :examples [["./bin/mage -escherize-pr-summary | pbcopy" "Copy your daily"]]
+   :task     (task! (eps/summarize-prs parsed))}
+
+  -escherize-fix-whitespace
+  {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
+   :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
+   :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
+   :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
+   :task     (task! (fix-whitespace/run-clean parsed))}}}

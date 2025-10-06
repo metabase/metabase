@@ -1,5 +1,9 @@
-import type { CodeLanguage } from "metabase/components/CodeEditor";
-import type { Card, Dashboard } from "metabase-types/api";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
+import type {
+  Card,
+  Dashboard,
+  ParameterValueOrArray,
+} from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
 
@@ -17,19 +21,22 @@ export type EmbedResourceParameter = {
   slug: string;
   type: string;
   required?: boolean;
-  default?: unknown;
+  default?: ParameterValueOrArray | null;
 };
 
 export type EmbedResourceDownloadOptions = {
-  pdf: boolean;
-  results: boolean;
+  pdf?: boolean;
+  results?: boolean;
 };
 
 export type EmbeddingParameterVisibility = "disabled" | "enabled" | "locked";
 
 export type EmbeddingParameters = Record<string, EmbeddingParameterVisibility>;
 
-export type EmbeddingParametersValues = Record<string, string>;
+export type EmbeddingParametersValues = Record<
+  string,
+  number | string | string[] | null | undefined
+>;
 
 /**
  * This is a type for all the display options in static embedding sharing modal's Look and Feel tab.

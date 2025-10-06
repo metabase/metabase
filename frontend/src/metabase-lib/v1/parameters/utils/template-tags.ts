@@ -1,12 +1,15 @@
 import _ from "underscore";
 
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
   Card,
   Parameter,
   ParameterTarget,
-  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 
@@ -16,28 +19,36 @@ function getParameterType(tag: TemplateTag) {
   }
 
   const { type } = tag;
+
   if (type === "date") {
     return "date/single";
   }
   // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string") {
+  if (type === "string" || type === "text") {
     return "string/=";
   }
   if (type === "number") {
     return "number/=";
   }
+  if (type === "boolean") {
+    return "boolean/=";
+  }
+  if (type === "temporal-unit") {
+    return "temporal-unit";
+  }
+
   return "category";
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
-  return tag.type === "dimension"
+  return tag.type === "dimension" || tag.type === "temporal-unit"
     ? ["dimension", ["template-tag", tag.name]]
     : ["variable", ["template-tag", tag.name]];
 }
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  config?: ParameterValuesConfig,
+  oldParameter?: Partial<Parameter>,
 ): ParameterWithTarget {
   return {
     id: tag.id,
@@ -48,9 +59,11 @@ export function getTemplateTagParameter(
     default: tag.default,
     required: tag.required,
     options: tag.options,
-    values_query_type: config?.values_query_type,
-    values_source_type: config?.values_source_type,
-    values_source_config: config?.values_source_config,
+    isMultiSelect: oldParameter?.isMultiSelect ?? tag.type === "dimension",
+    values_query_type: oldParameter?.values_query_type,
+    values_source_type: oldParameter?.values_source_type,
+    values_source_config: oldParameter?.values_source_config,
+    temporal_units: oldParameter?.temporal_units,
   };
 }
 
@@ -68,21 +81,27 @@ export function getTemplateTagParameters(
         tag.type != null &&
         tag.type !== "card" &&
         tag.type !== "snippet" &&
-        ((tag["widget-type"] && tag["widget-type"] !== "none") ||
-          tag.type !== "dimension"),
+        ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
+          tag.dimension != null ||
+          (tag["widget-type"] && tag["widget-type"] !== "none")),
     )
     .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
 
-export function getTemplateTags(card: Card): TemplateTag[] {
-  return card?.dataset_query?.type === "native" &&
-    card.dataset_query.native["template-tags"]
-    ? Object.values(card.dataset_query.native["template-tags"])
-    : [];
+export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
+  const question = new Question(card, metadata);
+  // this code path is used by the last audit v1 query, `bad_table`
+  if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
+    return [];
+  }
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  return isNative ? Object.values(Lib.templateTags(question.query())) : [];
 }
 
 export function getParametersFromCard(
   card: Card,
+  metadata: Metadata,
 ): Parameter[] | ParameterWithTarget[] {
   if (!card) {
     return [];
@@ -90,20 +109,23 @@ export function getParametersFromCard(
 
   if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
-  } else {
-    return getTemplateTagParametersFromCard(card);
   }
+
+  return getTemplateTagParametersFromCard(card, metadata);
 }
 
-export function getTemplateTagParametersFromCard(card: Card) {
-  const tags = getTemplateTags(card);
+export function getTemplateTagParametersFromCard(
+  card: Card,
+  metadata: Metadata,
+) {
+  const tags = getTemplateTags(card, metadata);
   return getTemplateTagParameters(tags, card.parameters);
 }
 
 // when navigating from dashboard --> saved native question,
 // we are given dashboard parameters and a map of dashboard parameter ids to parameter values
 // we need to transform this into a map of template tag ids to parameter values
-// so that we popoulate the template tags in the native editor
+// so that we populate the template tags in the native editor
 export function remapParameterValuesToTemplateTags(
   templateTags: TemplateTag[],
   dashboardParameters: ParameterWithTarget[],

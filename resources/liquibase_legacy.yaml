@@ -2,4 +2,4 @@ databaseChangeLog:
   - include:
       file: "migrations/000_legacy_migrations.yaml"
   - include:
-      file: "migrations/001_update_migrations.yaml"
+      file: "liquibase.yaml"

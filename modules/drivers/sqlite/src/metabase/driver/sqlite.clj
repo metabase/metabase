@@ -1,23 +1,25 @@
 (ns metabase.driver.sqlite
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.io :as io]
+   [clojure.math :as math]
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -43,7 +45,8 @@
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false
                               ;; Index sync is turned off across the application as it is not used ATM.
-                              :index-info                             false}]
+                              :index-info                             false
+                              :database-routing                       true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -205,7 +208,7 @@
   (throw (ex-info (tru "Sqlite doesn''t support extract isoweek")
                   {:driver driver
                    :form   expr
-                   :type   qp.error-type/invalid-query})))
+                   :type   driver-api/qp.error-type.invalid-query})))
 
 (defmethod sql.qp/date [:sqlite :month]
   [_driver _ expr]
@@ -260,20 +263,60 @@
     (->datetime hsql-form (h2x/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
-  [_ _ expr]
+  [_driver _precision expr]
   (->datetime expr (h2x/literal "unixepoch")))
 
+(defn- unix-timestamp->honeysql [expr power]
+  (let [divisor       (long (math/pow 10 power))
+        format-string (format "%%0%dd" power)]
+    [:concat
+     (->datetime (h2x// expr divisor) (h2x/literal "unixepoch"))
+     (h2x/literal ".")
+     [:printf
+      (h2x/literal format-string)
+      (h2x/mod expr divisor)]]))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :milliseconds] [_driver _precision expr] (unix-timestamp->honeysql expr 3))
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :microseconds] [_driver _precision expr] (unix-timestamp->honeysql expr 6))
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :nanoseconds]  [_driver _precision expr] (unix-timestamp->honeysql expr 9))
+
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->DateTime]
-  [_driver _semantic_type expr]
+  [_driver _semantic-type expr]
   (->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Date]
-  [_driver _semantic_type expr]
+  [_driver _semantic-type expr]
   (->date expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Time]
-  [_driver _semantic_type expr]
+  [_driver _semantic-type expr]
   (->time expr))
+
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (h2x/with-database-type-info [:concat
+                                [:substr expr 1 4]
+                                "-"
+                                [:substr expr 5 2]
+                                "-"
+                                [:substr expr 7 2]
+                                " "
+                                [:substr expr 9 2]
+                                ":"
+                                [:substr expr 11 2]
+                                ":"
+                                [:substr expr 13 2]]
+                               "timestamp"))
+
+(defmethod sql.qp/cast-temporal-byte [:sqlite :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               (h2x/cast "TEXT" expr)))
+
+(defmethod sql.qp/cast-temporal-byte [:sqlite :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               (h2x/cast "TEXT" expr)))
 
 (defmethod sql.qp/->date :sqlite
   [_driver value]

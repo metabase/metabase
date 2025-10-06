@@ -1,7 +1,5 @@
 (ns ^:mb/driver-tests metabase.app-db.liquibase-test
   (:require
-   [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
@@ -11,7 +9,6 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.test :as mt]
-   [metabase.util.yaml :as u.yaml]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
@@ -54,20 +51,6 @@
                   (str/includes? line "ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci")))
                 (format "%s should include ENGINE ... CHARACTER SET ... COLLATE ..." (pr-str line)))))))))
 
-(defn liquibase-file->included-ids
-  "Read a liquibase migration file and returns all the migration id that is applied to `db-type`.
-  Ids are orderer in the order it's defined in migration file."
-  [file-path db-type]
-  (let [content (u.yaml/from-file (io/resource file-path))]
-    (->> (:databaseChangeLog content)
-         ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current db-type
-         (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
-                                                        (not (str/includes? dbms (name db-type))))))
-         ;; remove ignored changeSets
-         (remove #(get-in % [:changeSet :ignore]))
-         (map #(str (get-in % [:changeSet :id])))
-         (remove str/blank?))))
-
 (deftest consolidate-liquibase-changesets-test
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
@@ -76,20 +59,21 @@
         (liquibase/with-liquibase [liquibase conn]
           (let [table-name (liquibase/changelog-table-name liquibase)]
             (.update liquibase "")
-            (t2/update! table-name {:filename "migrations/000_migrations.yaml"})
+
             (liquibase/consolidate-liquibase-changesets! conn liquibase)
 
             (testing "makes sure the change log filename are correctly set"
-              (is (= (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
+              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver* conn))
                      (t2/select-fn-set :id table-name :filename "migrations/000_legacy_migrations.yaml")))
 
-              (is (= (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*))
-                     (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml"))))
+              (is (= (set (mdb.test-util/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver* conn))
+                     (t2/select-fn-set :id table-name :filename "migrations/001_update_migrations.yaml")))
 
-            (is (= (t2/select-fn-set :id table-name)
-                   (set/union
-                    (set (liquibase-file->included-ids "migrations/000_legacy_migrations.yaml" driver/*driver*))
-                    (set (liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)))))))))))
+              (is (= []
+                     (remove #(str/starts-with? % "v56.") (t2/select-fn-set :id table-name :filename "migrations/056_update_migrations.yaml"))))
+
+              (is (= (t2/select-fn-set :id table-name)
+                     (set (mdb.test-util/all-liquibase-ids true driver/*driver* conn)))))))))))
 
 (deftest wait-for-all-locks-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -168,6 +152,11 @@
         (is (nil? (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))
         (.update liquibase "")
         (is (< 52 (liquibase/latest-applied-major-version conn (.getDatabase liquibase))))))))
+
+(deftest extract-numbers-special-case-test
+  (testing "when specific migration verison is passed reports different major version"
+    (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-06-05T16:48:48"))))
+    (is (= 55 (first (#'liquibase/extract-numbers "v56.2025-05-19T16:48:48"))))))
 
 (deftest rollback-major-version
   (mt/test-drivers #{:h2 :mysql :rollback}

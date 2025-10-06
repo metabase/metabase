@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -54,6 +55,11 @@
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
           (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}
          (collection/user->personal-collection-names [(mt/user->id :lucky) (mt/user->id :rasta)] :site))))
+
+(deftest ^:parallel trash-collection-name-is-localized-test
+  (let [trash (collection/trash-collection)]
+    (is (-> trash :name i18n/localized-string?)
+        "Trash name must be a localized string")))
 
 (deftest personal-collection-with-ui-details-test
   (testing "With personal_owner"
@@ -760,9 +766,8 @@
 
 (deftest perms-for-archiving-test
   (with-collection-hierarchy! [{:keys [a b c d], :as collections}]
-    (testing "To Archive A, you should need *write* perms for A and all of its descendants, and also the Root Collection..."
-      (is (= #{"/collection/root/"
-               "/collection/A/"
+    (testing "To Archive A, you should need *write* perms for A and all of its descendants, but NOT the Root Collection"
+      (is (= #{"/collection/A/"
                "/collection/B/"
                "/collection/C/"
                "/collection/D/"
@@ -772,16 +777,14 @@
              (->> (collection/perms-for-archiving a)
                   (perms-path-ids->names collections)))))
 
-    (testing (str "Now let's move down a level. To archive B, you should need permissions for A and B, since B doesn't "
-                  "have any descendants")
-      (is (= #{"/collection/A/"
-               "/collection/B/"}
+    (testing (str "Now let's move down a level. To archive B, you should need permissions for B only, since B doesn't "
+                  "have any descendants and we don't need parent permissions")
+      (is (= #{"/collection/B/"}
              (->> (collection/perms-for-archiving b)
                   (perms-path-ids->names collections)))))
 
-    (testing "but for C, you should need perms for A (parent); C; and D, E, F, and G (descendants)"
-      (is (= #{"/collection/A/"
-               "/collection/C/"
+    (testing "but for C, you should need perms for C and D, E, F, and G (descendants) but NOT A (parent)"
+      (is (= #{"/collection/C/"
                "/collection/D/"
                "/collection/E/"
                "/collection/F/"
@@ -789,9 +792,8 @@
              (->> (collection/perms-for-archiving c)
                   (perms-path-ids->names collections)))))
 
-    (testing "For D you should need C (parent), D, and E (descendant)"
-      (is (= #{"/collection/C/"
-               "/collection/D/"
+    (testing "For D you should need D and E (descendant) but NOT C (parent)"
+      (is (= #{"/collection/D/"
                "/collection/E/"}
              (->> (collection/perms-for-archiving d)
                   (perms-path-ids->names collections)))))))
@@ -800,7 +802,7 @@
   (testing "If you try to calculate permissions to archive the Root Collection, throw an Exception!"
     (is (thrown-with-msg?
          Exception
-         #"You cannot archive the Root Collection."
+         #"You cannot operate on the Root Collection."
          (collection/perms-for-archiving collection/root-collection))))
 
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
@@ -808,13 +810,13 @@
       (with-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
-             #"You cannot archive the Custom Reports Collection."
+             #"You cannot operate on the Custom Reports Collection."
              (collection/perms-for-archiving cr-collection))))))
 
   (testing "Let's make sure we get an Exception when we try to archive a Personal Collection"
     (is (thrown-with-msg?
          Exception
-         #"You cannot archive a Personal Collection."
+         #"You cannot operate on a Personal Collection."
          (collection/perms-for-archiving (collection/user->personal-collection (mt/fetch-user :lucky))))))
 
   (testing "invalid input"
@@ -830,33 +832,32 @@
 
 (deftest perms-for-moving-test
   (with-collection-hierarchy! [{:keys [b c], :as collections}]
-    (testing "If we want to move B into C, we should need perms for A, B, and C."
-      ;; B because it is being moved; C we are moving
-      ;; something into it, A because we are moving something out of it
+    (testing "If we want to move B into C, we should need perms for B and C, but NOT for A."
+      ;; B because it is being moved; C because we are moving something into it
+      ;; We do NOT need permissions for A because we are just moving something out of it
       ;;
       ;;    +-> B                              +-> B*
       ;;    |                                  |
-      ;; A -+-> C -+-> D -> E  ===>  A* -> C* -+-> D -> E
+      ;; A -+-> C -+-> D -> E  ===>  A -> C* -+-> D -> E
       ;;           |                           |
       ;;           +-> F -> G                  +-> F -> G
 
-      (is (= #{"/collection/A/"
-               "/collection/B/"
+      (is (= #{"/collection/B/"
                "/collection/C/"}
              (->> (collection/perms-for-moving b c)
                   (perms-path-ids->names collections)))))
 
     (testing "Ok, now let's try moving something with descendants."
       ;; If we move C into B, we need perms for C and all its
-      ;; descendants, and B, since it's the new parent; and A, the old parent
+      ;; descendants, and B, since it's the new parent
+      ;; We do NOT need permissions for A, the old parent
       ;;
       ;;    +-> B
       ;;    |
-      ;; A -+-> C -+-> D -> E  ===>  A* -> B* -> C* -+-> D* -> E*
+      ;; A -+-> C -+-> D -> E  ===>  A -> B* -> C* -+-> D* -> E*
       ;;           |                                 |
       ;;           +-> F -> G                        +-> F* -> G*
-      (is (= #{"/collection/A/"
-               "/collection/B/"
+      (is (= #{"/collection/B/"
                "/collection/C/"
                "/collection/D/"
                "/collection/E/"
@@ -868,23 +869,21 @@
     (testing "Ok, now how about moving B into the Root Collection?"
       ;;    +-> B                    B* [and Root*]
       ;;    |
-      ;; A -+-> C -+-> D -> E  ===>  A* -> C -+-> D -> E
+      ;; A -+-> C -+-> D -> E  ===>  A -> C -+-> D -> E
       ;;           |                          |
       ;;           +-> F -> G                 +-> F -> G
       (is (= #{"/collection/root/"
-               "/collection/A/"
                "/collection/B/"}
              (->> (collection/perms-for-moving b collection/root-collection)
                   (perms-path-ids->names collections)))))
 
     (testing "How about moving C into the Root Collection?"
-      ;;    +-> B                    A* -> B
+      ;;    +-> B                    A -> B
       ;;    |
       ;; A -+-> C -+-> D -> E  ===>  C* -+-> D* -> E* [and Root*]
       ;;           |                     |
       ;;           +-> F -> G            +-> F* -> G*
       (is (= #{"/collection/root/"
-               "/collection/A/"
                "/collection/C/"
                "/collection/D/"
                "/collection/E/"
@@ -1749,3 +1748,56 @@
                 "Admin isn't able to read custom reports card when audit app isn't enabled")
             (is (not (mi/can-read? cr-dashboard))
                 "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))
+
+(deftest collection-insert-updates-permission-graph-revision-test
+  (testing "Creating a new collection should increment the CollectionPermissionGraphRevision"
+    (let [initial-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection _ {:name "Test Collection"}]
+          (let [final-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+            (is (= (inc initial-revision-count) final-revision-count)
+                "A new CollectionPermissionGraphRevision should be created when inserting a collection")))))))
+
+(deftest collection-insert-skips-permissions-for-personal-collections-test
+  (testing "Creating a collection inside a personal collection should not copy permissions"
+    (let [user-id (mt/user->id :rasta)
+          personal-collection (collection/user->personal-collection user-id)
+          initial-perms-count (t2/count :model/Permissions)]
+      ;; Create a collection inside the personal collection
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection _ {:name "Personal Child Collection"
+                                            :location (collection/children-location personal-collection)}]
+          ;; Verify no new permissions were created (beyond any that might exist for the personal collection itself)
+          (let [final-perms-count (t2/count :model/Permissions)]
+            ;; The count should be the same since personal collections don't get permission entries
+            (is (= initial-perms-count final-perms-count)
+                "No new permissions should be created for collections inside personal collections")))))))
+
+(deftest exclude-internal-content-hsql-test
+  (testing "The exclude-internal-content-hsql multimethod returns correct HoneySQL expressions"
+    (testing "filters exclude internal collections in practice"
+      (mt/with-temp [:model/Collection regular-collection {:name "Regular Collection"}
+                     :model/Collection trash-collection {:name "Trash Collection" :type "trash"}
+                     :model/Collection analytics-collection {:name "Analytics Collection" :type "instance-analytics"}
+                     :model/Collection sample-collection {:name "Sample Collection" :is_sample true}]
+        (testing "regular collection is included"
+          (is (some #(= (:id regular-collection) (:id %))
+                    (t2/select :model/Collection :id (:id regular-collection)))))
+
+        (testing "trash collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id trash-collection)] hsql-clause]})]
+            (is (empty? query))))
+
+        (testing "analytics collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id analytics-collection)] hsql-clause]})]
+            (is (empty? query))))
+
+        (testing "sample collection would be excluded by filter"
+          (let [hsql-clause (mi/exclude-internal-content-hsql :model/Collection)
+                query (t2/select :model/Collection
+                                 {:where [:and [:= :id (:id sample-collection)] hsql-clause]})]
+            (is (empty? query))))))))

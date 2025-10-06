@@ -9,7 +9,8 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
 
@@ -54,10 +55,11 @@
   the arity."
   [{:keys [args], :as _arity} return-schema {:keys [target], :as _options}]
   (let [parsed       (md/parse (add-default-schemas args))
-        varargs-info (get-in parsed [:parsed :rest :arg :arg])
-        varargs-type (cond
-                       (= (first varargs-info) :map) :varargs/map
-                       (seq varargs-info)            :varargs/sequential)
+        varargs-info (get-in parsed [:parsed :values :rest :values :arg :values :arg])
+        varargs-type (when varargs-info
+                       (if (= (:key varargs-info) :map)
+                         :varargs/map
+                         :varargs/sequential))
         schema       (case target
                        :target/metadata        (if (= varargs-type :varargs/map)
                                                  (vec (concat (butlast (:schema parsed)) [[:* :any]]))
@@ -131,14 +133,15 @@
    (fn-schema parsed {:target :target/instrumentation}))
 
   ([parsed options]
-   (let [{:keys [return arities]}     parsed
-         return-schema                (:schema return :any)
-         [arities-type arities-value] arities]
+   (let [{:keys [return arities]}     (:values parsed)
+         return-schema                (:schema (:values return) :any)
+         arities-type (:key arities)
+         arities-value (:values (:value arities))]
      (case arities-type
        :single   (arity-schema arities-value return-schema options)
        :multiple (into [:function]
                        (for [arity (:arities arities-value)]
-                         (arity-schema arity return-schema options)))))))
+                         (arity-schema (:values arity) return-schema options)))))))
 
 (defn- deparameterized-arity [{:keys [body args prepost], :as _arity}]
   (concat
@@ -149,11 +152,14 @@
 
 (defn deparameterized-fn-tail
   "Generate a deparameterized `fn` tail (the contents of a `fn` form after the `fn` symbol)."
-  [{[arities-type arities-value] :arities, :as _parsed}]
-  (let [body (case arities-type
+  [parsed]
+  (let [arities (:arities (:values parsed))
+        arities-type (:key arities)
+        arities-value (:values (:value arities))
+        body (case arities-type
                :single   (deparameterized-arity arities-value)
                :multiple (for [arity (:arities arities-value)]
-                           (deparameterized-arity arity)))]
+                           (deparameterized-arity (:values arity))))]
     body))
 
 (defn deparameterized-fn-form
@@ -308,8 +314,59 @@
       (for [schema schemas]
         (instrumented-arity error-context schema)))))
 
+(defn- should-capture-schema? [schema]
+  (cond
+    (keyword? schema)    false
+    ;; default varargs schema (no validation)
+    (= schema [:* :any]) false
+    :else                true))
+
+(defn- capture-input-schema [arity-number input-schema]
+  (if (= input-schema :cat)
+    [input-schema {}]
+    (let [[input-schema-tag & arg-schemas] input-schema]
+      (assert (= input-schema-tag :cat))
+      (reduce
+       (core/fn [[schema captured] arg-schema]
+         (if-not (should-capture-schema? arg-schema)
+           [(conj schema arg-schema)
+            captured]
+           (let [symb (symbol (format "&input-schema-%d-%s"
+                                      arity-number
+                                      (str (char (+ (int \a) (count captured))))))]
+             [(conj schema symb)
+              (assoc captured symb arg-schema)])))
+       [(-> [:cat]
+            (with-meta (meta input-schema)))
+        {}]
+       arg-schemas))))
+
+(defn- capture-arity [arity-number [_=> input-schema return-schema]]
+  (let [[input-schema captured] (capture-input-schema arity-number input-schema)]
+    (if-not (should-capture-schema? return-schema)
+      [[:=> input-schema return-schema]
+       captured]
+      ;; return schema has to be the same for each arity so use the same symbol across the fn
+      [[:=> input-schema '&return-schema]
+       (assoc captured '&return-schema return-schema)])))
+
+(defn- capture-function [[_function & arity-schemas]]
+  (reduce
+   (core/fn [[schema captured] [arity-number arity-schema]]
+     (let [[arity-schema arity-captured] (capture-arity arity-number arity-schema)]
+       [(conj schema arity-schema)
+        (merge captured arity-captured)]))
+   [[:function] {}]
+   (map-indexed vector arity-schemas)))
+
+(defn- capture-schemas [fn-schema]
+  (case (first fn-schema)
+    :=>       (capture-arity 0 fn-schema)
+    :function (capture-function fn-schema)))
+
 (defn instrumented-fn-form
-  "Given a `fn-tail` like
+  "Nota Bene: not safe for expansion into Clojurescript!
+  Given a `fn-tail` like
 
     ([x :- :int y] (+ 1 2))
 
@@ -320,8 +377,10 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed & [fn-name]]
-  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+  (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
+    `(let [~'&f ~(deparameterized-fn-form parsed fn-name)
+           ~@(into [] cat captured)]
+       (core/fn ~@(instrumented-fn-tail error-context fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 
@@ -387,7 +446,10 @@
   fix this later."
   [& fn-tail]
   (let [parsed (parse-fn-tail fn-tail)
-        instrument? (instrument-ns? *ns*)]
+        ;; Match mu/defn behavior:
+        instrument? (macros/case
+                      :cljs false
+                      :clj (instrument-ns? *ns*))]
     (if-not instrument?
       (deparameterized-fn-form parsed)
       (let [error-context (if (symbol? (first fn-tail))

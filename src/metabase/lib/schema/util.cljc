@@ -1,10 +1,11 @@
 (ns metabase.lib.schema.util
-  (:refer-clojure :exclude [ref])
+  (:refer-clojure :exclude [ref run! every? mapv])
   (:require
-   [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase.lib.options :as lib.options]
-   [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :as perf :refer [run! every? mapv]]))
 
 (declare collect-uuids*)
 
@@ -54,33 +55,74 @@
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
 
-(defn distinct-refs?
-  "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
-  aren't important such as namespaced keys and type info)?"
-  [refs]
-  (or
-   (< (count refs) 2)
-   (apply
-    distinct?
-    (for [ref refs]
-      (let [options (lib.options/options ref)]
-        (lib.options/with-options ref
-          ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
-          (reduce-kv (fn [acc k _]
-                       (if (or (qualified-keyword? k)
-                               (#{:base-type :effective-type :ident} k))
-                         (dissoc acc k)
-                         acc))
-                     options options)))))))
-
-(defn remove-randomized-idents
-  "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
+(defn- mbql-clause?
+  "Just check that `x` is in the general shape of an MBQL clause. This is to prevent things
+  like [[distinct-mbql-clauses?]] from barfing when given invalid values."
   [x]
-  (walk/postwalk
+  (and (vector? x)
+       (> (count x) 2)
+       (keyword? (first x))
+       (map? (second x))))
+
+(defn- mbql-clauses?
+  [xs]
+  (and (sequential? xs)
+       (or (empty? xs)
+           (every? mbql-clause? xs))))
+
+(defn- opts-distinct-key [opts]
+  ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison. This is allegedly faster.
+  (reduce-kv (fn [acc k v]
+               (if (or (qualified-keyword? k)
+                       (#{:base-type :effective-type} k)
+                       (and (#{:temporal-unit :inherited-temporal-unit} k)
+                            (= v :default)))
+                 (dissoc acc k)
+                 acc))
+             opts
+             opts))
+
+(mu/defn mbql-clause-distinct-key
+  "For deduplicating MBQL clauses: keep just the keys in options that are essential to distinguish one clause from
+  another. Removes namespaced keywords and type information keys like `:base-type`."
+  [[tag opts & children]]
+  (into [tag
+         (opts-distinct-key opts)]
+        (map (fn [child]
+               (cond-> child
+                 (mbql-clause? child) mbql-clause-distinct-key)))
+        children))
+
+(defn distinct-mbql-clauses?
+  "Is a sequence of `mbql-clauses` distinct for the purposes of appearing in things like `:fields`, `:breakouts`, or
+  `:order-by`? (Are they distinct ignoring keys that aren't important such as namespaced keys and type info?)"
+  [mbql-clauses]
+  (and (mbql-clauses? mbql-clauses)
+       (or (< (count mbql-clauses) 2)
+           (apply distinct? (map mbql-clause-distinct-key mbql-clauses)))))
+
+(mr/def ::distinct-mbql-clauses
+  [:fn
+   {:error/message    "values must be distinct MBQL clauses ignoring namespaced keys and type info"
+    :error/fn         (fn [{:keys [value]} _]
+                        (if (mbql-clauses? value)
+                          (str "values must be distinct MBQL clauses ignoring namespaced keys and type info: "
+                               (pr-str (map mbql-clause-distinct-key value)))
+                          "values must be valid MBQL clauses"))
+    :decode/normalize (fn [xs]
+                        (when (mbql-clauses? xs)
+                          (into []
+                                (m/distinct-by mbql-clause-distinct-key)
+                                xs)))}
+   distinct-mbql-clauses?])
+
+(defn remove-lib-uuids
+  "Recursively remove all uuids from `x`."
+  [x]
+  (perf/postwalk
    (fn [x]
-     (if (map? x)
-       (dissoc x :lib/uuid :ident :entity_id :entity-id)
-       x))
+     (cond-> x
+       (map? x) (dissoc :lib/uuid)))
    x))
 
 (defn- indexed-order-bys-for-stage
@@ -106,17 +148,3 @@
   (if (:stages query)
     (update query :stages #(mapv indexed-order-bys-for-stage %))
     query))
-
-(mr/def ::distinct-ignoring-uuids
-  [:fn
-   {:error/message "values must be distinct ignoring uuids"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-randomized-idents value))))}
-   (comp u/empty-or-distinct? remove-randomized-idents)])
-
-(defn distinct-ignoring-uuids
-  "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."
-  [schema]
-  [:and
-   schema
-   [:ref ::distinct-ignoring-uuids]])

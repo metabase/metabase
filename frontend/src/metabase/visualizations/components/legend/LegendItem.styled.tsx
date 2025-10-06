@@ -1,8 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { forwardRef } from "react";
-
-import { Icon, type IconProps } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
   display: flex;
@@ -27,44 +24,24 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   }
 `;
 
-const LEGEND_ITEM_DOT_SIZE = 12;
 const LEGEND_ITEM_TITLE_MARGIN = 4;
 
-export const LegendItemTitle = styled.div<{ isInsidePopover?: boolean }>`
+export const LegendItemTitle = styled.div<{
+  dotSize: string;
+  isInsidePopover?: boolean;
+}>`
   color: var(--mb-color-text-primary);
   font-size: 0.85em;
+  font-weight: 700;
   margin-left: ${LEGEND_ITEM_TITLE_MARGIN}px;
   overflow: hidden;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
-  max-width: ${(props) =>
-    props.isInsidePopover
-      ? `calc(100% - ${LEGEND_ITEM_DOT_SIZE}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
+  max-width: ${({ dotSize, isInsidePopover }) =>
+    isInsidePopover
+      ? `calc(100% - ${dotSize}px - ${LEGEND_ITEM_TITLE_MARGIN}px)`
       : "unset"};
 
   &:hover {
     color: ${({ onClick }) => onClick && "var(--mb-color-brand)"};
-  }
-`;
-
-export const LegendItemRemoveIcon = styled(
-  forwardRef<SVGSVGElement, IconProps>(
-    function LegendItemRemoveIcon(props, ref) {
-      return (
-        <Icon
-          {...props}
-          name={props.name ?? "close"}
-          size={props.size ?? 12}
-          ref={ref}
-        />
-      );
-    },
-  ),
-)`
-  color: var(--mb-color-text-light);
-  cursor: pointer;
-  margin-left: 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-text-medium);
   }
 `;

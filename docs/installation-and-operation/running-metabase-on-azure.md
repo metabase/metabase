@@ -104,7 +104,7 @@ Now go to the next step where you will select:
 - **Options**: Single container.
 - **Image source**: DockerHub.
 - **Access Type**: Public.
-- **Image and tag**: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition). To find the latest version, check our [Community Edition Dockerhub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Dockerhub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated).
+- **Image and tag**: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition). To find the latest version, check our [Community Edition Docker Hub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Docker Hub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated).
 - **Startup command**: Leave this field empty.
 
 Click **Next** until you get to the last section, then click **Create**, and wait while your application initializes.
@@ -165,7 +165,7 @@ Change the version of the container to the new version in the **Full Image Name 
 
 Visit your web app in Azure, and navigate to **Monitoring -> Log stream**.
 
-You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Troubleshooting -> Logs.
+You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Tools -> Logs.
 
 ### Performance tuning
 

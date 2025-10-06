@@ -14,4 +14,5 @@
   statuses]
  [metabase.eid-translation.util
   ->id
+  ->id-or-404
   model->entity-ids->ids])

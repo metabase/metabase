@@ -17,20 +17,21 @@ import {
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 function capitalize(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-describe("issue 12578", () => {
-  const ORDERS_QUESTION = {
-    name: "Orders question",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  };
+const ORDERS_QUESTION = {
+  name: "Orders question",
+  query: {
+    "source-table": ORDERS_ID,
+  },
+};
 
+describe("issue 12578", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -62,6 +63,89 @@ describe("issue 12578", () => {
   });
 });
 
+describe("issue 61013", () => {
+  const dashboardName = "Dashboard 61013";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createDashboardWithTabs({
+      name: dashboardName,
+
+      tabs: [
+        {
+          id: 1,
+          name: "Tab 1",
+        },
+        {
+          id: 2,
+          name: "Tab 2",
+        },
+      ],
+    });
+  });
+
+  it("should only add one card and save correctly to the dashboard when the dashboard is empty but has multiple tabs (metabase#61013)", () => {
+    H.createQuestion(ORDERS_QUESTION).then(({ body }) =>
+      H.visitQuestion(body.id),
+    );
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
+
+    H.modal().within(() => {
+      cy.findByPlaceholderText("Search…").type(dashboardName);
+      cy.findByTestId("result-item").click();
+      cy.findByText("Select").click();
+    });
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
+    });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+
+    H.saveDashboard();
+
+    H.getDashboardCards().should("have.length", 1);
+    H.getDashboardCard(0).within(() => {
+      cy.findByText("Orders question").should("be.visible");
+      cy.findByText("Showing first 2,000 rows").should("be.visible");
+    });
+  });
+
+  it("should not wait for cards to load before switching to edit mode", () => {
+    slowDownCardQuery();
+
+    // visitQuestion waits for the query, which we don't want here.
+    // we just want to visit the dashboard directly
+    H.createQuestion(ORDERS_QUESTION, { visitQuestion: false }).then(
+      ({ body }) => cy.visit(`/question/${body.id}`),
+    );
+
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Add to dashboard").click();
+
+    H.modal().within(() => {
+      cy.findByPlaceholderText("Search…").type(dashboardName);
+      cy.findByTestId("result-item").click();
+      cy.findByText("Select").click();
+    });
+
+    cy.findByTestId("edit-bar")
+      .findByText("You're editing this dashboard.")
+      .should("be.visible");
+    H.getDashboardCard(0)
+      .findByTestId("loading-indicator")
+      .should("be.visible");
+  });
+});
+
 describe("issue 12926", () => {
   const filterDisplayName = "F";
   const queryResult = 42;
@@ -80,14 +164,6 @@ describe("issue 12926", () => {
       },
     },
   };
-
-  function slowDownCardQuery(as) {
-    cy.intercept("POST", "/api/card/*/query", (req) => {
-      req.on("response", (res) => {
-        res.setDelay(300000);
-      });
-    }).as(as);
-  }
 
   function slowDownDashcardQuery() {
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
@@ -186,7 +262,7 @@ describe("issue 12926", () => {
 
       H.openQuestionsSidebar();
       // when the card is added to a dashboard, it doesn't use the dashcard endpoint but instead uses the card one
-      slowDownCardQuery("cardQuerySlowed");
+      slowDownCardQuery().as("cardQuerySlowed");
       H.sidebar().findByText(questionDetails.name).click();
 
       H.setFilter("Number", "Equal to");
@@ -580,8 +656,7 @@ describe("issue 28756", () => {
 
   const TOAST_TIMEOUT_SAFETY_MARGIN = 1000;
   const TOAST_TIMEOUT = DASHBOARD_SLOW_TIMEOUT + TOAST_TIMEOUT_SAFETY_MARGIN;
-  const TOAST_MESSAGE =
-    "Would you like to be notified when this dashboard is done loading?";
+  const TOAST_MESSAGE = "Want to get notified when this dashboard loads?";
 
   function restrictCollectionForNonAdmins(collectionId) {
     cy.request("GET", "/api/collection/graph").then(
@@ -648,7 +723,7 @@ describe("issue 29076", () => {
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
 
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.updatePermissionsGraph({
       [ALL_USERS_GROUP]: {
@@ -954,10 +1029,7 @@ describe("issue 34382", () => {
   }
 
   function applyFilter() {
-    H.dashboardParametersContainer()
-      .findByRole("button", { name: "Apply" })
-      .click();
-
+    cy.findByRole("button", { name: "Apply" }).click();
     cy.wait("@dashcardQuery");
   }
 
@@ -1855,4 +1927,337 @@ describe("issue 56716", () => {
     H.filterWidget().should("not.contain.text", "4.6");
     H.getDashboardCard().findByText("200 rows").should("be.visible");
   });
+});
+
+describe("Issue 46337", () => {
+  const MODEL_NAME = "Model 46337";
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion({
+      type: "model",
+      name: MODEL_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+        fields: [
+          [
+            "field",
+            ORDERS.ID,
+            {
+              "base-type": "type/BigInteger",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TAX,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.TOTAL,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.DISCOUNT,
+            {
+              "base-type": "type/Float",
+            },
+          ],
+          [
+            "field",
+            ORDERS.QUANTITY,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+          [
+            "field",
+            ORDERS.PRODUCT_ID,
+            {
+              "base-type": "type/Integer",
+            },
+          ],
+        ],
+        joins: [
+          {
+            fields: "all",
+            alias: "Products",
+            "source-table": PEOPLE_ID,
+            strategy: "left-join",
+            condition: [
+              "=",
+              ["field", ORDERS.USER_ID, {}],
+              ["field", PEOPLE.ID, { "join-alias": "Products" }],
+            ],
+          },
+        ],
+      },
+    }).then(({ body: model }) => {
+      cy.visit(`/auto/dashboard/model/${model.id}`);
+    });
+  });
+
+  // TODO: unskip when metabase#46337 is fixed
+  // See: https://github.com/metabase/metabase/issues/46337
+  it("should (metabase#46337)", { tags: "@skip" }, () => {
+    cy.log("ensure the dashcards render data not errors");
+
+    cy.findByTestId("dashboard-grid").within(() => {
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+      cy.findByText(`Total ${MODEL_NAME}`).should("be.visible");
+    });
+  });
+});
+
+function slowDownCardQuery() {
+  return cy.intercept("POST", "/api/card/*/query", (req) => {
+    req.on("response", (res) => {
+      res.setDelay(300000);
+    });
+  });
+}
+
+describe("issue 62170", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should only refresh card data, not reload entire dashboard when auto-refresh is enabled", () => {
+    const REFRESH_PERIOD = 3;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Orders Count",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.visit(`/dashboard/${dashboard_id}#refresh=${REFRESH_PERIOD}`);
+
+      cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
+        "dashboardLoad",
+      );
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+        "cardDataRefresh",
+      );
+    });
+
+    // Wait for initial dashboard load
+    cy.wait("@dashboardLoad");
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard is loaded
+    H.getDashboardCard().within(() => {
+      cy.findByText("Orders Count").should("be.visible");
+    });
+
+    cy.wait(REFRESH_PERIOD * 1000);
+
+    // Verify card data was refreshed
+    cy.wait("@cardDataRefresh");
+
+    // Verify dashboard itself was NOT reloaded
+    cy.get("@dashboardLoad.all").should("have.length", 1);
+  });
+});
+
+describe("issue 52674", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be possible to open a parameter widget using the keyboard shortcut (metabase#52674)", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        {
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        },
+      ],
+      dashboardDetails: {
+        parameters: [
+          createMockParameter({
+            id: "param-1",
+            name: "Number",
+            slug: "number",
+            type: "number/between",
+          }),
+        ],
+      },
+    }).then(({ dashboard }) => {
+      cy.request("GET", `/api/dashboard/${dashboard.id}`).then(
+        ({ body: dashboard }) => {
+          const [dashcard] = dashboard.dashcards;
+          const [parameter] = dashboard.parameters;
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            dashcards: [
+              {
+                ...dashcard,
+                parameter_mappings: [
+                  {
+                    card_id: dashcard.card_id,
+                    parameter_id: parameter.id,
+                    target: [
+                      "dimension",
+                      [
+                        "field",
+                        ORDERS.TOTAL,
+                        {
+                          "base-type": "type/Number",
+                        },
+                      ],
+                    ],
+                  },
+                ],
+              },
+            ],
+          }).then(() => {
+            cy.wrap(dashboard.id).as("dashboardId");
+          });
+        },
+      );
+    });
+    H.visitDashboard("@dashboardId");
+
+    cy.log("Opening with Enter should work");
+    H.main().button("Number").focus();
+    cy.realPress("Enter");
+    H.popover().should("be.visible");
+
+    cy.log("Close the popover");
+    H.main().button("Number").click();
+
+    cy.log("Opening with Space should work");
+    H.main().button("Number").focus();
+    cy.realPress("Space");
+    H.popover().should("be.visible");
+  });
+});
+
+describe("issue 53370", () => {
+  const LONG_NAME = "a".repeat(254);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createDashboard({
+      name: LONG_NAME,
+    }).then(({ body: dashboard }) => {
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("should wrap long dashboard named (metabase#53370)", () => {
+    cy.findByDisplayValue(LONG_NAME)
+      .should("be.visible")
+      .then(($el) => {
+        cy.window().then((win) => {
+          cy.wrap($el[0].offsetWidth).should("be.lt", win.innerWidth);
+        });
+      });
+    //
+  });
+});
+
+describe("issue 63176", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not be possible to save a dashboard with an empty name and the correct error should be displayed (metabase#63176)", () => {
+    cy.visit("/");
+    H.newButton().click();
+    H.popover().findByText("Dashboard").click();
+    H.modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your dashboard?").type(" ");
+      cy.button("Create").click();
+
+      cy.findByText("value must be a non-blank string.").should("be.visible");
+      cy.findByPlaceholderText("What is the name of your dashboard?").should(
+        "have.attr",
+        "aria-invalid",
+        "true",
+      );
+      cy.button("Failed").should("be.visible");
+    });
+  });
+});
+
+describe("issue 64138", () => {
+  const MAP_QUESTION = {
+    query: {
+      "source-table": PEOPLE_ID,
+    },
+
+    display: "map",
+    displayIsLocked: true,
+    visualization_settings: {
+      "map.type": "pin",
+      "map.pin_type": "markers",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestionAndDashboard({
+      questionDetails: MAP_QUESTION,
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+  });
+
+  it("should hide map controls when editing dashboard (metabase#64138)", () => {
+    H.editDashboard();
+
+    cy.log("hovering the map should not show the zoom controls");
+    H.getDashboardCard(0)
+      .realHover({
+        position: "center",
+      })
+      .within(() => {
+        cy.findByLabelText("Zoom in").should("not.exist");
+        cy.findByText("Set as default view").should("be.visible").click();
+      });
+
+    cy.log("hovering marker icons should not open their tooltips");
+    getMarkerIcon(0).realHover();
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+
+    cy.log("clicking marker icons should not navigate to the question");
+    getMarkerIcon(0).click({ force: true });
+    cy.location("pathname").should("match", /^\/dashboard\/[0-9]+$/);
+    H.modal().should("not.exist");
+  });
+
+  function getMarkerIcon(index) {
+    // pick the last one so it will be on top
+    return H.getDashboardCard(index)
+      .get(".leaflet-marker-icon")
+      .should("have.length.gt", 0)
+      .last();
+  }
 });

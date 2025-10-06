@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.chain-filter :as chain-filter]
@@ -25,13 +24,14 @@
     (keyword (name type))
     :=))
 
-(defn- param-type->default-options
+(defn param-type->default-options
+  "Default chain-filter constraint options based on parameter type."
   [type]
   (when (#{:string/contains :string/does-not-contain :string/starts-with :string/ends-with} type)
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- mbql.s/Parameter]
+  [param :- ::lib.schema.parameter/parameter]
   (let [op      (param-type->op (:type param))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -144,6 +144,17 @@
       query
       (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
+(defn- find-common-remapping-target
+  "Check if ALL field-ids have identical remappings to the same display field.
+   Returns the common target field-id if ALL fields have the same remapping, nil otherwise."
+  [field-ids]
+  (let [target-field-ids (into #{}
+                               (map (comp :id chain-filter/remapping))
+                               field-ids)]
+    (when (and (not (contains? target-field-ids nil))
+               (= 1 (count target-field-ids)))
+      (first target-field-ids))))
+
 (defn dashboard-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
   ([dashboard param-key value]
@@ -153,20 +164,33 @@
      (throw (ex-info (tru "Getting the remapped value for a constrained parameter is not supported")
                      {:status-code 400
                       :parameter param-key})))
-   (or (let [dashboard (-> dashboard
-                           (t2/hydrate :resolved-params)
-                           ;; whatever the param's type, we want an equality constraint
-                           (m/update-existing-in [:resolved-params param-key] assoc :type :id))
-             param     (get-in dashboard [:resolved-params param-key])]
-         (custom-values/parameter-remapped-value
-          param
-          value
-          #(let [field-ids (into #{} (map :field-id (param->fields param)))]
-             (-> (if (= (count field-ids) 1)
-                   (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
-                                              :relax-fk-requirement? true :limit 1)
-                   (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
-                     (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
-                 :values
-                 first))))
-       [value])))
+   (let [dashboard (-> dashboard
+                       (t2/hydrate :resolved-params)
+                       ;; whatever the param's type, we want an equality constraint
+                       (m/update-existing-in [:resolved-params param-key] assoc :type :id))
+         param (get-in dashboard [:resolved-params param-key])
+         field-ids (into #{} (map :field-id (param->fields param)))
+         ;; Default case when we have just a single field-id:
+         get-direct-remapping #(chain-filter/chain-filter
+                                (first field-ids)
+                                (chain-filter-constraints dashboard
+                                                          (assoc constraint-param-key->value
+                                                                 param-key
+                                                                 value))
+                                :relax-fk-requirement? true
+                                :limit 1)
+         ;; Default case when we have multiple field-ids:
+         get-common-remapping #(when-let [common-display-field (find-common-remapping-target field-ids)]
+                                 (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
+                                   (chain-filter/chain-filter pk-field-id
+                                                              [{:field-id pk-field-id, :op :=, :value value}]
+                                                              :limit 1
+                                                              :remapping-field common-display-field)))
+         default-case-fn (fn dashboard-param-remapped-default-case []
+                           (-> (if (= (count field-ids) 1)
+                                 (get-direct-remapping) ; only one field id
+                                 (get-common-remapping)) ; more than one
+                               :values
+                               first))]
+     (or (custom-values/parameter-remapped-value param value default-case-fn)
+         [value]))))

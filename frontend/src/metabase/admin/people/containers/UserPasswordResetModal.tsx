@@ -7,9 +7,9 @@ import {
   useGetUserQuery,
   useUpdatePasswordMutation,
 } from "metabase/api";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import PasswordReveal from "metabase/components/PasswordReveal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import PasswordReveal from "metabase/common/components/PasswordReveal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { generatePassword } from "metabase/lib/security";
 import MetabaseSettings from "metabase/lib/settings";

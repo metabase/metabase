@@ -177,10 +177,16 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     cy.button("Save this").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Your dashboard was saved");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See it").click();
+    cy.log(
+      "'See it' link should be displayed both in the header and in the toast",
+    );
+    H.undoToast()
+      .should("contain", "Your dashboard was saved")
+      .and("contain", "See it");
+
+    cy.findByTestId("automatic-dashboard-header").within(() => {
+      cy.findByRole("link", { name: "See it" }).should("be.visible").click();
+    });
 
     cy.url().should("contain", "a-look-at-orders");
 
@@ -401,6 +407,49 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     getDashcardByTitle("Sales by coordinates")
       .findByText("Leaflet")
       .should("exist");
+  });
+
+  it("should work on questions with breakout by day-of-week and null semantic type (metabase#23820)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+    H.createQuestion(
+      {
+        name: "23820",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "day-of-week" }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    H.cartesianChartCircle()
+      .eq(3) // Wednesday
+      .click();
+
+    H.popover().within(() => {
+      cy.findByText("Automatic insights…").click();
+      cy.findByText("X-ray").click();
+    });
+
+    cy.wait("@dataset");
+
+    H.main().within(() => {
+      cy.findByText(
+        "A closer look at number of Orders where day of week of Created At is Wednesday",
+      ).should("be.visible");
+    });
+
+    getDashcardByTitle("A look at Created At fields").should("exist");
+
+    getDashcardByTitle("A look at the number of Orders").should("exist");
   });
 });
 

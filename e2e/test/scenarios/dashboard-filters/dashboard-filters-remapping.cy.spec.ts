@@ -68,7 +68,7 @@ function addExternalRemapping() {
 }
 
 function findWidget(name: string) {
-  return H.dashboardParametersContainer().findByText(name).parents("fieldset");
+  return H.dashboardParametersContainer().findByLabelText(name);
 }
 
 function clearWidget(name: string) {

@@ -7,7 +7,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
-   [metabase.collections.models.collection :as collection]
+
    [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -41,6 +41,12 @@
    [:groups   [:map-of ms/PositiveInt GroupPermissionsGraph]]])
 
 ;;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
+;;;
+
+(defn- root-collection
+  "Requiring resolve to break a circular dependency"
+  []
+  (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))
 
 (defn- group-id->permissions-set []
   (into {} (for [[group-id perms] (group-by :group_id (t2/select :model/Permissions))]
@@ -57,7 +63,7 @@
   "Return the permissions graph for a single group having `permissions-set`."
   [collection-namespace permissions-set collection-ids]
   (into
-   {:root (perms-type-for-collection permissions-set (assoc collection/root-collection :namespace collection-namespace))}
+   {:root (perms-type-for-collection permissions-set (assoc (root-collection) :namespace collection-namespace))}
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
@@ -72,6 +78,7 @@
                                                 ;; Does 'NULL != "trash"'? Postgres says the answer is undefined, aka
                                                 ;; NULL, which... is falsey. :sob:
                                                 [:or [:= :type nil] [:not= :type "trash"]]
+                                                [:not :archived]
                                                 (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]
@@ -80,7 +87,6 @@
 
 (defn- calculate-perm-groups [collection-namespace group-id->perms collection-ids]
   (into {}
-        #_:clj-kondo/ignore
         (cp/with-shutdown! [pool (+ 2 (cp/ncpus))]
           (doall (cp/upmap pool
                            (fn [group-id]
@@ -138,7 +144,7 @@
    collection-id        :- [:or [:= :root] ms/PositiveInt]
    new-collection-perms :- CollectionPermissions]
   (let [collection-id (if (= collection-id :root)
-                        (assoc collection/root-collection :namespace collection-namespace)
+                        (assoc (root-collection) :namespace collection-namespace)
                         collection-id)]
     ;; remove whatever entry is already there (if any) and add a new entry if applicable
     (perms/revoke-collection-permissions! group-id collection-id)

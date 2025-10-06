@@ -27,16 +27,16 @@
       (doseq [[query-type gtap-rule]
               [["MBQL"
                 {:gtaps      {:venues {:query      (mt.tu/restricted-column-query (mt/id))
-                                       :remappings {:cat [:dimension (mt/id :venues :category_id)]}}}
+                                       :remappings {:cat [:dimension [:field (mt/id :venues :category_id) nil]]}}}
                  :attributes {:cat 50}}]
                ["native"
                 {:gtaps      {:venues {:query
                                        (mt/native-query
-                                         {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
-                                          :template-tags {"cat" {:id           "__MY_CAT__"
-                                                                 :name         "cat"
-                                                                 :display-name "Cat id"
-                                                                 :type         :number}}})
+                                        {:query "SELECT id, name, category_id FROM venues WHERE category_id = {{cat}}"
+                                         :template-tags {"cat" {:id           "__MY_CAT__"
+                                                                :name         "cat"
+                                                                :display-name "Cat id"
+                                                                :type         :number}}})
                                        :remappings {:cat [:variable [:template-tag "cat"]]}}}
                  :attributes {:cat 50}}]]]
         (testing (format "GTAP rule is a %s query" query-type)
@@ -88,7 +88,7 @@
                         (met/with-gtaps-for-user! another-user {:gtaps      {:venues
                                                                              {:remappings
                                                                               {:cat
-                                                                               [:dimension (mt/id :venues :category_id)]}}}
+                                                                               [:dimension [:field (mt/id :venues :category_id) nil]]}}}
                                                                 :attributes {:cat 5 #_BBQ}}
                           (is (= {:field_id        (mt/id :venues :name)
                                   :values          [["Baby Blues BBQ"]

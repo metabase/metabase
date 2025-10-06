@@ -1,6 +1,6 @@
 import React from "react";
 
-import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
+import { useAreAnyTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Tooltip } from "metabase/ui";
 
 import S from "./EllipsifiedPath.module.css";

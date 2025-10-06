@@ -2,8 +2,8 @@ import PropTypes from "prop-types";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import ModalContent from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
 
 const propTypes = {

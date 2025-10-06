@@ -29,7 +29,9 @@ describe("scenarios > question > snippets", () => {
     }
 
     cy.log("Add a snippet of that text");
-    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
     cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
@@ -167,6 +169,24 @@ describe("scenarios > question > snippets", () => {
     H.rightSidebar().icon("close").click();
     H.rightSidebar().findByText("snippet 2").should("be.visible");
   });
+
+  it("should be possible to preview a query that has a snippet in it (metabase#60534)", () => {
+    cy.request("POST", "/api/native-query-snippet", {
+      content: "'foo'",
+      name: "Foo",
+      collection_id: null,
+    });
+
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+    H.NativeEditor.type("select {{snippet: Foo}}");
+    cy.findByTestId("native-query-top-bar")
+      .findByLabelText("Preview the query")
+      .click();
+    H.modal().within(() => {
+      H.codeMirrorValue().should("eq", "select\n  'foo'");
+    });
+  });
 });
 
 describe("scenarios > question > snippets (OSS)", { tags: "@OSS" }, () => {
@@ -192,7 +212,7 @@ describe("scenarios > question > snippets (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   ["admin", "normal"].forEach((user) => {
@@ -327,6 +347,31 @@ describe("scenarios > question > snippets (EE)", () => {
     });
   });
 
+  describe("navigation", () => {
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+      createDoublyNestedSnippet();
+    });
+
+    it("should be possible to go back to parent folders (metabase#63405)", () => {
+      H.startNewNativeQuestion();
+      cy.findByTestId("native-query-top-bar").icon("snippet").click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Folder A").click();
+        cy.findByText("Folder B").click();
+
+        cy.log("We should reach the nested folder");
+        cy.findByText("snippet 1").should("be.visible");
+
+        cy.findByText("Folder B").click();
+        cy.findByText("Folder A").click();
+
+        cy.log("We should be back at the root folder");
+        cy.findByText("Snippets").should("be.visible");
+      });
+    });
+  });
+
   describe("existing snippet folder", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/collection/root").as("collections");
@@ -454,4 +499,28 @@ function getPermissionsForUserGroup(userGroup) {
     .findByText(userGroup)
     .closest("tr")
     .find("[data-testid=permissions-select]");
+}
+
+function createDoublyNestedSnippet() {
+  // Create snippet folder via API
+  cy.request("POST", "/api/collection", {
+    name: "Folder A",
+    description: null,
+    parent_id: null,
+    namespace: "snippets",
+  }).then(({ body: { id } }) => {
+    cy.request("POST", "/api/collection", {
+      name: "Folder B",
+      description: null,
+      parent_id: id,
+      namespace: "snippets",
+    }).then(({ body: { id } }) => {
+      // Create snippet in folder via API
+      cy.request("POST", "/api/native-query-snippet", {
+        content: "snippet 1",
+        name: "snippet 1",
+        collection_id: id,
+      });
+    });
+  });
 }

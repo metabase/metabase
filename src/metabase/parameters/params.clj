@@ -83,7 +83,7 @@
           (try
             (mbql.u/unwrap-field-or-expression-clause field-form)
             (catch Exception e
-              (log/error e "Failed unwrap field form" field-form)))
+              (log/error e "Failed unwrap field form" (pr-str field-form))))
           (log/error "Could not find matching field clause for target:" target))))))
 
 (defn- pk-fields
@@ -123,8 +123,9 @@
   (let [table-id->name-field (fields->table-id->name-field (pk-fields fields))]
     (for [field fields]
       ;; add matching `:name_field` if it's a PK
-      (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
-                                 (table-id->name-field (:table_id field)))))))
+      (when field
+        (assoc field :name_field (when (isa? (:semantic_type field) :type/PK)
+                                   (table-id->name-field (:table_id field))))))))
 
 ;; We hydrate the `:human_readable_field` for each Dimension using the usual hydration logic, so it contains columns we
 ;; don't want to return. The two functions below work to remove the unneeded ones.
@@ -152,7 +153,7 @@
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                                              (t2/hydrate :has_field_values :name_field :target
+                                              (t2/hydrate :has_field_values :name_field [:target :name_field]
                                                           [:dimensions :human_readable_field])
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
@@ -209,7 +210,8 @@
   [ctx param-dashcard-info stage-number]
   (let [param-id           (get-in param-dashcard-info [:param-mapping :parameter_id])
         param-target       (get-in param-dashcard-info [:param-mapping :target])
-        card-id            (get-in param-dashcard-info [:dashcard :card :id])
+        card-id            (or (get-in param-dashcard-info [:param-mapping :card_id])
+                               (get-in param-dashcard-info [:dashcard :card :id]))
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
         [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
                                 (mbql.u/check-clause :dimension))]
@@ -260,7 +262,12 @@
   ([ctx {:keys [param-mapping param-target-field] :as param-dashcard-info}]
    (if-not param-target-field
      ctx
-     (let [card (get-in param-dashcard-info [:dashcard :card])
+     (let [card-id (:card_id param-mapping)
+           card (if card-id
+                  (m/find-first #(= (:id %) card-id)
+                                (cons (get-in param-dashcard-info [:dashcard :card])
+                                      (get-in param-dashcard-info [:dashcard :series])))
+                  (get-in param-dashcard-info [:dashcard :card]))
            param-id (:parameter_id param-mapping)
            stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
        ;; Get the field id from the field-clause if it contains it. This is the common case
@@ -350,7 +357,7 @@
   [card]
   (into {} (for [[_ {param-id  :id
                      dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
-                 :when                      dimension
+                 :when                      (and dimension param-id)
                  :let                       [field (mbql.u/unwrap-field-clause dimension)]
                  :when                      field]
              [param-id #{field}])))

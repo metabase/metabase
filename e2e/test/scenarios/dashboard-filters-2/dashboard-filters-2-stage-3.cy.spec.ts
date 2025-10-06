@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_DATE_COLUMNS],
-              ["Summaries", ["Created At: Month", "Created At: Year"]],
+              ["Summaries", ["Created At: Month", "User → Created At: Year"]],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -94,7 +94,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_DATE_COLUMNS],
-              ["Summaries", ["Created At: Month", "Created At: Year"]],
+              ["Summaries", ["Created At: Month", "User → Created At: Year"]],
             ],
           );
           QSHelpers.verifyNoDashcardMappingOptions(
@@ -124,8 +124,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_TEXT_COLUMNS],
-              ["Summaries", ["Category"]],
-              ["Summaries (2)", ["Reviewer", "Category"]],
+              ["Summaries", ["Product → Category"]],
+              [
+                "Summaries (2)",
+                [
+                  "Reviews - Created At: Month → Reviewer",
+                  "Product → Category",
+                ],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -146,8 +152,14 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 ],
               ], // TODO: https://github.com/metabase/metabase/issues/46845
               ["User", QSHelpers.PEOPLE_TEXT_COLUMNS],
-              ["Summaries", ["Category"]],
-              ["Summaries (2)", ["Reviewer", "Category"]],
+              ["Summaries", ["Product → Category"]],
+              [
+                "Summaries (2)",
+                [
+                  "Reviews - Created At: Month → Reviewer",
+                  "Product → Category",
+                ],
+              ],
             ],
           );
           QSHelpers.verifyDashcardMappingOptions(
@@ -157,7 +169,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -169,7 +181,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
                 null,
                 [
                   "Reviews - Created At: Month → Reviewer",
-                  "Products Via Product ID Category",
+                  "Product → Category",
                 ],
               ],
             ],
@@ -275,8 +287,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it.skip("1st stage implicit join (joined data source)", () => {
+        it("1st stage implicit join (joined data source)", () => {
           QSHelpers.setup1stStageImplicitJoinFromJoinFilter();
 
           QSHelpers.verifyDashcardRowsCount({
@@ -330,8 +341,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           });
         });
 
-        // TODO: https://github.com/metabase/metabase/issues/46774
-        it.skip("1st stage breakout", () => {
+        it("1st stage breakout", () => {
           QSHelpers.setup1stStageBreakoutFilter();
 
           QSHelpers.verifyDashcardRowsCount({

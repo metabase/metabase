@@ -1,14 +1,14 @@
 import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import Alert from "metabase/components/Alert";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
   canEditMembership,
   getGroupNameLocalized,
@@ -21,6 +21,7 @@ import { addUndo } from "metabase/redux/undo";
 import { Box } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
+import Alert from "./Alert";
 import { GroupMembersTable } from "./GroupMembersTable";
 
 interface GroupDetailProps {
@@ -113,35 +114,37 @@ export const GroupDetail = ({
   };
 
   return (
-    <AdminPaneLayout
-      title={
-        <Fragment>
-          {getGroupNameLocalized(group ?? {})}
-          <Box component="span" c="text-light" ms="sm">
-            {ngettext(
-              msgid`${group.members.length} member`,
-              `${group.members.length} members`,
-              group.members.length,
-            )}
-          </Box>
-        </Fragment>
-      }
-      buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
-      buttonDisabled={addUserVisible}
-    >
-      <GroupDescription group={group} />
-      <GroupMembersTable
-        group={group}
-        showAddUser={addUserVisible}
-        onAddUserCancel={onAddUserCanceled}
-        onAddUserDone={onAddUserDone}
-        onMembershipRemove={handleRemove}
-        onMembershipUpdate={handleChange}
-      />
-      <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
-      {modalContent}
-    </AdminPaneLayout>
+    <SettingsSection>
+      <AdminPaneLayout
+        title={
+          <Fragment>
+            {getGroupNameLocalized(group ?? {})}
+            <Box component="span" c="text-light" ms="sm">
+              {ngettext(
+                msgid`${group.members.length} member`,
+                `${group.members.length} members`,
+                group.members.length,
+              )}
+            </Box>
+          </Fragment>
+        }
+        buttonText={t`Add members`}
+        buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
+        buttonDisabled={addUserVisible}
+      >
+        <GroupDescription group={group} />
+        <GroupMembersTable
+          group={group}
+          showAddUser={addUserVisible}
+          onAddUserCancel={onAddUserCanceled}
+          onAddUserDone={onAddUserDone}
+          onMembershipRemove={handleRemove}
+          onMembershipUpdate={handleChange}
+        />
+        <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
+        {modalContent}
+      </AdminPaneLayout>
+    </SettingsSection>
   );
 };
 

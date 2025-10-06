@@ -1,4 +1,5 @@
 name: Test database driver
+description: Test database driver
 inputs:
   junit-name:
     required: true
@@ -38,3 +39,10 @@ runs:
         list-suites: failed
         list-tests: failed
         fail-on-error: false
+    - name: Upload Logs on Failure
+      if: always() && !success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-logs-${{ github.job }}
+        path: logs/test-log.json
+        retention-days: 1

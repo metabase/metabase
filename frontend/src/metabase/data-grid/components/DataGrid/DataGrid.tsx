@@ -10,6 +10,8 @@ import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import { useForceUpdate } from "metabase/common/hooks/use-force-update";
+import { hasModifierKeys } from "metabase/common/utils/keyboard";
 import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/AddColumnButton";
 import { SortableHeader } from "metabase/data-grid/components/SortableHeader/SortableHeader";
 import {
@@ -21,7 +23,6 @@ import {
 import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import { Footer } from "../Footer/Footer";
@@ -51,8 +52,11 @@ export interface DataGridProps<TData>
     DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
+  rowsTruncated?: number;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
+  zoomedRowIndex?: number;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -71,10 +75,13 @@ export const DataGrid = function DataGrid<TData>({
   getTotalHeight,
   getVisibleRows,
   isColumnReorderingDisabled,
+  zoomedRowIndex,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
   onWheel,
+  tableFooterExtraButtons,
+  rowsTruncated,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -255,8 +262,6 @@ export const DataGrid = function DataGrid<TData>({
               className={cx(S.bodyContainer, classNames?.bodyContainer, {
                 [S.selectableBody]: selection.isEnabled,
               })}
-              tabIndex={0}
-              onKeyDown={selection.handlers.handleCellsKeyDown}
               style={{
                 display: "grid",
                 position: "relative",
@@ -282,6 +287,7 @@ export const DataGrid = function DataGrid<TData>({
 
                 const dataIndex =
                   virtualRow != null ? virtualRow.index : row.index;
+                const active = zoomedRowIndex === dataIndex;
 
                 return (
                   <div
@@ -292,7 +298,9 @@ export const DataGrid = function DataGrid<TData>({
                     data-index={dataIndex}
                     data-allow-page-break-after="true"
                     data-row-selected={row.getIsSelected()}
-                    className={cx(S.row, classNames?.row)}
+                    className={cx(S.row, classNames?.row, {
+                      [S.active]: active,
+                    })}
                     style={{
                       ...virtualRowStyles,
                       ...styles?.row,
@@ -312,6 +320,9 @@ export const DataGrid = function DataGrid<TData>({
                       const cell = row.getVisibleCells()[virtualColumn.index];
                       const isPinned = cell.column.getIsPinned();
                       const width = cell.column.getSize();
+                      const columnDef = cell.column.columnDef;
+                      const isSelectable =
+                        selection.isEnabled && columnDef?.meta?.enableSelection;
 
                       const style: React.CSSProperties = isPinned
                         ? {
@@ -319,7 +330,9 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: stickyElementsBackgroundColor,
+                            backgroundColor: active
+                              ? undefined
+                              : stickyElementsBackgroundColor,
                             ...styles?.bodyCell,
                           }
                         : {
@@ -329,10 +342,24 @@ export const DataGrid = function DataGrid<TData>({
                       return (
                         <div
                           key={cell.id}
+                          aria-selected={selection.isCellSelected(cell)}
                           data-column-id={cell.column.id}
-                          className={cx(S.bodyCell, classNames?.bodyCell)}
-                          onClick={(e) =>
-                            onBodyCellClick?.(e, cell.row.index, cell.column.id)
+                          data-selectable-cell={isSelectable ? "" : undefined}
+                          className={cx(S.bodyCell, classNames?.bodyCell, {
+                            [S.focusedCell]: selection.isCellFocused(cell),
+                          })}
+                          onClick={(e) => {
+                            if (hasModifierKeys(e)) {
+                              return;
+                            }
+                            onBodyCellClick?.(
+                              e,
+                              cell.row.index,
+                              cell.column.id,
+                            );
+                          }}
+                          onDoubleClick={() =>
+                            selection.handlers.handleCellDoubleClick(cell)
                           }
                           onMouseDown={(e) =>
                             selection.handlers.handleCellMouseDown(e, cell)
@@ -371,8 +398,10 @@ export const DataGrid = function DataGrid<TData>({
             table={table}
             enablePagination={enablePagination}
             showRowsCount={showRowsCount}
+            rowsTruncated={rowsTruncated}
             style={styles?.footer}
             className={classNames?.footer}
+            tableFooterExtraButtons={tableFooterExtraButtons}
           />
         </div>
         {measureRoot}

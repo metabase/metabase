@@ -1,11 +1,9 @@
 import { color } from "metabase/lib/colors";
-import { getRelativeTime } from "metabase/lib/time";
-import { Icon, Tooltip } from "metabase/ui";
+import { getRelativeTime } from "metabase/lib/time-dayjs";
+import { Icon, Text, Tooltip } from "metabase/ui";
 import type { ModerationReview, User } from "metabase-types/api";
 
 import { getIconForReview, getModeratorDisplayText } from "../../service";
-
-import { TooltipTime } from "./ModerationReviewIcon.styled";
 
 export interface ModerationReviewIconProps {
   review: ModerationReview;
@@ -22,15 +20,21 @@ const ModerationReviewIcon = ({
   const tooltip = moderator && (
     <div>
       <div>{getModeratorDisplayText(moderator, currentUser)}</div>
-      <TooltipTime dateTime={review.created_at}>
+      <Text
+        c="text-medium"
+        component="time"
+        dateTime={review.created_at}
+        fz="var(--mantine-font-size-xs)"
+        lh={1}
+      >
         {getRelativeTime(review.created_at)}
-      </TooltipTime>
+      </Text>
     </div>
   );
 
   return (
     <Tooltip label={tooltip} disabled={!tooltip}>
-      <Icon name={iconName} color={color(iconColor)} />
+      <Icon color={color(iconColor)} flex="0 0 auto" name={iconName} />
     </Tooltip>
   );
 };

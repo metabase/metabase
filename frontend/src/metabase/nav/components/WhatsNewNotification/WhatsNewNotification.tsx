@@ -2,14 +2,13 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { updateSetting } from "metabase/admin/settings/settings";
-import { useGetSettingQuery } from "metabase/api";
+import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
 import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
-import type { VersionInfo } from "metabase-types/api";
 
 import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 import Sparkles from "./sparkles.svg?component";
@@ -18,9 +17,7 @@ import { getLatestEligibleReleaseNotes } from "./utils";
 export function WhatsNewNotification() {
   const dispatch = useDispatch();
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
-  const { data: versionInfo } = useGetSettingQuery("version-info") as {
-    data: VersionInfo;
-  };
+  const { data: versionInfo } = useGetVersionInfoQuery();
   const currentVersion = useSetting("version");
   const lastAcknowledgedVersion = useSetting("last-acknowledged-version");
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
@@ -43,7 +40,7 @@ export function WhatsNewNotification() {
     isWhiteLabeling,
   ]);
 
-  const dimiss = useCallback(() => {
+  const dismiss = useCallback(() => {
     dispatch(
       updateSetting({
         key: "last-acknowledged-version",
@@ -60,7 +57,7 @@ export function WhatsNewNotification() {
       <Stack gap="sm">
         <Flex justify="space-between">
           <Sparkles color={color("brand")} />
-          <DismissIconButtonWrapper onClick={dimiss}>
+          <DismissIconButtonWrapper onClick={dismiss}>
             <Icon name="close" />
           </DismissIconButtonWrapper>
         </Flex>

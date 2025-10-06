@@ -4,7 +4,8 @@
    [clojure.java.io :as io]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.driver.h2 :as h2]
+   [metabase.database-routing.core :as database-routing]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -12,7 +13,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -21,10 +23,12 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.api :as warehouses]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -38,6 +42,14 @@
 (def ^:private FieldOrder
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
+
+(mr/def ::data-authority-write
+  "Schema for writing a valid table data authority."
+  (into [:enum] (map name table/writable-data-authority-types)))
+
+(mr/def ::data-authority-read
+  "Schema for returning a table data authority type."
+  (into [:enum] table/readable-data-authority-types))
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
@@ -55,6 +67,9 @@
    {:keys [include_editable_data_model]}
    :- [:map
        [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+  ;; partial schema only
+  :- [:map {:closed false}
+      [:data_authority ::data-authority-read]]
   (let [api-perm-check-fn (if include_editable_data_model
                             api/write-check
                             api/read-check)]
@@ -97,8 +112,8 @@
    body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                                    :present [:description :caveats :points_of_interest :visibility_type]))]
-    (api/check-500 (pos? (t2/update! :model/Table id changes))))
+                                                    :present [:description :caveats :points_of_interest :visibility_type :data_authority]))]
+    (t2/update! :model/Table id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -117,7 +132,7 @@
        (let [database (table/database (first newly-unhidden))]
          ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
          ;; purposes of creating a new H2 database.
-         (if (binding [h2/*allow-testing-h2-connections* true]
+         (if (binding [driver.settings/*allow-testing-h2-connections* true]
                (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
              (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))
@@ -149,7 +164,8 @@
             [:caveats                 {:optional true} [:maybe :string]]
             [:points_of_interest      {:optional true} [:maybe :string]]
             [:show_in_getting_started {:optional true} [:maybe :boolean]]
-            [:field_order             {:optional true} [:maybe FieldOrder]]]]
+            [:field_order             {:optional true} [:maybe FieldOrder]]
+            [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
   (first (update-tables! [id] body)))
 
 (api.macros/defendpoint :put "/"
@@ -164,7 +180,8 @@
                                [:description             {:optional true} [:maybe :string]]
                                [:caveats                 {:optional true} [:maybe :string]]
                                [:points_of_interest      {:optional true} [:maybe :string]]
-                               [:show_in_getting_started {:optional true} [:maybe :boolean]]]]
+                               [:show_in_getting_started {:optional true} [:maybe :boolean]]
+                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]]]
   (update-tables! ids body))
 
 (api.macros/defendpoint :get "/:id/query_metadata"
@@ -193,7 +210,7 @@
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (first (schema.table/batch-fetch-card-query-metadatas [id])))
+  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
@@ -318,3 +335,25 @@
                 :filename (get-in multipart-params ["file" :filename])
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/replace}))
+
+(api.macros/defendpoint :post "/:id/sync_schema"
+  "Trigger a manual update of the schema metadata for this `Table`."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [table (api/write-check (t2/select-one :model/Table :id id))
+        database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
+    (events/publish-event! :event/table-manual-sync {:object table :user-id api/*current-user-id*})
+    ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+    ;; purposes of creating a new H2 database.
+    (if-let [ex (try
+                  (binding [driver.settings/*allow-testing-h2-connections* true]
+                    (driver.u/can-connect-with-details? (:engine database) (:details database) :throw-exceptions))
+                  nil
+                  (catch Throwable e
+                    (log/warn (u/format-color :red "Cannot connect to database '%s' in order to sync table '%s'"
+                                              (:name database) (:name table)))
+                    e))]
+      (throw (ex-info (ex-message ex) {:status-code 422}))
+      (do
+        (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table)))
+        {:status :ok}))))

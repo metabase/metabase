@@ -1,3 +1,5 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,
   Dataset,
@@ -12,14 +14,48 @@ import {
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
+
+interface RefetchDeps {
+  /**
+   * This attribute won't be a part of the API request and can be used to invalidate
+   * the cache of a given RTK query using its built-in caching mechanism.
+   */
+  _refetchDeps?: unknown;
+}
+
+interface IgnorableError {
+  ignore_error?: boolean;
+}
 
 export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getAdhocQuery: builder.query<Dataset, DatasetQuery>({
-      query: (body) => ({
+    getAdhocQuery: builder.query<
+      Dataset,
+      DatasetQuery & RefetchDeps & IgnorableError
+    >({
+      query: ({ _refetchDeps, ignore_error, ...body }) => ({
         method: "POST",
         url: "/api/dataset",
         body,
+        noEvent: ignore_error,
+      }),
+    }),
+    getAdhocPivotQuery: builder.query<
+      Dataset,
+      DatasetQuery & {
+        pivot_rows?: number[];
+        pivot_cols?: number[];
+        show_row_totals?: boolean;
+        show_column_totals?: boolean;
+      } & RefetchDeps &
+        IgnorableError
+    >({
+      query: ({ _refetchDeps, ignore_error, ...body }) => ({
+        method: "POST",
+        url: "/api/dataset/pivot",
+        body,
+        noEvent: ignore_error,
       }),
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
@@ -30,6 +66,10 @@ export const datasetApi = Api.injectEndpoints({
       }),
       providesTags: (metadata) =>
         metadata ? provideAdhocQueryMetadataTags(metadata) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, QueryMetadataSchema)),
+        ),
     }),
     getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({
@@ -55,7 +95,9 @@ export const datasetApi = Api.injectEndpoints({
 
 export const {
   useGetAdhocQueryQuery,
+  useGetAdhocPivotQueryQuery,
   useGetAdhocQueryMetadataQuery,
+  useLazyGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
   useGetRemappedParameterValueQuery,
 } = datasetApi;

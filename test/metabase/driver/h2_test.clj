@@ -11,13 +11,13 @@
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
@@ -61,7 +61,7 @@
 
 (deftest ^:parallel only-connect-to-existing-dbs-test
   (testing "Make sure we *cannot* connect to a non-existent database by default"
-    (binding [h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (is (thrown-with-msg?
            org.h2.jdbc.JdbcSQLNonTransientConnectionException
            #"Database .+ not found, .+"
@@ -73,7 +73,7 @@
                         (System/getProperty "user.dir")
                         "/toucan_sightings.db"
                         ";TRACE_LEVEL_SYSTEM_OUT=1\\;CREATE TRIGGER IAMPWNED BEFORE SELECT ON INFORMATION_SCHEMA.TABLES AS $$//javascript\nnew java.net.URL('http://localhost:3000/api/health').openConnection().getContentLength()\n$$--=x\\;")
-          result (try (binding [h2/*allow-testing-h2-connections* true]
+          result (try (binding [driver.settings/*allow-testing-h2-connections* true]
                         (driver/can-connect? :h2 {:db conn-str}))
                       ::did-not-throw
                       (catch Exception e e))]
@@ -221,7 +221,7 @@
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
     #_{:clj-kondo/ignore [:equals-true]}
-    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -242,7 +242,7 @@
       "create table venues"
       "alter table venues add column address varchar(255)")
 
-    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (u/the-id (mt/db)) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -250,10 +250,10 @@
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';"
       "CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';")
 
-    (is (= nil (#'h2/check-action-commands-allowed {:database (u/the-id (mt/db)) :native {:query nil}})))
+    (is (= nil (#'h2/check-action-commands-allowed {:database (mt/id) :native {:query nil}})))
 
     (is (= nil (#'h2/check-action-commands-allowed
-                {:database (u/the-id (mt/db))
+                {:database (mt/id)
                  :engine :h2
                  :native {:query (str/join "; "
                                            ["select 1"
@@ -265,7 +265,7 @@
       (is (thrown? clojure.lang.ExceptionInfo
                    #"DDL commands are not allowed to be used with h2."
                    (#'h2/check-action-commands-allowed
-                    {:database (u/the-id (mt/db))
+                    {:database (mt/id)
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
@@ -367,7 +367,7 @@
             :message "Ranking must have values."
             :errors  {"RANKING" "You must provide a value."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-not-null-constraint nil :row/created
+            :h2 actions.error/violate-not-null-constraint nil :model.row/created
             "NULL not allowed for column \"RANKING\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"GROUP\" (\"NAME\") VALUES (CAST(? AS VARCHAR)) [23502-214])")))))
 
 (deftest actions-maybe-parse-sql-error-test-2
@@ -393,26 +393,35 @@
 (deftest ^:parallel actions-maybe-parse-sql-error-test-4
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
-            :message "Other tables rely on this row so it cannot be deleted.",
+            :message "Other rows refer to this row so it cannot be deleted.",
             :errors {}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/delete
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/delete
             "Referential integrity constraint violation: \"CONSTRAINT_54: PUBLIC.INVOICES FOREIGN KEY(ACCOUNT_ID) REFERENCES PUBLIC.ACCOUNTS(ID) (CAST(1 AS BIGINT))\"; SQL statement:\nDELETE  FROM \"PUBLIC\".\"ACCOUNTS\" WHERE \"PUBLIC\".\"ACCOUNTS\".\"ID\" = 1 [23503-214]")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-5
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to create a new record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/create
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/create
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
 
 (deftest ^:parallel actions-maybe-parse-sql-error-test-6
   (testing "violate fk constraints"
     (is (= {:type :metabase.actions.error/violate-foreign-key-constraint,
             :message "Unable to update the record.",
-            :errors {"GROUP-ID" "This Group-id does not exist."}}
+            :errors {"GROUP-ID" "This value does not exist in table \"group\"."}}
            (sql-jdbc.actions/maybe-parse-sql-error
-            :h2 actions.error/violate-foreign-key-constraint {:id 1} :row/update
+            :h2 actions.error/violate-foreign-key-constraint {:id 1} :model.row/update
             "Referential integrity constraint violation: \"USER_GROUP-ID_GROUP_-159406530: PUBLIC.\"\"USER\"\" FOREIGN KEY(\"\"GROUP-ID\"\") REFERENCES PUBLIC.\"\"GROUP\"\"(ID) (CAST(999 AS BIGINT))\"; SQL statement:\nINSERT INTO \"PUBLIC\".\"USER\" (\"NAME\", \"GROUP-ID\") VALUES (CAST(? AS VARCHAR), CAST(? AS INTEGER)) [23506-214]")))))
+
+(deftest ^:parallel actions-maybe-parse-sql-violate-check-constraint-test
+  (testing "violate check constraint"
+    (is (= {:type :metabase.actions.error/violate-check-constraint,
+            :message "Some of your values violate the constraint: users_email_check"
+            :errors {}}
+           (sql-jdbc.actions/maybe-parse-sql-error
+            :h2 actions.error/violate-check-constraint nil :model.row/create
+            "Check constraint violation: \"users_email_check\"")))))

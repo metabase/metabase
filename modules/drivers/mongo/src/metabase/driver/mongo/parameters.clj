@@ -1,24 +1,21 @@
 (ns metabase.driver.mongo.parameters
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
@@ -69,7 +66,7 @@
   ([field]
    (field->name field true))
 
-  ([field :- ::lib.schema.metadata/column
+  ([field :- driver-api/schema.metadata.column
     pr?]
    ;; for native parameters we serialize and don't need the extra pr
    (cond-> (mongo.qp/field->name field ".")
@@ -111,7 +108,7 @@
 
 (mu/defn- substitute-field-filter
   [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                [:field ::lib.schema.metadata/column]
+                                                                [:field driver-api/schema.metadata.column]
                                                                 [:value [:map [:value :any]]]]]
   (if (sequential? value)
     (format "{%s: %s}" (field->name field) (param-value->str field value))
@@ -131,18 +128,19 @@
       (let [no-value? (= (:value v) params/no-value)]
         (cond
           (params.ops/operator? (get-in v [:value :type]))
+          #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
                 compiled-clause (-> (assoc param
                                            :target
-                                           [:template-tag
+                                           [:dimension
                                             [:field (field->name (:field v) false)
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents
                                     ;; an optimization of [:= 'field 1 2 3] -> [:in 'field [1 2 3]] since that
                                     ;; desugars to [:or [:= 'field 1] ...].
-                                    mbql.u/desugar-filter-clause
-                                    qp.wrap-value-literals/wrap-value-literals-in-mbql
+                                    driver-api/desugar-filter-clause
+                                    driver-api/wrap-value-literals-in-mbql
                                     mongo.qp/compile-filter
                                     json/encode)]
             [(conj acc compiled-clause) missing])
@@ -158,7 +156,7 @@
 
       (params/ReferencedCardQuery? v)
       (throw (ex-info (tru "Cannot run query: MongoDB doesn''t support saved questions reference: {0}" k)
-                      {:type qp.error-type/invalid-query}))
+                      {:type driver-api/qp.error-type.invalid-query}))
 
       (= v params/no-value)
       [acc (conj missing k)]
@@ -191,7 +189,7 @@
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
-                       {:type qp.error-type/driver}))))
+                       {:type driver-api/qp.error-type.driver}))))
    [[] nil]
    xs))
 
@@ -199,7 +197,7 @@
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-                      {:type qp.error-type/invalid-query})))
+                      {:type driver-api/qp.error-type.invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 
@@ -214,4 +212,4 @@
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."
   [_driver inner-query]
   (let [param->value (params.values/query->params-map inner-query)]
-    (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
+    (update inner-query :query (partial perf/postwalk (partial parse-and-substitute param->value)))))

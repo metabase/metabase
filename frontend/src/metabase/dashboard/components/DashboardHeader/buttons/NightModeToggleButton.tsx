@@ -1,12 +1,15 @@
+import type { ButtonHTMLAttributes } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
-import type { DashboardNightModeControls } from "metabase/dashboard/types";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useDashboardContext } from "metabase/dashboard/context";
+import type { ActionIconProps } from "metabase/ui";
 
-export const NightModeToggleButton = ({
-  isNightMode,
-  onNightModeChange,
-}: Pick<DashboardNightModeControls, "isNightMode" | "onNightModeChange">) => {
+export const NightModeToggleButton = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
+  const { isNightMode, onNightModeChange } = useDashboardContext();
+
   const label = isNightMode ? t`Daytime mode` : t`Nighttime mode`;
   return (
     <ToolbarButton
@@ -14,6 +17,7 @@ export const NightModeToggleButton = ({
       onClick={() => onNightModeChange?.(!isNightMode)}
       tooltipLabel={label}
       aria-label={label}
+      {...props}
     />
   );
 };

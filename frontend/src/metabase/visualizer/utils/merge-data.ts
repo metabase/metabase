@@ -3,7 +3,6 @@ import _ from "underscore";
 import type {
   Dataset,
   DatasetColumn,
-  RowValue,
   RowValues,
   VisualizerColumnValueSource,
   VisualizerDataSource,
@@ -31,17 +30,6 @@ type MergeVisualizerSeries = {
    */
   dataSources: VisualizerDataSource[];
 };
-
-/**
- * Checks if the given array of values is empty, i.e. if it contains
- * any undefined values or is itself undefined.
- *
- * @param value - The value to check
- * @returns Whether the value is empty
- */
-function isEmpty(value: (RowValue | undefined)[]): boolean {
-  return value === undefined || value.some((v) => v === undefined);
-}
 
 /**
  * Merges data from multiple datasets into a single dataset.
@@ -82,18 +70,16 @@ export function mergeVisualizerData({
         }
         const values = referencedColumnValuesMap[valueSource.name];
         if (!values) {
-          return undefined;
+          return [];
         }
         return values;
       })
       .flat(),
   );
 
-  return unzippedRows.some(isEmpty)
-    ? undefined
-    : {
-        cols: columns,
-        rows: _.zip(...unzippedRows),
-        results_metadata: { columns },
-      };
+  return {
+    cols: columns,
+    rows: _.zip(...unzippedRows),
+    results_metadata: { columns },
+  };
 }

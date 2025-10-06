@@ -1,4 +1,5 @@
 (ns metabase.lib.metadata
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
@@ -6,8 +7,10 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 ;;; TODO -- deprecate all the schemas below, and just use the versions in [[lib.schema.metadata]] instead.
 
@@ -21,10 +24,26 @@
 
 (mu/defn ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Get a MetadataProvider from something that can provide one."
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
-  (if (lib.metadata.protocols/metadata-provider? metadata-providerable)
-    metadata-providerable
-    (some-> metadata-providerable :lib/metadata ->metadata-provider)))
+  ([metadata-providerable]
+   (->metadata-provider metadata-providerable nil))
+
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    database-id           :- [:maybe
+                              [:or
+                               ::lib.schema.id/database
+                               ::lib.schema.id/saved-questions-virtual-database]]]
+   (cond
+     (lib.metadata.protocols/metadata-provider? metadata-providerable)
+     metadata-providerable
+
+     (map? metadata-providerable)
+     (some-> metadata-providerable :lib/metadata ->metadata-provider)
+
+     ((some-fn fn? var?) metadata-providerable)
+     (if (pos-int? database-id)
+       (metadata-providerable database-id)
+       (throw (ex-info "Cannot initialize new metadata provider without a Database ID"
+                       {:f metadata-providerable}))))))
 
 (mu/defn database :- ::lib.schema.metadata/database
   "Get metadata about the Database we're querying."
@@ -42,16 +61,34 @@
    table-id              :- ::lib.schema.id/table]
   (lib.metadata.protocols/table (->metadata-provider metadata-providerable) table-id))
 
+(defn- fields* [metadata-providerable table-id {:keys [only-active?]}]
+  (-> (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id)
+      (cond->> only-active?
+        (remove (fn [col]
+                  (or (false? (:active col))
+                      (#{:sensitive :retired} (:visibility-type col))))))
+      (->> (sort-by (juxt #(:position % 0) #(u/lower-case-en (:name % "")))))))
+
 (mu/defn fields :- [:sequential ::lib.schema.metadata/column]
   "Get metadata about all the Fields belonging to a specific Table."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    table-id              :- ::lib.schema.id/table]
-  (lib.metadata.protocols/fields (->metadata-provider metadata-providerable) table-id))
+  (fields* metadata-providerable table-id {:only-active? false}))
 
-(mu/defn metadatas-for-table :- [:sequential [:or
-                                              ::lib.schema.metadata/column
-                                              ::lib.schema.metadata/metric
-                                              ::lib.schema.metadata/segment]]
+(mu/defn active-fields :- [:sequential ::lib.schema.metadata/column]
+  "Like [[fields]], but filters out any Fields that are not `:active` or with `:visibility-type`s that mean they
+  should not be included in queries.
+
+  These fields are the ones we use for default `:fields`, which becomes the default `SELECT ...` (or equivalent) when
+  building a query."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   table-id              :- ::lib.schema.id/table]
+  (fields* metadata-providerable table-id {:only-active? true}))
+
+(mu/defn metadatas-for-table :- [:maybe [:sequential [:or
+                                                      ::lib.schema.metadata/column
+                                                      ::lib.schema.metadata/metric
+                                                      ::lib.schema.metadata/segment]]]
   "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
    Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -69,26 +106,11 @@
    card-id              :- ::lib.schema.id/card]
   (lib.metadata.protocols/metadatas-for-card (->metadata-provider metadata-providerable) metadata-type card-id))
 
-(def ^:dynamic *enforce-idents*
-  "Dynamic variable to control whether errors are thrown when we return a `:metadata/column` with no ident.
-
-  Generally that is an error and we should throw, but there are a few tests explicitly checking broken fields that
-  don't want to get hung up on this error."
-  ;; TODO: Fix the metadata APIs to include `:ident` or `:entity_id` so the JS side has proper idents.
-  #?(:clj true :cljs false))
-
 (mu/defn field :- [:maybe ::lib.schema.metadata/column]
   "Get metadata about a specific Field in the Database we're querying."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    field-id              :- ::lib.schema.id/field]
-  (let [fieldd (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id)]
-    (when (and fieldd
-               (not (:ident fieldd))
-               *enforce-idents*)
-      (throw (ex-info "Returning a field with no :ident" {:metadata-providerable (pr-str metadata-providerable)
-                                                          :id                    field-id
-                                                          :field                 fieldd})))
-    fieldd))
+  (lib.metadata.protocols/field (->metadata-provider metadata-providerable) field-id))
 
 (mu/defn remapped-field :- [:maybe ::lib.schema.metadata/column]
   "Given a metadata source and a column's metadata, return the metadata for the field it's being remapped to, if any."
@@ -97,6 +119,18 @@
   (when (lib.types.isa/foreign-key? column)
     (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
       (field metadata-providerable remap-field-id))))
+
+;; TODO: Better schemas for transforms coming out of the metadata provider.
+(mu/defn transform :- [:maybe [:map]]
+  "Gets a Transform by ID, or nil if it does not exist."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   transform-id          :- :int]
+  (lib.metadata.protocols/transform (->metadata-provider metadata-providerable) transform-id))
+
+(mu/defn transforms :- [:maybe [:sequential [:map]]]
+  "Gets all Transforms"
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
+  (lib.metadata.protocols/transforms (->metadata-provider metadata-providerable)))
 
 (mu/defn setting :- any?
   "Get the value of a Metabase setting for the instance we're querying."
@@ -109,6 +143,18 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   (lib.metadata.protocols/card (->metadata-provider metadata-providerable) card-id))
+
+(mu/defn native-query-snippet :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-id` if it can be found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   snippet-id            :- ::lib.schema.id/native-query-snippet]
+  (lib.metadata.protocols/native-query-snippet (->metadata-provider metadata-providerable) snippet-id))
+
+(mu/defn native-query-snippet-by-name :- [:maybe ::lib.schema.metadata/native-query-snippet]
+  "Get metadata for a NativeQuerySnippet with `snippet-name` if it can be found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   snippet-name          :- :string]
+  (lib.metadata.protocols/native-query-snippet-by-name (->metadata-provider metadata-providerable) snippet-name))
 
 (mu/defn segment :- [:maybe ::lib.schema.metadata/segment]
   "Get metadata for the Segment with `segment-id`, if it can be found."
@@ -191,29 +237,19 @@
   mock provider), fetches them with repeated calls to the appropriate single-object method,
   e.g. [[lib.metadata.protocols/field]].
 
-  The order of the returned objects will match the order of `ids`, but does check that all objects are returned. If
+  The order of the returned objects will match the order of `ids`, but does not check that all objects are returned. If
   you want that behavior, use [[bulk-metadata-or-throw]] instead.
 
   This can also be called for side-effects to warm the cache."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- ::lib.schema.metadata/type
    ids                   :- [:maybe [:or [:sequential pos-int?] [:set pos-int?]]]]
-  (when-let [ids (not-empty (cond-> ids
-                              (not (set? ids)) distinct))] ; remove duplicates but preserve order.
+  (when (seq ids)
     (let [provider   (->metadata-provider metadata-providerable)
-          results    (lib.metadata.protocols/metadatas provider metadata-type ids)
-          id->result (into {} (map (juxt :id identity)) results)]
-      (when (= metadata-type :metadata/column)
-        (when-let [missing (and *enforce-idents*
-                                (not-empty (remove :ident results)))]
-          (throw (ex-info "Bulk metadata request returned some columns without idents"
-                          {:provider      metadata-providerable
-                           :type          metadata-type
-                           :ids           ids
-                           :missing-ident missing}))))
+          results    (lib.metadata.protocols/metadatas provider {:lib/type metadata-type, :id (set ids)})
+          id->result (u/index-by :id results)]
       (into []
-            (comp (map id->result)
-                  (filter some?))
+            (keep id->result)
             ids))))
 
 (defn- missing-bulk-metadata-error [metadata-type id]
@@ -244,3 +280,23 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    metadata-type         :- ::lib.schema.metadata/type]
   (lib.metadata.protocols/invoked-ids metadata-providerable metadata-type))
+
+(defn general-cached-value
+  "Get/cache a general value in a cached metadata provider. If the value is already present, it will be returned,
+  otherwise it will be calculated with
+
+    (thunk)
+
+  then saved in the cache and returned.
+
+  `ks` should be unique app-wide (e.g., it should include a namespaced key in the namespace you're using it in.)"
+  [cached-metadata-providerable ks thunk]
+  (let [mp (->metadata-provider cached-metadata-providerable)
+        _  (assert (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+                   "Not a cached metadata provider with a cache")
+        v  (lib.metadata.protocols/cached-value mp ks ::not-found)]
+    (if (= v ::not-found)
+      (let [v (thunk)]
+        (lib.metadata.protocols/cache-value! mp ks v)
+        v)
+      v)))

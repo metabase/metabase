@@ -21,6 +21,11 @@
     border: 1px solid var(--mb-color-accent-3);
   }
 
+  .body {
+    display: flex;
+    align-items: center;
+  }
+
   &[data-variant="stretch"] {
     .body {
       display: flex;
@@ -95,5 +100,9 @@
 
   input:disabled + * > & {
     background-color: var(--mb-color-bg-light);
+  }
+
+  &::before {
+    display: none;
   }
 }

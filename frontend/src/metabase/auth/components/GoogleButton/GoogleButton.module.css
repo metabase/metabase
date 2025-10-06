@@ -1,0 +1,8 @@
+.Link {
+  cursor: pointer;
+  color: var(--mb-color-text-dark);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

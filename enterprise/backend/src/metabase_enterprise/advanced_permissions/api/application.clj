@@ -6,7 +6,7 @@
    [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as a-perms]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.permissions.models.application-permissions-revision :as a-perm-revision]
+   [metabase.permissions.core :as perms]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
@@ -47,5 +47,5 @@
       dejsonify-graph
       (a-perms/update-graph! force?))
   (if skip-graph?
-    {:revision (a-perm-revision/latest-id)}
+    {:revision (perms/latest-application-permissions-revision-id)}
     (a-perms/graph)))

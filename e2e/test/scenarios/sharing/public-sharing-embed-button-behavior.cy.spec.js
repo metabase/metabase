@@ -133,8 +133,8 @@ const { H } = cy;
             H.openSharingMenu();
 
             H.sharingMenu().within(() => {
-              cy.findByText("Public links are off").should("be.visible");
-              cy.findByText("Enable them in settings").should("be.visible");
+              cy.findByText("Public link").should("be.visible");
+              cy.findByText("Enable").should("be.visible");
             });
 
             cy.findByTestId("embed-menu-embed-modal-item").click();
@@ -179,26 +179,22 @@ describe("embed modal display", () => {
   });
 
   describe("when the user has a paid instance", () => {
-    it("should display a disabled state and a link to the Interactive embedding settings", () => {
-      H.setTokenFeatures("all");
+    it("should display a disabled state and a link to the Embedded Analytics JS settings", () => {
+      H.activateToken("pro-self-hosted");
       H.visitDashboard("@dashboardId");
 
       H.openSharingMenu("Embed");
 
       H.getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embedding").should("be.visible");
-        cy.findByText("Interactive embedding").should("be.visible");
+        cy.findByText("Embedded Analytics JS").should("be.visible");
 
-        cy.findByRole("article", { name: "Interactive embedding" }).within(
+        cy.findByRole("article", { name: "Embedded Analytics JS" }).within(
           () => {
             cy.findByText("Disabled.").should("be.visible");
             cy.findByText("Enable in admin settings")
               .should("be.visible")
-              .and(
-                "have.attr",
-                "href",
-                "/admin/settings/embedding-in-other-applications/full-app",
-              );
+              .and("have.attr", "href", "/admin/embedding/modular");
           },
         );
       });
@@ -206,30 +202,34 @@ describe("embed modal display", () => {
   });
 
   describe("when the user has an OSS instance", () => {
-    it("should display a link to the product page for embedded analytics", () => {
-      cy.signInAsAdmin();
-      H.visitDashboard("@dashboardId");
-      H.openSharingMenu("Embed");
+    it(
+      "should display a link to the product page for embedded analytics",
+      { tags: "@OSS" },
+      () => {
+        cy.signInAsAdmin();
+        H.visitDashboard("@dashboardId");
+        H.openSharingMenu("Embed");
 
-      H.getEmbedModalSharingPane().within(() => {
-        cy.findByText("Static embedding").should("be.visible");
-        cy.findByText("Interactive embedding").should("be.visible");
+        H.getEmbedModalSharingPane().within(() => {
+          cy.findByText("Static embedding").should("be.visible");
+          cy.findByText("Embedded Analytics JS").should("be.visible");
 
-        cy.findByRole("link", { name: "Interactive embedding" }).should(
-          "have.attr",
-          "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
-        );
+          cy.findByRole("link", { name: "Embedded Analytics JS" }).should(
+            "have.attr",
+            "href",
+            "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedded-analytics-js&utm_content=static-embed-popover&source_plan=oss",
+          );
 
-        cy.findByRole("article", { name: "Interactive embedding" }).within(
-          () => {
-            cy.findByText("Learn more").should("be.visible");
-            cy.findByText("Disabled.").should("not.exist");
-            cy.findByText("Enable in admin settings").should("not.exist");
-          },
-        );
-      });
-    });
+          cy.findByRole("article", { name: "Embedded Analytics JS" }).within(
+            () => {
+              cy.findByText("Learn more").should("be.visible");
+              cy.findByText("Disabled.").should("not.exist");
+              cy.findByText("Enable in admin settings").should("not.exist");
+            },
+          );
+        });
+      },
+    );
   });
 });
 
@@ -529,7 +529,7 @@ describe("#39152 sharing an unsaved question", () => {
 
         describe("Pro/EE instances", () => {
           beforeEach(() => {
-            H.setTokenFeatures("all");
+            H.activateToken("pro-self-hosted");
           });
 
           it("should send `static_embed_code_copied` when copying the static embed code", () => {

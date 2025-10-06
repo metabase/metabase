@@ -11,6 +11,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -31,6 +32,23 @@
                     `:type/Temporal`s, and from there on in alphabetical order."
   #{:database :alphabetical :custom :smart})
 
+(def writable-data-authority-types
+  "Valid values we can configure for `Table.data_authority`.
+  `:unconfigured`  - no data authority status has been set yet;
+  `:authoritative` - this table is the authoritative source of truth;
+  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
+  `:ingested`      - this table is ingested from external sources;"
+  #{:unconfigured :authoritative :computed :ingested})
+
+(def readable-data-authority-types
+  "Valid values we can return for `Table.data_authority`.
+  `:unconfigured`  - no data authority status has been set yet;
+  `:authoritative` - this table is the authoritative source of truth;
+  `:computed`      - this table is derived/computed from other authoritative sources within metabase;
+  `:ingested`      - this table is ingested from external sources;
+  `:unknown`       - fallback for an unexpected value from the database, e.g. from a newer version we rolled back from."
+  (conj writable-data-authority-types :unknown))
+
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (methodical/defmethod t2/table-name :model/Table [_model] :metabase_table)
@@ -45,10 +63,28 @@
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
   #_(derive :hook/entity-id))
 
+(def ^:private transform-data-authority
+  {:out (fn [value]
+          (let [kw (some-> value keyword)]
+            (if (contains? writable-data-authority-types kw)
+              kw
+              (do (log/warnf "Unknown data_authority value from database: %s, converting to :unknown" value)
+                  :unknown))))
+   :in  (fn [value]
+          (let [kw (some-> value keyword)]
+            (when-not (contains? writable-data-authority-types kw)
+              (throw (ex-info (str "Illegal value for data_authority: " kw)
+                              {:field       :data_authority
+                               :value       value
+                               :status-code 400}))))
+          (some-> value name))})
+
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
-   :field_order     mi/transform-keyword})
+   :field_order     mi/transform-keyword
+   ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
+   :data_authority  transform-data-authority})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :table]
   [_original-model _k]
@@ -69,6 +105,32 @@
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :table_id (:id table)))
+
+(t2/define-before-update :model/Table
+  [table]
+  (let [changes        (t2/changes table)
+        original-table (t2/original table)
+        current-active (:active original-table)
+        new-active     (:active changes)]
+
+    ;; Prevent setting data_authority back to unconfigured once configured
+    (when (and (not= (keyword (:data_authority original-table :unconfigured)) :unconfigured)
+               (= (keyword (:data_authority changes)) :unconfigured))
+      (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
+                      {:status-code 400})))
+
+    (cond
+      ;; active: true -> false (table being deactivated)
+      (and (true? current-active) (false? new-active))
+      (assoc changes :deactivated_at (mi/now))
+
+      ;; active: false -> true (table being reactivated)
+      (and (false? current-active) (true? new-active))
+      (assoc changes
+             :deactivated_at nil
+             :archived_at nil)
+
+      :else table)))
 
 (defn- set-new-table-permissions!
   [table]
@@ -298,9 +360,11 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper]
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority]
    :skip      [:estimated_row_count :view_count]
    :transform {:created_at (serdes/date)
+               :archived_at (serdes/date)
+               :deactivated_at (serdes/date)
                :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
@@ -320,7 +384,9 @@
                   :view-count    true
                   :created-at    true
                   :updated-at    true}
-   :search-terms [:name :display_name :description]
+   :search-terms {:name         search.spec/explode-camel-case
+                  :display_name true
+                  :description  true}
    :render-terms {:initial-sync-status true
                   :table-id            :id
                   :table-description   :description

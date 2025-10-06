@@ -20,7 +20,7 @@ const metadata = createMockMetadata({
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
-    it("should create a new parameter using the given parameter option", () => {
+    it("should create a new parameter using the given parameter options", () => {
       expect(
         createParameter(
           {
@@ -39,50 +39,44 @@ describe("metabase/parameters/utils/dashboards", () => {
       });
     });
 
-    it("should prioritize using `combinedName` over `name`", () => {
-      expect(
-        createParameter(
-          {
-            combinedName: "foo bar baz",
-            name: "foo bar",
-            type: "category",
-            sectionId: "abc",
-          },
-          [],
-        ),
-      ).toEqual({
-        id: expect.any(String),
-        name: "foo bar baz",
-        sectionId: "abc",
-        slug: "foo_bar_baz",
-        type: "category",
-      });
-    });
-
     it("should prevent a duplicate name", () => {
-      expect(
-        createParameter(
-          {
-            name: "foo bar",
-            type: "category",
-            sectionId: "abc",
-          },
-          [
-            createParameter(
-              {
-                name: "foo bar",
-                type: "category",
-                sectionId: "abc",
-              },
-              [],
-            ),
-          ],
-        ),
-      ).toEqual({
+      const parameter1 = createParameter({
+        name: "foo bar",
+        type: "category",
+        sectionId: "abc",
+      });
+
+      const parameter2 = createParameter(
+        {
+          name: "foo bar",
+          type: "category",
+          sectionId: "abc",
+        },
+        [parameter1],
+      );
+
+      expect(parameter2).toEqual({
         id: expect.any(String),
         name: "foo bar 1",
         sectionId: "abc",
         slug: "foo_bar_1",
+        type: "category",
+      });
+
+      const parameter3 = createParameter(
+        {
+          name: "foo bar",
+          type: "category",
+          sectionId: "abc",
+        },
+        [parameter1, parameter2],
+      );
+
+      expect(parameter3).toEqual({
+        id: expect.any(String),
+        name: "foo bar 2",
+        sectionId: "abc",
+        slug: "foo_bar_2",
         type: "category",
       });
     });

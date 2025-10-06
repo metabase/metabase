@@ -17,8 +17,7 @@ import { DEFAULT_FONT_SIZE } from "../constants";
 
 import { DataGridThemeProvider } from "./use-table-theme";
 
-const HEADER_SPACING = 16;
-const BODY_SPACING = 2;
+const CELL_BORDER_WIDTHS = 2;
 
 /**
  * Hook for measuring optimal column widths for a data grid
@@ -92,10 +91,10 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
               // Add appropriate spacing based on element type
               if (type === "header") {
-                const headerWidth = width + HEADER_SPACING;
+                const headerWidth = width + CELL_BORDER_WIDTHS;
                 acc[columnId] = Math.max(acc[columnId], headerWidth);
               } else if (type === "body") {
-                const bodyWidth = width + BODY_SPACING;
+                const bodyWidth = width + CELL_BORDER_WIDTHS;
                 acc[columnId] = Math.max(acc[columnId], bodyWidth);
               }
 
@@ -133,6 +132,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
                   key={header.column.id}
                   data-measure-id={header.column.id}
                   data-measure-type="header"
+                  style={{
+                    minWidth: header.column.columnDef.minSize,
+                  }}
                 >
                   {headerCell}
                 </div>

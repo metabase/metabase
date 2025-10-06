@@ -1,0 +1,47 @@
+.pillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mantine-spacing-xs);
+  align-items: center;
+  border: 1px dashed var(--mb-color-border);
+  background-color: var(--mb-color-bg-light);
+  border-radius: var(--mantine-radius-md);
+  transition: box-shadow 250ms ease;
+  min-height: 2.5rem;
+}
+
+.max {
+  cursor: not-allowed;
+}
+
+.dragOver {
+  box-shadow: 0 0 2px 1px var(--mb-color-border);
+  cursor: none !important;
+}
+
+.pill {
+  height: 100%;
+  font-weight: 400;
+  background: var(--mb-color-bg-white);
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-xl);
+  cursor: pointer;
+  color: var(--mb-color-text-primary);
+  flex: 0 0 auto;
+  min-width: 4rem;
+  text-overflow: ellipsis;
+  overflow: hidden;
+
+  > span {
+    width: 100%;
+    flex: 1;
+  }
+}
+
+.dragging {
+  opacity: 0.6;
+}
+
+.inputField {
+  min-width: 1rem;
+}

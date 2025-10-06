@@ -8,7 +8,7 @@
 
 (defn- redef [target sym]
   (let [defn-name (or sym (symbol (name target)))]
-    `(def ~defn-name "docstring" (fn [& args#] (apply ~target args#)))))
+    `(def ~defn-name "docstring" ~target)))
 
 (defmacro import-fn
   "Imports a single defn from another namespace.

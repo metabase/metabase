@@ -199,8 +199,8 @@
     :expected     {:type      :drill-thru/zoom-in.timeseries
                    :next-unit :week
                    ;; the "underlying" dimension is reconstructed from the row.
-                   :dimension {:column     {:name       "CREATED_AT"
-                                            :lib/source :source/breakouts}
+                   :dimension {:column     {:name          "CREATED_AT"
+                                            :lib/breakout? true}
                                :column-ref [:field {} (meta/id :orders :created-at)]
                                :value      "2022-12-01T00:00:00+02:00"}}}))
 

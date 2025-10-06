@@ -3,8 +3,8 @@ import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
 import { type Ref, forwardRef, useEffect } from "react";
 
+import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
 
 export type { PopoverProps } from "@mantine/core";

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   useCreateCloudMigrationMutation,
   useGetCloudMigrationQuery,
 } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useStoreUrl } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box } from "metabase/ui";
@@ -25,8 +25,8 @@ import {
 } from "./utils";
 
 interface CloudPanelProps {
-  getPollingInterval: (migration: CloudMigration) => number | undefined;
-  onMigrationStart: (storeUrl: string, migration: CloudMigration) => void;
+  getPollingInterval?: (migration: CloudMigration) => number | undefined;
+  onMigrationStart?: (checkoutUrl: string, migration: CloudMigration) => void;
 }
 
 export const CloudPanel = ({
@@ -68,21 +68,15 @@ export const CloudPanel = ({
     [dispatch, migrationState],
   );
 
-  const storeUrl = useSetting("store-url");
-
-  const checkoutUrl = useMemo(() => {
-    return migration
-      ? `${storeUrl}/checkout?migration-id=${migration.external_id}`
-      : `${storeUrl}/checkout`;
-  }, [migration, storeUrl]);
-
   const [createCloudMigration, createCloudMigrationResult] =
     useCreateCloudMigrationMutation();
+
+  const checkoutUrl = useStoreUrl("checkout");
 
   const handleCreateMigration = async () => {
     const newMigration = await createCloudMigration().unwrap();
     await dispatch(refreshSiteSettings());
-    onMigrationStart(storeUrl, newMigration);
+    onMigrationStart(checkoutUrl, newMigration);
   };
 
   return (
@@ -93,7 +87,7 @@ export const CloudPanel = ({
           isStarting={createCloudMigrationResult.isLoading}
         />
       )}
-      <Box maw="36rem">
+      <Box>
         {migration && isInProgressMigration(migration) && (
           <MigrationInProgress
             migration={migration}

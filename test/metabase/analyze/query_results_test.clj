@@ -5,7 +5,9 @@
    [metabase.analyze.fingerprint.insights :as insights]
    [metabase.analyze.query-results :as qr]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.sync :as test.sync]
@@ -45,10 +47,10 @@
          results->column-metadata
          :metadata)))
 
-(defn- query-for-card [card]
+(defn- query-for-card [card-or-id]
   {:database lib.schema.id/saved-questions-virtual-database-id
    :type     :query
-   :query    {:source-table (str "card__" (u/the-id card))}})
+   :query    {:source-table (str "card__" (u/the-id card-or-id))}})
 
 (def ^:private venue-name->semantic-types
   {:id          :type/PK
@@ -81,21 +83,24 @@
   (testing (str "Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but "
                 "they should sill be the same except for some of the optimizations we do when we have all the information.")
     (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id), :type :native, :native {:query "select * from venues"}}}]
-      (is (= (assoc-in (mt/round-all-decimals 2 (app-db-venue-fingerprints))
-                       [:category_id :type]
-                       #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 6.9, :q3 49.24, :sd 23.06}})
-             (->> (name->fingerprints (query->result-metadata (query-for-card card)))
-                  (mt/round-all-decimals 2)))))))
+      (is (=? (assoc-in (mt/round-all-decimals 2 (app-db-venue-fingerprints))
+                        [:category_id :type]
+                        #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 6.9, :q3 49.24, :sd 23.06}})
+              (->> (name->fingerprints (query->result-metadata (query-for-card card)))
+                   (mt/round-all-decimals 2)))))))
 
 (deftest ^:parallel compute-semantic-types-test
   (testing (str "Similarly, check that we compute the correct semantic types. Note that we don't know that the category_id is an FK "
                 "as it's just an integer flowing through, similarly Price isn't found to be a category as we're inferring by name "
                 "only")
-    (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
-                                                     :type     :native
-                                                     :native   {:query "select * from venues"}}}]
-      (is (= (assoc venue-name->semantic-types :category_id nil :price nil)
-             (name->semantic-type (query->result-metadata (query-for-card card))))))))
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (mt/metadata-provider)
+                                      {:cards [{:id            1
+                                                :dataset-query {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "select * from venues"}}}]})
+      (is (=? (assoc venue-name->semantic-types :category_id nil :price nil)
+              (name->semantic-type (query->result-metadata (query-for-card 1))))))))
 
 (deftest one-column-test
   (testing "Limiting to just 1 column on an MBQL query should still get the result metadata from the Field"

@@ -2,6 +2,10 @@
   "Unit tests for /api/dataset endpoints. There are additional tests for downloading XLSX/CSV/JSON results generally in
   [[metabase.query-processor.streaming-test]] and specifically for each format
   in [[metabase.query-processor.streaming.csv-test]] etc."
+  {:clj-kondo/config '{:linters
+                       ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
+                       ;; metadata providers.
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -10,17 +14,18 @@
    [medley.core :as m]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -217,18 +222,18 @@
                            (count (csv/read-csv result)))))))]
         (mt/with-no-data-perms-for-all-users!
           (testing "with data perms"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/download-results :one-million-rows)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
             (do-test))
           (testing "with collection perms only"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/download-results :one-million-rows)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
             (do-test)))))))
 
 (deftest native-query-with-long-column-alias
-  (testing "nested native query with long column alias (metabase#47584)"
+  (testing "nested native query with long column alias (#47584)"
     (let [short-col-name "coun"
           long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
 
@@ -313,7 +318,7 @@
               (is (= 101
                      (count (csv/read-csv result)))))))))))
 
-(deftest export-with-remapped-fields
+(deftest ^:parallel export-with-remapped-fields
   (testing "POST /api/dataset/:format"
     (testing "Downloaded CSV/JSON/XLSX results should respect remapped fields (#18440)"
       (let [query {:database (mt/id)
@@ -327,14 +332,20 @@
                 :let     [query (cond-> query
                                   encoded? json/encode)]]
           (testing (format "encoded? %b" encoded?)
-            (mt/with-column-remappings [venues.category_id categories.name]
-              (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                                 {:query query})]
-                (is (str/includes? result "Asian"))))
-            (mt/with-column-remappings [venues.category_id (values-of categories.name)]
-              (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
-                                                 {:query query})]
-                (is (str/includes? result "Asian"))))))))))
+            (doseq [mp [(lib.tu/remap-metadata-provider
+                         (mt/metadata-provider)
+                         (mt/id :venues :category_id)
+                         (mt/id :categories :name))
+                        (lib.tu/remap-metadata-provider
+                         (mt/metadata-provider)
+                         (mt/id :venues :category_id)
+                         (mapv first (mt/rows (qp/process-query
+                                               (mt/mbql-query categories
+                                                 {:fields [$name], :order-by [[:asc $id]]})))))]]
+              (qp.store/with-metadata-provider mp
+                (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                                   {:query query})]
+                  (is (str/includes? result "Asian")))))))))))
 
 (deftest non-download-queries-should-still-get-the-default-constraints
   (testing (str "non-\"download\" queries should still get the default constraints "
@@ -354,13 +365,181 @@
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
-        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
         (is (malli= [:map
                      [:status [:= "failed"]]
                      [:error  [:= "You do not have permissions to run this query."]]]
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
+
+(deftest api-card-join-permissions-test
+  (testing "POST /api/dataset should error for card join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection {accessible-collection-id :id} {}
+                         :model/Collection {restricted-collection-id :id} {}]
+            ;; Grant read permissions only to the accessible collection
+            (perms/grant-collection-read-permissions! (perms/all-users-group) accessible-collection-id)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id accessible-collection-id
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}
+                           :model/Card {categories-card-id :id} {:collection_id restricted-collection-id
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:re  "You do not have permissions to view Card"]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-table join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Block all access to venues table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :blocked)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
+          ;; Allow access to categories table for the card
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {categories-card-id :id} {:collection_id (u/the-id collection)
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query venues
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= $category_id
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-source-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-as-source with table join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table for the card
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Block all access to categories table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id (u/the-id collection)
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :categories)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-with-join-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-with-join to table permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Block all access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :no)
+          ;; Allow access to venues and categories tables for the card with join
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query checkins
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" venues-with-join-card-id)
+                                           :alias "venues_card"
+                                           :condition [:= $venue_id
+                                                       [:field (mt/id :venues :id) {:base-type :type/Integer, :join-alias "venues_card"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-with-join-source-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-with-join as source with table join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories tables for the card with join
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :unrestricted)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Block all access to checkins table
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :blocked)
+          (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-with-join-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :checkins)
+                                           :alias "checkins"
+                                           :condition [:= [:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :checkins :venue_id) {:base-type :type/Integer, :join-alias "checkins"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
 
 (deftest ^:parallel compile-test
   (testing "POST /api/dataset/native"
@@ -400,8 +579,8 @@
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
             (is (malli= [:map
                          [:permissions-error? [:= true]]
                          [:message            [:= "You do not have permissions to run this query."]]]
@@ -483,7 +662,7 @@
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
       (let [res (mt/user-http-request :rasta :post 202 "dataset"
-                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
@@ -492,11 +671,11 @@
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
 (deftest ^:parallel pivot-dataset-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/pivot-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (qp.pivot.test-util/pivot-query))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -506,49 +685,66 @@
             (is (= ["MD" "Twitter" nil 4 16 62] (nth rows 1000)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-;; historical test: don't do this going forward
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-(deftest ^:parallel pivot-dataset-with-added-expression-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+(deftest ^:parallel pivot-dataset-row-totals-disabled-test
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
-      (testing "POST /api/dataset/pivot"
-        ;; this only works on a handful of databases -- most of them don't allow you to ask for a Field that isn't in
-        ;; the GROUP BY expression
-        (when (#{:mongo :h2 :sqlite} driver/*driver*)
-          (testing "with an added expression"
-            ;; the added expression is coming back in this query because it is explicitly included in `:fields` -- see
-            ;; comments on [[metabase.query-processor.pivot-test/pivots-should-not-return-expressions-test]].
-            (let [query  (-> (api.pivots/pivot-query)
-                             (assoc-in [:query :fields] [[:expression "test-expr"]])
-                             (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]}))
-                  result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
-                  rows   (mt/rows result)]
-              (is (= 1144 (:row_count result)))
-              (is (= 1144 (count rows)))
-              (let [cols (mt/cols result)]
-                (is (= ["User → State"
-                        "User → Source"
-                        "Product → Category"
-                        "pivot-grouping"
-                        "Count"
-                        "Sum of Quantity"
-                        "test-expr"]
-                       (map :display_name cols)))
-                (is (=? {:base_type       "type/Integer"
-                         :effective_type  "type/Integer"
-                         :name            "pivot-grouping"
-                         :display_name    "pivot-grouping"
-                         :field_ref       ["expression" "pivot-grouping"]
-                         :source          "breakout"}
-                        (nth cols 3))))
-              (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
+      (testing "POST /api/dataset/pivot with row totals disabled"
+        (let [query (merge (qp.pivot.test-util/pivot-query true)
+                           {:show_row_totals false
+                            :show_column_totals true})
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+              rows   (mt/rows result)]
+          (is (= 912 (:row_count result)))
+          (is (= "completed" (:status result)))
+          ;; Only pivot groupings necessary for data and col totals
+          (is (= [0 1 3]
+                 (->> rows
+                      (map #(nth % 3))
+                      distinct
+                      vec))))))))
+
+(deftest ^:parallel pivot-dataset-column-totals-disabled-test
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot with column totals disabled"
+        (let [query (merge (qp.pivot.test-util/pivot-query true)
+                           {:show_row_totals true
+                            :show_column_totals false})
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+              rows   (mt/rows result)]
+          (is (= 1114 (:row_count result)))
+          (is (= "completed" (:status result)))
+          ;; Only pivot groupings necessary for data and row totals
+          (is (= [0 4]
+                 (->> rows
+                      (map #(nth % 3))
+                      distinct
+                      vec))))))))
+
+(deftest ^:parallel pivot-dataset-both-totals-disabled-test
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+    (mt/dataset test-data
+      (testing "POST /api/dataset/pivot with row and column totals disabled"
+        (let [query (merge (qp.pivot.test-util/pivot-query true)
+                           {:show_row_totals false
+                            :show_column_totals false})
+              result (mt/user-http-request :crowberto :post 202 "dataset/pivot" query)
+              rows   (mt/rows result)]
+          (is (= 888 (:row_count result)))
+          (is (= "completed" (:status result)))
+          ;; Only pivot groupings necessary for data
+          (is (= [0]
+                 (->> rows
+                      (map #(nth % 3))
+                      distinct
+                      vec))))))))
 
 (deftest ^:parallel pivot-filter-dataset-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/filters-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (qp.pivot.test-util/filters-query))
                 rows   (mt/rows result)]
             (is (= 140 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -561,11 +757,11 @@
             (is (= [nil nil 3 7562] (last rows)))))))))
 
 (deftest ^:parallel pivot-parameter-dataset-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/dataset/pivot"
         (testing "Run a pivot table"
-          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (api.pivots/parameters-query))
+          (let [result (mt/user-http-request :crowberto :post 202 "dataset/pivot" (qp.pivot.test-util/parameters-query))
                 rows   (mt/rows result)]
             (is (= 137 (:row_count result)))
             (is (= "completed" (:status result)))
@@ -723,7 +919,7 @@
 (deftest ^:parallel adhoc-mlv2-query-test
   (testing "POST /api/dataset"
     (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -735,7 +931,7 @@
 (deftest ^:parallel mlv2-query-convert-to-native-test
   (testing "POST /api/dataset/native"
     (testing "Should be able to convert an MLv2 query to native (#39024)"
-      (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+      (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
                                   (lib/order-by (lib.metadata/field metadata-provider (mt/id :venues :id)))
@@ -823,8 +1019,9 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                    :query {:source-table (str "card__" card-id-1)}}}]
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"

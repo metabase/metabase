@@ -7,7 +7,7 @@ title: Development environment
 The Metabase application has two basic components:
 
 1. A backend written in Clojure which contains a REST API as well as all the relevant code for talking to databases and processing queries.
-2. A frontend written as a Javascript single-page application which provides the web UI.
+2. A frontend written as a JavaScript single-page application which provides the web UI.
 
 Both components are built and assembled together into a single JAR file. In the directory where you run the JAR, you can create a JAR file (if Metabase hasn't already created it) and add drivers in there (the drivers are also JARs).
 
@@ -20,6 +20,8 @@ yarn dev
 ```
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
+
+To use any other database beside the default ones please take a look at [Building Drivers](#building-drivers) further down in this document.
 
 ### Frontend
 
@@ -79,7 +81,7 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn build-watch
 ```
 
-Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
 
 We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
 
@@ -144,6 +146,17 @@ You can also start a REPL another way (e.g., through your editor) and then call:
 
 To start the server (at `localhost:3000`). This will also set up or migrate your application database. To actually
 use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-hot`).
+
+### Multiple Instances
+
+By default Rspack runs the development server on port `8088`. You can run multiple instances of Metabase on the same machine by specifying a different port for each instance.
+
+Frontend:
+- If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
+- If you are building the frontend statically with `yarn build`, there is nothing different to do
+
+Backend:
+- Set the `MB_JETTY_PORT` environment variable and `MB_FRONTEND_DEV_PORT` to the same one as for the frontend.
 
 ### The application database
 

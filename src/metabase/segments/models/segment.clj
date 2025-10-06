@@ -80,12 +80,11 @@
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
 
-(t2/define-before-update :model/Segment  [{:keys [id], :as segment}]
-  (u/prog1 (t2/changes segment)
-    ;; throw an Exception if someone tries to update creator_id
-    (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/Segment :id id))
-        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
+(t2/define-before-update :model/Segment  [segment]
+  ;; throw an Exception if someone tries to update creator_id
+  (when (contains? (t2/changes segment) :creator_id)
+    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
+  segment)
 
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
@@ -115,8 +114,10 @@
                             (lib.metadata.protocols/store-metadatas!
                              (map #(lib.metadata.jvm/instance->metadata % :metadata/segment)
                                   segments)))
-        field-ids         (mbql.u/referenced-field-ids (map :definition segments))
-        fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
+        ;; existing usage, do not use going forward
+        field-ids         #_{:clj-kondo/ignore [:deprecated-var]} (mbql.u/referenced-field-ids (map :definition segments))
+        fields            (when (seq field-ids)
+                            (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/column, :id (set field-ids)}))
         table-ids         (into #{}
                                 cat
                                 [(map :table-id fields)

@@ -92,7 +92,6 @@ dataset_query:
           - entity_id
         - base-type: type/Integer
           join-alias: Content - Card Qualified
-      ident: join_gTeYI2eJtQUh63sZurc3z@0__Content - Card Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Content - Dashboard Qualified
@@ -126,7 +125,6 @@ dataset_query:
           - entity_id
         - base-type: type/Integer
           join-alias: Content - Dashboard Qualified
-      ident: join_gTeYI2eJtQUh63sZurc3z@0__Content - Dashboard Qualified
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Databases - Database Qualified
@@ -160,7 +158,6 @@ dataset_query:
           - name
         - base-type: type/Text
           join-alias: Databases - Database Qualified
-      ident: join_gTeYI2eJtQUh63sZurc3z@0__Databases - Database Qualified
       source-table: -19557ZnrWiDgG4h4cKxF
       strategy: left-join
     limit: 200
@@ -383,7 +380,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Card Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -415,7 +411,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Card Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -447,7 +442,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Dashboard Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -479,7 +473,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Dashboard Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -511,7 +504,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -543,7 +535,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public

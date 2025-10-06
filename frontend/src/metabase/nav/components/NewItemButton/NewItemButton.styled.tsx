@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import Button, {
   type ButtonProps,
-} from "metabase/core/components/Button/Button";
+} from "metabase/common/components/Button/Button";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const NewButton = styled((props: ButtonProps) => (

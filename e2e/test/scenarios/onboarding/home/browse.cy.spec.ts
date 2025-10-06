@@ -8,10 +8,10 @@ import {
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const filterButton = () =>
+const verifiedFilterToggleButton = () =>
   cy
     .findByTestId("browse-models-header")
-    .findByRole("button", { name: /Filters/i });
+    .findByRole("switch", { name: /show.*verified.*models/i });
 
 describe("browse > models", () => {
   beforeEach(() => {
@@ -102,6 +102,25 @@ H.describeWithSnowplow("scenarios > browse", () => {
     });
   });
 
+  it("can generate x-ray dashboard from a browse page", () => {
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByTestId("browse-schemas").within(() => {
+      cy.findAllByRole("link")
+        .filter(":contains(People)")
+        .should("be.visible")
+        .realHover();
+      cy.findAllByLabelText("X-ray this table").filter(":visible").click();
+    });
+
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "x-ray_clicked",
+      event_detail: "table",
+      triggered_from: "browse_database",
+    });
+  });
+
   it("tracks when a new model creation is initiated", () => {
     cy.visit("/browse/models");
     cy.findByTestId("browse-models-header")
@@ -152,6 +171,10 @@ H.describeWithSnowplow("scenarios > browse", () => {
     H.browseDatabases().click();
     cy.findByRole("link", { name: /Learn about our data/ }).click();
     cy.location("pathname").should("eq", "/reference/databases");
+    H.expectNoBadSnowplowEvents();
+    H.expectUnstructuredSnowplowEvent({
+      event: "learn_about_our_data_clicked",
+    });
     cy.go("back");
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
@@ -161,10 +184,7 @@ H.describeWithSnowplow("scenarios > browse", () => {
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
     cy.visit("/");
     H.navigationSidebar().findByLabelText("Browse models").click();
-    filterButton().should("not.exist");
-    cy.findByRole("switch", { name: /Show verified models only/ }).should(
-      "not.exist",
-    );
+    verifiedFilterToggleButton().should("not.exist");
   });
 
   it("The Browse models page shows an error message if the search endpoint throws an error", () => {
@@ -196,16 +216,12 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     H.restore();
     cy.signInAsAdmin();
     H.enableTracking();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.intercept("PUT", "/api/setting/browse-filter-only-verified-models").as(
       "updateFilter",
     );
     cy.intercept("POST", "/api/moderation-review").as("updateVerification");
   });
-
-  const openFilterPopover = () => filterButton().click();
-  const toggle = () =>
-    cy.findByRole("switch", { name: /Show verified models only/ });
 
   const recentsGrid = () => cy.findByRole("grid", { name: "Recents" });
   const modelsTable = () => cy.findByRole("table", { name: "Table of models" });
@@ -230,8 +246,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
   };
 
   const toggleVerificationFilter = () => {
-    openFilterPopover();
-    toggle().parent("label").click();
+    verifiedFilterToggleButton().click();
     cy.wait("@updateFilter");
   };
 
@@ -276,7 +291,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     });
 
     cy.log("There are no verified models, so the filter toggle is not visible");
-    filterButton().should("not.exist");
+    verifiedFilterToggleButton().should("not.exist");
 
     cy.log("Verify Model 2");
     cy.findByRole("heading", { name: "Model 2" }).click();
@@ -285,9 +300,9 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     browseModels();
 
     cy.log("Filter on verified models is enabled by default");
-    cy.findByTestId("browse-models-header")
-      .findByTestId("filter-dot")
-      .should("be.visible");
+    cy.findByTestId("browse-models-header").findByRole("switch", {
+      name: /Show unverified models, too/i,
+    });
 
     cy.log("Model 1 does not appear in the table, since it's not verified");
     model1().should("not.exist");
@@ -300,7 +315,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     });
 
     cy.log("The filter toggle is now visible");
-    filterButton().should("be.visible");
+    verifiedFilterToggleButton().should("be.visible");
 
     cy.log("Unverify Model 2");
     cy.findByRole("heading", { name: "Model 2" }).click();
@@ -314,7 +329,7 @@ H.describeWithSnowplowEE("scenarios > browse (EE)", () => {
     browseModels();
 
     cy.log("The filter toggle is not visible");
-    filterButton().should("not.exist");
+    verifiedFilterToggleButton().should("not.exist");
 
     cy.log(
       "The verified filter, though still active, is not applied if there are no verified models",

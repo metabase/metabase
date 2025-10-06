@@ -25,8 +25,7 @@
                                                             {:query-params (m/remove-vals
                                                                             str/blank?
                                                                             {"instance" (version.settings/site-uuid-for-version-info-fetching)
-                                                                             "current-version" (:tag config/mb-version-info)
-                                                                             "channel" (version.settings/update-channel)})})))]
+                                                                             "current-version" (:tag config/mb-version-info)})})))]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/decode+kw body)))
@@ -46,8 +45,17 @@
 (def ^:private job-key     "metabase.task.upgrade-checks.job")
 (def ^:private trigger-key "metabase.task.upgrade-checks.trigger")
 
+(defn- rand-hours
+  "Give a random hour plus the hour 12 hours away, i.e. one of [0 12], [1 13], [2 14], etc"
+  []
+  (let [hour-1 (rand-int 24)
+        hour-2 (mod (+ hour-1 12) 24)]
+    [hour-1 hour-2]))
+
 (defmethod task/init! ::CheckForNewVersions [_]
-  (let [job     (jobs/build
+  (let [[rand-hour-1 rand-hour-2] (rand-hours)
+        rand-minute (rand-int 60)
+        job     (jobs/build
                  (jobs/of-type CheckForNewVersions)
                  (jobs/with-identity (jobs/key job-key)))
         trigger (triggers/build
@@ -55,5 +63,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    ;; run twice a day
-                  (cron/cron-schedule "0 15 6,18 * * ? *")))]
+                  (cron/cron-schedule (format "0 %d %d,%d * * ? *" rand-minute rand-hour-1 rand-hour-2))))]
     (task/schedule-task! job trigger)))

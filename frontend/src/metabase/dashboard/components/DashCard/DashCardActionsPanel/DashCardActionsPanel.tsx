@@ -1,24 +1,34 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
+import {
+  isHeadingDashCard,
+  isLinkDashCard,
+  isQuestionDashCard,
+  isVirtualDashCard,
+  supportsInlineParameters,
+} from "metabase/dashboard/utils";
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
-  Dashboard,
   DashboardCard,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { canEditQuestion } from "../DashCardMenu/utils";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
@@ -26,16 +36,16 @@ import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButto
 import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
-import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
   series: Series;
-  dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question: Question | null;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
   isTrashedOnRemove: boolean;
+  onDuplicate: () => void;
   onRemove: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllDashCardVisualizationSettings: (
@@ -51,17 +61,19 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
+  onAddParameter: (options: NewParameterOpts) => void;
   onEditVisualization?: () => void;
 }
 
 function DashCardActionsPanelInner({
   series,
-  dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
   isTrashedOnRemove,
+  onDuplicate,
   onRemove,
   onReplaceCard,
   onReplaceAllDashCardVisualizationSettings,
@@ -71,6 +83,7 @@ function DashCardActionsPanelInner({
   onLeftEdge,
   onMouseDown,
   className,
+  onAddParameter,
   onEditVisualization,
 }: Props) {
   const { disableSettingsConfig, supportPreviewing, disableClickBehavior } =
@@ -129,6 +142,29 @@ function DashCardActionsPanelInner({
     );
   }
 
+  const canAddFilter = useMemo(() => {
+    if (!dashcard || !supportsInlineParameters(dashcard)) {
+      return false;
+    }
+
+    return isQuestionDashCard(dashcard)
+      ? question != null && canEditQuestion(question)
+      : isHeadingDashCard(dashcard);
+  }, [dashcard, question]);
+
+  if (canAddFilter) {
+    buttons.push(
+      <AddFilterParameterMenu key="add-filter" onAdd={onAddParameter}>
+        <DashCardActionButton
+          tooltip={t`Add a filter`}
+          aria-label={t`Add a filter`}
+        >
+          <DashCardActionButton.Icon name="filter" />
+        </DashCardActionButton>
+      </AddFilterParameterMenu>,
+    );
+  }
+
   if (supportPreviewing && isPreviewing) {
     buttons.push(
       <DashCardActionButton
@@ -147,14 +183,18 @@ function DashCardActionsPanelInner({
       isVisualizerDashboardCard(dashcard) ||
       isVisualizerSupportedVisualization(dashcard?.card.display)
     ) {
+      const label = isVisualizerDashboardCard(dashcard)
+        ? t`Edit visualization`
+        : t`Visualize another way`;
+
       buttons.push(
         <DashCardActionButton
           key="visualizer-button"
-          tooltip={t`Edit visualization`}
-          aria-label={t`Edit visualization`}
+          tooltip={label}
+          aria-label={label}
           onClick={onEditVisualization}
         >
-          <DashCardActionButton.Icon name="pencil" />
+          <DashCardActionButton.Icon name="lineandbar" />
         </DashCardActionButton>,
       );
     }
@@ -168,7 +208,6 @@ function DashCardActionsPanelInner({
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
-          dashboard={dashboard}
           dashcard={dashcard}
           onReplaceAllVisualizationSettings={
             handleOnReplaceAllVisualizationSettings
@@ -197,7 +236,7 @@ function DashCardActionsPanelInner({
             onEditVisualization();
           }}
         >
-          <DashCardActionButton.Icon name="add_data" />
+          <DashCardActionButton.Icon name="lineandbar" />
         </DashCardActionButton>,
       );
     }
@@ -229,14 +268,13 @@ function DashCardActionsPanelInner({
     );
   }
 
-  const duplicateDashcard = useDuplicateDashCard({ dashboard, dashcard });
   if (!isLoading && dashcard) {
     buttons.push(
       <DashCardActionButton
         key="duplicate-question"
         aria-label={t`Duplicate`}
         tooltip={t`Duplicate`}
-        onClick={duplicateDashcard}
+        onClick={onDuplicate}
       >
         <Icon name="copy" />
       </DashCardActionButton>,
@@ -248,7 +286,6 @@ function DashCardActionsPanelInner({
       buttons.push(
         <ActionSettingsButtonConnected
           key="action-settings-button"
-          dashboard={dashboard}
           dashcard={dashcard}
         />,
       );
@@ -301,6 +338,7 @@ function DashCardActionsPanelInner({
       top={0}
       right="20px"
       data-testid="dashboardcard-actions-panel"
+      data-dontdrag // allows to interact with the actions panel while in the edit mode
       onMouseDown={onMouseDown}
     >
       <Box className={S.DashCardActionButtonsContainer} component="span">

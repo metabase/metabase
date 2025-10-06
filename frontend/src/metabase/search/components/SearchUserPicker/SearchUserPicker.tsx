@@ -78,7 +78,6 @@ export const SearchUserPicker = ({
         <SearchUserSelectBox gap={0}>
           <SearchUserItemContainer
             data-testid="search-user-select-box"
-            gap="xs"
             p="xs"
             mah="30vh"
           >

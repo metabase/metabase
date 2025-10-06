@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
     });
   });
 });
@@ -56,6 +56,10 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     });
 
     H.popover().contains(value).click();
+    H.popover().findByDisplayValue(value);
+
+    // click outside popover
+    cy.findByTestId("chartsettings-list-container").click();
   }
 
   function assertOnTheYAxis() {
@@ -92,13 +96,12 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       replaceMissingValuesWith(replacementValue);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
-
       assertOnTheYAxis();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.cartesianChartCircle().eq(-2).trigger("mousemove");
+      H.cartesianChartCircle()
+        .should("have.length", 6)
+        .eq(-2)
+        .trigger("mousemove");
 
       H.assertEChartsTooltip({
         header: "2019",
@@ -606,9 +609,21 @@ describe("issue 21665", () => {
     display: "scalar",
   };
 
+  function editQ2NativeQuery(query, questionId) {
+    cy.request("PUT", `/api/card/${questionId}`, {
+      dataset_query: {
+        type: "native",
+        native: { query },
+        database: 1,
+      },
+    });
+  }
+
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
@@ -630,19 +645,37 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    cy.findByTestId("add-series-button").click({ force: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(Q2.name).click();
-
-    cy.findByTestId("add-series-modal").button("Done").click();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.selectDataset(Q2.name);
+      cy.button("Save").click();
+    });
 
     H.saveDashboard();
     cy.wait("@getDashboard");
   });
+
+  it("multi-series cards shouldnt cause frontend to reload (metabase#21665)", () => {
+    cy.get("@questionId").then((questionId) => {
+      editQ2NativeQuery("select order by --", questionId);
+    });
+
+    H.visitDashboard("@dashboardId");
+
+    cy.get("@dashboardLoaded").should("have.callCount", 3);
+    cy.findByTestId("dashcard")
+      .findByText(
+        "Some columns are missing, this card might not render correctly.",
+      )
+      .should("be.visible");
+  });
 });
 
-describe.skip("issue 22527", () => {
+describe("issue 22527", { tags: "@skip" }, () => {
   const questionDetails = {
     native: {
       query:
@@ -1169,7 +1202,7 @@ describe("issue 49160", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("pie chart should have a placeholder", () => {
@@ -1247,5 +1280,44 @@ describe("issue 54271", () => {
 
     cy.log("no clear expectations but the app should not crash");
     H.assertQueryBuilderRowCount(1076);
+  });
+});
+
+describe("issue 63671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+              },
+            ],
+          ],
+          filter: [
+            "between",
+            ["field", PRODUCTS.CREATED_AT, null],
+            "2025-01-01",
+            "2025-12-31",
+          ],
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
+    cy.findByTestId("query-visualization-root")
+      .findByText("2025")
+      .should("have.length", 1);
   });
 });

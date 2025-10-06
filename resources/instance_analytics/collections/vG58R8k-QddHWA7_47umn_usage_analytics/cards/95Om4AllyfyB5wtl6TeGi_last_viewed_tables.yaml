@@ -85,7 +85,6 @@ dataset_query:
           - database_id
         - base-type: type/Integer
           join-alias: Tables - Entity Qualified
-      ident: join_95Om4AllyfyB5wtl6TeGi@0__Tables - Entity Qualified
       source-table: x7GwgNdjfzrpQkKTraaqo
       strategy: left-join
     - alias: People - User
@@ -105,7 +104,6 @@ dataset_query:
         - base-type: type/Integer
           join-alias: People - User
       fields: none
-      ident: join_95Om4AllyfyB5wtl6TeGi@0__People - User
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     limit: 200
@@ -178,7 +176,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Tables - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -210,7 +207,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Tables - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -242,7 +238,6 @@ result_metadata:
   semantic_type: type/Description
   settings: null
   source: fields
-  source_alias: Tables - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -278,7 +273,6 @@ result_metadata:
   semantic_type: type/FK
   settings: null
   source: fields
-  source_alias: Tables - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public

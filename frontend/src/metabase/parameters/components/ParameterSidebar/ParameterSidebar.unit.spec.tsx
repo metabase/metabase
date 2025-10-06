@@ -2,8 +2,13 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import {
+  createMockDashboard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 import { ParameterSidebar } from "./ParameterSidebar";
 
@@ -32,10 +37,6 @@ const setup = ({
   }: SetupOpts) => {
     const [parameter, setParameter] = useState(initialParameter);
 
-    const onChangeName = (_parameterId: string, name: string) => {
-      setParameter({ ...initialParameter, name });
-    };
-
     return (
       <div>
         <button
@@ -44,23 +45,27 @@ const setup = ({
         >
           Next Parameter Button
         </button>
-        <ParameterSidebar
-          parameter={parameter}
-          otherParameters={otherParameters}
-          onChangeName={onChangeName}
-          onChangeType={jest.fn()}
-          onChangeDefaultValue={jest.fn()}
-          onChangeIsMultiSelect={jest.fn()}
-          onChangeQueryType={jest.fn()}
-          onChangeSourceType={jest.fn()}
-          onChangeSourceConfig={jest.fn()}
-          onChangeFilteringParameters={jest.fn()}
-          onRemoveParameter={jest.fn()}
-          onChangeTemporalUnits={jest.fn()}
-          onClose={jest.fn()}
-          onChangeRequired={jest.fn()}
-          hasMapping={hasMapping}
-        />
+        <MockDashboardContext
+          dashboard={createMockDashboard({
+            dashcards: hasMapping
+              ? [
+                  createMockDashboardCard({
+                    parameter_mappings: [
+                      {
+                        card_id: 1,
+                        parameter_id: parameter.id,
+                        target: ["variable", ["template-tag", "id"]],
+                      },
+                    ],
+                  }),
+                ]
+              : [],
+          })}
+          parameters={[parameter, ...otherParameters]}
+          editingParameter={parameter}
+        >
+          <ParameterSidebar />
+        </MockDashboardContext>
       </div>
     );
   };
@@ -180,9 +185,12 @@ describe("ParameterSidebar", () => {
 
       await clickNextParameterButton();
 
-      // verify Linked filters tab is not rendered
+      // verify tabs are not rendered if there's only 1 tab
       expect(
         screen.queryByRole("tab", { name: "Linked filters" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: "Filter settings" }),
       ).not.toBeInTheDocument();
 
       // verify tab content corresponds to Filter settings

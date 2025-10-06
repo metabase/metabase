@@ -6,13 +6,13 @@ import {
   createDashboardWithQuestions,
   createQuestion,
 } from "e2e/support/helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
-  mockAuthProviderAndJwtSignIn,
   mountInteractiveQuestion,
   mountSdkContent,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import type {
   ClickAction,
   CustomClickActionWithCustomView,

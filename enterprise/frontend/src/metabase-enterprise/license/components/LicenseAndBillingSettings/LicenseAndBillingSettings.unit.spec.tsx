@@ -1,70 +1,86 @@
 import userEvent from "@testing-library/user-event";
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import { Route } from "react-router";
 
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+  setupTokenStatusEndpoint,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { BillingInfo, BillingInfoLineItem } from "metabase-types/api";
-import { createMockAdminState } from "metabase-types/store/mocks";
+import type {
+  BillingInfo,
+  BillingInfoLineItem,
+  TokenFeatures,
+} from "metabase-types/api";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { getBillingInfoId } from "../BillingInfo/utils";
 
-import LicenseAndBillingSettings from "./LicenseAndBillingSettings";
+import { LicenseAndBillingSettings } from "./LicenseAndBillingSettings";
 
-const setupState = ({
-  token,
+const setup = async ({
+  token = "token",
   is_env_setting = false,
-  env_name,
+  airgapEnabled = false,
+  features = {},
 }: {
-  token?: string;
+  token?: string | null;
   is_env_setting?: boolean;
-  env_name?: string;
-  features?: string[];
+  airgapEnabled?: boolean;
+  features?: Partial<TokenFeatures> & { "metabase-store-managed"?: boolean };
 }) => {
-  const admin = createMockAdminState({
-    settings: {
-      settings: [
-        {
-          key: "premium-embedding-token",
-          is_env_setting,
-          env_name,
-          value: token,
-        },
-      ],
-      warnings: {},
-    },
+  const settings = createMockSettings({
+    "airgap-enabled": airgapEnabled,
+    "premium-embedding-token": token,
+    "token-features": createMockTokenFeatures(features),
   });
 
-  return {
+  setupSettingsEndpoints([
+    {
+      key: "premium-embedding-token",
+      is_env_setting,
+      env_name: "MB_PREMIUM_EMBEDDING_TOKEN",
+      value: token,
+    },
+    {
+      key: "airgap-enabled",
+      value: airgapEnabled,
+    },
+  ]);
+
+  setupPropertiesEndpoints(settings);
+  setupTokenStatusEndpoint({
+    valid: !!token && token !== "invalid",
+    features: Object.keys(features),
+  });
+  setupUpdateSettingEndpoint();
+
+  renderWithProviders(<LicenseAndBillingSettings />, {
     storeInitialState: {
-      admin,
+      settings: createMockSettingsState(settings),
     },
-  };
-};
-
-const mockTokenStatus = (valid: boolean, features: string[] = []) => {
-  fetchMock.get("path:/api/premium-features/token/status", {
-    valid,
-    "valid-thru": "2099-12-31T12:00:00",
-    features,
   });
-};
 
-const mockTokenNotExist = () => {
-  fetchMock.get("path:/api/premium-features/token/status", 404);
-};
-
-const mockUpdateToken = (valid: boolean) => {
-  fetchMock.put("path:/api/setting/premium-embedding-token", valid ? 200 : 400);
+  await screen.findByTestId("license-and-billing-content");
 };
 
 describe("LicenseAndBilling", () => {
+  beforeEach(() => {
+    jest.spyOn(dayjs.prototype, "diff").mockReturnValue(27209);
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
   describe("render store info", () => {
     it("should render valid store billing info", async () => {
-      mockTokenStatus(true, ["metabase-store-managed"]);
       const plan: BillingInfoLineItem = {
         name: "Plan",
         value: "Metabase Cloud Pro",
@@ -126,10 +142,10 @@ describe("LicenseAndBilling", () => {
 
       fetchMock.get("path:/api/ee/billing", mockData);
 
-      renderWithProviders(
-        <Route path="/" component={LicenseAndBillingSettings}></Route>,
-        { withRouter: true, ...setupState({ token: "token" }) },
-      );
+      await setup({
+        token: "valid",
+        features: { "metabase-store-managed": true },
+      });
 
       // test string format
       expect(await screen.findByText(plan.name)).toBeInTheDocument();
@@ -180,9 +196,7 @@ describe("LicenseAndBilling", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not render store info with unknown format types, display types, or invalid data", () => {
-      mockTokenStatus(true, ["metabase-store-managed"]);
-
+    it("should not render store info with unknown format types, display types, or invalid data", async () => {
       // provide one valid value so the table renders
       const plan: BillingInfoLineItem = {
         name: "Plan",
@@ -214,10 +228,10 @@ describe("LicenseAndBilling", () => {
       };
       fetchMock.get("path:/api/ee/billing", mockData);
 
-      renderWithProviders(
-        <LicenseAndBillingSettings />,
-        setupState({ token: "token" }),
-      );
+      await setup({
+        token: "token",
+        features: { "metabase-store-managed": true },
+      });
 
       // test unsupported display, unsupported format, and invalid items do not render
       expect(
@@ -231,24 +245,17 @@ describe("LicenseAndBilling", () => {
   });
 
   it("renders error for billing info for store managed billing and info request fails", async () => {
-    mockTokenStatus(true, ["metabase-store-managed"]);
     fetchMock.get("path:/api/ee/billing", 500);
-
-    renderWithProviders(
-      <LicenseAndBillingSettings />,
-      setupState({ token: "token" }),
-    );
+    await setup({
+      token: "valid",
+      features: { "metabase-store-managed": true },
+    });
 
     expect(await screen.findByTestId("billing-info-error")).toBeInTheDocument();
   });
 
   it("renders settings for non-store-managed billing with a valid token", async () => {
-    mockTokenStatus(true);
-
-    renderWithProviders(
-      <LicenseAndBillingSettings />,
-      setupState({ token: "token" }),
-    );
+    await setup({ token: "valid" });
 
     expect(
       await screen.findByText(
@@ -267,9 +274,26 @@ describe("LicenseAndBilling", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders settings for airgapped token", async () => {
+    await setup({ token: "valid", airgapEnabled: true });
+
+    expect(
+      await screen.findByText(
+        "To manage your billing preferences, please email",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("billing@metabase.com")).toHaveAttribute(
+      "href",
+      "mailto:billing@metabase.com",
+    );
+
+    expect(
+      screen.getByText("Your token expires in 27209 days."),
+    ).toBeInTheDocument();
+  });
+
   it("renders settings for unlicensed instances", async () => {
-    mockTokenNotExist();
-    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
+    await setup({ token: null });
 
     expect(
       await screen.findByText(
@@ -279,15 +303,7 @@ describe("LicenseAndBilling", () => {
   });
 
   it("renders disabled input when tokens specified with an env variable", async () => {
-    mockTokenNotExist();
-    renderWithProviders(
-      <LicenseAndBillingSettings />,
-      setupState({
-        token: "token",
-        is_env_setting: true,
-        env_name: "MB_PREMIUM_EMBEDDING_TOKEN",
-      }),
-    );
+    await setup({ is_env_setting: true });
 
     expect(
       await screen.findByPlaceholderText("Using MB_PREMIUM_EMBEDDING_TOKEN"),
@@ -295,18 +311,13 @@ describe("LicenseAndBilling", () => {
   });
 
   it("does not render an input when token has hosting feature enabled", async () => {
-    mockTokenStatus(true, ["hosting"]);
-    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
-    expect(
-      await screen.findByText("Go to the Metabase Store"),
-    ).toBeInTheDocument();
+    await setup({ features: { hosting: true } });
+    expect(await screen.findByText("Billing")).toBeInTheDocument();
     expect(screen.queryByTestId("license-input")).not.toBeInTheDocument();
   });
 
   it("shows an error when entered license is not valid", async () => {
-    mockTokenNotExist();
-    mockUpdateToken(false);
-    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
+    await setup({ token: null });
 
     expect(
       await screen.findByText(
@@ -314,28 +325,15 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
+    setupUpdateSettingEndpoint({ status: 400 });
+
     await userEvent.type(screen.getByTestId("license-input"), "invalid");
-    await userEvent.click(screen.getByTestId("activate-button"));
+    await userEvent.click(await screen.findByTestId("activate-button"));
 
     expect(
       await screen.findByText(
         "This token doesn't seem to be valid. Double-check it, then contact support if you think it should be working.",
       ),
     ).toBeInTheDocument();
-  });
-
-  it("refreshes the page when license is accepted", async () => {
-    mockTokenNotExist();
-    mockUpdateToken(true);
-    renderWithProviders(<LicenseAndBillingSettings />, setupState({}));
-
-    expect(
-      await screen.findByText(
-        "Bought a license to unlock advanced functionality? Please enter it below.",
-      ),
-    ).toBeInTheDocument();
-
-    await userEvent.type(screen.getByTestId("license-input"), "valid");
-    await userEvent.click(screen.getByTestId("activate-button"));
   });
 });

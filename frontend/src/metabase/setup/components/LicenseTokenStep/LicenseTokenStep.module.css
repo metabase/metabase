@@ -1,0 +1,4 @@
+/*  Increase specificity to override the default padding-bottom */
+.licenseTokenStep.licenseTokenStep {
+  padding-bottom: var(--mantine-spacing-xl);
+}

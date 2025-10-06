@@ -7,7 +7,7 @@ import {
   useRescanDatabaseFieldValuesMutation,
   useSyncDatabaseSchemaMutation,
 } from "metabase/api";
-import ActionButton from "metabase/components/ActionButton";
+import ActionButton from "metabase/common/components/ActionButton";
 import Tables from "metabase/entities/tables";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -36,7 +36,7 @@ export const DatabaseConnectionInfoSection = ({
   const [dismissSyncSpinner] = useDismissDatabaseSyncSpinnerMutation();
 
   const handleSyncDatabaseSchema = async () => {
-    await syncDatabaseSchema(database.id);
+    await syncDatabaseSchema(database.id).unwrap();
     // FIXME remove when MetadataEditor uses RTK query directly to load tables
     dispatch({ type: Tables.actionTypes.INVALIDATE_LISTS_ACTION });
   };
@@ -85,7 +85,7 @@ export const DatabaseConnectionInfoSection = ({
         />
         <ActionButton
           className={S.actionButton}
-          actionFn={() => rescanDatabaseFieldValues(database.id)}
+          actionFn={() => rescanDatabaseFieldValues(database.id).unwrap()}
           normalText={t`Re-scan field values`}
           activeText={t`Starting…`}
           failedText={t`Failed to start scan`}

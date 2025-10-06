@@ -1,6 +1,8 @@
 import type { LocationDescriptorObject } from "history";
 import querystring from "querystring";
+import { replace } from "react-router-redux";
 
+import { databaseApi } from "metabase/api";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
 import { deserializeCardFromUrl } from "metabase/lib/card";
@@ -13,6 +15,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
@@ -31,8 +34,8 @@ import type {
 } from "metabase-types/store";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
-import { updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
+import { updateUrl } from "../url";
 
 import { loadCard } from "./card";
 import { resetQB } from "./core";
@@ -110,7 +113,7 @@ export function deserializeCard(serializedCard: string) {
 }
 
 async function fetchAndPrepareSavedQuestionCards(
-  cardId: number,
+  cardId: string | number,
   dispatch: Dispatch,
   getState: GetState,
 ) {
@@ -164,7 +167,7 @@ export async function resolveCards({
   dispatch,
   getState,
 }: {
-  cardId?: number;
+  cardId?: string | number;
   deserializedCard?: Card;
   options: BlankQueryOptions;
   dispatch: Dispatch;
@@ -184,6 +187,17 @@ export async function resolveCards({
         dispatch,
         getState,
       );
+}
+
+async function loadDatabases(dispatch: any) {
+  const action = databaseApi.endpoints.listDatabases.initiate();
+  try {
+    const { data } = await dispatch(action).unwrap();
+    return data;
+  } catch (error) {
+    console.error("error loading databases", error);
+    return [];
+  }
 }
 
 export function parseHash(hash?: string) {
@@ -257,6 +271,14 @@ async function handleQBInit(
   const hasCard = cardId || serializedCard;
   const currentUser = getUser(getState());
 
+  if (uiControls.queryBuilderMode === "notebook") {
+    const databases = await loadDatabases(dispatch);
+    if (!getHasDataAccess(databases)) {
+      dispatch(replace("/unauthorized"));
+      return;
+    }
+  }
+
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
     : null;
@@ -307,6 +329,17 @@ async function handleQBInit(
   let question = new Question(card, metadata);
   const query = question.query();
   const { isNative, isEditable } = Lib.queryDisplayInfo(query);
+
+  // For unsaved native queries, ensure template tags are parsed from query text
+  // This handles cases like AI-generated queries with model references {{#1}}
+  if (isNative && !question.isSaved()) {
+    question = question.setQuery(
+      Lib.withNativeQuery(
+        question.query(),
+        Lib.rawNativeQuery(question.query()),
+      ),
+    );
+  }
 
   if (question.isSaved()) {
     const type = question.type();

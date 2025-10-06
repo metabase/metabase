@@ -13,7 +13,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel variable-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"foo"} "SELECT * FROM table WHERE {{foo}} AND some_field IS NOT NULL"
     #{"foo" "bar"} "SELECT * FROM table WHERE {{foo}} AND some_field = {{bar}}"
     ;; Duplicates are flattened.
@@ -22,16 +22,13 @@
     #{} "SELECT * FROM table WHERE {{&foo}}"))
 
 (deftest ^:parallel snippet-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
-    #{"snippet:   foo  "} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
-    #{"snippet:   foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
-    ;; TODO: This logic should trim the whitespace and unify these two snippet names.
-    ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
-    ;; Tech debt issue: #39378
-    #{"snippet: foo" "snippet:foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
+    #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet:   foo  }} AND some_field IS NOT NULL"
+    #{"snippet: foo  *#&@"} "SELECT * FROM table WHERE {{snippet:   foo  *#&@}}"
+    #{"snippet: foo"} "SELECT * FROM table WHERE {{snippet: foo}} AND {{snippet:foo}}"))
 
 (deftest ^:parallel card-tag-test
-  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags input))))
+  (are [exp input] (= exp (set (keys (lib.native/extract-template-tags meta/metadata-provider input))))
     #{"#123"} "SELECT * FROM table WHERE {{ #123 }} AND some_field IS NOT NULL"
     ;; TODO: This logic should trim the whitespace and unify these two card tags.
     ;; I think this is a bug in the original code but am aiming to reproduce it exactly for now.
@@ -42,22 +39,23 @@
 
 (deftest ^:parallel template-tags-test
   (testing "snippet tags"
-    (is (=? {"snippet:foo" {:type         :snippet
-                            :name         "snippet:foo"
-                            :snippet-name "foo"
-                            :id           string?}}
-            (lib.native/extract-template-tags "SELECT * FROM table WHERE {{snippet:foo}}")))
-    (is (=? {"snippet:foo"  {:type         :snippet
-                             :name         "snippet:foo"
-                             :snippet-name "foo"
-                             :id           string?}
-             "snippet: foo" {:type         :snippet
-                             :name         "snippet: foo"
-                             :snippet-name "foo"
-                             :id           string?}}
-            ;; TODO: This should probably be considered a bug - whitespace matters for the name.
-            ;; Tech debt issue: #39378
-            (lib.native/extract-template-tags "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}"))))
+    (let [snippet           {:type :snippet
+                             :name "foo"
+                             :id   1}
+          metadata-provider (lib.tu/mock-metadata-provider
+                             {:native-query-snippets [snippet]})]
+      (is (=? {"snippet: foo" {:type         :snippet
+                               :name         "snippet: foo"
+                               :snippet-name "foo"
+                               :snippet-id   1
+                               :id           string?}}
+              (lib.native/extract-template-tags metadata-provider "SELECT * FROM table WHERE {{snippet:foo}}")))
+      (is (=? {"snippet: foo" {:type         :snippet
+                               :name         "snippet: foo"
+                               :snippet-name "foo"
+                               :snippet-id   1
+                               :id           string?}}
+              (lib.native/extract-template-tags metadata-provider "SELECT * FROM {{snippet: foo}} WHERE {{snippet:foo}}")))))
 
   (testing "renaming a variable"
     (let [old-tag {:type         :text
@@ -69,14 +67,14 @@
                         :name         "bar"
                         :display-name "Bar"
                         :id           (:id old-tag)}}
-                (lib.native/extract-template-tags "SELECT * FROM {{bar}}"
+                (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" old-tag}))))
       (testing "keeps display-name if it's customized"
         (is (=? {"bar" {:type         :text
                         :name         "bar"
                         :display-name "Custom Name"
                         :id           (:id old-tag)}}
-                (lib.native/extract-template-tags "SELECT * FROM {{bar}}"
+                (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}}"
                                                   {"foo" (assoc old-tag :display-name "Custom Name")}))))
 
       (testing "works with other variables present, if they don't change"
@@ -89,25 +87,26 @@
                             :name         "bar"
                             :display-name "Bar"
                             :id           (:id old-tag)}}
-                  (lib.native/extract-template-tags "SELECT * FROM {{bar}} AND field = {{other}}"
+                  (lib.native/extract-template-tags meta/metadata-provider "SELECT * FROM {{bar}} AND field = {{other}}"
                                                     {"foo"   old-tag
                                                      "other" other})))))))
 
   (testing "general case, add and remove"
     (let [mktag (fn [base]
-                  (merge {:type    :text
+                  (merge {:type         :text
                           :display-name (u.humanization/name->human-readable-name :simple (:name base))
                           :id           string?}
                          base))
           v1    (mktag {:name "foo"})
           v2    (mktag {:name "bar"})
           v3    (mktag {:name "baz"})
-          s1    (mktag {:name         "snippet:first snippet"
+          s1    (mktag {:name         "snippet: first snippet"
                         :snippet-name "first snippet"
                         :snippet-id   123
                         :type         :snippet})
-          s2    (mktag {:name         "snippet:another snippet"
+          s2    (mktag {:name         "snippet: another snippet"
                         :snippet-name "another snippet"
+                        :snippet-id   124
                         :type         :snippet})
 
           c1    (mktag {:name    "#123-card-1"
@@ -115,26 +114,34 @@
                         :card-id 123})
           c2    (mktag {:name    "#321"
                         :type    :card
-                        :card-id 321})]
-      (is (=? {"foo"                   v1
-               "#123-card-1"           c1
-               "snippet:first snippet" (dissoc s1 :snippet-id)}
+                        :card-id 321})
+          metadata-provider (lib.tu/mock-metadata-provider
+                             {:native-query-snippets [{:name "first snippet"
+                                                       :id   123}
+                                                      {:name "another snippet"
+                                                       :id   124}]})]
+      (is (=? {"foo"                    v1
+               "#123-card-1"            c1
+               "snippet: first snippet" s1}
               (lib.native/extract-template-tags
+               metadata-provider
                "SELECT * FROM {{#123-card-1}} WHERE {{foo}} AND {{  snippet:first snippet}}")))
-      (is (=? {"bar"                     v2
-               "baz"                     v3
-               "snippet:another snippet" s2
-               "#321"                    c2}
+      (is (=? {"bar"                      v2
+               "baz"                      v3
+               "snippet: another snippet" s2
+               "#321"                     c2}
               (lib.native/extract-template-tags
+               metadata-provider
                "SELECT * FROM {{#321}} WHERE {{baz}} AND {{bar}} AND {{snippet:another snippet}}"
-               {"foo"                   (assoc v1 :id (str (random-uuid)))
-                "#123-card-1"           (assoc c1 :id (str (random-uuid)))
-                "snippet:first snippet" (assoc s1 :id (str (random-uuid)))})))
+               {"foo"                    (assoc v1 :id (str (random-uuid)))
+                "#123-card-1"            (assoc c1 :id (str (random-uuid)))
+                "snippet: first snippet" (assoc s1 :id (str (random-uuid)))})))
       (let [s1-uuid (str (random-uuid))]
-        (is (= {"snippet:another snippet" (assoc (dissoc s2 :snippet-id) :id s1-uuid)}
+        (is (= {"snippet: another snippet" (assoc s2 :id s1-uuid)}
                (lib.native/extract-template-tags
+                metadata-provider
                 "SELECT * FROM {{snippet:another snippet}}"
-                {"snippet:first snippet" (assoc s1 :id s1-uuid)})))))))
+                {"snippet: first snippet" (assoc s1 :id s1-uuid)})))))))
 
 (def ^:private qp-results-metadata
   "Capture of the `data.results_metadata` that would come back when running `SELECT * FROM VENUES;` with the Query
@@ -271,7 +278,10 @@
        #?(:clj Throwable :cljs :default)
        #"Must be a native query"
        (-> (lib/query (metadata-provider-requiring-collection) (meta/table-metadata :venues))
-           (lib/with-native-extras {:collection "mycollection"})))))
+           (lib/with-native-extras {:collection "mycollection"}))))
+  (testing "should not throw when creating a native query without required extras (metabase#62556)"
+    (is (=? {:stages [{:native "myquery"}]}
+            (lib/native-query (metadata-provider-requiring-collection) "myquery")))))
 
 (deftest ^:parallel has-write-permission-test
   (testing ":native-permissions in database"
@@ -324,7 +334,7 @@
 (deftest ^:parallel engine-test
   (is (= :h2 (lib/engine (lib.tu/native-query)))))
 
-(deftest ^:parallel template-tag-card-ids-test
+(deftest ^:parallel native-query-card-ids-test
   (let [query (lib/query (lib.tu/metadata-provider-with-mock-cards)
                          {:database (meta/id)
                           :type     :native
@@ -336,7 +346,7 @@
                                                                                 :display-name "Y"
                                                                                 :card-id      2}}}})]
     (is (= #{1 2}
-           (lib/template-tag-card-ids query)))))
+           (lib/native-query-card-ids query)))))
 
 (deftest ^:parallel template-tags-referenced-cards-test
   (testing "returns Card instances from raw query"
@@ -421,26 +431,20 @@
         query (lib/query mp (lib.metadata/card mp (:id card)))]
     (is (=? [{:name         "ID"
               :display-name "ID"
-              :ident        (lib/native-ident "ID" (:entity-id card))
               :lib/source   :source/card}
              {:name         "NAME"
               :display-name "Name"
-              :ident        (lib/native-ident "NAME" (:entity-id card))
               :lib/source   :source/card}
              {:name         "CATEGORY_ID"
               :display-name "Category ID"
-              :ident        (lib/native-ident "CATEGORY_ID" (:entity-id card))
               :lib/source   :source/card}
              {:name         "LATITUDE"
               :display-name "Latitude"
-              :ident        (lib/native-ident "LATITUDE" (:entity-id card))
               :lib/source   :source/card}
              {:name         "LONGITUDE"
               :display-name "Longitude"
-              :ident        (lib/native-ident "LONGITUDE" (:entity-id card))
               :lib/source   :source/card}
              {:name         "PRICE"
               :display-name "Price"
-              :ident        (lib/native-ident "PRICE" (:entity-id card))
               :lib/source   :source/card}]
             (lib/returned-columns query)))))

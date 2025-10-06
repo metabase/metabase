@@ -2,9 +2,9 @@
 import { t } from "ttag";
 
 import { useCancelCloudMigrationMutation } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
@@ -21,6 +21,7 @@ import {
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";
+import { getMigrationUrl } from "./utils";
 
 interface MigrationInProgressProps {
   migration: InProgressCloudMigration;
@@ -52,12 +53,14 @@ export const MigrationInProgress = ({
     await cancelCloudMigration();
     dispatch(
       addUndo({
-        icon: "info_filled",
+        icon: "info",
         message: t`Migration to Metabase Cloud has been canceled.`,
         undo: false,
       }),
     );
   };
+
+  const migrationUrl = getMigrationUrl(checkoutUrl, migration);
 
   return (
     <>
@@ -103,7 +106,7 @@ export const MigrationInProgress = ({
               <Button
                 mt="md"
                 component={ExternalLink}
-                href={checkoutUrl}
+                href={migrationUrl}
                 variant="filled"
               >{t`Go to Metabase Store`}</Button>
             </Flex>

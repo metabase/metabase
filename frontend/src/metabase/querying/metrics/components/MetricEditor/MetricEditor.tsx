@@ -1,8 +1,8 @@
 import { forwardRef, useState } from "react";
 
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -30,7 +30,7 @@ type MetricEditorProps = {
 };
 
 export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
-  function MetricEditorInner(
+  function MetricEditor(
     {
       question,
       result,
@@ -50,6 +50,18 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
   ) {
     const [modalType, setModalType] = useState<MetricModalType>();
     const isRunnable = Lib.canRun(question.query(), "metric");
+    const {
+      checkData,
+      isConfirmationShown,
+      handleInitialSave,
+      handleSaveAfterConfirmation,
+      handleCloseConfirmation,
+    } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
+      onSave,
+      onError: (error) => {
+        throw error;
+      },
+    });
 
     const handleCreate = (question: Question) => {
       return onCreate(question.setDefaultDisplay());
@@ -60,10 +72,10 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
     };
 
     const handleSave = async (question: Question) => {
-      await onSave(question.setDefaultDisplay());
+      await handleInitialSave(question.setDefaultDisplay());
     };
 
-    const handleCancel = () => {
+    const handleConfirmCancel = () => {
       onCancel(question);
     };
 
@@ -71,7 +83,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       if (question.isSaved() && isDirty) {
         setModalType("leave");
       } else {
-        handleCancel();
+        handleConfirmCancel();
       }
     };
 
@@ -85,6 +97,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
+          isConfirmationShown={isConfirmationShown}
           onCreate={handleCreateStart}
           onSave={handleSave}
           onCancel={handleCancelStart}
@@ -119,12 +132,19 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
           />
         )}
         {modalType === "leave" && (
-          <Modal isOpen>
-            <LeaveConfirmationModalContent
-              onAction={handleCancel}
-              onClose={handleModalClose}
-            />
-          </Modal>
+          <LeaveConfirmModal
+            opened
+            onConfirm={handleConfirmCancel}
+            onClose={handleModalClose}
+          />
+        )}
+        {isConfirmationShown && checkData != null && (
+          <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+            checkData={checkData}
+            opened
+            onSave={handleSaveAfterConfirmation}
+            onClose={handleCloseConfirmation}
+          />
         )}
       </Flex>
     );

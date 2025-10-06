@@ -80,6 +80,72 @@ describe("scenarios > visualizations > table", () => {
     headerCells().findAllByText("ID updated").should("have.length", 1);
   });
 
+  it("should allow selecting cells in a table and copy the values", () => {
+    H.grantClipboardPermissions();
+
+    H.openOrdersTable();
+
+    const getNonPKCells = () =>
+      H.tableInteractiveBody().find(
+        '[data-selectable-cell]:not([data-column-id="ID"])',
+      );
+
+    const assertSelectedCells = (expectedCount) => {
+      H.tableInteractiveBody()
+        .find("[data-selectable-cell]")
+        .filter('[aria-selected="true"]')
+        .should("have.length", expectedCount);
+    };
+
+    // Single cell selection by clicking
+    getNonPKCells().first().as("firstCell");
+    cy.get("@firstCell").click();
+    cy.get("@firstCell").should("have.attr", "aria-selected", "true");
+
+    // Multi-cell selection by dragging
+    getNonPKCells().eq(0).as("startCell");
+    getNonPKCells().eq(3).as("endCell");
+
+    cy.get("@startCell")
+      .trigger("mousedown", { which: 1 })
+      .then(() => {
+        cy.get("@endCell").trigger("mouseover", { buttons: 1 });
+        cy.get("@endCell").trigger("mouseup");
+      });
+    assertSelectedCells(4);
+
+    // Cmd+click to add cells to selection
+    getNonPKCells().eq(5).as("cmdClickCell");
+    cy.get("@cmdClickCell").click({ metaKey: true });
+    assertSelectedCells(5);
+
+    // Shift+click for range selection
+    getNonPKCells().eq(4).click();
+    getNonPKCells().eq(6).click({ shiftKey: true });
+    assertSelectedCells(3);
+
+    // Copy formatted content with Cmd+C
+    cy.realPress(["Meta", "c"]);
+    H.readClipboard().should("equal", "39.72		February 11, 2025, 9:40 PM");
+
+    // Copy unformatted content with Shift+Cmd+C
+    cy.realPress(["Shift", "Meta", "c"]);
+    H.readClipboard().should(
+      "equal",
+      "39.718145389078366	null	2025-02-11T21:40:27.892-08:00",
+    );
+
+    // Escape to clear selection
+    cy.realPress("Escape");
+    assertSelectedCells(0);
+
+    // Click outside to clear selection
+    getNonPKCells().eq(0).click();
+    // Click outside the table
+    H.queryBuilderHeader().findByText("Orders").click();
+    assertSelectedCells(0);
+  });
+
   it("should allow enabling row index column", () => {
     H.openOrdersTable();
     H.openVizSettingsSidebar();
@@ -88,7 +154,7 @@ describe("scenarios > visualizations > table", () => {
     H.openObjectDetail(5);
 
     // Ensure click on row index opens the object detail
-    H.modal().findByText("Order");
+    H.modal().findAllByText("6").should("have.length", 2).and("be.visible");
 
     // Close object detail modal
     cy.realType("{esc}");
@@ -246,7 +312,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("City");
           // description
-          cy.contains("The city of the account’s billing address");
+          cy.findByText("The city of the account’s billing address");
           // fingerprint
           cy.findByText("1,966 distinct values");
         },
@@ -452,7 +518,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
 
   it("should allow enabling pagination in dashcard viz settings", () => {
     // Page rows count is based on the available space which can differ depending on the platform and scroll bar system settings
-    const rowsRegex = /Rows \d+-\d+ of first 2000/;
+    const rowsRegex = /Rows \d+-\d+ of first 2,000/;
     const idCellSelector = '[data-column-id="ID"]';
     const firstPageId = 6;
     const secondPageId = 12;
@@ -464,7 +530,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findByText(rowsRegex)
       .should("not.exist");
 
-    cy.get("@tableDashcard").findByText("2000 rows");
+    cy.get("@tableDashcard").findByText("Showing first 2,000 rows");
 
     // Enable pagination
     H.editDashboard();
@@ -623,7 +689,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
   it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
     const sideColumnsWidth = 200;
     const expandedSideColumnsWidth = 2 * sideColumnsWidth;
-    const idColumnWidth = 60;
+    const idColumnWidth = 54;
     const idExpandedWidth = 2 * idColumnWidth;
 
     H.createQuestionAndDashboard({

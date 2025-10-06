@@ -1,7 +1,9 @@
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-export function getColumnIcon(column: Lib.ColumnMetadata): IconName {
+export function getColumnIcon(
+  column: Lib.ColumnMetadata | Lib.ColumnTypeInfo,
+): IconName {
   if (Lib.isPrimaryKey(column)) {
     return "label";
   }

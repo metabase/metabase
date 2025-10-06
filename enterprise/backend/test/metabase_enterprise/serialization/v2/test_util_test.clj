@@ -6,7 +6,7 @@
    [metabase.test :as mt]))
 
 (deftest mbql-deserialize-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database   {db-id      :id} {:name "Metabase Store"}
                        :model/Table      {crm-id     :id} {:name  "crm_survey_response"
                                                            :db_id db-id

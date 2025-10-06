@@ -1,13 +1,16 @@
 (ns metabase.lib.schema.expression
+  (:refer-clojure :exclude [some])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as common]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some]]))
 
 (defmulti type-of-method
   "Impl for [[type-of]]. Use [[type-of]], but implement [[type-of-method]].
@@ -196,13 +199,27 @@
    [:cat
     #_tag :any
     #_opts [:map
-            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]
-            [:ident               [:ref {:decode/normalize common/normalize-string-key} ::common/non-blank-string]]]
-    #_args [:* :any]]])
+            [:lib/expression-name [:string {:decode/normalize common/normalize-string-key}]]]
+    #_args [:* :any]]
+   [:fn
+    {:error/message "non-aggregation expression"}
+    #(letfn [(agg-tag? [tag]
+               (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
+             (agg-expr? [expr]
+               (and (vector? expr)
+                    (or (agg-tag? (first expr))
+                        (some agg-expr? (nnext expr)))))]
+       (not (agg-expr? %)))]])
 
-;;; the `:expressions` definition map as found as a top-level key in an MBQL stage
 (mr/def ::expressions
-  [:sequential {:min 1} [:ref ::expression.definition]])
+  "The `:expressions` definition map as found as a top-level key in an MBQL stage."
+  [:and
+   [:sequential {:min 1} [:ref ::expression.definition]]
+   [:fn
+    {:error/message "expressions must have unique names"}
+    (fn [expressions]
+      (or (empty? expressions)
+          (apply distinct? (map #(:lib/expression-name (lib.options/options %)) expressions))))]])
 
 (mr/def ::positive-integer-or-numeric-expression
   [:and

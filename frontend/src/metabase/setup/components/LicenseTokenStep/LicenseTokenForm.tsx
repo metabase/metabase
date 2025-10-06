@@ -1,13 +1,25 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, Flex } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Flex,
+  HoverCard,
+  Icon,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { LICENSE_TOKEN_SCHEMA } from "./constants";
 
@@ -17,11 +29,21 @@ type LicenseTokenFormProps = {
   initialValue?: string;
 };
 
+const CARD_WIDTH = 300;
+
 export const LicenseTokenForm = ({
   onSubmit,
   onSkip,
   initialValue = "",
 }: LicenseTokenFormProps) => {
+  const storeUrl = useStoreUrl("checkout");
+  const storeLink = (
+    <ExternalLink
+      href={storeUrl}
+      key="store-link"
+    >{t`Try Metabase for free`}</ExternalLink>
+  );
+
   return (
     <FormProvider
       initialValues={{ license_token: initialValue }}
@@ -42,17 +64,54 @@ export const LicenseTokenForm = ({
                   setValues({ license_token: trimmed });
                 }
               }}
+              rightSection={
+                <Box>
+                  <HoverCard position="bottom-end">
+                    <HoverCard.Target>
+                      <UnstyledButton
+                        component={Icon}
+                        size="1rem"
+                        name="info"
+                        aria-label={t`Token details information`}
+                        c="brand"
+                      />
+                    </HoverCard.Target>
+                    <HoverCard.Dropdown>
+                      <Stack gap="md" p="md" w={CARD_WIDTH}>
+                        <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
+                        <Text lh="lg">{c(
+                          "When users have no token, they can visit the link ${0} pointing to the store, where they can purchase a license for Metabase.",
+                        )
+                          .jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
+                      </Stack>
+                    </HoverCard.Dropdown>
+                  </HoverCard>
+                </Box>
+              }
+              rightSectionWidth="1rem"
             />
             <FormErrorMessage />
           </Box>
           <Flex gap="sm">
-            <Button onClick={onSkip}>{t`Skip`}</Button>
             <FormSubmitButton
               title={t`Activate`}
               activeTitle={t`Activating`}
               disabled={!!errors.license_token}
+              primary
             />
           </Flex>
+          <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
+          <Box>
+            <Button
+              onClick={onSkip}
+              variant="subtle"
+              px={0}
+              fw="normal"
+            >{t`I'll activate later`}</Button>
+            <Text c="text-light" size="sm">
+              {t`You won't have access to paid features until you activate.`}
+            </Text>
+          </Box>
         </Form>
       )}
     </FormProvider>

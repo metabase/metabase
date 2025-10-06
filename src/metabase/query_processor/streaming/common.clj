@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
+  (:refer-clojure :exclude [mapv select-keys])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -9,7 +10,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :as perf :refer [mapv select-keys]])
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
@@ -31,6 +33,8 @@
   [t]
   (u.date/with-time-zone-same-instant
    t
+   ;; existing usage -- don't use going forward
+   #_{:clj-kondo/ignore [:deprecated-var]}
    (qp.store/cached ::results-timezone (t/zone-id (qp.timezone/results-timezone-id)))))
 
 (defprotocol FormatValue
@@ -125,7 +129,7 @@
 (defn normalize-keys
   "Update map keys to remove namespaces from keywords and convert from snake to kebab case."
   [m]
-  (update-keys m (fn [k] (some-> k name (str/replace #"_" "-") keyword))))
+  (perf/update-keys m (fn [k] (some-> k name (str/replace #"_" "-") keyword))))
 
 (def col-type
   "The dispatch function logic for format format-timestring.
@@ -199,7 +203,7 @@
                                         ;; update the keys so that they will have only the :field-id or :column-name
                                         ;; and not have any metadata. Since we don't know the metadata, we can never
                                         ;; match a key with metadata, even if we do have the correct name or id
-                                        (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
+                                        (perf/update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         ;; field_ref can be a few different things, i.e.:
         ;;   [:field <col_id> _]
         ;;   [:field <col_name> _]

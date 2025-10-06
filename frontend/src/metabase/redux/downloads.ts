@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api, { GET, POST } from "metabase/lib/api";
 import { isWithinIframe, openSaveDialog } from "metabase/lib/dom";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -66,7 +67,7 @@ const getDownloadedResourceType = ({
 
   const isInIframe = isWithinIframe();
 
-  const defaultAccessedVia = process.env.EMBEDDING_SDK_VERSION
+  const defaultAccessedVia = isEmbeddingSdk()
     ? "sdk-embed"
     : isInIframe
       ? "interactive-iframe-embed"
@@ -236,12 +237,15 @@ const getDatasetParams = ({
       const params = new URLSearchParams(window.location.search);
 
       const convertSearchParamsToObject = (params: URLSearchParams) => {
-        const object: Record<string, string[]> = {};
+        const object: Record<string, string | string[]> = {};
         for (const [key, value] of params.entries()) {
           if (object[key]) {
-            object[key] = [...object[key], value];
+            object[key] = ([] as string[]).concat(
+              object[key] as string | string[],
+              value,
+            );
           } else {
-            object[key] = [value];
+            object[key] = value;
           }
         }
 

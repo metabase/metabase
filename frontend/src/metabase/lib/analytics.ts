@@ -23,12 +23,13 @@ const VERSIONS: Record<SchemaType, SchemaVersion> = {
   downloads: "1-0-0",
   embed_flow: "1-0-3",
   embed_share: "1-0-1",
+  embedded_analytics_js: "1-0-0",
   embedding_homepage: "1-0-0",
   simple_event: "1-0-0",
   invite: "1-0-1",
   model: "1-0-0",
   question: "1-0-6",
-  search: "1-1-0",
+  search: "1-1-2",
   serialization: "1-0-1",
   settings: "1-0-2",
   setup: "1-0-3",
@@ -41,19 +42,22 @@ export function trackSimpleEvent(event: SimpleEvent) {
 }
 
 export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
-  if (Settings.trackingEnabled() && Settings.snowplowEnabled()) {
-    if (shouldLogAnalytics) {
-      const { event: type, ...other } = event;
-      // eslint-disable-next-line no-console
-      console.log(
-        `%c[SNOWPLOW EVENT]%c, ${type}`,
-        // eslint-disable-next-line no-color-literals
-        "background: #222; color: #bada55",
-        "color: ",
-        other,
-      );
-    }
+  const shouldSendEvent =
+    Settings.trackingEnabled() && Settings.snowplowEnabled();
 
+  if (shouldLogAnalytics) {
+    const { event: type, ...other } = event;
+    // eslint-disable-next-line no-console
+    console.log(
+      `%c[SNOWPLOW EVENT | event sent:${shouldSendEvent}]%c, ${type}`,
+      // eslint-disable-next-line no-color-literals
+      "background: #222; color: #bada55",
+      "color: ",
+      other,
+    );
+  }
+
+  if (shouldSendEvent) {
     Snowplow.trackSelfDescribingEvent({
       event: {
         schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,

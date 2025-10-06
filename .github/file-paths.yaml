@@ -16,10 +16,12 @@ frontend_ci: &frontend_ci
   - ".github/actions/prepare-backend/**"
   - ".github/workflows/frontend.yml"
 
-frontend_sources: &frontend_sources
-  - *shared_sources
-  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
-  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+frontend_embedding_sdk_ci: &frontend_embedding_sdk_ci
+  - ".github/actions/prepare-frontend/**"
+  - ".github/actions/prepare-backend/**"
+  - ".github/workflows/*embedding-sdk*.yml"
+
+frontend_configs: &frontend_configs
   - "yarn.lock"
   - "**/tsconfig*.json"
   - "package.json"
@@ -27,19 +29,35 @@ frontend_sources: &frontend_sources
   - ".eslintrc.js"
   - "postcss.config.js"
   - "rspack.config.js"
-  - "webpack.config.js"
-  - "webpack.embedding-sdk.config.js"
-  - "webpack.static-viz.config.js"
+  - "rspack.main.config.js"
+  - "rspack.embedding-sdk-package.config.js"
+  - "rspack.embedding-sdk-bundle.config.js"
+  - "rspack.static-viz.config.js"
   - ".nvmrc"
 
+frontend_sources: &frontend_sources
+  - *shared_sources
+  - *frontend_configs
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+
+frontend_embedding_sources:
+  - "enterprise/frontend/src/{embedding,embedding-*}/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+  - "enterprise/frontend/src/metabase-enterprise/{embedding,embedding-*}**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+
 frontend_embedding_sdk_sources:
-  - *frontend_sources
+  - *frontend_configs
+  - "enterprise/frontend/!(test)**/**/{!(*.spec),}.{js,jsx,ts,tsx,css}"
+
+frontend_embedding_sdk_package_sources:
+  - "enterprise/frontend/src/embedding-sdk-package/**/!(*.spec).{js,jsx,ts,tsx,css}"
 
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
+  - "enterprise/frontend/**/*.unit.*"
   - ".github/**/*.unit.spec.*"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
@@ -104,16 +122,32 @@ e2e_ci: &e2e_ci
   - ".github/actions/prepare-uberjar-artifact/**"
   - ".github/actions/e2e-prepare-containers/**"
   - ".github/actions/prepare-cypress/**"
-  - ".github/actions/run-snowplow-micro/**"
   - ".github/workflows/e2e-*"
 
 e2e_specs: &e2e_specs
-  - "**/*.cy.*.js"
-  - "**/*.cy.*.ts"
+  - e2e/!(test-host-app)**/*.cy.*.{js,ts}
 
 e2e_cross_version: &e2e_cross_version
   - ".github/workflows/e2e-cross-version.yml"
   - "e2e/test/scenarios/cross-version/**"
+
+e2e_embedding_sdk:
+  - *frontend_embedding_sdk_ci
+  - *sources
+  - "e2e/component/**/*.cy.*.{js,ts}"
+
+e2e_embedding_sdk_compatibility:
+  - *default
+  - *frontend_embedding_sdk_ci
+  - *frontend_sources
+  - *backend_sources
+  - "e2e/embedding-sdk-host-apps/**"
+  - "e2e/runner/embedding-sdk/**"
+  - "e2e/test-host-app/**/*.cy.*.{js,ts}"
+
+snowplow: &snowplow
+  - ".github/workflows/snowplow.yml"
+  - "snowplow/**"
 
 e2e_all:
   - *default
@@ -121,15 +155,15 @@ e2e_all:
   - *sources
   - *e2e_specs
   - "e2e/**"
-
-snowplow:
-  - ".github/workflows/snowplow.yml"
-  - "snowplow/**"
+  - *snowplow
 
 documentation:
-  - ".typedoc/**"
   - "docs/**"
   - "**/*.md"
+
+embedding_documentation:
+  - ".typedoc/**"
+  - "docs/embedding/**"
 
 yaml:
   - "**/*.yml"

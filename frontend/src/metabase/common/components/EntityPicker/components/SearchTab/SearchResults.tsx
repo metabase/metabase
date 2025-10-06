@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import { VirtualizedList } from "metabase/components/VirtualizedList";
-import { NoObjectError } from "metabase/components/errors/NoObjectError";
+import EmptyState from "metabase/common/components/EmptyState";
+import { VirtualizedList } from "metabase/common/components/VirtualizedList";
+import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
 import { Box, Flex, Stack } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";
@@ -17,6 +17,9 @@ interface Props<
 > {
   folder: Item | undefined;
   searchResults: SearchItem[];
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
   selectedItem: Item | null;
   onItemSelect: (item: Item) => void;
 }
@@ -28,6 +31,9 @@ export const SearchResults = <
 >({
   folder,
   searchResults,
+  searchEngine,
+  searchRequestId,
+  searchTerm,
   selectedItem,
   onItemSelect,
 }: Props<Id, Model, Item>) => {
@@ -48,7 +54,16 @@ export const SearchResults = <
                 key={item.model + item.id}
                 item={item}
                 onClick={() => {
-                  trackSearchClick("item", index, "entity-picker");
+                  trackSearchClick({
+                    itemType: "item",
+                    position: index,
+                    context: "entity-picker",
+                    searchEngine: searchEngine || "unknown",
+                    requestId: searchRequestId,
+                    entityModel: item.model,
+                    entityId: typeof item.id === "number" ? item.id : null,
+                    searchTerm,
+                  });
                   onItemSelect(item as unknown as Item);
                 }}
                 isSelected={

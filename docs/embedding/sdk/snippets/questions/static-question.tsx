@@ -7,7 +7,6 @@ import {
 
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://your-metabase.example.com",
-  authProviderUri: "https://your-app.example.com/sso/metabase",
 });
 
 export default function App() {

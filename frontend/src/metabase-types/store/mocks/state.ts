@@ -1,4 +1,4 @@
-import type { SdkStoreState } from "embedding-sdk/store/types";
+import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { EnterpriseState } from "metabase-enterprise/settings/types";
 import { createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";

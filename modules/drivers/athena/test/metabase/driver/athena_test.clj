@@ -62,11 +62,35 @@
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"
     (are [region endpoint] (= endpoint
-                              (athena/endpoint-for-region region))
-      "us-east-1"      ".amazonaws.com"
-      "us-west-2"      ".amazonaws.com"
-      "cn-north-1"     ".amazonaws.com.cn"
-      "cn-northwest-1" ".amazonaws.com.cn")))
+                              (#'athena/endpoint-for-region region))
+      "us-east-1"      "//athena.us-east-1.amazonaws.com:443"
+      "us-west-2"      "//athena.us-west-2.amazonaws.com:443"
+      "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
+      "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
+
+(deftest ^:parallel athena-subname-uses-hostname-test
+  (mt/test-driver :athena
+    (doseq [[test-desc details exp-subname]
+            [["the subname uses the region when the hostname is missing"
+              {:region "us-east-1"}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the region when the hostname is nil"
+              {:region "us-east-1" :hostname nil}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the region when the hostname is empty"
+              {:region "us-east-1" :hostname ""}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the hostname as is when it is provided"
+              {:region "us-east-1" :hostname "athena.us-west-1.amazonaws.com"}
+              "//athena.us-west-1.amazonaws.com:443"]
+             ["the subname uses cn when the region is in china"
+              {:region "cn-north-1"}
+              "//athena.cn-north-1.amazonaws.com.cn:443"]]]
+      (testing test-desc
+        (is (= exp-subname
+               (->> details
+                    (sql-jdbc.conn/connection-details->spec driver/*driver*)
+                    :subname)))))))
 
 (deftest ^:parallel data-source-name-test
   (are [details expected] (= expected
@@ -221,7 +245,7 @@
                            (merge (meta/field-metadata :venues :name)
                                   {:table-id  1
                                    :name      "name"
-                                   :base_type :type/Text})]})))
+                                   :base-type :type/Text})]})))
           query {:database 1
                  :type     :query
                  :query    {:source-table 1
@@ -263,7 +287,21 @@
                              (let [metadata (.getMetaData conn)]
                                (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))
+            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
+              (let [get-columns-called (volatile! false)]
+                (with-redefs [athena/get-columns (fn [& _]
+                                                   (vreset! get-columns-called true)
+                                                   [{:column_name "c" :type_name "bigint"}
+                                                    {:column_name "c" :type_name "string"}])]
+                  (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
+                           {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
+                           {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
+                           {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
+                           {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
+                           {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
+                         (:fields (driver/describe-table :athena db table))))
+                  (is (true? @get-columns-called)))))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
@@ -393,3 +431,47 @@
                        first
                        (zipmap units))))]
           (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
+
+(deftest ^:parallel database-supports-schemas-test
+  (doseq [[schemas-supported? details] [[true? {}]
+                                        [true? {:dbname nil}]
+                                        [true? {:dbname ""}]
+                                        [false? {:dbname "db_name"}]]]
+    (is (schemas-supported? (driver/database-supports? :athena :schemas {:details details})))))
+
+(deftest ^:parallel athena-describe-database
+  (mt/test-driver :athena
+    (testing "when the dbname is specified describe-database only returns tables from that database and does not include the schema"
+      (is (= {:tables #{{:name "users", :schema nil, :description nil}
+                        {:name "venues", :schema nil, :description nil}
+                        {:name "categories", :schema nil, :description nil}
+                        {:name "checkins", :schema nil, :description nil}
+                        {:name "orders", :schema nil, :description nil}
+                        {:name "people", :schema nil, :description nil}
+                        {:name "products", :schema nil, :description nil}
+                        {:name "reviews", :schema nil, :description nil}}}
+             (driver/describe-database driver/*driver* (mt/db)))))
+    (testing "when the dbname is not specified describe-database returns tables from all databases and does include the schema"
+      (mt/with-temp [:model/Database db {:engine :athena,
+                                         :details (dissoc (:details (mt/db)) :dbname)}]
+        (let [tables (driver/describe-database driver/*driver* db)
+              ;; athena CI has many (possibly changing) databases so we'll just filter for a few
+              filter-dbs #{"v3_test_data" "airports" "db_router_data" "db_routed_data" "diff_time_zones_athena_cases"}
+              filtered-tables {:tables (set (filter (comp filter-dbs :schema) (:tables tables)))}]
+          (is (= {:tables #{{:name "venues", :schema "v3_test_data", :description nil}
+                            {:name "users", :schema "v3_test_data", :description nil}
+                            {:name "categories", :schema "v3_test_data", :description nil}
+                            {:name "people", :schema "v3_test_data", :description nil}
+                            {:name "reviews", :schema "v3_test_data", :description nil}
+                            {:name "checkins", :schema "v3_test_data", :description nil}
+                            {:name "products", :schema "v3_test_data", :description nil}
+                            {:name "orders", :schema "v3_test_data", :description nil}
+                            {:name "continent", :schema "airports", :description nil}
+                            {:name "country", :schema "airports", :description nil}
+                            {:name "region", :schema "airports", :description nil}
+                            {:name "airport", :schema "airports", :description nil}
+                            {:name "municipality", :schema "airports", :description nil}
+                            {:name "t", :schema "db_routed_data", :description nil}
+                            {:name "t", :schema "db_router_data", :description nil}
+                            {:name "times", :schema "diff_time_zones_athena_cases", :description nil}}}
+                 filtered-tables)))))))

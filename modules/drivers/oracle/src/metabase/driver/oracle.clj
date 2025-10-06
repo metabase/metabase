@@ -1,18 +1,18 @@
 (ns metabase.driver.oracle
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
@@ -21,18 +21,26 @@
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.secrets.core :as secret]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
-   (java.sql Connection DatabaseMetaData ResultSet SQLException Types)
-   (java.time Instant LocalDateTime OffsetDateTime ZonedDateTime)
+   (java.sql
+    Connection
+    DatabaseMetaData
+    ResultSet
+    SQLException
+    Types)
+   (java.time
+    Instant
+    LocalDateTime
+    OffsetDateTime
+    ZonedDateTime)
    (oracle.jdbc OracleConnection OracleTypes)
    (oracle.sql TIMESTAMPTZ)))
 
@@ -46,7 +54,8 @@
                               :now                     true
                               :identifiers-with-spaces true
                               :convert-timezone        true
-                              :expressions/date        false}]
+                              :expressions/date        false
+                              :database-routing        false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -146,8 +155,8 @@
       "JKS")))
 
 (mu/defn- handle-keystore-options [details :- ::details]
-  (let [keystore (secret/value-as-file! :oracle details "ssl-keystore")
-        password (secret/value-as-string :oracle details "ssl-keystore-password")]
+  (let [keystore (driver-api/secret-value-as-file! :oracle details "ssl-keystore")
+        password (driver-api/secret-value-as-string :oracle details "ssl-keystore-password")]
     (-> details
         (assoc :javax.net.ssl.keyStoreType (guess-keystore-type keystore password)
                :javax.net.ssl.keyStore keystore
@@ -156,8 +165,8 @@
                 :ssl-keystore-created-at :ssl-keystore-password-created-at))))
 
 (mu/defn- handle-truststore-options [details :- ::details]
-  (let [truststore (secret/value-as-file! :oracle details "ssl-truststore")
-        password (secret/value-as-string :oracle details "ssl-truststore-password")]
+  (let [truststore (driver-api/secret-value-as-file! :oracle details "ssl-truststore")
+        password (driver-api/secret-value-as-string :oracle details "ssl-truststore-password")]
     (-> details
         (assoc :javax.net.ssl.trustStoreType (guess-keystore-type truststore password)
                :javax.net.ssl.trustStore truststore
@@ -184,7 +193,7 @@
         finish-fn (partial (if (:ssl details) ssl-spec non-ssl-spec) details)
         ;; the v$session.program value has a max length of 48 (see T4Connection), so we have to make it more terse than
         ;; the usual config/mb-version-and-process-identifier string and ensure we truncate to a length of 48
-        prog-nm   (as-> (format "MB %s %s" (config/mb-version-info :tag) config/local-process-uuid) s
+        prog-nm   (as-> (format "MB %s %s" (driver-api/mb-version-info :tag) driver-api/local-process-uuid) s
                     (subs s 0 (min 48 (count s))))]
     (-> (merge spec details)
         (assoc prog-name-property prog-nm)
@@ -195,8 +204,8 @@
 (mu/defmethod driver/can-connect? :oracle
   [driver
    details :- ::details]
-  (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel! details))]
-    (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
+  (sql-jdbc.conn/with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
+    (= 1M (first (vals (first (jdbc/query jdbc-spec ["SELECT 1 FROM dual"])))))))
 
 (defmethod driver/db-start-of-week :oracle
   [_driver]
@@ -288,7 +297,7 @@
     (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
     (-> (if has-timezone?
           expr
-          [:from_tz expr (or source-timezone (qp.timezone/results-timezone-id))])
+          [:from_tz expr (or source-timezone (driver-api/results-timezone-id))])
         (h2x/at-time-zone target-timezone)
         h2x/->timestamp)))
 
@@ -398,6 +407,16 @@
   [_driver _coercion-strategy expr]
   [:to_timestamp expr "YYYYMMDDHH24miSS"])
 
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:utl_raw.cast_to_varchar2 expr]))
+
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/ISO8601Bytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
+                               [:utl_raw.cast_to_varchar2 expr]))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (h2x// field-or-value [:inline 1000])))
@@ -412,7 +431,7 @@
   [unit x]
   (let [x (cond-> x
             (h2x/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
-            (h2x/at-time-zone (qp.timezone/results-timezone-id)))]
+            (h2x/at-time-zone (driver-api/results-timezone-id)))]
     (trunc unit x)))
 
 (defmethod sql.qp/datetime-diff [:oracle :year]
@@ -554,12 +573,13 @@
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
-  [_ message]
+  [_ messages]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
   ;; return a slightly nicer looking version. Otherwise just return message as-is
-  (if (str/includes? message "(or sid service-name)")
-    "You must specify the SID and/or the Service Name."
-    message))
+  (let [message (first messages)]
+    (if (str/includes? message "(or sid service-name)")
+      "You must specify the SID and/or the Service Name."
+      message)))
 
 (defn- remove-rownum-column
   "Remove the `:__rownum__` column from results, if present."

@@ -23,7 +23,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -45,9 +45,14 @@
    {:error/message "an instance of the root Collection"}
    #'collection.root/is-root-collection?])
 
-(def ^:private ^:const archived-directly-models #{:model/Card :model/Dashboard})
-(def ^:private ^:const collectable-models
-  (set/union archived-directly-models
+(defn- archived-directly-models
+  []
+  (cond-> #{:model/Card :model/Dashboard}
+    (premium-features/enable-documents?) (conj :model/Document)))
+
+(defn- collectable-models
+  []
+  (set/union (archived-directly-models)
              #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
@@ -61,13 +66,15 @@
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
-(def ^{:arglists '([])} trash-collection
-  "Memoized copy of the Trash collection from the DB."
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (trash-collection*)
-       (when-not <>
-         (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
+(let [get-trash (mdb/memoize-for-application-db
+                 (fn []
+                   (u/prog1 (trash-collection*)
+                     (when-not <>
+                       (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
+  (defn trash-collection
+    "Get the (memoized) trash collection"
+    []
+    (assoc (get-trash) :name (deferred-tru "Trash"))))
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -562,12 +569,7 @@
     (not= :only (:include-archived-items visibility-config))
 
     ;; we're not looking for a particular `archive_operation_id`
-    (not (:archive-operation-id visibility-config))
-
-    ;; we're not looking for the children of a collection (root definitely isn't a child!)
-    (not (:effective-child-of visibility-config)))))
-
-(declare visible-collection-filter-clause)
+    (not (:archive-operation-id visibility-config)))))
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
@@ -601,25 +603,18 @@
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
+                                                            :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
                                                             :where [:and
+                                                                    [:= :pgm.user_id [:inline current-user-id]]
                                                                     [:= :c.id :p.collection_id]
                                                                     [:= :p.perm_type (h2x/literal "perms/collection-access")]
                                                                     [:or
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
-                                                                       [:= :p.perm_value (h2x/literal "read")])]
-                                                                    [:exists {:select [1]
-                                                                              :from [[:permissions_group :pg]]
-                                                                              :where [:and
-                                                                                      [:= :pg.id :p.group_id]
-                                                                                      [:exists {:select [1]
-                                                                                                :from [[:permissions_group_membership :pgm]]
-                                                                                                :where [:and
-                                                                                                        [:= :pgm.group_id :pg.id]
-                                                                                                        [:= :pgm.user_id [:inline current-user-id]]]}]]}]]}]}
+                                                                       [:= :p.perm_value (h2x/literal "read")])]]}]}
                                           {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
-                                           :where  [:= :type (h2x/literal "trash")]}
+                                           :where  [:= :type (h2x/literal trash-collection-type)]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
                                             {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
@@ -648,23 +643,7 @@
               [:or
                [:= :c.archive_operation_id [:inline op-id]]
                ;; the trash collection is part of every `archive_operation`
-               [:= :id (trash-collection-id)]])
-
-            ;; or finally, restricting the result set to effective children of the parent you passed in.
-            (when-let [parent-coll (:effective-child-of visibility-config)]
-              (if (is-trash? parent-coll)
-                [:= :c.archived_directly true]
-                [:and
-                 ;; an effective child is a descendant of the parent collection
-                 [:like :c.location (str (children-location parent-coll) "%")]
-                 ;; but NOT a child of any OTHER visible collection.
-                 [:not [:exists {:select 1
-                                 :from [[:collection :c2]]
-                                 :where [:and
-                                         (visible-collection-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
-                                         [:= :c.location [:concat :c2.location :c2.id (h2x/literal "/")]]
-                                         (when-not (collection.root/is-root-collection? parent-coll)
-                                           [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]]))]}))
+               [:= :id (trash-collection-id)]])]}))
 
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
@@ -693,6 +672,29 @@
        (if cte-name
          {:select :id :from cte-name}
          (visible-collection-query visibility-config user-scope))]])))
+
+(defn- effective-child-of-filter-clause
+  [parent-coll collection-table-alias visibility-config]
+  (let [->col (fn [col-name]
+                (keyword (str (name collection-table-alias)
+                              "."
+                              col-name)))]
+    [:and
+     (visible-collection-filter-clause (->col "id") visibility-config)
+     (if (is-trash? parent-coll)
+       [:= (->col "archived_directly") true]
+       [:and
+        ;; an effective child is a descendant of the parent collection
+        [:like (->col "location") (str (children-location parent-coll) "%")]
+
+        ;; but NOT a child of any OTHER visible collection.
+        [:not [:exists {:select 1
+                        :from [[:collection :c2]]
+                        :where [:and
+                                (visible-collection-filter-clause :c2.id visibility-config)
+                                [:= (->col "location") [:concat :c2.location :c2.id (h2x/literal "/")]]
+                                (when-not (collection.root/is-root-collection? parent-coll)
+                                  [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
 (def ^{:arglists '([visibility-config])} visible-collection-ids*
   "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
@@ -902,22 +904,10 @@
 (mu/defn- effective-children-where-clause
   "Given a collection, return the `WHERE` clause appropriate to return all the collections we want to show as its
   effective children."
-  [collection & additional-honeysql-where-clauses]
+  [collection collection-table-alias visibility-config & additional-honeysql-where-clauses]
   (into
    [:and
-    ;; it is a visible effective child of the collection.
-    (visible-collection-filter-clause :id
-                                      {:include-archived-items    (if (or (:archived collection)
-                                                                          (is-trash? collection))
-                                                                    :only
-                                                                    :exclude)
-                                       :include-trash-collection? true
-                                       :effective-child-of        collection
-                                       :archive-operation-id      (:archive_operation_id collection)
-                                       :permission-level          (if (or (:archived collection)
-                                                                          (is-trash? collection))
-                                                                    :write
-                                                                    :read)})
+    (effective-child-of-filter-clause collection collection-table-alias visibility-config)
     ;; don't want personal collections in collection items. Only on the sidebar
     [:= :personal_owner_id nil]]
    ;; (any additional conditions)
@@ -950,15 +940,21 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot
+   visibility-config :- CollectionVisibilityConfig
+   & additional-honeysql-where-clauses]
   {:select [:id :name :description]
    :from   [[:collection :col]]
-   :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
+   :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (t2/select [:model/Collection :id :name :description]
-                  {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
+                  {:where (apply effective-children-where-clause
+                                 collection
+                                 (t2/table-name :model/Collection)
+                                 default-visibility-config
+                                 additional-honeysql-where-clauses)})))
 
 (mi/define-simple-hydration-method effective-children
   :effective_children
@@ -972,6 +968,32 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn perms-for-collection-and-descendants :- [:set perms/PathSchema]
+  "Return the set of write permissions for this collection and all its descendants.
+
+  This is useful for operations that need to modify a collection *and* its descendants - for example, moving
+  or archiving a collection necessarily moves/archives all its descendants as well, so permissions on those
+  are required as well.
+
+  Note that technically these operations could be seen as modifying the parent as well (e.g., moving
+  a collection out of a parent collection modifies the parent's content) but it seems confusing if a
+  user can't archive a collection they have permissions on because of the parent permissions."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  ;; Make sure we're not trying to operate on the Root Collection...
+  (when (collection.root/is-root-collection? collection)
+    (throw (Exception. (tru "You cannot operate on the Root Collection."))))
+  ;; Make sure we're not trying to operate on the Custom Reports Collection...
+  (when (= (audit/default-custom-reports-collection) collection)
+    (throw (Exception. (tru "You cannot operate on the Custom Reports Collection."))))
+  ;; also make sure we're not trying to operate on a PERSONAL Collection
+  (when (t2/exists? :model/Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
+    (throw (Exception. (tru "You cannot operate on a Personal Collection."))))
+  (set
+   (for [collection-or-id (cons
+                           collection
+                           (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")]))]
+     (perms/collection-readwrite-path collection-or-id))))
+
 (mu/defn perms-for-archiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
@@ -981,47 +1003,33 @@
 
     A > B > C
 
-  To move or archive B, you need write permissions for A, B, and C:
+  To archive B, you need write permissions for B and C:
 
-  *  A, because you are taking something out of it (by archiving it)
   *  B, because you are archiving it
-  *  C, because by archiving its parent, you are archiving it as well"
+  *  C, because by archiving its parent, you are archiving it as well
+
+  You do NOT need permissions for A (the parent), as you're not modifying A itself, only removing B from it."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  ;; Make sure we're not trying to archive the Root Collection...
-  (when (collection.root/is-root-collection? collection)
-    (throw (Exception. (tru "You cannot archive the Root Collection."))))
-  ;; Make sure we're not trying to archive the Custom Reports Collection...
-  (when (= (audit/default-custom-reports-collection) collection)
-    (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
-  ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (t2/exists? :model/Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
-    (throw (Exception. (tru "You cannot archive a Personal Collection."))))
-  (set
-   (for [collection-or-id (cons
-                           (parent collection)
-                           (cons
-                            collection
-                            (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")])))]
-     (perms/collection-readwrite-path collection-or-id))))
+  (perms-for-collection-and-descendants collection))
 
 (mu/defn perms-for-moving :- [:set perms/PathSchema]
-  "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
-  perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
+  "Return the set of Permissions needed to move a `collection`. Moving is recursive, so we require
+  perms for the Collection and its descendants, plus permissions for the new parent Collection.
 
-
-  For example, suppose we have a Collection hierarchy of three Collections, A, B, and C, and a forth Collection, D,
+  For example, suppose we have a Collection hierarchy of three Collections, A, B, and C, and a fourth Collection, D,
   and we want to move B from A to D:
 
     A > B > C        A
                ===>
     D                D > B > C
 
-  To move or archive B, you would need write permissions for A, B, C, and D:
+  To move B, you would need write permissions for B, C, and D:
 
-  *  A, because we're moving something out of it
   *  B, since it's the Collection we're operating on
   *  C, since it will by definition be affected too
-  *  D, because it's the new parent Collection, and moving something into it requires write perms."
+  *  D, because it's the new parent Collection, and moving something into it requires write perms
+
+  You do NOT need permissions for A (the current parent), as moving out of a collection doesn't modify the parent."
   [collection :- CollectionWithLocationAndIDOrRoot
    new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
@@ -1034,7 +1042,7 @@
     (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
   (set
    (cons (perms/collection-readwrite-path new-parent)
-         (perms-for-archiving collection))))
+         (perms-for-collection-and-descendants collection))))
 
 (mu/defn- collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
@@ -1066,10 +1074,10 @@
         :where  [:and
                  [:like :location (str (children-location collection) "%")]
                  [:not :archived]]})
-      (doseq [model (apply disj collectable-models archived-directly-models)]
+      (doseq [model (apply disj (collectable-models) (archived-directly-models))]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived true}))
-      (doseq [model archived-directly-models]
+      (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
                     {:archived true})))))
@@ -1118,10 +1126,10 @@
                  [:like :location (str orig-children-location "%")]
                  [:= :archive_operation_id (:archive_operation_id collection)]
                  [:not= :archived_directly true]]})
-      (doseq [model (apply disj collectable-models archived-directly-models)]
+      (doseq [model (apply disj (collectable-models) (archived-directly-models))]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived false}))
-      (doseq [model archived-directly-models]
+      (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id     [:in affected-collection-ids]
                            :archived_directly false}
                     {:archived false})))))
@@ -1191,16 +1199,20 @@
     ;; ...and insert corresponding rows for each destination Collection
     (t2/insert! :model/Permissions
                 (concat
-       ;; insert all the new read-perms records
+                 ;; insert all the new read-perms records
                  (for [dest     dest-collections-or-ids
                        :let     [read-path (perms/collection-read-path dest)]
                        group-id group-ids-with-read-perms]
                    {:group_id group-id, :object read-path})
-       ;; ...and all the new write-perms records
+                 ;; ...and all the new write-perms records
                  (for [dest     dest-collections-or-ids
                        :let     [readwrite-path (perms/collection-readwrite-path dest)]
                        group-id group-ids-with-write-perms]
-                   {:group_id group-id, :object readwrite-path})))))
+                   {:group_id group-id, :object readwrite-path})))
+    ;; update the perms graph revision number so that editors of the permissions graph are forced to be aware
+    ;; of the new permissions/collections.
+    (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
+                                              "Automatically updated permissions due to collection creation or move")))
 
 (defn- copy-parent-permissions!
   "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
@@ -1411,8 +1423,12 @@
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
-     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
-     [:not= (maybe-alias :type) [:inline trash-collection-type]]
+     [:or [:= (maybe-alias :type) nil]
+      [:and
+       [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+       [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
+     [:or [:= (maybe-alias :namespace) nil]
+      [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
@@ -1457,12 +1473,13 @@
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
-(defmethod serdes/ascendants "Collection" [_ id]
+(defmethod serdes/required "Collection" [_ id]
   (when id
-    (let [{:keys [location]} (t2/select-one :model/Collection :id id)]
-      ;; it would work returning just one, but why not return all if it's cheap
-      (into {} (for [parent-id (location-path->ids location)]
-                 {["Collection" parent-id] {"Collection" id}})))))
+    (let [{:keys [location]} (t2/select-one :model/Collection :id id)
+          path               (location-path->ids location)]
+      ;; we'll recurse anyway, so just return immediate parent
+      (when (seq path)
+        {["Collection" (u/last path)] {"Collection" id}}))))
 
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (when id (t2/select-one-fn :location :model/Collection :id id))
@@ -1786,7 +1803,7 @@
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}
-   :where        [:= :namespace nil]
+   :where        [:or [:= :namespace nil] [:= :namespace "analytics"]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and

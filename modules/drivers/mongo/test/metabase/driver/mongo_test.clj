@@ -9,10 +9,11 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
@@ -98,7 +99,7 @@
           (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
     (is (= #{:collection}
-           (lib/required-native-extras (lib.metadata.jvm/application-database-metadata-provider (mt/id)))))))
+           (lib/required-native-extras (mt/metadata-provider))))))
 
 (def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
@@ -121,12 +122,15 @@
                                           :field_ref    [:field "count" {:base-type :type/Integer}]}]
                       :native_form      {:collection "venues"
                                          :query      native-query}
-                      :results_timezone "UTC"}}
+                      :results_timezone "UTC"
+                      :results_metadata {:columns [{:name           "count"
+                                                    :base_type      :type/Integer
+                                                    :effective_type :type/Integer}]}}}
          (-> (qp/process-query {:native   {:query      native-query
                                            :collection "venues"}
                                 :type     :native
                                 :database (mt/id)})
-             (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+             (m/dissoc-in [:data :insights]))))))
 
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
@@ -193,79 +197,6 @@
              {:schema nil, :name "products"}
              {:schema nil, :name "reviews"}}
            (:tables (driver/describe-database :mongo (mt/db)))))))
-
-(deftest ^:parallel describe-table-query-test
-  (is (= [{"$sort" {"_id" 1}}
-          {"$limit" 500}
-          {"$unionWith" {"coll" "collection-name", "pipeline" [{"$sort" {"_id" -1}} {"$limit" 500}]}}
-          {"$project"
-           {"path" "$ROOT",
-            "kvs"
-            {"$map"
-             {"input" {"$objectToArray" "$$ROOT"},
-              "as" "item",
-              "in"
-              {"k" "$$item.k",
-               "object"
-               {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-               "type"       {"$type" "$$item.v"}}}}}}
-          {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-          {"$project"
-           {"path" "$kvs.k",
-            "result" {"$literal" false},
-            "type" "$kvs.type",
-            "index" 1,
-            "object" "$kvs.object"}}
-          {"$facet"
-           {"results" [{"$match" {"result" true}}],
-            "newResults"
-            [{"$match" {"result" false}}
-             {"$group"
-              {"_id" {"type" "$type", "path" "$path"},
-               "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
-               "index" {"$min" "$index"}}}
-             {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
-             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}],
-            "nextItems"
-            [{"$match" {"result" false, "object" {"$ne" nil}}}
-             {"$project"
-              {"path" 1,
-               "kvs"
-               {"$map"
-                {"input" {"$objectToArray" "$object"},
-                 "as" "item",
-                 "in"
-                 {"k" "$$item.k",
-                  "object"
-                  {"$cond" {"if" {"$eq" [{"$type" "$$item.v"} "object"]}, "then" "$$item.v", "else" nil}},
-                  "type"       {"$type" "$$item.v"}}}}}}
-             {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-             {"$project"
-              {"path" {"$concat" ["$path" "." "$kvs.k"]},
-               "type" "$kvs.type",
-               "result" {"$literal" false},
-               "index" 1,
-               "object" "$kvs.object"}}]}}
-          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults" "$nextItems"]}}}
-          {"$unwind" "$acc"}
-          {"$replaceRoot" {"newRoot" "$acc"}}
-          {"$facet"
-           {"results" [{"$match" {"result" true}}],
-            "newResults"
-            [{"$match" {"result" false}}
-             {"$group"
-              {"_id" {"type" "$type", "path" "$path"},
-               "count" {"$sum" {"$cond" {"if" {"$eq" ["$type" "null"]}, "then" 0, "else" 1}}},
-               "index" {"$min" "$index"}}}
-             {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.path", "type" {"$first" "$_id.type"}, "index" {"$min" "$index"}}}
-             {"$project" {"path" "$_id", "type" 1, "result" {"$literal" true}, "object" nil, "index" 1}}]}}
-          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
-          {"$unwind" "$acc"}
-          {"$replaceRoot" {"newRoot" "$acc"}}
-          {"$project" {"_id" 0, "index" "$index", "path" "$path", "type" "$type"}}]
-         (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 
 (tx/defdataset nested-bindata-coll
   (let [not-uuid (Binary. (byte 0) (byte-array 1))
@@ -338,9 +269,11 @@
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                           :visibility-type :details-only}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}}}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                           :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 ;; Index sync is turned off across the application as it is not used ATM.
@@ -911,7 +844,11 @@
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
-                                                         :query    {:source-table (mt/id :coll)}}}]
+                                                         :query    {:source-table (mt/id :coll)
+                                                                    :fields [(mt/id :coll :id)
+                                                                             (mt/id :coll :a)
+                                                                             (mt/id :coll :b)
+                                                                             (mt/id :coll :c)]}}}]
           (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
             (is (= [["ID" "A" "B" "C"]
                     ["1"
@@ -1053,3 +990,187 @@
                     (qp.compile/compile-with-inline-parameters)
                     :query
                     (driver/prettify-native-form driver/*driver*))))))))
+
+(defn- do-with-describe-table-for-sample
+  "Override so aggregation is run on database instead of collection and provide `documents` in initial stage of
+  aggregation."
+  [documents thunk]
+  (mt/dataset
+    test-data
+    (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
+                                          (mongo.execute/aggregate-database db session stages timeout-ms))
+              mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one :model/Table :id (mt/id :venues))))
+            ftree (delay (@#'mongo/dbfields->ftree @dbfields))
+            nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
+        (thunk dbfields ftree nested-fields)))))
+
+(defmacro with-describe-table-for-sample
+  "Use `documents` as input to aggregation pipeline used for sampling in mongo's impl of [[driver/describe-table]].
+
+  Forward bindings become delays of results of functions used in mongo's describe-table:
+
+  - `dbfields`     : reuslt of [[mongo/fetch-dbfields]],
+  - `ftree`        : reuslt of [[mongo/dbfields->ftree]],
+  - `nested-fields`: reuslt of [[mongo/ftree->nested-fields]]."
+  [documents & body]
+  `(do-with-describe-table-for-sample ~documents (fn [~'dbfields ~'ftree ~'nested-fields] ~@body)))
+
+(deftest id-field-is-present-test
+  (mt/test-driver
+    :mongo
+    (testing "Ensure _id is present in results"
+      ;; Gist: Limit is set to 2 and there, other fields' names that precede the _id when sorted
+      (with-redefs [driver.settings/sync-leaf-fields-limit (constantly 2)]
+        (with-describe-table-for-sample
+          [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "__a" 1
+            "__b" 2}
+           {"__b" 3
+            "__a" 1000}]
+          (is (= [{:path "_id", :type "objectId", :indices [0]}
+                  {:path "__a", :type "int", :indices [1]}]
+                 @dbfields))
+          (is (= {:children
+                  {"_id"
+                   {:database-type "objectId" :index 0 :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}
+                   "__a" {:database-type "int" :index 1 :database-position 1 :base-type :type/Integer, :name "__a"}}}
+                 @ftree))
+          (is (= #{{:database-type "int", :database-position 1, :base-type :type/Integer, :name "__a"}
+                   {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
+                 @nested-fields)))))))
+
+(deftest objects-take-precedence-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 10}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 20}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" {"c" 30}}}]
+      (is (= #{{:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}
+               {:database-type "object",
+                :visibility-type :details-only,
+                :database-position 1,
+                :base-type :type/Dictionary,
+                :name "a",
+                :nested-fields
+                #{{:database-type "object",
+                   :visibility-type :details-only,
+                   :database-position 2,
+                   :base-type :type/Dictionary,
+                   :name "b",
+                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c"}}}}}}
+             @nested-fields)))))
+
+(deftest nulls-are-last-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" nil}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" nil}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" "hello"}}]
+      (is (= #{{:database-type "object",
+                :visibility-type :details-only,
+                :database-position 1,
+                :base-type :type/Dictionary,
+                :name "a",
+                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b"}}}
+               {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
+             @nested-fields)))))
+
+;; This behavior should be changed in future as per issue #59942.
+(deftest most-prevalent-type-used-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 1}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 1}}
+       {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" "hello"}}]
+      (is (= #{{:database-type "object",
+                :visibility-type :details-only,
+                :database-position 1,
+                :base-type :type/Dictionary,
+                :name "a",
+                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b"}}}
+               {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
+             @nested-fields)))))
+
+(deftest deeply-nested-objects-test
+  (mt/test-driver
+    :mongo
+    (doseq [[limit expected] [[3 [{:path "_id", :type "objectId", :indices [0]}
+                                  {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
+                                  {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}]]
+                              [4 [{:path "_id", :type "objectId", :indices [0]}
+                                  {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
+                                  {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}
+                                  {:path "a.b.c.d.e.f.h", :type "null", :indices [1 0 0 0 0 0 0]}]]]]
+      (with-redefs [driver.settings/sync-leaf-fields-limit (constantly limit)]
+        (with-describe-table-for-sample
+          [{"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}}}
+           {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"g" [1 2 3]}}}}}}}
+           {"_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"h" nil
+                                          "i" 10}}}}}}}]
+          (is (=? expected @dbfields)))))))
+
+(deftest empty-collection-handled-gracefully-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      []
+      (is (=? #{} @nested-fields)))))
+
+(deftest dbref-field-test
+  (mt/test-driver :mongo
+    (let [id-1 (ObjectId. "68bee671b76da7388a01e6c1")
+          id-2 (ObjectId. "68bee676e7c18921ff7dcf04")
+          ref-1 (com.mongodb.DBRef. "some_collection" id-1)
+          ref-2 (com.mongodb.DBRef. "some_db" "some_collection" id-2)]
+      (mt/dataset (mt/dataset-definition
+                   "dbref_db"
+                   [["dbref_coll"
+                     [{:field-name "name", :base-type :type/Text}
+                      {:field-name "dbref", :base-type :type/*}]
+                     [["ref1" ref-1]
+                      ["ref2" ref-2]]]])
+        (is (= [[1 "ref1" ref-1 "some_collection" id-1 nil]
+                [2 "ref2" ref-2 "some_collection" id-2 "some_db"]]
+               (mt/rows (mt/run-mbql-query dbref_coll))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct MongoDB types"
+    (are [base-type expected] (= expected (driver/type->database-type :mongo base-type))
+      :type/TextLike           "string"
+      :type/Text               "string"
+      :type/Number             "long"
+      :type/Integer            "int"
+      :type/BigInteger         "long"
+      :type/Float              "double"
+      :type/Decimal            "decimal"
+      :type/Boolean            "bool"
+      :type/Date               "date"
+      :type/DateTime           "date"
+      :type/DateTimeWithTZ     "date"
+      :type/Time               "date"
+      :type/TimeWithTZ         "date"
+      :type/Instant            "date"
+      :type/UUID               "uuid"
+      :type/JSON               "object"
+      :type/SerializedJSON     "string"
+      :type/Array              "array"
+      :type/Dictionary         "object"
+      :type/MongoBSONID        "objectId"
+      :type/MongoBinData       "binData"
+      :type/IPAddress          "string")))

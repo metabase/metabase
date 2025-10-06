@@ -16,11 +16,13 @@
    TODO: Names of protocol functions and protocols are bit misleading as were in monger.
 
    TODOs should be addressed during follow-up of monger removal."
+  (:refer-clojure :exclude [mapv])
   (:require
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.query-processor.timezone :as qp.timezone])
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.nio ByteBuffer)
    (java.util UUID)
@@ -137,7 +139,7 @@
   (to-document [t]
     ;; QP store won't be bound when loading test data for example.
     (to-document (t/instant t (t/zone-id (try
-                                           (qp.timezone/results-timezone-id)
+                                           (driver-api/results-timezone-id)
                                            (catch Throwable _
                                              "UTC"))))))
 

@@ -74,7 +74,7 @@ describe("Entities > model-indexes > actions", () => {
       const { dispatch } = setup();
       await updateModelIndexes(model)(dispatch);
 
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
 
       // No API calls to fetch model indexes
       expect(calls).toHaveLength(0);
@@ -96,15 +96,16 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const createCalls = await fetchMock.calls("createModelIndex");
+      const createCalls = fetchMock.callHistory.calls("createModelIndex");
 
       expect(createCalls).toHaveLength(1);
 
-      const [, options] = createCalls[0];
+      const call = createCalls[0];
+      const options = call.options;
 
       expect(options?.method).toBe("POST");
       // @ts-expect-error ???
-      const body = JSON.parse(await options?.body) as Partial<ModelIndex>;
+      const body = JSON.parse(options?.body) as Partial<ModelIndex>;
       expect(body.model_id).toBe(model.id());
       expect(body.pk_ref).toEqual(pkFieldRef);
       expect(body.value_ref).toEqual(indexFieldRef);
@@ -132,11 +133,13 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const deleteCalls = fetchMock.calls("deleteModelIndex");
+      const deleteCalls = fetchMock.callHistory.calls("deleteModelIndex");
 
       expect(deleteCalls).toHaveLength(1);
 
-      const [url, options] = deleteCalls[0];
+      const deleteCall = deleteCalls[0];
+      const url = deleteCall.url;
+      const options = deleteCall.options;
 
       expect(url).toContain("/api/model-index/99");
       expect(options?.method).toBe("DELETE");
@@ -163,8 +166,10 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const fetchCalls = await fetchMock.calls(`getModelIndexes-${model.id()}`);
-      const createCalls = await fetchMock.calls("createModelIndex");
+      const fetchCalls = fetchMock.callHistory.calls(
+        `getModelIndexes-${model.id()}`,
+      );
+      const createCalls = fetchMock.callHistory.calls("createModelIndex");
 
       // no calls to Create
       expect(createCalls).toHaveLength(0);
@@ -188,8 +193,10 @@ describe("Entities > model-indexes > actions", () => {
 
       await updateModelIndexes(model)(dispatch);
 
-      const fetchCalls = await fetchMock.calls(`getModelIndexes-${model.id()}`);
-      const deleteCalls = fetchMock.calls("deleteModelIndex");
+      const fetchCalls = fetchMock.callHistory.calls(
+        `getModelIndexes-${model.id()}`,
+      );
+      const deleteCalls = fetchMock.callHistory.calls("deleteModelIndex");
 
       // Expect 1 fetch for model indexes
       expect(fetchCalls).toHaveLength(1);

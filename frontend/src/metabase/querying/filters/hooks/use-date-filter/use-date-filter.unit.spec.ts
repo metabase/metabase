@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-hooks";
+import { renderHook } from "@testing-library/react";
 
 import type { DatePickerValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";

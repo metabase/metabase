@@ -1,0 +1,63 @@
+import fetchMock from "fetch-mock";
+
+import type {
+  Transform,
+  TransformJob,
+  TransformJobId,
+  TransformTag,
+} from "metabase-types/api";
+
+export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
+  fetchMock.get(`path:/api/ee/transform-tag`, tags);
+}
+
+export function setupCreateTransformTagEndpoint(tag: TransformTag) {
+  fetchMock.post(`path:/api/ee/transform-tag`, tag);
+}
+
+export function setupListTransformJobsEndpoint(jobs: TransformJob[]) {
+  fetchMock.get(`path:/api/ee/transform-job`, jobs);
+}
+
+export function setupListTransformJobTransformsEndpoint(
+  jobId: TransformJobId,
+  transforms: Transform[],
+) {
+  fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, transforms);
+}
+
+export function setupListTransformJobTransformsEndpointWithError(
+  jobId: TransformJobId,
+  error?: unknown,
+) {
+  fetchMock.get(`path:/api/ee/transform-job/${jobId}/transforms`, {
+    status: 500,
+    body: error,
+  });
+}
+
+export function setupGetTransformJobEndpoint(job: TransformJob) {
+  fetchMock.get(`path:/api/ee/transform-job/${job.id}`, job);
+}
+
+export function setupCreateTransformJobEndpoint(job: TransformJob) {
+  fetchMock.post("path:/api/ee/transform-job", job);
+}
+
+export function setupUpdateTransformJobEndpoint(job: TransformJob) {
+  fetchMock.put(`path:/api/ee/transform-job/${job.id}`, job);
+}
+
+export function setupRunTransformJobEndpoint(jobId: TransformJobId) {
+  fetchMock.post(`path:/api/ee/transform-job/${jobId}/run`, 200);
+}
+
+export function setupDeleteTransformJobEndpoint(jobId: TransformJobId) {
+  fetchMock.delete(`path:/api/ee/transform-job/${jobId}`, 200);
+}
+
+export function setupDeleteTransformJobEndpointWithError(
+  jobId: TransformJobId,
+) {
+  fetchMock.delete(`path:/api/ee/transform-job/${jobId}`, 500);
+}

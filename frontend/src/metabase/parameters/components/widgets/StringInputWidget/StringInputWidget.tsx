@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import { deserializeStringParameterValue } from "metabase/querying/parameters/utils/parsing";
 import { Box, MultiAutocomplete, TextInput } from "metabase/ui";
+import { hasValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter, ParameterValueOrArray } from "metabase-types/api";
 
 import { Footer, WidgetLabel } from "../Widget";
@@ -48,6 +49,9 @@ export function StringInputWidget({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (isRequired && isEmpty) {
+      if (hasValue(parameter.default)) {
+        setValue(parameter.default as string[] | undefined);
+      }
       return;
     }
 

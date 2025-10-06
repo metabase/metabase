@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/core/components/Link";
-import { space } from "metabase/styled-components/theme";
+import Link from "metabase/common/components/Link";
 import { Icon } from "metabase/ui";
 
 export const ToastRoot = styled.div`
@@ -12,10 +11,10 @@ export const ToastRoot = styled.div`
 
 export const StyledIcon = styled(Icon)`
   color: var(--mb-color-text-white);
-  margin-right: ${space(1)};
+  margin-right: var(--mantine-spacing-sm);
 `;
 
 export const DestinationLink = styled(Link)`
   color: var(--mb-color-brand);
-  margin-left: ${space(0)};
+  margin-left: var(--mantine-spacing-xs);
 `;

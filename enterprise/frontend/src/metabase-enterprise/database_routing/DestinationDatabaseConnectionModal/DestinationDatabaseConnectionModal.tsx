@@ -6,9 +6,9 @@ import { t } from "ttag";
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
 import S from "metabase/admin/databases/containers/DatabaseConnectionModal.module.css";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -144,6 +144,7 @@ export const DestinationDatabaseConnectionModalInner = ({
             engine: { fieldState: "hidden" },
           }}
           autofocusFieldName="name"
+          formLocation="admin"
         />
       </LoadingAndErrorWrapper>
     </Modal>

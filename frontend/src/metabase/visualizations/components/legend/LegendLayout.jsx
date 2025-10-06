@@ -55,38 +55,42 @@ export const LegendLayout = ({
   const minYLabels = items.length > maxYItems ? maxYLabels : items.length;
 
   const isNarrow = width < MIN_LEGEND_WIDTH;
+
   const isVertical = maxXItems < items.length;
+  const isHorizontal = !isVertical;
+
   const isVisible = hasLegend && !(isVertical && isNarrow);
   const visibleLength = isVertical ? minYLabels : items.length;
 
+  const legend = (
+    <LegendContainer isVertical={isVertical} isQueryBuilder={isQueryBuilder}>
+      <Legend
+        items={items}
+        hovered={hovered}
+        visibleLength={visibleLength}
+        isVertical={isVertical}
+        onHoverChange={onHoverChange}
+        onSelectSeries={onSelectSeries}
+        onToggleSeriesVisibility={onToggleSeriesVisibility}
+        isQueryBuilder={isQueryBuilder}
+        isReversed={isReversed}
+      />
+      {!isVertical && actionButtons && (
+        <LegendActions>{actionButtons}</LegendActions>
+      )}
+    </LegendContainer>
+  );
+
   return (
     <LegendLayoutRoot className={className} isVertical={isVertical}>
-      {isVisible && (
-        <LegendContainer
-          isVertical={isVertical}
-          isQueryBuilder={isQueryBuilder}
-        >
-          <Legend
-            items={items}
-            hovered={hovered}
-            visibleLength={visibleLength}
-            isVertical={isVertical}
-            onHoverChange={onHoverChange}
-            onSelectSeries={onSelectSeries}
-            onToggleSeriesVisibility={onToggleSeriesVisibility}
-            isReversed={isReversed}
-          />
-          {!isVertical && actionButtons && (
-            <LegendActions>{actionButtons}</LegendActions>
-          )}
-        </LegendContainer>
-      )}
+      {isVisible && isHorizontal && legend}
       <MainContainer>
         {isVertical && actionButtons && (
           <LegendActions>{actionButtons}</LegendActions>
         )}
         {hasDimensions && <ChartContainer>{children}</ChartContainer>}
       </MainContainer>
+      {isVisible && isVertical && legend}
     </LegendLayoutRoot>
   );
 };

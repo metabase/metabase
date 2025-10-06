@@ -4,6 +4,7 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
@@ -78,14 +79,11 @@
           bad-query     (assoc-in correct-query [:native :template-tags "foo" :name] "filter")]
       (testing (str "correct-query " (pr-str correct-query))
         (is (not (me/humanize (mr/explain mbql.s/Query correct-query))))
-        (is (= correct-query
-               (mbql.s/validate-query correct-query))))
+        (is (mr/validate ::mbql.s/Query correct-query)))
       (testing (str "bad-query " (pr-str bad-query))
         (is (me/humanize (mr/explain mbql.s/Query bad-query)))
-        (is (thrown-with-msg?
-             #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
-             #"keys in template tag map must match the :name of their values"
-             (mbql.s/validate-query bad-query)))))))
+        (is (= {:native {:template-tags ["keys in template tag map must match the :name of their values"]}}
+               (me/humanize (mr/explain ::mbql.s/Query bad-query))))))))
 
 (deftest ^:parallel coalesce-aggregation-test
   (testing "should be able to nest aggregation functions within a coalesce"
@@ -98,11 +96,9 @@
                     [:/
                      [:sum [:field 42 {:base-type :type/Float}]]
                      [:coalesce [:sum [:field 36 {:base-type :type/Float}]] 1]]
-                    {:name "Avg discount", :display-name "Avg discount"}]],
-                  :aggregation-idents {0 "ZOn_HshYdSEeteY5ArmS9"}},
+                    {:name "Avg discount", :display-name "Avg discount"}]]}
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
-      (is (= query (mbql.s/validate-query query))))))
+      (is (not (me/humanize (mr/explain mbql.s/Query query)))))))
 
 (deftest ^:parallel year-of-era-test
   (testing "year-of-era aggregations should be recognized"
@@ -111,12 +107,9 @@
                  :query
                  {:source-table 5,
                   :aggregation [[:count]],
-                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]],
-                  :aggregation-idents {0 "sAl2I4RGqYvmLw1lfJinY"},
-                  :breakout-idents {0 "N7YYtmSRsForQqViDhkrg"}},
+                  :breakout [[:field 49 {:base-type :type/Date, :temporal-unit :year-of-era, :source-field 43}]]}
                  :parameters []}]
-      (is (not (me/humanize (mr/explain mbql.s/Query query))))
-      (is (= query (mbql.s/validate-query query))))))
+      (is (not (me/humanize (mr/explain mbql.s/Query query)))))))
 
 (deftest ^:parallel aggregation-reference-test
   (are [schema] (nil? (me/humanize (mr/explain schema [:aggregation 0])))
@@ -137,7 +130,7 @@
                         :type         :dimension
                         :widget-type  :date/all-options
                         :dimension    template-tag-dimension}]
-      (is (nil? (me/humanize (mr/explain mbql.s/Parameter parameter))))
+      (is (nil? (me/humanize (mr/explain ::lib.schema.parameter/parameter parameter))))
       (is (nil? (me/humanize (mr/explain mbql.s/TemplateTag template-tag))))
       (let [query {:database 1
                    :type     :native
@@ -239,3 +232,21 @@
     [:not-empty [:field 1 nil]]
     [:not-empty [:ltrim "A"]]
     [:not-empty [:ltrim [:field 1 nil]]]))
+
+(deftest ^:parallel field-with-empty-name-test
+  (testing "We need to support fields with empty names, this is legal in SQL Server (QUE-1418)"
+    ;; we should support field names with only whitespace as well.
+    (doseq [field-name [""
+                        " "]
+            :let [field-ref [:field field-name {:base-type :type/Text}]]]
+      (testing (pr-str field-ref)
+        (are [schema] (not (me/humanize (mr/explain schema field-ref)))
+          ::mbql.s/Reference
+          ::mbql.s/field)))))
+
+(deftest ^:parallel datetime-schema-test
+  (doseq [expr [[:datetime ""]
+                [:datetime "" {}]
+                [:datetime "" {:mode :iso}]
+                [:datetime 10 {:mode :unix-seconds}]]]
+    (is (mr/validate mbql.s/datetime expr))))

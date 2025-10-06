@@ -66,11 +66,9 @@ describe("DatabaseConnectionInfoSection", () => {
     it("should show error message if healthcheck returns errors", async () => {
       setup({
         mockEndpointsCb: (database) => {
-          fetchMock.get(
-            `path:/api/database/${database.id}/healthcheck`,
-            { body: { status: "error", message: "Test failure" } },
-            { overwriteRoutes: true },
-          );
+          fetchMock.modifyRoute(`database-${database.id}-healthcheck`, {
+            response: { body: { status: "error", message: "Test failure" } },
+          });
         },
       });
       expect(await screen.findByText("Test failure")).toBeInTheDocument();
@@ -79,11 +77,9 @@ describe("DatabaseConnectionInfoSection", () => {
     it("should show error message if healthcheck HTTP request fails", async () => {
       setup({
         mockEndpointsCb: (database) => {
-          fetchMock.get(
-            `path:/api/database/${database.id}/healthcheck`,
-            { status: 500 },
-            { overwriteRoutes: true },
-          );
+          fetchMock.modifyRoute(`database-${database.id}-healthcheck`, {
+            response: { status: 500 },
+          });
         },
       });
       expect(
@@ -98,9 +94,33 @@ describe("DatabaseConnectionInfoSection", () => {
       await userEvent.click(screen.getByText(/Sync database schema/i));
       await waitFor(() => {
         expect(
-          fetchMock.called(`path:/api/database/${database.id}/sync_schema`),
+          fetchMock.callHistory.called(
+            `path:/api/database/${database.id}/sync_schema`,
+          ),
         ).toBe(true);
       });
+    });
+
+    it("shows an error when a schema sync fails", async () => {
+      const { database } = setup();
+      fetchMock.modifyRoute(`database-${database.id}-sync-schema`, {
+        response: 500,
+      });
+
+      await userEvent.click(screen.getByText(/Sync database schema/i));
+      expect(await screen.findByText(/Failed to sync/i)).toBeInTheDocument();
+    });
+
+    it("shows an error when a field sync fails", async () => {
+      const { database } = setup();
+      fetchMock.modifyRoute(`database-${database.id}-rescan-values`, {
+        response: 500,
+      });
+
+      await userEvent.click(screen.getByText(/Re-scan field values/i));
+      expect(
+        await screen.findByText(/failed to start scan/i),
+      ).toBeInTheDocument();
     });
 
     it("re-scans database field values", async () => {
@@ -108,7 +128,9 @@ describe("DatabaseConnectionInfoSection", () => {
       await userEvent.click(screen.getByText(/Re-scan field values/i));
       await waitFor(() => {
         expect(
-          fetchMock.called(`path:/api/database/${database.id}/rescan_values`),
+          fetchMock.callHistory.called(
+            `path:/api/database/${database.id}/rescan_values`,
+          ),
         ).toBe(true);
       });
     });
@@ -146,8 +168,9 @@ describe("DatabaseConnectionInfoSection", () => {
           );
 
           expect(
-            fetchMock.calls(`path:/api/database/${database.id}/dismiss_spinner`)
-              .length,
+            fetchMock.callHistory.calls(
+              `path:/api/database/${database.id}/dismiss_spinner`,
+            ).length,
           ).toBe(1);
         });
       });

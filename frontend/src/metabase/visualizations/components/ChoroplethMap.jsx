@@ -4,17 +4,20 @@ import Color from "color";
 import * as d3 from "d3";
 import { Component } from "react";
 import ss from "simple-statistics";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 // eslint-disable-next-line no-restricted-imports -- deprecated sdk import
-import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
+import Link from "metabase/common/components/Link";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { formatValue } from "metabase/lib/formatting";
-import { connect } from "metabase/lib/redux";
+import { connect, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { Flex, Text } from "metabase/ui";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {
   computeMinimalBounds,
@@ -107,7 +110,6 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 }
 
 const mapStateToProps = (state) => ({
-  isSdk: getIsEmbeddingSdk(state),
   sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
 });
 
@@ -120,7 +122,7 @@ export function getMapUrl(details, props) {
     ? details.url
     : "api/geojson/" + props.settings["map.region"];
 
-  if (!props?.isSdk || !props?.sdkMetabaseInstanceUrl) {
+  if (!isEmbeddingSdk() || !props?.sdkMetabaseInstanceUrl) {
     return mapUrl;
   }
 
@@ -131,6 +133,28 @@ export function getMapUrl(details, props) {
   // new URL("/sub-path", "http://example.org/proxy/") => "http://example.org/proxy/sub-path"
   return new URL(mapUrl, ensureTrailingSlash(baseUrl)).href;
 }
+
+const MapNotFound = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+  return (
+    <Flex direction="column" m="auto" maw="25rem">
+      <div className={cx(CS.textCentered, CS.mb4, CS.px2)}>
+        <Text component="p">
+          {t`Looks like this custom map is no longer available. Try using a different map to visualize this.`}
+        </Text>
+        {isAdmin && (
+          <Text component="p" className={CS.mt1}>
+            {jt`To add a new map, visit ${(
+              <Link key="link" to="/admin/settings/maps" className={CS.link}>
+                {t`Admin settings > Maps`}
+              </Link>
+            )}.`}
+          </Text>
+        )}
+      </div>
+    </Flex>
+  );
+};
 
 class ChoroplethMapInner extends Component {
   static propTypes = {};
@@ -195,7 +219,7 @@ class ChoroplethMapInner extends Component {
   render() {
     const details = this._getDetails(this.props);
     if (!details) {
-      return <div>{t`unknown map`}</div>;
+      return <MapNotFound />;
     }
 
     const {
@@ -387,6 +411,7 @@ class ChoroplethMapInner extends Component {
         hovered={hovered}
         onHoverChange={onHoverChange}
         isDashboard={this.props.isDashboard}
+        isDocument={this.props.isDocument}
       >
         {projection ? (
           <LegacyChoropleth
