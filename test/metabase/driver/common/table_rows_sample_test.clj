@@ -34,7 +34,7 @@
                        :fields       sequential?
                        :order-by     [[:desc {} [:field {} (meta/id :orders :id)]]]
                        :limit        100}]}
-           (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
+            (#'table-rows-sample/table-rows-sample-query mp table fields opts)))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
