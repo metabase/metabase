@@ -126,17 +126,20 @@
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
        (select-keys  [:id :type :name :description :default_time_dimension_field_id]))))
 
+(declare related-tables)
+
 (defn- table-details
   ([id] (table-details id nil))
-  ([id {:keys [metadata-provider field-values-fn with-fields? with-metrics?]
-        :or   {field-values-fn add-field-values
-               with-fields?    true
-               with-metrics?   true}
+  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?]
+        :or   {field-values-fn      add-field-values
+               with-fields?         true
+               with-related-tables? true
+               with-metrics?        true}
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
-     (let [query-needed? (or with-fields? with-metrics?)
+     (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
            mp (when query-needed?
                 (or metadata-provider
@@ -148,7 +151,9 @@
                        field-values-fn
                        (map #(metabot-v3.tools.u/add-table-reference table-query %))))
            field-id-prefix (when with-fields?
-                             (metabot-v3.tools.u/table-field-id-prefix id))]
+                             (metabot-v3.tools.u/table-field-id-prefix id))
+           related-tables (when with-related-tables?
+                            (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
@@ -159,6 +164,7 @@
             :database_id db-id
             :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
+                         :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
@@ -174,6 +180,8 @@
     (when (seq related-table-ids)
       (map #(table-details % {:with-fields? with-fields?
                               :field-values-fn field-values-fn
+                              ;; Important! Only recurse one level
+                              :with-related-tables? false
                               :with-metrics? false})
            related-table-ids))))
 
