@@ -130,7 +130,6 @@ describe("MentionSuggestion", () => {
       ],
     });
 
-    // click option
     await userEvent.click(
       await screen.findByRole("option", {
         name: /Dashboard/,
@@ -143,11 +142,7 @@ describe("MentionSuggestion", () => {
     expect(chainMethods.insertContent).toHaveBeenCalledWith("@");
     expect(chainMethods.run).toHaveBeenCalled();
 
-    // Now the component should re-render with "Dashboard" shown at the top
-    // This happens because selectedSearchModelName is passed as a key to SuggestionPaper
     expect(await screen.findByText("Dashboard")).toBeInTheDocument();
-
-    // Verify that only dashboard results are shown when searching
     await expectOptionToBePresent(/Sales Dashboard/);
 
     const call = fetchMock.callHistory.lastCall("path:/api/search");

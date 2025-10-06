@@ -131,15 +131,12 @@ export function useEntitySuggestions({
     if (selectedSearchModel) {
       return [selectedSearchModel];
     }
-    // If we have searchModels but no matches, use all searchModels
     if (searchModels && filteredSearchModels?.length === 0) {
       return searchModels;
     }
-    // Otherwise use the filtered models (or undefined if no searchModels provided)
     return filteredSearchModels;
   }, [selectedSearchModel, filteredSearchModels, searchModels]);
 
-  // Determine if we're in model selection mode
   const searchModelMenuItems = useMemo(() => {
     return selectedSearchModel || filteredSearchModels === undefined
       ? []
@@ -149,7 +146,6 @@ export function useEntitySuggestions({
         );
   }, [filteredSearchModels, selectedSearchModel, handleSearchModelSelect]);
 
-  // Check if we have any matching search models
   const hasSearchModels = (searchModels?.length ?? 0) > 0;
   const hasMatchingFilteredModels = (filteredSearchModels?.length ?? 0) > 0;
   const isInModelSelectionMode =
@@ -173,7 +169,6 @@ export function useEntitySuggestions({
     searchModels: effectiveSearchModels,
   });
 
-  // Combine menu items based on current mode
   const menuItems = useMemo(() => {
     if (isInModelSelectionMode) {
       return searchModelMenuItems;
@@ -262,7 +257,7 @@ export function useEntitySuggestions({
     setSelectedIndex(0);
   }, [menuItems.length]);
 
-  // Get the translated name for the selected search modelAdd a comment on lines R256 to R257Add diff commentMarkdown input:  edit mode selected.WritePreviewAdd a suggestionHeadingBoldItalicQuoteCodeLinkUnordered listNumbered listTask listMentionReferenceSaved repliesAdd FilesPaste, drop, or click to add filesCancelCommentStart a reviewReturn to code
+  // Get the translated name for the selected search modelAdd a comment on lines
   const selectedSearchModelName = selectedSearchModel
     ? getTranslatedEntityName(selectedSearchModel) || selectedSearchModel
     : undefined;
