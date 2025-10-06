@@ -43,6 +43,7 @@ const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
 const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
+const SERVER_PORT = process.env.MB_JETTY_PORT || 3000;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
@@ -334,7 +335,7 @@ if (shouldEnableHotRefresh) {
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
-    `http://localhost:${PORT}/` + config.output.publicPath;
+    `http://localhost:${SERVER_PORT}/` + config.output.publicPath;
 
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
