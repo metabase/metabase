@@ -13,8 +13,8 @@ import { useEffect, useLayoutEffect } from "react";
 
 import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 
-import { EntryNodePicker } from "./EntryNodePicker";
 import { NodeContent } from "./NodeContent";
+import { NodePicker } from "./NodePicker";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
@@ -89,9 +89,9 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
       <Controls />
       <NodeLayout />
       <Panel position="top-left">
-        <EntryNodePicker
-          entry={entry}
+        <NodePicker
           graph={graph}
+          entry={entry}
           isFetching={isFetching}
           onEntryChange={onEntryChange}
         />
