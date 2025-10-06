@@ -61,13 +61,14 @@ export const COMPACT_CURRENCY_OPTIONS: CompactCurrencyOptions = {
 
 export function getCurrencyStyleOptions(
   currency = "USD",
+  value?: CurrencyStyle,
 ): CurrencyStyleOption[] {
   const symbol = getCurrencySymbol(currency);
   const narrowSymbol = getCurrencyNarrowSymbol(currency);
   const code = getCurrency(currency, "code");
   const name = getCurrency(currency, "name");
   return [
-    ...(symbol !== code
+    ...(symbol !== code || value === "symbol"
       ? [
           {
             name: t`Symbol` + ` ` + `(${symbol})`,
@@ -75,7 +76,8 @@ export function getCurrencyStyleOptions(
           },
         ]
       : []),
-    ...(narrowSymbol !== code && narrowSymbol !== symbol
+    ...((narrowSymbol !== code && narrowSymbol !== symbol) ||
+    value === "narrowSymbol"
       ? [
           {
             name: t`Local symbol` + ` ` + `(${narrowSymbol})`,

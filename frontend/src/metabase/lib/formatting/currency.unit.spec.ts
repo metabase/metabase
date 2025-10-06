@@ -27,4 +27,14 @@ describe("getCurrencyStyleOptions", () => {
       { name: "Name (PKMN)", value: "name" },
     ]);
   });
+
+  it("should include current value even if it would normally be hidden", () => {
+    const options = getCurrencyStyleOptions("USD", "narrowSymbol");
+    expect(options).toEqual([
+      { name: "Symbol ($)", value: "symbol" },
+      { name: "Local symbol ($)", value: "narrowSymbol" },
+      { name: "Code (USD)", value: "code" },
+      { name: "Name (US dollars)", value: "name" },
+    ]);
+  });
 });

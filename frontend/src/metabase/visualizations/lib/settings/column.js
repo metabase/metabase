@@ -284,7 +284,10 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (column, settings) => {
       return {
-        options: getCurrencyStyleOptions(settings["currency"] || "USD"),
+        options: getCurrencyStyleOptions(
+          settings["currency"] || "USD",
+          settings["currency_style"],
+        ),
       };
     },
     getDefault: getDefaultCurrencyStyle,
