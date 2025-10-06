@@ -972,6 +972,39 @@
                                       :with_fields false
                                       :with_metrics false)))))))))))
 
+(deftest get-model-details-without-related-tables-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [{:keys [model-data]} (model-test-fixtures)
+          conversation-id (str (random-uuid))
+          ai-token (ai-session-token)]
+      (mt/with-temp [:model/Card {model-id :id}  model-data
+                     :model/Card {_metric-id :id} (assoc (:metric-data (model-test-fixtures)) :dataset_query
+                                                         (mt/mbql-query orders
+                                                           {:source-table (str "card__" model-id)
+                                                            :aggregation [[:count]]
+                                                            :breakout [!month.*created_at *quantity]}))]
+        (with-redefs [metabot-v3.tools.dummy-tools/verified-review? (constantly true)]
+          (let [request (fn [arguments]
+                          (mt/user-http-request :rasta :post 200 "ee/metabot-tools/get-table-details"
+                                                {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                {:arguments arguments
+                                                 :conversation_id conversation-id}))]
+            (testing "Without related tables"
+              (is (=? {:structured_output (-> model-data
+                                              (select-keys [:name :description :database_id])
+                                              (assoc :id model-id
+                                                     :type "model"
+                                                     :display_name "Model Model"
+                                                     :verified true
+                                                     :fields []
+                                                     :related_tables missing-value
+                                                     :metrics missing-value))
+                       :conversation_id conversation-id}
+                      (request {:model_id model-id
+                                :with_fields false
+                                :with_related_tables false
+                                :with_metrics false}))))))))))
+
 (deftest field-values-auto-populate-test
   (mt/with-premium-features #{:metabot-v3}
     (t2/delete! :model/FieldValues :field_id [:in (t2/select-fn-vec :id :model/Field :table_id (mt/id :orders))])
