@@ -192,13 +192,15 @@
    (let [id (:id base)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
+         query-needed? (or with-fields? with-related-tables? with-metrics?)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
-         card-query (lib/query metadata-provider (if (and (#{:question} card-type)
-                                                          (#{:pivot} (:display base))
-                                                          (#{:query} (:type dataset-query)))
-                                                   dataset-query
-                                                   card-metadata))
+         card-query (when query-needed?
+                      (lib/query metadata-provider (if (and (#{:question} card-type)
+                                                            (#{:pivot} (:display base))
+                                                            (#{:query} (:type dataset-query)))
+                                                     dataset-query
+                                                     card-metadata)))
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
