@@ -97,7 +97,7 @@
    "QueryField"
    "QueryTable"
    "RecentViews"
-   "RemoteSyncChangeLog"
+   "RemoteSyncObject"
    "RemoteSyncTask"
    "Revision"
    "Sandbox"

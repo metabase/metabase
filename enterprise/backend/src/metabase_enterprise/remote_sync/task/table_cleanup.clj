@@ -1,5 +1,5 @@
 (ns metabase-enterprise.remote-sync.task.table-cleanup
-  "Task to clean up old records from remote_sync_task and remote_sync_change_log tables."
+  "Task to clean up old records from remote_sync_task table"
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -34,22 +34,12 @@
     (log/infof "Deleted %d remote_sync_task records. Cleanup successful." deleted-count)
     deleted-count))
 
-(defn- trim-remote-sync-change-log!
-  "Delete remote_sync_change_log records older than retention-days based on created_at timestamp."
-  []
-  (log/infof "Attempting to delete remote_sync_change_log records older than %d days." retention-days)
-  (let [cutoff-date (t/minus (t/offset-date-time) (t/days retention-days))
-        deleted-count (t2/delete! :model/RemoteSyncChangeLog {:where [:< :created_at cutoff-date]})]
-    (log/infof "Deleted %d remote_sync_change_log records. Cleanup successful." deleted-count)
-    deleted-count))
-
 (defn- trim-tables!
   []
-  (trim-remote-sync-tasks!)
-  (trim-remote-sync-change-log!))
+  (trim-remote-sync-tasks!))
 
 (task/defjob ^{DisallowConcurrentExecution true
-               :doc "Clean up old records from remote_sync_task and remote_sync_change_log tables"}
+               :doc "Clean up old records from remote_sync_task table"}
   RemoteSyncTableCleanup [_ctx]
   (trim-tables!))
 
