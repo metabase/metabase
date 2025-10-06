@@ -1,70 +1,67 @@
 import type { Card, CardType } from "./card";
-import type { DatabaseId } from "./database";
 import type { NativeQuerySnippet } from "./snippets";
+import type { Table } from "./table";
 import type { Transform } from "./transform";
-import type { CardDisplayType } from "./visualization";
 
 export type DependencyId = number;
 
-type BaseDependencyNode<TType, TData> = {
-  id: DependencyId;
-  type: TType;
-  data: TData;
-};
-
-export type TableDependencyData = {
-  name: string;
-  display_name: string;
-  db_id: DatabaseId;
-  schema: string | null;
-};
-
-export type TransformDependencyData = {
-  name: string;
-};
-
-export type CardDependencyData = {
-  name: string;
-  type: CardType;
-  display: CardDisplayType;
-  database_id: DatabaseId;
-};
-
-export type SnippetDependencyData = {
-  name: string;
-};
-
-export type TableDependencyNode = BaseDependencyNode<
-  "table",
-  TableDependencyData
->;
-
-export type TransformDependencyNode = BaseDependencyNode<
-  "transform",
-  TransformDependencyData
->;
-
-export type CardDependencyNode = BaseDependencyNode<"card", CardDependencyData>;
-
-export type SnippetDependencyNode = BaseDependencyNode<
-  "snippet",
-  SnippetDependencyData
->;
-
-export type DependencyNode =
-  | TableDependencyNode
-  | TransformDependencyNode
-  | CardDependencyNode
-  | SnippetDependencyNode;
-
-export type DependencyType = DependencyNode["type"];
+export type DependencyType = CardType | "transform" | "snippet";
 
 export type DependencyEntry = {
   id: DependencyId;
   type: DependencyType;
 };
 
-export type DependencyEdge = {
+export type DependencyUsageStats = Partial<Record<DependencyType, number>>;
+
+type BaseDependencyGraphNode<TType, TData> = {
+  id: DependencyId;
+  type: TType;
+  data: TData;
+  usage_stats?: DependencyUsageStats;
+};
+
+export type TableDependencyGraphData = Pick<
+  Table,
+  "name" | "display_name" | "db_id" | "schema"
+>;
+
+export type TransformDependencyGraphData = Pick<Transform, "name">;
+
+export type CardDependencyGraphData = Pick<
+  Card,
+  "name" | "display" | "database_id"
+>;
+
+export type SnippetDependencyGraphData = Pick<NativeQuerySnippet, "name">;
+
+export type TableDependencyGraphNode = BaseDependencyGraphNode<
+  "table",
+  TableDependencyGraphData
+>;
+
+export type TransformDependencyGraphNode = BaseDependencyGraphNode<
+  "transform",
+  TransformDependencyGraphData
+>;
+
+export type CardDependencyGraphNode = BaseDependencyGraphNode<
+  "card",
+  CardDependencyGraphData
+>;
+
+export type SnippetDependencyGraphNode = BaseDependencyGraphNode<
+  "snippet",
+  SnippetDependencyGraphData
+>;
+
+export type DependencyGraphNode =
+  | TableDependencyGraphNode
+  | TransformDependencyGraphNode
+  | CardDependencyGraphNode
+  | SnippetDependencyGraphNode;
+
+export type DependencyGraphEdge = {
   from_entity_id: DependencyId;
   from_entity_type: DependencyType;
   to_entity_id: DependencyId;
@@ -72,16 +69,11 @@ export type DependencyEdge = {
 };
 
 export type DependencyGraph = {
-  nodes: DependencyNode[];
-  edges: DependencyEdge[];
+  nodes: DependencyGraphNode[];
+  edges: DependencyGraphEdge[];
 };
 
 export type GetDependencyGraphRequest = {
-  id: DependencyId;
-  type: DependencyType;
-};
-
-export type GetDependencyNodeRequest = {
   id: DependencyId;
   type: DependencyType;
 };
