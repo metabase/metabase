@@ -200,12 +200,13 @@ describe("command palette", () => {
       cy.get("@searchData").then(({ response }) => {
         const results = response.body.data;
 
-        results.forEach((result, index) => {
-          cy.findAllByRole("option")
-            .should("have.length", 7)
-            .eq(index + 1)
-            .should("contain.text", result.name);
-        });
+        cy.findAllByRole("option")
+          // filter out unrelated items, keep only options with data
+          .invoke("slice", 1, -2)
+          .should("have.length", results.length)
+          .each(($option, index) => {
+            cy.wrap($option).should("contain", results[index].name);
+          });
       });
     });
   });
