@@ -27,6 +27,7 @@ type MetricEditorProps = {
   onCancel: (question: Question) => void;
   onRunQuery: () => Promise<void>;
   onCancelQuery: () => void;
+  Header?: typeof MetricEditorHeader;
 };
 
 export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
@@ -45,6 +46,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
       onCancel,
       onRunQuery,
       onCancelQuery,
+      Header = MetricEditorHeader,
     },
     ref,
   ) {
@@ -93,7 +95,7 @@ export const MetricEditor = forwardRef<HTMLDivElement, MetricEditorProps>(
 
     return (
       <Flex h="100%" direction="column" bg="white" ref={ref}>
-        <MetricEditorHeader
+        <Header
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
