@@ -26,7 +26,6 @@
       ([result]
        {:pre [(map? (unreduced result))]}
        ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
-       (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
        (-> (unreduced result)
            (assoc :row_count @row-count
                   :status :completed)

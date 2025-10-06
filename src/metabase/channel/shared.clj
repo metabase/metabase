@@ -30,7 +30,7 @@
 
 (defn maybe-realize-data-rows
   "Realize the data rows in a [[metabase.notification.payload.execute/Part]].
-  
+
   If the rows are stored in a StreamingTempFileStorage and the file is too large
   (> 10MB), returns the part with an :error field set so the render pipeline
   will display an appropriate error message."
@@ -39,7 +39,7 @@
     (try
       (m/update-existing-in part [:result :data :rows] maybe-deref)
       (catch clojure.lang.ExceptionInfo e
-        (if (= :metabase.notification.payload.streaming/file-too-large
+        (if (= :notification/file-too-large
                (:type (ex-data e)))
           (let [{:keys [file-size max-size]} (ex-data e)
                 file-size-mb (/ file-size 1024.0 1024.0)

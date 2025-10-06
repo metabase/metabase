@@ -180,7 +180,6 @@
          {:data initial-metadata})
 
         ([result]
-         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))

@@ -4,14 +4,21 @@
   Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
   (:require
    [clojure.java.io :as io]
+   [metabase.query-processor.schema :as qp.schema]
+   [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
   (:import
-   (java.io File)
-   (java.util.concurrent Executors ScheduledThreadPoolExecutor)))
+   (java.io BufferedOutputStream DataOutputStream File)
+   (java.util.concurrent Executors ScheduledThreadPoolExecutor)
+   (java.util.zip GZIPOutputStream)))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private max-file-size-bytes
+  (* 10 1024 1024))
 
 (def ^:private temp-dir
   (delay
@@ -30,17 +37,79 @@
   (doto (File/createTempFile "notification-" ".npy" @temp-dir)
     (.deleteOnExit)))
 
-(defn- write-to-file!
-  [^File file data preamble]
-  (nippy/freeze-to-file file {:data data :preamble preamble}))
+(defn- open-streaming-file!
+  "Create and open a temp file for streaming rows. Returns map with :file and :output-stream."
+  []
+  (let [file (temp-file!)
+        os (-> (io/output-stream file)
+               BufferedOutputStream.
+               (GZIPOutputStream. true)
+               DataOutputStream.)]
+    {:file file
+     :output-stream os}))
 
-(defn- read-from-file
+(defn- write-row-to-stream!
+  "Write a single row to the output stream using nippy serialization."
+  [^DataOutputStream os row]
+  (nippy/freeze-to-out! os row)
+  (.flush os))
+
+(defn- read-rows-from-file
+  "Read rows from a temp file. Returns vector of rows.
+  Throws exception if file is larger than max-file-size-bytes.
+  Handles both counted and streaming formats."
   [^File file]
-  (when (.exists file)
-    (let [{:keys [data preamble]} (nippy/thaw-from-file file)]
-      (when (seq preamble)
-        (log/infof "reading file with preamble: %s" (pr-str preamble)))
-      data)))
+  (when-not (.exists file)
+    (throw (ex-info "Temp file no longer exists" {:file file})))
+
+  (let [file-size (.length file)
+        file-size-mb (/ file-size 1024.0 1024.0)]
+    (when (> file-size max-file-size-bytes)
+      (log/warnf "⚠️  SKIPPING LOAD - File too large: %.2f MB (max: %.2f MB). File will NOT be loaded into memory."
+                 file-size-mb
+                 (/ max-file-size-bytes 1024.0 1024.0))
+      (throw (ex-info "Result file too large to load into memory"
+                      {:type :notification/file-too-large
+                       :file-size file-size
+                       :max-size max-file-size-bytes})))
+
+    (log/infof "📂 Loading streamed results from disk: %.2f MB" file-size-mb)
+
+    (let [start-time (System/nanoTime)
+          result (with-open [is (-> file
+                                    io/input-stream
+                                    java.io.BufferedInputStream.
+                                    java.util.zip.GZIPInputStream.
+                                    java.io.DataInputStream.)]
+                   ;; Read preamble
+                   (let [{:keys [preamble]} (nippy/thaw-from-in! is)]
+                     (when (seq preamble)
+                       (log/debugf "File context: %s" (pr-str preamble))))
+
+                   ;; Read row count/marker
+                   (let [count-or-marker (nippy/thaw-from-in! is)]
+                     (if (= count-or-marker ::streaming)
+                       ;; Streaming format - read until EOF
+                       (loop [rows (transient [])]
+                         (let [row (try
+                                     (nippy/thaw-from-in! is)
+                                     (catch java.io.EOFException _
+                                       ::eof))]
+                           (if (= row ::eof)
+                             (persistent! rows)
+                             (recur (conj! rows row)))))
+
+                       ;; Counted format - read exact number of rows
+                       (loop [rows (transient [])
+                              i 0]
+                         (if (< i count-or-marker)
+                           (recur (conj! rows (nippy/thaw-from-in! is))
+                                  (inc i))
+                           (persistent! rows))))))
+          elapsed-ms (/ (- (System/nanoTime) start-time) 1000000.0)
+          row-count (count result)]
+      (log/infof "✅ Loaded %d rows from disk in %.0f ms (%.2f MB)" row-count elapsed-ms file-size-mb)
+      result)))
 
 (.addShutdownHook
  (Runtime/getRuntime)
@@ -68,7 +137,7 @@
               (recur remaining (/ current magnitude))
               (format "%.1f %s" current unit))))))
 
-(deftype TempFileStorage [^File file]
+(deftype StreamingTempFileStorage [^File file context]
   Cleanable
   (cleanup! [_]
     (when (.exists file)
@@ -76,23 +145,138 @@
 
   clojure.lang.IDeref
   (deref [_]
-    (if (.exists file)
-      (do
-        (log/infof "reading temp storage file of size: %s" (human-readable-size (.length file)))
-        (read-from-file file))
-      (throw (ex-info "File no longer exists" {:file file}))))
+    (read-rows-from-file file))
+
+  clojure.lang.IPending
+  (isRealized [_]
+    ;; Always return false so REPL tools like fipp won't auto-deref
+    ;; Reading from disk is expensive and should be explicit
+    false)
 
   Object
   (toString [_]
-    (str "#TempFileStorage{:file " file "}"))
+    (if (.exists file)
+      (format "#StreamingTempFileStorage{:file %s, :size %.2f KB, :context %s}"
+              (.getName file)
+              (/ (.length file) 1024.0)
+              (pr-str context))
+      (format "#StreamingTempFileStorage{:file %s (deleted), :context %s}"
+              (.getName file)
+              (pr-str context))))
 
-  ;; Add equality behavior
   (equals [_this other]
-    (and (instance? TempFileStorage other)
-         (= file (.file ^TempFileStorage other))))
+    (and (instance? StreamingTempFileStorage other)
+         (= file (.file ^StreamingTempFileStorage other))))
 
   (hashCode [_]
     (.hashCode file)))
+
+(defmethod print-method StreamingTempFileStorage
+  [^StreamingTempFileStorage storage ^java.io.Writer w]
+  (.write w (.toString storage)))
+
+(mu/defn notification-rff :- ::qp.schema/rff
+  "Reducing function factory for notifications that streams to disk when threshold exceeded.
+
+  Returns an rff (function that takes metadata and returns an rf) that:
+  - Accumulates rows in memory initially
+  - Once max-row-count is reached, switches to streaming mode
+  - In streaming mode, writes all accumulated rows to disk then streams subsequent rows
+  - Final result contains either in-memory rows or a StreamingTempFileStorage reference
+
+  Parameters:
+  - max-row-count: Maximum number of rows to keep in memory before streaming to disk
+  - context: Optional context map to include in temp file preamble (for debugging)"
+  ([max-row-count]
+   (notification-rff max-row-count {}))
+  ([max-row-count context]
+   (fn rff [metadata]
+     (let [row-count (volatile! 0)
+           rows (volatile! (transient []))
+           streaming? (volatile! false)
+           streaming-state (volatile! nil)] ; {:file File :output-stream DataOutputStream}
+       (fn notification-rf
+         ;; Init arity
+         ([]
+          {:data metadata})
+
+         ;; Completion arity
+         ([result]
+          {:pre [(map? (unreduced result))]}
+          (let [result (unreduced result)]
+            (if @streaming?
+              ;; Close the streaming file and return TempFileStorage
+              (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
+                (try
+                  (.close output-stream)
+                  (let [file-size (.length file)
+                        file-size-mb (/ file-size 1024.0 1024.0)]
+                    (log/infof "💾 Stored %d rows to disk: %.2f MB (never loaded into memory)"
+                               @row-count
+                               file-size-mb)
+                    (-> result
+                        (assoc :row_count @row-count
+                               :status :completed
+                               :data.rows-file-size file-size)
+                        (assoc-in [:data :rows] (StreamingTempFileStorage. file context))))
+                  (catch Exception e
+                    (u/ignore-exceptions (.close output-stream))
+                    (throw e))))
+
+              ;; Return in-memory rows
+              (do
+                (log/infof "✓ Completed with %d rows in memory (under threshold)" @row-count)
+                (-> result
+                    (assoc :row_count @row-count
+                           :status :completed)
+                    (assoc-in [:data :rows] (persistent! @rows)))))))
+
+         ;; Step arity - accumulate rows
+         ([result row]
+          (vswap! row-count inc)
+
+          (if @streaming?
+            ;; Already streaming - write row directly to file
+
+            (let [{:keys [^DataOutputStream output-stream]} @streaming-state]
+              (write-row-to-stream! output-stream row)
+              result)
+
+            ;; Still in memory - check if we should start streaming
+            (do
+              (vswap! rows conj! row)
+
+              ;; Check if we've hit the threshold
+              (when (>= @row-count max-row-count)
+                (log/infof "Row count reached threshold (%d), switching to streaming mode"
+                           max-row-count)
+
+                ;; Open streaming file
+                (let [{:keys [file ^DataOutputStream output-stream]} (open-streaming-file!)]
+                  (try
+                    ;; Write preamble
+                    (nippy/freeze-to-out! output-stream {:preamble context})
+                    (.flush output-stream)
+
+                    ;; Write sentinel indicating streaming format
+                    (nippy/freeze-to-out! output-stream ::streaming)
+                    (.flush output-stream)
+
+                    ;; Write all accumulated rows
+                    (doseq [r (persistent! @rows)]
+                      (write-row-to-stream! output-stream r))
+
+                    ;; Switch to streaming mode
+                    (vreset! streaming? true)
+                    (vreset! rows (transient [])) ; Clear memory
+                    (vreset! streaming-state {:file file :output-stream output-stream})
+
+                    (catch Exception e
+                      (u/ignore-exceptions (.close output-stream))
+                      (u/ignore-exceptions (io/delete-file file))
+                      (throw e)))))
+
+              result))))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                           Public APIs                                           ;;
@@ -103,17 +287,7 @@
   [x]
   (satisfies? Cleanable x))
 
-(defn to-temp-file!
-  "Write data to a temporary file. Returns a TempFileStorage type that:
-   - Implements IDeref - use @ to read the data from the file
-   - Implements Cleanable - call cleanup! when the file is no longer needed
-
-  You may include an optional `preamble` which will be logged when the file is read. Helpful to leave a breadcrumb of
-  which dashboard/card the file might be from. "
-  ^TempFileStorage
-  ([data] (to-temp-file! data {}))
-  ([data preamble]
-   (let [f (temp-file!)]
-     (write-to-file! f data preamble)
-     (log/debug "stored data in temp file" {:length (.length ^File f)})
-     (TempFileStorage. f))))
+(defn is-streaming-temp-file?
+  "Check if x is a StreamingTempFileStorage instance."
+  [x]
+  (instance? StreamingTempFileStorage x))

@@ -7,7 +7,6 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.notification.payload.streaming :as notification.streaming]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
@@ -178,7 +177,7 @@
                                                               (qp
                                                                (qp/userland-query query info)
                                                                ;; Pass streaming rff with 2000 row threshold
-                                                               (notification.streaming/notification-rff
+                                                               (notification.temp-storage/notification-rff
                                                                 rows-to-disk-threshold
                                                                 {:dashboard_id dashboard_id
                                                                  :card_id card-id
@@ -298,7 +297,7 @@
                                                                    (qp
                                                                     (qp/userland-query query info)
                                                                  ;; Pass streaming rff with 2000 row threshold
-                                                                 (notification.streaming/notification-rff
+                                                                 (notification.temp-storage/notification-rff
                                                                   rows-to-disk-threshold
                                                                   {:card-id card-id})))))))]
 
