@@ -20,6 +20,8 @@ import { BenchLayout } from "../BenchLayout";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { MetricEditor } from "../metrics/MetricsList";
 
+import { CreateModelMenu } from "./CreateModelMenu";
+
 function ModelsList({ activeId }: { activeId: number }) {
   const { isLoading, data } = useFetchModels();
   const models = data?.data;
@@ -27,6 +29,7 @@ function ModelsList({ activeId }: { activeId: number }) {
   return (
     <ItemsListSection
       sectionTitle="Models"
+      AddButton={CreateModelMenu}
       onAddNewItem={() => {}}
       listItems={
         !models || isLoading ? (

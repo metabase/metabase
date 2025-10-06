@@ -2,13 +2,14 @@ import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp, { CreateSegmentForm, UpdateSegmentForm } from "metabase/admin/datamodel/containers/SegmentApp";
+import SegmentApp, {
+  CreateSegmentForm,
+  UpdateSegmentForm,
+} from "metabase/admin/datamodel/containers/SegmentApp";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
-import {
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
+import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { IsAdmin } from "metabase/route-guards";
 
 import { BenchApp } from "./components/BenchApp";
@@ -30,11 +31,11 @@ export const getBenchRoutes = () => (
       </Route>
 
       <Route path="model" component={ModelsLayout}>
-
         <IndexRoute component={EmptySailboat} />
+        <Route path="new/:type" component={ModelEditor} />
         <Route path=":slug" component={ModelEditor} />
       </Route>
-      <Route path="metric" component={MetricsLayout} >
+      <Route path="metric" component={MetricsLayout}>
         <IndexRoute component={EmptySailboat} />
         <Route path=":slug" component={MetricEditor} />
       </Route>

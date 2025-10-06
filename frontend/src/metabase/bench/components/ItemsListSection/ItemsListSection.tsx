@@ -38,9 +38,9 @@ export const ItemsListSection = ({
             <AddButton />
           ) : (
             <Button
-              variant="filled"
-              color="brand"
-              leftSection={<Icon name="add" size={12} />}
+              leftSection={<Icon name="add" />}
+              size="sm"
+              aria-label={t`Add`}
               onClick={onAddNewItem}
             />
           )}

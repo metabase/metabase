@@ -3,6 +3,7 @@ import type { Location } from "history";
 import type React from "react";
 import { useEffect } from "react";
 import { Link } from "react-router";
+import { push } from "react-router-redux";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -49,13 +50,14 @@ import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 
 function MetricsList({ activeId }: { activeId: number }) {
+  const dispatch = useDispatch();
   const { isLoading, data } = useFetchMetrics();
   const metrics = data?.data;
 
   return (
     <ItemsListSection
       sectionTitle="Metrics"
-      onAddNewItem={() => {}}
+      onAddNewItem={() => dispatch(push("/bench/metric/new"))}
       listItems={
         !metrics || isLoading ? (
           <Center>
