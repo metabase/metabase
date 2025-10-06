@@ -655,5 +655,9 @@
                                                               100]]}]}
                js-query)))
     (testing "JS to CLJS"
-      (is (= (dissoc query :lib/metadata)
-             (lib.js/js-to-query js-query))))))
+      (testing "1-arity"
+        (is (= (dissoc query :lib/metadata)
+               (lib.js/js-to-query js-query))))
+      (testing "2-arity"
+        (is (= query
+               (lib.js/js-to-query (:lib/metadata query) js-query)))))))

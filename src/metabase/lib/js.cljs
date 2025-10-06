@@ -2647,7 +2647,10 @@
 
 (defn ^:export js-to-query
   "Deserialize a query from a plain JS object."
-  [js-query]
-  (-> js-query
-      js->clj
-      lib.core/normalize))
+  ([js-query]
+   (-> js-query
+       js->clj
+       lib.core/normalize))
+
+  ([metadata-provider js-query]
+   (lib.core/query metadata-provider (js-to-query js-query))))

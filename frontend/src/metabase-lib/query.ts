@@ -141,6 +141,9 @@ export function queryToJs(query: Query): object {
   return ML.query_to_js(query);
 }
 
-export function jsToQuery(jsQuery: object): Query {
-  return ML.js_to_query(jsQuery);
+export function jsToQuery(
+  metadataProvider: MetadataProvider,
+  jsQuery: object,
+): Query {
+  return ML.js_to_query(metadataProvider, jsQuery);
 }
