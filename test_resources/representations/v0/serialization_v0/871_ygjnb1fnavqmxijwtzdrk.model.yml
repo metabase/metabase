@@ -1,0 +1,26 @@
+name: Sales Data
+type: model
+ref: model-871
+entity-id: YGJnB1FNaVqmXiJwtzDrK
+mbql_query: ref:mbql-model-871
+database: ref:database-1
+columns:
+  - name: CATEGORY
+    display_name: Product
+    description: 'The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget'
+    semantic_type: type/Category
+    visibility_type: normal
+  - name: CREATED_AT
+    display_name: 'Month of Creation: Month'
+    description: The date and time an order was submitted.
+    semantic_type: type/CreationDate
+    visibility_type: normal
+  - name: avg
+    display_name: Price
+    semantic_type: type/Currency
+  - name: avg_2
+    display_name: Quantity
+    semantic_type: type/Quantity
+  - name: avg_3
+    display_name: Tax
+    semantic_type: type/Currency
