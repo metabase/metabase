@@ -67,7 +67,7 @@
   transform)
 
 (t2/define-after-update :model/Transform [transform]
-  (events/publish-event! :event/update-transform {:object #p transform})
+  (events/publish-event! :event/update-transform {:object transform})
   transform)
 
 (t2/define-before-delete :model/Transform [transform]

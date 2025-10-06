@@ -16,13 +16,6 @@
 
 (declare load-one!)
 
-(defn- filter-by-type-whitelist
-  "Filter a list of entity paths, keeping only those whose model type is in the whitelist."
-  [entity-paths type-whitelist]
-  (filter (fn [path]
-            (contains? type-whitelist (-> path peek :model)))
-          entity-paths))
-
 (def ^:private model->circular-dependency-keys
   "Sometimes models have circular dependencies. For example, a card for a Dashboard Question has a `dashboard_id`
   pointing to the dashboard it's in. But when we try to load that dashboard, we'll create all its dashcards, and one

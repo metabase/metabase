@@ -195,8 +195,8 @@
              (for [embedded-card-id (prose-mirror/card-ids document)]
                {["Card" embedded-card-id] {"Document" id}}))
        (into {}
-             (for [{model :model link-id :entityId} #p (prose-mirror/collect-ast document
-                                                                                 #(when (= prose-mirror/smart-link-type (:type %))
-                                                                                    (:attrs %)))
+             (for [{model :model link-id :entityId} (prose-mirror/collect-ast document
+                                                                              #(when (= prose-mirror/smart-link-type (:type %))
+                                                                                 (:attrs %)))
                    :when (contains? model->serdes-model model)]
                {[(model->serdes-model model) link-id] {"Document" id}}))))))
