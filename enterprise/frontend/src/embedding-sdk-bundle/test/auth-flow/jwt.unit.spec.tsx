@@ -155,6 +155,16 @@ describe("Auth Flow - JWT", () => {
       },
     );
 
+    fetchMock.get(`${instanceUrlWithSubpath}/api/user/current`, {
+      status: 200,
+      body: { id: 1 },
+    });
+
+    fetchMock.get(`${instanceUrlWithSubpath}/api/session/properties`, {
+      status: 200,
+      body: createMockSettings(),
+    });
+
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: instanceUrlWithSubpath,
     });
