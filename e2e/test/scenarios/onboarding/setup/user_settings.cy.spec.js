@@ -270,7 +270,7 @@ describe("user > settings", () => {
 const assertLightMode = () =>
   cy
     .get("body")
-    .should("have.css", "--mb-color-background", "hsla(0, 0%, 100%, 1.00)");
+    .should("have.css", "--mb-color-background", "hsla(0, 0%, 100%, 1)");
 
 const assertDarkMode = () =>
   cy
