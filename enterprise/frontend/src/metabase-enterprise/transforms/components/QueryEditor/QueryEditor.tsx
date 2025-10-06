@@ -140,37 +140,33 @@ export function QueryEditor({
           onSave={handleSave}
           onCancel={onCancel}
         />
-        <Flex h="100%" w="100%" mih="0">
-          <Stack flex="2 1 100%" pos="relative">
-            <EditorBody
-              question={question}
-              proposedQuestion={proposedQuestion}
-              isNative={isNative}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isResultDirty={isResultDirty}
-              isShowingDataReference={false}
-              isShowingSnippetSidebar={false}
-              onChange={handleChange}
-              onRunQuery={runQuery}
-              onCancelQuery={cancelQuery}
-              onRejectProposed={onRejectProposed}
-              onAcceptProposed={
-                proposedSource
-                  ? () => onAcceptProposed?.(proposedSource)
-                  : undefined
-              }
-              databases={databases?.data ?? []}
-              onToggleDataReference={() => null}
-              onToggleSnippetSidebar={() => null}
-              onOpenModal={handleOpenModal}
-              modalSnippet={modalSnippet}
-              onChangeModalSnippet={setModalSnippet}
-              onChangeNativeEditorSelection={setSelectionRange}
-              nativeEditorSelectedText={selectedText}
-            />
-          </Stack>
-        </Flex>
+        <EditorBody
+          question={question}
+          proposedQuestion={proposedQuestion}
+          isNative={isNative}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isResultDirty={isResultDirty}
+          isShowingDataReference={false}
+          isShowingSnippetSidebar={false}
+          onChange={handleChange}
+          onRunQuery={runQuery}
+          onCancelQuery={cancelQuery}
+          onRejectProposed={onRejectProposed}
+          onAcceptProposed={
+            proposedSource
+              ? () => onAcceptProposed?.(proposedSource)
+              : undefined
+          }
+          databases={databases?.data ?? []}
+          onToggleDataReference={() => null}
+          onToggleSnippetSidebar={() => null}
+          onOpenModal={handleOpenModal}
+          modalSnippet={modalSnippet}
+          onChangeModalSnippet={setModalSnippet}
+          onChangeNativeEditorSelection={setSelectionRange}
+          nativeEditorSelectedText={selectedText}
+        />
         <EditorValidationCard validationResult={validationResult} />
       </Stack>
       {isNative && (
