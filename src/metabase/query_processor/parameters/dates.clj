@@ -306,7 +306,7 @@
   (let [year (t/year date)]
     (case unit
       :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
-              (format "%sT%02d:00:00Z" date hour))
+              (format "%sT%02d:00:00" date hour))
       :day (when-let [day (short-day->day exclusion)]
              (str (t/adjust date :next-or-same-day-of-week day)))
       :month (when-let [month (short-month->month exclusion)]

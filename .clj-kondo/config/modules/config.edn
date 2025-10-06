@@ -1827,6 +1827,7 @@
            metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
+           audit-app
            collections
            config
            driver

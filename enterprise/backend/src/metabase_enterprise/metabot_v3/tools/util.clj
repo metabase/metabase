@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.audit-app.core :as audit-app]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -140,7 +141,9 @@
 
   Takes a metabot-id and returns all metric and model cards in that metabot's collection
   and its subcollections. If the metabot has use_verified_content enabled, only verified
-  content is returned."
+  content is returned.
+
+  Ignores analytics content."
   [metabot-id & {:keys [limit] :as _opts}]
   (let [metabot (t2/select-one :model/Metabot :id metabot-id)
         metabot-collection-id (:collection_id metabot)
@@ -153,6 +156,7 @@
         base-query {:select [:report_card.*]
                     :from   [[:report_card]]
                     :where [:and
+                            [:!= :report_card.database_id audit-app/audit-db-id]
                             collection-filter
                             [:in :type [:inline ["metric" "model"]]]
                             [:= :archived false]
