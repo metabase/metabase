@@ -65,6 +65,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
       <Panel position="top-left">
         <EntryNodePicker
           entry={entry}
+          graph={graph}
           isFetching={isFetching}
           onEntryChange={onEntryChange}
         />

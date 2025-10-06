@@ -16,7 +16,7 @@ import type {
 import S from "./DependencyFlow.module.css";
 import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
-function getItemNodeId(id: DependencyId, type: DependencyType): NodeId {
+function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
@@ -26,7 +26,7 @@ function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
 
 function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
   return nodes.map((node) => {
-    const nodeId = getItemNodeId(node.id, node.type);
+    const nodeId = getNodeId(node.id, node.type);
 
     return {
       id: nodeId,
@@ -35,6 +35,7 @@ function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
       data: node,
       position: { x: 0, y: 0 },
       selected: node.id === entry.id && node.type === entry.type,
+      selectable: false,
       connectable: false,
       draggable: false,
       deletable: false,
@@ -44,8 +45,8 @@ function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
 
 function getEdges(edges: DependencyEdge[]): Edge[] {
   return edges.map((edge) => {
-    const sourceId = getItemNodeId(edge.from_entity_id, edge.from_entity_type);
-    const targetId = getItemNodeId(edge.to_entity_id, edge.to_entity_type);
+    const sourceId = getNodeId(edge.from_entity_id, edge.from_entity_type);
+    const targetId = getNodeId(edge.to_entity_id, edge.to_entity_type);
 
     return {
       id: getEdgeId(sourceId, targetId),

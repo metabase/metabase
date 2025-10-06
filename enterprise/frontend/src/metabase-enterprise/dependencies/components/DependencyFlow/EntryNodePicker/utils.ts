@@ -1,11 +1,21 @@
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
+import { checkNotNull } from "metabase/lib/types";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
+  Card,
+  CardId,
   CardType,
   DependencyEntry,
+  DependencyGraph,
   DependencyNode,
   TableId,
 } from "metabase-types/api";
+
+export function findNode(graph: DependencyGraph, entry: DependencyEntry) {
+  return graph.nodes.find(
+    (node) => node.id === entry.id && node.type === entry.type,
+  );
+}
 
 function getDataPickerModel(type: CardType) {
   switch (type) {
@@ -42,9 +52,14 @@ export function getDataPickerValue(
   }
 }
 
-export function getDependencyEntry(tableId: TableId): DependencyEntry {
-  const cardId = getQuestionIdFromVirtualTableId(tableId);
-  return cardId != null
-    ? { id: cardId, type: "question" }
-    : { id: Number(tableId), type: "table" };
+export async function getDependencyEntry(
+  tableId: TableId,
+  getCard: (cardId: CardId) => Promise<Card>,
+): Promise<DependencyEntry> {
+  if (typeof tableId === "number") {
+    return { id: tableId, type: "table" };
+  }
+  const cardId = checkNotNull(getQuestionIdFromVirtualTableId(tableId));
+  const card = await getCard(cardId);
+  return { id: cardId, type: card.type };
 }

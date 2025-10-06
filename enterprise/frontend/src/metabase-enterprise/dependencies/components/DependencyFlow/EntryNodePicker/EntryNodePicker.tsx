@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
+import { useLazyGetCardQuery } from "metabase/api";
 import {
   DataPickerModal,
   type DataPickerValue,
@@ -14,7 +15,7 @@ import type {
 
 import { getNodeIcon, getNodeLabel } from "../utils";
 
-import { getDataPickerValue, getDependencyEntry } from "./utils";
+import { findNode, getDataPickerValue, getDependencyEntry } from "./utils";
 
 const PICKER_MODELS: DataPickerValue["model"][] = [
   "table",
@@ -36,13 +37,16 @@ export function EntryNodePicker({
   isFetching,
   onEntryChange,
 }: EntryNodePickerProps) {
-  const node = graph?.nodes.find(
-    (node) => node.id === entry?.id && node.type === entry?.type,
-  );
+  const node =
+    graph != null && entry != null ? findNode(graph, entry) : undefined;
   const [isOpened, { open, close }] = useDisclosure();
+  const [fetchCard] = useLazyGetCardQuery();
 
-  const handleChange = (tableId: TableId) => {
-    onEntryChange(getDependencyEntry(tableId));
+  const handleChange = async (tableId: TableId) => {
+    const newEntry = await getDependencyEntry(tableId, (cardId) =>
+      fetchCard({ id: cardId }).unwrap(),
+    );
+    onEntryChange(newEntry);
   };
 
   return (
