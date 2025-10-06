@@ -142,7 +142,9 @@
   [qp-result]
   (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
 
-(def rows-to-disk-threshold 2000)
+(def rows-to-disk-threshold
+  "Maximum rows to hold in memory when running notification queries. After this, query results are streamed straight to disk. See [[metabase.notification.payload.temp-storage]] for more details."
+  2000)
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.

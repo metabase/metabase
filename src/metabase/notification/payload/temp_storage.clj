@@ -1,7 +1,14 @@
 (ns metabase.notification.payload.temp-storage
-  "Util to put data into a temporary file and schedule it for deletion after a specified time period.
+  "Util to put data into a temporary file and delete after the notification sends. Cleanup happens with notification.send/do-after-notification-sent for dashboards and cards which calls cleanup! on each part. This is exetended to Object as a no-op and on the type defined here deletes the temporary file.
 
-  Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
+  When getting query results for notifications (alerts, subscriptions) once the query row count
+  exceeds [[metabase.notification.payload.execute/rows-to-disk-threshold]], we then start streaming all rows to
+  disk. This ensures that smaller queries don't needlessly write to disk and then reload, while large results don't
+  attempt to reside in memory and kill and instance.
+
+  The key to memory savings here is that the file will not be dereferenced if it is larger than some
+  threshold. Because of this, we are safe to truncate results once the filesize goes above this
+  threshold. See :notification/file-too-large and :notification/truncated?."
   (:require
    [clojure.java.io :as io]
    [metabase.query-processor.schema :as qp.schema]
