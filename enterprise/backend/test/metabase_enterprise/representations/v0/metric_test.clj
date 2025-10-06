@@ -32,4 +32,3 @@
     (testing (str "Importing: " filename)
       (let [rep (yaml/from-file filename)]
         (is (rep/persist! rep))))))
-

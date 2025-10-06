@@ -96,4 +96,3 @@
               rep2 (yaml/parse-string yaml)
               rep2 (rep/normalize-representation rep2)]
           (is (=? (dissoc rep :ref) rep2)))))))
-
