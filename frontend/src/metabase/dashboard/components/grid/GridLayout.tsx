@@ -234,6 +234,7 @@ export function GridLayout<T extends { id: number | null }>(
       onDragStop={enableTextSelection}
       onResizeStart={disableTextSelection}
       onResizeStop={enableTextSelection}
+      draggableCancel="[data-dontdrag]"
     >
       {children}
     </ReactGridLayout>

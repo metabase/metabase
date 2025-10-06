@@ -79,6 +79,7 @@ import {
 import { MiniBarCell } from "./cells/MiniBarCell";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
 
 const shouldWrap = (
   settings: VisualizationSettings,
@@ -687,20 +688,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       : "var(--mb-color-bg-night)";
   }, [isNightMode, token, uuid]);
 
-  const dataGridTheme: DataGridTheme = useMemo(() => {
-    return {
-      stickyBackgroundColor: tableTheme.stickyBackgroundColor,
-      fontSize: tableTheme.cell.fontSize,
-      cell: {
-        backgroundColor: tableTheme.cell.backgroundColor ?? backgroundColor,
-        textColor: tableTheme.cell.textColor,
-      },
-      pillCell: {
-        backgroundColor: tableTheme.idColumn?.backgroundColor,
-        textColor: tableTheme.idColumn?.textColor,
-      },
-    };
-  }, [tableTheme, backgroundColor]);
+  const dataGridTheme: DataGridTheme = useMemo(
+    () => tableThemeToDataGridTheme(tableTheme, backgroundColor),
+    [tableTheme, backgroundColor],
+  );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
     return {

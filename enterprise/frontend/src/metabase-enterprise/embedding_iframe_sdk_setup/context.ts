@@ -19,6 +19,10 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Embed settings
   settings: SdkIframeEmbedSetupSettings;
+  defaultSettings: {
+    resourceId: string | number;
+    experience: SdkIframeEmbedSetupExperience;
+  };
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSetupSettings>) => void;
   replaceSettings: (settings: SdkIframeEmbedSetupSettings) => void;
 

@@ -31,11 +31,6 @@
   [card]
   (h (urls/card-url (u/the-id card))))
 
-(defn- visualizer-dashcard-href
-  "Build deep linking href for visualizer dashcards"
-  [dashcard]
-  (h (str (urls/dashboard-url (:dashboard_id dashcard)) "#scrollTo=" (:id dashcard))))
-
 (mu/defn- make-title-if-needed :- [:maybe ::body/RenderedPartCard]
   [render-type card dashcard options :- [:maybe ::options]]
   (when (:channel.render/include-title? options)
@@ -44,8 +39,8 @@
                            (-> card :name))
           image-bundle (when (:channel.render/include-buttons? options)
                          (image-bundle/external-link-image-bundle render-type))
-          title-href   (if (render.util/is-visualizer-dashcard? dashcard)
-                         (visualizer-dashcard-href dashcard)
+          title-href   (if dashcard
+                         (urls/dashcard-url dashcard)
                          (card-href card))]
       {:attachments (when image-bundle
                       (image-bundle/image-bundle->attachment image-bundle))
@@ -188,8 +183,8 @@
          {pulse-body       :content
           body-attachments :attachments
           text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)
-         attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
-                                            (visualizer-dashcard-href dashcard)
+         attachment-href                  (if dashcard
+                                            (urls/dashcard-url dashcard)
                                             (card-href card))
          inline-parameters                (when (:channel.render/include-inline-parameters? options)
                                             (-> dashcard :visualization_settings :inline_parameters))]

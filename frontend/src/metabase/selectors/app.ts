@@ -62,10 +62,6 @@ export const getIsAdminApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/admin/");
 });
 
-export const getIsEmbeddingSetup = createSelector([getRouterPath], (path) => {
-  return path.startsWith("/setup/embedding");
-});
-
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,

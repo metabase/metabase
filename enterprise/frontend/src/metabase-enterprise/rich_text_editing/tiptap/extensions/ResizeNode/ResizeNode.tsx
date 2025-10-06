@@ -7,9 +7,7 @@ import {
 import type React from "react";
 import { useRef, useState } from "react";
 
-import { useSelector } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
-import { getCommentSidebarOpen } from "metabase-enterprise/documents/selectors";
 
 import S from "./ResizeNode.module.css";
 
@@ -86,8 +84,6 @@ const ResizeNodeView = ({
   const [height, setHeight] = useState(attrs.height);
   const _height = useRef(attrs.height);
 
-  const shouldDisableResizing = useSelector(getCommentSidebarOpen);
-
   const computeHeight = (delta: number) => {
     const newHeight = _height.current + delta;
 
@@ -114,9 +110,7 @@ const ResizeNodeView = ({
       data-type="resizeNode"
     >
       <NodeViewContent className={S.content} />
-      {!shouldDisableResizing && (
-        <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
-      )}
+      <DragHandle onDrag={handleDrag} onDragEnd={handleDragEnd} />
     </NodeViewWrapper>
   );
 };

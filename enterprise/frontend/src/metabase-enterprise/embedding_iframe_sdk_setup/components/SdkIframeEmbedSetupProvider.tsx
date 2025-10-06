@@ -12,7 +12,7 @@ import _ from "underscore";
 import { useSearchQuery } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
 
-import { trackEmbedWizardSettingsUpdated } from "../analytics";
+import { trackEmbedWizardOpened } from "../analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   USER_SETTINGS_DEBOUNCE_MS,
@@ -23,11 +23,14 @@ import {
 } from "../context";
 import { useParameterList, useRecentItems } from "../hooks";
 import type {
-  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
   SdkIframeEmbedSetupStep,
 } from "../types";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
+import {
+  getDefaultSdkIframeEmbedSettings,
+  getExperienceFromSettings,
+  getResourceIdFromSettings,
+} from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -123,15 +126,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // Which embed experience are we setting up?
   const experience = useMemo(
-    () =>
-      match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(
-        settings,
-      )
-        .with({ template: "exploration" }, () => "exploration")
-        .with({ componentName: "metabase-question" }, () => "chart")
-        .with({ componentName: "metabase-browser" }, () => "browser")
-        .with({ componentName: "metabase-dashboard" }, () => "dashboard")
-        .exhaustive(),
+    () => getExperienceFromSettings(settings),
     [settings],
   );
 
@@ -152,8 +147,6 @@ export const SdkIframeEmbedSetupProvider = ({
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
       setRawSettings((prev) => {
-        trackEmbedWizardSettingsUpdated(nextSettings);
-
         // Merging with a partial setting requires us to cast the type
         const mergedSettings = {
           ...(prev ?? defaultSettings),
@@ -180,6 +173,10 @@ export const SdkIframeEmbedSetupProvider = ({
     setCurrentStep,
     experience,
     settings,
+    defaultSettings: {
+      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
+      experience: getExperienceFromSettings(defaultSettings),
+    },
     replaceSettings,
     updateSettings,
     recentDashboards,
@@ -207,6 +204,8 @@ export const SdkIframeEmbedSetupProvider = ({
       });
 
       setEmbedSettingsLoaded(true);
+
+      trackEmbedWizardOpened();
     }
   }, [
     persistedSettings,

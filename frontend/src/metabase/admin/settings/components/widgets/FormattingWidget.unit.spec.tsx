@@ -164,4 +164,21 @@ describe("FormattingWidget", () => {
       expect(toasts).toHaveLength(6);
     });
   });
+
+  it("should provide expected number separators (#61854)", async () => {
+    await setup();
+
+    const seperatorStyleInput = await screen.findByLabelText("Separator style");
+    await userEvent.click(seperatorStyleInput);
+
+    const [dropdown] = screen.getAllByRole("listbox");
+    const children = within(dropdown).getAllByRole("option");
+    expect(children.length).toBe(5);
+
+    expect(within(dropdown).getByText("100,000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100 000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100.000,00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100000.00")).toBeInTheDocument();
+    expect(within(dropdown).getByText("100’000.00")).toBeInTheDocument();
+  });
 });
