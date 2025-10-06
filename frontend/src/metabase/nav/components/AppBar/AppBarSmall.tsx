@@ -94,7 +94,7 @@ const AppBarSmall = ({
                   </Flex>
                 ))}
             </AppBarSearchContainer>
-            <PLUGIN_METABOT.MetabotAppBarButton />
+            {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
             {isProfileLinkVisible && (
               <AppBarProfileLinkContainer>
                 <ProfileLink onLogout={onLogout} />

@@ -103,7 +103,7 @@ const AppBarLarge = ({
           {isSearchVisible &&
             (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
-          <PLUGIN_METABOT.MetabotAppBarButton />
+          {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
             <Box c="var(--mb-color-text-primary)" aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />
