@@ -183,10 +183,11 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
-  ([base metadata-provider {:keys [field-values-fn with-fields? with-metrics?]
-                            :or   {field-values-fn add-field-values
-                                   with-fields?    true
-                                   with-metrics?   true}
+  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?]
+                            :or   {field-values-fn      add-field-values
+                                   with-fields?         true
+                                   with-related-tables? true
+                                   with-metrics?        true}
                             :as   options}]
    (let [id (:id base)
          card-metadata (lib.metadata/card metadata-provider id)
@@ -201,7 +202,8 @@
          returned-fields (when with-fields?
                            (->> (lib/returned-columns card-query)
                                 field-values-fn))
-         related-tables (related-tables card-query with-fields? field-values-fn)
+         related-tables (when with-related-tables?
+                          (related-tables card-query with-fields? field-values-fn))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
@@ -209,13 +211,14 @@
           :name (:name base)
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
-          :related_tables related-tables
           :database_id (:database_id base)
           :verified (verified-review? id "card")}
-         (m/assoc-some :description (:description base)
-                       :metrics (when with-metrics?
-                                  (not-empty (mapv #(convert-metric % metadata-provider options)
-                                                   (lib/available-metrics card-query)))))))))
+         (m/assoc-some
+          :description (:description base)
+          :related_tables related-tables
+          :metrics (when with-metrics?
+                     (not-empty (mapv #(convert-metric % metadata-provider options)
+                                      (lib/available-metrics card-query)))))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
