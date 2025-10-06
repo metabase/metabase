@@ -43,6 +43,7 @@ export function TransformPage({ params }: TransformPageProps) {
   const {
     data: transform,
     isLoading,
+    isFetching,
     error,
   } = useGetTransformQuery(transformId ?? skipToken, {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
@@ -58,7 +59,7 @@ export function TransformPage({ params }: TransformPageProps) {
       : {};
   }, [transform]);
 
-  if (isLoading || error != null) {
+  if (isLoading || isFetching || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
@@ -67,10 +68,12 @@ export function TransformPage({ params }: TransformPageProps) {
   }
 
   return (
-    <QueryEditorProvider
-      initialQuery={transform.source.query}
-    >
-      <PanelGroup autoSaveId="transforms-editor-panel-layout" direction="vertical" style={{ height: "100%", width: "100%" }}>
+    <QueryEditorProvider initialQuery={transform.source.query}>
+      <PanelGroup
+        autoSaveId="transforms-editor-panel-layout"
+        direction="vertical"
+        style={{ height: "100%", width: "100%" }}
+      >
         <Panel>
           <TransformQueryPage transform={transform} />
         </Panel>
@@ -79,10 +82,16 @@ export function TransformPage({ params }: TransformPageProps) {
           <Card withBorder mx="sm" h="100%">
             <Tabs defaultValue="run" variant="pills">
               <Tabs.List>
-                <Tabs.Tab name={t`Preview`} value="preview">{t`Preview`}</Tabs.Tab>
+                <Tabs.Tab
+                  name={t`Preview`}
+                  value="preview"
+                >{t`Preview`}</Tabs.Tab>
                 <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
                 <Tabs.Tab name={t`Target`} value="target">{t`Target`}</Tabs.Tab>
-                <Tabs.Tab name={t`Dependencies`} value="dependencies">{t`Dependencies`}</Tabs.Tab>
+                <Tabs.Tab
+                  name={t`Dependencies`}
+                  value="dependencies"
+                >{t`Dependencies`}</Tabs.Tab>
               </Tabs.List>
               <Box p="md">
                 <Tabs.Panel value="preview">
