@@ -13,7 +13,7 @@ export type MetabaseDataPointObject = Pick<
 export type MetabaseClickActionPluginsConfig = (
   clickActions: ClickAction[],
   clickedDataPoint: MetabaseDataPointObject,
-) => ClickAction[];
+) => ClickAction[] | ClickAction;
 
 export type DashboardCardMenuCustomElement = ({
   question,

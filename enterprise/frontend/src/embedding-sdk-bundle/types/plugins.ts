@@ -17,7 +17,7 @@ export type MetabaseDataPointObject = {
 export type MetabaseClickActionPluginsConfig = (
   clickActions: MetabaseClickAction[],
   clickedDataPoint: MetabaseDataPointObject,
-) => MetabaseClickAction[];
+) => MetabaseClickAction[] | MetabaseClickAction;
 
 export type MetabaseDashboardPluginsConfig = {
   dashboardCardMenu?: DashboardCardMenu;

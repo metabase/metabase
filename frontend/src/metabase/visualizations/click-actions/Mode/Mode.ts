@@ -53,12 +53,39 @@ export class Mode {
     }
 
     if (this._plugins?.mapQuestionClickActions) {
-      actions = this._plugins.mapQuestionClickActions(actions, {
-        value: clicked.value,
-        column: clicked.column,
-        event: clicked.event,
-        data: clicked.data,
-      });
+      const actionsOrActionObject = this._plugins.mapQuestionClickActions(
+        actions,
+        {
+          value: clicked.value,
+          column: clicked.column,
+          event: clicked.event,
+          data: clicked.data,
+        },
+      );
+
+      // If the plugin returns a single object, it means we should call that action right away without showing the popover
+      if (
+        !Array.isArray(actionsOrActionObject) &&
+        "onClick" in actionsOrActionObject
+      ) {
+        // `performDefaultAction` checks if it only gets one action, and if it has `default: true`, it's called directly without showing the popover
+        return [
+          {
+            // makes it run without showing the popover
+            default: true,
+
+            // fallback values in case they just return `{ onClick: () => {})`}
+            section: "auto",
+            type: "custom",
+            buttonType: "horizontal",
+            name: "default",
+
+            ...(actionsOrActionObject as Partial<ClickAction>),
+          },
+        ];
+      } else {
+        actions = actionsOrActionObject as ClickAction[];
+      }
     }
 
     return actions;
