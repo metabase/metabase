@@ -34,7 +34,7 @@
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} [:ref ::lib.schema.order-by/order-by]]
+    [:order-by        {:optional true} [:sequential [:ref ::lib.schema.order-by/order-by]]]
     [:rff             {:optional true} fn?]]])
 
 (mu/defn- table-rows-sample-query :- ::lib.schema/query
