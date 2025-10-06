@@ -24,7 +24,7 @@ export function RelatedSettingsSection({
         {t`Related settings`}
       </Text>
 
-      <SimpleGrid cols={3} spacing="md">
+      <SimpleGrid cols={{ xs: 1, md: 3 }} spacing="md">
         {items?.map((item) => (
           <RelatedSettingCard
             key={item.to}

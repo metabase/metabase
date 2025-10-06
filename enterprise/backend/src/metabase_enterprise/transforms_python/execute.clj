@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
@@ -261,15 +262,17 @@
           output-manifest (python-runner/read-output-manifest @shared-storage-ref)
           events          (python-runner/read-events @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
-      (when (seq events)
-        (replace-python-logs! message-log events))
+      (replace-python-logs! message-log events)
       (if (not= 200 status)
-        (throw (ex-info "Python runner call failed"
-                        {:transform-message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))
-                         :status-code       400
-                         :api-status-code   status
-                         :body              body
-                         :events            events}))
+        (do
+          (when (:timeout body)
+            (transforms/timeout-run! run-id))
+          (throw (ex-info "Python runner call failed"
+                          {:transform-message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))
+                           :status-code       400
+                           :api-status-code   status
+                           :body              body
+                           :events            events})))
         (try
           (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
                 temp-file (.toFile temp-path)]

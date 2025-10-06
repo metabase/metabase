@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import type {
   BrowserEmbedOptions,
@@ -61,3 +61,24 @@ export const getDefaultSdkIframeEmbedSettings = (
     useExistingUserSession: true,
   };
 };
+
+export const getResourceIdFromSettings = (
+  settings: SdkIframeEmbedSetupSettings,
+): string | number | undefined =>
+  match(settings)
+    .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
+    .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
+    .with({ questionId: P.nonNullable }, (s) => s.questionId)
+    .otherwise(() => undefined);
+
+export const getExperienceFromSettings = (
+  settings: SdkIframeEmbedSetupSettings,
+): SdkIframeEmbedSetupExperience =>
+  match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(settings)
+    .with({ template: "exploration" }, () => "exploration")
+    .with({ componentName: "metabase-question" }, () => "chart")
+    .with({ componentName: "metabase-browser" }, () => "browser")
+    .with({ componentName: "metabase-dashboard" }, () => "dashboard")
+    // TODO(EMB-869): add Metabot experience to embed flow - replace this with "metabot"
+    .with({ componentName: "metabase-metabot" }, () => "chart")
+    .exhaustive();

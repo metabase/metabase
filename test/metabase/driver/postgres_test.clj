@@ -628,13 +628,13 @@
                (mt/rows
                 (qp/process-query
                  (assoc (mt/native-query
-                          {:query         "SELECT * FROM users WHERE {{user}}"
-                           :template-tags {:user
-                                           {:name         "user"
-                                            :display_name "User ID"
-                                            :type         "dimension"
-                                            :widget-type  "number"
-                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                         {:query         "SELECT * FROM users WHERE {{user}}"
+                          :template-tags {:user
+                                          {:name         "user"
+                                           :display_name "User ID"
+                                           :type         "dimension"
+                                           :widget-type  "number"
+                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -645,13 +645,13 @@
                (mt/rows
                 (qp/process-query
                  (assoc (mt/native-query
-                          {:query         "SELECT * FROM users WHERE {{user}}"
-                           :template-tags {:user
-                                           {:name         "user"
-                                            :display_name "User ID"
-                                            :type         "dimension"
-                                            :widget-type  :number
-                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                         {:query         "SELECT * FROM users WHERE {{user}}"
+                          :template-tags {:user
+                                          {:name         "user"
+                                           :display_name "User ID"
+                                           :type         "dimension"
+                                           :widget-type  :number
+                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
