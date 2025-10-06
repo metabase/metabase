@@ -112,11 +112,7 @@
                     (str "collections/" id "_other_name/subdir/asdf.txt")]]
         (testing path
           (is (= (str "collections/" id) (#'git/path-prefix path)))
-          (is (true? (#'git/matches-prefix path #{(str "collections/" id) (str "collections/" (u/generate-nano-id))}))))))
-    (testing "Special collections"
-      (is (= "collections/transformtags" (#'git/path-prefix "collections/transformtags/somefile.txt")))
-      (is (true? (#'git/matches-prefix "collections/transformtags/somefile.txt" #{"collections/transformtags"})))
-      (is (= "collections/transformjobs" (#'git/path-prefix "collections/transformjobs/somefile.txt"))))))
+          (is (true? (#'git/matches-prefix path #{(str "collections/" id) (str "collections/" (u/generate-nano-id))}))))))))
 
 (deftest qualify-branch-test
   (is (= "refs/heads/main" (#'git/qualify-branch "main")))
@@ -296,47 +292,11 @@
             (is (= ["Updating Branch" "New Branch" "Update 2" "Update 1" "Initial commit"] (map :message (git/log (assoc remote :commit-ish "new-branch")))))))))))
 
 (deftest write-special-collections
-  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
-        transformtags-path "collections/transformtags/"
-        transformjobs-path "collections/transformjobs/"]
+  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
     (mt/with-temp-dir [remote-dir nil]
       (let [[_master _remote] (init-source! "master" remote-dir
                                             :files {"master.txt" "File in master"
-                                                    (str subdir-path "path.txt") "File in subdir"})
-            transform-branch (->source! "transform-branch" _remote)]
-        (testing "Special collections"
-          (source.p/write-files! transform-branch "Add transforms" [{:path (str transformtags-path "tag1.yaml") :content "tag1"}
-                                                                    {:path (str transformtags-path "tag2.yaml") :content "tag2"}
-                                                                    {:path (str transformjobs-path "job1.yaml") :content "job1"}
-                                                                    {:path (str transformjobs-path "job2.yaml") :content "job2"}])
-          (is (= ["Add transforms" "Initial commit"] (map :message (git/log transform-branch))))
-          (is (= [(str subdir-path "path.txt")
-                  (str transformjobs-path "job1.yaml")
-                  (str transformjobs-path "job2.yaml")
-                  (str transformtags-path "tag1.yaml")
-                  (str transformtags-path "tag2.yaml")
-                  "master.txt"]
-                 (source.p/list-files transform-branch)))
-
-          (testing "Can update transforms"
-            (source.p/write-files! transform-branch "Update transforms" [{:path (str transformtags-path "tag1.yaml") :content "updated tag1"}
-                                                                         {:path (str transformtags-path "tag2.yaml") :content "updated tag2"}
-                                                                         {:path (str transformtags-path "tag3.yaml") :content "updated tag3"}
-                                                                         {:path (str transformjobs-path "job1.yaml") :content "updated job1"}
-                                                                         {:path (str transformjobs-path "job2.yaml") :content "updated job2"}
-                                                                         {:path (str transformjobs-path "job3.yaml") :content "updated job3"}
-                                                                         {:path (str subdir-path "path.txt") :content "updated other-collection"}])
-            (is (= ["Update transforms" "Add transforms" "Initial commit"] (map :message (git/log transform-branch))))
-
-            (is (= [(str subdir-path "path.txt")
-                    (str transformjobs-path "job1.yaml")
-                    (str transformjobs-path "job2.yaml")
-                    (str transformjobs-path "job3.yaml")
-                    (str transformtags-path "tag1.yaml")
-                    (str transformtags-path "tag2.yaml")
-                    (str transformtags-path "tag3.yaml")
-                    "master.txt"]
-                   (source.p/list-files transform-branch)))))))))
+                                                    (str subdir-path "path.txt") "File in subdir"})]))))
 
 (deftest concurrent-access
   (let [subdir-path (str "collections/" (u/generate-nano-id "a") "_subdir")]

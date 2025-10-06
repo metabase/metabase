@@ -158,14 +158,10 @@
 (defn- path-prefix
   "Pulls off the collection prefix from a path, where the prefix is the unique identifier for it, even if the name changes"
   [path]
-  (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)
-        transform-tags-matcher (re-matcher #"^(collections/transformtags)/" path)
-        transform-jobs-matcher (re-matcher #"^(collections/transformjobs)/" path)]
-    (cond
-      (re-find matcher) (second (re-groups matcher))
-      (re-find transform-tags-matcher) (second (re-groups transform-tags-matcher))
-      (re-find transform-jobs-matcher) (second (re-groups transform-jobs-matcher))
-      :else path)))
+  (let [matcher (re-matcher #"^(collections/[^/]{21})_[^/]+/" path)]
+    (if (re-find matcher)
+      (second (re-groups matcher))
+      path)))
 
 (defn- matches-prefix [path prefixes]
   (some #(or (= % path) (str/starts-with? path %)) prefixes))
