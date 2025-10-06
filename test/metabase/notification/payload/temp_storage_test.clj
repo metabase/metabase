@@ -27,7 +27,7 @@
       (is (= (rows 4) (get-in result [:data :rows])))))
 
   (testing "At threshold - rows stream to disk"
-    (let [result (run-rff 5 (rows 5))
+    (let [result  (run-rff 5 (rows 5))
           storage (get-in result [:data :rows])]
       (is (= 5 (:row_count result)))
       (is (temp-storage/is-streaming-temp-file? storage))
@@ -35,12 +35,27 @@
       (temp-storage/cleanup! storage)))
 
   (testing "Over threshold - rows stream to disk"
-    (let [result (run-rff 5 (rows 6))
+    (let [result  (run-rff 5 (rows 6))
           storage (get-in result [:data :rows])]
       (is (= 6 (:row_count result)))
       (is (temp-storage/is-streaming-temp-file? storage))
       (is (= (rows 6) @storage))
-      (temp-storage/cleanup! storage))))
+      (temp-storage/cleanup! storage)))
+
+  (testing "Over max-file-size threshold, aborts query"
+    (with-redefs [temp-storage/max-file-size-bytes (* 4 1024)]
+      (let [many-rows 5000000
+            result    (run-rff 5 (rows many-rows))
+            storage   (get-in result [:data :rows])]
+        ;; row count here is how many query results were returned
+        (is (< (:row_count result) many-rows))
+        (is (temp-storage/is-streaming-temp-file? storage))
+        (is (:notification/truncated? result))
+        (with-redefs [temp-storage/max-file-size-bytes (* 10 1024 1024)]
+            ;; bump the limit back up before dereferencing and then see that we _stored_ fewer results than otherwise
+            ;; might have been returned. Without resetting this, dereferencing the rows would error as it was larger
+            ;; than the file size limit
+            (is (< (count @storage) many-rows)))))))
 
 (deftest streaming-edge-cases-test
   (testing "Empty rows"

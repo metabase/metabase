@@ -218,13 +218,17 @@
                   (.close output-stream)
                   (let [file-size (.length file)
                         file-size-mb (/ file-size 1024.0 1024.0)]
-                    (log/infof "💾 Stored %d rows to disk: %.2f MB (never loaded into memory)"
+                    (log/infof "💾 Stored %d rows to disk: %.2f MB (never loaded into memory)%s"
                                @row-count
-                               file-size-mb)
+                               file-size-mb
+                               (when (:notification/truncated? @streaming-state)
+                                 " (note query results were truncated)"))
                     (-> result
                         (assoc :row_count @row-count
                                :status :completed
                                :data.rows-file-size file-size)
+                        (cond-> (:notification/truncated? @streaming-state)
+                          (assoc :notification/truncated? true))
                         (assoc-in [:data :rows] (StreamingTempFileStorage. file context))))
                   (catch Exception e
                     (u/ignore-exceptions (.close output-stream))
@@ -245,9 +249,16 @@
           (if @streaming?
             ;; Already streaming - write row directly to file
 
-            (let [{:keys [^DataOutputStream output-stream]} @streaming-state]
+            (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
               (write-row-to-stream! output-stream row)
-              result)
+              (if (> (.length file) (* 1.3 max-file-size-bytes))
+                (do (vswap! streaming-state assoc :notification/truncated? true)
+                    (log/warnf "Results have exceeded 1.3 times of `max-file-size-bytes` of %s (max: %s). Truncating query results. %s"
+                               (human-readable-size (.length file))
+                               (human-readable-size max-file-size-bytes)
+                               (when context (format "(%s)" (pr-str context))))
+                    (reduced result))
+                result))
 
             ;; Still in memory - check if we should start streaming
             (do
