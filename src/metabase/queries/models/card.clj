@@ -2,9 +2,7 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
@@ -993,19 +991,12 @@
             {:collection_id 1 :description \"foo\"}
             {:collection_id 2 :description \"diff\"})"
   [consider card-before updates]
-  ;; have to ignore keyword vs strings over api. `{:type :query}` vs `{:type "query"}`
-  (let [prepare              (fn prepare [card] (walk/prewalk (fn [x]
-                                                                (if (keyword? x)
-                                                                  (->> [(namespace x)
-                                                                        (name x)]
-                                                                       (remove nil?)
-                                                                       (str/join "/"))
-                                                                  x))
-                                                              card))
-        before               (prepare (select-keys card-before consider))
-        after                (prepare (select-keys updates consider))
-        [_ changes-in-after] (data/diff before after)]
-    (boolean (seq changes-in-after))))
+  ;; normalize the query before comparison
+  (let [after (-> updates
+                  (m/update-existing :dataset_query lib-be/normalize-query)
+                  (update :query_type keyword))
+        before  (select-keys card-before consider)]
+    (boolean (some #(api/column-will-change? % before after) consider))))
 
 (def ^:private card-compare-keys
   "When comparing a card to possibly unverify, only consider these keys as changing something 'important' about the

@@ -1,6 +1,7 @@
 (ns metabase.queries.models.card-test
   (:require
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
@@ -723,18 +724,21 @@
 (deftest ^:parallel changed?-test
   (letfn [(changed? [before after]
             (#'card/changed? @#'card/card-compare-keys before after))]
-    (testing "Ignores keyword/string"
-      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}})))
-      (is (false? (changed? {:dataset_query {:silly/namespaced ::keywords}} {:dataset_query {"silly/namespaced" "metabase.queries.models.card-test/keywords"}}))))
     (testing "Ignores properties not in `api.card/card-compare-keys"
       (is (false? (changed? {:collection_id 1
                              :collection_position 0}
                             {:collection_id 2
                              :collection_position 1}))))
+    (testing "Compares *normalized* queries"
+      (is (false? (changed? {:dataset_query {:type :query
+                                             :query (mt/query orders)}}
+                            {:dataset_query {:type :query
+                                             :query (walk/stringify-keys (mt/query orders))}}))))
     (testing "Sees changes"
-      (is (true? (changed? {:dataset_query {:type :query}}
+      (is (true? (changed? {:dataset_query {:type :query
+                                            :query (mt/query orders)}}
                            {:dataset_query {:type :query
-                                            :query {}}})))
+                                            :query (mt/query checkins)}})))
       (testing "But only when they are different in the after, not just omitted"
         (is (false? (changed? {:dataset_query {} :collection_id 1}
                               {:collection_id 1})))
