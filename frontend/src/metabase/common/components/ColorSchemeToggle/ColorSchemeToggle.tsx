@@ -21,7 +21,7 @@ const getTooltipText = (
     : baseText;
 };
 
-export function ColorSchemeToggle(props: ActionIconProps & { id: string }) {
+export function ColorSchemeToggle(props: ActionIconProps & { id?: string }) {
   const { resolvedColorScheme, systemColorScheme, toggleColorScheme } =
     useColorScheme();
 
