@@ -14,6 +14,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.config.core :as config]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.eid-translation.core :as eid-translation]
@@ -1265,7 +1266,8 @@
                 :namespace       effective-namespace}
                (when parent-collection
                  {:location (collection/children-location parent-collection)})))
-      (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*})
+      (when config/ee-available?
+        (events/publish-event! :event/collection-create {:object <> :user-id api/*current-user-id*}))
       (events/publish-event! :event/collection-touch {:collection-id (:id <>) :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :post "/"
@@ -1464,7 +1466,8 @@
     ;; if we're trying to move or archive the Collection, go ahead and do that
     (move-or-archive-collection-if-needed! collection-before-update collection-updates)
     (let [updated-collection (t2/select-one :model/Collection :id id)]
-      (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*})
+      (when config/ee-available?
+        (events/publish-event! :event/collection-update {:object updated-collection :user-id api/*current-user-id*}))
       (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*})))
   ;; finally, return the updated object
   (collection-detail (t2/select-one :model/Collection :id id)))
