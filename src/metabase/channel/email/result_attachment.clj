@@ -89,7 +89,8 @@
     dashcard :dashcard
     result :result
     :as part}]
-  (when (pos-int? (:row_count result))
+  (when (and (or (:include_csv card) (:include_xls card))
+             (pos-int? (:row_count result)))
     (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
           result            (:result (maybe-realize-data-rows part))
           visualizer-title (when (and dashcard (get-in dashcard [:visualization_settings :visualization]))
