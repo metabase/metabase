@@ -4,6 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import Snippets from "metabase/entities/snippets";
 import { Flex, Icon } from "metabase/ui";
@@ -63,7 +64,9 @@ class SnippetRowInner extends Component {
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
               className={CS.hoverChild}
             />
-            <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
+            <Ellipsified style={{ maxWidth: 270 }} className={cx(CS.ml1)}>
+              {snippet.name}
+            </Ellipsified>
           </Flex>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
