@@ -1,9 +1,0 @@
-built_in_type: null
-created_at: '2025-09-18T19:48:23.747287Z'
-entity_id: 9E-m1vVPicsuK226FDxM9
-name: custom-etl
-updated_at: '2025-09-18T19:48:23.747287Z'
-serdes/meta:
-- id: 9E-m1vVPicsuK226FDxM9
-  label: custom_etl
-  model: TransformTag

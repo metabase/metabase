@@ -1,9 +1,0 @@
-built_in_type: daily
-created_at: '2025-09-18T19:48:23.746883Z'
-entity_id: O22Rax9PNu1S_q5IWG8pT
-name: daily
-updated_at: '2025-09-18T19:48:23.746884Z'
-serdes/meta:
-- id: O22Rax9PNu1S_q5IWG8pT
-  label: daily
-  model: TransformTag

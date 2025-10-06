@@ -2123,17 +2123,17 @@
                            :model/TransformTag
                            {hourly-tag-id :id
                             hourly-tag-eid :entity_id}
-                           {:name "hourly" :built_in_type "hourly"}
+                           {:name "hourly" :built_in_type "hourly" :entity_id "hourlyhourlyhourlyxxx"}
 
                            :model/TransformTag
                            {daily-tag-id :id
                             daily-tag-eid :entity_id}
-                           {:name "daily" :built_in_type "daily"}
+                           {:name "daily" :built_in_type "daily" :entity_id "dailydailydailydailyx"}
 
                            :model/TransformTag
                            {custom-tag-id :id
                             custom-tag-eid :entity_id}
-                           {:name "custom-etl"}
+                           {:name "custom-etl" :entity_id "custometlcustometlcus"}
 
                            ;; Create Transform
                            :model/Transform
@@ -2141,9 +2141,12 @@
                             transform-eid :entity_id}
                            {:name "Test Transform"
                             :description "A test transform for serialization"
+                            :entity_id "2HzIFwJ6720JAx07UMavl"
                             :source {:database db-id
                                      :type "query"
-                                     :query {:source-table table-id}}
+                                     :query {:type "query"
+                                             :database db-id
+                                             :source-table table-id}}
                             :target {:database db-id
                                      :type "table"
                                      :schema "public"
