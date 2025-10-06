@@ -1,11 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import type { Location } from "history";
 import { useState } from "react";
+import { Panel, PanelGroup } from "react-resizable-panels";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,6 +25,7 @@ import type {
 
 import { QueryEditor, QueryEditorProvider } from "../../components/QueryEditor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
+import { TransformDrawer } from "../TransformPage";
 
 import {
   CreateTransformModal,
@@ -33,6 +35,7 @@ import {
   type InitialTransformSource,
   getInitialTransformSource,
 } from "./utils";
+
 
 type NewTransformPageParams = {
   type?: string;
@@ -72,7 +75,7 @@ export function NewTransformPage({
   }
 
   return (
-    <AdminSettingsLayout fullWidth>
+    <>
       <NewTransformPageInner
         route={route}
         location={location}
@@ -82,7 +85,7 @@ export function NewTransformPage({
           suggestedTransform,
         )}
       />
-    </AdminSettingsLayout>
+    </>
   );
 }
 
@@ -144,15 +147,28 @@ export function NewTransformPageInner({
 
   return (
     <QueryEditorProvider initialQuery={source.query}>
-      <NewTransformEditorBody
-        initialSource={initialSource}
-        proposedSource={proposedSource}
-        onChange={setSource}
-        onSave={handleSave}
-        onCancel={handleCancel}
-        onRejectProposed={clearProposed}
-        onAcceptProposed={handleAcceptProposed}
-      />
+      <PanelGroup
+        autoSaveId="transforms-editor-panel-layout"
+        direction="vertical"
+        style={{ height: "100%", width: "100%" }}
+      >
+        <Panel>
+          <NewTransformEditorBody
+            initialSource={initialSource}
+            proposedSource={proposedSource}
+            onChange={setSource}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            onRejectProposed={clearProposed}
+            onAcceptProposed={handleAcceptProposed}
+          />
+        </Panel>
+        <ResizeHandle direction="vertical" />
+        <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
+          <TransformDrawer transform={{ source }} />
+        </Panel>
+      </PanelGroup>
+
       {isModalOpened && source && (
         <CreateTransformModal
           source={source as TransformSource}
