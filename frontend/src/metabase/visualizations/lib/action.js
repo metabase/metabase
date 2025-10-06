@@ -2,7 +2,6 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { open } from "metabase/lib/dom";
 
 export function performAction(
@@ -19,11 +18,6 @@ export function performAction(
     }
   }
   if (action.url) {
-    // (metabase#51099) disable url click behavior when in sdk
-    if (isEmbeddingSdk()) {
-      return true;
-    }
-
     const url = action.url();
     const ignoreSiteUrl = action.ignoreSiteUrl;
     if (url) {

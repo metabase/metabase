@@ -9,9 +9,7 @@ import cx from "classnames";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { useSelector } from "metabase/lib/redux";
 import { Box } from "metabase/ui";
-import { getCommentSidebarOpen } from "metabase-enterprise/documents/selectors";
 
 import styles from "./FlexContainer.module.css";
 
@@ -87,8 +85,6 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
-
-  const shouldDisableResizing = useSelector(getCommentSidebarOpen);
 
   // Get column count and current widths
   const columnCount = node.content.childCount;
@@ -196,7 +192,7 @@ const FlexContainerComponent: React.FC<NodeViewProps> = ({
   );
 
   const renderResizeHandles = () => {
-    if (columnCount <= 1 || shouldDisableResizing) {
+    if (columnCount <= 1) {
       return null;
     }
 

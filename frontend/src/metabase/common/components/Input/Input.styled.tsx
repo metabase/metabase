@@ -11,7 +11,7 @@ import {
   inputTypography,
 } from "metabase/common/style/input";
 import { color } from "metabase/lib/colors";
-import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
 
 import type { InputSize } from "../../style/types";
 
@@ -61,7 +61,7 @@ export const InputField = styled.input<InputProps>`
   font-family: inherit;
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: ${space(1)};
+  border-radius: var(--mantine-spacing-sm);
   background-color: ${(props) =>
     props.readOnly
       ? "var(--mb-color-background-disabled)"
