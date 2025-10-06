@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
-import { Box} from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import Revision from "./Revision";
 
@@ -35,10 +35,7 @@ export default class RevisionHistory extends Component {
       >
         {() => (
           <>
-            <Box
-              py="md"
-              data-testid="segment-revisions"
-            >
+            <Box py="md" data-testid="segment-revisions">
               <h2 className={CS.mb4}>
                 {t`Revision history for`} &quot;{segment.name}&quot;
               </h2>

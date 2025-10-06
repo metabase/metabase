@@ -23,7 +23,7 @@ import SegmentListApp from "./SegmentListApp";
 
 export const UpdateSegmentForm = ({
   params,
-  route
+  route,
 }: {
   params: { id: string };
   route: Route;
@@ -38,9 +38,12 @@ export const UpdateSegmentForm = ({
   );
   const [updateSegment] = useUpdateSegmentMutation();
 
-  const handleSubmit = useCallback(async (values: Partial<UpdateSegmentRequest>) => {
-    return updateSegment(values as UpdateSegmentRequest).unwrap();
-  }, [updateSegment]);
+  const handleSubmit = useCallback(
+    async (values: Partial<UpdateSegmentRequest>) => {
+      return updateSegment(values as UpdateSegmentRequest).unwrap();
+    },
+    [updateSegment],
+  );
 
   const isLoading = isSegmentLoading || isTableLoading;
 
@@ -49,26 +52,21 @@ export const UpdateSegmentForm = ({
   }
 
   return (
-    <SegmentForm
-      segment={segment}
-      onSubmit={handleSubmit}
-      route={route}
-    />
+    <SegmentForm segment={segment} onSubmit={handleSubmit} route={route} />
   );
 };
 
 export const CreateSegmentForm = ({ route }: { route: Route }) => {
   const [createSegment] = useCreateSegmentMutation();
 
-  const handleSubmit = useCallback(async (segment: Partial<CreateSegmentRequest>) => {
+  const handleSubmit = useCallback(
+    async (segment: Partial<CreateSegmentRequest>) => {
       return createSegment(segment as CreateSegmentRequest).unwrap();
     },
     [createSegment],
   );
 
-  return (
-    <SegmentForm onSubmit={handleSubmit} route={route} />
-  );
+  return <SegmentForm onSubmit={handleSubmit} route={route} />;
 };
 
 export const SegmentApp = ({
