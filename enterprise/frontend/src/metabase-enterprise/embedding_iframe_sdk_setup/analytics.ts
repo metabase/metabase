@@ -13,7 +13,7 @@ import type {
 import {
   getDefaultSdkIframeEmbedSettings,
   getResourceIdFromSettings,
-} from "./utils/default-embed-setting";
+} from "./utils/get-default-sdk-iframe-embed-setting";
 
 /**
  * Tracking every embed settings would bloat Snowplow, so we only track
@@ -71,7 +71,10 @@ export const trackEmbedWizardOptionsCompleted = (
   experience: SdkIframeEmbedSetupExperience,
 ) => {
   // Get defaults for this experience type (with a dummy resource ID)
-  const defaultSettings = getDefaultSdkIframeEmbedSettings(experience, 0);
+  const defaultSettings = getDefaultSdkIframeEmbedSettings({
+    experience,
+    resourceId: 0,
+  });
 
   // Does the embed settings diverge from the experience defaults?
   const hasCustomOptions = !_.isEqual(
