@@ -13,21 +13,33 @@ import type { Card, Dashboard } from "metabase-types/api";
 const getResource = ({
   experience,
   dashboard,
+  isDashboardLoading,
   card,
+  isCardLoading,
 }: {
   experience: SdkIframeEmbedSetupExperience;
   dashboard: Dashboard | null | undefined;
   card: Card | null | undefined;
+  isDashboardLoading: boolean;
+  isCardLoading: boolean;
 }) => {
   const isResourceWithDifferentTypeLoading =
-    (dashboard && experience !== "dashboard") ||
-    (card && experience !== "chart");
+    (experience !== "dashboard" && isDashboardLoading) ||
+    (experience !== "chart" && isCardLoading);
 
   if (isResourceWithDifferentTypeLoading) {
     return null;
   }
 
-  return dashboard ?? card ?? null;
+  if (experience === "dashboard" && dashboard) {
+    return dashboard;
+  }
+
+  if (experience === "chart" && card) {
+    return card;
+  }
+
+  return null;
 };
 
 export const useGetCurrentResource = ({
@@ -73,6 +85,8 @@ export const useGetCurrentResource = ({
     experience,
     dashboard,
     card,
+    isDashboardLoading,
+    isCardLoading,
   });
 
   return {
