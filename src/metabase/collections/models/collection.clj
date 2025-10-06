@@ -144,7 +144,6 @@
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/remote-sync-protected)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
@@ -1172,7 +1171,7 @@
                                                          new-collection-id)
                 true))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Collection :is_remote_synced]
+(methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
   [_model k items]
   (mi/instances-with-hydrated-data items k

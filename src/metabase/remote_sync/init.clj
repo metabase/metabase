@@ -5,7 +5,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
   [model k items]
   (mi/instances-with-hydrated-data items k

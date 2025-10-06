@@ -73,10 +73,14 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
+                 :is_remote_synced    false
                  :id                  "root"
                  :can_restore         false
                  :can_delete          false}
-                (assoc (into {:is_personal false} collection) :can_write true :can_delete false)]
+                (assoc (into {:is_personal false} collection)
+                       :can_write true
+                       :can_delete false
+                       :is_remote_synced false)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -659,6 +663,7 @@
                   :description         nil
                   :entity_id           (:entity_id card)
                   :moderated_status    "verified"
+                  :is_remote_synced    false
                   :model               "card"
                   :last_used_at        (:last_used_at card)
                   :fully_parameterized  true}])

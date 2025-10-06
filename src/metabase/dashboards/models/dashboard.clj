@@ -41,8 +41,7 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id)
-  (derive :hook/remote-sync-protected))
+  (derive :hook/entity-id))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
