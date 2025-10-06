@@ -286,9 +286,10 @@
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (cond
-                    (int? model-id)    (u/prog1 (card-details model-id (assoc options :only-model true))
-                                         (api/check (= :model (:type <>)) 404
-                                                    (format "ID %s is not a valid model id, it's a question" model-id)))
+                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
+                                         (if (= :model (:type card))
+                                           card
+                                           (format "ID %s is not a valid model id, it's a question" model-id)))
                     (int? table-id)    (table-details table-id options)
                     (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                                          (card-details (parse-long card-id) options)
