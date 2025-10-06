@@ -18,3 +18,19 @@
   :export?    false
   :type       :integer
   :visibility :internal)
+
+(defsetting enforce-notification-temp-file-size-limit
+  "Whether to enforce the limit on notification temporary files which store query results. These results must ultimately
+  be stored in memory to create the visualizations. Ignoring a limit here leaves the instance at risk of out of memory
+  errors."
+  :type :boolean
+  :default true
+  :export? false
+  :visibility :internal)
+
+(defsetting notification-temp-file-size-max-bytes
+  "The maximum file size that will be created when storing notification query results on disk. Note this is in BYTES. Default value is 10485760 which is `10 * 1024 * 1024`."
+  :type :integer
+  :default (* 10 1024 1024)
+  :export? false
+  :visibility :internal)

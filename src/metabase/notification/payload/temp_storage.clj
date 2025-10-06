@@ -12,6 +12,7 @@
   (:require
    [clojure.java.io :as io]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.notification.settings :as notification.settings]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -23,9 +24,6 @@
    (java.util.zip GZIPOutputStream)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private max-file-size-bytes
-  (* 10 1024 1024))
 
 (def ^:private temp-dir
   (delay
@@ -63,22 +61,25 @@
 
 (defn- read-rows-from-file
   "Read rows from a temp file. Returns vector of rows.
-  Throws exception if file is larger than max-file-size-bytes.
-  Handles both counted and streaming formats."
+  Throws exception if file is larger than [[notification.settings/notification-temp-file-size-max-bytes]]
+  and [[notification.settings/enforce-notification-temp-file-size-limit]] is enabled.  Handles both counted and
+  streaming formats."
   [^File file]
   (when-not (.exists file)
     (throw (ex-info "Temp file no longer exists" {:file file})))
 
   (let [file-size (.length file)
         file-size-mb (/ file-size 1024.0 1024.0)]
-    (when (> file-size max-file-size-bytes)
+    (when (and (notification.settings/enforce-notification-temp-file-size-limit)
+               (> file-size (notification.settings/notification-temp-file-size-max-bytes)))
       (log/warnf "⚠️  SKIPPING LOAD - File too large: %.2f MB (max: %.2f MB). File will NOT be loaded into memory."
                  file-size-mb
-                 (/ max-file-size-bytes 1024.0 1024.0))
+                 (/ (notification.settings/notification-temp-file-size-max-bytes)
+                    1024.0 1024.0))
       (throw (ex-info "Result file too large to load into memory"
                       {:type :notification/file-too-large
                        :file-size file-size
-                       :max-size max-file-size-bytes})))
+                       :max-size (notification.settings/notification-temp-file-size-max-bytes)})))
 
     (log/infof "📂 Loading streamed results from disk: %.2f MB" file-size-mb)
 
@@ -251,11 +252,12 @@
 
             (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
               (write-row-to-stream! output-stream row)
-              (if (> (.length file) (* 1.3 max-file-size-bytes))
+              (if (and (notification.settings/enforce-notification-temp-file-size-limit)
+                       (> (.length file) (* 1.3 (notification.settings/notification-temp-file-size-max-bytes))))
                 (do (vswap! streaming-state assoc :notification/truncated? true)
-                    (log/warnf "Results have exceeded 1.3 times of `max-file-size-bytes` of %s (max: %s). Truncating query results. %s"
+                    (log/warnf "Results have exceeded 1.3 times of `notification-temp-file-size-max-bytes` of %s (max: %s). Truncating query results. %s"
                                (human-readable-size (.length file))
-                               (human-readable-size max-file-size-bytes)
+                               (human-readable-size (notification.settings/notification-temp-file-size-max-bytes))
                                (when context (format "(%s)" (pr-str context))))
                     (reduced result))
                 result))

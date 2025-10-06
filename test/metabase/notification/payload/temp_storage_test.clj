@@ -1,7 +1,8 @@
 (ns metabase.notification.payload.temp-storage-test
   (:require
    [clojure.test :refer :all]
-   [metabase.notification.payload.temp-storage :as temp-storage]))
+   [metabase.notification.payload.temp-storage :as temp-storage]
+   [metabase.test.util :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -43,7 +44,8 @@
       (temp-storage/cleanup! storage)))
 
   (testing "Over max-file-size threshold, aborts query"
-    (with-redefs [temp-storage/max-file-size-bytes (* 4 1024)]
+    (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 4 1024)
+                                       enforce-notification-temp-file-size-limit true]
       (let [many-rows 5000000
             result    (run-rff 5 (rows many-rows))
             storage   (get-in result [:data :rows])]
@@ -51,11 +53,12 @@
         (is (< (:row_count result) many-rows))
         (is (temp-storage/is-streaming-temp-file? storage))
         (is (:notification/truncated? result))
-        (with-redefs [temp-storage/max-file-size-bytes (* 10 1024 1024)]
-            ;; bump the limit back up before dereferencing and then see that we _stored_ fewer results than otherwise
-            ;; might have been returned. Without resetting this, dereferencing the rows would error as it was larger
-            ;; than the file size limit
-            (is (< (count @storage) many-rows)))))))
+        (mt/with-temporary-setting-values [enforce-notification-temp-file-size-limit false]
+           ;; remove enforcing notification size limit before dereferencing and then see that we _stored_ fewer
+           ;; results than otherwise might have been returned. Without resetting this, dereferencing the rows would
+           ;; error as it was larger than the file size limit
+
+          (is (< (count @storage) many-rows)))))))
 
 (deftest streaming-edge-cases-test
   (testing "Empty rows"
