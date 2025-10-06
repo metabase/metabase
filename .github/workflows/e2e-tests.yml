@@ -92,7 +92,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     needs: e2e-tests
-    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    if: always() && !cancelled()
     steps:
       - uses: actions/checkout@v4
         with:
@@ -118,7 +118,8 @@ jobs:
             const fs = require('fs');
             const path = require('path');
 
-            const chunkFiles = glob.sync('timing-files/*/chunkTimings.json');
+            const globber = await glob.create('timing-files/*/chunkTimings.json');
+            const chunkFiles = await globber.glob();
 
             const specs = new Map();
             chunkFiles.forEach(file => {
