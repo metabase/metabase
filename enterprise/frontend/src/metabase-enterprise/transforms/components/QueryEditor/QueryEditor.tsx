@@ -22,10 +22,7 @@ import { EditorHeader } from "./EditorHeader";
 import { EditorValidationCard } from "./EditorValidationCard";
 import S from "./QueryEditor.module.css";
 import { useQueryEditorContext } from "./QueryEditorContext";
-import {
-  getValidationResult,
-  useSelectedText,
-} from "./utils";
+import { getValidationResult, useSelectedText } from "./utils";
 
 type QueryEditorProps = {
   transform?: Transform | undefined;
@@ -113,7 +110,9 @@ export function QueryEditor({
     include_analytics: true,
   });
 
-  if (!isInitiallyLoaded || isLoading) {
+  const loadingQuestion = !isNew && !question?._card?.dataset_query?.database;
+
+  if (!isInitiallyLoaded || isLoading || loadingQuestion) {
     return (
       <Center>
         <Loader />

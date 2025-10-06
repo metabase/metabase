@@ -1,21 +1,13 @@
-import type { Location } from "history";
-import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { skipToken } from "metabase/api";
-import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
-import {
-  useUpdateTransformMutation,
-} from "metabase-enterprise/api";
+import { useUpdateTransformMutation } from "metabase-enterprise/api";
 import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import type {
   DraftTransformSource,
@@ -26,62 +18,13 @@ import type {
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
-type TransformQueryPageParams = {
-  transformId: string;
-};
-
-type TransformQueryPageProps = {
-  params: TransformQueryPageParams;
-  location: Location;
-  route: Route;
-};
-
-export function TransformQueryPage({
-  params,
-  location,
-  route,
-}: TransformQueryPageProps) {
-  const transformId = Urls.extractEntityId(params.transformId);
-  const {
-    data: transform,
-    isLoading,
-    error,
-  } = useGetTransformQuery(transformId ?? skipToken);
-
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (transform == null) {
-    return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
-  }
-
-  return (
-    <TransformQueryPageBody
-      transform={transform}
-      location={location}
-      route={route}
-    />
-  );
-}
-
-type TransformQueryPageBodyProps = {
-  transform: Transform;
-  location: Location;
-  route: Route;
-};
-
-export function TransformQueryPageBody({
-  transform,
-  location,
-  route,
-}: TransformQueryPageBodyProps) {
+export function TransformQueryPage({ transform }: { transform: Transform }) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const { setSource, proposedSource, acceptProposed, clearProposed, isDirty } =
+  const { setSource, proposedSource, acceptProposed, clearProposed } =
     useSourceState<DraftTransformSource>(transform.id, transform.source);
 
   const {
@@ -118,28 +61,9 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  if (transform.source.type === "python") {
-    return (
-      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
-        transform={transform}
-        initialSource={transform.source}
-        proposedSource={
-          proposedSource?.type === "python" ? proposedSource : undefined
-        }
-        isNew={false}
-        isSaving={isSaving}
-        onSave={handleSaveSource}
-        onCancel={handleCancel}
-        onRejectProposed={clearProposed}
-        onAcceptProposed={acceptProposed}
-      />
-    );
-  }
-
   return (
     <>
-      <QueryEditor
-        initialSource={transform.source}
+      <TransformEditorBody
         transform={transform}
         initialSource={transform.source}
         proposedSource={proposedSource}
@@ -158,13 +82,7 @@ export function TransformQueryPageBody({
           onClose={handleCloseConfirmation}
         />
       )}
-      <LeaveRouteConfirmModal
-        key={location.key}
-        isEnabled={isDirty && !isConfirmationShown}
-        route={route}
-        onConfirm={clearProposed}
-      />
-    </AdminSettingsLayout>
+    </>
   );
 }
 
