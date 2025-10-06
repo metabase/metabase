@@ -13,7 +13,6 @@ import type {
   DependentNode,
 } from "metabase-types/api";
 
-import S from "./DependencyFlow.module.css";
 import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
 function getNodeId(id: DependencyId, type: DependencyType): NodeId {
@@ -30,7 +29,6 @@ function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
 
     return {
       id: nodeId,
-      className: S.node,
       type: "node",
       data: node,
       position: { x: 0, y: 0 },

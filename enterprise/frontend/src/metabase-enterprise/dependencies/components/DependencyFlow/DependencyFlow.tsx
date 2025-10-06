@@ -27,8 +27,26 @@ const GRAPH: DependencyGraph = {
       data: { name: "Account", display: "table" },
       dependents: { question: 10 },
     },
+    {
+      id: 1,
+      type: "table",
+      data: {
+        name: "account",
+        db_id: 1,
+        schema: "public",
+        display_name: "Account",
+      },
+      dependents: { model: 1 },
+    },
   ],
-  edges: [],
+  edges: [
+    {
+      from_entity_id: 1,
+      from_entity_type: "model",
+      to_entity_id: 1,
+      to_entity_type: "model",
+    },
+  ],
 };
 
 const NODE_TYPES = {

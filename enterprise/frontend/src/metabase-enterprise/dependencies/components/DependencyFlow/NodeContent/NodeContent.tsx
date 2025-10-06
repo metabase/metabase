@@ -1,4 +1,9 @@
-import { Handle, type NodeProps, Position } from "@xyflow/react";
+import {
+  Handle,
+  type NodeProps,
+  Position,
+  useNodeConnections,
+} from "@xyflow/react";
 import { memo } from "react";
 import { t } from "ttag";
 
@@ -16,10 +21,12 @@ export const NodeContent = memo(function ItemNode({
   data: node,
 }: NodeContentProps) {
   const groups = getDependentGroups(node);
+  const sources = useNodeConnections({ handleType: "source" });
+  const targets = useNodeConnections({ handleType: "target" });
 
   return (
     <>
-      <Stack gap="sm">
+      <Stack p="md" gap="sm" bd="1px solid border" bdrs="md" bg="bg-white">
         <Group gap="sm">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
           {getNodeLabel(node)}
@@ -33,8 +40,8 @@ export const NodeContent = memo(function ItemNode({
           </>
         )}
       </Stack>
-      <Handle type="source" position={Position.Left} />
-      <Handle type="target" position={Position.Right} />
+      {sources.length > 0 && <Handle type="source" position={Position.Left} />}
+      {targets.length > 0 && <Handle type="target" position={Position.Right} />}
     </>
   );
 });
@@ -45,8 +52,13 @@ type DependentGroupButtonProps = {
 
 function DependentGroupButton({ group }: DependentGroupButtonProps) {
   return (
-    <UnstyledButton key={group.type} p="0.125rem 0.25rem" bg="bg-medium">
-      ${getDependentGroupLabel(group)}
+    <UnstyledButton
+      key={group.type}
+      p="0.125rem 0.25rem"
+      bg="bg-medium"
+      bdrs="xs"
+    >
+      {getDependentGroupLabel(group)}
     </UnstyledButton>
   );
 }
