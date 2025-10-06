@@ -45,12 +45,13 @@
                    (t2/select-one :model/Database (mt/id))}]
     (is (rep/persist! rep ref-index))))
 
-(deftest import-export-singletone-test
+(deftest import-export-singleton-test
   (testing "Testing import then export roundtrip with IDs"
     (doseq [filename singleton-yamls]
       (testing (str "Importing-Exporting: " filename)
-        (let [rep (import/import-yaml filename)
-              db-id (mt/id)
+        (let [db-id (mt/id)
+              rep (-> (import/import-yaml filename)
+                      (assoc :database db-id))
               persisted (rep/persist! rep nil)]
           (is persisted)
           (let [question (t2/select-one :model/Card :id (:id persisted))
@@ -85,7 +86,7 @@
 
               ;; Build ref-index with database and MBQL data (if present)
               ref-index (cond-> {(v0-common/unref (:database card-edn)) (t2/select-one :model/Database (mt/id))}
-                          mbql-rep (assoc (:ref mbql-rep) (rep/persist! mbql-rep nil)))
+                          mbql-rep (assoc (:ref mbql-rep) (import/persist! mbql-rep nil)))
 
               question (rep/persist! card-rep ref-index)
               question (t2/select-one :model/Card :id (:id question))
