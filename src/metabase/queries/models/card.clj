@@ -1211,7 +1211,9 @@
           ;; this column is not used anymore
           :cache_ttl
           ;; dependencies aren't serialized, so the version of dependency analysis done shouldn't be serialized
-          :dependency_analysis_version]
+          :dependency_analysis_version
+          ;; temporary column to power rollback from v57 to v56; we can remove it in v58
+          :legacy_query]
    :transform
    {:created_at             (serdes/date)
     :database_id            (serdes/fk :model/Database :name)

@@ -79,15 +79,13 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.util :as lib.schema.util]
-   #_[metabase.lib.serialize :as lib.serialize]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
-   [metabase.util.time :as u.time]
-   [metabase.lib.core :as lib]))
+   [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
 (comment lib.core/keep-me)
@@ -2644,7 +2642,7 @@
               :else
               (clj->js x)))]
     (-> cljs-query
-        lib/prepare-for-serialization
+        lib.core/prepare-for-serialization
         ->js)))
 
 (defn ^:export js-to-query
@@ -2652,4 +2650,4 @@
   [js-query]
   (-> js-query
       js->clj
-      lib/normalize))
+      lib.core/normalize))

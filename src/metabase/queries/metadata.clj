@@ -154,7 +154,7 @@
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
   [cards :- [:sequential ::queries.schema/card]]
-  (let [ ;; All the queries on all the cards
+  (let [;; All the queries on all the cards
         card-queries (into []
                            (comp (map :dataset_query)
                                  (filter not-empty))

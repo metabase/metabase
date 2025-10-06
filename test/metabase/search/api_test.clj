@@ -1383,10 +1383,8 @@
        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
         {http-action :action-id}  {:type :http :name search-term}
         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
-
        ;; TODO investigate why the actions don't get indexed automatically
         (search/reindex! {:async? false :in-place? true})
-
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
@@ -1397,7 +1395,6 @@
                       :data
                       (map (juxt :model :id))
                       set))))
-
         (testing "if search-native-query is true, search both dataset_query and the name"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
@@ -1425,21 +1422,18 @@
                                     :name       search-term}
        :model/Card {card-id-2 :id} {:creator_id user-id-2
                                     :name       search-term}]
-
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-1
         :user-id      user-id-1
         :is-creation? true
         :object       {:id card-id-1 :type "question"}})
-
       (revision/push-revision!
        {:entity       :model/Card
         :id           card-id-2
         :user-id      user-id-2
         :is-creation? true
         :object       {:id card-id-2 :type "question"}})
-
       (testing "search result should returns creator_common_name and last_editor_common_name"
         (is (= #{["card" card-id-1 "Ngoc Khuat" "Ngoc Khuat"]
                  ;; for user that doesn't have first_name or last_name, should fall backs to email
