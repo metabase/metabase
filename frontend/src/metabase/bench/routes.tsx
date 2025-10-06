@@ -2,8 +2,9 @@ import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp, {
+import {
   CreateSegmentForm,
+  SegmentApp,
   UpdateSegmentForm,
 } from "metabase/admin/datamodel/containers/SegmentApp";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
