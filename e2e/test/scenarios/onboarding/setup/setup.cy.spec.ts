@@ -587,10 +587,10 @@ describe("scenarios > setup", () => {
       .findByText("Get started with Embedding Metabase in your app")
       .should("be.visible");
 
-    H.main().findByText("Hide these").scrollIntoView().realHover();
+    H.main().scrollTo("top");
 
-    // Needed to split this up, as Cypress was erroring around elements changing during chaining
-    H.popover().should("exist");
+    H.main().findByText("Hide these").trigger("mouseover");
+
     H.popover().findByText("Embedding done, all good").click();
 
     H.main()
