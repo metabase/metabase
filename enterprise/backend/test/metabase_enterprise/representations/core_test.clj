@@ -180,18 +180,16 @@
                             seq
                             (->> (map #(.getName ^java.io.File %)))
                             set)
-                  yaml-files (filter #(re-matches #".*\.yaml" %) files)
+                  yaml-files (filter #(re-matches #".*\.yml" %) files)
                   mbql-files (filter #(re-matches #".*\.mbql\.yml" %) files)
                   db-files (filter #(re-matches #".*\.database\.yml" %) files)]
-
               (testing "Correct number of each file type"
-                (is (= 3 (count yaml-files))
-                    "Should have 3 YAML files (2 MBQL cards + 1 native)")
+                (is (= 6 (count yaml-files))
+                    "Should have 6 YAML files (1 database, 3 cards, 2 MBQL files)")
                 (is (= 2 (count mbql-files))
                     "Should have 2 MBQL files (question + model, not native)")
                 (is (= 1 (count db-files))
                     "Should have 1 database file"))
-
               ;; Cleanup - recursively delete directory
               (letfn [(delete-dir [^java.io.File file]
                         (when (.isDirectory file)

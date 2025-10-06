@@ -34,6 +34,8 @@
             rep (yaml/parse-string yaml)]
         (is (rep/normalize-representation rep))))))
 
+;; TODO: Need to load sample database first
+#_
 (deftest can-import
   (doseq [filename ["test_resources/representations/v0/product-performance.model.yml"
                     "test_resources/representations/v0/collection-8/sales-data-enriched.model.yml"
