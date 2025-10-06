@@ -3,7 +3,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   samlTokenStorage,
-  validateSessionToken,
+  validateSession,
 } from "embedding/auth-common";
 import type {
   MetabaseAuthConfig,
@@ -132,7 +132,7 @@ export const refreshTokenAsync = createAsyncThunk(
       preferredAuthMethod,
       fetchRequestToken: customGetRefreshToken,
     });
-    validateSessionToken(session);
+    validateSession(session);
 
     return session;
   },
