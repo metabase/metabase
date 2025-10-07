@@ -143,7 +143,7 @@ const SdkIframeEmbedView = ({
         },
         (settings) => (
           <StaticDashboard
-            dashboardId={settings.dashboardId}
+            dashboardId={settings.dashboardId ?? null}
             token={settings.token}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
@@ -192,8 +192,8 @@ const SdkIframeEmbedView = ({
         (settings) => (
           <StaticQuestion
             key={rerenderKey}
-            token={settings.token}
             questionId={settings.questionId ?? null}
+            token={settings.token}
             withDownloads={settings.withDownloads}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}
