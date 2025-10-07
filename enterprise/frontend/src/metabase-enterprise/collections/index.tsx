@@ -27,9 +27,7 @@ import {
   isSyncedCollection,
 } from "./utils";
 
-// @ts-expect-error remote_sync feature will be added in the future
-// eslint-disable-next-line no-constant-condition
-if (true || hasPremiumFeature("remote_sync")) {
+if (hasPremiumFeature("remote_sync")) {
   PLUGIN_COLLECTIONS.getIcon = getIcon;
   PLUGIN_COLLECTIONS.isSyncedCollection = isSyncedCollection;
 }

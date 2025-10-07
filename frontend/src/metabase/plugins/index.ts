@@ -36,6 +36,7 @@ import type { LinkProps } from "metabase/common/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ColorName } from "metabase/lib/colors/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
@@ -396,7 +397,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
-  icon: IconName | { name: IconName; color: string } | Record<string, never>;
+  icon: IconName | { name: IconName; color: ColorName } | Record<string, never>;
   description?: string;
   revision?: Revision;
 };
@@ -849,7 +850,11 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export const PLUGIN_GIT_SYNC: {
   LibraryNav: ComponentType;
   GitSyncSettings: ComponentType;
-  SyncedCollectionsSidebarSection: ComponentType;
+  SyncedCollectionsSidebarSection: ComponentType<{
+    syncedCollections: any[];
+    collectionItem: any;
+    onItemSelect: () => void;
+  }>;
   getGitSyncInvalidationTags: () => any[] | null;
 } = {
   LibraryNav: PluginPlaceholder,

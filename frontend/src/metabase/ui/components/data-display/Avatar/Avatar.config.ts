@@ -1,6 +1,6 @@
 import { Avatar, rem } from "@mantine/core";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 const avatarColors = [
   "var(--mb-color-brand)",

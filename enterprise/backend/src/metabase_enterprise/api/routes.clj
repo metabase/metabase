@@ -57,6 +57,7 @@
    :dependencies               (deferred-tru "Dependency Tracking")
    :documents                  (deferred-tru "Documents")
    :embedding                  (deferred-tru "Embedding")
+   :remote-sync                (deferred-tru "Remote Sync")
    :etl-connections            (deferred-tru "ETL Connections")
    :etl-connections-pg         (deferred-tru "ETL Connections PG replication")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
@@ -110,7 +111,7 @@
    "/dependencies"                 (premium-handler metabase-enterprise.dependencies.api/routes :dependencies)
    "/document"                     (premium-handler metabase-enterprise.documents.api/routes :documents)
    "/email"                        (premium-handler metabase-enterprise.email.api/routes :cloud-custom-smtp)
-   "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :serialization)
+   "/remote-sync"                  (premium-handler metabase-enterprise.remote-sync.api/routes :remote-sync)
    "/embedding-hub"                (premium-handler metabase-enterprise.embedding-hub.api/routes :embedding)
    "/gsheets"                      (-> gsheets.api/routes ;; gsheets requires both features.
                                        (premium-handler :attached-dwh)

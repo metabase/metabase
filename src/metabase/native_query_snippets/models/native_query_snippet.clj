@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -78,7 +79,7 @@
 (t2/define-after-insert :model/NativeQuerySnippet
   [snippet]
   (u/prog1 (t2.realize/realize snippet)
-    (events/publish-event! :event/snippet-create {:object <>})))
+    (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
@@ -92,7 +93,7 @@
 (t2/define-after-update :model/NativeQuerySnippet
   [snippet]
   (u/prog1 (t2.realize/realize snippet)
-    (events/publish-event! :event/snippet-update {:object <>})))
+    (events/publish-event! :event/snippet-update {:object <> :user-id api/*current-user-id*})))
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]

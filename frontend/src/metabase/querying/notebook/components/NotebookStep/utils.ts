@@ -1,8 +1,8 @@
 import type { ComponentType } from "react";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import type {
   NotebookStepHeaderProps,
@@ -60,7 +60,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "add_data",
     compact: true,
     secondary: true,
-    color: () => color("bg-dark"),
+    color: () => color("text-light"),
     Step: ExpressionStep,
     StepHeader: NotebookStepHeader,
   },
@@ -111,7 +111,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "sort",
     compact: true,
     secondary: true,
-    color: () => color("bg-dark"),
+    color: () => color("text-light"),
     Step: SortStep,
     StepHeader: NotebookStepHeader,
   },
@@ -122,7 +122,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     icon: "list",
     compact: true,
     secondary: true,
-    color: () => color("bg-dark"),
+    color: () => color("text-light"),
     Step: LimitStep,
     StepHeader: NotebookStepHeader,
   },

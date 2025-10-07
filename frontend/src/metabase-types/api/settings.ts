@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import type { InputSettingType } from "./actions";
@@ -27,7 +28,7 @@ export interface NumberFormattingSettings {
 
 export interface CurrencyFormattingSettings {
   currency?: string;
-  currency_style?: string;
+  currency_style?: CurrencyStyle;
   currency_in_header?: boolean;
 }
 
@@ -321,6 +322,7 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "table_data_editing",
+  "remote_sync",
   "dependencies",
   "documents",
   "semantic_search",

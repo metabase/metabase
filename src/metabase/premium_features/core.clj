@@ -63,6 +63,7 @@
   enable-official-collections?
   enable-preemptive-caching?
   enable-query-reference-validation?
+  enable-remote-sync?
   enable-sandboxes?
   enable-scim?
   enable-semantic-search?

@@ -42,6 +42,7 @@
   (testing "card-create event creates remote sync object entry with create status"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Card remote-sync-card {:name "Test Card"
+                                                 :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -60,6 +61,7 @@
   (testing "card-update event creates or updates remote sync object entry with update status"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Card remote-sync-card {:name "Test Card"
+                                                 :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -78,6 +80,7 @@
   (testing "card-update event with archived=true sets delete status"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Card remote-sync-card {:name "Test Card"
+                                                 :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -97,6 +100,7 @@
   (testing "card-delete event creates remote sync object entry with delete status"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Card remote-sync-card {:name "Test Card"
+                                                 :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -115,6 +119,7 @@
   (testing "multiple card events do not update object when status is create"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Card remote-sync-card {:name "Test Card"
+                                                 :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -150,6 +155,7 @@
   (testing "card events in non-remote-sync collections don't create entries"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}
                    :model/Card normal-card {:name "Normal Card"
+                                            :dataset_query (mt/mbql-query venues)
                                             :collection_id (:id normal-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -300,6 +306,152 @@
           (is (=? {:model_type "Document"
                    :model_id (:id document)
                    :status "delete"}
+                  (first entries))))))))
+
+(deftest snippet-create-event-creates-entry-test
+  (testing "snippet-create event creates remote sync object entry with create status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/snippet-create
+                               {:object snippet :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "create"}
+                  (first entries))))))))
+
+(deftest snippet-update-event-creates-entry-test
+  (testing "snippet-update event creates or updates remote sync object entry with update status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/snippet-update
+                               {:object snippet :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "update"}
+                  (first entries))))))))
+
+(deftest snippet-update-archived-sets-delete-test
+  (testing "snippet-update event with archived=true sets delete status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/snippet-update
+                               {:object (assoc snippet :archived true)
+                                :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "delete"}
+                  (first entries))))))))
+
+(deftest snippet-delete-event-creates-entry-test
+  (testing "snippet-delete event creates remote sync object entry with delete status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/snippet-delete
+                               {:object snippet :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "delete"}
+                  (first entries))))))))
+
+(deftest snippet-event-in-normal-collection-no-entry-test
+  (testing "snippet events in non-remote-sync collections don't create entries"
+    (mt/with-temp [:model/Collection normal-collection {:name "Normal" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Normal Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id normal-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/snippet-create
+                               {:object snippet :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 0 (count entries))))))))
+
+(deftest snippet-moved-out-of-remote-synced-collection-test
+  (testing "snippet moved out of remote-synced collection is marked as removed"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        ;; Create initial entry for snippet in remote-synced collection
+        (events/publish-event! :event/snippet-create
+                               {:object snippet :user-id (mt/user->id :rasta)})
+
+        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
+          (is (= "create" (:status initial-entry)))
+
+          ;; Move snippet to normal collection
+          (events/publish-event! :event/snippet-update
+                                 {:object (assoc snippet :collection_id (:id normal-collection))
+                                  :user-id (mt/user->id :rasta)})
+
+          (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
+            (is (= "removed" (:status update-entry)))
+            (is (= (:id initial-entry) (:id update-entry)))))))))
+
+(deftest snippet-moved-into-remote-synced-collection-test
+  (testing "snippet moved into remote-synced collection gets tracked"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id normal-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        ;; Create snippet in normal collection (no entry should be created)
+        (events/publish-event! :event/snippet-create
+                               {:object snippet :user-id (mt/user->id :rasta)})
+
+        (is (= 0 (count (t2/select :model/RemoteSyncObject))))
+
+        ;; Move snippet to remote-synced collection
+        (events/publish-event! :event/snippet-update
+                               {:object (assoc snippet :collection_id (:id remote-sync-collection))
+                                :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "NativeQuerySnippet"
+                   :model_id (:id snippet)
+                   :status "update"}
                   (first entries))))))))
 
 (deftest collection-create-event-creates-entry-test
@@ -540,6 +692,7 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Card card {:name "Test Card"
+                                     :dataset_query (mt/mbql-query venues)
                                      :collection_id (:id remote-sync-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -635,6 +788,7 @@
   (testing "model not previously tracked doesn't create removed entry when moved to normal collection"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}
                    :model/Card card {:name "Test Card"
+                                     :dataset_query (mt/mbql-query venues)
                                      :collection_id (:id normal-collection)}]
       (mt/with-model-cleanup [:model/RemoteSyncObject]
         (t2/delete! :model/RemoteSyncObject)
@@ -667,6 +821,13 @@
     (is (isa? :event/document-create ::lib.events/document-change-event))
     (is (isa? :event/document-update ::lib.events/document-change-event))
     (is (isa? :event/document-delete ::lib.events/document-change-event))))
+
+(deftest snippet-event-derivation-test
+  (testing "snippet events properly derive from :metabase/event"
+    (is (isa? ::lib.events/snippet-change-event :metabase/event))
+    (is (isa? :event/snippet-create ::lib.events/snippet-change-event))
+    (is (isa? :event/snippet-update ::lib.events/snippet-change-event))
+    (is (isa? :event/snippet-delete ::lib.events/snippet-change-event))))
 
 (deftest collection-event-derivation-test
   (testing "collection events properly derive from :metabase/event"

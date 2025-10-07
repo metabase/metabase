@@ -339,7 +339,7 @@ describe("issue 21559", { tags: "@external" }, () => {
     // Make sure visualization changed to funnel
     H.getDashboardCard(0).within(() => {
       cy.findByText("80.52").should("exist");
-      cy.get("polygon[fill='#509EE3']").should("exist");
+      cy.get("polygon[fill='#509EE2']").should("exist");
     });
 
     H.saveDashboard();

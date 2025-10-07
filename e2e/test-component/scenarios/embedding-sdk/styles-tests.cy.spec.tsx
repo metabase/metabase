@@ -167,7 +167,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         cy.findByText("Orders")
           .invoke("css", "color")
           // --mb-color-text-primary
-          .should("equal", "rgb(76, 87, 115)");
+          .should("equal", "rgba(7, 23, 34, 0.84)");
       });
     });
   });

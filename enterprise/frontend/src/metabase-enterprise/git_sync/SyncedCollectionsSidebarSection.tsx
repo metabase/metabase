@@ -21,8 +21,6 @@ import {
   Group,
   HoverCard,
   Icon,
-  Modal,
-  Progress,
   ScrollArea,
   Text,
   Tooltip,
@@ -38,6 +36,7 @@ import type { Collection } from "metabase-types/api";
 
 import { BranchPicker } from "./BranchPicker";
 import { ChangesLists, PushChangesModal } from "./PushChangesModal";
+import { LoadingModal } from "./components/LoadingModal";
 
 const SYNC_STATUS_DELAY = 3000;
 
@@ -72,9 +71,9 @@ export const SyncedCollectionsSidebarSection = ({
 
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
 
-  const { status, message, progress } = useSyncStatus();
+  const { isIdle, message, progress, taskType } = useSyncStatus();
 
-  const isLoading = isImporting || status !== "idle";
+  const isLoading = isImporting || !isIdle;
 
   const handleBranchSelect = (branch: string, isNewBranch = false) => {
     if (branch === currentBranch) {
@@ -125,7 +124,7 @@ export const SyncedCollectionsSidebarSection = ({
             <Box w="100%">
               <Group gap="sm" pb="sm">
                 <SidebarHeading>{t`Synced Collections`}</SidebarHeading>
-                {message && <SyncError message={message} />}
+                {message && <SyncWarning message={message} />}
               </Group>
               {isAdmin && (
                 <Group p="sm" pl="14px" gap="sm" w="100%" pt={0}>
@@ -155,8 +154,8 @@ export const SyncedCollectionsSidebarSection = ({
                   )}
                 </Group>
               )}
-              {isLoading && (
-                <LoadingModal status={status} progress={progress} />
+              {isLoading && !!taskType && (
+                <LoadingModal taskType={taskType} progress={progress} />
               )}
             </Box>
           </Flex>
@@ -274,16 +273,18 @@ const useSyncStatus = () => {
     }
   }, [data, dispatch, wasRunning]);
 
-  const isDone = !data || (data && data.ended_at !== null);
-
   return {
-    status: isDone ? "idle" : data?.sync_task_type,
+    isIdle: !data || (data && data.ended_at !== null),
+    taskType: data?.sync_task_type,
     progress: data?.progress ?? 0,
-    message: data?.error_message ?? "",
+    message:
+      data?.status === "cancelled"
+        ? t`Sync cancelled`
+        : (data?.error_message ?? ""),
   };
 };
 
-function SyncError({ message }: { message: string }) {
+function SyncWarning({ message }: { message: string }) {
   return (
     <HoverCard>
       <HoverCard.Target>
@@ -298,33 +299,5 @@ function SyncError({ message }: { message: string }) {
         </Box>
       </HoverCard.Dropdown>
     </HoverCard>
-  );
-}
-
-function LoadingModal({
-  status,
-  progress,
-}: {
-  status: string;
-  progress: number;
-}) {
-  return (
-    <Modal
-      opened
-      title={t`Syncing`}
-      size="sm"
-      withCloseButton={false}
-      onClose={() => null} // modal can't be closed
-    >
-      <Box p="xl">
-        <Text mb="md" ta="center">
-          {status === "import" ? t`Importing` : t`Exporting`}...
-        </Text>
-        <Progress value={progress * 100} transitionDuration={300} animated />
-        <Text fz="sm" lh="sm" mt="lg">
-          {t`Please wait until the sync completes to edit content.`}
-        </Text>
-      </Box>
-    </Modal>
   );
 }
