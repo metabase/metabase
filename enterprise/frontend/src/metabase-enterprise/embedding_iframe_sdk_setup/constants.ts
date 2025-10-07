@@ -59,6 +59,11 @@ type EmbedStepConfig = {
   skipFor?: SdkIframeEmbedSetupExperience[];
 };
 
+export const STEPS_WITHOUT_RESOURCE_SELECTION = [
+  "exploration",
+  "metabot",
+] as const satisfies SdkIframeEmbedSetupExperience[];
+
 export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-experience",
@@ -67,7 +72,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-resource",
     component: SelectEmbedResourceStep,
-    skipFor: ["exploration", "metabot"],
+    skipFor: STEPS_WITHOUT_RESOURCE_SELECTION,
   },
   {
     id: "select-embed-options",
