@@ -1898,7 +1898,7 @@
         (let [database {:details {:host host} :engine :postgres}]
           (is (= provider (provider-detection/detect-provider-from-database database))))))))
 
-(deftest complex-types-in-notification-payload
+(deftest ^:parallel complex-types-in-notification-payload
   (mt/test-driver :postgres
     (testing "we handle complex types in notifications"
       (let [sql "SELECT
@@ -1910,7 +1910,7 @@
                     ARRAY['tag' || (i % 10), 'category' || (i % 5)]::text[] AS tags,
                     ARRAY[i, i*2, i*3]::integer[] AS numbers,
                     -- UUID
-                    gen_random_uuid() AS uuid,
+                    '7e3cd49d-bfe1-4620-83dd-0c163719175c'::uuid AS uuid,
                     -- Network
                     ('192.168.' || (i % 255) || '.' || ((i*7) % 255))::inet AS ip,
                     -- Geometric
