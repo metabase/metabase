@@ -44,7 +44,11 @@
   [branch force?]
   (let [ingestable-source (source.p/->ingestable (source/source-from-settings branch) {:path-filters [#"collections/.*"]})
         source-version (source.ingestable/ingestable-version ingestable-source)
-        last-imported-version (remote-sync.task/last-import-version)]
+        last-imported-version (remote-sync.task/last-import-version)
+        has-dirty? (remote-sync.object/dirty-global?)]
+    (when (and has-dirty? (not force?))
+      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                      {:status-code 400})))
     (if (and (not force?) (= last-imported-version source-version))
       (log/infof "Skipping import: source version %s matches last imported version" source-version)
       (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id))))))
@@ -61,6 +65,8 @@
   This endpoint will:
   1. Fetch the latest changes from the configured git repository
   2. Load the updated content using the serialization/deserialization system
+
+  If force=false (default) and there are unsaved changes in the Remote Sync collection, the import return a 400 response.
 
   Requires superuser permissions."
   [_route
@@ -154,8 +160,7 @@
   (try
     (settings/check-and-update-remote-settings! settings)
     (if (and (settings/remote-sync-enabled)
-             (= :production (settings/remote-sync-type))
-             (true? (settings/remote-sync-auto-import)))
+             (= :production (settings/remote-sync-type)))
       {:success true
        :task_id (async-import! (settings/remote-sync-branch) true)}
       {:success true})
