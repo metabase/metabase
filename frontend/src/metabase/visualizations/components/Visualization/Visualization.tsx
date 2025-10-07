@@ -264,7 +264,6 @@ class Visualization extends PureComponent<
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
-    isNightMode: false,
     isPreviewing: false,
     isQueryBuilder: false,
     isSettings: false,
@@ -599,7 +598,6 @@ class Visualization extends PureComponent<
       isEmbeddingSdk,
       isFullscreen,
       isMobile,
-      isNightMode,
       isObjectDetail,
       isPreviewing,
       isRawTable,
@@ -859,7 +857,6 @@ class Visualization extends PureComponent<
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
                     isVisualizerViz={isVisualizerViz}
-                    isNightMode={!!isNightMode}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
                     isRawTable={isRawTable}
