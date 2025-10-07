@@ -68,6 +68,17 @@
                                                  :param-key      param-key
                                                  :value          (codec/url-decode value)})))
 
+(api.macros/defendpoint :get "/card/:token/query_metadata"
+  "Fetch the query metadata of the card in the JSON Web Token `token`.
+
+   The unsigned token should have the following format:
+
+     {:resource {:question <card-id>}}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params]
+  (api.embed.common/card-metadata-for-unsigned-token (check-and-unsign token)))
+
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
   [{:keys [token]} :- [:map
@@ -75,6 +86,17 @@
   (let [unsigned-token (check-and-unsign token)]
     (api.embed.common/dashboard-for-unsigned-token unsigned-token
                                                    :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
+
+(api.macros/defendpoint :get "/dashboard/:token/query_metadata"
+  "Fetch the query metadata of the dashboard in the JSON Web Token `token`.
+
+   The unsigned token should have the following format:
+
+     {:resource {:dashboard <dashboard-id>}}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params]
+  (api.embed.common/dashboard-metadata-for-unsigned-token (check-and-unsign token)))
 
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
