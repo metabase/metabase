@@ -36,8 +36,9 @@
     (or
      (and (= product-type "metabase-ai")
           (not (premium-features/offer-metabase-ai?)))
+     ;; python-transforms do not make sense without (general) transforms feature
      (and (= product-type "python-execution")
-          (not (premium-features/enable-python-transforms?))))
+          (not (premium-features/enable-transforms?))))
     {:status 400 :body "Can only purchase add-ons for eligible subscriptions."}
 
     (not (contains? (set (map :email (:store-users (premium-features/token-status))))
