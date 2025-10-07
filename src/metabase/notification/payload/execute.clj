@@ -133,8 +133,6 @@
                                       tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (system/site-locale) (escape-markdown-chars? dashcard))))
 
- ;; nocommit
-
 (defn- fixup-viz-settings
   "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
   See #58469.
