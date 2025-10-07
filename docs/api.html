@@ -17180,6 +17180,97 @@ redirect_from:
         "tags" : [ "/api/ee/transforms-python" ]
       }
     },
+    "/api/ee/transforms-python/test-run" : {
+      "post" : {
+        "summary" : "POST /api/ee/transforms-python/test-run",
+        "description" : "Evaluate an ad-hoc python transform on a sample of input data.\n  Intended for short runs for early feedback. Input/output/timeout limits apply.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:logs -> <string>, :error (optional) -> <map where {:message -> <function, or function>}>, :output (optional) -> <map where {:rows -> <anything>}>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "error" : {
+                      "type" : "object",
+                      "properties" : {
+                        "message" : {
+                          "anyOf" : [ { }, { } ]
+                        }
+                      },
+                      "required" : [ "message" ]
+                    },
+                    "logs" : {
+                      "type" : "string"
+                    },
+                    "output" : {
+                      "type" : "object",
+                      "properties" : {
+                        "rows" : { }
+                      },
+                      "required" : [ "rows" ]
+                    }
+                  },
+                  "required" : [ "logs" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string"
+                  },
+                  "output_row_limit" : {
+                    "allOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "number",
+                      "exclusiveMinimum" : 1
+                    }, {
+                      "type" : "number",
+                      "maximum" : 100
+                    } ]
+                  },
+                  "per_input_row_limit" : {
+                    "allOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "number",
+                      "exclusiveMinimum" : 1
+                    }, {
+                      "type" : "number",
+                      "maximum" : 100
+                    } ]
+                  },
+                  "source_tables" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "integer"
+                    }
+                  }
+                },
+                "required" : [ "code", "source_tables" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transforms-python" ]
+      }
+    },
     "/api/ee/upload-management/tables" : {
       "get" : {
         "summary" : "GET /api/ee/upload-management/tables",
