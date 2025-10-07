@@ -109,6 +109,17 @@
    query-params :- :map]
   (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api (api.embed.common/parse-query-params query-params)))
 
+(api.macros/defendpoint :get "/card/:token/query_metadata"
+  "Fetch the query metadata of the card in the JSON Web Token `token`.
+
+   The unsigned token should have the following format:
+
+     {:resource {:question <card-id>}}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params]
+  (api.embed.common/card-metadata-for-unsigned-token (unsign-and-translate-ids token)))
+
 (api.macros/defendpoint :get ["/card/:token/query/:export-format", :export-format qp.schema/export-formats-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
   [{:keys [token export-format]} :- [:map
@@ -143,6 +154,17 @@
     (api.embed.common/check-embedding-enabled-for-dashboard (embedding.jwt/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned, :constraints [:enable_embedding true])
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
+
+(api.macros/defendpoint :get "/dashboard/:token/query_metadata"
+  "Fetch the query metadata of the dashboard in the JSON Web Token `token`.
+
+   The unsigned token should have the following format:
+
+     {:resource {:dashboard <dashboard-id>}}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params]
+  (api.embed.common/dashboard-metadata-for-unsigned-token (unsign-and-translate-ids token)))
 
 (defn- process-query-for-dashcard-with-signed-token
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
