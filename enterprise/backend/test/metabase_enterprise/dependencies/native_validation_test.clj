@@ -1,10 +1,13 @@
-(ns metabase-enterprise.dependencies.native-validation-test
+(ns ^:mb/driver-tests metabase-enterprise.dependencies.native-validation-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.test :as mt]))
 
 (defn- fake-query
   ([mp query]
@@ -15,6 +18,23 @@
     :native   {:query query
                :template-tags template-tags}}))
 
+(defn- sample-mbql-query []
+  (let [mp (mt/metadata-provider)
+        driver (:engine (lib.metadata/database mp))
+        base-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                       (lib/join (-> (lib/join-clause
+                                      (lib.metadata/table mp (mt/id :products))
+                                      [(lib/= (lib.metadata/field mp (mt/id :orders :product_id))
+                                              (-> (lib.metadata/field mp (mt/id :products :id))
+                                                  (lib/with-join-alias "Products")))])
+                                     (lib/with-join-fields :all)
+                                     (lib/with-join-alias "Products"))))
+        available-fields (lib/fieldable-columns base-query)
+        query (lib/with-fields base-query (take 2 available-fields))]
+    {:driver driver
+     :query query
+     :mp mp}))
+
 (defn- validates?
   [mp driver card-id expected]
   (is (=? expected
@@ -22,7 +42,7 @@
                :dataset-query
                (deps.native-validation/validate-native-query driver mp)))))
 
-(deftest basic-deps-test
+(deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
     (is (= #{{:table (meta/id :products)}}
@@ -55,7 +75,14 @@
                 :dataset-query
                 (deps.native-validation/native-query-deps driver mp))))))
 
-(deftest validate-bad-queries-test
+(deftest ^:parallel cross-driver-deps-test
+  (testing "native-query-deps handles valid queries in current driver"
+    (mt/test-drivers (mt/normal-drivers-with-feature :dependencies/native)
+      (let [{:keys [driver query mp]} (sample-query)]
+        (is (= #{{:table (mt/id :products)} {:table (mt/id :orders)}}
+               (deps.native-validation/native-query-deps driver mp query)))))))
+
+(deftest ^:parallel validate-bad-queries-test
   (testing "validate-native-query handles nonsense queries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
@@ -81,7 +108,13 @@
                 driver mp
                 (fake-query mp "select bad from products"))))))))
 
-(deftest validate-native-query-with-subquery-columns-test
+(deftest ^:parallel cross-driver-validation-test
+  (testing "validate-native-query handles valid queries in current driver"
+    (mt/test-drivers (mt/normal-drivers-with-feature :dependencies/native)
+      (let [{:keys [driver query mp]} (sample-query)]
+        (is (empty? (deps.native-validation/validate-native-query driver mp query)))))))
+
+(deftest ^:parallel validate-native-query-with-subquery-columns-test
   (testing "validate-native-query should detect invalid columns in subqueries"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
@@ -118,7 +151,7 @@
                                    :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}])))))
 
-(deftest validate-card-reference-after-expansion-test
+(deftest ^:parallel validate-card-reference-after-expansion-test
   (testing "Validation of queries after card references have been expanded"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
@@ -165,7 +198,7 @@
 (defn- add-desired-column-alias [fields]
   (map #(assoc % :lib/desired-column-alias (:name %)) fields))
 
-(deftest result-metadata-test
+(deftest ^:parallel result-metadata-test
   (testing "Calculates result metadata"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
@@ -239,3 +272,12 @@
          driver mp
          "this is not a query"
          [])))))
+
+(deftest ^:parallel cross-driver-metadata-test
+  (testing "native-result-metadata handles valid queries in current driver"
+    (mt/test-drivers (mt/normal-drivers-with-feature :dependencies/native)
+      (let [{:keys [driver query mp]} (sample-query)]
+        (is (=? (-> (into [(lib.metadata/field mp (mt/id :orders :id))
+                           (lib.metadata/field mp (mt/id :orders :user_id))]
+                          (lib.metadata/fields mp (mt/id :products))))
+                (deps.native-validation/native-result-metadata driver mp query)))))))
