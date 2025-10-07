@@ -2,6 +2,17 @@ name: "Claude Code Review"
 
 on:
   pull_request:
+    paths:
+      - "*.clj"
+      - "*.cljs"
+      - "*.cljc"
+      - "*.edn"
+      - "*.js"
+      - "*.ts"
+      - "*.jsx"
+      - "*.tsx"
+      - "*.json"
+      - "*.yaml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
@@ -21,7 +32,6 @@ jobs:
         with:
           fetch-depth: 1
 
-    steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
