@@ -43,9 +43,19 @@ export type ExportChangesResponse = {
   conflict?: boolean;
 };
 
+export type CurrentTaskStatus =
+  | "running"
+  | "successful"
+  | "timed-out"
+  | "cancelled"
+  | "errored";
+
+export type SyncTaskType = "import" | "export" | null;
+
 export type CurrentTaskResponse = {
   id: number;
-  sync_task_type: "production" | "development" | null;
+  sync_task_type: SyncTaskType;
+  status: CurrentTaskStatus;
   progress: number | null; // float between 0 and 1
   started_at: string | null;
   ended_at: string | null;
@@ -166,6 +176,13 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: () => [tag("remote-sync-current-task")],
     }),
+    cancelSyncTask: builder.mutation<void, void>({
+      query: () => ({
+        method: "POST",
+        url: `/api/ee/remote-sync/current-task/cancel`,
+      }),
+      invalidatesTags: () => [tag("remote-sync-current-task")],
+    }),
   }),
 });
 
@@ -178,4 +195,5 @@ export const {
   useCreateBranchMutation,
   useImportFromBranchMutation,
   useGetCurrentSyncTaskQuery,
+  useCancelSyncTaskMutation,
 } = gitSyncApi;
