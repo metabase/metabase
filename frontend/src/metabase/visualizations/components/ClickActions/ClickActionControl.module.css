@@ -9,7 +9,7 @@
 
     .clickActionButtonIcon,
     .clickActionButtonTextIcon {
-      color: white;
+      color: var(--mb-color-text-white);
     }
   }
 

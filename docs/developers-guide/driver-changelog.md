@@ -29,6 +29,8 @@ title: Driver interface changelog
 - Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase
   type (from the type hierarchy) as a HoneySQL spec. This method handles general Metabase base types.
 
+- Added driver multimethods driver/native-result-metadata, driver/validate-native-query-fields, driver.sql/resolve-field, driver.sql.normalize-unquoted-name, driver.sql.normalize/reserved-literal, driver.sql.references/find-used-fields, driver.sql.references/find-returned-fields, and driver.sql.references/field-references-impl for use with the :dependencies/native feature.
+
 - Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources
   into existing tables. This multimethod dispatches on both the driver and the data source type
   (`:rows` or `:jsonl-file`). It allows drivers to optimize based on the data source type and returns the number

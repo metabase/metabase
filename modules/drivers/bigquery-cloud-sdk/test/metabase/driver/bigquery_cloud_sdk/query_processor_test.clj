@@ -51,11 +51,11 @@
            (mt/rows
             (qp/process-query
              (mt/native-query
-               {:query (with-test-db-name
-                         (str "SELECT `v4_test_data.venues`.`id` "
-                              "FROM `v4_test_data.venues` "
-                              "ORDER BY `v4_test_data.venues`.`id` DESC "
-                              "LIMIT 2;"))})))))))
+              {:query (with-test-db-name
+                        (str "SELECT `v4_test_data.venues`.`id` "
+                             "FROM `v4_test_data.venues` "
+                             "ORDER BY `v4_test_data.venues`.`id` DESC "
+                             "LIMIT 2;"))})))))))
 
 (deftest ^:parallel native-query-test-2
   (mt/test-driver :bigquery-cloud-sdk
@@ -303,11 +303,11 @@
              (mt/rows
               (qp/process-query
                (mt/native-query
-                 {:query  (with-test-db-name
-                            (str "SELECT `v4_test_data.venues`.`name` AS `name` "
-                                 "FROM `v4_test_data.venues` "
-                                 "WHERE `v4_test_data.venues`.`name` = ?"))
-                  :params ["Red Medicine"]}))))))))
+                {:query  (with-test-db-name
+                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                "FROM `v4_test_data.venues` "
+                                "WHERE `v4_test_data.venues`.`name` = ?"))
+                 :params ["Red Medicine"]}))))))))
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -987,11 +987,11 @@
                 [int]
                 (qp/process-query
                  (mt/native-query
-                   {:query  (with-test-db-name
-                              (str "SELECT count(*) AS `count` "
-                                   "FROM `v4_test_data.venues` "
-                                   "WHERE `v4_test_data.venues`.`name` = ?"))
-                    :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+                  {:query  (with-test-db-name
+                             (str "SELECT count(*) AS `count` "
+                                  "FROM `v4_test_data.venues` "
+                                  "WHERE `v4_test_data.venues`.`name` = ?"))
+                   :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest ^:parallel escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"

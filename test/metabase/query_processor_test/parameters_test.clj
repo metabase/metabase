@@ -48,11 +48,11 @@
      :parameters [{:type :text, :target [:variable [:template-tag \"name\"]], :value \"Tempest\"}]}"
   [table field param-type param-value {:keys [defaults?]}]
   (let [query (mt/native-query
-                (assoc (mt/count-with-template-tag-query driver/*driver* table field param-type)
-                       :template-tags {(name field) {:name         (name field)
-                                                     :display-name (name field)
-                                                     :type         (or (namespace param-type)
-                                                                       (name param-type))}}))]
+               (assoc (mt/count-with-template-tag-query driver/*driver* table field param-type)
+                      :template-tags {(name field) {:name         (name field)
+                                                    :display-name (name field)
+                                                    :type         (or (namespace param-type)
+                                                                      (name param-type))}}))]
     (if defaults?
       (query-with-default-parameter-value query field param-value)
       (assoc query :parameters [{:type   param-type
@@ -521,12 +521,12 @@
   (testing "Legacy queries with parameters that don't specify `:widget-type` should still work (#20643)"
     (mt/dataset test-data
       (let [query (mt/native-query
-                    {:query         "SELECT count(*) FROM products WHERE {{cat}};"
-                     :template-tags {"cat" {:id           "__MY_CAT__"
-                                            :name         "cat"
-                                            :display-name "Cat"
-                                            :type         :dimension
-                                            :dimension    [:field (mt/id :products :category) nil]}}})]
+                   {:query         "SELECT count(*) FROM products WHERE {{cat}};"
+                    :template-tags {"cat" {:id           "__MY_CAT__"
+                                           :name         "cat"
+                                           :display-name "Cat"
+                                           :type         :dimension
+                                           :dimension    [:field (mt/id :products :category) nil]}}})]
         (is (= [200]
                (mt/first-row (qp/process-query query))))))))
 
@@ -540,23 +540,23 @@
           query      (lib/query
                       mp
                       (mt/native-query
-                        {:query         (str/join \newline
-                                                  [(format "WITH exclude_products AS {{%s}}" param-name)
-                                                   "SELECT count(*)"
-                                                   "FROM orders"
-                                                   "[[WHERE {{created_at}}]]"])
-                         :template-tags {param-name   {:type         :card
-                                                       :card-id      1
-                                                       :display-name param-name
-                                                       :id           "__source__"
-                                                       :name         param-name}
-                                         "created_at" {:type         :dimension
-                                                       :default      nil
-                                                       :dimension    [:field (mt/id :orders :created_at) nil]
-                                                       :display-name "Created At"
-                                                       :id           "__created_at__"
-                                                       :name         "created_at"
-                                                       :widget-type  :date/all-options}}}))]
+                       {:query         (str/join \newline
+                                                 [(format "WITH exclude_products AS {{%s}}" param-name)
+                                                  "SELECT count(*)"
+                                                  "FROM orders"
+                                                  "[[WHERE {{created_at}}]]"])
+                        :template-tags {param-name   {:type         :card
+                                                      :card-id      1
+                                                      :display-name param-name
+                                                      :id           "__source__"
+                                                      :name         param-name}
+                                        "created_at" {:type         :dimension
+                                                      :default      nil
+                                                      :dimension    [:field (mt/id :orders :created_at) nil]
+                                                      :display-name "Created At"
+                                                      :id           "__created_at__"
+                                                      :name         "created_at"
+                                                      :widget-type  :date/all-options}}}))]
       (testing "With no parameters"
         (mt/with-native-query-testing-context query
           (is (= [[18760]]
@@ -671,11 +671,11 @@
                        {card-2-id :id, :as card-2}
                        {:collection_id collection-2-id
                         :dataset_query (mt/native-query
-                                         {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                                          :template-tags {"card" {:name         "card"
-                                                                  :display-name "card"
-                                                                  :type         :card
-                                                                  :card-id      card-1-id}}})}]
+                                        {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                         :template-tags {"card" {:name         "card"
+                                                                 :display-name "card"
+                                                                 :type         :card
+                                                                 :card-id      card-1-id}}})}]
           (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
                            collection-1-id card-1-id collection-2-id card-2-id)
             (mt/with-test-user :rasta
@@ -695,11 +695,11 @@
                                              :native   (dissoc (qp.compile/compile (:dataset_query card-2))
                                                                :query-permissions/referenced-card-ids)}))))))
               (let [query (mt/native-query
-                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
-                             :template-tags {"card" {:name         "card"
-                                                     :display-name "card"
-                                                     :type         :card
-                                                     :card-id      card-2-id}}})]
+                           {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                            :template-tags {"card" {:name         "card"
+                                                    :display-name "card"
+                                                    :type         :card
+                                                    :card-id      card-2-id}}})]
                 (testing "SHOULD NOT be able to run native query with Card ID template tag"
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo

@@ -178,3 +178,15 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Loading message set to an unsupported value"
                             (appearance.settings/loading-message! :unsupported-value))))))
+
+(deftest custom-formatting-number-separators-test
+  (testing "Only valid values can be set as number separators (#61854)"
+    (let [violating-separators ".'"]
+      (is (thrown-with-msg?
+           Exception #"Invalid number separators."
+           (appearance.settings/custom-formatting!
+            #:type{:Temporal {:date_style "MMMM D, YYYY"
+                              :time_style "h:mm A"
+                              :date_abbreviate false}
+                   :Number {:number_separators violating-separators}
+                   :Currency {:currency "USD" :currency_style "symbol"}}))))))
