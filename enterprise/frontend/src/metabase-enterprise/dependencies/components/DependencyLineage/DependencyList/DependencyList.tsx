@@ -12,6 +12,7 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
+import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 import type { DependencyNode } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
@@ -19,33 +20,12 @@ import { getNodeId } from "../utils";
 
 import S from "./DependencyList.module.css";
 import type { LinkInfo } from "./types";
-import { getHeaderLabel, getNodeSubtitle, getNodeTitle } from "./utils";
-
-const NODES: DependencyNode[] = [
-  {
-    id: 1,
-    type: "card",
-    data: {
-      name: "Account",
-      type: "model",
-      display: "table",
-      collection_id: null,
-      collection: null,
-      dashboard_id: 1,
-      dashboard: { id: 1, name: "Dashboard" },
-    },
-  },
-  {
-    id: 2,
-    type: "table",
-    data: {
-      name: "account",
-      db_id: 1,
-      schema: "public",
-      display_name: "Account",
-    },
-  },
-];
+import {
+  getHeaderLabel,
+  getNodeSubtitle,
+  getNodeTitle,
+  getRequest,
+} from "./utils";
 
 type DependencyListProps = {
   selection: GraphSelection;
@@ -56,10 +36,14 @@ export function DependencyList({
   selection,
   onSelectionChange,
 }: DependencyListProps) {
+  const { data: nodes = [] } = useListNodeDependentsQuery(
+    getRequest(selection),
+  );
+
   return (
     <Card p={0} shadow="none" withBorder>
       <ListHeader selection={selection} onSelectionChange={onSelectionChange} />
-      {NODES.map((node) => (
+      {nodes.map((node) => (
         <ListItem key={getNodeId(node.id, node.type)} node={node} />
       ))}
     </Card>

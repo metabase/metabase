@@ -2,12 +2,30 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
-import type { DependencyNode } from "metabase-types/api";
+import type {
+  DependencyNode,
+  ListNodeDependentsRequest,
+} from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
 import { getNodeIcon, getNodeLabel, getNodeLink } from "../utils";
 
 import type { LinkInfo } from "./types";
+
+export function getRequest(
+  selection: GraphSelection,
+): ListNodeDependentsRequest {
+  return {
+    id: selection.node.id,
+    type: selection.node.type,
+    dependent_type: match(selection.type)
+      .with(P.union("question", "model", "metric"), () => "card" as const)
+      .otherwise((type) => type),
+    dependent_card_type: match(selection.type)
+      .with(P.union("question", "model", "metric"), (type) => type)
+      .otherwise(() => undefined),
+  };
+}
 
 export function getHeaderLabel(selection: GraphSelection) {
   const nodeLabel = getNodeLabel(selection.node);

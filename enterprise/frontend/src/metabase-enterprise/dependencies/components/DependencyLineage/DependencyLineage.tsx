@@ -11,7 +11,9 @@ import {
 } from "@xyflow/react";
 import { useEffect, useLayoutEffect, useState } from "react";
 
-import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
+import { skipToken } from "metabase/api";
+import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import { DataPicker } from "./DataPicker";
 import { DependencyList } from "./DependencyList";
@@ -20,44 +22,6 @@ import { GraphNode } from "./GraphNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { GraphSelection, NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
-
-const GRAPH: DependencyGraph = {
-  nodes: [
-    {
-      id: 1,
-      type: "card",
-      data: {
-        name: "Account",
-        type: "model",
-        display: "table",
-        collection_id: null,
-        collection: null,
-        dashboard_id: 1,
-        dashboard: { id: 1, name: "Dashboard" },
-      },
-      dependents: { question: 10 },
-    },
-    {
-      id: 1,
-      type: "table",
-      data: {
-        name: "account",
-        db_id: 1,
-        schema: "public",
-        display_name: "Account",
-      },
-      dependents: { model: 1 },
-    },
-  ],
-  edges: [
-    {
-      from_entity_id: 1,
-      from_entity_type: "card",
-      to_entity_id: 1,
-      to_entity_type: "table",
-    },
-  ],
-};
 
 const NODE_TYPES = {
   node: GraphNode,
@@ -72,7 +36,9 @@ export function DependencyLineage({
   entry,
   onEntryChange,
 }: DependencyLineageProps) {
-  const { data: graph, isFetching } = { data: GRAPH, isFetching: false };
+  const { data: graph, isFetching } = useGetDependencyGraphQuery(
+    entry ?? skipToken,
+  );
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection>();

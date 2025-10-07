@@ -86,10 +86,11 @@ export type GetDependencyGraphRequest = {
   type: DependencyType;
 };
 
-export type ListDependentsRequest = {
+export type ListNodeDependentsRequest = {
   id: DependencyId;
   type: DependencyType;
   dependent_type: DependencyType;
+  dependent_card_type?: CardType;
 };
 
 export type CheckDependenciesResponse = {
