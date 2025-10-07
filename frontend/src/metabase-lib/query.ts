@@ -2,7 +2,6 @@ import * as ML from "cljs/metabase.lib.js";
 import type {
   CardId,
   CardType,
-  DatabaseId,
   DatasetQuery,
   OpaqueDatasetQuery,
   TableId,
@@ -20,14 +19,6 @@ import type {
   SegmentMetadata,
   TableMetadata,
 } from "./types";
-
-export function fromLegacyQuery(
-  databaseId: DatabaseId | null,
-  metadataProvider: MetadataProvider,
-  datasetQuery: DatasetQuery,
-): Query {
-  return ML.query(databaseId, metadataProvider, datasetQuery);
-}
 
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and

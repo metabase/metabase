@@ -7,7 +7,7 @@ import {
   createQuery,
 } from "./test-helpers";
 
-describe("fromLegacyQuery", () => {
+describe("fromJsQuery", () => {
   // this is a very important optimization that the FE heavily relies upon
   it("should return the same object for the same database id, query, and metadata", () => {
     const metadataProvider = Lib.metadataProvider(
