@@ -311,6 +311,62 @@ For effective REPL usage:
   An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case those
   don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
 
+- Use `kebab-case` names for variables and defs, including constants.
+
+  ```clj
+  ;;; BAD
+  (def MY_CONSTANT 100)
+
+  ;;; GOOD
+  (def my-constant 100)
+
+  ;;; BAD
+  (defn myFunction [my_arg] ...)
+
+  ;;; GOOD
+  (defn my-function [my-arg] ...)
+  ```
+
+- Map destructuring should use kebab-case local bindings even if the map it was destructured from uses `snake_case`
+  keys or if it is returned as a value for a `snake_case` key.
+
+  ```clj
+  ;; Good
+  (let [{database-id :database_id} some-object]
+    {:database_id database-id, :table_id 100})
+
+  ;; Bad
+  (let [{database_id :database_id} some-object]
+    {:database_id database_id, :table_id 100})
+  ```
+
+- Prefer namespaced keywords for keywords that are used internally (i.e., not returned by the REST API or persisted by
+  the app DB):
+
+  ```clj
+  ;;; good
+  (defn query-type [x]
+    (if (some-pred? x)
+      :query-type/normal
+      :query-type/crazy))
+
+  ;;; bad
+  (defn query-type [x]
+    (if (some-pred? x)
+      :normal
+      :crazy))
+  ```
+
+  These are easy to search across the entire application and makes their origin clearer.
+
+- Functions that have side-effects such as writing to the application database or mutating the global state of the
+  application should have names that end in exclamation points. Exclamation points should be considered "sticky", so
+  if a function uses another function with a name ending in an exclamation point, it too should have a name that ends
+  in an exclamation point.
+
+  An exception is functions that write log messages or other output to the console; these don't need exclamation
+  points.
+
 #### Tests
 
 - Large tests should be broken out into separate `deftest` forms when they consist of several logically separate test
@@ -357,6 +413,10 @@ For effective REPL usage:
 
 - The backend codebase is broken out into separate modules.
 
+- The module configuration file lives in `.clj-kondo/config/modules/config.edn`. There is one entry for each module.
+  The entry has several keys, but the important ones are `:api` -- the list of namespaces this module provides for use
+  outside of the module -- and `:uses` -- the list of modules this module directly relies on.
+
 - An OSS follows the pattern `metabase.<module>.*` (for the Clojure namespace) and `src/metabase/<module>/**`(for the
   source files) with tests inside the corresponding `test/metabase/<module>/` directory, e.g. the `dashboards` module
   is everything inside `src/metabase/dashboards/` and `test/metabase/dashboards/`; it might have a
@@ -392,6 +452,15 @@ For effective REPL usage:
 
 - Don't try to cheat the module linters by using things like `#_{:clj-kondo/ignore [:metabase/modules]}`.
 
+- Put Malli schemas in `<module>.schema`.
+
+- Aim to keep the number of namespaces used outside of a module small. A module should only need at most a subset of
+  `<module>.api`, `<module>.settings`, `<module>.schema`, `<module>.init`, and `<module>.core`.
+
+- Try to minimize the direct dependencies of a module as well as the indirect dependencies. Modules that are used by
+  lots of other modules (such as `util`) ideally will have no dependencies on other modules. Our goal is to make as
+  many modules as possible be "leaf nodes".
+
 #### Settings
 
 - Don't define configurable options that can only be set with environment variables; use an `:internal` `defsetting`
@@ -412,6 +481,14 @@ For effective REPL usage:
     "Get a list of all transform tags."
     ...)
   ```
+
+- REST API routes should use `kebab-case`, e.g. `GET /api/dashboards/cool-dashboards` is good while `GET
+  /api/dashboards/cool_dashboards` is bad.
+
+- Query parameters should also use kebab-case e.g. `GET /api/dashboards?include-archived=true` is good while `GET
+  /api/dashboards?include_archived=true` or `GET /api/dashboards?includeArchived=true` is bad.
+
+- HTTP request bodies should use `snake_case`.
 
 #### MBQL
 
