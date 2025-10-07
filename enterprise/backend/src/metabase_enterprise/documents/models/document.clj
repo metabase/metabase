@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase-enterprise.documents.prose-mirror :as prose-mirror]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.spec :as search.spec]
@@ -45,9 +44,8 @@
   (when old-collection-id
     (api/check-403 (mi/can-write? (t2/select-one :model/Collection :id old-collection-id))))
   (when new-collection-id
-    (api/check-403 (mi/can-write? (t2/select-one :model/Collection :id new-collection-id))))
-  (when new-collection-id
-    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))))
+    (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))
+    (api/check-403 (mi/can-write? (t2/select-one :model/Collection :id new-collection-id)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Document :creator]
   "Hydrate the creator (user) of a document based on the creator_id."
