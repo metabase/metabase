@@ -6,7 +6,7 @@ import {
   PyodideWorkerPool,
   type PythonExecutionResult,
   type PythonLibraries,
-} from "../services/pyodide-worker-pool";
+} from "../services/pyodide-worker";
 
 export function useRunPython<T = unknown>(packages: string[] = []) {
   const [pool] = useState(() => new PyodideWorkerPool(packages));

@@ -1,6 +1,6 @@
 import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting";
-import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker-manager";
+import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
 import type { RowValue } from "metabase-types/api";
 
 export type Row = Record<string, RowValue>;

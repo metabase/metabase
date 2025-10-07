@@ -3,7 +3,7 @@ import { useCallback } from "react";
 import { useLazyGetPythonLibraryQuery } from "metabase-enterprise/api/python-transform-library";
 
 import { SHARED_LIB_IMPORT_PATH } from "../constants";
-import type { PythonLibraries } from "../services/pyodide-worker-pool";
+import type { PythonLibraries } from "../services/pyodide-worker";
 
 export function usePythonLibraries() {
   const [fetchLibrary, { isLoading }] = useLazyGetPythonLibraryQuery();
