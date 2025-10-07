@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
   SdkStoreState,
@@ -40,11 +39,7 @@ export const loadQuestionSdk =
       deserializedCard,
     });
 
-    const isStatic = getIsStaticEmbedding(getState());
-
-    if (!isStatic) {
-      await dispatch(loadMetadataForCard(card));
-    }
+    await dispatch(loadMetadataForCard(card));
 
     const metadata = getMetadata(getState());
 

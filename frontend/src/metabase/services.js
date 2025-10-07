@@ -345,6 +345,11 @@ export function setPublicDashboardEndpoints(uuid) {
   });
 }
 
+export function setEmbedCommonEndpoints() {
+  MetabaseApi.dataset = POST(`${embedBase}/dataset`);
+  MetabaseApi.dataset_pivot = POST(`${embedBase}/dataset/pivot`);
+}
+
 /**
  * @param token {string}
  */
@@ -383,9 +388,20 @@ function setCardEndpoints({ base, encodedToken }) {
           params,
         }),
       }),
+      getCardQueryMetadata: builder.query({
+        query: () => ({
+          url: `${prefix}/query_metadata`,
+        }),
+      }),
     }),
     overrideExisting: true,
   });
+  CardApi.query = GET_with(`${prefix}/query`, [
+    // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
+    "cardId",
+    "ignore_cache",
+    "collection_preview",
+  ]);
   CardApi.query = GET_with(`${prefix}/query`, [
     // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
     "cardId",
@@ -427,6 +443,11 @@ function setDashboardEndpoints({ base, encodedToken }) {
         },
         providesTags: (collection) =>
           collection ? provideCollectionTags(collection) : [],
+      }),
+      getDashboardQueryMetadata: builder.query({
+        query: () => ({
+          url: `${prefix}/query_metadata`,
+        }),
       }),
     }),
     overrideExisting: true,
