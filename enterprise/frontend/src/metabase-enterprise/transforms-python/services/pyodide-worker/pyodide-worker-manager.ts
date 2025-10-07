@@ -16,10 +16,10 @@ const EXECUTE_TIMEOUT = 60_000;
 export class PyodideWorkerManager {
   private worker: Worker;
   private ready: Promise<void>;
-  isReady: boolean;
+  status: "initializing" | "ready" | "error";
 
   constructor() {
-    this.isReady = false;
+    this.status = "initializing";
     this.worker = new Worker(
       // This needs to be a URL literal defined inline in the new Worker argument
       // for rspack to correctly resolve it.
@@ -33,9 +33,13 @@ export class PyodideWorkerManager {
 
     this.ready = this.waitFor(this.worker, "ready", {
       timeout: READY_TIMEOUT,
-    }).then(() => {
-      this.isReady = true;
-    });
+    })
+      .then(() => {
+        this.status = "ready";
+      })
+      .catch(() => {
+        this.status = "error";
+      });
   }
 
   async executePython<T>(

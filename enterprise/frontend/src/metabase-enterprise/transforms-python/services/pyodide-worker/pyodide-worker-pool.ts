@@ -22,11 +22,14 @@ export class PyodideWorkerPool {
   }
 
   private getWorker(): PyodideWorkerManager {
-    // add a new worker to the pool so there is always at least one
+    // remove all workers that have errored out
+    this.workers = this.workers.filter((worker) => worker.status !== "error");
+
+    // add a new worker to the pool so there is always at least one in the pool
     this.workers.push(new PyodideWorkerManager());
 
     // pick a worker that is ready if possible
-    const idx = this.workers.findIndex((worker) => worker.isReady);
+    const idx = this.workers.findIndex((worker) => worker.status === "ready");
     const jdx = idx === -1 ? 0 : idx;
     return this.workers.splice(jdx, 1)[0] ?? new PyodideWorkerManager();
   }
