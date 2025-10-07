@@ -45,6 +45,7 @@ export type StaticQuestionProps = PropsWithChildren<
   Pick<
     SdkQuestionProps,
     | "questionId"
+    | "token"
     | "withChartTypeSelector"
     | "height"
     | "width"
@@ -56,9 +57,6 @@ export type StaticQuestionProps = PropsWithChildren<
     | "title"
   >
 >;
-
-type StaticQuestionInternalProps = StaticQuestionProps &
-  Pick<SdkQuestionProps, "token">;
 
 /**
  * @interface
@@ -82,7 +80,7 @@ export type StaticQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-export const StaticQuestionInner = ({
+const StaticQuestionInner = ({
   questionId: rawQuestionId,
   token: rawToken,
   withChartTypeSelector,
@@ -95,7 +93,7 @@ export const StaticQuestionInner = ({
   withDownloads,
   title = false, // Hidden by default for backwards-compatibility.
   children,
-}: StaticQuestionInternalProps): JSX.Element | null => {
+}: StaticQuestionProps): JSX.Element | null => {
   const { entityId: questionId, token } = useExtractEntityIdFromJwtToken({
     entityId: rawQuestionId,
     token: rawToken ?? undefined,
