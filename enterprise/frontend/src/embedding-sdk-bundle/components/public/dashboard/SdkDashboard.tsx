@@ -246,6 +246,14 @@ const SdkDashboardInner = ({
     );
   }
 
+  if (isStaticEmbedding && !token) {
+    return (
+      <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkError message={t`The token is not passed`} />;
+      </SdkDashboardStyledWrapper>
+    );
+  }
+
   if (isStaticEntityLoadingError(errorPage)) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>

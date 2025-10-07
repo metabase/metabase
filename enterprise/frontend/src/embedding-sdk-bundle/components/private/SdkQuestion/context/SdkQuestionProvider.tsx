@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
@@ -188,6 +189,10 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (isStaticEmbedding && !token) {
+    return <SdkError message={t`The token is not passed`} />;
+  }
 
   if (error) {
     return <SdkError message={error.message} />;
