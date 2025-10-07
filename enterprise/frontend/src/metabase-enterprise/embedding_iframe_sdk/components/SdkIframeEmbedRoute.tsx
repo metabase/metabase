@@ -134,12 +134,6 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-dashboard",
           token: P.nonNullable,
-          isStatic: true,
-        },
-        {
-          componentName: "metabase-dashboard",
-          dashboardId: P.nonNullable,
-          isStatic: true,
         },
         (settings) => (
           <StaticDashboard
@@ -182,12 +176,6 @@ const SdkIframeEmbedView = ({
         {
           componentName: "metabase-question",
           token: P.nonNullable,
-          isStatic: true,
-        },
-        {
-          componentName: "metabase-question",
-          questionId: P.nonNullable,
-          isStatic: true,
         },
         (settings) => (
           <StaticQuestion

@@ -19,6 +19,7 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
@@ -126,8 +127,8 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId,
-  token,
+  dashboardId: rawDashboardId,
+  token: rawToken,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -154,6 +155,16 @@ const SdkDashboardInner = ({
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
+  const {
+    entityId: dashboardId,
+    token,
+    tokenError,
+  } = useExtractEntityIdFromJwtToken({
+    isStaticEmbedding,
+    entityId: rawDashboardId,
+    token: rawToken ?? undefined,
+  });
 
   useEffect(() => {
     if (isStaticEmbedding) {
@@ -246,10 +257,10 @@ const SdkDashboardInner = ({
     );
   }
 
-  if (isStaticEmbedding && !token) {
+  if (tokenError) {
     return (
       <SdkDashboardStyledWrapper className={className} style={style}>
-        <SdkError message={t`The token is not passed`} />;
+        <SdkError message={tokenError} />;
       </SdkDashboardStyledWrapper>
     );
   }
