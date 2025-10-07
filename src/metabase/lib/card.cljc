@@ -86,8 +86,7 @@
              {:base-type :type/*, :lib/type :metadata/column}
              field-metadata
              (m/filter-vals some? source-metadata-col)
-             {:lib/type                :metadata/column
-              :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})
+             {:lib/type :metadata/column})
         col (cond-> col
               (:metabase.lib.field/temporal-unit source-metadata-col)
               (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit source-metadata-col)))
@@ -100,8 +99,12 @@
               (assoc :fk-target-field-id nil))]
     (-> col
         lib.field.util/update-keys-for-col-from-previous-stage
-        (merge (when card-id
-                 {:lib/source :source/card, :lib/card-id card-id}))
+        (merge
+         ;; preserve the original source column
+         ;; alias (see [[metabase.lib.card-test/preserve-source-column-aliases-test]])
+         {:lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)}
+         (when card-id
+           {:lib/source :source/card, :lib/card-id card-id}))
         ;; :effective-type is required, but not always set, see e.g.,
         ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
         (u/assoc-default :effective-type (:base-type col))

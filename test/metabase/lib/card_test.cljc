@@ -626,3 +626,36 @@
             ["Product__RATING" true]]
            (map (juxt :lib/desired-column-alias :active)
                 (lib/returned-columns query))))))
+
+(deftest ^:parallel preserve-source-column-aliases-test
+  (testing "Preserve the original source column alias in Card metadata (do not deduplicate it)"
+    ;; If the Card was a native query like `SELECT id, id ...` then we can end up with metadata like this...
+    ;; see [[metabase.query-processor-test.native-test/native-with-duplicate-column-names]]
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id              1
+                           :dataset-query   {:native   {:query "select id, id from orders limit 1"}
+                                             :database (meta/id)
+                                             :type     :native}
+                           :result-metadata [{:base_type                :type/BigInteger
+                                              :display_name             "ID"
+                                              :effective_type           :type/BigInteger
+                                              :fingerprint              nil
+                                              :lib/source-column-alias  "ID"
+                                              :lib/desired-column-alias "ID"
+                                              :name                     "ID"
+                                              :semantic_type            :type/PK}
+                                             {:base_type                :type/BigInteger
+                                              :display_name             "ID"
+                                              :effective_type           :type/BigInteger
+                                              :fingerprint              nil
+                                              ::x                       true
+                                              :lib/source-column-alias  "ID"
+                                              :lib/desired-column-alias "ID_2"
+                                              :name                     "ID_2"
+                                              :semantic_type            :type/PK}]}]})
+          query (lib.card/card->underlying-query mp (lib.metadata/card mp 1))]
+      (is (= [{:lib/source-column-alias "ID", :lib/desired-column-alias "ID"}
+              {:lib/source-column-alias "ID", :lib/desired-column-alias "ID_2"}]
+             (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                  (lib/returned-columns query)))))))
