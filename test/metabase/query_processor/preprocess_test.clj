@@ -385,8 +385,8 @@
                  {:name "count", :display-name "Count"}]
                 (lib/returned-columns query))))
       (testing `lib.metadata.result-metadata/returned-columns
-        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
-                 {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
+        (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month"}
+                 {:name "count", :display-name "Count"}]
                 (lib.metadata.result-metadata/returned-columns query))))
       (testing `qp.preprocess/query->expected-cols
         ;; I think traditionally this field ref would have used a Field ID, and `:field_ref` should aim to preserve

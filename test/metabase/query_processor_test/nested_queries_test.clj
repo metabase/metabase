@@ -16,6 +16,7 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -1693,8 +1694,9 @@
                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
                                                                                       "Space Table Alias"))])))
 
-                    (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
-                                                   (lib/breakoutable-columns $q)))
+                    (lib/breakout $q (lib.tu.notebook/find-col-with-spec $q (lib/breakoutable-columns $q)
+                                                                         {:name "Space Table Alias"}
+                                                                         {:display-name "Space Column"}))
                     (lib/append-stage $q)
                     (lib/breakout $q (first (lib/breakoutable-columns $q)))
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]

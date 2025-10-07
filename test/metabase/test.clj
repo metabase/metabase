@@ -347,8 +347,7 @@
   sorts-nil-first?]
 
  [tx.env
-  set-test-drivers!
-  with-test-drivers]
+  set-test-drivers!]
 
  [schema-migrations-test.impl
   with-temp-empty-app-db])

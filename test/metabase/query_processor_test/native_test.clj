@@ -39,35 +39,40 @@
 
 (deftest ^:parallel native-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
-    (mt/with-test-drivers (sql.qp-test-util/sql-drivers)
+    (mt/test-drivers (sql.qp-test-util/sql-drivers)
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                         (mt/metadata-provider)
                                         {:cards [{:id              1
-                                                  :dataset-query   {:native   {:query "select id, id from orders"}
+                                                  :dataset-query   {:native   {:query "select id, id from orders limit 1"}
                                                                     :database (mt/id)
                                                                     :type     :native}
-                                                  :result-metadata [{:base_type      :type/BigInteger
-                                                                     :display_name   "ID"
-                                                                     :effective_type :type/BigInteger
-                                                                     :field_ref      [:field "ID" {:base-type :type/BigInteger}]
-                                                                     :fingerprint    nil
-                                                                     :name           "ID"
-                                                                     :semantic_type  :type/PK}
-                                                                    {:base_type      :type/BigInteger
-                                                                     :display_name   "ID"
-                                                                     :effective_type :type/BigInteger
-                                                                     :field_ref      [:field "ID_2" {:base-type :type/BigInteger}]
-                                                                     :fingerprint    nil
-                                                                     :name           "ID"
-                                                                     :semantic_type  :type/PK}]}]})
-        (is (=? {:columns ["ID" "ID_2"]}
-                (mt/rows+column-names
-                 (qp/process-query
-                  {:query    {:source-table "card__1"
-                              :fields       [[:field "ID" {:base-type :type/Integer}]
-                                             [:field "ID_2" {:base-type :type/Integer}]]}
-                   :database (mt/id)
-                   :type     :query}))))))))
+                                                  :result-metadata [{:base_type                :type/BigInteger
+                                                                     :display_name             "ID"
+                                                                     :effective_type           :type/BigInteger
+                                                                     :field_ref                [:field "ID" {:base-type :type/BigInteger}]
+                                                                     :fingerprint              nil
+                                                                     :lib/source-column-alias  "ID"
+                                                                     :lib/desired-column-alias "ID"
+                                                                     :name                     "ID"
+                                                                     :semantic_type            :type/PK}
+                                                                    {:base_type                :type/BigInteger
+                                                                     :display_name             "ID"
+                                                                     :effective_type           :type/BigInteger
+                                                                     :field_ref                [:field "ID_2" {:base-type :type/BigInteger}]
+                                                                     :fingerprint              nil
+                                                                     :lib/source-column-alias  "ID"
+                                                                     :lib/desired-column-alias "ID_2"
+                                                                     :name                     "ID_2"
+                                                                     :semantic_type            :type/PK}]}]})
+        (is (=? ["ID" "ID_2"]
+                (map :name
+                     (mt/cols
+                      (qp/process-query
+                       {:query    {:source-table "card__1"
+                                   :fields       [[:field "ID" {:base-type :type/Integer}]
+                                                  [:field "ID_2" {:base-type :type/Integer}]]}
+                        :database (mt/id)
+                        :type     :query})))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

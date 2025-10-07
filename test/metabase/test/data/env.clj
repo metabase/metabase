@@ -40,16 +40,6 @@
   (or @default-test-drivers
       @env-test-drivers))
 
-(defn do-with-test-drivers [drivers thunk]
-  {:pre [((some-fn sequential? set?) drivers)]}
-  (binding [*test-drivers* (constantly (set drivers))]
-    (thunk)))
-
-(defmacro with-test-drivers
-  "Temporarily change the set of drivers that driver-based tests run against. Intended for REPL usage."
-  [drivers & body]
-  `(do-with-test-drivers ~drivers (fn [] ~@body)))
-
 (def ^{:arglists '([])} test-drivers
   "Set of keyword names of drivers we should run tests against. By default, this is `#{:h2}` but it can be
   overriden

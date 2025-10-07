@@ -897,8 +897,7 @@
                      :source-metadata [{:name         "CATEGORY"
                                         :display_name "Category"
                                         :base_type    :type/Number
-                                        :id           %category
-                                        :field_ref    $orders.product-id->category}]})]
+                                        :id           %category}]})]
         (is (=? query (add-implicit-joins query)))))))
 
 (deftest ^:parallel metadata-join-alias-test-1b
@@ -944,8 +943,7 @@
                                                                    :strategy     :left-join
                                                                    :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.$id]
                                                                    :source-table $$products
-                                                                   :fk-field-id  %orders.product-id}]}
-                                 :source-metadata [{:field_ref &PRODUCTS__via__PRODUCT_ID.$orders.product-id->category}]}]})
+                                                                   :fk-field-id  %orders.product-id}]}}]})
               (add-implicit-joins
                (lib.tu.macros/mbql-query products
                  {:source-table $$products

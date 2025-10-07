@@ -198,7 +198,8 @@
                             [:field (meta/id :categories :name) {:join-alias "cat", :qp/ignore-coercion true}]]
                  :joins    [{:alias           "cat"
                              :source-table    $$categories
-                             :source-metadata source-metadata
+                             :source-metadata (for [col source-metadata]
+                                                (dissoc col :source :field_ref))
                              :strategy        :left-join
                              :condition       [:= $category-id [:field "ID" {:base-type :type/BigInteger, :join-alias "cat"}]]
                              :fields          [&cat.categories.id
@@ -264,7 +265,6 @@
                             :display_name  "User ID"
                             :base_type     :type/Integer
                             :semantic_type :type/FK
-                            :field_ref     [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]
                             :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}]]
       (is (= (lib.tu.macros/mbql-query users
                {:fields [$id
