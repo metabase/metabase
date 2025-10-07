@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
 
+import type { PyodideWorkerCommand, PyodideWorkerMessage } from "./types";
+
 // Pyodide does not come with type definitions, so we have to add them
 // here as best we can.
 type Pyodide = {
@@ -22,28 +24,39 @@ const PACKAGES = ["pandas", "numpy"];
 
 self.addEventListener("unhandledrejection", (event) => {
   event.stopPropagation();
-  self.postMessage({ type: "error", error: event.reason });
+  send({ type: "error", error: event.reason });
 });
 
 run();
 
+/**
+ * Send a message to the main thread.
+ */
+function send(message: PyodideWorkerMessage) {
+  self.postMessage(message);
+}
+
 async function run() {
   const pyodide = await init();
 
-  self.addEventListener("message", async function (event) {
-    const { type, data } = event.data;
+  self.addEventListener(
+    "message",
+    async function (event: MessageEvent<PyodideWorkerCommand>) {
+      const { type } = event.data;
 
-    if (type === "execute") {
-      const result = await execute(pyodide, data.code, data.libraries);
-      self.postMessage({ type: "results", ...result });
-      return;
-    }
+      if (type === "execute") {
+        const { libraries, code } = event.data;
+        const result = await execute(pyodide, code, libraries);
+        send({ type: "results", ...result });
+        return;
+      }
 
-    throw new Error(`Unknown message type: ${type}`);
-  });
+      throw new Error(`Unknown message type: ${type}`);
+    },
+  );
 
   // Signal that worker is ready to accept messages
-  self.postMessage({ type: "ready" });
+  send({ type: "ready" });
 }
 
 async function init() {

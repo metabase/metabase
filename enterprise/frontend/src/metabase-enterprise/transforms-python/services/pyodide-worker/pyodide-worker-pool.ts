@@ -2,7 +2,11 @@ import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 
-export type PythonLibraries = Record<string, string>;
+import type {
+  PyodideWorkerCommand,
+  PyodideWorkerMessage,
+  PythonLibraries,
+} from "./types";
 
 type ExecutePythonOptions = {
   signal?: AbortSignal;
@@ -14,18 +18,6 @@ export type PythonExecutionResult<T = unknown> = {
   stdout?: string;
   stderr?: string;
 };
-
-type ErrorMessage = { type: "error"; error: Error };
-type ReadyMessage = { type: "ready" };
-type ResultsMessage = {
-  type: "results";
-  error?: string;
-  result?: string;
-  stdout: string;
-  stderr: string;
-};
-
-type WorkerMessage = ReadyMessage | ResultsMessage | ErrorMessage;
 
 export class PyodideWorkerPool {
   workers: PyodideWorker[];
@@ -71,9 +63,12 @@ class PyodideWorker {
       ),
       { name: "pyodide-worker" },
     );
-    this.ready = waitFor(this.worker, "ready", { timeout: 10000 }).then(() => {
-      this.isReady = true;
-    });
+
+    this.ready = this.waitFor(this.worker, "ready", { timeout: 10000 }).then(
+      () => {
+        this.isReady = true;
+      },
+    );
   }
 
   async executePython<T>(
@@ -88,15 +83,13 @@ class PyodideWorker {
     try {
       await this.ready;
 
-      this.worker.postMessage({
+      this.send({
         type: "execute",
-        data: {
-          code,
-          libraries,
-        },
+        code,
+        libraries,
       });
 
-      const evt = await waitFor(this.worker, "results", {
+      const evt = await this.waitFor(this.worker, "results", {
         timeout: 30000,
         signal: options?.signal,
       });
@@ -115,45 +108,49 @@ class PyodideWorker {
       this.worker.terminate();
     }
   }
-}
 
-function waitFor<T extends WorkerMessage["type"]>(
-  worker: Worker,
-  type: T,
-  { timeout, signal }: { timeout: number; signal?: AbortSignal },
-): Promise<Extract<WorkerMessage, { type: T }>> {
-  return new Promise((resolve, reject) => {
-    signal?.addEventListener("abort", () => {
-      reject(new Error("Aborted"));
+  private send(message: PyodideWorkerCommand) {
+    this.worker.postMessage(message);
+  }
+
+  private waitFor<T extends PyodideWorkerMessage["type"]>(
+    worker: Worker,
+    type: T,
+    { timeout, signal }: { timeout: number; signal?: AbortSignal },
+  ): Promise<Extract<PyodideWorkerMessage, { type: T }>> {
+    return new Promise((resolve, reject) => {
+      signal?.addEventListener("abort", () => {
+        reject(new Error("Aborted"));
+      });
+
+      const handler = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
+        if (data.type === type) {
+          unsubscribe();
+          resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
+        }
+        if (data.type === "error") {
+          unsubscribe();
+          reject(data.error);
+        }
+      };
+
+      const errHandler = (evt: ErrorEvent) => {
+        reject(evt.error ?? new Error(t`Could not start Python worker.`));
+      };
+
+      const unsubscribe = () => {
+        clearTimeout(timer);
+        worker.removeEventListener("message", handler);
+        worker.removeEventListener("error", errHandler);
+      };
+
+      worker.addEventListener("message", handler);
+      worker.addEventListener("error", errHandler);
+
+      const timer = setTimeout(() => {
+        unsubscribe();
+        reject(new Error(`Timeout waiting for ${type}`));
+      }, timeout);
     });
-
-    const handler = ({ data }: MessageEvent<WorkerMessage>) => {
-      if (data.type === type) {
-        unsubscribe();
-        resolve(data as Extract<WorkerMessage, { type: T }>);
-      }
-      if (data.type === "error") {
-        unsubscribe();
-        reject(data.error);
-      }
-    };
-
-    const errHandler = (evt: ErrorEvent) => {
-      reject(evt.error ?? new Error(t`Could not start Python worker.`));
-    };
-
-    const unsubscribe = () => {
-      clearTimeout(timer);
-      worker.removeEventListener("message", handler);
-      worker.removeEventListener("error", errHandler);
-    };
-
-    worker.addEventListener("message", handler);
-    worker.addEventListener("error", errHandler);
-
-    const timer = setTimeout(() => {
-      unsubscribe();
-      reject(new Error(`Timeout waiting for ${type}`));
-    }, timeout);
-  });
+  }
 }
