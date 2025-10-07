@@ -1,2 +1,2 @@
 export * from "./pyodide-worker-pool";
-export type { PythonLibraries } from "./types";
+export type { PythonLibraries, PythonExecutionResult } from "./types";

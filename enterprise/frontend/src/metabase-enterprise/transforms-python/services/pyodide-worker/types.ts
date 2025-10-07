@@ -24,3 +24,14 @@ export type PyodideWorkerMessage =
   | PyodideReadyMessage
   | PyodideResultsMessage
   | PyodideErrorMessage;
+
+export type ExecutePythonOptions = {
+  signal?: AbortSignal;
+};
+
+export type PythonExecutionResult<T = unknown> = {
+  output?: T;
+  error?: string;
+  stdout?: string;
+  stderr?: string;
+};
