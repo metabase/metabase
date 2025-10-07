@@ -8,7 +8,6 @@ import type {
   DatabaseId,
   DatasetColumn,
   DatasetQuery,
-  OpaqueDatasetQuery,
   RowValue,
   TableId,
 } from "metabase-types/api";
@@ -44,7 +43,7 @@ export const DEFAULT_QUERY: DatasetQuery = {
 };
 
 type QueryOpts = MetadataProviderOpts & {
-  query?: DatasetQuery | OpaqueDatasetQuery;
+  query?: DatasetQuery;
 };
 
 export function createQuery({

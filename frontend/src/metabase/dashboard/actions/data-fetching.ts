@@ -56,7 +56,7 @@ import type {
   DashboardCard,
   DashboardId,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
@@ -600,7 +600,7 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
+function getDatasetQueryParams(datasetQuery: Partial<JsonQuery> = {}) {
   const parameters =
     datasetQuery?.parameters
       ?.map((parameter) => ({

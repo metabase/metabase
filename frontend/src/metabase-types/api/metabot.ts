@@ -4,7 +4,6 @@ import type {
   CardType,
   DashboardId,
   DatasetQuery,
-  OpaqueDatasetQuery,
   PaginationResponse,
   RowValue,
   UnsavedCard,
@@ -105,7 +104,7 @@ export type MetabotChartConfig = {
     description?: string;
     timestamp: string;
   }>;
-  query?: DatasetQuery | OpaqueDatasetQuery;
+  query?: DatasetQuery;
   display_type?: CardDisplayType;
 };
 
@@ -113,7 +112,7 @@ export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
   chart_configs?: Array<MetabotChartConfig>;
-  query?: DatasetQuery | OpaqueDatasetQuery;
+  query?: DatasetQuery;
   error?: any;
 };
 
@@ -125,7 +124,7 @@ export type MetabotDashboardInfo = {
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
   chart_configs?: Array<MetabotChartConfig>;
-  query?: DatasetQuery | OpaqueDatasetQuery;
+  query?: DatasetQuery;
   error?: any;
 };
 

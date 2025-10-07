@@ -39,7 +39,6 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
-  OpaqueDatasetQuery,
   ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
@@ -64,7 +63,7 @@ export type QuestionCreatorOpts = {
   name?: string;
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
-  dataset_query?: DatasetQuery | OpaqueDatasetQuery;
+  dataset_query?: DatasetQuery;
 };
 
 export type QuestionDashboardProps = {
@@ -178,7 +177,7 @@ class Question {
   _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
-    if (NativeQuery.isDatasetQueryType(datasetQuery)) {
+    if (this.isNative()) {
       return new NativeQuery(this, datasetQuery);
     }
 
@@ -206,17 +205,22 @@ class Question {
     return this;
   }
 
-  datasetQuery(): DatasetQuery | OpaqueDatasetQuery {
+  datasetQuery(): DatasetQuery {
     return this.card().dataset_query;
   }
 
-  setDatasetQuery(
-    newDatasetQuery: DatasetQuery | OpaqueDatasetQuery,
-  ): Question {
+  setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
     return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
   }
 
   isNative() {
+    if (
+      this.datasetQuery() == null ||
+      InternalQuery.isDatasetQueryType(this.datasetQuery())
+    ) {
+      return false;
+    }
+
     const queryInfo = Lib.queryDisplayInfo(this.query());
     return queryInfo.isNative;
   }

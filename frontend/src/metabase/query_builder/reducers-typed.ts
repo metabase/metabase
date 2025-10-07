@@ -23,7 +23,7 @@ import {
 } from "./actions";
 
 // the card that is actively being worked on
-export const card = createReducer<any>(null, (builder) => {
+export const card = createReducer<Card | null>(null, (builder) => {
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)

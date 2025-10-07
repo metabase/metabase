@@ -225,8 +225,7 @@ const isLoading = (series: Series | null) => {
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
-  const firstQuestion =
-    firstCard?.dataset_query != null ? new Question(firstCard) : undefined;
+  const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
   const isNative = firstQuestion?.isNative();
   const isNativeView = isNative && props.queryBuilderMode === "view";
 

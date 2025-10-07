@@ -6,13 +6,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { runQuestionQuery } from "metabase/services";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, OpaqueDatasetQuery } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 export function useQueryResults(question: Question) {
   const metadata = useSelector(getMetadata);
-  const [lastRunQuery, setLastRunQuery] = useState<
-    DatasetQuery | OpaqueDatasetQuery | null
-  >(null);
+  const [lastRunQuery, setLastRunQuery] = useState<DatasetQuery | null>(null);
 
   const [{ value: results = null, loading: isRunning }, runQuery] = useAsyncFn(
     () => runQuestionQuery(question),

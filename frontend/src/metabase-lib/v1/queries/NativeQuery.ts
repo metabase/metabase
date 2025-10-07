@@ -94,10 +94,6 @@ export default class NativeQuery {
     this._datasetQuery = datasetQuery;
   }
 
-  static isDatasetQueryType(datasetQuery: DatasetQuery) {
-    return datasetQuery?.type === NATIVE_QUERY_TEMPLATE.type;
-  }
-
   private _query(): Lib.Query {
     return this.question().query();
   }

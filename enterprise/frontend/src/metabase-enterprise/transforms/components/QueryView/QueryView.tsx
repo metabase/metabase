@@ -8,12 +8,12 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type { DatasetQuery, OpaqueDatasetQuery } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 
 type QueryViewProps = {
-  query: DatasetQuery | OpaqueDatasetQuery;
+  query: DatasetQuery;
 };
 
 export function QueryView({ query }: QueryViewProps) {

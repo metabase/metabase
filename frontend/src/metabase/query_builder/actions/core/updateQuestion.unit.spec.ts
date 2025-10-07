@@ -8,8 +8,8 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type {
   Card,
   ConcreteFieldReference,
-  DatasetQuery,
   Join,
+  LegacyDatasetQuery,
   NativeDatasetQuery,
   StructuredDatasetQuery,
   TemplateTag,
@@ -59,7 +59,7 @@ import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
-type TestCard = Card<DatasetQuery> | UnsavedCard<DatasetQuery>;
+type TestCard = Card<LegacyDatasetQuery> | UnsavedCard<LegacyDatasetQuery>;
 
 type SetupOpts = {
   card: TestCard;

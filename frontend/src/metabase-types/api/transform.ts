@@ -1,6 +1,6 @@
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
-import type { DatasetQuery, OpaqueDatasetQuery } from "./query";
+import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
 import type { ConcreteTableId, Table } from "./table";
 
@@ -34,7 +34,7 @@ export type PythonTransformSource = {
 };
 export type QueryTransformSource = {
   type: "query";
-  query: DatasetQuery | OpaqueDatasetQuery;
+  query: DatasetQuery;
 };
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;

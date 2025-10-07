@@ -32,7 +32,9 @@ export interface NativeDatasetQuery {
   parameters?: UiParameter[];
 }
 
-export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
+
+export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
 declare const OpaqueDatasetQuerySymbol: unique symbol;
 export type OpaqueDatasetQuery = unknown & {
@@ -51,9 +53,11 @@ interface PublicNativeDatasetQuery {
   };
 }
 
-export type PublicDatasetQuery =
+export type LegacyPublicDatasetQuery =
   | PublicStructuredDatasetQuery
   | PublicNativeDatasetQuery;
+
+export type PublicDatasetQuery = OpaqueDatasetQuery | LegacyPublicDatasetQuery;
 
 export const dateTimeAbsoluteUnits = [
   "minute",
