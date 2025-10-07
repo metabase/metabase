@@ -43,9 +43,9 @@
    Throws 403 exception if permissions are insufficient."
   [old-collection-id new-collection-id]
   (when old-collection-id
-    (collection/check-write-perms-for-collection old-collection-id))
+    (api/check-403 (mi/can-write? (t2/select-one :model/Collection :id old-collection-id))))
   (when new-collection-id
-    (collection/check-write-perms-for-collection new-collection-id))
+    (api/check-403 (mi/can-write? (t2/select-one :model/Collection :id new-collection-id))))
   (when new-collection-id
     (api/check-400 (t2/exists? :model/Collection :id new-collection-id :archived false))))
 

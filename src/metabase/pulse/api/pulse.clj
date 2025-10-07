@@ -138,7 +138,7 @@
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
   ;; make sure we have write permissions for that collection
   (when-not dashboard-id
-    (collection/check-write-perms-for-collection collection-id))
+    (api/create-check :model/Pulse {:collection_id collection-id}))
   ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
   (when dashboard-id
     (api/read-check :model/Dashboard dashboard-id))

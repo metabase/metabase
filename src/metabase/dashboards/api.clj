@@ -129,7 +129,7 @@
        [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (collection/check-write-perms-for-collection collection_id)
+  (api/create-check :model/Dashboard {:collection_id collection_id})
   (let [dashboard-data {:name                name
                         :description         description
                         :parameters          (or parameters [])
@@ -496,7 +496,7 @@
                                               [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
-  (collection/check-write-perms-for-collection collection_id)
+  (api/create-check :model/Dashboard {:collection_id collection_id})
   (api/check-400 (not (and (= is_deep_copy false)
                            (t2/exists? :model/Card
                                        :dashboard_id from-dashboard-id
@@ -1106,7 +1106,7 @@
                                       [:parent-collection-id ms/PositiveInt]]
    _query-params
    dashboard]
-  (collection/check-write-perms-for-collection parent-collection-id)
+  (api/create-check :model/Dashboard {:collection_id parent-collection-id})
   (let [dashboard (dashboard/save-transient-dashboard! dashboard parent-collection-id)]
     (events/publish-event! :event/dashboard-create {:object dashboard :user-id api/*current-user-id*})
     dashboard))

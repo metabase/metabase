@@ -872,3 +872,9 @@
           (t2/hydrate (remove nil? models) :collection))
    :id
    {:default false}))
+
+(defmethod can-create? :perms/use-parent-collection-perms
+  [_model m]
+  (if-let [collection-id (:collection_id m)]
+    (can-write? (t2/select-one :model/Collection :id collection-id))
+    (can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))

@@ -150,7 +150,7 @@
   [_route-params
    _query-params
    {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
-  (collection/check-write-perms-for-collection collection_id)
+  (api/create-check :model/Document {:collection_id collection_id})
   (let [created (t2/with-transaction [_conn]
                   (when collection_position
                     (api/maybe-reconcile-collection-position! {:collection_id collection_id

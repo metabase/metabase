@@ -599,7 +599,7 @@
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
     (check-filetype filename file)
-    (collection/check-write-perms-for-collection collection-id)
+    (api/create-check :model/Card {:collection_id collection-id})
     (try
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
