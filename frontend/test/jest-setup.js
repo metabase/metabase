@@ -60,5 +60,3 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0,
   width: 0,
 });
-
-window.METABASE_REMOVE_DELAYS = true;
