@@ -15,6 +15,7 @@ import {
 import type { DependencyNode } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
+import { getNodeId } from "../utils";
 
 import S from "./DependencyList.module.css";
 import { getHeaderLabel, getNodeTitle } from "./utils";
@@ -50,7 +51,7 @@ export function DependencyList({
     <Card p={0} shadow="none" withBorder>
       <ListHeader selection={selection} onSelectionChange={onSelectionChange} />
       {NODES.map((node) => (
-        <ListItem key={node.id} node={node} />
+        <ListItem key={getNodeId(node.id, node.type)} node={node} />
       ))}
     </Card>
   );
@@ -85,7 +86,7 @@ function ListItem({ node }: ListItemProps) {
   const title = getNodeTitle(node);
 
   return (
-    <Box className={S.item} p="lg">
+    <Stack className={S.item} p="lg" gap="sm">
       <Flex
         className={S.link}
         component={Link}
@@ -96,6 +97,6 @@ function ListItem({ node }: ListItemProps) {
         <Icon name={title.icon} />
         <Box>{title.label}</Box>
       </Flex>
-    </Box>
+    </Stack>
   );
 }

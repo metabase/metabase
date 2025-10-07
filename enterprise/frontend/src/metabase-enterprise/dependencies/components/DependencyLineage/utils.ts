@@ -17,11 +17,11 @@ import type {
 import S from "./DependencyLineage.module.css";
 import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
-function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
 }
 
-function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
+export function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
