@@ -10,7 +10,6 @@
 import { KBAR_LISTBOX, getListboxItemId, useKBar } from "kbar";
 import {
   type MouseEvent,
-  type ReactElement,
   cloneElement,
   useCallback,
   useEffect,
@@ -29,7 +28,7 @@ interface RenderParams<T = PaletteActionImpl | string> {
 
 interface PaletteResultListProps {
   items: (PaletteActionImpl | string)[];
-  onRender: (params: RenderParams) => ReactElement;
+  renderItem: (params: RenderParams) => React.ReactElement;
   maxHeight?: number;
 }
 
@@ -182,7 +181,7 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
               {...handlers}
             >
               {cloneElement(
-                props.onRender({
+                props.renderItem({
                   item,
                   active,
                 }),

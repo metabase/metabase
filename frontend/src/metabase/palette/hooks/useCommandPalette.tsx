@@ -36,7 +36,7 @@ import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
 
 export const useCommandPalette = ({
-  disabled,
+  disabled = false,
   locationQuery,
 }: {
   disabled: boolean;

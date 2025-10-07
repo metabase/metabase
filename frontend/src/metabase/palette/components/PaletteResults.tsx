@@ -82,13 +82,7 @@ export const PaletteResults = ({
       <PaletteResultList
         items={processedResults} // items needs to be a stable reference, otherwise the activeIndex will constantly be hijacked
         maxHeight={530}
-        onRender={({
-          item,
-          active,
-        }: {
-          item: string | PaletteActionImpl;
-          active: boolean;
-        }) => {
+        renderItem={({ item, active }) => {
           const isFirst = processedResults[0] === item;
 
           return (

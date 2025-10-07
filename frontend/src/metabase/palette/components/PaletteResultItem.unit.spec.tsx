@@ -69,7 +69,7 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
         component={() => (
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
-            onRender={({
+            renderItem={({
               item,
               active,
             }: {
