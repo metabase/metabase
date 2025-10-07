@@ -1,24 +1,34 @@
 import { pick } from "underscore";
 
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
 import { isNotNull } from "metabase/lib/types";
 
-export type SdkDashboardDisplayProps = {
-  /**
-   * The ID of the dashboard.
-   *  <br/>
-   * This is either:
-   *  <br/>
-   *  - the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
-   *  <br/>
-   *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
-   */
-  dashboardId: SdkDashboardId;
-
+export type SdkDashboardDisplayProps = StrictUnion<
+  | {
+      /**
+       * The ID of the dashboard.
+       *  <br/>
+       * This is either:
+       *  <br/>
+       *  - the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+       *  <br/>
+       *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
+       */
+      dashboardId: SdkDashboardId;
+    }
+  | {
+      /**
+       * A valid JWT token for the anonymous embedding.
+       */
+      token: SdkEntityToken;
+    }
+> & {
   /**
    * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
    * <br/>

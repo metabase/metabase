@@ -132,12 +132,13 @@ const SdkIframeEmbedView = ({
       },
       {
         componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
+        token: P.nonNullable,
         isStatic: true,
       },
       (settings) => (
         <StaticDashboard
           dashboardId={settings.dashboardId}
+          token={settings.token}
           withTitle={settings.withTitle}
           withDownloads={settings.withDownloads}
           initialParameters={settings.initialParameters}

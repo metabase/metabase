@@ -84,9 +84,9 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ...settings,
-        questionId: !settings.isStatic
-          ? settings.questionId
-          : staticEmbeddingSignedToken,
+        ...(isStaticEmbedding
+          ? { token: staticEmbeddingSignedToken }
+          : { questionId: settings?.questionId }),
         initialSqlParameters: getVisibleParameters(
           questionSettings.initialSqlParameters,
           questionSettings.lockedParameters,
@@ -110,9 +110,9 @@ export function getEmbedCustomElementSnippet({
 
       return {
         ...settings,
-        dashboardId: !settings.isStatic
-          ? settings.dashboardId
-          : staticEmbeddingSignedToken,
+        ...(isStaticEmbedding
+          ? { token: staticEmbeddingSignedToken }
+          : { dashboardId: settings?.dashboardId }),
         initialParameters: getVisibleParameters(
           dashboardSettings.initialParameters,
           dashboardSettings.lockedParameters,
