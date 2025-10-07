@@ -39,11 +39,11 @@
 
 (deftest ^:parallel native-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
-    (mt/with-test-drivers (sql.qp-test-util/sql-drivers)
+    (mt/test-drivers (sql.qp-test-util/sql-drivers)
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
                                         (mt/metadata-provider)
                                         {:cards [{:id              1
-                                                  :dataset-query   {:native   {:query "select id, id from orders"}
+                                                  :dataset-query   {:native   {:query "select id, id from orders limit 1"}
                                                                     :database (mt/id)
                                                                     :type     :native}
                                                   :result-metadata [{:base_type      :type/BigInteger
@@ -60,6 +60,7 @@
                                                                      :fingerprint    nil
                                                                      :name           "ID"
                                                                      :semantic_type  :type/PK}]}]})
+
         (is (=? {:columns ["ID" "ID_2"]}
                 (mt/rows+column-names
                  (qp/process-query
