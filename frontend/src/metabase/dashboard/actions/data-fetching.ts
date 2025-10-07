@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
@@ -45,6 +45,8 @@ import {
   maybeUsePivotEndpoint,
 } from "metabase/services";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -600,7 +602,7 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: Partial<JsonQuery> = {}) {
+function getDatasetQueryParams(datasetQuery: JsonQuery) {
   const parameters =
     datasetQuery?.parameters
       ?.map((parameter) => ({
@@ -609,35 +611,28 @@ function getDatasetQueryParams(datasetQuery: Partial<JsonQuery> = {}) {
       }))
       .sort(sortById) ?? [];
 
-  return (
-    match(datasetQuery)
-      .with({ type: "native" }, ({ native }) => ({
-        type: "native",
-        query: undefined,
-        native,
-        parameters,
-      }))
-      .with({ type: "query" }, ({ query }) => ({
-        type: "query",
-        query,
-        native: undefined,
-        parameters,
-      }))
-      // TODO Alex P - major hack
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      .with({ stages: P.nonNullable }, ({ stages }) => ({
-        type: "stages",
-        stages,
-        parameters,
-      }))
-      .otherwise(() => ({
-        type: undefined,
-        native: undefined,
-        query: undefined,
-        parameters: [],
-      }))
-  );
+  const question = Question.create({ dataset_query: datasetQuery });
+  const legacyQuery = Lib.toLegacyQuery(question.query());
+
+  return match(legacyQuery)
+    .with({ type: "native" }, ({ native }) => ({
+      type: "native",
+      query: undefined,
+      native,
+      parameters,
+    }))
+    .with({ type: "query" }, ({ query }) => ({
+      type: "query",
+      query,
+      native: undefined,
+      parameters,
+    }))
+    .otherwise(() => ({
+      type: undefined,
+      native: undefined,
+      query: undefined,
+      parameters: [],
+    }));
 }
 
 function sortById(a: UiParameter, b: UiParameter) {
