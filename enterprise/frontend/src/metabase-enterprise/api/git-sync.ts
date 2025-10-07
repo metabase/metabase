@@ -99,12 +99,16 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
           tag("remote-sync-current-task"),
         ]),
     }),
-    importFromBranch: builder.mutation<void, { branch: string }>({
-      query: ({ branch }) => ({
+    importFromBranch: builder.mutation<
+      void,
+      { branch: string; force?: boolean }
+    >({
+      query: ({ branch, force }) => ({
         url: `/api/ee/remote-sync/import`,
         method: "POST",
         body: {
           branch,
+          force,
         },
       }),
       invalidatesTags: () => [

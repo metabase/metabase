@@ -22,9 +22,21 @@ import {
   FormSwitch,
   FormTextInput,
 } from "metabase/forms";
-import { Badge, Box, Flex, Radio, Stack, Text, Title } from "metabase/ui";
+import { useDispatch } from "metabase/lib/redux";
+import { addUndo } from "metabase/redux/undo";
+import {
+  Badge,
+  Box,
+  Button,
+  Flex,
+  Radio,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import {
   type GitSyncSettingsSet,
+  useImportFromBranchMutation,
   useUpdateGitSyncSettingsMutation,
 } from "metabase-enterprise/api/git-sync";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
@@ -38,10 +50,13 @@ const TYPE_KEY = "remote-sync-type";
 const BRANCH_KEY = "remote-sync-branch";
 
 export const GitSyncSettings = (): JSX.Element => {
+  const dispatch = useDispatch();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const [updateGitSyncSettings] = useUpdateGitSyncSettingsMutation();
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [importFromBranch, { isLoading: isImporting }] =
+    useImportFromBranchMutation();
 
   const { updateSettings } = useAdminSetting("remote-sync-url");
 
@@ -81,6 +96,21 @@ export const GitSyncSettings = (): JSX.Element => {
     } as Partial<EnterpriseSettings>);
     setIsDeactivateModalOpen(false);
   }, [updateSettings]);
+
+  const handlePullChanges = useCallback(async () => {
+    const currentBranch = settingValues?.[BRANCH_KEY] || "main";
+    try {
+      await importFromBranch({ branch: currentBranch, force: true }).unwrap();
+    } catch (error) {
+      dispatch(
+        addUndo({
+          message: t`Failed to pull changes`,
+          toaster: true,
+          undo: false,
+        }),
+      );
+    }
+  }, [importFromBranch, settingValues, dispatch]);
 
   const syncMode = settingValues?.[TYPE_KEY];
 
@@ -154,12 +184,26 @@ export const GitSyncSettings = (): JSX.Element => {
 
                   {values?.[TYPE_KEY] === "production" && (
                     <Stack ml="1.875rem">
-                      <FormTextInput
-                        name={BRANCH_KEY}
-                        label={t`Sync branch`}
-                        placeholder="main"
-                        {...getEnvSettingProps(settingDetails?.[BRANCH_KEY])}
-                      />
+                      <Flex align="end" gap="md">
+                        <Box style={{ flex: 1 }}>
+                          <FormTextInput
+                            name={BRANCH_KEY}
+                            label={t`Sync branch`}
+                            placeholder="main"
+                            {...getEnvSettingProps(
+                              settingDetails?.[BRANCH_KEY],
+                            )}
+                          />
+                        </Box>
+                        {isGitSyncEnabled && (
+                          <Button
+                            variant="outline"
+                            onClick={handlePullChanges}
+                            disabled={isImporting}
+                            loading={isImporting}
+                          >{t`Pull changes`}</Button>
+                        )}
+                      </Flex>
                       <FormSwitch
                         size="sm"
                         name="remote-sync-auto-import"
