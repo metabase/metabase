@@ -1,7 +1,8 @@
+import { useMounted } from "@mantine/hooks";
 import { type VirtualItem, useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
-import { useMount } from "react-use";
 
+import { useEffectOnceIf } from "metabase/common/hooks/use-effect-once-if";
 import { Box } from "metabase/ui";
 
 /**
@@ -22,6 +23,7 @@ export function VirtualizedList({
   scrollTo?: number;
 }) {
   const parentRef = useRef(null);
+  const isMounted = useMounted();
 
   const virtualizer = useVirtualizer({
     count: children.length,
@@ -32,14 +34,17 @@ export function VirtualizedList({
 
   const items = virtualizer.getVirtualItems();
 
-  useMount(() => {
-    if (scrollTo && scrollTo < children.length) {
-      // we need to wait for dynamic measurements to be taken before scrolling
-      window.requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(scrollTo, { align: "center" });
-      });
-    }
-  });
+  useEffectOnceIf(
+    () => {
+      if (scrollTo && scrollTo < children.length) {
+        window.requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(scrollTo, { align: "center" });
+        });
+      }
+    },
+    [scrollTo, isMounted],
+    isMounted && scrollTo !== undefined && scrollTo !== -1,
+  );
 
   return (
     <div
