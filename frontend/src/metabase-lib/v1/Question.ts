@@ -178,7 +178,7 @@ class Question {
   _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
-    if (datasetQuery != null) {
+    if (this.isNative()) {
       return new NativeQuery(this, datasetQuery);
     }
 
@@ -217,6 +217,9 @@ class Question {
   }
 
   isNative() {
+    if (this.datasetQuery() == null) {
+      return false;
+    }
     const queryInfo = Lib.queryDisplayInfo(this.query());
     return queryInfo.isNative;
   }
