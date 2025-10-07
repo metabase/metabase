@@ -2,6 +2,7 @@ import debounce from "lodash.debounce";
 import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
+import { delay } from "metabase/lib/delay";
 import { TextInput } from "metabase/ui";
 
 interface ChartSettingInputProps {
@@ -25,7 +26,7 @@ export const ChartSettingInput = ({
 
   const onChangeRef = useLatest(onChange);
   const onChangeDebounced = useMemo(
-    () => debounce((value: string) => onChangeRef.current(value), 400),
+    () => debounce((value: string) => onChangeRef.current(value), delay(400)),
     [onChangeRef],
   );
 
