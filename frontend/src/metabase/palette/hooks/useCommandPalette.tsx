@@ -91,7 +91,10 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery();
+  const { data: recentItems, refetch: refetchRecents } = useListRecentsQuery(
+    undefined,
+    { skip: disabled },
+  );
   useEffect(() => {
     if (isVisible && !disabled) {
       refetchRecents();
