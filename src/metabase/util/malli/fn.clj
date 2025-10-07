@@ -314,6 +314,56 @@
       (for [schema schemas]
         (instrumented-arity error-context schema)))))
 
+(defn- should-capture-schema? [schema]
+  (cond
+    (keyword? schema)    false
+    ;; default varargs schema (no validation)
+    (= schema [:* :any]) false
+    :else                true))
+
+(defn- capture-input-schema [arity-number input-schema]
+  (if (= input-schema :cat)
+    [input-schema {}]
+    (let [[input-schema-tag & arg-schemas] input-schema]
+      (assert (= input-schema-tag :cat))
+      (reduce
+       (core/fn [[schema captured] arg-schema]
+         (if-not (should-capture-schema? arg-schema)
+           [(conj schema arg-schema)
+            captured]
+           (let [symb (symbol (format "&input-schema-%d-%s"
+                                      arity-number
+                                      (str (char (+ (int \a) (count captured))))))]
+             [(conj schema symb)
+              (assoc captured symb arg-schema)])))
+       [(-> [:cat]
+            (with-meta (meta input-schema)))
+        {}]
+       arg-schemas))))
+
+(defn- capture-arity [arity-number [_=> input-schema return-schema]]
+  (let [[input-schema captured] (capture-input-schema arity-number input-schema)]
+    (if-not (should-capture-schema? return-schema)
+      [[:=> input-schema return-schema]
+       captured]
+      ;; return schema has to be the same for each arity so use the same symbol across the fn
+      [[:=> input-schema '&return-schema]
+       (assoc captured '&return-schema return-schema)])))
+
+(defn- capture-function [[_function & arity-schemas]]
+  (reduce
+   (core/fn [[schema captured] [arity-number arity-schema]]
+     (let [[arity-schema arity-captured] (capture-arity arity-number arity-schema)]
+       [(conj schema arity-schema)
+        (merge captured arity-captured)]))
+   [[:function] {}]
+   (map-indexed vector arity-schemas)))
+
+(defn- capture-schemas [fn-schema]
+  (case (first fn-schema)
+    :=>       (capture-arity 0 fn-schema)
+    :function (capture-function fn-schema)))
+
 (defn instrumented-fn-form
   "Nota Bene: not safe for expansion into Clojurescript!
   Given a `fn-tail` like
@@ -327,8 +377,10 @@
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
   [error-context parsed & [fn-name]]
-  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
-     (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
+  (let [[fn-schema captured] (capture-schemas (fn-schema parsed))]
+    `(let [~'&f ~(deparameterized-fn-form parsed fn-name)
+           ~@(into [] cat captured)]
+       (core/fn ~@(instrumented-fn-tail error-context fn-schema)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
 

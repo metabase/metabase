@@ -4,7 +4,7 @@ import {
   jwtDefaultRefreshTokenFunction,
   openSamlLoginPopup,
   samlTokenStorage,
-  validateSessionToken,
+  validateSession,
 } from "embedding/auth-common";
 import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/is-localhost";
@@ -80,6 +80,10 @@ export const initAuth = createAsyncThunk(
     ]);
 
     if (!user.payload) {
+      if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+        throw MetabaseError.EXISTING_USER_SESSION_FAILED();
+      }
+
       throw MetabaseError.USER_FETCH_FAILED();
     }
     if (!siteSettings.payload) {
@@ -110,7 +114,7 @@ export const refreshTokenAsync = createAsyncThunk(
       preferredAuthMethod,
       fetchRequestToken: customGetRefreshToken,
     });
-    validateSessionToken(session);
+    validateSession(session);
 
     return session;
   },

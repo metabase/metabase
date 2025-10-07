@@ -134,30 +134,16 @@ export const DocumentHeader = ({
         {!isNewDocument && hasComments && (
           <Tooltip label={t`Show all comments`}>
             <Box>
-              {showSaveButton && (
-                <ActionIcon
-                  className={S.commentsIcon}
-                  disabled
-                  variant="subtle"
-                  size="md"
-                  aria-label={t`Show all comments`}
-                  data-hide-on-print
-                >
-                  <Icon name="message" />
-                </ActionIcon>
-              )}
-
-              {!showSaveButton && document && (
+              {document && (
                 <ActionIcon
                   className={S.commentsIcon}
                   component={Link}
                   to={`/document/${document.id}/comments/all`}
-                  variant="subtle"
                   size="md"
                   aria-label={t`Show all comments`}
                   data-hide-on-print
                 >
-                  <Icon name="message" />
+                  <Icon name="comment" />
                 </ActionIcon>
               )}
             </Box>

@@ -2,6 +2,7 @@ import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
+  MetabotEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
   SdkIframeEmbedSettingKey,
@@ -22,6 +23,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "theme",
     "locale",
     "preferredAuthMethod",
+    "fetchRequestToken",
     "useExistingUserSession",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
@@ -38,6 +40,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
+    "hiddenParameters",
     "drills",
     "entityTypes",
   ] satisfies (keyof QuestionEmbedOptions)[],
@@ -58,6 +61,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withNewQuestion",
     "withNewDashboard",
   ] satisfies (keyof BrowserEmbedOptions)[],
+  metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
@@ -69,6 +73,7 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.chart,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.exploration,
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.browser,
+  ...ALLOWED_EMBED_SETTING_KEYS_MAP.metabot,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
 export type AllowedEmbedSettingKey =
@@ -78,4 +83,7 @@ export type AllowedEmbedSettingKey =
 export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
+  "fetchRequestToken",
 ] as const satisfies AllowedEmbedSettingKey[];
+
+export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";

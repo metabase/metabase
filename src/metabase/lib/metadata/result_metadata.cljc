@@ -6,6 +6,7 @@
 
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
+  (:refer-clojure :exclude [mapv select-keys some update-keys every?])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -32,7 +33,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every?]]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -62,7 +63,7 @@
   from the driver to values calculated by Lib."
   [driver-col :- [:maybe ::col]
    lib-col    :- [:maybe ::col]]
-  (let [driver-col (perf/update-keys driver-col u/->kebab-case-en)]
+  (let [driver-col (update-keys driver-col u/->kebab-case-en)]
     (merge lib-col
            (m/filter-vals some? driver-col)
            ;; Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
@@ -214,6 +215,15 @@
           (assoc col ::source (legacy-source col)))
         cols))
 
+(defn- remove-namespaced-options
+  "Update a legacy `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys
+  in the options map. This is mainly for clause equality comparison purposes -- in current usage namespaced keys are
+  used by individual pieces of middleware or driver implementations for tracking little bits of information that
+  should not be considered relevant when comparing clauses for equality."
+  [legacy-ref]
+  (mbql.u/update-field-options legacy-ref (partial into {} (remove (fn [[k _]]
+                                                                     (qualified-keyword? k))))))
+
 (mu/defn- fe-friendly-expression-ref :- ::mbql.s/Reference
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' Lib
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
@@ -221,7 +231,7 @@
   will see."
   [col   :- ::kebab-cased-map
    a-ref :- ::mbql.s/Reference]
-  (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
+  (let [a-ref (remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
       [:field id (not-empty (cond-> (dissoc opts :effective-type :inherited-temporal-unit)
@@ -356,6 +366,11 @@
       (seq model-metadata)
       (lib.card/merge-model-metadata model-metadata))))
 
+(defn- add-source-and-desired-aliases [query cols]
+  (into []
+        (lib.field.util/add-source-and-desired-aliases-xform query)
+        cols))
+
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
@@ -372,7 +387,7 @@
                      lib-cols)]
       (->> initial-cols
            (map (fn [col]
-                  (perf/update-keys col u/->kebab-case-en)))
+                  (update-keys col u/->kebab-case-en)))
            ((fn [cols]
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
@@ -381,7 +396,8 @@
            add-legacy-source
            deduplicate-names
            (add-legacy-field-refs query)
-           (merge-model-metadata query)))))
+           (merge-model-metadata query)
+           (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
   (merge
@@ -424,7 +440,11 @@
   (mapv col->legacy-metadata cols))
 
 (mu/defn returned-columns :- [:and
-                              [:sequential ::kebab-cased-map]
+                              [:sequential
+                               [:merge
+                                ::kebab-cased-map
+                                [:map
+                                 [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
                               [:fn
                                {:error/message "columns should have unique :name(s)"}
                                (fn [cols]

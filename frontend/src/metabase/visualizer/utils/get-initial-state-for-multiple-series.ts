@@ -170,5 +170,9 @@ export function getInitialStateForMultipleSeries(rawSeries: RawSeries) {
     "card.title": mainCard.name,
   };
 
+  if (mainCard.description != null) {
+    state.settings["card.description"] = mainCard.description;
+  }
+
   return state;
 }

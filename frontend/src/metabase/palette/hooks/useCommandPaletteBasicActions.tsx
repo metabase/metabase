@@ -2,10 +2,12 @@ import { useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import {
   useDatabaseListQuery,
+  useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
 import Collections from "metabase/entities/collections/collections";
@@ -23,6 +25,7 @@ import {
   getUserIsAdmin,
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
+import { useColorScheme } from "metabase/ui";
 
 import {
   type RegisterShortcutProps,
@@ -54,6 +57,7 @@ export const useCommandPaletteBasicActions = ({
   const hasDatabaseWithActionsEnabled =
     getHasDatabaseWithActionsEnabled(databases);
   const hasModels = models.length > 0;
+  const hasEmbedJsFeature = useHasTokenFeature("embedding_simple");
 
   const openNewModal = useCallback(
     (modalId: string) => {
@@ -223,6 +227,16 @@ export const useCommandPaletteBasicActions = ({
       });
     }
 
+    if (isAdmin && hasEmbedJsFeature) {
+      actions.push({
+        id: "navigate-embed-js",
+        section: "basic",
+        icon: "embed",
+        keywords: "embed flow, new embed, embed js",
+        perform: () => dispatch(push("/embed-js")),
+      });
+    }
+
     if (personalCollectionId) {
       actions.push({
         id: "navigate-personal-collection",
@@ -254,6 +268,7 @@ export const useCommandPaletteBasicActions = ({
     openNewModal,
     isAdmin,
     personalCollectionId,
+    hasEmbedJsFeature,
   ]);
 
   useRegisterShortcut(initialActions, [initialActions]);
@@ -275,5 +290,17 @@ export const useCommandPaletteBasicActions = ({
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,
+  ]);
+
+  const colorSchemeRef = useLatest(useColorScheme());
+  useRegisterShortcut([
+    {
+      id: "toggle-dark-mode",
+      perform: () => colorSchemeRef.current.toggleColorScheme(),
+    },
+    {
+      id: "toggle-dark-mode-2",
+      perform: () => colorSchemeRef.current.toggleColorScheme(),
+    },
   ]);
 };

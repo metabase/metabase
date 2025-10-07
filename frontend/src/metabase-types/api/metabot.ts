@@ -2,12 +2,10 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
-  CollectionId,
   DashboardId,
   DatasetQuery,
   PaginationResponse,
   RowValue,
-  SearchModel,
   UnsavedCard,
   Version,
 } from ".";
@@ -150,6 +148,7 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   metabot_id?: string;
+  profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
@@ -218,19 +217,13 @@ export type MetabotName = string;
 
 export type MetabotInfo = {
   id: MetabotId;
+  entity_id: string;
   name: MetabotName;
-};
-
-export type MetabotEntity = {
-  name: string;
-  id: CollectionId;
-  model: Extract<SearchModel, "collection">;
-  collection_id: CollectionId;
-  collection_name: string;
-};
-
-export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
-  model_id: MetabotEntity["id"];
+  description: string;
+  use_verified_content: boolean;
+  collection_id: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
 /* Metabot v3 - Document Types */
@@ -244,10 +237,4 @@ export interface MetabotGenerateContentResponse {
   draft_card: (UnsavedCard & { name?: string }) | null;
   description: string;
   error: string | null;
-}
-
-/* Metabot v3 - Add-on Purchase Types */
-
-export interface PurchaseMetabotAddOnRequest {
-  terms_of_service: boolean;
 }

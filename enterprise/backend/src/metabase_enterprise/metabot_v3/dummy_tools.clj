@@ -9,13 +9,22 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- verified-review?
+  "Return true if the most recent ModerationReview for the given item id/type is verified."
+  [id item-type]
+  (let [review (t2/select-one [:model/ModerationReview :status]
+                              :moderated_item_id id
+                              :moderated_item_type item-type
+                              :most_recent true
+                              {:order-by [[:id :desc]]})]
+    (= (:status review) "verified")))
 
 (defn get-current-user
   "Get information about the current user."
@@ -34,7 +43,11 @@
   [{:keys [dashboard-id]}]
   (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
     (do (api/read-check dashboard)
-        {:structured-output (-> dashboard (dissoc :collection_id) (assoc :type :dashboard))})
+        {:structured-output
+         (-> dashboard
+             (dissoc :collection_id)
+             (assoc :type :dashboard
+                    :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
 
 (defn- get-field-values [id->values id]
@@ -49,14 +62,6 @@
     (let [id->values (field-values/batched-get-latest-full-field-values field-ids)]
       (map #(m/assoc-some % :field-values (some->> % :id (get-field-values id->values))) cols))
     cols))
-
-(defn- add-table-reference
-  [query col]
-  (cond-> col
-    (and (:fk-field-id col)
-         (:table-id col))
-    (assoc :table-reference (-> (lib/display-name query (lib.metadata/field query (:fk-field-id col)))
-                                lib.util/strip-id))))
 
 (defn metric-details
   "Get metric details as returned by tools."
@@ -78,7 +83,7 @@
                       (lib/remove-all-breakouts metric-query))
          visible-cols (when query-needed?
                         (->> (lib/visible-columns base-query)
-                             (map #(add-table-reference base-query %))))
+                             (map #(metabot-v3.tools.u/add-table-reference base-query %))))
          col->index (when query-needed?
                       (into {} (map-indexed (fn [i col] [col i])) visible-cols))
          col-index (when query-needed?
@@ -92,16 +97,17 @@
               :type :metric
               :name (:name card)
               :description (:description card)
-              :default-time-dimension-field-id (when default-temporal-breakout
+              :default_time_dimension_field_id (when default-temporal-breakout
                                                  (-> (metabot-v3.tools.u/->result-column
                                                       metric-query
                                                       default-temporal-breakout
                                                       (col-index default-temporal-breakout)
                                                       field-id-prefix)
-                                                     :field-id))}
+                                                     :field_id))
+              :verified (verified-review? id "card")}
        with-queryable-dimensions?
        (assoc :queryable-dimensions (into []
-                                          (comp (map #(add-table-reference base-query %))
+                                          (comp (map #(metabot-v3.tools.u/add-table-reference base-query %))
                                                 (map #(metabot-v3.tools.u/->result-column
                                                        metric-query % (col-index %) field-id-prefix)))
                                           (->> (lib/filterable-columns base-query)
@@ -118,40 +124,66 @@
   ([db-metric metadata-provider options]
    (-> db-metric
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
-       (select-keys  [:id :type :name :description :default-time-dimension-field-id]))))
+       (select-keys  [:id :type :name :description :default_time_dimension_field_id]))))
+
+(declare related-tables)
 
 (defn- table-details
   ([id] (table-details id nil))
-  ([id {:keys [metadata-provider field-values-fn with-fields? with-metrics?]
-        :or   {field-values-fn add-field-values
-               with-fields?    true
-               with-metrics?   true}
+  ([id {:keys [metadata-provider field-values-fn with-fields? with-related-tables? with-metrics?]
+        :or   {field-values-fn      add-field-values
+               with-fields?         true
+               with-related-tables? true
+               with-metrics?        true}
         :as   options}]
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
-                     (metabot-v3.tools.u/get-table id :db_id :description :name))]
-     (let [query-needed? (or with-fields? with-metrics?)
+                     (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
+     (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
+           db-id (if metadata-provider (:db-id base) (:db_id base))
            mp (when query-needed?
                 (or metadata-provider
-                    (lib.metadata.jvm/application-database-metadata-provider (:db_id base))))
+                    (lib.metadata.jvm/application-database-metadata-provider db-id)))
            table-query (when query-needed?
                          (lib/query mp (lib.metadata/table mp id)))
            cols (when with-fields?
                   (->> (lib/visible-columns table-query)
                        field-values-fn
-                       (map #(add-table-reference table-query %))))
+                       (map #(metabot-v3.tools.u/add-table-reference table-query %))))
            field-id-prefix (when with-fields?
-                             (metabot-v3.tools.u/table-field-id-prefix id))]
+                             (metabot-v3.tools.u/table-field-id-prefix id))
+           related-tables (when with-related-tables?
+                            (related-tables table-query with-fields? field-values-fn))]
        (-> {:id id
             :type :table
             :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column table-query %2 %1 field-id-prefix)) cols)
-            ;; :name should be (lib/display-name table-query), but we want to avoid creating the query if possible
-            :name (some->> (:name base)
-                           (u.humanization/name->human-readable-name :simple))}
+            :name (:name base)
+            ;; :display_name should be (lib/display-name table-query), but we want to avoid creating the query if possible
+            :display_name (some->> (:name base)
+                                   (u.humanization/name->human-readable-name :simple))
+            :database_id db-id
+            :database_schema (:schema base)}
            (m/assoc-some :description (:description base)
+                         :related_tables related-tables
                          :metrics (when with-metrics?
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))))))))
+
+(defn- related-tables
+  "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key."
+  [query with-fields? field-values-fn]
+  (let [fk-fields (->> (lib/visible-columns query)
+                       (filter :fk-field-id))
+        related-table-ids (->> fk-fields
+                               (map :table-id)
+                               (into #{}))]
+    (when (seq related-table-ids)
+      (map #(table-details % {:with-fields? with-fields?
+                              :field-values-fn field-values-fn
+                              ;; Important! Only recurse one level
+                              :with-related-tables? false
+                              :with-metrics? false})
+           related-table-ids))))
 
 (defn- card-details
   "Get details for a card."
@@ -159,17 +191,16 @@
   ([id options]
    (when-let [card (metabot-v3.tools.u/get-card id)]
      (card-details card (lib.metadata.jvm/application-database-metadata-provider (:database_id card)) options)))
-  ([base metadata-provider {:keys [field-values-fn with-fields? with-metrics?]
-                            :or   {field-values-fn add-field-values
-                                   with-fields?    true
-                                   with-metrics?   true}
+  ([base metadata-provider {:keys [field-values-fn with-fields? with-related-tables? with-metrics?]
+                            :or   {field-values-fn      add-field-values
+                                   with-fields?         true
+                                   with-related-tables? true
+                                   with-metrics?        true}
                             :as   options}]
    (let [id (:id base)
-         query-needed? (or with-fields? with-metrics?)
-         card-metadata (when query-needed?
-                         (lib.metadata/card metadata-provider id))
-         dataset-query (when query-needed?
-                         (get card-metadata :dataset-query))
+         card-metadata (lib.metadata/card metadata-provider id)
+         dataset-query (get card-metadata :dataset-query)
+         query-needed? (or with-fields? with-related-tables? with-metrics?)
          ;; pivot questions have strange result-columns so we work with the dataset-query
          card-type (:type base)
          card-query (when query-needed?
@@ -178,20 +209,26 @@
                                                             (#{:query} (:type dataset-query)))
                                                      dataset-query
                                                      card-metadata)))
-         cols (when with-fields?
-                (->> (lib/visible-columns card-query)
-                     field-values-fn
-                     (map #(add-table-reference card-query %))))
+         returned-fields (when with-fields?
+                           (->> (lib/returned-columns card-query)
+                                field-values-fn))
+         related-tables (when with-related-tables?
+                          (related-tables card-query with-fields? field-values-fn))
          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix id)]
      (-> {:id id
           :type card-type
-          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) cols)
+          :fields (into [] (map-indexed #(metabot-v3.tools.u/->result-column card-query %2 %1 field-id-prefix)) returned-fields)
           :name (:name base)
-          :queryable-foreign-key-tables []}
-         (m/assoc-some :description (:description base)
-                       :metrics (when with-metrics?
-                                  (not-empty (mapv #(convert-metric % metadata-provider options)
-                                                   (lib/available-metrics card-query)))))))))
+          :display_name (some->> (:name base)
+                                 (u.humanization/name->human-readable-name :simple))
+          :database_id (:database_id base)
+          :verified (verified-review? id "card")}
+         (m/assoc-some
+          :description (:description base)
+          :related_tables related-tables
+          :metrics (when with-metrics?
+                     (not-empty (mapv #(convert-metric % metadata-provider options)
+                                      (lib/available-metrics card-query)))))))))
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
@@ -249,9 +286,10 @@
     (let [options (cond-> arguments
                     (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
           details (cond
-                    (int? model-id)    (u/prog1 (card-details model-id (assoc options :only-model true))
-                                         (api/check (= :model (:type <>)) 404
-                                                    (format "ID %s is not a valid model id, it's a question" model-id)))
+                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
+                                         (if (= :model (:type card))
+                                           card
+                                           (format "ID %s is not a valid model id, it's a question" model-id)))
                     (int? table-id)    (table-details table-id options)
                     (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
                                          (card-details (parse-long card-id) options)
@@ -293,7 +331,7 @@
           details (if (int? report-id)
                     (let [details (card-details report-id options)]
                       (some-> details
-                              (select-keys [:id :type :description :name])
+                              (select-keys [:id :type :description :name :verified])
                               (assoc :result-columns (:fields details))))
                     "invalid report_id")]
       (if (map? details)

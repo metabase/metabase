@@ -8,6 +8,7 @@
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
+  (:refer-clojure :exclude [every? some mapv])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
@@ -28,7 +29,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some mapv]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))

@@ -1,4 +1,5 @@
 (ns metabase.driver.h2
+  (:refer-clojure :exclude [some every?])
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
@@ -8,17 +9,20 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some every?]])
   (:import
    (java.sql
     Clob
@@ -172,7 +176,8 @@
   ^Parser [h2-db-id]
   (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-db-id))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
-    (let [session (-> conn (get-field "inner") (get-field "session"))]
+    (let [inner (.unwrap conn java.sql.Connection) ;; May be a wrapper, get the innermost object that has session field
+          session (get-field inner "session")]
       ;; Only SessionLocal represents a connection we can create a parser with. Remote sessions and other
       ;; session types are ignored.
       (when (instance? SessionLocal session)
@@ -606,6 +611,30 @@
     :metabase.upload/datetime                 [:timestamp]
     :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for H2 that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:varchar])
+(defmethod type->database-type :type/Text [_] [:varchar])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Float [_] [(keyword "DOUBLE PRECISION")])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+
+(defmethod driver/type->database-type :h2
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/create-auto-pk-with-append-csv? :h2 [_driver] true)
 
 (defmethod driver/table-name-length-limit :h2
@@ -641,3 +670,11 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :h2
   [_ e]
   (#{"42S02" "42S03" "42S04"} (sql-jdbc/get-sql-state e)))
+
+(defmethod sql.normalize/normalize-unquoted-name :h2
+  [_ name-str]
+  (u/upper-case-en name-str))
+
+(defmethod sql/default-schema :h2
+  [_]
+  "PUBLIC")

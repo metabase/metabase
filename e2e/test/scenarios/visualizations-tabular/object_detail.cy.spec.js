@@ -399,6 +399,48 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.get("@getActions").should("have.callCount", 0);
   });
 
+  it("reset object detail navigation state on query change (metabase#54317)", () => {
+    const initialFilter = {
+      name: "Filter Orders ID < 15",
+      query: {
+        "source-table": ORDERS_ID,
+        filter: ["and", ["<", ["field", ORDERS.ID, null], 15]],
+      },
+    };
+
+    // Create the question with the initial filter and visit it
+    H.createQuestion(initialFilter, { visitQuestion: true });
+
+    // Click object display
+    cy.findByTestId("view-footer").within(() => {
+      cy.findByText("Visualization").click();
+    });
+
+    cy.findByTestId("display-options-sensible");
+    cy.icon("document").click();
+
+    // Verify "Item 14 of 14" in the pagination footer
+    cy.findByTestId("pagination-footer").within(() => {
+      for (let i = 1; i < 14; i++) {
+        cy.icon("chevronright").click(); // Click the right arrow
+      }
+      cy.findByText("Item 14 of 14").should("be.visible");
+    });
+
+    // Apply a new filter for order id < 10
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByTestId("filter-pill").click();
+    cy.findByTestId("number-filter-picker").within(() => {
+      cy.findByLabelText("Filter value").clear().type("10");
+      cy.findByRole("button", { name: "Update filter" }).click();
+    });
+
+    // Verify the pagination footer says "Item 1 of 9"
+    cy.findByTestId("pagination-footer").within(() => {
+      cy.findByText("Item 1 of 9").should("be.visible");
+    });
+  });
+
   it("should respect 'view_as' column settings (VIZ-199)", () => {
     cy.request("PUT", `/api/field/${REVIEWS.ID}`, {
       settings: {
@@ -429,28 +471,30 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     H.openObjectDetail(0);
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Link to review 1")
-        .should("be.visible")
-        .should("have.attr", "href")
+      cy.findAllByText("Link to review 1")
+        .should("have.length", 2)
+        .and("be.visible")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?review=1");
 
       cy.findByText("Rating: 5")
         .should("be.visible")
-        .should("have.attr", "href")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?rating=5");
     });
 
     cy.findByLabelText("Next row").click();
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Link to review 2")
-        .should("be.visible")
-        .should("have.attr", "href")
+      cy.findAllByText("Link to review 2")
+        .should("have.length", 2)
+        .and("be.visible")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?review=2");
 
       cy.findByText("Rating: 4")
         .should("be.visible")
-        .should("have.attr", "href")
+        .and("have.attr", "href")
         .and("eq", "https://metabase.test?rating=4");
     });
   });
@@ -574,7 +618,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - questions", () => {
-    it("no primary keys", () => {
+    it("no primary keys (WRK-900)", () => {
       H.visitQuestionAdhoc({
         display: "table",
         dataset_query: {
@@ -596,6 +640,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+
+        cy.log("should not show relationships when there is no PK (WRK-900)");
+        cy.findByText(/is connected to/).should("not.exist");
+        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
     });
 
@@ -673,7 +721,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
   });
 
   describe("detail page links - models", () => {
-    it("no primary keys", () => {
+    it("no primary keys (WRK-900)", () => {
       H.createQuestion(
         {
           type: "model",
@@ -694,6 +742,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       cy.findByTestId("object-detail").within(() => {
         cy.findByLabelText("Copy link to this record").should("not.exist");
         cy.findByLabelText("Open in full page").should("not.exist");
+
+        cy.log("should not show relationships when there is no PK (WRK-900)");
+        cy.findByText(/is connected to/).should("not.exist");
+        cy.findByRole("link", { name: /Orders/ }).should("not.exist");
       });
     });
 

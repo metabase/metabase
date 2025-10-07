@@ -10,7 +10,11 @@
 
 .verticalSeparator {
   --stepper-outline-thickness: 0.0625rem;
-  --stepper-outline-color: var(--mb-color-border);
+  --stepper-outline-color: color-mix(
+    in srgb,
+    var(--mb-color-border),
+    black 14%
+  );
 }
 
 .step:not(.stepDone) .stepIcon {
@@ -22,10 +26,13 @@
 .step.stepDone .stepIcon {
   color: var(--mb-color-bg-white);
   background: var(--mb-color-success-darker);
+
+  /** Prevent blue border color from affecting the done icon */
+  border-color: transparent;
 }
 
 .stepWrapper {
-  margin-right: 0.625rem;
+  margin-right: 0.5rem;
 }
 
 .stepBody {
@@ -41,20 +48,17 @@
   border: 1px solid var(--mb-color-border) !important;
   cursor: pointer;
   transition:
-    box-shadow 250ms ease,
+    background-color 250ms ease,
     border 250ms ease;
   padding: 0.94rem 1.25rem;
   height: 8.75rem;
-  max-width: 23.75rem;
   text-align: left;
-}
-
-.stepCard:not(.optionalStepCard) {
   width: 100%;
+  box-shadow: none;
 }
 
-.optionalStepCard {
-  max-width: 15.625rem;
+.stepCardLink {
+  width: 100%;
 }
 
 .lockedStepCard {
@@ -62,6 +66,9 @@
 }
 
 .stepCard:not(.lockedStepCard):hover {
-  border: 1px solid var(--mb-color-focus) !important;
-  box-shadow: 0 2px 24px 0 var(--mb-color-shadow-embedding-hub-card);
+  background-color: var(--mb-color-background-hover);
+}
+
+.stepCard.nextStepCard {
+  border: 1px solid var(--mb-color-metabase-brand) !important;
 }

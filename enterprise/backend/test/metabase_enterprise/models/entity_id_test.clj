@@ -23,7 +23,9 @@
     :model/FieldValues
     :model/FieldUserSettings
     ;; Settings have human-selected unique names.
-    :model/Setting})
+    :model/Setting
+    ;; Glossary items have unique `term` key
+    :model/Glossary})
 
 (def ^:private entities-not-exported
   "Entities that are either:
@@ -45,6 +47,7 @@
     :model/DashboardBookmark
     :model/DataPermissions
     :model/DatabaseRouter
+    :model/Dependency
     :model/DocumentBookmark
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
@@ -77,19 +80,17 @@
     :model/QueryTable
     :model/RecentViews
     :model/Revision
+    :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata
     :model/Secret
     :model/Session
     :model/TaskHistory
     :model/TimelineEvent
     ;; TODO we should remove these models from here once serialization is supported
-    :model/Transform
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformJob
     :model/TransformJobRun
     :model/TransformJobTransformTag
-    :model/TransformTag
     :model/TransformTransformTag
     :model/PythonLibrary
     :model/Undo
@@ -110,7 +111,7 @@
     (testing "All exported models should get entity id except those with other unique property (like name)"
       (is (= (set (concat serdes.models/exported-models
                           ;; those are inline models which still have entity_id
-                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotEntity" "MetabotPrompt"]))
+                          ["DashboardCard" "DashboardTab" "Dimension" "MetabotPrompt"]))
              (set (->> (concat entity-id-models
                                entities-external-name)
                        (map name))))))

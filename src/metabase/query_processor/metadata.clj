@@ -3,6 +3,7 @@
   MBQL queries; for native queries we use the driver implementation of
   [[metabase.driver/query-result-metadata]], which hopefully can calculate metadata without running the query. If
   that's not possible, our fallback `:default` implementation adds the equivalent of `LIMIT 1` to query and runs it."
+  (:refer-clojure :exclude [mapv])
   (:require
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
@@ -24,7 +25,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf :refer [mapv]]))
 
 (mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by

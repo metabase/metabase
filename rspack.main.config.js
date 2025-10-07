@@ -22,6 +22,7 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const IMAGES_PATH = __dirname + "/resources/frontend_client/app/img";
 const DOCS_PATH = __dirname + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -42,7 +43,7 @@ const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
 const E2E_PATH = __dirname + "/e2e";
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
@@ -216,6 +217,7 @@ const config = {
     alias: {
       "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
+      img: IMAGES_PATH,
       fonts: FONTS_PATH,
       docs: DOCS_PATH,
       metabase: SRC_PATH,

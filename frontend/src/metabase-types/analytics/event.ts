@@ -3,9 +3,12 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
+import type { MetadataEditAnalyticsDetail } from "metabase/metadata/pages/DataModel/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
+import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
   Engine,
+  RelatedDashboardXRays,
   TransformId,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -165,29 +168,6 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
-export type EmbeddingSetupStepKey =
-  | "welcome"
-  | "user-creation"
-  | "data-connection"
-  | "table-selection"
-  | "processing"
-  | "add-to-your-app"
-  | "done";
-export type EmbeddingSetupStepSeenEvent = ValidateEvent<{
-  event: "embedding_setup_step_seen";
-  event_detail: EmbeddingSetupStepKey;
-}>;
-
-export type EmbeddingSetupClickEvent = ValidateEvent<{
-  event: "embedding_setup_click";
-  event_detail:
-    | "setup-up-manually"
-    | "add-data-later-or-skip"
-    | "snippet-copied"
-    | "ill-do-this-later";
-  triggered_from: EmbeddingSetupStepKey;
-}>;
-
 export type EventsClickedEvent = ValidateEvent<{
   event: "events_clicked";
   triggered_from: "chart" | "collection";
@@ -221,31 +201,31 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
-export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_experience_selected";
-  event_detail: SdkIframeEmbedSetupExperience;
+export type EmbedWizardOpenedEvent = ValidateEvent<{
+  event: "embed_wizard_opened";
 }>;
 
-export type EmbedWizardResourceSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_resource_selected";
-  event_detail: SdkIframeEmbedSetupExperience;
-  target_id: number;
+export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_experience_completed";
+  event_detail: "default" | `custom=${SdkIframeEmbedSetupExperience}`;
 }>;
 
-export type EmbedWizardOptionChangedEvent = ValidateEvent<{
-  event: "embed_wizard_option_changed";
+export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_resource_selection_completed";
+  event_detail: "default" | "custom";
+}>;
+
+export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_options_completed";
   event_detail: string;
-}>;
-
-export type EmbedWizardAuthSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_auth_selected";
-  event_detail: "sso" | "user-session";
 }>;
 
 export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
+  event_detail: "sso" | "user_session";
 }>;
 
 export type TableEditingSettingsToggledEvent = ValidateEvent<{
@@ -294,7 +274,7 @@ export type TransformJobTriggerManualRunEvent = ValidateEvent<{
 export type TransformCreateEvent = ValidateEvent<{
   event: "transform_create";
   triggered_from: "transform-page-create-menu";
-  event_detail: "query" | "native" | "saved-question";
+  event_detail: "query" | "native" | "python" | "saved-question";
 }>;
 
 export type TransformCreatedEvent = ValidateEvent<{
@@ -342,17 +322,143 @@ export type DatabaseHelpClickedEvent = ValidateEvent<{
   triggered_from: "admin" | "setup";
 }>;
 
+export type XRayTableClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: "table";
+  triggered_from: "homepage" | "browse_database";
+}>;
+
+export type XRayDataReferenceClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: "table" | "field" | "segment";
+  triggered_from: "data_reference";
+}>;
+
+export type XRaySuggestionClickedEvent = ValidateEvent<{
+  event: "x-ray_clicked";
+  event_detail: keyof RelatedDashboardXRays;
+  triggered_from: "suggestion_sidebar";
+}>;
+
+export type XRayAutoInsightsClicked = ValidateEvent<{
+  event: "x-ray_automatic_insights_clicked";
+  event_detail: "x-ray" | "compare_to_rest";
+}>;
+
+export type XRayClickedEvent =
+  | XRayTableClickedEvent
+  | XRayDataReferenceClickedEvent
+  | XRaySuggestionClickedEvent
+  | XRayAutoInsightsClicked;
+
+export type XRaySavedEvent = ValidateEvent<{
+  event: "x-ray_saved";
+}>;
+
+export type XRayEvent = XRayClickedEvent | XRaySavedEvent;
+
 export type EmbedWizardEvent =
-  | EmbedWizardExperienceSelectedEvent
-  | EmbedWizardResourceSelectedEvent
-  | EmbedWizardOptionChangedEvent
-  | EmbedWizardAuthSelectedEvent
+  | EmbedWizardOpenedEvent
+  | EmbedWizardExperienceCompletedEvent
+  | EmbedWizardResourceSelectionCompletedEvent
+  | EmbedWizardOptionsCompletedEvent
   | EmbedWizardCodeCopiedEvent;
 
 export type TableEditingEvent =
   | TableEditingSettingsToggledEvent
   | TableEditButtonClickedEvent
   | TableEditingRecordModifiedEvent;
+
+export type MetabotChatOpenedEvent = ValidateEvent<{
+  event: "metabot_chat_opened";
+  triggered_from:
+    | "search"
+    | "command_palette"
+    | "keyboard_shortcut"
+    | "native_editor";
+}>;
+
+export type MetabotRequestSentEvent = ValidateEvent<{
+  event: "metabot_request_sent";
+}>;
+
+export type MetabotFixQueryClickedEvent = ValidateEvent<{
+  event: "metabot_fix_query_clicked";
+}>;
+
+export type MetabotExplainChartClickedEvent = ValidateEvent<{
+  event: "metabot_explain_chart_clicked";
+}>;
+
+export type MetabotEvent =
+  | MetabotChatOpenedEvent
+  | MetabotRequestSentEvent
+  | MetabotFixQueryClickedEvent
+  | MetabotExplainChartClickedEvent;
+
+export type RevertVersionEvent = ValidateEvent<{
+  event: "revert_version_clicked";
+  event_detail: "card" | "dashboard";
+}>;
+
+export type LearnAboutDataClickedEvent = ValidateEvent<{
+  event: "learn_about_our_data_clicked";
+}>;
+
+export type MetadataEditEvent = ValidateEvent<{
+  event: "metadata_edited";
+  event_detail: MetadataEditAnalyticsDetail;
+  triggered_from: "admin";
+}>;
+
+export type BookmarkQuestionEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "question";
+  triggered_from: "qb_action_panel" | "collection_list";
+}>;
+
+export type BookmarkModelEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "model";
+  triggered_from: "qb_action_panel" | "collection_list";
+}>;
+
+export type BookmarkMetricEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "metric";
+  triggered_from: "qb_action_panel" | "collection_list" | "browse_metrics";
+}>;
+
+export type BookmarkDashboardEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "dashboard";
+  triggered_from: "dashboard_header" | "collection_list";
+}>;
+
+export type BookmarkCollectionEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "collection";
+  triggered_from: "collection_header" | "collection_list";
+}>;
+
+export type BookmarkDocumentEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "document";
+  triggered_from: "collection_list" | "document_header";
+}>;
+
+export type ClickActionPerformedEvent = ValidateEvent<{
+  event: "click_action";
+  triggered_from: ClickActionSection;
+}>;
+
+export type BookmarkEvent =
+  | BookmarkQuestionEvent
+  | BookmarkModelEvent
+  | BookmarkMetricEvent
+  | BookmarkDashboardEvent
+  | BookmarkCollectionEvent
+  | BookmarkDocumentEvent;
 
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
@@ -376,8 +482,6 @@ export type SimpleEvent =
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
-  | EmbeddingSetupStepSeenEvent
-  | EmbeddingSetupClickEvent
   | EventsClickedEvent
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
@@ -398,4 +502,11 @@ export type SimpleEvent =
   | DocumentReplaceCardEvent
   | DocumentUpdatedEvent
   | DocumentPrintEvent
-  | DatabaseHelpClickedEvent;
+  | DatabaseHelpClickedEvent
+  | XRayEvent
+  | MetabotEvent
+  | RevertVersionEvent
+  | LearnAboutDataClickedEvent
+  | MetadataEditEvent
+  | BookmarkEvent
+  | ClickActionPerformedEvent;

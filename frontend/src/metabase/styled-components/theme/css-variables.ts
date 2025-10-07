@@ -4,22 +4,32 @@ import { getIn } from "icepick";
 
 import { CSS_VARIABLES_TO_SDK_THEME_MAP } from "metabase/embedding-sdk/theme/css-vars-to-sdk-theme";
 import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css-vars";
-import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import {
+  SDK_TO_MAIN_APP_COLORS_MAPPING,
+  SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
+} from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { colorConfig } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
+
+const createColorVars = (colorScheme: "light" | "dark"): string =>
+  Object.entries(colorConfig)
+    .map(([name, value]) => `--mb-color-${name}: ${value[colorScheme]};`)
+    .join("\n");
 
 /**
  * Defines the CSS variables used across Metabase.
  */
 export function getMetabaseCssVariables(theme: MantineTheme) {
+  const colorScheme = theme.other?.colorScheme || "light";
+
   return css`
     :root {
       --mb-default-font-family: "${theme.fontFamily}";
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      --mb-color-brand: ${theme.colors.brand[0]};
-      --mb-color-summarize: ${theme.colors.summarize[0]};
-      --mb-color-filter: ${theme.colors.filter[0]};
+      ${createColorVars(colorScheme)}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
@@ -46,29 +56,29 @@ export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
  * be available globally at :root
  **/
 function getSdkDesignSystemCssVariables(theme: MantineTheme) {
+  const createSdkColorVars = (colorName: ColorName) => {
+    /**
+     * Prevent returning the primary color when color is not found,
+     * so we could add a logic to fallback to the default color ourselves.
+     *
+     * We will only create CSS custom properties for colors that are defined
+     * in the palette, and additional colors overridden by the SDK.
+     */
+    const color = theme.fn.themeColor(colorName);
+    const colorExist = color !== colorName;
+    if (colorExist) {
+      return `--mb-color-${colorName}: ${color};`;
+    }
+  };
   return css`
-    /* Semantic colors */
-    /* Dynamic colors from SDK */
-    ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
-      ([_key, metabaseColorNames]) => {
-        return metabaseColorNames.map((metabaseColorName) => {
-          /**
-           * Prevent returning the primary color when color is not found,
-           * so we could add a logic to fallback to the default color ourselves.
-           *
-           * We will only create CSS custom properties for colors that are defined
-           * in the palette, and additional colors overridden by the SDK.
-           *
-           * @see SDK_TO_MAIN_APP_COLORS_MAPPING
-           */
-          const color = theme.fn.themeColor(metabaseColorName);
-          const colorExist = color !== metabaseColorName;
+    /* SDK colors defined via theme.colors */
+    ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(([, colorNames]) =>
+      colorNames.map(createSdkColorVars),
+    )}
 
-          if (colorExist) {
-            return `--mb-color-${metabaseColorName}: ${color};`;
-          }
-        });
-      },
+    /* SDK tooltip colors defined via theme.components.tooltip */
+    ${Object.entries(SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING).flatMap(
+      ([, colorName]) => createSdkColorVars(colorName),
     )}
   `;
 }

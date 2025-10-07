@@ -512,7 +512,7 @@ databaseChangeLog:
               - column:
                   name: transform_id
                   type: int
-                  remarks: 'Identifier for the transform'
+                  remarks: "Identifier for the transform"
                   constraints:
                     nullable: false
                     referencedTableName: transform
@@ -522,39 +522,39 @@ databaseChangeLog:
               - column:
                   name: run_method
                   type: varchar(255)
-                  remarks: 'Method used to execute the transform job'
+                  remarks: "Method used to execute the transform job"
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(50)
-                  remarks: 'Current status of the transform job (running, completed, failed, etc.)'
+                  remarks: "Current status of the transform job (running, completed, failed, etc.)"
                   constraints:
                     nullable: false
               - column:
                   name: is_active
                   type: ${boolean.type}
-                  remarks: 'True only for currently running jobs, null for the others'
+                  remarks: "True only for currently running jobs, null for the others"
                   constraints:
                     nullable: true
                     defaultValue: true
               - column:
                   name: start_time
                   type: ${timestamp_type}
-                  remarks: 'When the transform job started'
+                  remarks: "When the transform job started"
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: 'When the transform job completed (null if still running)'
+                  remarks: "When the transform job completed (null if still running)"
                   constraints:
                     nullable: true
               - column:
                   name: message
                   type: ${text.type}
-                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
+                  remarks: "Human-readable message about the run; may contain error message in case status is error"
                   constraints:
                     nullable: true
 
@@ -648,7 +648,7 @@ databaseChangeLog:
               - column:
                   name: time
                   type: ${timestamp_type}
-                  remarks: 'The time of the request'
+                  remarks: "The time of the request"
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
@@ -700,7 +700,7 @@ databaseChangeLog:
               - column:
                   name: built_in_type
                   type: varchar(255)
-                  remarks: 'Type of the built-in transform tag: hourly, daily, weekly, monthly.'
+                  remarks: "Type of the built-in transform tag: hourly, daily, weekly, monthly."
                   constraints:
                     nullable: true
 
@@ -761,7 +761,7 @@ databaseChangeLog:
               - column:
                   name: built_in_type
                   type: varchar(255)
-                  remarks: 'Type of the built-in transform job: hourly, daily, weekly, monthly.'
+                  remarks: "Type of the built-in transform job: hourly, daily, weekly, monthly."
                   constraints:
                     nullable: true
 
@@ -941,45 +941,45 @@ databaseChangeLog:
               - column:
                   name: job_id
                   type: bigint
-                  remarks: 'Identifier for the transform job'
+                  remarks: "Identifier for the transform job"
                   constraints:
                     nullable: false
               - column:
                   name: run_method
                   type: varchar(255)
-                  remarks: 'Method used to execute the transform job'
+                  remarks: "Method used to execute the transform job"
                   constraints:
                     nullable: false
               - column:
                   name: status
                   type: varchar(50)
-                  remarks: 'Current status of the transform job (running, completed, failed, etc.)'
+                  remarks: "Current status of the transform job (running, completed, failed, etc.)"
                   constraints:
                     nullable: false
               - column:
                   name: is_active
                   type: ${boolean.type}
-                  remarks: 'True only for currently running jobs, null for the others'
+                  remarks: "True only for currently running jobs, null for the others"
                   constraints:
                     nullable: true
                     defaultValue: true
               - column:
                   name: start_time
                   type: ${timestamp_type}
-                  remarks: 'When the transform job started'
+                  remarks: "When the transform job started"
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: end_time
                   type: ${timestamp_type}
-                  remarks: 'When the tranform job completed (null if still running)'
+                  remarks: "When the tranform job completed (null if still running)"
                   constraints:
                     nullable: true
               - column:
                   name: message
                   type: ${text.type}
-                  remarks: 'Human-readable message about the run; may contain error message in case status is error'
+                  remarks: "Human-readable message about the run; may contain error message in case status is error"
                   constraints:
                     nullable: true
               - column:
@@ -998,50 +998,50 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-        id: v57.2025-08-22T00:13:00
-        author: ranquild
-        comment: Create built-in transform tags
-        changes:
-          - sql: >-
-              INSERT INTO transform_tag(name, entity_id, built_in_type) VALUES
-              ('hourly', 'wYLcUPbtF7jVPO0duGGHR', 'hourly'),
-              ('daily', 'dUW7nvQHQBdA0Rx0gJckI', 'daily'),
-              ('weekly', 'qPGCJu7t97kn-X07_fgSj', 'weekly'),
-              ('monthly', 'DeeJHc81qKhD9qWINISO8', 'monthly');
-        rollback:
-          - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
+      id: v57.2025-08-22T00:13:00
+      author: ranquild
+      comment: Create built-in transform tags
+      changes:
+        - sql: >-
+            INSERT INTO transform_tag(name, entity_id, built_in_type) VALUES
+            ('hourly', 'wYLcUPbtF7jVPO0duGGHR', 'hourly'),
+            ('daily', 'dUW7nvQHQBdA0Rx0gJckI', 'daily'),
+            ('weekly', 'qPGCJu7t97kn-X07_fgSj', 'weekly'),
+            ('monthly', 'DeeJHc81qKhD9qWINISO8', 'monthly');
+      rollback:
+        - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
 
   - changeSet:
-        id: v57.2025-08-22T00:14:00
-        author: ranquild
-        comment: Create built-in transform jobs
-        changes:
-          - sql: >-
-              INSERT INTO transform_job(name, description, schedule, entity_id, built_in_type) VALUES
-              ('Hourly job', 'Executes transforms tagged with ''hourly'' every hour', '0 0 * * * ? *', 'RognTgBT2fXaxoQh4ws7z', 'hourly'),
-              ('Daily job', 'Executes transforms tagged with ''daily'' once per day', '0 0 0 * * ? *', 'PJahvcoF61oX5T4uCT_FY', 'daily'),
-              ('Weekly job', 'Executes transforms tagged with ''weekly'' once per week', '0 0 0 ? * 1 *', 'lXIFa2SUrXLgaLZJx33oU', 'weekly'),
-              ('Monthly job', 'Executes transforms tagged with ''monthly'' once per month', '0 0 0 1 * ? *', 'CL1TVitmzJrDjdjvO2xmN', 'monthly');
-        rollback:
-          - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
+      id: v57.2025-08-22T00:14:00
+      author: ranquild
+      comment: Create built-in transform jobs
+      changes:
+        - sql: >-
+            INSERT INTO transform_job(name, description, schedule, entity_id, built_in_type) VALUES
+            ('Hourly job', 'Executes transforms tagged with ''hourly'' every hour', '0 0 * * * ? *', 'RognTgBT2fXaxoQh4ws7z', 'hourly'),
+            ('Daily job', 'Executes transforms tagged with ''daily'' once per day', '0 0 0 * * ? *', 'PJahvcoF61oX5T4uCT_FY', 'daily'),
+            ('Weekly job', 'Executes transforms tagged with ''weekly'' once per week', '0 0 0 ? * 1 *', 'lXIFa2SUrXLgaLZJx33oU', 'weekly'),
+            ('Monthly job', 'Executes transforms tagged with ''monthly'' once per month', '0 0 0 1 * ? *', 'CL1TVitmzJrDjdjvO2xmN', 'monthly');
+      rollback:
+        - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
 
   - changeSet:
-        id: v57.2025-08-22T00:15:00
-        author: ranquild
-        comment: Create associations between built-in transform jobs and tags
-        changes:
-          - sql: >-
-              INSERT INTO transform_job_transform_tag(job_id, tag_id, entity_id, position)
-              SELECT job.id, tag.id, job.entity_id, 0 AS position
-              FROM transform_job AS job
-              JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
-              WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
-        rollback:
-          - sql: >-
-              DELETE FROM transform_job_transform_tag
-              WHERE
-                job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
-                tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
+      id: v57.2025-08-22T00:15:00
+      author: ranquild
+      comment: Create associations between built-in transform jobs and tags
+      changes:
+        - sql: >-
+            INSERT INTO transform_job_transform_tag(job_id, tag_id, entity_id, position)
+            SELECT job.id, tag.id, job.entity_id, 0 AS position
+            FROM transform_job AS job
+            JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
+            WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
+      rollback:
+        - sql: >-
+            DELETE FROM transform_job_transform_tag
+            WHERE
+              job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
+              tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
 
   - changeSet:
       id: v57.2025-08-22T00:15:01
@@ -1085,7 +1085,7 @@ databaseChangeLog:
                   name: data_authority
                   remarks: Indicates the data authority status - unconfigured, authoritative, computed, or ingested
                   type: varchar(20)
-                  defaultValue: 'unconfigured'
+                  defaultValue: "unconfigured"
                   constraints:
                     nullable: false
 
@@ -1352,6 +1352,187 @@ databaseChangeLog:
               - column:
                   name: comment_id
       rollback: # will be removed along the table
+  - changeSet:
+      id: v57.2025-09-08T17:50:00
+      author: metamben
+      comment: Drop old dependency table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: dependency
+      changes:
+        - dropTable:
+            tableName: dependency
+      rollback:
+        - createTable:
+            tableName: dependency
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model
+            columns:
+              column:
+                name: model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model_id
+            columns:
+              column:
+                name: model_id
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_model
+            columns:
+              column:
+                name: dependent_on_model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_id
+            columns:
+              column:
+                name: dependent_on_id
+        # - modifySql:                 # doesn't work with liquibase 4.33.0
+        #     dbms: postgresql
+        #     replace:
+        #       replace: WITHOUT
+        #       with: WITH
+
+  - changeSet:
+      id: v57.2025-09-08T18:00:00
+      author: metamben
+      comment: Create dependency table to track dependencies in a general way
+
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: dependency
+      changes:
+        - createTable:
+            tableName: dependency
+            remarks: A table to track dependencies between Metabase entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  remarks: The type of the dependent entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: int
+                  remarks: The ID of the dependent entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  remarks: The type of the entity depended on
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  remarks: The ID of the entity depended on
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-08T18:10:00
+      author: metamben
+      comment: Unique constraint to prevent duplicate dependencies
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - uniqueConstraintExists:
+                tableName: dependency
+                constraintName: idx_unique_dependency
+      changes:
+        - addUniqueConstraint:
+            tableName: dependency
+            columnNames: from_entity_type, from_entity_id, to_entity_type, to_entity_id
+            constraintName: idx_unique_dependency
+
+  - changeSet:
+      id: v57.2025-09-08T18:20:00
+      author: metamben
+      comment: Index for finding dependencies FROM a specific entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: dependency
+                indexName: idx_dependency_from
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_from
+            columns:
+              - column:
+                  name: from_entity_type
+              - column:
+                  name: from_entity_id
+
+  - changeSet:
+      id: v57.2025-09-08T18:30:00
+      author: metamben
+      comment: Index for finding dependencies TO a specific entity
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: dependency
+                indexName: idx_dependency_to
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_to
+            columns:
+              - column:
+                  name: to_entity_type
+              - column:
+                  name: to_entity_id
 
   - changeSet:
       id: v57.2025-09-11T10:00:00
@@ -1398,6 +1579,328 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v57.2025-09-12T16:08:00
+      author: piranha
+      comment: Create glossary table
+      changes:
+        - createTable:
+            tableName: glossary
+            remarks: Table to store glossary terms and their definitions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for glossary entries
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(255)
+                  remarks: The glossary term or phrase being defined
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: The detailed definition or explanation of the term
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-16T12:55:00
+      author: stasgavrylov
+      comment: Add content_html column to comment table for storing HTML-rendered content
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: comment
+                columnName: content_html
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: content_html
+                  type: ${text.type}
+                  remarks: HTML-rendered version of the comment content
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-18T10:00:00
+      author: metamben
+      comment: Add dependency_analysis_version to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:01:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to report_card
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:02:00
+      author: metamben
+      comment: Add dependency_analysis_version to transform
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:03:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to transform
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:04:00
+      author: metamben
+      comment: Add dependency_analysis_version to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:05:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to native_query_snippet
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v57.2025-09-19T11:30:20
+      author: ranquild
+      comment: Add transform_job.ui_display_type
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/raw'
+            where: built_in_type IS NOT NULL
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:02
+      author: johnswanson
+      comment: Fix MySQL alerts view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v5/mysql-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:08
+      author: johnswanson
+      comment: Fix MySQL audit_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/audit_log/v3/mysql-audit_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/audit_log/v2/mysql-audit_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:11
+      author: johnswanson
+      comment: Fix MySQL content view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/content/v3/mysql-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:13
+      author: johnswanson
+      comment: Fix MySQL fields view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/fields/v2/mysql-fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/fields/v1/mysql-fields.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:16
+      author: johnswanson
+      comment: Fix MySQL query_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v3/mysql-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v2/mysql-query_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:19
+      author: johnswanson
+      comment: Fix MySQL subscriptions view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/subscriptions/v2/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/subscriptions/v1/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:22
+      author: johnswanson
+      comment: Fix MySQL tables view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tables/v2/mysql-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/tables/v1/mysql-tables.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:25
+      author: johnswanson
+      comment: Fix MySQL tasks view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tasks/v3/mysql-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/tasks/v2/mysql-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:28
+      author: johnswanson
+      comment: Fix MySQL users view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/users/v4/mysql-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/users/v3/mysql-users.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:31
+      author: johnswanson
+      comment: Fix MySQL view_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v3/mysql-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v2/mysql-view_log.sql
+            relativeToChangelogFile: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

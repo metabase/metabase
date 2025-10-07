@@ -147,11 +147,11 @@
                         :message   "Canceled by user but could not guarantee run stopped."})
     (cancel/delete-old-canceling-runs!)))
 
-(defn running-run-for-run-id
+(defn running-run-for-transform-id
   "Return a single active transform run or nil."
-  [id]
+  [transform-id]
   (t2/select-one :model/TransformRun
-                 :id id
+                 :transform_id transform-id
                  :is_active true))
 
 (defn- timestamp-constraint
@@ -228,7 +228,7 @@
         query-options    (merge {:order-by order-by :offset offset :limit limit}
                                 count-options)
         runs             (t2/select :model/TransformRun query-options)]
-    {:data   (t2/hydrate runs :transform)
+    {:data   (t2/hydrate runs [:transform :transform_tag_ids])
      :limit  limit
      :offset offset
      :total  (t2/count :model/TransformRun count-options)}))

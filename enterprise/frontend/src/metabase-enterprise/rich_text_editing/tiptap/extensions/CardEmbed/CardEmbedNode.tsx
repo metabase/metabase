@@ -1,4 +1,3 @@
-import { autoUpdate, useFloating } from "@floating-ui/react";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   type NodeViewProps,
@@ -7,8 +6,12 @@ import {
 } from "@tiptap/react";
 import cx from "classnames";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { push } from "react-router-redux";
+import { useMount, useUnmount } from "react-use";
 import { t } from "ttag";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { QuestionPickerModal } from "metabase/common/components/Pickers/QuestionPicker/components/QuestionPickerModal";
 import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -22,7 +25,7 @@ import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
 import { navigateToCardFromDocument } from "metabase-enterprise/documents/actions";
 import { trackDocumentReplaceCard } from "metabase-enterprise/documents/analytics";
-import { CommentsMenu } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
+import { getUnresolvedComments } from "metabase-enterprise/documents/components/Editor/CommentsMenu";
 import { EDITOR_STYLE_BOUNDARY_CLASS } from "metabase-enterprise/documents/components/Editor/constants";
 import {
   loadMetadataForDocumentCard,
@@ -40,12 +43,48 @@ import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
 import type { Card, CardDisplayType, Dataset } from "metabase-types/api";
 
+import { CommentsButton } from "../../components/CommentsButton";
+import {
+  cleanupFlexContainerNodes,
+  findNodeParentAndPos,
+} from "../HandleEditorDrop/utils";
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import CS from "../extensions.module.css";
 
 import styles from "./CardEmbedNode.module.css";
 import { ModifyQuestionModal } from "./ModifyQuestionModal";
 import { NativeQueryModal } from "./NativeQueryModal";
+
+export const DROP_ZONE_COLOR = "var(--mb-color-brand)";
+const DRAG_LEAVE_TIMEOUT = 300;
+
+interface DropZoneProps {
+  isOver: boolean;
+  side: "left" | "right";
+  disabled?: boolean;
+}
+
+const DropZone = ({ isOver, side, disabled }: DropZoneProps) => {
+  if (disabled) {
+    return null;
+  }
+
+  return (
+    <Box
+      style={{
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        width: "0.25rem",
+        [side]: "-0.625rem",
+        borderRadius: "0.125rem",
+        backgroundColor: isOver ? DROP_ZONE_COLOR : "transparent",
+        zIndex: 10,
+        pointerEvents: "all",
+      }}
+    />
+  );
+};
 
 function formatCardEmbed(attrs: CardEmbedAttributes): string {
   if (attrs.name) {
@@ -77,6 +116,7 @@ export const CardEmbed: Node<{
   atom: true,
   draggable: true,
   selectable: true,
+  disableDropCursor: true,
 
   addAttributes() {
     return {
@@ -136,16 +176,23 @@ export const CardEmbed: Node<{
 });
 
 export const CardEmbedComponent = memo(
-  ({ node, updateAttributes, selected, editor, getPos }: NodeViewProps) => {
+  ({
+    node,
+    updateAttributes,
+    selected,
+    editor,
+    getPos,
+    deleteNode,
+  }: NodeViewProps) => {
     const childTargetId = useSelector(getChildTargetId);
     const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
     const document = useSelector(getCurrentDocument);
     const { data: commentsData } = useListCommentsQuery(
       getListCommentsQuery(document),
     );
+
     const comments = commentsData?.comments;
     const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
-    const [hovered, setHovered] = useState(false);
     const { _id } = node.attrs;
     const isOpen = childTargetId === _id;
     const isHovered = hoveredChildTargetId === _id;
@@ -153,15 +200,18 @@ export const CardEmbedComponent = memo(
       () => getTargetChildCommentThreads(comments, _id),
       [comments, _id],
     );
-    const { refs, floatingStyles } = useFloating({
-      placement: "right-start",
-      whileElementsMounted: autoUpdate,
-      strategy: "fixed",
-    });
-
+    const unresolvedCommentsCount = useMemo(
+      () => getUnresolvedComments(threads).length,
+      [threads],
+    );
+    const commentsPath = document
+      ? `/document/${document.id}/comments/${_id}`
+      : "";
     const { id, name } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
+
+    const isMountedRef = useRef(false);
 
     let embedIndex = -1;
 
@@ -191,6 +241,14 @@ export const CardEmbedComponent = memo(
     const titleInputRef = useRef<HTMLInputElement>(null);
     const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
     const [isReplaceModalOpen, setIsReplaceModalOpen] = useState(false);
+    const [dragState, setDragState] = useState<{
+      isDraggedOver: boolean;
+      side: "left" | "right" | null;
+    }>({ isDraggedOver: false, side: null });
+    const draggedOverTimeoutRef = useRef<number | undefined>();
+    const cardEmbedRef = useRef<HTMLDivElement>(null);
+
+    const isBeingDragged = editor.view.draggingNode === node;
 
     const displayName = name || card?.name;
     const isNativeQuestion = card?.dataset_query?.type === "native";
@@ -201,6 +259,14 @@ export const CardEmbedComponent = memo(
         titleInputRef.current.select();
       }
     }, [isEditingTitle]);
+
+    useMount(() => {
+      isMountedRef.current = true;
+    });
+
+    useUnmount(() => {
+      isMountedRef.current = false;
+    });
 
     const handleTitleSave = () => {
       const trimmedTitle = editedTitle.trim();
@@ -271,6 +337,24 @@ export const CardEmbedComponent = memo(
       [updateAttributes, document],
     );
 
+    const handleRemoveNode = useCallback(() => {
+      const nodeParentResult = findNodeParentAndPos(editor.view, node);
+
+      if (
+        nodeParentResult &&
+        nodeParentResult.parent.type.name === "resizeNode"
+      ) {
+        const { parent, parentPos } = nodeParentResult;
+        editor.view.dispatch(
+          editor.state.tr.delete(parentPos, parentPos + parent.nodeSize),
+        );
+      } else {
+        deleteNode();
+      }
+      cleanupFlexContainerNodes(editor.view);
+      editor.chain().focus();
+    }, [deleteNode, editor, node]);
+
     // Handle drill-through navigation
     const handleChangeCardAndRun = useCallback(
       ({
@@ -310,6 +394,68 @@ export const CardEmbedComponent = memo(
       [dispatch, metadata, document],
     );
 
+    const handleDragOver = useCallback(
+      (e: React.DragEvent) => {
+        e.preventDefault();
+
+        const draggingNode = editor.view.draggingNode;
+        if (
+          draggingNode &&
+          draggingNode.type.name === "cardEmbed" &&
+          cardEmbedRef.current
+        ) {
+          // Check if this cardEmbed is in a flexContainer that already has 3 children
+          const pos = getPos();
+          if (pos) {
+            const resolvedPos = editor.state.doc.resolve(pos);
+            const { parent } = resolvedPos;
+
+            if (
+              parent.type.name === "flexContainer" &&
+              parent.content.childCount >= 3
+            ) {
+              let containsDraggedNode = false;
+
+              for (let i = 0; i < parent.content.childCount; i++) {
+                const child = parent.child(i);
+                containsDraggedNode =
+                  containsDraggedNode || child === draggingNode;
+              }
+
+              if (!containsDraggedNode) {
+                // Don't show drop zones if flexContainer is already at max capacity
+                setDragState({ isDraggedOver: false, side: null });
+                return;
+              }
+            }
+          }
+
+          const rect = cardEmbedRef.current.getBoundingClientRect();
+          const relativeX = e.clientX - rect.left;
+          const nodeWidth = rect.width;
+
+          // Determine which side based on cursor position
+          let side: "left" | "right" | null = null;
+          if (relativeX < nodeWidth * 0.5) {
+            side = "left";
+          } else if (relativeX >= nodeWidth * 0.5) {
+            side = "right";
+          }
+
+          setDragState({ isDraggedOver: true, side });
+
+          window.clearTimeout(draggedOverTimeoutRef.current);
+
+          draggedOverTimeoutRef.current = window.setTimeout(() => {
+            if (isMountedRef.current) {
+              setDragState({ isDraggedOver: false, side: null });
+            }
+          }, DRAG_LEAVE_TIMEOUT);
+        }
+      },
+      [editor.view.draggingNode, getPos, editor.state.doc],
+    );
+
     if (isLoading && !card) {
       return (
         <NodeViewWrapper
@@ -317,6 +463,7 @@ export const CardEmbedComponent = memo(
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
           })}
+          style={{ position: "relative" }}
         >
           <Box
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
@@ -350,6 +497,7 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-testid="document-card-embed"
+          style={{ position: "relative" }}
         >
           <Box
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
@@ -378,11 +526,26 @@ export const CardEmbedComponent = memo(
             [CS.open]: isOpen || isHovered,
           })}
           data-testid="document-card-embed"
-          ref={refs.setReference}
-          onMouseOver={() => setHovered(true)}
-          onMouseOut={() => setHovered(false)}
+          data-drag-handle
+          onDragOver={handleDragOver}
+          onDrop={() => setDragState({ isDraggedOver: false, side: null })}
         >
+          {canWrite && id && (
+            <>
+              <DropZone
+                isOver={dragState.isDraggedOver && dragState.side === "left"}
+                side="left"
+                disabled={isBeingDragged}
+              />
+              <DropZone
+                isOver={dragState.isDraggedOver && dragState.side === "right"}
+                side="right"
+                disabled={isBeingDragged}
+              />
+            </>
+          )}
           <Box
+            ref={cardEmbedRef}
             className={cx(styles.cardEmbed, EDITOR_STYLE_BOUNDARY_CLASS, {
               [styles.selected]: selected,
             })}
@@ -419,15 +582,20 @@ export const CardEmbedComponent = memo(
                     />
                   ) : (
                     <Box className={styles.titleContainer}>
-                      <Text
-                        size="md"
-                        color="text-dark"
-                        fw={700}
-                        onClick={handleTitleClick}
-                        c="pointer"
-                      >
-                        {displayName}
-                      </Text>
+                      <Ellipsified lines={1} tooltip={displayName}>
+                        <Text
+                          className={styles.titleText}
+                          data-testid="card-embed-title"
+                          size="md"
+                          color="text-dark"
+                          fw={700}
+                          c="pointer"
+                          truncate="end"
+                          onClick={handleTitleClick}
+                        >
+                          {displayName}
+                        </Text>
+                      </Ellipsified>
                       {canWrite && (
                         <Icon
                           name="pencil"
@@ -444,13 +612,26 @@ export const CardEmbedComponent = memo(
                       )}
                     </Box>
                   )}
+                  {!isEditingTitle &&
+                    document &&
+                    unresolvedCommentsCount > 0 && (
+                      <Box data-hide-on-print my="-sm" ml="auto">
+                        <CommentsButton
+                          // don't use Link component here since it messes with tiptap's link handling
+                          disabled={hasUnsavedChanges || !commentsPath}
+                          variant={isOpen ? "filled" : "default"}
+                          unresolvedCommentsCount={unresolvedCommentsCount}
+                          onClick={() => {
+                            dispatch(push(commentsPath));
+                          }}
+                        />
+                      </Box>
+                    )}
                   {!isEditingTitle && (
                     <Menu withinPortal position="bottom-end" data-hide-on-print>
                       <Menu.Target>
                         <Flex
                           component="button"
-                          bg="transparent"
-                          c="pointer"
                           p="0.25rem"
                           align="center"
                           justify="center"
@@ -465,6 +646,26 @@ export const CardEmbedComponent = memo(
                         </Flex>
                       </Menu.Target>
                       <Menu.Dropdown>
+                        <Menu.Item
+                          leftSection={<Icon name="add_comment" size={14} />}
+                          component={ForwardRefLink}
+                          to={
+                            // If no existing unresolved comments comments, add query param to auto-open new comment form
+                            unresolvedCommentsCount > 0
+                              ? commentsPath
+                              : `${commentsPath}?new=true`
+                          }
+                          // actually stop the navigation from happening
+                          onClick={(e) => {
+                            if (!commentsPath || hasUnsavedChanges) {
+                              e.preventDefault();
+                            }
+                          }}
+                          // purely for presentation
+                          disabled={!commentsPath || hasUnsavedChanges}
+                        >
+                          {t`Comment`}
+                        </Menu.Item>
                         <Menu.Item
                           onClick={handleEditVisualizationSettings}
                           disabled={!canWrite}
@@ -490,6 +691,13 @@ export const CardEmbedComponent = memo(
                           leftSection={<Icon name="refresh" size={14} />}
                         >
                           {t`Replace`}
+                        </Menu.Item>
+                        <Menu.Item
+                          onClick={handleRemoveNode}
+                          disabled={!canWrite}
+                          leftSection={<Icon name="trash" size={14} />}
+                        >
+                          {t`Remove Chart`}
                         </Menu.Item>
                       </Menu.Dropdown>
                     </Menu>
@@ -559,18 +767,6 @@ export const CardEmbedComponent = memo(
             />
           )}
         </NodeViewWrapper>
-
-        {document && (
-          <CommentsMenu
-            active={isOpen}
-            disabled={hasUnsavedChanges}
-            href={`/document/${document.id}/comments/${_id}`}
-            ref={refs.setFloating}
-            show={isOpen || hovered}
-            threads={threads}
-            style={floatingStyles}
-          />
-        )}
       </>
     );
   },

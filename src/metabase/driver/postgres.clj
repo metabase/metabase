@@ -1,11 +1,11 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
+  (:refer-clojure :exclude [some select-keys mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.pg-ops :as sql.pg-ops]
@@ -33,7 +33,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some select-keys mapv]])
   (:import
    (java.io StringReader)
    (java.sql
@@ -65,6 +66,8 @@
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
+                              :rename                   true
+                              :atomic-renames           true
                               :persist-models           true
                               :schemas                  true
                               :identifiers-with-spaces  true
@@ -78,6 +81,7 @@
                               :expressions/date         true
                               :database-routing         true
                               :transforms/table         true
+                              :transforms/python        true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -757,7 +761,7 @@
       (if (or (::sql.qp/forced-alias opts)
               (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
         (keyword (driver-api/qp.add.source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
                        identifier))
@@ -1033,6 +1037,33 @@
                            :sql    (str stmt)
                            :type   driver-api/qp.error-type.invalid-query}))
           (throw e))))))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Postgres that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+(defmethod type->database-type :type/JSON [_] [:jsonb])
+(defmethod type->database-type :type/SerializedJSON [_] [:jsonb])
+(defmethod type->database-type :type/IPAddress [_] [:inet])
+
+(defmethod driver/type->database-type :postgres
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]

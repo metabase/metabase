@@ -7,7 +7,7 @@ import {
   MOCK_AD_HOC_QUESTION_ID,
   mockStreamResponse,
 } from "embedding-sdk-shared/test/mocks/mock-metabot-response";
-import { Box } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 
 import { MetabotQuestion } from "./MetabotQuestion";
 
@@ -23,20 +23,29 @@ export default {
 };
 
 const Template: StoryFn<MetabotQuestionProps> = () => {
-  return (
-    <Box
-      bg="var(--mb-color-background)"
-      mih="100vh"
-      bd="1px solid #000"
-      pt="2rem"
-    >
-      <MetabotQuestion />
-    </Box>
-  );
+  return <MetabotQuestion height="100vh" />;
 };
 
-export const Default = {
+export const FullWidth = {
   render: Template,
+};
+
+export const Centered = {
+  render() {
+    return (
+      <Stack align="center" justify="center">
+        <Flex
+          m="40px"
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "16px",
+          }}
+        >
+          <MetabotQuestion height="calc(100vh - 90px)" />
+        </Flex>
+      </Stack>
+    );
+  },
 };
 
 export const RedirectReaction = {
@@ -59,7 +68,7 @@ export const MetabotError = {
   parameters: {
     msw: {
       handlers: [
-        http.post("*/api/ee/metabot-v3/v2/agent-streaming", () => {
+        http.post("*/api/ee/metabot-v3/agent-streaming", () => {
           return new HttpResponse(null, {
             status: 500,
           });
@@ -76,4 +85,40 @@ export const MultipleInstances = {
       <Template />
     </>
   ),
+};
+
+export const SidebarLayout = {
+  render() {
+    return (
+      <Stack align="center" justify="center">
+        <Flex
+          m="40px"
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "16px",
+          }}
+        >
+          <MetabotQuestion height="calc(100vh - 90px)" layout="sidebar" />
+        </Flex>
+      </Stack>
+    );
+  },
+};
+
+export const StackedLayout = {
+  render() {
+    return (
+      <Stack align="center" justify="center">
+        <Flex
+          m="40px"
+          style={{
+            border: "1px solid var(--mb-color-border)",
+            borderRadius: "16px",
+          }}
+        >
+          <MetabotQuestion height="calc(100vh - 90px)" layout="stacked" />
+        </Flex>
+      </Stack>
+    );
+  },
 };

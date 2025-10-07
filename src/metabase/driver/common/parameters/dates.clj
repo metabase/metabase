@@ -1,5 +1,6 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  (:refer-clojure :exclude [every? some])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
@@ -15,6 +16,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some]]
    [metabase.util.time :as u.time])
   (:import
    (java.time.temporal Temporal)))
@@ -296,7 +298,7 @@
   (let [year (t/year date)]
     (case unit
       :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
-              (format "%sT%02d:00:00Z" date hour))
+              (format "%sT%02d:00:00" date hour))
       :day (when-let [day (short-day->day exclusion)]
              (str (t/adjust date :next-or-same-day-of-week day)))
       :month (when-let [month (short-month->month exclusion)]

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import Color from "color";
 import { Component } from "react";
 import { t } from "ttag";
 
@@ -185,7 +186,9 @@ export default class FunnelNormal extends Component {
           </Head>
           <FunnelStart isNarrow={isNarrow}>
             <Title>{formatMetric(sortedRows[0][metricIndex])}</Title>
-            <Subtitle>{cols[metricIndex].display_name}</Subtitle>
+            <Subtitle>
+              <Ellipsified>{cols[metricIndex].display_name}</Ellipsified>
+            </Subtitle>
           </FunnelStart>
           {/* This part of code in used only to share height between .Start and .Graph columns. */}
           <Info isNarrow={isNarrow}>
@@ -272,7 +275,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={1 - index * (0.9 / (infos.length + 1))}
-          fill={color("brand")}
+          fill={Color(color("brand")).hex()}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

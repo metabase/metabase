@@ -14,6 +14,31 @@ import {
 
 const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
+describe("scenarios > embedding > static embedding dashboard", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+  });
+
+  it("should not call `GET /api/database` (metabase#63310)", () => {
+    cy.intercept("GET", "/api/database").as("getDatabases");
+    const payload = {
+      resource: { dashboard: ORDERS_DASHBOARD_ID },
+      params: {},
+    };
+    H.visitEmbeddedPage(payload);
+
+    cy.findByRole("heading", { name: "Orders in a dashboard" }).should(
+      "be.visible",
+    );
+    cy.log("GET /api/database should not be called");
+    cy.get("@getDatabases.all").should("have.length", 0);
+  });
+});
+
 describe("scenarios > embedding > dashboard parameters", () => {
   beforeEach(() => {
     H.restore();
@@ -1188,7 +1213,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
           cy.findByTestId("dashcard").should(
             "have.css",
             "background-color",
-            "rgb(46, 53, 59)",
+            "rgb(7, 23, 34)",
           );
 
           cy.log("pivot table cell background should be transparent");
@@ -1196,12 +1221,12 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .first()
             .findAllByTestId("pivot-table-cell")
             .first()
-            .should("have.css", "background-color", "rgba(46, 53, 59, 0.1)");
+            .should("have.css", "background-color", "rgba(48, 61, 70, 0.1)");
 
           cy.log("pivot table cell color should be white");
           cy.findByText("Row totals")
             .should("be.visible")
-            .should("have.css", "color", "rgb(255, 255, 255)");
+            .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
         });
       });
     });

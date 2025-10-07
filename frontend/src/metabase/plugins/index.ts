@@ -36,6 +36,7 @@ import type { LinkProps } from "metabase/common/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ColorName } from "metabase/lib/colors/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
@@ -58,6 +59,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
@@ -78,11 +80,16 @@ import type {
   ModelCacheRefreshStatus,
   ParameterId,
   Pulse,
+  PythonTransformSource,
+  PythonTransformTableAliases,
   Revision,
   Series,
   TableId,
   Timeline,
   TimelineEvent,
+  Transform,
+  UpdateSnippetRequest,
+  UpdateTransformRequest,
   User,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -389,7 +396,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
-  icon: IconName | { name: IconName; color: string } | Record<string, never>;
+  icon: IconName | { name: IconName; color: ColorName } | Record<string, never>;
   description?: string;
   revision?: Revision;
 };
@@ -817,6 +824,8 @@ export const PLUGIN_DOCUMENTS = {
   shouldShowDocumentInNewItemMenu: () => false,
   getCurrentDocument: (_state: any) => null as Document | null,
   getSidebarOpen: (_state: any) => false,
+  getCommentSidebarOpen: (_state: any) => false,
+  DocumentCopyForm: (_props: any) => null as React.ReactElement | null,
 };
 
 export const PLUGIN_ENTITIES = {
@@ -835,4 +844,97 @@ export type TransformsPlugin = {
 export const PLUGIN_TRANSFORMS: TransformsPlugin = {
   getAdminPaths: () => [],
   getAdminRoutes: () => null,
+};
+
+export type PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: ComponentType;
+  SourceSection: ComponentType<{ transform: Transform }>;
+  TransformEditor: ComponentType<{
+    initialSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    };
+    isNew?: boolean;
+    isSaving?: boolean;
+    isRunnable?: boolean;
+    onSave: (newSource: PythonTransformSource) => void;
+    onCancel: () => void;
+  }>;
+  getAdminRoutes: () => ReactNode;
+  getTransformsNavLinks: () => ReactNode;
+  getCreateTransformsMenuItems: () => ReactNode;
+};
+
+export const PLUGIN_TRANSFORMS_PYTHON: PythonTransformsPlugin = {
+  PythonRunnerSettingsPage: NotFoundPlaceholder,
+  TransformEditor: NotFoundPlaceholder,
+  SourceSection: PluginPlaceholder,
+  getAdminRoutes: () => null,
+  getTransformsNavLinks: () => null,
+  getCreateTransformsMenuItems: () => null,
+};
+
+type DependenciesPlugin = {
+  CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
+  CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
+  CheckDependenciesTitle: ComponentType;
+  useCheckCardDependencies: (
+    props: UseCheckDependenciesProps<Question>,
+  ) => UseCheckDependenciesResult<Question>;
+  useCheckSnippetDependencies: (
+    props: UseCheckDependenciesProps<UpdateSnippetRequest>,
+  ) => UseCheckDependenciesResult<UpdateSnippetRequest>;
+  useCheckTransformDependencies: (
+    props: UseCheckDependenciesProps<UpdateTransformRequest>,
+  ) => UseCheckDependenciesResult<UpdateTransformRequest>;
+};
+
+export type CheckDependenciesFormProps = {
+  checkData: CheckDependenciesResponse;
+  onSave: () => void | Promise<void>;
+  onCancel: () => void;
+};
+
+export type CheckDependenciesModalProps = {
+  checkData: CheckDependenciesResponse;
+  opened: boolean;
+  onSave: () => void | Promise<void>;
+  onClose: () => void;
+};
+
+export type UseCheckDependenciesProps<TChange> = {
+  onSave: (change: TChange) => Promise<void>;
+  onError: (error: unknown) => void;
+};
+
+export type UseCheckDependenciesResult<TChange> = {
+  checkData?: CheckDependenciesResponse;
+  isCheckingDependencies: boolean;
+  isConfirmationShown: boolean;
+  handleInitialSave: (change: TChange) => Promise<void>;
+  handleSaveAfterConfirmation: () => Promise<void>;
+  handleCloseConfirmation: () => void;
+};
+
+function useCheckDependencies<TChange>({
+  onSave,
+}: UseCheckDependenciesProps<TChange>): UseCheckDependenciesResult<TChange> {
+  return {
+    isConfirmationShown: false,
+    isCheckingDependencies: false,
+    handleInitialSave: onSave,
+    handleSaveAfterConfirmation: () => Promise.resolve(),
+    handleCloseConfirmation: () => undefined,
+  };
+}
+
+export const PLUGIN_DEPENDENCIES: DependenciesPlugin = {
+  CheckDependenciesForm: PluginPlaceholder,
+  CheckDependenciesModal: PluginPlaceholder,
+  CheckDependenciesTitle: PluginPlaceholder,
+  useCheckCardDependencies: useCheckDependencies,
+  useCheckSnippetDependencies: useCheckDependencies,
+  useCheckTransformDependencies: useCheckDependencies,
 };

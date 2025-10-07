@@ -137,8 +137,6 @@ config:
     embedding-app-origins-interactive: null
     embedding-app-origins-sdk: ''
     embedding-homepage: hidden
-    embedding-hub-production-embed-snippet-created: false
-    embedding-hub-test-embed-snippet-created: false
     embedding-secret-key: null
     enable-embedding-interactive: false
     enable-embedding-sdk: false
@@ -190,6 +188,7 @@ config:
     ldap-security: none
     ldap-sync-user-attributes: true
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
+    ldap-timeout-seconds: 15.0
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true

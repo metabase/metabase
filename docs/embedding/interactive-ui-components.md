@@ -7,6 +7,8 @@ description: Customize the UI components in your interactive Metabase embed by a
 
 To change the interface of your interactive embed, you can add parameters to the end of your embedding URL. If you want to change the colors or fonts in your embed, see [Customizing appearance](../configuring-metabase/appearance.md).
 
+> If you are just starting out with Metabase embedding, consider using [Embedded Analytics JS](./embedded-analytics-js.md) instead of interactive embedding - it's an improved, more customizable option for embedding interactive Metabase elements. Interactive embedding remains fully supported.
+
 For example, you can disable Metabase's [top nav bar](#top_nav) and [side nav menu](#side_nav) like this:
 
 ```

@@ -9,6 +9,8 @@ import {
 } from "metabase-enterprise/documents/analytics";
 import type { Document } from "metabase-types/api";
 
+import { wrapCardEmbed } from "../shared/layout";
+
 export interface CommandOptions {
   suggestion: Partial<SuggestionOptions>;
 }
@@ -22,6 +24,8 @@ export interface CommandProps {
   embedItem?: boolean;
   entityId?: number | string;
   model?: string;
+  label?: string;
+  href?: string;
   document?: Document | null;
 }
 
@@ -63,12 +67,14 @@ export const CommandExtension = Extension.create<CommandOptions>({
               .chain()
               .focus()
               .deleteRange(range)
-              .insertContent({
-                type: "cardEmbed",
-                attrs: {
-                  id: props.entityId,
-                },
-              })
+              .insertContent(
+                wrapCardEmbed({
+                  type: "cardEmbed",
+                  attrs: {
+                    id: props.entityId,
+                  },
+                }),
+              )
               .setTextSelection(range.from + 1)
               .run();
             if (props.document) {
@@ -189,6 +195,8 @@ export const CommandExtension = Extension.create<CommandOptions>({
                 attrs: {
                   entityId: props.entityId,
                   model: props.model,
+                  label: props.label,
+                  href: props.href,
                 },
               })
               .run();

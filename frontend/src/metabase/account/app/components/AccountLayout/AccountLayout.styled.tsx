@@ -1,14 +1,14 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { breakpointMinSmall, space } from "metabase/styled-components/theme";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const AccountContent = styled.div`
   margin: 0 auto;
-  padding: ${space(1)};
+  padding: var(--mantine-spacing-sm);
 
   ${breakpointMinSmall} {
     width: 540px;
-    padding: ${space(3)} ${space(2)};
+    padding: var(--mantine-spacing-xl) var(--mantine-spacing-md);
   }
 `;

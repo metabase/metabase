@@ -245,7 +245,38 @@ describe("user > settings", () => {
       cy.findByLabelText("Email").should("not.exist");
     });
   });
+
+  describe("dark mode", () => {
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    it("should toggle through light and dark mode when clicking on the label or icon", () => {
+      cy.visit("/account/profile");
+
+      cy.findByRole("img", { name: /sun/ }).click();
+      assertDarkMode();
+
+      cy.findByRole("img", { name: /moon/ }).click();
+      assertLightMode();
+
+      H.main()
+        .findByText(/Toggle between light and dark/)
+        .click();
+      assertDarkMode();
+
+      cy.realPress([metaKey, "Shift", "L"]);
+      assertLightMode();
+    });
+  });
 });
+
+// I wanted to examine the value of a color vairable, but it's hard to inspect hsla colors between local and CI.
+// sometimes the alpha is a decimal value, sometimes it isnt...
+const assertLightMode = () =>
+  cy.get("body").should("have.css", "background-color", "rgb(249, 249, 250)");
+
+const assertDarkMode = () =>
+  cy.get("body").should("have.css", "background-color", "rgb(0, 0, 0)");
 
 /**
  * Stub the current user authentication method

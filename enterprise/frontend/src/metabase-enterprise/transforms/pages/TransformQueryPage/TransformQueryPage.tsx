@@ -7,10 +7,14 @@ import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
+  PLUGIN_DEPENDENCIES,
+  PLUGIN_TRANSFORMS_PYTHON,
+} from "metabase/plugins";
+import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
-import type { DatasetQuery, Transform } from "metabase-types/api";
+import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -49,38 +53,72 @@ type TransformQueryPageBodyProps = {
 export function TransformQueryPageBody({
   transform,
 }: TransformQueryPageBodyProps) {
-  const [updateTransform, { isLoading }] = useUpdateTransformMutation();
+  const [updateTransform, { isLoading: isSaving }] =
+    useUpdateTransformMutation();
   const dispatch = useDispatch();
-  const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const handleSave = async (query: DatasetQuery) => {
-    const { error } = await updateTransform({
-      id: transform.id,
-      source: {
-        type: "query",
-        query,
-      },
-    });
-
-    if (error) {
+  const {
+    checkData,
+    isCheckingDependencies,
+    isConfirmationShown,
+    handleInitialSave,
+    handleSaveAfterConfirmation,
+    handleCloseConfirmation,
+  } = PLUGIN_DEPENDENCIES.useCheckTransformDependencies({
+    onSave: async (request) => {
+      const { error } = await updateTransform(request);
+      if (error) {
+        sendErrorToast(t`Failed to update transform query`);
+      } else {
+        sendSuccessToast(t`Transform query updated`);
+        dispatch(push(getTransformUrl(transform.id)));
+      }
+    },
+    onError: () => {
       sendErrorToast(t`Failed to update transform query`);
-    } else {
-      sendSuccessToast(t`Transform query updated`);
-      dispatch(push(getTransformUrl(transform.id)));
-    }
+    },
+  });
+
+  const handleSaveSource = async (source: TransformSource) => {
+    await handleInitialSave({
+      id: transform.id,
+      source,
+    });
   };
 
   const handleCancel = () => {
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  if (transform.source.type === "python") {
+    return (
+      <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isSaving}
+        onSave={handleSaveSource}
+        onCancel={handleCancel}
+      />
+    );
+  }
   return (
-    <QueryEditor
-      initialQuery={transform.source.query}
-      isNew={false}
-      isSaving={isLoading}
-      onSave={handleSave}
-      onCancel={handleCancel}
-    />
+    <>
+      <QueryEditor
+        initialSource={transform.source}
+        isNew={false}
+        isSaving={isSaving || isCheckingDependencies}
+        onSave={handleSaveSource}
+        onCancel={handleCancel}
+      />
+      {isConfirmationShown && checkData != null && (
+        <PLUGIN_DEPENDENCIES.CheckDependenciesModal
+          checkData={checkData}
+          opened
+          onSave={handleSaveAfterConfirmation}
+          onClose={handleCloseConfirmation}
+        />
+      )}
+    </>
   );
 }

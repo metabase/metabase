@@ -51,11 +51,11 @@
            (mt/rows
             (qp/process-query
              (mt/native-query
-               {:query (with-test-db-name
-                         (str "SELECT `v4_test_data.venues`.`id` "
-                              "FROM `v4_test_data.venues` "
-                              "ORDER BY `v4_test_data.venues`.`id` DESC "
-                              "LIMIT 2;"))})))))))
+              {:query (with-test-db-name
+                        (str "SELECT `v4_test_data.venues`.`id` "
+                             "FROM `v4_test_data.venues` "
+                             "ORDER BY `v4_test_data.venues`.`id` DESC "
+                             "LIMIT 2;"))})))))))
 
 (deftest ^:parallel native-query-test-2
   (mt/test-driver :bigquery-cloud-sdk
@@ -303,11 +303,11 @@
              (mt/rows
               (qp/process-query
                (mt/native-query
-                 {:query  (with-test-db-name
-                            (str "SELECT `v4_test_data.venues`.`name` AS `name` "
-                                 "FROM `v4_test_data.venues` "
-                                 "WHERE `v4_test_data.venues`.`name` = ?"))
-                  :params ["Red Medicine"]}))))))))
+                {:query  (with-test-db-name
+                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                "FROM `v4_test_data.venues` "
+                                "WHERE `v4_test_data.venues`.`name` = ?"))
+                 :params ["Red Medicine"]}))))))))
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -317,10 +317,10 @@
       [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
       (meta/field-metadata :checkins :date)                                 :date)))
 
-(deftest reconcile-temporal-types-test
+(deftest ^:parallel reconcile-temporal-types-test
   (doseq [test-case (bigquery.qp.reconciliation-tu/test-cases)]
-    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case)))
-      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case))))
+    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case)))
+      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case))))
 
 (deftest reconcile-temporal-types-date-extraction-filters-test
   (mt/with-report-timezone-id! nil
@@ -987,11 +987,11 @@
                 [int]
                 (qp/process-query
                  (mt/native-query
-                   {:query  (with-test-db-name
-                              (str "SELECT count(*) AS `count` "
-                                   "FROM `v4_test_data.venues` "
-                                   "WHERE `v4_test_data.venues`.`name` = ?"))
-                    :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+                  {:query  (with-test-db-name
+                             (str "SELECT count(*) AS `count` "
+                                  "FROM `v4_test_data.venues` "
+                                  "WHERE `v4_test_data.venues`.`name` = ?"))
+                   :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest ^:parallel escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"

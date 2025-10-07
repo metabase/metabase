@@ -116,43 +116,6 @@
     (t/is (= [:= [:field 1 nil] nil]
              (mbql.u/simplify-compound-filter [:and nil [:= [:field 1 nil] nil]])))))
 
-(t/deftest ^:parallel add-order-by-clause-test
-  (t/testing "can we add an order-by clause to a query?"
-    (t/is (= {:source-table 1, :order-by [[:asc [:field 10 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1} [:asc [:field 10 nil]])))
-
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]
-                             [:asc [:field 20 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 20 nil]])))))
-
-(t/deftest ^:parallel add-order-by-clause-test-2
-  (t/testing "duplicate clauses should get ignored"
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 nil]])))))
-
-(t/deftest ^:parallel add-order-by-clause-test-3
-  (t/testing "as should clauses that reference the same Field"
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:desc [:field 10 nil]])))))
-
-(t/deftest ^:parallel add-order-by-clause-test-4
-  (t/testing "fields with different temporal-units should still get added (#40995)"
-    (t/is (= {:source-table 1
-              :order-by     [[:asc [:field 10 nil]]
-                             [:asc [:field 10 {:temporal-unit :day}]]]}
-             (mbql.u/add-order-by-clause {:source-table 1
-                                          :order-by     [[:asc [:field 10 nil]]]}
-                                         [:asc [:field 10 {:temporal-unit :day}]])))))
-
 (t/deftest ^:parallel combine-filter-clauses-test
   (t/is (= [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
            (mbql.u/combine-filter-clauses
@@ -824,18 +787,6 @@
                (mbql.u/update-field-options [:expression "wow" {:b 2}] dissoc :b)))
       (t/is (= [:aggregation 0]
                (mbql.u/update-field-options [:aggregation 0 {:b 2}] dissoc :b))))))
-
-(t/deftest ^:parallel remove-namespaced-options-test
-  (t/are [clause expected] (= expected
-                              (mbql.u/remove-namespaced-options clause))
-    [:field 1 {::namespaced true}]                [:field 1 nil]
-    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
-    [:expression "wow"]                           [:expression "wow"]
-    [:expression "wow" {::namespaced true}]       [:expression "wow"]
-    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
-    [:aggregation 0]                              [:aggregation 0]
-    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
-    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
 
 (t/deftest ^:parallel with-temporal-unit-test
   (t/is (= [:field 1 {:temporal-unit :day}]

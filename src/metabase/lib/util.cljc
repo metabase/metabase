@@ -1,9 +1,9 @@
 (ns metabase.lib.util
-  (:refer-clojure :exclude [format])
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some])
   (:require
    #?@(:clj
-       ([potemkin :as p]))
-   #?@(:cljs
+       ([potemkin :as p])
+       :cljs
        (["crc-32" :as CRC32]
         [goog.string :as gstring]
         [goog.string.format :as gstring.format]))
@@ -26,7 +26,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :refer [every? mapv select-keys update-keys some]]))
 
 #?(:clj
    (set! *warn-on-reflection* true))
@@ -54,7 +54,8 @@
 
 ;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
-  "Returns true if this is a clause."
+  "Returns truthy if is a clause of `clause-type`, which can be either a keyword (like `:field`) or a set (like
+  `#{:field :expression}`)."
   [clause clause-type]
   (and (clause? clause)
        (if (set? clause-type)
@@ -129,7 +130,7 @@
 (defmethod custom-name-method :default
   [x]
   ;; We assume that clauses only get a :display-name option if the user explicitly specifies it.
-  ;; Expressions from the :expressions clause of pMBQL queries have custom names by default.
+  ;; Expressions from the :expressions clause of MBQL 5 queries have custom names by default.
   (when (clause? x)
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))))
 
@@ -192,7 +193,7 @@
 ;;; the near future.
 
 (defn- native-query->pipeline
-  "Convert a `:type` `:native` QP MBQL query to a pMBQL query. See docstring for [[mbql-query->pipeline]] for an
+  "Convert a `:type` `:native` QP MBQL query to a MBQL 5 query. See docstring for [[mbql-query->pipeline]] for an
   explanation of what this means."
   [query]
   (merge {:lib/type :mbql/query
@@ -205,14 +206,14 @@
 (declare inner-query->stages)
 
 (defn- update-legacy-boolean-expression->list
-  "Updates m with a legacy boolean expression at `legacy-key` into a list with an implied and for pMBQL at `pMBQL-key`"
-  [m legacy-key pMBQL-key]
+  "Updates m with a legacy boolean expression at `legacy-key` into a list with an implied and for MBQL 5 at `mbql5-key`"
+  [m legacy-key mbql5-key]
   (cond-> m
     (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
                                                           (= (first %) :and))
                                                    (vec (drop 1 %))
                                                    [%]))
-    (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
+    (contains? m legacy-key) (set/rename-keys {legacy-key mbql5-key})))
 
 (defn ->stage-metadata
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
@@ -228,7 +229,7 @@
           (update :columns (fn [columns]
                              (mapv (fn [column]
                                      (-> column
-                                         (perf/update-keys u/->kebab-case-en)
+                                         (update-keys u/->kebab-case-en)
                                          (assoc :lib/type :metadata/column)))
                                    columns)))
           (assoc :lib/type :metadata/results)))))
@@ -272,10 +273,10 @@
 
 (defn- mbql-query->pipeline
   "Convert a `:type` `:query` QP MBQL (i.e., MBQL as currently understood by the Query Processor, or the JS MLv1) to a
-  pMBQL query. The key difference is that instead of having a `:query` with a `:source-query` with a `:source-query`
+  MBQL 5 query. The key difference is that instead of having a `:query` with a `:source-query` with a `:source-query`
   and so forth, you have a vector of `:stages` where each stage serves as the source query for the next stage.
   Initially this was an implementation detail of a few functions, but it's easier to visualize and manipulate, so now
-  all of MLv2 deals with pMBQL. See this Slack thread
+  all of MLv2 deals with MBQL 5. See this Slack thread
   https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
   more information."
   [query]
@@ -283,22 +284,26 @@
           :stages   (inner-query->stages (:query query))}
          (dissoc query :type :query)))
 
-(def LegacyOrPMBQLQuery
-  "Schema for a map that is either a legacy query OR a pMBQL query."
-  [:or
-   [:map
-    {:error/message "legacy query"}
-    [:type [:enum :native :query]]]
-   [:map
-    {:error/message "pMBQL query"}
-    [:lib/type [:= :mbql/query]]]])
+(mr/def ::legacy-query
+  [:map
+   {:error/message "legacy query"}
+   [:type [:enum :native :query]]])
+
+(mr/def ::mbql5-query
+  [:map
+   {:error/message "MBQL 5 query"}
+   [:lib/type [:= :mbql/query]]])
+
+(mr/def ::legacy-or-mbql5-query
+  "Schema for a map that is either a legacy query OR a MBQL 5 query."
+  [:or ::legacy-query ::mbql5-query])
 
 (mu/defn pipeline
-  "Ensure that a `query` is in the general shape of a pMBQL query. This doesn't walk the query and fix everything! The
+  "Ensure that a `query` is in the general shape of a MBQL 5 query. This doesn't walk the query and fix everything! The
   goal here is just to make sure we have `:stages` in the correct place and the like. See [[metabase.lib.convert]] for
-  functions that actually ensure all parts of the query match the pMBQL schema (they use this function as part of that
+  functions that actually ensure all parts of the query match the MBQL 5 schema (they use this function as part of that
   process.)"
-  [query :- LegacyOrPMBQLQuery]
+  [query :- ::legacy-or-mbql5-query]
   (if (= (:lib/type query) :mbql/query)
     query
     (case (:type query)
@@ -351,9 +356,9 @@
 (mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
-  [query        :- LegacyOrPMBQLQuery
+  [query        :- ::mbql5-query
    stage-number :- :int]
-  (let [{:keys [stages], :as query} (pipeline query)]
+  (let [{:keys [stages], :as query} query]
     (get (vec stages) (canonical-stage-index query stage-number))))
 
 (mu/defn previous-stage :- [:maybe ::lib.schema/stage]
@@ -368,7 +373,7 @@
     (apply f stage args)
 
   `stage-number` can be a negative index, e.g. `-1` will update the last stage of the query."
-  [query        :- LegacyOrPMBQLQuery
+  [query        :- ::legacy-or-mbql5-query
    stage-number :- :int
    f & args]
   (let [{:keys [stages], :as query} (pipeline query)
@@ -378,7 +383,7 @@
 
 (mu/defn drop-later-stages :- ::lib.schema/query
   "Drop any stages in the `query` that come after `stage-number`."
-  [query        :- LegacyOrPMBQLQuery
+  [query        :- ::legacy-or-mbql5-query
    stage-number :- :int]
   (cond-> (pipeline query)
     (not (last-stage? query stage-number))
@@ -391,8 +396,15 @@
   ([query stage-number]
    (native-stage? (query-stage query stage-number))))
 
+(defn mbql-stage?
+  "Is this query stage an MBQL stage?"
+  ([stage]
+   (= (:lib/type stage) :mbql.stage/mbql))
+  ([query stage-number]
+   (mbql-stage? (query-stage query stage-number))))
+
 (mu/defn ensure-mbql-final-stage :- ::lib.schema/query
-  "Convert query to a pMBQL (pipeline) query, and make sure the final stage is an `:mbql` one."
+  "Convert query to a MBQL 5 (pipeline) query, and make sure the final stage is an `:mbql` one."
   [query]
   (let [query (pipeline query)]
     (cond-> query
@@ -466,7 +478,7 @@
 
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
-  queries! You don't need to use this in pMBQL since this is converted automatically by [[metabase.lib.convert]] to
+  queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
   `:source-card`."
   [table-id]
   (when (string? table-id)
@@ -711,19 +723,53 @@
       (when (#{:mbql/query :query :native :internal} query-type)
         query-type))))
 
-(mu/defn referenced-field-ids :- [:maybe [:set ::lib.schema.id/field]]
-  "Find all the integer field IDs in `coll`, Which can arbitrarily be anything that is part of MLv2 query schema."
-  [coll]
-  (not-empty
-   (into #{}
-         (comp cat (filter some?))
-         (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))
+(mu/defn normalized-mbql-version :- [:maybe [:enum :mbql-version/mbql5 :mbql-version/legacy]]
+  "Version of MBQL a `query` map is using, either `:mbql-version/mbql-5` or `:mbql-version/legacy`."
+  [query :- [:maybe :map]]
+  (case (normalized-query-type query)
+    :mbql/query      :mbql-version/mbql5
+    (:query :native) :mbql-version/legacy
+    ;; otherwise, this is not a valid MBQL query.
+    nil))
 
 (defn collect-source-tables
-  "Return sequence of source tables from `query`."
-  [query]
-  (let [from-joins (mapcat collect-source-tables (:joins query))]
-    (if-let [source-query (:source-query query)]
+  "Return sequence of source tables from `query`.
+
+  DEPRECATED: This operates on legacy MBQL, so it's really out of place here in Lib.
+  Use [[metabase.lib.walk.util/all-source-table-ids]] going forward."
+  {:deprecated "0.57.0"}
+  [legacy-query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (let [from-joins (mapcat collect-source-tables (:joins legacy-query))]
+    (if-let [source-query (:source-query legacy-query)]
       (concat (collect-source-tables source-query) from-joins)
       (cond->> from-joins
-        (:source-table query) (cons (:source-table query))))))
+        (:source-table legacy-query) (cons (:source-table legacy-query))))))
+
+(defn- split-tables-and-legacy-card-refs [source-ids]
+  (-> (reduce (fn [m src]
+                (if-let [card-id (legacy-string-table-id->card-id src)]
+                  (update m :card conj! card-id)
+                  (update m :table conj! src)))
+              {:card  (transient #{})
+               :table (transient #{})}
+              source-ids)
+      (update-vals persistent!)))
+
+(mu/defn source-tables-and-cards :- [:map
+                                     [:card  {:optional true} [:set ::lib.schema.id/card]]
+                                     [:table {:optional true} [:set ::lib.schema.id/table]]]
+  "Returns all the table and card IDs that this list of **legacy, MBQL 4 queries** depend on."
+  [legacy-queries]
+  (let [metric-ids (-> (lib.util.match/match legacy-queries
+                         [:metric (id :guard pos-int?) & _]
+                         id)
+                       set)
+        source-ids (-> #{}
+                       (into (map #(str "card__" %)) metric-ids)
+                       (into
+                        ;; existing usage -- do not use in new code
+                        #_{:clj-kondo/ignore [:deprecated-var]}
+                        (mapcat #(collect-source-tables (:query %)))
+                        legacy-queries))]
+    (split-tables-and-legacy-card-refs source-ids)))

@@ -585,24 +585,6 @@ Allow Metabase SDK access to these space delimited origins.
 
 Embedding homepage status, indicating if it's visible, hidden or has been dismissed.
 
-### `MB_EMBEDDING_HUB_PRODUCTION_EMBED_SNIPPET_CREATED`
-
-- Type: boolean
-- Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `embedding-hub-production-embed-snippet-created`.
-- [Configuration file name](./config-file.md): `embedding-hub-production-embed-snippet-created`
-
-Indicates if a production embed snippet has been created for tracking in the embedding hub.
-
-### `MB_EMBEDDING_HUB_TEST_EMBED_SNIPPET_CREATED`
-
-- Type: boolean
-- Default: `false`
-- [Exported as](../installation-and-operation/serialization.md): `embedding-hub-test-embed-snippet-created`.
-- [Configuration file name](./config-file.md): `embedding-hub-test-embed-snippet-created`
-
-Indicates if a test embed snippet has been created for tracking in the embedding hub.
-
 ### `MB_EMBEDDING_SECRET_KEY`
 
 - Type: string
@@ -1075,6 +1057,14 @@ Should we sync user attributes when someone logs in via LDAP?
 - [Configuration file name](./config-file.md): `ldap-sync-user-attributes-blacklist`
 
 Comma-separated list of user attributes to skip syncing for LDAP users.
+
+### `MB_LDAP_TIMEOUT_SECONDS`
+
+- Type: double
+- Default: `15.0`
+- [Configuration file name](./config-file.md): `ldap-timeout-seconds`
+
+Maximum time, in seconds, to wait for LDAP server before falling back to local authentication.
 
 ### `MB_LDAP_USER_BASE`
 

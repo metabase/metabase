@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { CurrencyStyle } from "metabase/lib/formatting";
 import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import type { InputSettingType } from "./actions";
@@ -27,7 +28,7 @@ export interface NumberFormattingSettings {
 
 export interface CurrencyFormattingSettings {
   currency?: string;
-  currency_style?: string;
+  currency_style?: CurrencyStyle;
   currency_in_header?: boolean;
 }
 
@@ -161,6 +162,8 @@ export type ScheduleDayType =
   | "sat";
 
 export type ScheduleFrameType = "first" | "mid" | "last";
+
+export type ScheduleDisplayType = "cron/builder" | "cron/raw" | null;
 
 export interface FontFile {
   src: string;
@@ -319,9 +322,11 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "table_data_editing",
+  "dependencies",
   "documents",
   "semantic_search",
   "transforms",
+  "transforms-python",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -675,6 +680,17 @@ export interface EnterpriseSettings extends Settings {
   "database-replication-connections"?: DatabaseReplicationConnections | null;
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
+  "python-runner-url"?: string | null;
+  "python-runner-api-token"?: string | null;
+  "python-storage-s-3-endpoint"?: string | null;
+  "python-storage-s-3-region"?: string | null;
+  "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-access-key"?: string | null;
+  "python-storage-s-3-secret-key"?: string | null;
+  "python-storage-s-3-container-endpoint"?: string | null;
+  "python-storage-s-3-path-style-access"?: boolean | null;
+  "python-runner-timeout-seconds"?: number | null;
+  "python-runner-test-run-timeout-seconds"?: number | null;
   /**
    * @deprecated
    */

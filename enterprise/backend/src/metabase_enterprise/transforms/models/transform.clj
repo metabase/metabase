@@ -3,7 +3,10 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -15,7 +18,7 @@
   (derive :model/Transform trait))
 
 (t2/deftransforms :model/Transform
-  {:source      mi/transform-json
+  {:source      mi/transform-transform-source
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
@@ -58,6 +61,18 @@
                                         tag-associations)]
       (for [transform transforms]
         (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+
+(t2/define-after-insert :model/Transform [transform]
+  (events/publish-event! :event/create-transform {:object transform})
+  transform)
+
+(t2/define-after-update :model/Transform [transform]
+  (events/publish-event! :event/update-transform {:object transform})
+  transform)
+
+(t2/define-before-delete :model/Transform [transform]
+  (events/publish-event! :event/delete-transform {:id (:id transform)})
+  transform)
 
 (defn update-transform-tags!
   "Update the tags associated with a transform using smart diff logic.
@@ -109,3 +124,44 @@
                         {:transform_id transform-id
                          :tag_id       tag-id
                          :position     (get new-positions tag-id)})))))))
+
+;;; ------------------------------------------------- Serialization ------------------------------------------------
+
+(mi/define-batched-hydration-method tags
+  :tags
+  "Fetch tags"
+  [transforms]
+  (when (seq transforms)
+    (let [transform-ids (into #{} (map u/the-id) transforms)
+          tag-mappings  (group-by :transform_id
+                                  (t2/select :model/TransformTransformTag
+                                             :transform_id [:in transform-ids]
+                                             {:order-by [[:position :asc]]}))]
+      (for [transform transforms]
+        (assoc transform :tags (get tag-mappings (u/the-id transform) []))))))
+
+(defmethod serdes/hash-fields :model/Transform
+  [_transform]
+  [:name :created_at])
+
+(defmethod serdes/make-spec "Transform"
+  [_model-name opts]
+  {:copy [:name :description :entity_id]
+   :skip [:dependency_analysis_version]
+   :transform {:created_at (serdes/date)
+               :updated_at (serdes/date)
+               :source {:export serdes/export-mbql :import serdes/import-mbql}
+               :target {:export serdes/export-mbql :import serdes/import-mbql}
+               :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
+
+(defmethod serdes/dependencies "Transform"
+  [{:keys [source tags]}]
+  (set
+   (concat
+    (for [{tag-id :tag_id} tags]
+      [{:model "TransformTag" :id tag-id}])
+    (serdes/mbql-deps source))))
+
+(defmethod serdes/storage-path "Transform" [transform _ctx]
+  (let [{:keys [id label]} (-> transform serdes/path last)]
+    ["transforms" (serdes/storage-leaf-file-name id label)]))

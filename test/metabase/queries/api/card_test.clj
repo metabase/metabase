@@ -345,8 +345,10 @@
                  :model/Segment {segment-id :id} {:table_id table-id}
                  :model/Card {model-id :id :as model} {:name "Model"
                                                        :type :model
-                                                       :dataset_query {:query {:source-table (mt/id :venues)
-                                                                               :filter [:= [:field 1 nil] "1"]}}}
+                                                       :dataset_query {:database (mt/id)
+                                                                       :type     :query
+                                                                       :query    {:source-table (mt/id :venues)
+                                                                                  :filter       [:= [:field 1 nil] "1"]}}}
                  ;; matching question
                  :model/Card card-1 {:name "Card 1"
                                      :dataset_query {:query {:source-table (str "card__" model-id)
@@ -385,11 +387,11 @@
                                                                {:query (format "select o.id from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
                                                                                model-ref)
                                                                 :template-tags {model-ref
-                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                 :name model-ref
+                                                                                {:id           "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                 :name         model-ref
                                                                                  :display-name model-ref
-                                                                                 :type :card
-                                                                                 :card-id model-id}}})
+                                                                                 :type         :card
+                                                                                 :card-id      model-id}}})
                                                      :database (mt/id)}}
                  ;; native query reference doesn't match
                  :model/Card card-5 {:name "Card 5"
@@ -400,23 +402,35 @@
                                                                {:query (format "select o.id %s from orders o join {{%s}} q1 on o.PRODUCT_ID = q1.PRODUCT_ID"
                                                                                model-ref card-ref)
                                                                 :template-tags {card-ref
-                                                                                {:id "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
-                                                                                 :name card-ref
+                                                                                {:id           "2185b98b-20b3-65e6-8623-4fb56acb0ca7"
+                                                                                 :name         card-ref
                                                                                  :display-name card-ref
-                                                                                 :type :card
-                                                                                 :card-id card-id}}})
+                                                                                 :type         :card
+                                                                                 :card-id      card-id}}})
                                                      :database (mt/id)}}
                  :model/Database {other-database-id :id} {}
-                 ;; database doesn't quite match
-                 :model/Card card-6 {:name "Card 6", :database_id other-database-id
-                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}
+                 ;; database doesn't quite match, but when we save the Card we should correct it to the ID used by the
+                 ;; model
+                 :model/Card card-6 {:name          "Card 6"
+                                     :database_id   other-database-id
+                                     :dataset_query {:database other-database-id
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" model-id)}}}
                  ;; same as matching question, but archived
                  :model/Card card-7 {:name "Card 7"
                                      :archived true
-                                     :dataset_query {:query {:source-table (str "card__" model-id)}}}]
+                                     :dataset_query {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (str "card__" model-id)}}}]
+    (testing "When saving Card 6, we should correct the database_id to the same ID used by the source card"
+      (is (= (mt/id)
+             (:database_id card-6))))
     (testing "list cards using a model"
       (with-cards-in-readable-collection! [model card-1 card-3 card-4 card-5 card-6 card-7]
-        (is (= #{"Card 1" "Card 3" "Card 4"}
+        (is (= #{"Card 1"
+                 "Card 3"
+                 "Card 4"
+                 "Card 6"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))
         (is (= #{"Card 1" "Card 3"}
@@ -958,52 +972,6 @@
                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl 1234})
                  (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:cache_ttl nil})
                  (:cache_ttl (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card)))))))))))
-
-(deftest pivot-card-cache-test
-  #_(testing "Pivot queries are cached correctly"
-      (let [existing-config (t2/select-one :model/CacheConfig :model_id 0 :model "root")]
-        (try
-          (when existing-config
-            (t2/delete! :model/CacheConfig :model_id 0 :model "root"))
-          (t2/delete! :model/QueryCache)
-          (mt/with-temp
-            [:model/CacheConfig _ {:model_id 0
-                                   :model "root"
-                                   :strategy "ttl"
-                                   :config {:multiplier 100
-                                            :min_duration_ms 1}}
-             :model/Card card (assoc (api.pivots/pivot-card)
-                                     :type :question
-                                     :name "Test Pivot Card")]
-            (testing "First pivot query execution is not cached"
-              (let [response (mt/user-http-request :rasta :post 202
-                                                   (format "card/pivot/%d/query" (u/the-id card))
-                                                   {:ignore_cache false})]
-                (is (nil? (:cached response)))
-                (is (some? (:data response)))))
-
-            (testing "Second pivot query execution is cached"
-              (let [response (mt/user-http-request :rasta :post 202
-                                                   (format "card/pivot/%d/query" (u/the-id card))
-                                                   {:ignore_cache false})]
-                (is (some? (:cached response)))
-                (is (some? (:data response)))))
-
-            (testing "Cached pivot query returns same results"
-              (let [uncached-response (mt/user-http-request :rasta :post 202
-                                                            (format "card/pivot/%d/query" (u/the-id card))
-                                                            {:ignore_cache true})
-
-                    cached-response (mt/user-http-request :rasta :post 202
-                                                          (format "card/pivot/%d/query" (u/the-id card))
-                                                          {:ignore_cache false})]
-                (is (nil? (:cached uncached-response)))
-                (is (some? (:cached cached-response)))
-                (is (= (get-in uncached-response [:data :rows])
-                       (get-in cached-response [:data :rows]))))))
-          (finally
-            (when existing-config
-              (t2/insert! :model/CacheConfig existing-config)))))))
 
 (deftest saving-card-fetches-correct-metadata
   (testing "make sure when saving a Card the correct query metadata is fetched (if incorrect)"
@@ -2643,6 +2611,9 @@
       (testing "Changing core attributes un-verifies the card"
         (with-card :verified
           (is (verified? card))
+          (is (=? {:dataset_query {:query {:source-table pos-int?}}}
+                  card)
+              "(This test is written to expect a legacy query)")
           (update-card card (update-in card [:dataset_query :query :source-table] inc))
           (is (not (verified? card)))
           (testing "The unverification edit has explanatory text"
@@ -3723,8 +3694,9 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                    :query {:source-table (str "card__" card-id-1)}}}]
+       :model/Card {card-id-2 :id} {:dataset_query {:type     :query
+                                                    :database (mt/id)
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :get expected-status (str "card/" card-id "/query_metadata"))
                     (api.test-util/select-query-metadata-keys-for-debugging)))]
@@ -4354,7 +4326,7 @@
       (mt/with-temp [:model/Card {id-a :id} {:dataset_query (lib/->legacy-MBQL query-a) :type :question}]
         (let [query-b (mt/native-query {:query "select * from {{#100-base-query}}"
                                         :template-tags
-                                        {:#100-base-query
+                                        {"#100-base-query"
                                          {:type :card
                                           :name "#100-base-query"
                                           :id (random-uuid)

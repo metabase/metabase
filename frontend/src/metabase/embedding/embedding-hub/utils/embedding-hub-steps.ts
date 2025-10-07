@@ -9,8 +9,8 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     icon: "test_tube",
     actions: [
       {
-        title: t`Create an embed`,
-        description: t`Create an embed by using Embedded Analytics JS.`,
+        title: t`Get embed snippet`,
+        description: t`Embed a dashboard, question, the query builder or the collection browser. Configure the experience and customize the appearance.`,
         to: "/embed-js?auth_method=user_session",
         variant: "outline",
       },
@@ -33,7 +33,7 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     },
     actions: [
       {
-        title: t`Add data`,
+        title: t`Connect a database`,
         description: t`Connect your own database or upload a CSV and start working with your real data.`,
         modal: { type: "add-data", initialTab: "db" },
         variant: "outline",
@@ -52,18 +52,11 @@ export const getEmbeddingHubSteps = (): EmbeddingHubStep[] => {
     },
     actions: [
       {
-        title: t`Generate a dashboard`,
+        title: t`Create a dashboard`,
         description: t`Automatically generate a dashboard from your data using x-rays.`,
         modal: { type: "xray-dashboard" },
         variant: "outline",
       },
-      // {
-      //   title: t`Build a dashboard`,
-      //   description: t`Build your own dashboard from scratch.`,
-      //   modal: { type: "new-dashboard" },
-      //   variant: "subtle",
-      //   optional: true,
-      // },
       {
         title: t`Create models`,
         description: t`Set up data models for your embedded analytics.`,

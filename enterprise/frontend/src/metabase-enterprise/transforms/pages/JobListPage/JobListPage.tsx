@@ -18,7 +18,6 @@ type JobListPageProps = {
 
 export function JobListPage({ location }: JobListPageProps) {
   const params = getParsedParams(location);
-
   const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
 
   if (!tags || isLoading || error != null) {
@@ -27,7 +26,7 @@ export function JobListPage({ location }: JobListPageProps) {
 
   return (
     <Stack gap="xl" data-testid="job-list-page">
-      <Group justify="space-between">
+      <Group justify="space-between" align="start">
         <Stack gap="sm">
           <Title order={1}>{t`Jobs`}</Title>
           <Box>{t`Jobs let you run groups of transforms on a schedule.`}</Box>
@@ -41,7 +40,6 @@ export function JobListPage({ location }: JobListPageProps) {
           {t`Create a job`}
         </Button>
       </Group>
-
       <JobFilterList params={params} tags={tags} />
       <JobList params={params} />
     </Stack>

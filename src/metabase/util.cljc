@@ -496,11 +496,18 @@
    (slugify s {}))
   (^String [s {:keys [max-length unicode?]}]
    (when (seq s)
-     (let [slug (str/join (for [c (remove-diacritical-marks (lower-case-en s))]
-                            (slugify-char c (not unicode?))))]
-       (if max-length
-         (str/join (take max-length slug))
-         slug)))))
+     (cond->> (remove-diacritical-marks (lower-case-en s))
+       true (map #(slugify-char % (not unicode?)))
+       max-length (reduce (fn [cur-slug next-slug]
+                            (if (<= (+ (count cur-slug)
+                                       (if (char? next-slug)
+                                         1
+                                         (count next-slug)))
+                                    max-length)
+                              (str cur-slug next-slug)
+                              (reduced cur-slug)))
+                          "")
+       true str/join))))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -750,7 +757,7 @@
                2 :magenta
                3 :yellow) "%s%s took %s"
              (if (pos? *profile-level*)
-               (str (str/join (repeat (dec *profile-level*) "  ")) " ⮦ ")
+               (str "┌" (str/join (repeat (dec *profile-level*) "─")) "─> ")
                "")
              (message-thunk)
              (u.format/format-nanoseconds (- #?(:cljs (* 1000000 (js/performance.now))
@@ -970,8 +977,11 @@
     (let [item        (first to-traverse)
           found       (traverse-fn (key item))
           traversed   (conj traversed item)
-          to-traverse (into (dissoc to-traverse (key item))
-                            (apply dissoc found (keys traversed)))]
+          ;; `merge-with into` allows us to not lose dependency info if an entity was required from a few different
+          ;; locations
+          to-traverse (merge-with into
+                                  (dissoc to-traverse (key item))
+                                  (apply dissoc found (keys traversed)))]
       (if (empty? to-traverse)
         traversed
         (recur to-traverse traversed)))))

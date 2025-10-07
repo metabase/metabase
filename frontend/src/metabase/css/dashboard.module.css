@@ -4,56 +4,9 @@
   height: auto;
 }
 
-/* Night mode */
-.Dashboard.DashboardNight {
-  /**
-    * Apply dark mode colors to semantic color variables.
-    * Referenced from EmbedFrame.module.css
-   */
-  --mb-color-text-primary: color-mix(
-    in srgb,
-    var(--mb-color-text-white) 90%,
-    transparent
-  );
-  --mb-color-text-dark: var(--mb-color-text-primary);
-  --mb-color-text-secondary: color-mix(
-    in srgb,
-    var(--mb-color-text-white) 65%,
-    transparent
-  );
-  --mb-color-text-tertiary: color-mix(
-    in srgb,
-    var(--mb-color-text-white) 45%,
-    transparent
-  );
-
-  background-color: var(--mb-color-bg-black);
-}
-
-.Dashboard.DashboardNight .Card {
-  color: var(--mb-color-text-white);
-}
-
 .Dashboard.DashboardFullscreen .fullscreenNormalText {
   color: var(--mb-color-text-dark);
   transition: var(--transition-theme-change);
-}
-
-.Dashboard.DashboardNight.DashboardFullscreen .fullscreenNightText {
-  color: var(--mb-color-text-white-alpha-85);
-  transition: var(--transition-theme-change);
-}
-
-.Dashboard.DashboardNight .DashCard .Card svg text {
-  fill: var(--mb-color-text-white-alpha-85) !important;
-  stroke: none !important;
-}
-
-.Dashboard.DashboardNight
-  .enableDotsOnHover
-  :global(.dc-tooltip circle.dot:hover),
-.Dashboard.DashboardNight .enableDots :global(.dc-tooltip circle.dot) {
-  fill: currentColor;
 }
 
 /* Night mode transition */
@@ -197,21 +150,6 @@
 
 @page {
   margin: 1cm;
-}
-
-/* when in night mode goal lines should be more visible */
-.DashboardNight :global(.goal .line),
-.DashboardNight :global(.trend .line) {
-  stroke: white;
-}
-
-/* when in night mode code snippets should have a more readable background-color */
-.DashboardNight pre code {
-  background-color: var(--mb-color-bg-white-alpha-15);
-}
-
-.DashboardNight :global(.text-card-markdown code) {
-  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .Dashboard :global(text.value-label),

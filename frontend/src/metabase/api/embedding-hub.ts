@@ -5,6 +5,7 @@ import { listTag } from "./tags";
 type CheckListApiStep =
   | "create-dashboard"
   | "add-data"
+  | "create-models"
   | "configure-row-column-security"
   | "create-test-embed"
   | "embed-production"

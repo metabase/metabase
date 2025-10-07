@@ -50,29 +50,40 @@ H.describeWithSnowplowEE("document comments", () => {
       testCommentingOnNode(documentId, BLOCKQUOTE_ID, getBlockquote);
       testCommentingOnNode(documentId, ORDERED_LIST_ID, getOrderedList);
       testCommentingOnNode(documentId, CODE_BLOCK_ID, getCodeBlock);
-      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed);
+      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed, {
+        isCardEmbedNode: true,
+      });
     });
 
     function testCommentingOnNode<E extends HTMLElement>(
       targetId: DocumentId,
       childTargetId: string,
       getNodeElement: () => Cypress.Chainable<JQuery<E>>,
+      { isCardEmbedNode = false } = {},
     ) {
       cy.get("body").click(0, 0);
-      Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
-        "not.be.visible",
-      );
 
-      getNodeElement()
-        .closest("[data-node-view-wrapper]")
-        .should("have.attr", "aria-expanded", "false");
-      getNodeElement().scrollIntoView();
-      getNodeElement().realHover();
-      Comments.getDocumentNodeButton({ targetId, childTargetId })
-        .should("be.visible")
-        .click();
+      if (isCardEmbedNode) {
+        getNodeElement().scrollIntoView();
+        getNodeElement().icon("ellipsis").click();
 
-      H.modal().within(() => {
+        H.menu().findByText("Comment").click();
+      } else {
+        Comments.getDocumentNodeButton({ targetId, childTargetId }).should(
+          "not.be.visible",
+        );
+
+        getNodeElement()
+          .closest("[data-node-view-wrapper]")
+          .should("have.attr", "aria-expanded", "false");
+        getNodeElement().scrollIntoView();
+        getNodeElement().realHover();
+        Comments.getDocumentNodeButton({ targetId, childTargetId })
+          .should("be.visible")
+          .click();
+      }
+
+      Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
           "be.visible",
         );
@@ -95,13 +106,14 @@ H.describeWithSnowplowEE("document comments", () => {
         targetId,
         childTargetId,
         hasComments: true,
+        isCardEmbedNode,
       })
         .should("be.visible")
         .and("contain.text", "1");
 
       cy.log("can close the sidebar with a keyboard shortcut");
       cy.realPress("Escape");
-      H.modal().should("not.exist");
+      Comments.getSidebar().should("not.exist");
 
       getNodeElement()
         .closest("[data-node-view-wrapper]")
@@ -112,6 +124,7 @@ H.describeWithSnowplowEE("document comments", () => {
         targetId,
         childTargetId,
         hasComments: true,
+        isCardEmbedNode,
       }).should("be.visible");
     }
   });
@@ -125,7 +138,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.getNewThreadInput().within(() => {
         Comments.getPlaceholder().should("be.visible");
       });
-      cy.findByLabelText("Close").click();
+      Comments.closeSidebar();
 
       H.documentContent().click();
       cy.realType("{leftarrow}".repeat("lor sit amet.".length));
@@ -150,7 +163,7 @@ H.describeWithSnowplowEE("document comments", () => {
         .should("not.contain.text", "1")
         .click();
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "Comments about this" }).should(
           "be.visible",
         );
@@ -203,7 +216,7 @@ H.describeWithSnowplowEE("document comments", () => {
   it("allows to create / update / delete comments", () => {
     startNewCommentIn1ParagraphDocument();
 
-    H.modal().within(() => {
+    Comments.getSidebar().within(() => {
       cy.log("does not allow to send empty comments");
       cy.realPress([META_KEY, "Enter"]);
       cy.findByLabelText("Send").should("be.disabled");
@@ -250,7 +263,7 @@ H.describeWithSnowplowEE("document comments", () => {
 
     H.popover().findByText("Delete").click();
 
-    H.modal().within(() => {
+    Comments.getSidebar().within(() => {
       cy.findByText("Reply A").should("not.exist");
       cy.findByText("This comment was deleted.").should("not.exist");
 
@@ -263,7 +276,7 @@ H.describeWithSnowplowEE("document comments", () => {
 
     H.popover().findByText("Delete").click();
 
-    H.modal().within(() => {
+    Comments.getSidebar().within(() => {
       cy.findByText("1st thread").should("not.exist");
       cy.findByText("This comment was deleted.").should("be.visible");
       cy.findByText("Reply 1").should("be.visible");
@@ -281,7 +294,7 @@ H.describeWithSnowplowEE("document comments", () => {
     cy.realType("My ");
     cy.realPress([META_KEY, "Enter"]);
 
-    H.modal().within(() => {
+    Comments.getSidebar().within(() => {
       Comments.getCommentByText("My Reply 1").should("be.visible");
       Comments.getCommentByText("My Reply 1")
         .findByRole("textbox")
@@ -303,11 +316,11 @@ H.describeWithSnowplowEE("document comments", () => {
     Comments.getCommentByText("Reply 2")
       .findByRole("textbox")
       .should("have.attr", "contenteditable", "false");
-    H.modal().should("be.visible");
+    Comments.getSidebar().should("be.visible");
 
     cy.log("subsequent Esc should close the modal");
     cy.realPress("Escape");
-    H.modal().should("not.exist");
+    Comments.getSidebar().should("not.exist");
   });
 
   it("shows comment button with unresolved, undeleted comments count", () => {
@@ -384,7 +397,7 @@ H.describeWithSnowplowEE("document comments", () => {
         .click();
     });
 
-    H.modal().within(() => {
+    Comments.getSidebar().within(() => {
       cy.findByRole("heading", { name: "Comments about this" }).should(
         "be.visible",
       );
@@ -507,7 +520,7 @@ H.describeWithSnowplowEE("document comments", () => {
         },
       );
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         Comments.getCommentByText("Test 1")
           .should("contain.text", "Bobby Tables")
           .and("contain.text", "BT");
@@ -547,7 +560,7 @@ H.describeWithSnowplowEE("document comments", () => {
         .and("contain.text", "1")
         .click();
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByText("Test X").should("be.visible");
         cy.findByText("Test 1").should("not.exist");
         cy.findByText("Test 2").should("not.exist");
@@ -557,7 +570,7 @@ H.describeWithSnowplowEE("document comments", () => {
     });
   });
 
-  it("prevents editing the document when comments are open", () => {
+  it("allows editing the document when comments are open", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -567,17 +580,17 @@ H.describeWithSnowplowEE("document comments", () => {
         H.documentContent().click();
 
         cy.realType("test");
-        cy.findByRole("button", { name: "Save" }).should("not.exist");
+        cy.findByRole("button", { name: "Save" }).should("exist");
 
         H.documentContent()
-          .get('[contenteditable="false"]')
+          .get('[contenteditable="true"]')
           .should("be.visible");
         H.documentFormattingMenu().should("not.exist");
       });
     });
   });
 
-  it("prevents opening comments when document has changes", () => {
+  it("allows opening comments when document has changes", () => {
     create1ParagraphDocument();
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -601,15 +614,11 @@ H.describeWithSnowplowEE("document comments", () => {
 
       getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
 
-      cy.findByLabelText("Comments")
-        .should("be.disabled")
-        .click({ force: true });
-      H.modal().should("not.exist");
+      cy.findByLabelText("Comments").should("not.be.disabled").click();
+      Comments.getSidebar().should("be.visible");
 
-      cy.findByLabelText("Show all comments")
-        .should("be.disabled")
-        .click({ force: true });
-      H.modal().should("not.exist");
+      cy.findByLabelText("Show all comments").should("not.be.disabled").click();
+      Comments.getSidebar().should("be.visible");
     });
   });
 
@@ -712,8 +721,7 @@ H.describeWithSnowplowEE("document comments", () => {
         });
     });
 
-    // TODO: re-enable once BE supports multi-tenant
-    it.skip("supports mentions and can mention yourself", () => {
+    it("supports mentions and can mention yourself", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("@");
@@ -749,12 +757,12 @@ H.describeWithSnowplowEE("document comments", () => {
       H.documentSuggestionDialog().should("be.visible");
       cy.realPress("Escape");
       H.documentSuggestionDialog().should("not.exist");
-      H.modal().should("be.visible");
+      Comments.getSidebar().should("be.visible");
 
       cy.realType("{backspace}{backspace}{backspace}@none");
       H.documentSuggestionDialog().findByText("None Tableton").click();
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         Comments.getNewThreadInput()
           .findByText("@Bobby Tables")
           .should("be.visible");
@@ -800,13 +808,13 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.realType(":eg");
       cy.realPress("Escape");
       Comments.getEmojiPicker().should("not.exist");
-      H.modal().should("be.visible");
+      Comments.getSidebar().should("be.visible");
 
       cy.log("can use mouse to select emoji");
       cy.realType("{backspace}{backspace}{backspace}:egg");
       Comments.getEmojiPicker().findByText("🥚").click();
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         Comments.getNewThreadInput()
           .should("contain.text", "😊")
           .and("contain.text", "🍆")
@@ -894,7 +902,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.getCommentByText("Reply 1").should("be.visible");
     });
 
-    it("should be possible to resolve a thread when the first comment is deleted", () => {
+    it("should be possible to resolve and unresolve a thread when the first comment is deleted", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("Main comment");
@@ -929,6 +937,14 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.findByTestId("comments-resolved-tab").should("be.visible");
       cy.findByTestId("discussion-comment-deleted").should("not.exist");
+
+      cy.log("unresolving a thread when the first comment is deleted");
+      cy.findByRole("tab", { name: "Resolved (1)" }).click();
+      cy.findByTestId("discussion-comment-deleted").realHover();
+      cy.findByLabelText("Re-open").click();
+
+      cy.findAllByRole("tab").should("have.length", 0);
+      Comments.getNewThreadInput().should("be.visible");
     });
 
     it("should be possible to resolve a thread created by another user", () => {
@@ -1022,7 +1038,7 @@ H.describeWithSnowplowEE("document comments", () => {
         H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
       });
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByRole("heading", { name: "All comments" }).should("not.exist");
         cy.findByRole("heading", { name: "Comments about this" }).should(
           "be.visible",
@@ -1044,7 +1060,7 @@ H.describeWithSnowplowEE("document comments", () => {
         H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
       });
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByTestId("comments-resolved-tab").should("be.visible");
         cy.findAllByTestId("discussion-comment").should("have.length", 1);
         Comments.getCommentByText("Foo").should(
@@ -1060,13 +1076,19 @@ H.describeWithSnowplowEE("document comments", () => {
         H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);
       });
 
-      H.modal().findByTestId("comments-resolved-tab").should("not.exist");
+      Comments.getSidebar()
+        .findByTestId("comments-resolved-tab")
+        .should("not.exist");
       Comments.resolveCommentByText("Foo");
 
-      H.modal().findByTestId("comments-resolved-tab").should("be.visible");
+      Comments.getSidebar()
+        .findByTestId("comments-resolved-tab")
+        .should("be.visible");
 
       Comments.reopenCommentByText("Foo");
-      H.modal().findByTestId("comments-resolved-tab").should("not.exist");
+      Comments.getSidebar()
+        .findByTestId("comments-resolved-tab")
+        .should("not.exist");
     });
   });
 
@@ -1076,7 +1098,7 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.realType("thread 1");
       cy.realPress([META_KEY, "Enter"]);
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         Comments.getNewThreadInput().type("thread 2");
         cy.realPress([META_KEY, "Enter"]);
       });
@@ -1106,7 +1128,7 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.location().then((loc) => {
         cy.visit(`${loc.pathname}/comments/all`);
 
-        H.modal()
+        Comments.getSidebar()
           .should("contain", "All comments")
           .should("contain", "No comments");
       });
@@ -1124,7 +1146,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.resolveCommentByText("Test 1");
       Comments.openAllComments();
 
-      H.modal()
+      Comments.getSidebar()
         .should("contain", "All comments")
         .should("contain", "No comments");
     });
@@ -1141,7 +1163,7 @@ H.describeWithSnowplowEE("document comments", () => {
 
       Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
       Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByTestId("discussion-reactions").within((el) => {
           cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
           cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
@@ -1159,7 +1181,7 @@ H.describeWithSnowplowEE("document comments", () => {
 
       Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
       Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByTestId("discussion-reactions").within(() => {
           cy.findByText(`${FIRST_REACTION_EMOJI}`).should("exist");
           cy.findByText(`${FIRST_REACTION_EMOJI}`).click();
@@ -1184,7 +1206,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
       Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByTestId("discussion-reactions").within((el) => {
           cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}2`);
           cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}2`);
@@ -1209,7 +1231,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.reactToComment("Test 1", FIRST_REACTION_EMOJI);
       Comments.reactToComment("Test 1", SECOND_REACTION_EMOJI);
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByTestId("discussion-reactions").within((el) => {
           cy.wrap(el).should("contain", `${FIRST_REACTION_EMOJI}1`);
           cy.wrap(el).should("contain", `${SECOND_REACTION_EMOJI}1`);
@@ -1228,7 +1250,7 @@ H.describeWithSnowplowEE("document comments", () => {
 
       H.visitDocumentComment("@documentId", PARAGRAPH_ID);
 
-      H.modal().within(() => {
+      Comments.getSidebar().within(() => {
         cy.findByTestId("discussion-comment-deleted")
           .realHover()
           .within(() => {
@@ -1248,11 +1270,11 @@ H.describeWithSnowplowEE("document comments", () => {
 
         cy.log("verify blockquote is rendered during typing");
         cy.realType("> blockquote");
-        getBlockquote("blockquote", H.modal()).should("be.visible");
+        getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify blockquote is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
-        getBlockquote("blockquote", H.modal()).should("be.visible");
+        getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support ordered lists", () => {
@@ -1262,14 +1284,14 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realPress("Enter");
         cy.realType("two");
         cy.log("verify ordered list is rendered during typing");
-        getOrderedList("one", H.modal()).should("be.visible");
-        getOrderedList("two", H.modal()).should("be.visible");
+        getOrderedList("one", Comments.getSidebar()).should("be.visible");
+        getOrderedList("two", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify ordered list is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
-        getOrderedList("one", H.modal()).should("be.visible");
-        getOrderedList("two", H.modal()).should("be.visible");
+        getOrderedList("one", Comments.getSidebar()).should("be.visible");
+        getOrderedList("two", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support unordered lists", () => {
@@ -1279,14 +1301,14 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realPress("Enter");
         cy.realType("b");
         cy.log("verify bullet list is rendered during typing");
-        getBulletList("a", H.modal()).should("be.visible");
-        getBulletList("b", H.modal()).should("be.visible");
+        getBulletList("a", Comments.getSidebar()).should("be.visible");
+        getBulletList("b", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify bullet list is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
-        getBulletList("a", H.modal()).should("be.visible");
-        getBulletList("b", H.modal()).should("be.visible");
+        getBulletList("a", Comments.getSidebar()).should("be.visible");
+        getBulletList("b", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support code blocks", () => {
@@ -1296,12 +1318,12 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realPress("Enter");
         cy.log("verify code block is rendered during typing");
         cy.realType("code");
-        getCodeBlock("code", H.modal()).should("be.visible");
+        getCodeBlock("code", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify code block is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
-        getCodeBlock("code", H.modal()).should("be.visible");
+        getCodeBlock("code", Comments.getSidebar()).should("be.visible");
       });
     });
 
@@ -1312,7 +1334,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("ol");
         cy.realPress([META_KEY, "Shift", "7"]);
 
-        getOrderedList("ol", H.modal()).should("be.visible");
+        getOrderedList("ol", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support bullet list", () => {
@@ -1321,7 +1343,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("ul");
         cy.realPress([META_KEY, "Shift", "8"]);
 
-        getBulletList("ul", H.modal()).should("be.visible");
+        getBulletList("ul", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support code block", () => {
@@ -1330,7 +1352,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("code");
         cy.realPress([META_KEY, "Alt", "c"]);
 
-        getCodeBlock("code", H.modal()).should("be.visible");
+        getCodeBlock("code", Comments.getSidebar()).should("be.visible");
       });
 
       // explicitly disabled in CustomStarterKit to keep default browser behavior
@@ -1340,7 +1362,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("blockquote");
         cy.realPress([META_KEY, "Shift", "k"]);
 
-        getBlockquote("blockquote", H.modal()).should("be.visible");
+        getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
       });
     });
 
@@ -1367,10 +1389,10 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.reload();
 
-      getBlockquote("blockquote", H.modal()).should("be.visible");
-      getOrderedList("ol", H.modal()).should("be.visible");
-      getBulletList("ul", H.modal()).should("be.visible");
-      getCodeBlock("code", H.modal()).should("be.visible");
+      getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
+      getOrderedList("ol", Comments.getSidebar()).should("be.visible");
+      getBulletList("ul", Comments.getSidebar()).should("be.visible");
+      getCodeBlock("code", Comments.getSidebar()).should("be.visible");
     });
   });
 
@@ -1494,8 +1516,7 @@ H.describeWithSnowplowEE("document comments", () => {
       });
     });
 
-    // TODO: re-enable once BE supports multi-tenant
-    it.skip("an explicit @mention notifies that person", () => {
+    it("an explicit @mention notifies that person", () => {
       create1ParagraphDocument();
 
       cy.get<DocumentId>("@documentId").then((documentId) => {
@@ -1525,6 +1546,7 @@ H.describeWithSnowplowEE("document comments", () => {
               },
             ],
           },
+          html: "<a href='#'>Robert Tableton</a>",
         }).then(({ body: comment }) => {
           H.getInbox().then((response: any) => {
             const emails = response.body;
@@ -1568,7 +1590,7 @@ function startNewCommentIn1ParagraphDocument() {
       .click();
   });
 
-  H.modal().within(() => {
+  Comments.getSidebar().within(() => {
     cy.findByRole("heading", { name: "Comments about this" }).should(
       "be.visible",
     );
@@ -1788,12 +1810,21 @@ function createLoremIpsumDocument() {
           ],
         },
         {
-          type: "cardEmbed",
+          type: "resizeNode",
           attrs: {
-            id: ORDERS_QUESTION_ID,
-            name: null,
-            _id: CARD_EMBED_ID,
+            height: 350,
+            minHeight: 280,
           },
+          content: [
+            {
+              type: "cardEmbed",
+              attrs: {
+                id: ORDERS_QUESTION_ID,
+                name: null,
+                _id: CARD_EMBED_ID,
+              },
+            },
+          ],
         },
         {
           type: "paragraph",
@@ -1859,6 +1890,7 @@ function createComment(
   nodeId: string,
   text: string,
   parent_comment_id: CommentId | null = null,
+  html?: string,
 ) {
   return H.createComment({
     target_type: "document",
@@ -1875,6 +1907,7 @@ function createComment(
         },
       ],
     },
+    html: html ?? `<p>${text}</p>`,
   });
 }
 
@@ -1975,14 +2008,14 @@ function verifyEmail({
 
   cy.log("Metabase company name");
   const hasCompanyName = [...document.querySelectorAll("*")].some((element) => {
-    return element.textContent.trim() === "Metabase, Inc.";
+    return element.textContent?.trim() === "Metabase, Inc.";
   });
   expect(hasCompanyName).to.be.true;
 
   cy.log("Metabase company address");
   const hasCompanyAddress = [...document.querySelectorAll("*")].some(
     (element) =>
-      element.textContent.trim() ===
+      element.textContent?.trim() ===
       "9740 Campo Rd., Suite 1029, Spring Valley, CA 91977",
   );
   expect(hasCompanyAddress).to.be.true;
