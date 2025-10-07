@@ -154,7 +154,8 @@
   (try
     (settings/check-and-update-remote-settings! settings)
     (if (and (settings/remote-sync-enabled)
-             (= :production (settings/remote-sync-type)))
+             (= :production (settings/remote-sync-type))
+             (true? (settings/remote-sync-auto-import)))
       {:success true
        :task_id (async-import! (settings/remote-sync-branch) true)}
       {:success true})
