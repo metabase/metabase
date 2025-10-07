@@ -9,6 +9,7 @@
    [metabase.lib.js :as lib.js]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.test-runner.assert-exprs.approximately-equal]
@@ -632,7 +633,7 @@
                      (lib/aggregate (lib/count))
                      lib/append-stage
                      (as-> $query (lib/filter $query (lib/> (first (lib/returned-columns $query)) 100))))
-        js-query (lib.js/query-to-js query)
+        js-query (lib.js/to-js-query query)
         ag-uuid (lib.options/uuid (first (lib/aggregations query 0)))
         filter-uuid (lib.options/uuid (first (lib/filters query)))
         field-uuid  (-> (first (lib/filters query))
@@ -655,9 +656,13 @@
                                                               100]]}]}
                js-query)))
     (testing "JS to CLJS"
-      (testing "1-arity"
-        (is (= (dissoc query :lib/metadata)
-               (lib.js/js-to-query js-query))))
-      (testing "2-arity"
+      (testing "MBQL 5"
         (is (= query
-               (lib.js/js-to-query (:lib/metadata query) js-query)))))))
+               (lib.js/from-js-query (:lib/metadata query) js-query))))
+      (testing "MBQL 4 (legacy)"
+        (is (=? (lib.schema.util/remove-lib-uuids query)
+                (lib.js/from-js-query (:lib/metadata query) (lib.js/legacy-query js-query)))))
+      (testing "Cache converted queries"
+        (let [q1 (lib.js/from-js-query (:lib/metadata query) js-query)
+              q2 (lib.js/from-js-query (:lib/metadata query) js-query)]
+          (is (identical? q1 q2)))))))

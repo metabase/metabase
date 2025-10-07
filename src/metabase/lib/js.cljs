@@ -2617,7 +2617,7 @@
   [a-query]
   (lib.core/ensure-filter-stage a-query))
 
-(defn ^:export query-to-js
+(defn ^:export to-js-query
   "Serialize a query to a plain JS object."
   [cljs-query]
   (letfn [(->js [x]
@@ -2645,12 +2645,15 @@
         lib.core/prepare-for-serialization
         ->js)))
 
-(defn ^:export js-to-query
-  "Deserialize a query from a plain JS object."
-  ([js-query]
-   (-> js-query
-       js->clj
-       lib.core/normalize))
+(defn ^:export from-js-query
+  "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
 
-  ([metadata-provider js-query]
-   (lib.core/query metadata-provider (js-to-query js-query))))
+  Attaches a cache to `metadata-provider` so that subsequent calls with the same `js-query` return the same query
+  object. If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying the cache."
+  [metadata-provider js-query]
+  (let [db-id (when (js-in "database" js-query)
+                (gobject/get js-query "database"))]
+    (lib.cache/side-channel-cache-weak-refs
+     (str db-id) metadata-provider js-query
+     #(lib.core/query metadata-provider (js->clj %))
+     {:force? true})))

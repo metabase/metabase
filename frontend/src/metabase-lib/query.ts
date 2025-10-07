@@ -133,9 +133,9 @@ export function fromJsQuery(
   metadataProvider: MetadataProvider,
   jsQuery: OpaqueDatasetQuery | DatasetQuery,
 ): Query {
-  return ML.js_to_query(metadataProvider, jsQuery);
+  return ML.from_js_query(metadataProvider, jsQuery);
 }
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {
-  return ML.query_to_js(query);
+  return ML.to_js_query(query);
 }
