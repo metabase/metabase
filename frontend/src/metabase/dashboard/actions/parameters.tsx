@@ -3,6 +3,7 @@ import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { tag_names } from "cljs/metabase.parameters.shared";
 import CS from "metabase/css/core/index.css";
 import { showAutoWireToast } from "metabase/dashboard/actions/auto-wire-parameters/actions";
 import {
@@ -27,6 +28,7 @@ import {
   PULSE_PARAM_EMPTY,
   isParameterValueEmpty,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { getTextTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   ActionDashboardCard,
   CardId,
@@ -440,6 +442,46 @@ export const setParameterMapping = createThunkAction(
               cardId,
               target,
             ),
+          },
+        }),
+      );
+    };
+  },
+);
+
+export const UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT =
+  "metabase/dashboard/UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT";
+export const updateParameterMappingsForDashcardText = createThunkAction(
+  UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT,
+  (dashcardId: DashCardId) => {
+    return (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
+      const parameterMappings = dashcard?.parameter_mappings;
+      const text = dashcard?.visualization_settings?.text;
+
+      if (!parameterMappings?.length || text === null || text === undefined) {
+        return;
+      }
+
+      const tagNames = tag_names(text);
+      const filteredParameterMapping = parameterMappings.filter((mapping) => {
+        const target = mapping.target;
+
+        const textTag = getTextTagFromTarget(target);
+
+        // A different tag type (not a text-tag) or no tag at all means we keep the mapping
+        if (!textTag) {
+          return true;
+        }
+
+        return tagNames.includes(textTag);
+      });
+
+      dispatch(
+        setDashCardAttributes({
+          id: dashcardId,
+          attributes: {
+            parameter_mappings: filteredParameterMapping,
           },
         }),
       );

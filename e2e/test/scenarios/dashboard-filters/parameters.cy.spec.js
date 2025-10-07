@@ -10,6 +10,8 @@ import {
   createMockDashboardCard,
   createMockHeadingDashboardCard,
   createMockParameter,
+  createMockTextDashboardCard,
+  createMockVirtualCard,
 } from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1418,6 +1420,49 @@ describe("scenarios > dashboard > parameters", () => {
         .findByTestId("parameter-mapper-container")
         .findByText(/Category/)
         .should("exist");
+    });
+
+    it("should not display a parameter widget if there are no linked with it cards after a text card variable is removed (UXW-751)", () => {
+      H.createDashboard({
+        parameters: [categoryParameter],
+      }).then(({ body: dashboard }) => {
+        const virtualCard = createMockVirtualCard({
+          display: "text",
+        });
+
+        H.updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            createMockTextDashboardCard({
+              card: virtualCard,
+              text: "Value {{VAR}}",
+              size_x: 3,
+              size_y: 3,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: virtualCard.id,
+                  target: ["text-tag", "VAR"],
+                },
+              ],
+            }),
+          ],
+        });
+        H.visitDashboard(dashboard.id);
+      });
+
+      cy.findByTestId("parameter-widget").contains("Category").should("exist");
+
+      H.editDashboard();
+      H.getDashboardCard(0).click();
+      H.getDashboardCard(0).within(() => {
+        cy.get("textarea").clear();
+        cy.get("textarea").type("Foo");
+      });
+
+      H.saveDashboard();
+
+      cy.findByTestId("parameter-widget").should("not.exist");
     });
 
     it("should work correctly in public dashboards", () => {
