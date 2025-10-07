@@ -52,7 +52,6 @@
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: var(--mb-color-bg-white);
   height: calc(100vh - var(--edit-bar-height));
 }
 
