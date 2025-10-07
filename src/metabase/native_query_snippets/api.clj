@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.core :as collections]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
@@ -71,7 +72,9 @@
       (api/update-check snippet changes)
       (when-let [new-name (:name changes)]
         (check-snippet-name-is-unique new-name))
-      (t2/update! :model/NativeQuerySnippet id changes))
+      (t2/with-transaction [_conn]
+        (t2/update! :model/NativeQuerySnippet id changes)
+        (collections/check-for-remote-sync-update snippet)))
     (hydrated-native-query-snippet id)))
 
 (api.macros/defendpoint :put "/:id"

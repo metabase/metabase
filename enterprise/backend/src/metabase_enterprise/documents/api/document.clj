@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
@@ -150,35 +151,36 @@
    _query-params
    {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
   (collection/check-write-perms-for-collection collection_id)
-  (let [document-id (t2/with-transaction [_conn]
-                      (when collection_position
-                        (api/maybe-reconcile-collection-position! {:collection_id collection_id
-                                                                   :collection_position collection_position}))
-                      (let [document-id (t2/insert-returning-pk! :model/Document {:name name
-                                                                                  :collection_id collection_id
-                                                                                  :collection_position collection_position
-                                                                                  :document document
-                                                                                  :content_type prose-mirror/prose-mirror-content-type
-                                                                                  :creator_id api/*current-user-id*})
-                            cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
-                                                                                     :collection_id collection_id
-                                                                                     :document document
-                                                                                     :content_type prose-mirror/prose-mirror-content-type})
-                                                          (when-not (empty? cards)
-                                                            (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
-                        (when (seq cards-to-update-in-ast)
-                          (t2/update! :model/Document :id document-id
-                                      (update-cards-in-ast
-                                       {:document document
-                                        :content_type prose-mirror/prose-mirror-content-type}
-                                       cards-to-update-in-ast)))
-                        document-id))
-        created-document (get-document document-id)]
+  (let [created (t2/with-transaction [_conn]
+                  (when collection_position
+                    (api/maybe-reconcile-collection-position! {:collection_id collection_id
+                                                               :collection_position collection_position}))
+                  (let [document-id (t2/insert-returning-pk! :model/Document {:name name
+                                                                              :collection_id collection_id
+                                                                              :collection_position collection_position
+                                                                              :document document
+                                                                              :content_type prose-mirror/prose-mirror-content-type
+                                                                              :creator_id api/*current-user-id*})
+                        cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
+                                                                                 :collection_id collection_id
+                                                                                 :document document
+                                                                                 :content_type prose-mirror/prose-mirror-content-type})
+                                                      (when-not (empty? cards)
+                                                        (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                    (when (seq cards-to-update-in-ast)
+                      (t2/update! :model/Document :id document-id
+                                  (update-cards-in-ast
+                                   {:document document
+                                    :content_type prose-mirror/prose-mirror-content-type}
+                                   cards-to-update-in-ast)))
+                    (u/prog1 (get-document document-id)
+                      (when (collections/remote-synced-collection? (:collection_id <>))
+                        (collections/check-non-remote-synced-dependencies <>)))))]
     ;; Publish event after successful creation
     (events/publish-event! :event/document-create
-                           {:object created-document
+                           {:object created
                             :user-id api/*current-user-id*})
-    created-document))
+    created))
 
 (api.macros/defendpoint :get "/:document-id"
   "Returns an existing Document by ID."
@@ -213,7 +215,8 @@
                                         (clone-cards-in-document! (assoc existing-document :document document))
                                         (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
                       name (assoc :name name)
-                      (contains? body :collection_id) (assoc :collection_id collection_id))))
+                      (contains? body :collection_id) (assoc :collection_id collection_id)))
+        (collections/check-for-remote-sync-update existing-document))
       (let [updated-document (get-document document-id)]
         ;; Publish appropriate events
         (if (:archived document-updates)

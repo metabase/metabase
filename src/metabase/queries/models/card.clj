@@ -1115,12 +1115,7 @@
         (log/debug e
                    "`card-before-update`:" (pr-str card-before-update)
                    "`card-updates`:" (pr-str card-updates))))
-    (when (collections/remote-synced-collection? (or (:collection_id card-updates) (:collection_id card-before-update)))
-      (collections/check-non-remote-synced-dependencies (t2/select-one :model/Card :id (:id card-before-update))))
-    (when (and (api/column-will-change? :collection_id card-before-update card-updates)
-               (collections/moving-from-remote-synced? (:collection_id card-before-update) (:collection_id card-updates)))
-      (collections/check-remote-synced-dependents (:collection_id card-before-update)
-                                                  card-before-update)))
+    (collection/check-for-remote-sync-update card-before-update))
   ;; Fetch the updated Card from the DB
   (let [card (t2/select-one :model/Card :id (:id card-before-update))]
     ;;; TODO -- this should be triggered indirectly by `:event/card-update`
@@ -1235,7 +1230,7 @@
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
 
-(defmethod serdes/descendants "Card" [_model-name id {:keys [skip-archived]}]
+(defmethod serdes/descendants "Card" [_model-name id _]
   (let [card                (t2/select-one :model/Card :id id)
         source-table        (some->  card :dataset_query :query :source-table)
         template-tags       (some->> card :dataset_query :native :template-tags vals (keep :card-id))
@@ -1244,13 +1239,7 @@
         source-card-ids     (when (and (string? source-table)
                                        (str/starts-with? source-table "card__"))
                               [(parse-long (subs source-table 6))])
-        all-card-ids        (seq (concat template-tags parameters-card-ids source-card-ids))
-        card-ids            (if skip-archived
-                              (when all-card-ids
-                                (t2/select-pks-set :model/Card {:where [:and
-                                                                        [:in :id all-card-ids]
-                                                                        [:not :archived]]}))
-                              all-card-ids)]
+        card-ids        (seq (concat template-tags parameters-card-ids source-card-ids))]
     (into {} (concat
               (for [card-id card-ids]
                 {["Card" card-id] {"Card" id}})

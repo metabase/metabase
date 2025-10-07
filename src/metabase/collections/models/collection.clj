@@ -1005,14 +1005,13 @@
 ;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
 
 (defn- traverse-descendants
-  [node]
+  [node skip-archived]
   (loop [to-traverse {node nil}
          traversed   {}
          accum       {}]
     (let [item        (first to-traverse)
           found       (let [[mod id] (key item)]
-                        ;; do NOT skip archived here, we want to find the archived descendants
-                        (serdes/descendants mod id {:skip-archived false}))
+                        (serdes/descendants mod id {:skip-archived skip-archived}))
           traversed   (conj traversed item)
           to-traverse (merge-with into
                                   (dissoc to-traverse (key item))
@@ -1033,18 +1032,18 @@
 
   Returns:
     sequence of models immediately dependent on the provided model"
-  [original-collection-id {:keys [id] :as model}]
+  [original-collection-id {:keys [id archived] :as model}]
   (if-not original-collection-id
     []
     (let [original (t2/select-one :model/Collection original-collection-id)
           root-collection-id (or (-> original :location location-path->ids first)
                                  (:id original))
-          root-descendants (traverse-descendants ["Collection" root-collection-id])]
+          root-descendants (traverse-descendants ["Collection" root-collection-id] true)]
       (case (t2/model model)
         :model/Collection
         ;; Get all descendents of the collection being moved and see if any of them are present in the
         ;; set of all descendants of the root collection
-        (->> (traverse-descendants ["Collection" id])
+        (->> (traverse-descendants ["Collection" id] (not archived))
              keys
              (mapcat #(get root-descendants %)))
 
@@ -1067,7 +1066,7 @@
   (if-let [collection (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))]
     (let [root-collection-id (or (-> collection :location location-path->ids first)
                                  (:id collection))
-          descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id])))]
+          descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
       (apply set/union (for [model (collectable-models)
                              :let [key (name model)]]
                          (set/difference (set (get descendants key))
@@ -1170,6 +1169,29 @@
                                                          new-parent-location
                                                          new-collection-id)
                 true))))))
+
+(defn check-for-remote-sync-update
+  "Check collection items for remote-sync integrity after the app database has been updated but before the transaction is committed
+
+  Args:
+    model-before-update: model being checked before changes have been applied
+    updates: map of changes that have been applied to the database
+
+  Returns:
+    the model with the changes applied
+
+  Raises
+    ex-info object if remote-sync integrity is violated"
+  [{id :id collection-before-update :collection_id :as model-before-update}]
+  (u/prog1 (t2/select-one (t2/model model-before-update) :id id)
+    (let [{collection-after-update :collection_id :as model-after-update} <>]
+      (when (remote-synced-collection? collection-after-update)
+        (check-non-remote-synced-dependencies model-after-update)
+        (when (api/column-will-change? :archived model-before-update model-after-update)
+          (check-remote-synced-dependents collection-after-update model-after-update)))
+      (when (and (api/column-will-change? :collection_id model-before-update model-after-update)
+                 (moving-from-remote-synced? collection-before-update collection-after-update))
+        (check-remote-synced-dependents collection-before-update model-after-update)))))
 
 (methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
   "Batch hydration for whether an item is remote synced"
@@ -1288,10 +1310,7 @@
                                         (collection->descendant-ids collection
                                                                     :archived [:not= true]))]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:type                 (if (= (:type collection) "remote-synced")
-                                           nil
-                                           :type)
-                   :archive_operation_id archive-operation-id
+                  {:archive_operation_id archive-operation-id
                    :archived_directly    true
                    :archived             true})
       (t2/query-one
@@ -1308,7 +1327,10 @@
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived true})))))
+                    {:archived true})))
+    (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
+      (when (= remote-synced-collection-type (:type updated-collection))
+        (check-remote-synced-dependents (parent-id* updated-collection) updated-collection)))))
 
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
@@ -1364,7 +1386,9 @@
       (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id     [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived false})))))
+                    {:archived false}))
+      (when (= remote-synced-collection-type (:type collection))
+        (check-non-remote-synced-dependencies collection)))))
 
 (mu/defn archive-or-unarchive-collection!
   "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."

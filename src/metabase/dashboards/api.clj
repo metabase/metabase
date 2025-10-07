@@ -983,8 +983,8 @@
                        (merge
                         (select-keys tabs-changes-stats [:created-tab-ids :deleted-tab-ids :total-num-tabs])
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
-           (when (collections/remote-synced-collection? (:collection_id dash-updates))
-             (collections/check-non-remote-synced-dependencies (t2/select-one :model/Dashboard id))))
+
+           (collections/check-for-remote-sync-update current-dash))
          true))
       (let [dashboard (t2/select-one :model/Dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position

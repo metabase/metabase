@@ -98,7 +98,7 @@
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
   (u/prog1 snippet
-    (events/publish-event! :event/snippet-delete {:object <>})))
+    (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet
   [_snippet]

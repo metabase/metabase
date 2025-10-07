@@ -2385,14 +2385,14 @@
                                                    :collection_id remote-synced-id
                                                    :database_id (mt/id)
                                                    :dataset_query (mt/mbql-query venues)}
-                   :model/Card {arch-card-id :id} {:name "Archived Card"
-                                                   :collection_id remote-synced-id
-                                                   :database_id (mt/id)
-                                                   :archived true
-                                                   :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
-      (is (= #{{"Card" arch-card-id} {"Collection" remote-synced-id}}
+                   :model/Card _ {:name "Archived Card"
+                                  :collection_id remote-synced-id
+                                  :database_id (mt/id)
+                                  :archived true
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+      (is (= #{{"Collection" remote-synced-id}}
              (set  (collection/remote-synced-dependents remote-synced-id (t2/instance :model/Card {:id base-card-id}))))
-          "Should return archived dependents"))))
+          "Should not return archived dependents"))))
 
 (deftest ^:parallel remote-synced-dependents-non-card-models-test
   (testing "for non-card models"
@@ -3122,3 +3122,163 @@
         (testing "archived collections are included when skip-archived: false"
           (is (contains? all-ids (:id active-coll)))
           (is (contains? all-ids (:id archived-coll))))))))
+
+(deftest archive-remote-synced-child-collection-with-parent-dependents-prevents-archive-test
+  (testing "archive-collection! prevents archiving when parent collection has items depending on child collection items"
+    (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
+                                                                    :location "/"
+                                                                    :type "remote-synced"}
+                   :model/Collection {child-id :id :as child-coll} {:name "Remote-Synced Child"
+                                                                    :location (format "/%d/" remote-synced-parent-id)
+                                                                    :type "remote-synced"}
+                   :model/Card {base-card-id :id} {:name "Base Card in Child"
+                                                   :collection_id child-id
+                                                   :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card {dep-card-id :id} {:name "Dependent Card in Parent"
+                                                  :collection_id remote-synced-parent-id
+                                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+
+      (testing "Throws exception when parent has items depending on child collection items"
+        (let [ex (is (thrown? Exception
+                              (mt/with-current-user (mt/user->id :crowberto)
+                                (collection/archive-collection! child-coll)))
+                     "Should throw exception when parent has dependents on child items")]
+          (is (= "Model has remote-synced dependents" (ex-message ex))
+              "Exception should have correct message")
+          (let [ex-data (ex-data ex)]
+            (is (= 400 (:status-code ex-data))
+                "Exception should have 400 status code")
+            (is (= #{{"Card" dep-card-id}} (set (ex-data :remote-synced-models)))
+                "Exception should contain remote-synced dependents"))))
+
+      (testing "Collection is NOT archived when exception is thrown"
+        (let [child-after (t2/select-one :model/Collection :id child-id)]
+          (is (false? (:archived child-after))
+              "Child should NOT be archived when check fails"))))))
+
+(deftest archive-remote-synced-child-collection-no-parent-dependents-allows-archive-test
+  (testing "archive-collection! allows archiving when parent has no dependents on child collection items"
+    (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
+                                                                    :location "/"
+                                                                    :type "remote-synced"}
+                   :model/Collection {child-id :id :as child-coll} {:name "Remote-Synced Child"
+                                                                    :location (format "/%d/" remote-synced-parent-id)
+                                                                    :type "remote-synced"}
+                   :model/Card _ {:name "Independent Card in Child"
+                                  :collection_id child-id
+                                  :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card _ {:name "Independent Card in Parent"
+                                  :collection_id remote-synced-parent-id
+                                  :dataset_query (mt/native-query {:query "SELECT 2"})}]
+
+      (testing "Successfully archives child collection when parent has no dependents on it"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (collection/archive-collection! child-coll)))
+
+      (testing "Child collection is archived"
+        (let [archived-child (t2/select-one :model/Collection :id child-id)]
+          (is (true? (:archived archived-child))
+              "Child collection should be archived"))))))
+
+(deftest archive-root-remote-synced-collection-no-dependents-allows-archive-test
+  (testing "archive-collection! allows archiving root remote-synced collection when there are no external dependents"
+    (mt/with-temp [:model/Collection {remote-synced-id :id :as remote-synced-coll} {:name "Remote-Synced Collection"
+                                                                                    :location "/"
+                                                                                    :type "remote-synced"}
+                   :model/Card {base-card-id :id} {:name "Base Card"
+                                                   :collection_id remote-synced-id
+                                                   :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card _ {:name "Dependent Card in Same Collection"
+                                  :collection_id remote-synced-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+
+      (testing "Successfully archives root collection (internal dependencies don't matter)"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (collection/archive-collection! remote-synced-coll)))
+
+      (testing "Collection is archived"
+        (let [archived-coll (t2/select-one :model/Collection :id remote-synced-id)]
+          (is (true? (:archived archived-coll))
+              "Collection should be archived")
+          (is (true? (:archived_directly archived-coll))
+              "Collection should be marked as archived directly"))))))
+
+(deftest archive-non-remote-synced-collection-skips-dependent-check-test
+  (testing "archive-collection! does not check for dependents on non-remote-synced collections"
+    (mt/with-temp [:model/Collection {regular-parent-id :id} {:name "Regular Parent"
+                                                              :location "/"
+                                                              :type nil}
+                   :model/Collection {regular-child-id :id :as regular-child-coll} {:name "Regular Child"
+                                                                                    :location (format "/%d/" regular-parent-id)
+                                                                                    :type nil}
+                   :model/Card {base-card-id :id} {:name "Base Card in Child"
+                                                   :collection_id regular-child-id
+                                                   :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card _ {:name "Dependent Card in Parent"
+                                  :collection_id regular-parent-id
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+
+      (testing "Successfully archives regular collection even with parent dependents"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (collection/archive-collection! regular-child-coll)))
+
+      (testing "Collection is archived"
+        (let [archived-coll (t2/select-one :model/Collection :id regular-child-id)]
+          (is (true? (:archived archived-coll))
+              "Regular collection should be archived"))))))
+
+(deftest archive-remote-synced-collection-with-dashboard-dependent-in-parent-test
+  (testing "archive-collection! checks dashboard dependencies from parent collection"
+    (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
+                                                                    :location "/"
+                                                                    :type "remote-synced"}
+                   :model/Collection {child-id :id :as child-coll} {:name "Remote-Synced Child"
+                                                                    :location (format "/%d/" remote-synced-parent-id)
+                                                                    :type "remote-synced"}
+                   :model/Card {child-card-id :id} {:name "Card in Child"
+                                                    :collection_id child-id
+                                                    :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Dashboard {parent-dashboard-id :id} {:name "Dashboard in Parent"
+                                                               :collection_id remote-synced-parent-id}
+                   :model/DashboardCard _ {:card_id child-card-id
+                                           :dashboard_id parent-dashboard-id
+                                           :row 0 :col 0
+                                           :size_x 4 :size_y 4}]
+
+      (testing "Throws exception when parent dashboard depends on child collection card"
+        (let [ex (is (thrown? Exception
+                              (mt/with-current-user (mt/user->id :crowberto)
+                                (collection/archive-collection! child-coll)))
+                     "Should throw exception when parent dashboard depends on child items")]
+          (is (= "Model has remote-synced dependents" (ex-message ex))
+              "Exception should have correct message")))
+
+      (testing "Collection is NOT archived when exception is thrown"
+        (let [child-after (t2/select-one :model/Collection :id child-id)]
+          (is (false? (:archived child-after))
+              "Child should NOT be archived when check fails"))))))
+
+(deftest archive-remote-synced-collection-with-archived-parent-dependents-allows-archive-test
+  (testing "archive-collection! allows archiving when parent dependents are archived"
+    (mt/with-temp [:model/Collection {remote-synced-parent-id :id} {:name "Remote-Synced Parent"
+                                                                    :location "/"
+                                                                    :type "remote-synced"}
+                   :model/Collection {child-id :id :as child-coll} {:name "Remote-Synced Child"
+                                                                    :location (format "/%d/" remote-synced-parent-id)
+                                                                    :type "remote-synced"}
+                   :model/Card {base-card-id :id} {:name "Base Card in Child"
+                                                   :collection_id child-id
+                                                   :dataset_query (mt/native-query {:query "SELECT 1"})}
+                   :model/Card _ {:name "Archived Dependent Card in Parent"
+                                  :collection_id remote-synced-parent-id
+                                  :archived true
+                                  :dataset_query (mt/mbql-query nil {:source-table (str "card__" base-card-id)})}]
+
+      (testing "Successfully archives when parent dependents are already archived"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (collection/archive-collection! child-coll)))
+
+      (testing "Child collection is archived"
+        (let [archived-child (t2/select-one :model/Collection :id child-id)]
+          (is (true? (:archived archived-child))
+              "Child should be archived"))))))
