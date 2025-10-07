@@ -18,7 +18,6 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
-import { isJWT } from "metabase/lib/utils";
 import { setEmbedQuestionEndpoints } from "metabase/services";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
@@ -32,7 +31,6 @@ export interface LoadQuestionHookResult {
   question?: Question;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
-  token?: string | null;
 
   queryResults?: any[];
 
@@ -62,6 +60,7 @@ export interface LoadQuestionHookResult {
 
 export function useLoadQuestion({
   questionId,
+  token,
   options,
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
@@ -73,7 +72,7 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const { question, originalQuestion, token, queryResults, parameterValues } =
+  const { question, originalQuestion, queryResults, parameterValues } =
     questionState;
 
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
@@ -106,12 +105,6 @@ export function useLoadQuestion({
     }
 
     try {
-      const token = isJWT(questionId) ? questionId.toString() : null;
-
-      mergeQuestionState({
-        token,
-      });
-
       if (isStaticEmbedding) {
         setEmbedQuestionEndpoints(token ?? "");
       }
@@ -121,6 +114,7 @@ export function useLoadQuestion({
           options,
           deserializedCard,
           questionId,
+          token,
           initialSqlParameters,
           targetDashboardId,
         }),
@@ -173,6 +167,7 @@ export function useLoadQuestion({
     isStaticEmbedding,
     sqlParameterKey,
     questionId,
+    token,
     targetDashboardId,
   ]);
 
@@ -294,7 +289,6 @@ export function useLoadQuestion({
     question,
     originalQuestion,
     parameterValues,
-    token,
 
     queryResults,
 

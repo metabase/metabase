@@ -25,6 +25,7 @@ import {
   SdkQuestion,
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import { Box, Stack } from "metabase/ui";
@@ -56,6 +57,9 @@ export type StaticQuestionProps = PropsWithChildren<
   >
 >;
 
+type StaticQuestionInternalProps = StaticQuestionProps &
+  Pick<SdkQuestionProps, "token">;
+
 /**
  * @interface
  */
@@ -78,8 +82,9 @@ export type StaticQuestionComponents = {
   SqlParametersList: typeof SqlParametersList;
 };
 
-const StaticQuestionInner = ({
-  questionId,
+export const StaticQuestionInner = ({
+  questionId: rawQuestionId,
+  token: rawToken,
   withChartTypeSelector,
   height,
   width,
@@ -90,7 +95,12 @@ const StaticQuestionInner = ({
   withDownloads,
   title = false, // Hidden by default for backwards-compatibility.
   children,
-}: StaticQuestionProps): JSX.Element | null => {
+}: StaticQuestionInternalProps): JSX.Element | null => {
+  const { entityId: questionId, token } = useExtractEntityIdFromJwtToken({
+    entityId: rawQuestionId,
+    token: rawToken ?? undefined,
+  });
+
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
   const getClickActionMode: ClickActionModeGetter = ({
@@ -110,6 +120,7 @@ const StaticQuestionInner = ({
   return (
     <SdkQuestion
       questionId={questionId}
+      token={token}
       getClickActionMode={getClickActionMode}
       navigateToNewCard={null}
       initialSqlParameters={initialSqlParameters}
