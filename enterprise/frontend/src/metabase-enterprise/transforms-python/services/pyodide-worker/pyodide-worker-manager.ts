@@ -11,7 +11,7 @@ import type {
 } from "./types";
 
 const READY_TIMEOUT = 10_000;
-const EXECUTE_TIMEOUT = 60_000;
+const EXECUTE_TIMEOUT = 20_000;
 
 export class PyodideWorkerManager {
   private worker: Worker;
@@ -37,8 +37,9 @@ export class PyodideWorkerManager {
       .then(() => {
         this.status = "ready";
       })
-      .catch(() => {
+      .catch((err) => {
         this.status = "error";
+        throw err;
       });
   }
 
@@ -48,12 +49,11 @@ export class PyodideWorkerManager {
     options?: ExecutePythonOptions,
   ): Promise<PythonExecutionResult<T>> {
     options?.signal?.addEventListener("abort", () => {
-      this.worker.terminate();
+      this.terminate();
     });
 
     try {
       await this.ready;
-      options?.signal?.throwIfAborted();
 
       this.send({
         type: "execute",
@@ -77,12 +77,16 @@ export class PyodideWorkerManager {
         error: getErrorMessage(error),
       };
     } finally {
-      this.worker.terminate();
+      this.terminate();
     }
   }
 
   private send(message: PyodideWorkerCommand) {
     this.worker.postMessage(message);
+  }
+
+  private terminate() {
+    this.send({ type: "terminate" });
   }
 
   private waitFor<T extends PyodideWorkerMessage["type"]>(
@@ -98,10 +102,13 @@ export class PyodideWorkerManager {
 
       const handler = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
         unsubscribe();
-        if (data.type === type) {
-          resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
-        } else if (data.type === "error") {
-          reject(data.error);
+        switch (data.type) {
+          case type:
+            return resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
+          case "error":
+            return reject(data.error);
+          case "terminated":
+            return reject(new Error(t`Worker terminated`));
         }
       };
 

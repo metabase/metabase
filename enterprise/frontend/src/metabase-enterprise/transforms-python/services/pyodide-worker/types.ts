@@ -1,16 +1,22 @@
 export type PythonLibraries = Record<string, string>;
 
-export type PyodideWorkerCommand = PyodideExecuteCommand;
+export type PyodideWorkerCommand =
+  | PyodideExecuteCommand
+  | PyodideTerminateCommand;
 
-export type PyodideExecuteCommand = {
+type PyodideExecuteCommand = {
   type: "execute";
   code: string;
   libraries: PythonLibraries;
 };
 
-export type PyodideErrorMessage = { type: "error"; error: Error };
+type PyodideTerminateCommand = { type: "terminate" };
 
-export type PyodideReadyMessage = { type: "ready" };
+type PyodideErrorMessage = { type: "error"; error: Error };
+
+type PyodideReadyMessage = { type: "ready" };
+
+type PyodideTerminatedMessage = { type: "terminated" };
 
 export type PyodideResultsMessage = {
   type: "results";
@@ -23,7 +29,8 @@ export type PyodideResultsMessage = {
 export type PyodideWorkerMessage =
   | PyodideReadyMessage
   | PyodideResultsMessage
-  | PyodideErrorMessage;
+  | PyodideErrorMessage
+  | PyodideTerminatedMessage;
 
 export type ExecutePythonOptions = {
   signal?: AbortSignal;

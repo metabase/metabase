@@ -14,6 +14,17 @@ self.addEventListener("unhandledrejection", (event) => {
   send({ type: "error", error: event.reason });
 });
 
+self.addEventListener(
+  "message",
+  function ({ data }: MessageEvent<PyodideWorkerCommand>) {
+    const { type } = data;
+    if (type === "terminate") {
+      send({ type: "terminated" });
+      self.close();
+    }
+  },
+);
+
 run();
 
 /**
@@ -28,11 +39,11 @@ async function run() {
 
   self.addEventListener(
     "message",
-    async function (event: MessageEvent<PyodideWorkerCommand>) {
-      const { type } = event.data;
+    async function ({ data }: MessageEvent<PyodideWorkerCommand>) {
+      const { type } = data;
 
       if (type === "execute") {
-        const { libraries, code } = event.data;
+        const { libraries, code } = data;
         const result = await execute(pyodide, code, libraries);
         send({ type: "results", ...result });
         return;
