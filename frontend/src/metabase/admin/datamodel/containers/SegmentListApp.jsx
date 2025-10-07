@@ -11,13 +11,14 @@ import Segments from "metabase/entities/segments";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { Stack } from "metabase/ui";
 
-function SegmentListAppInner(props) {
+function SegmentListAppInner({ onCollapse, ...props }) {
   const { segments, setArchived } = props;
   const dispatch = useDispatch();
 
   return (
     <ItemsListSection
       sectionTitle={t`Segments`}
+      onCollapse={onCollapse}
       onAddNewItem={() => dispatch(push("/bench/segment/new"))}
       listItems={
         <Stack>

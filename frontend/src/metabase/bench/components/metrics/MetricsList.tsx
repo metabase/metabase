@@ -53,7 +53,7 @@ import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 
-function MetricsList({ activeId }: { activeId: number | null }) {
+function MetricsList({ activeId, onCollapse }: { activeId: number | null; onCollapse: () => void }) {
   const dispatch = useDispatch();
   const { isLoading, data } = useFetchMetrics();
   const metrics = data?.data;
@@ -61,6 +61,7 @@ function MetricsList({ activeId }: { activeId: number | null }) {
   return (
     <ItemsListSection
       sectionTitle="Metrics"
+      onCollapse={onCollapse}
       onAddNewItem={() => {
         const url = newQuestion({
           mode: "bench",

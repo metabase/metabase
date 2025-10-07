@@ -3,11 +3,12 @@ import type React from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
 import { PLUGIN_METABOT } from "metabase/plugins";
-import { Stack } from "metabase/ui";
+import { Box, Stack } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
 import { BenchAppBar } from "./BenchAppBar";
 import { BenchNav } from "./BenchNav";
+import { useAbsoluteSize } from "./utils";
 
 export const ResizeHandle = ({
   direction = "horizontal",
@@ -22,23 +23,30 @@ export const ResizeHandle = ({
     vertical: { cursor: "row-resize", width: "100%", height: handleSize },
   };
 
-  return <PanelResizeHandle style={directionProps[direction]} />;
+  return (
+    <Box pos="relative">
+      <PanelResizeHandle style={{ position: "absolute", zIndex: 9, ...directionProps[direction] }} />
+    </Box>
+  );
 };
+
 
 export const BenchApp = ({ children }: { children: React.ReactNode }) => {
   const [showBenchNav, { toggle }] = useDisclosure(true);
+  const getSize = useAbsoluteSize({ groupId: "workbench-layout" });
+
   return (
     <Stack h="100vh" style={{ overflow: "hidden" }} gap={0}>
       <BenchAppBar onSidebarToggle={toggle} isSidebarOpen={showBenchNav} />
-      <PanelGroup autoSaveId="workbench-layout" direction="horizontal">
+      <PanelGroup id="workbench-layout" autoSaveId="workbench-layout" direction="horizontal" style={{ width: '100%' }}>
         {showBenchNav && (
           <>
             <Panel
               id="bench-nav"
               order={1}
               collapsible={true}
-              collapsedSize={5}
-              minSize={10}
+              collapsedSize={getSize(64)}
+              minSize={15}
               style={{ overflow: "hidden" }}
             >
               <BenchNav />
@@ -71,3 +79,5 @@ function BenchMetabot() {
     </>
   );
 }
+
+
