@@ -89,7 +89,6 @@
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
                 (remote-sync.object/dirty-for-global))})
-                (remote-sync.object/dirty-for-global))})
 
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Remote Sync collection to a Source
