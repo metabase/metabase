@@ -35,7 +35,7 @@ export function CodeEditor({
   const extensions = useExtensions({
     language,
     extensions: externalExtensions,
-    originalValue: proposedValue ? value : undefined,
+    value,
     proposedValue,
   });
 

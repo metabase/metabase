@@ -56,32 +56,34 @@ export function PythonEditorBody({
         />
 
         <Stack m="1rem" gap="md" mt="auto">
-          {proposedSource && onRejectProposed && onAcceptProposed && (
-            <>
-              <Tooltip label={t`Accept proposed changes`} position="left">
-                <Button
-                  variant="filled"
-                  bg="success"
-                  px="0"
-                  w="2.5rem"
-                  onClick={onAcceptProposed}
-                >
-                  <Icon name="check" />
-                </Button>
-              </Tooltip>
-              <Tooltip label={t`Reject proposed changes`} position="left">
-                <Button
-                  w="2.5rem"
-                  px="0"
-                  variant="filled"
-                  bg="danger"
-                  onClick={onRejectProposed}
-                >
-                  <Icon name="close" />
-                </Button>
-              </Tooltip>
-            </>
-          )}
+          {proposedSource !== undefined &&
+            onRejectProposed &&
+            onAcceptProposed && (
+              <>
+                <Tooltip label={t`Accept proposed changes`} position="left">
+                  <Button
+                    variant="filled"
+                    bg="success"
+                    px="0"
+                    w="2.5rem"
+                    onClick={onAcceptProposed}
+                  >
+                    <Icon name="check" />
+                  </Button>
+                </Tooltip>
+                <Tooltip label={t`Reject proposed changes`} position="left">
+                  <Button
+                    w="2.5rem"
+                    px="0"
+                    variant="filled"
+                    bg="danger"
+                    onClick={onRejectProposed}
+                  >
+                    <Icon name="close" />
+                  </Button>
+                </Tooltip>
+              </>
+            )}
           {withDebugger && (
             <Box p="md">
               <RunButtonWithTooltip
