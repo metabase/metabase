@@ -51,9 +51,6 @@ const isSankeyNodeEvent = (
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
 
 const isNativeQuery = (card: Card) => {
-  if (card.dataset_query == null) {
-    return false;
-  }
   const question = new Question(card);
   return question.isNative();
 };
