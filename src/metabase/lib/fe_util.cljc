@@ -336,7 +336,7 @@
     (value :guard number?)
     value
 
-    [:value (_ :guard #(= (:base-type %) :type/BigInteger)) (value :guard string?)]
+    [:value (x :guard (= (:base-type x) :type/BigInteger)) (value :guard string?)]
     (u.number/parse-bigint value)))
 
 (def ^:private NumberFilterParts
@@ -554,7 +554,7 @@
       [:time-interval
        opts
        (col-ref :guard date-col?)
-       (value :guard #(or (number? %) (= :current %)))
+       (value :guard (or (number? value) (= :current value)))
        (unit :guard keyword?)]
       {:column       (ref->col col-ref)
        :value        (if (= value :current) 0 value)

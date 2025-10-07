@@ -25,8 +25,8 @@ Companies with large number of users can talk to sales about our [Enterprise pla
 
 Though we bill you monthly, we calculate how much you owe each day. So, say you're on the [Starter plan](/pricing/). Your monthly bill would include:
 
-- $85 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be $85 that month.
-- Each additional person costs \$5, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account prior to the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
+- $100 flat payment for the month. This payment additionally covers the first five people who use your Metabase that month. If you have fewer than five people using your Metabase, your bill will still be $100 that month.
+- Each additional person costs \$6, prorated for how many days their [accounts were available](#what-counts-as-a-user-account) that month. So if an account only existed for the last 10 days of your 30 day billing period, you'd only be charged for those 10 days, not for the full 30 days. Same goes if you deactivated an account prior to the end of the billing period, you'll only be charged for the days when the account was available for use during that billing period. Basically, you only ever pay for all accounts in your Metabase that haven't been deactivated yet.
 
 ## How annual billing works
 

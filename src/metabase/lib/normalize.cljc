@@ -44,9 +44,9 @@
   "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
   this way."
   [error]
-  (log/warnf "Error normalizing pMBQL: %s\n%s"
-             (pr-str (me/humanize (:explain error)))
-             (u/pprint-to-str (dissoc error :explain)))
+  (log/debugf "Error normalizing pMBQL: %s\n%s"
+              (pr-str (me/humanize (:explain error)))
+              (u/pprint-to-str (dissoc error :explain)))
   (:value error))
 
 (def ^:private ^:dynamic *error-fn*

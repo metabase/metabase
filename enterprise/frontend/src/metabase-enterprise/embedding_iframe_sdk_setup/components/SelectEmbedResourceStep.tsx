@@ -85,6 +85,7 @@ export const SelectEmbedResourceStep = () => {
 
         // Clear parameters
         initialSqlParameters: {},
+        hiddenParameters: [],
       });
     } else if (experience === "browser") {
       updateSettings({

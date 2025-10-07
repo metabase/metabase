@@ -8,7 +8,10 @@ import { mockSettings } from "__support__/settings";
 import { screen, within } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
-import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
+import {
+  createMockSdkState,
+  createMockTokenState,
+} from "embedding-sdk-bundle/test/mocks/state";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -55,10 +58,18 @@ const setup = (options: Options) => {
     "enable-embedding-simple": options.isSimpleEmbeddingEnabled ?? true,
   });
 
+  const MINUTE = 60;
   const state = createMockState({
     settings: mockSettings(settingValues),
     currentUser: TEST_USER,
-    sdk: createMockSdkState(),
+    sdk: createMockSdkState({
+      token: createMockTokenState({
+        token: {
+          id: "123",
+          exp: Math.round(Date.now() / 1000) + 10 * MINUTE,
+        },
+      }),
+    }),
   });
 
   setupSettingsEndpoints([]);

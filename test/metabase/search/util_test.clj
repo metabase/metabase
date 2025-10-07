@@ -40,6 +40,9 @@
   (is (= "'a' & 'b' | 'c':*"
          (search-expr "a b or c")))
 
+  (is (= "'a' | 'b':*"
+         (search-expr "a or and or b")))
+
   (is (= "'this' & !'that':*"
          (search-expr "this -that")))
 

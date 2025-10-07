@@ -147,6 +147,7 @@
             (partition-by #{"or"})
             (remove #(= (first %) "or"))
             (map process-clause)
+            (remove str/blank?)
             (str/join " | ")
             maybe-complete)))))
 

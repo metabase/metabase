@@ -51,13 +51,13 @@ import {
 } from "../analytics";
 import {
   getAutoApplyFiltersToastId,
+  getCurrentDashcards,
   getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
   getDashboardComplete,
   getDashboardHeaderParameters,
   getDashboardId,
-  getDashcardList,
   getDashcards,
   getDraftParameterValues,
   getFiltersToReset,
@@ -274,7 +274,7 @@ export const setEditingParameter =
     const currentTabId = getSelectedTabId(getState());
     const parameterDashcard = findDashCardForInlineParameter(
       parameterId,
-      getDashcardList(getState()),
+      getCurrentDashcards(getState()),
     );
 
     if (

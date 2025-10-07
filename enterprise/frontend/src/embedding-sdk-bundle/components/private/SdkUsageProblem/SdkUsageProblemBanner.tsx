@@ -109,7 +109,9 @@ export const SdkUsageProblemBanner = ({
               <ExternalLink role="link" href={problem.documentationUrl}>
                 <Button
                   fz="sm"
-                  rightSection={<Icon name="external" size="1rem" />}
+                  rightSection={
+                    <Icon aria-hidden name="external" size="1rem" />
+                  }
                   ff={fontFamily}
                   className={S.DocsButton}
                   size="md"

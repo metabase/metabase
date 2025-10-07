@@ -1312,9 +1312,11 @@
   users
   {:team "Admin Webapp"
    :api  #{metabase.users.api
+           metabase.users.core
            metabase.users.init
            metabase.users.models.user
-           metabase.users.models.user-parameter-value}
+           metabase.users.models.user-parameter-value
+           metabase.users.schema}
    :uses #{analytics
            api
            appearance
@@ -1731,6 +1733,7 @@
           metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
+           audit-app
            collections
            config
            driver

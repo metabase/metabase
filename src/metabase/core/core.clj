@@ -35,7 +35,8 @@
    [metabase.util.system-info :as u.system-info]
    [metabase.warehouses.models.database :as database])
   (:import
-   (java.lang.management ManagementFactory)))
+   (java.lang.management ManagementFactory)
+   (sun.misc Signal SignalHandler)))
 
 (set! *warn-on-reflection* true)
 
@@ -114,11 +115,45 @@
   version."
   metabase-enterprise.audit-app.audit [] ::noop)
 
+(defn- signal-handler
+  "Create a signal handler that logs the received signal and then delegates to the original handler."
+  [^String signal-name ^SignalHandler original-handler]
+  (reify SignalHandler
+    (handle [_ sig]
+      (log/warnf "Received system signal: SIG%s" (.getName sig))
+      (when original-handler
+        (try
+          (.handle original-handler sig)
+          (catch Exception e
+            (log/errorf e "Error calling original signal handler for SIG%s" signal-name)))))))
+
+(defn- init-signal-logging!
+  "Set up signal handlers to log system signals like SIGTERM, SIGINT, etc."
+  []
+  (let [signals-to-log ["TERM" "INT" "HUP" "QUIT"]]
+    (log/debug "Setting up signal logging...")
+    (doseq [signal-name signals-to-log]
+      (try
+        (let [signal (Signal. signal-name)
+              ;; Capture the current handler before replacing it
+              original-handler (try
+                                 (Signal/handle signal SignalHandler/SIG_DFL)
+                                 (catch Exception _ nil))
+              ;; Create our logging handler that delegates to the original
+              logging-handler (signal-handler signal-name original-handler)]
+          (Signal/handle signal logging-handler)
+          (log/debugf "Signal handler registered for SIG%s" signal-name))
+        (catch IllegalArgumentException e
+          (log/debugf "Ignoring invalid signal SIG%s: %s" signal-name (.getMessage e)))
+        (catch Exception e
+          (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
+
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (init-signal-logging!)
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))

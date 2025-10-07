@@ -132,7 +132,7 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
 
   cy.log("navigate to get code step");
   getEmbedSidebar().within(() => {
-    cy.findByText("Get Code").click(); // Get code step
+    cy.findByText("Get code").click(); // Get code step
   });
 };
 

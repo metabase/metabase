@@ -16,7 +16,7 @@ import {
 } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupExperience } from "../types";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { EnableEmbeddedAnalyticsCard } from "./EnableEmbeddedAnalyticsCard";
 
@@ -58,7 +58,10 @@ export const SelectEmbedExperienceStep = () => {
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
-      ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
+      ...getDefaultSdkIframeEmbedSettings({
+        experience,
+        resourceId: defaultResourceId,
+      }),
     });
   };
 
