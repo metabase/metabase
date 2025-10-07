@@ -91,13 +91,13 @@
   [select-options]
   (let [queries (mapv (fn [[table entity-type]]
                         (let [id-col (keyword (str (name table) ".id"))]
-                          #p {:select (select-options table)
-                              :from [table]
-                              :inner-join [[:remote_sync_object :rs_obj]
-                                           [:and
-                                            [:= :rs_obj.model_id id-col]
-                                            [:= :rs_obj.model_type [:inline entity-type]]]]
-                              :where [:not= :status "synced"]}))
+                          {:select (select-options table)
+                           :from [table]
+                           :inner-join [[:remote_sync_object :rs_obj]
+                                        [:and
+                                         [:= :rs_obj.model_id id-col]
+                                         [:= :rs_obj.model_type [:inline entity-type]]]]
+                           :where [:not= :status "synced"]}))
                       synced-models)]
     {:union-all queries}))
 
