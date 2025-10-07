@@ -87,21 +87,21 @@ export class PyodideWorkerManager {
   ): Promise<Extract<PyodideWorkerMessage, { type: T }>> {
     return new Promise((resolve, reject) => {
       signal?.addEventListener("abort", () => {
-        reject(new Error("Aborted"));
+        unsubscribe();
+        reject(new Error(t`Aborted`));
       });
 
       const handler = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
+        unsubscribe();
         if (data.type === type) {
-          unsubscribe();
           resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
-        }
-        if (data.type === "error") {
-          unsubscribe();
+        } else if (data.type === "error") {
           reject(data.error);
         }
       };
 
       const errHandler = (evt: ErrorEvent) => {
+        unsubscribe();
         reject(evt.error ?? new Error(t`Could not start Python worker.`));
       };
 
@@ -111,13 +111,13 @@ export class PyodideWorkerManager {
         worker.removeEventListener("error", errHandler);
       };
 
-      worker.addEventListener("message", handler);
-      worker.addEventListener("error", errHandler);
-
       const timer = setTimeout(() => {
         unsubscribe();
-        reject(new Error(`Timeout waiting for ${type}`));
+        reject(new Error(t`Timeout waiting for ${type}`));
       }, timeout);
+
+      worker.addEventListener("message", handler);
+      worker.addEventListener("error", errHandler);
     });
   }
 }
