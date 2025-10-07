@@ -83,6 +83,7 @@ import type {
   PythonTransformSource,
   PythonTransformTableAliases,
   Revision,
+  SearchModel,
   Series,
   TableId,
   Timeline,
@@ -707,7 +708,16 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
 
 export const PLUGIN_METABOT = {
   isEnabled: () => false,
-  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
+  Metabot: (_props: {
+    hide?: boolean;
+    config?: {
+      emptyText?: string;
+      hideSuggestedPrompts?: boolean;
+      preventClose?: boolean;
+      preventRetryMessage?: boolean;
+      suggestionModels: (SearchModel | "transform" | "user")[];
+    };
+  }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
@@ -850,17 +860,27 @@ export type PythonTransformsPlugin = {
   PythonRunnerSettingsPage: ComponentType;
   SourceSection: ComponentType<{ transform: Transform }>;
   TransformEditor: ComponentType<{
+    transform?: Transform | undefined;
     initialSource: {
       type: "python";
       body: string;
       "source-database": DatabaseId | undefined;
       "source-tables": PythonTransformTableAliases;
     };
+    proposedSource?: PythonTransformSource;
     isNew?: boolean;
     isSaving?: boolean;
     isRunnable?: boolean;
+    onChange?: (newSource: {
+      type: "python";
+      body: string;
+      "source-database": DatabaseId | undefined;
+      "source-tables": PythonTransformTableAliases;
+    }) => void;
     onSave: (newSource: PythonTransformSource) => void;
     onCancel: () => void;
+    onRejectProposed?: () => void;
+    onAcceptProposed?: (query: PythonTransformSource) => void;
   }>;
   getAdminRoutes: () => ReactNode;
   getTransformsNavLinks: () => ReactNode;

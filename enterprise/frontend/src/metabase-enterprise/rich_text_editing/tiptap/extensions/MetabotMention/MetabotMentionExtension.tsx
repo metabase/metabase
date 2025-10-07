@@ -16,6 +16,7 @@ interface MentionProps {
   type?: string;
   id?: number | string;
   model?: string;
+  label?: string;
 }
 
 export const MetabotMentionPluginKey = new PluginKey("metabot-mention");
@@ -53,8 +54,10 @@ export const MetabotMentionExtension = Extension.create<MentionOptions>({
                 attrs: {
                   entityId: props.id,
                   model: props.model,
+                  label: props.label,
                 },
               })
+              .insertContent(" ") // Add space after mention
               .run();
           }
         },

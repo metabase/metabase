@@ -9,7 +9,6 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import {
   createMockCard,
   createMockCollection,
@@ -18,6 +17,8 @@ import {
   createMockDocument,
   createMockTable,
 } from "metabase-types/api/mocks";
+
+import type { SuggestionModel } from "../shared/types";
 
 import { SmartLinkComponent, type SmartLinkEntity } from "./SmartLinkNode";
 

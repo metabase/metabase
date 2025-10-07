@@ -22,9 +22,9 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
   const slots = new Array(toolCalls.length + 2).fill(null);
 
   return (
-    <Stack gap={0} className={S.toolCalls}>
+    <Stack gap={0} mb="sm" className={S.toolCalls}>
       {slots.map((_, i) => {
-        const tc = toolCalls[i];
+        const tc: MetabotToolCall | undefined = toolCalls[i];
         return (
           <Transition
             key={i}
@@ -35,9 +35,9 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
             {(styles) => (
               <Text
                 style={styles}
-                className={cx(tc.status === "started" && S.toolCallStarted)}
+                className={cx(tc?.status === "started" && S.toolCallStarted)}
               >
-                {tc.message}
+                {tc?.message}
               </Text>
             )}
           </Transition>
@@ -49,30 +49,22 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
 
 export const MetabotThinking = ({
   toolCalls,
-  hasStartedResponse,
 }: {
   toolCalls: MetabotToolCall[];
-  hasStartedResponse: boolean;
 }) => {
   const toolCallsWithMsgs = useMemo(() => {
     return toolCalls.filter((tc) => !!tc.message);
   }, [toolCalls]);
 
-  const showLoader =
-    (!hasStartedResponse && toolCalls.length === 0) ||
-    (toolCalls.length > 0 && toolCallsWithMsgs.length === 0);
-
   return (
     <Stack gap="xs">
       <ThoughtProcess toolCalls={toolCallsWithMsgs} />
-      {showLoader && (
-        <Loader
-          color="brand"
-          type="dots"
-          size="lg"
-          data-testid="metabot-response-loader"
-        />
-      )}
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
     </Stack>
   );
 };
