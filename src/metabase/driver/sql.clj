@@ -201,10 +201,11 @@
   Note: this currently sets :lib/desired-column-alias but no other :lib/* fields, because the callers of this function
   don't need the other fields.  If we care about other :lib/* fields in the future, we can add them then."
   {:added "0.57.0" :arglists '([driver metadata-provider col-spec])}
-  (fn [_driver _metadata-provider col-spec]
-    (:type col-spec)))
+  (fn [driver _metadata-provider col-spec]
+    [(driver/dispatch-on-initialized-driver driver) (:type col-spec)])
+  :hierarchy #'driver/hierarchy)
 
-(defmethod resolve-field :all-columns
+(defmethod resolve-field [:sql :all-columns]
   [driver metadata-provider col-spec]
   (or (some->> (:table col-spec)
                (find-table-or-transform driver (driver-api/tables metadata-provider) (driver-api/transforms metadata-provider))
@@ -213,7 +214,7 @@
                (map #(assoc % :lib/desired-column-alias (:name %))))
       [(assoc col-spec ::bad-reference true)]))
 
-(defmethod resolve-field :single-column
+(defmethod resolve-field [:sql :single-column]
   [driver metadata-provider {:keys [alias] :as col-spec}]
   [(if-let [{:keys [name] :as found}
             (->> (:source-columns col-spec)
@@ -237,7 +238,7 @@
   (->> (get-name m)
        (u.humanization/name->human-readable-name :simple)))
 
-(defmethod resolve-field :custom-field
+(defmethod resolve-field [:sql :custom-field]
   [_driver _metadata-provider col-spec]
   [{:base-type :type/*
     :name (get-name col-spec)
@@ -246,7 +247,7 @@
     :effective-type :type/*
     :semantic-type :Semantic/*}])
 
-(defmethod resolve-field :invalid-table-wildcard
+(defmethod resolve-field [:sql :invalid-table-wildcard]
   [_driver _metadata-provider col-spec]
   [(assoc col-spec ::bad-reference true)])
 
@@ -260,7 +261,7 @@
       (apply (partial max-key (comp count ancestors)) common-ancestors)
       default-type)))
 
-(defmethod resolve-field :composite-field
+(defmethod resolve-field [:sql :composite-field]
   [driver metadata-provider col-spec]
   (let [member-fields (mapcat (partial resolve-field driver metadata-provider)
                               (:member-fields col-spec))]

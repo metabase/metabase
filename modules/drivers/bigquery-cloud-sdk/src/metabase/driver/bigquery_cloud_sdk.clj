@@ -1024,6 +1024,15 @@
          list-datasets
          (some #{schema}))))
 
+(defmethod driver.sql/resolve-field [:bigquery-cloud-sdk :all-columns]
+  [driver metadata-provider col-spec]
+  (let [parent-method (get-method driver.sql/resolve-field [:sql :all-columns])
+        old-table-ref (:table col-spec)
+        [new-schema new-table] (str/split (:table old-table-ref) #"\.")
+        new-table-ref (assoc old-table-ref :table new-table :schema new-schema)]
+    (->> (assoc col-spec :table new-table-ref)
+         (parent-method driver metadata-provider))))
+
 (defmethod driver/table-name-length-limit :bigquery-cloud-sdk
   [_driver]
   ;; https://cloud.google.com/bigquery/docs/tables
