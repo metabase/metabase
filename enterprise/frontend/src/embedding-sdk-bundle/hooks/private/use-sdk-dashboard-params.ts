@@ -25,6 +25,8 @@ export type SdkDashboardDisplayProps = StrictUnion<
   | {
       /**
        * A valid JWT token for the anonymous embedding.
+       *
+       * @internal
        */
       token: SdkEntityToken;
     }
