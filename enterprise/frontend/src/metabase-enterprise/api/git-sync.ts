@@ -151,7 +151,10 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         body: settings,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("session-properties")]),
+        invalidateTags(error, [
+          tag("session-properties"),
+          tag("remote-sync-current-task"),
+        ]),
     }),
     getBranches: builder.query<{ items: string[] }, void>({
       query: () => ({

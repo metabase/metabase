@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { Box, Button, Group, Modal, Progress, Text } from "metabase/ui";
+import { Button, Group, Modal, Progress, Stack, Text } from "metabase/ui";
 import {
   type SyncTaskType,
   useCancelSyncTaskMutation,
@@ -10,9 +10,20 @@ import {
 interface LoadingModalProps {
   taskType: SyncTaskType;
   progress: number;
+  isError: boolean;
+  isSuccess: boolean;
+  errorMessage: string;
+  onDismiss: () => void;
 }
 
-export function LoadingModal({ progress, taskType }: LoadingModalProps) {
+export function LoadingModal({
+  progress,
+  taskType,
+  isError,
+  isSuccess,
+  errorMessage,
+  onDismiss,
+}: LoadingModalProps) {
   const [cancelSyncTask, { isLoading: isCancelling }] =
     useCancelSyncTaskMutation();
   const [sendToast] = useToast();
@@ -35,38 +46,99 @@ export function LoadingModal({ progress, taskType }: LoadingModalProps) {
       });
   };
 
+  const handleReload = () => {
+    window.location.reload();
+  };
+
+  if (isError) {
+    return (
+      <Modal onClose={onDismiss} opened size="md" title={t`Sync failed`}>
+        <Stack gap="lg">
+          <Text>{errorMessage || t`An error occurred during sync.`}</Text>
+          <Group justify="flex-end">
+            <Button onClick={onDismiss} variant="filled">{t`Close`}</Button>
+          </Group>
+        </Stack>
+      </Modal>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <Modal
+        onClose={onDismiss}
+        opened
+        size="md"
+        title={
+          taskType === "import" ? t`Content imported` : t`Changes pushed to Git`
+        }
+      >
+        <Stack gap="lg">
+          <Text>
+            {taskType === "import"
+              ? t`Your content has been imported. Reload the page to see the latest changes.`
+              : t`Your changes have been pushed to Git successfully.`}
+          </Text>
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={onDismiss}>{t`Dismiss`}</Button>
+            <Button
+              variant="filled"
+              onClick={handleReload}
+            >{t`Reload page`}</Button>
+          </Group>
+        </Stack>
+      </Modal>
+    );
+  }
+
+  const { title, progressLabel } = getModalContent(taskType, isCancelling);
+
   return (
     <Modal
-      onClose={() => null} // modal can't be closed
+      onClose={() => null}
       opened
-      size="sm"
-      title={t`Syncing`}
+      size="md"
+      title={title}
       withCloseButton={false}
     >
-      <Box p="xl">
-        <Text mb="md" ta="center">
-          {getHeading(taskType, isCancelling)}...
-        </Text>
+      <Stack gap="lg">
+        <Text ta="center">{progressLabel}</Text>
         <Progress value={progress * 100} transitionDuration={300} animated />
-        <Text fz="sm" lh="sm" mt="lg">
-          {t`Please wait until the sync completes to edit content.`}
+        <Text size="sm" c="text-medium">
+          {t`Please wait until this finishes before editing content.`}
         </Text>
-      </Box>
-      {!isCancelling && (
-        <Group px="xl" justify="flex-end">
-          <Button variant="subtle" onClick={onCancel} p={0}>
-            {t`Cancel sync`}
-          </Button>
-        </Group>
-      )}
+        {!isCancelling && (
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={onCancel}>
+              {t`Cancel`}
+            </Button>
+          </Group>
+        )}
+      </Stack>
     </Modal>
   );
 }
 
-const getHeading = (taskType: SyncTaskType, isCancelling?: boolean) => {
+const getModalContent = (
+  taskType: SyncTaskType,
+  isCancelling?: boolean,
+): { title: string; progressLabel: string } => {
   if (isCancelling) {
-    return t`Cancelling`;
+    return {
+      title: t`Cancelling`,
+      progressLabel: "",
+    };
   }
 
-  return taskType === "import" ? t`Importing` : t`Exporting`;
+  if (taskType === "import") {
+    return {
+      title: t`Syncing`,
+      progressLabel: t`Importing content…`,
+    };
+  }
+
+  return {
+    title: t`Pushing to Git`,
+    progressLabel: t`Exporting content…`,
+  };
 };
