@@ -19,6 +19,7 @@ import {
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import {
   type SdkDashboardDisplayProps,
@@ -126,7 +127,8 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
   >;
 
 const SdkDashboardInner = ({
-  dashboardId,
+  dashboardId: rawDashboardId,
+  token: rawDashboardToken,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -152,13 +154,18 @@ const SdkDashboardInner = ({
   dataPickerProps,
   onVisualizationChange,
 }: SdkDashboardInnerProps) => {
+  const { entityId: dashboardId, token } = useExtractEntityIdFromJwtToken({
+    entityId: rawDashboardId,
+    token: rawDashboardToken,
+  });
+
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
   useEffect(() => {
-    if (isStaticEmbedding) {
-      setEmbedDashboardEndpoints(dashboardId.toString());
+    if (isStaticEmbedding && token) {
+      setEmbedDashboardEndpoints(token);
     }
-  }, [dashboardId, isStaticEmbedding]);
+  }, [isStaticEmbedding, token]);
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -280,6 +287,7 @@ const SdkDashboardInner = ({
     <DashboardContextProvider
       ref={dashboardContextProviderRef}
       dashboardId={dashboardId}
+      token={token}
       isStaticEmbedding={isStaticEmbedding}
       parameterQueryParams={initialParameters}
       navigateToNewCardFromDashboard={

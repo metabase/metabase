@@ -105,7 +105,7 @@ export const textDashcard2 = createMockTextDashboardCard({
 export const dashcards = [tableDashcard, textDashcard, textDashcard2];
 
 export interface SetupSdkDashboardOptions {
-  props?: Partial<SdkDashboardProps>;
+  props?: Omit<Partial<SdkDashboardProps>, "token">;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
   component: React.ComponentType<SdkDashboardProps>;

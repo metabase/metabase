@@ -160,9 +160,13 @@ const SdkIframeEmbedPreviewInner = () => {
         )
         .with({ componentName: "metabase-question" }, (s) =>
           createElement("metabase-question", {
-            "question-id": !isStaticEmbedding
-              ? s.questionId
-              : staticEmbeddingSignedToken,
+            ...(isStaticEmbedding
+              ? { token: staticEmbeddingSignedToken }
+              : {
+                  "question-id": s.questionId,
+                  drills: s.drills,
+                  "is-save-enabled": s.isSaveEnabled,
+                }),
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
             "target-collection": s.targetCollection,
@@ -180,17 +184,16 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
-            ...(!isStaticEmbedding && {
-              drills: s.drills,
-              "is-save-enabled": s.isSaveEnabled,
-            }),
           }),
         )
         .with({ componentName: "metabase-dashboard" }, (s) =>
           createElement("metabase-dashboard", {
-            "dashboard-id": !isStaticEmbedding
-              ? s.dashboardId
-              : staticEmbeddingSignedToken,
+            ...(isStaticEmbedding
+              ? { token: staticEmbeddingSignedToken }
+              : {
+                  "dashboard-id": s.dashboardId,
+                  drills: s.drills,
+                }),
             "with-title": s.withTitle,
             "with-downloads": s.withDownloads,
             "initial-parameters": s.initialParameters
@@ -201,9 +204,6 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
-            ...(!isStaticEmbedding && {
-              drills: s.drills,
-            }),
           }),
         )
         .with({ componentName: "metabase-browser" }, (s) =>

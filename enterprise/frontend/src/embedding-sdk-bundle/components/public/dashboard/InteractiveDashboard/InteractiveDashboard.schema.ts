@@ -7,7 +7,8 @@ import type { InteractiveDashboardProps } from "./InteractiveDashboard";
 const propsSchema: Yup.SchemaOf<InteractiveDashboardProps> = Yup.object({
   children: Yup.mixed().optional(),
   className: Yup.mixed().optional(),
-  dashboardId: Yup.mixed().required(),
+  dashboardId: Yup.mixed().optional(),
+  token: Yup.mixed().optional(),
   dataPickerProps: Yup.object({
     entityTypes: Yup.mixed().optional(),
   })
