@@ -67,6 +67,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
     isShowingQuestionSettingsSidebar,
     cancelQuestionChanges,
     onCreate,
+    onCreateSuccess,
     onSave,
     onChangeLocation,
     modal,
@@ -144,6 +145,7 @@ const ViewInner = forwardRef(function _ViewInner(props, ref) {
         <QueryModals
           onSave={onSave}
           onCreate={onCreate}
+          onCreateSuccess={onCreateSuccess}
           modal={modal}
           modalContext={modalContext}
           card={card}

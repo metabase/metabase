@@ -47,12 +47,9 @@
 }
 
 .Root {
-  --edit-bar-height: 49px;
-
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  height: calc(100vh - var(--edit-bar-height));
 }
 
 .DatasetEditBar {

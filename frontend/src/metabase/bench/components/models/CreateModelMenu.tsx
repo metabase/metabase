@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { newQuestion } from "metabase/lib/urls/questions";
 import { Button, Icon, Menu } from "metabase/ui";
 
 export const CreateModelMenu = () => {
@@ -17,14 +18,23 @@ export const CreateModelMenu = () => {
         <Menu.Label>{t`Create your model with…`}</Menu.Label>
         <Menu.Item
           component={ForwardRefLink}
-          to={"/bench/model/new/query"}
+          to={newQuestion({
+            mode: "bench",
+            creationType: "custom_question",
+            cardType: "model",
+          })}
           leftSection={<Icon name="notebook" />}
         >
           {t`Query builder`}
         </Menu.Item>
         <Menu.Item
           component={ForwardRefLink}
-          to={"/bench/model/new/native"}
+          to={newQuestion({
+            mode: "bench",
+            type: "native",
+            creationType: "native_question",
+            cardType: "model",
+          })}
           leftSection={<Icon name="sql" />}
         >
           {t`SQL query`}
