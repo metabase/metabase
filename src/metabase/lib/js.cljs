@@ -2654,9 +2654,9 @@
   (let [db-id (when (js-in "database" js-query)
                 (gobject/get js-query "database"))]
     (-> (lib.cache/side-channel-cache-weak-refs
-             (str db-id) metadata-provider js-query
-             #(lib.core/query metadata-provider (js->clj %))
-             {:force? true})
+         (str db-id) metadata-provider js-query
+         #(lib.core/query metadata-provider (lib.core/normalize :metabase.lib.schema/query (js->clj %)))
+         {:force? true})
         ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without
         ;; attached metadata providers -- force them to have them. I can't work out why it is happening, so this is a
         ;; temporary HACK to keep things moving.
