@@ -117,13 +117,13 @@
                          (export-entire-collection child-id)
                          (-> (t2/select-one :model/Card :id child-id :type model-type)
                              export-entity))))]
-    {:collection (assoc (export-entity collection)
-                        :children (map #(dissoc % :databases) child-reps))
-     :databases (concat
-                 (for [db-id database-ids]
-                   (-> (t2/select-one :model/Database :id db-id)
-                       export-entity))
-                 (mapcat :databases child-reps))}))
+    (assoc (export-entity collection)
+           :children (map #(dissoc % :databases) child-reps)
+           :databases (concat
+                       (for [db-id database-ids]
+                         (-> (t2/select-one :model/Database :id db-id)
+                             export-entity))
+                       (mapcat :databases child-reps)))))
 
 (comment
 
