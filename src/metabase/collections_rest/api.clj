@@ -222,7 +222,10 @@
 
   By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a
   `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look
-  at. For example, `namespaces=analytics&namespaces=` would match the default behavior."
+  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.
+
+  When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
+  the root, if `collection-id` is `nil`)."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
