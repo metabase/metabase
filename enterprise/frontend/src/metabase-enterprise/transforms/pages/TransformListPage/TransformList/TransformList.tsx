@@ -1,38 +1,30 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
 import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch , useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { Box, Card, Flex, NavLink, Text } from "metabase/ui";
+import { Box,  NavLink, Text } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
-import { parseTimestampWithTimezone } from "../../../utils";
 import { CreateTransformMenu } from "../CreateTransformMenu";
 import { hasFilterParams } from "../utils";
 
-import S from "./TransformList.module.css";
-
 type TransformListProps = {
   params: TransformListParams;
+  onCollapse: () => void;
 };
 
-export function TransformList({ params }: TransformListProps) {
-  const systemTimezone = useSetting("system-timezone");
+export function TransformList({ params, onCollapse }: TransformListProps) {
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -49,7 +41,6 @@ export function TransformList({ params }: TransformListProps) {
   } = useListTransformTagsQuery();
   const isLoading = isLoadingTransforms || isLoadingTags;
   const error = transformsError ?? tagsError;
-  const dispatch = useDispatch();
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -68,12 +59,13 @@ export function TransformList({ params }: TransformListProps) {
     <ItemsListSection
       sectionTitle={t`Transforms`}
       titleMenuItems={<div />}
+      onCollapse={onCollapse}
       onChangeSorting={() => null}
       AddButton={CreateTransformMenu}
       listItems={
         <Box>
           {transforms.map((transform) => (
-            <TransformListItem key={transform.id} transform={transform} />
+            <TransformListItem key={transform.id} transform={transform} tags={tags} />
           ))}
         </Box>
       }
@@ -81,7 +73,7 @@ export function TransformList({ params }: TransformListProps) {
   );
 }
 
-function TransformListItem({ transform }: { transform: Transform }) {
+function TransformListItem({ transform, tags }: { transform: Transform, tags: TransformTag[] }) {
   const location = useSelector(getLocation);
   // get id off the end
   const id = location?.pathname?.split("/")?.pop();
@@ -95,9 +87,10 @@ function TransformListItem({ transform }: { transform: Transform }) {
       label={
         <Box>
           <Text fw="bold">{transform.name}</Text>
-          <Box c="text-light" fz="sm">
-            {t`Target:`} {transform.target.name}
+          <Box c="text-light" fz="sm" mb="xs" ff="monospace">
+            {transform.target.name}
           </Box>
+          <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
         </Box>
       }
     />
