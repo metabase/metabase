@@ -1,12 +1,15 @@
 import type { Location } from "history";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { searchApi } from "metabase/api";
+import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { useSelector } from "metabase/lib/redux/hooks";
+import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
 import {
@@ -18,6 +21,7 @@ import {
   NavLink,
   Text,
 } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
@@ -118,5 +122,19 @@ export const ModelEditor = (props: {
   location: Location;
   params: { slug: string };
 }) => {
-  return <QueryBuilder {...props} Header={ModelEditorHeader} preventCancel />;
+  const dispatch = useDispatch();
+
+  return (
+    <QueryBuilder
+      {...props}
+      Header={ModelEditorHeader}
+      preventCancel
+      onCreateSuccess={(q: Question) => {
+        dispatch(replace(`/bench/model/${q.id()}`));
+        dispatch(
+          searchApi.util.invalidateTags([listTag(TAG_TYPE_MAPPING["dataset"])]),
+        );
+      }}
+    />
+  );
 };

@@ -58,17 +58,16 @@ function MetricsList({ activeId }: { activeId: number | null }) {
   const { isLoading, data } = useFetchMetrics();
   const metrics = data?.data;
 
-  const hash = newQuestion({
-    mode: "query",
-    cardType: "metric",
-  })
-    .split("#")
-    .pop();
-
   return (
     <ItemsListSection
       sectionTitle="Metrics"
-      onAddNewItem={() => dispatch(push(`/bench/metric/new#${hash}`))}
+      onAddNewItem={() => {
+        const url = newQuestion({
+          mode: "bench",
+          cardType: "metric",
+        });
+        return dispatch(push(url));
+      }}
       listItems={
         !metrics || isLoading ? (
           <Center>
