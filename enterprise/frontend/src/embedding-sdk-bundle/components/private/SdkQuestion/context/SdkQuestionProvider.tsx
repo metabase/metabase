@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
-import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
@@ -37,8 +37,8 @@ export const SdkQuestionContext = createContext<
 const DEFAULT_OPTIONS = {};
 
 export const SdkQuestionProvider = ({
-  questionId,
-  token,
+  questionId: rawQuestionId,
+  token: rawToken,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -60,6 +60,17 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
+
+  const {
+    entityId: questionId,
+    token,
+    tokenError,
+  } = useExtractEntityIdFromJwtToken({
+    isStaticEmbedding,
+    entityId: rawQuestionId,
+    token: rawToken ?? undefined,
+  });
+
   const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
@@ -190,8 +201,8 @@ export const SdkQuestionProvider = ({
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
 
-  if (isStaticEmbedding && !token) {
-    return <SdkError message={t`The token is not passed`} />;
+  if (tokenError) {
+    return <SdkError message={tokenError} />;
   }
 
   if (error) {
