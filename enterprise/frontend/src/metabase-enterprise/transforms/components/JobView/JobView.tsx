@@ -2,7 +2,6 @@ import { Stack } from "metabase/ui";
 import type { ScheduleDisplayType, TransformTagId } from "metabase-types/api";
 
 import { DependenciesSection } from "./DependenciesSection";
-import { HeaderSection } from "./HeaderSection";
 import { ManageSection } from "./ManageSection";
 import { NameSection } from "./NameSection";
 import { SaveSection } from "./SaveSection";
@@ -29,9 +28,8 @@ export function JobView({
   onTagListChange,
 }: JobPageProps) {
   return (
-    <Stack gap="3.5rem" data-testid="job-view">
+    <Stack gap="3.5rem" data-testid="job-view" p="md">
       <Stack gap="lg">
-        <HeaderSection job={job} />
         <NameSection
           job={job}
           onNameChange={onNameChange}
