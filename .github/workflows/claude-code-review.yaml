@@ -27,6 +27,10 @@ jobs:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
+      - name: Fetch Community Clojure Style Guide
+        run: >-
+          curl https://raw.githubusercontent.com/bbatsov/clojure-style-guide/refs/heads/master/README.adoc -o clojure-style-guide.adoc
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -43,6 +47,9 @@ jobs:
             - Clear and correct comments explaining what the code is doing
 
             Note: The PR branch is already checked out in the current working directory.
+
+            Note: The Clojure Community Style Guide has been fetched and saved as an AsciiDoc file named
+            clojure-style-guide.adoc in the current working directory.
 
             Use `gh pr comment` for top-level feedback.
             Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.

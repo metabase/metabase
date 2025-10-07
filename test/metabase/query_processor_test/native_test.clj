@@ -69,6 +69,9 @@
                    :database (mt/id)
                    :type     :query}))))))))
 
+(deftest lets-see-if-you-like-this
+  (is (= 1 2)))
+
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     (mt/with-driver :h2
