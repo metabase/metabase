@@ -181,10 +181,6 @@ const SdkIframeEmbedView = ({
           title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
         };
 
-        if (settings.isStatic) {
-          return <StaticQuestion {...commonProps} key={rerenderKey} />;
-        }
-
         // note: to create a new question we need to render InteractiveQuestion
         if (settings.drills === false && settings.questionId !== "new") {
           // note: this disable drills but also removes the top toolbar
