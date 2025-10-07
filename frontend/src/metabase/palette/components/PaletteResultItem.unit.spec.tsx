@@ -132,7 +132,7 @@ describe("Mouse/keyboard interactions", () => {
       section: "search",
       keywords: "hedgehogs",
       icon: "link",
-      perform: () => { },
+      perform: () => {},
       extra: {
         href: searchLocation,
       },
