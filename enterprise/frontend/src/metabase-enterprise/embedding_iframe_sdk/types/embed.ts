@@ -13,6 +13,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-package";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
 
@@ -62,9 +63,10 @@ export type SdkIframeEmbedReportAnalytics = {
 
 // --- Embed Option Interfaces ---
 
-export interface DashboardEmbedOptions {
+export type DashboardEmbedOptions = StrictUnion<
+  { dashboardId: number | string } | { token: string }
+> & {
   componentName: "metabase-dashboard";
-  dashboardId: number | string;
 
   drills?: boolean;
   withTitle?: boolean;
@@ -77,11 +79,12 @@ export interface DashboardEmbedOptions {
   // incompatible options
   template?: never;
   questionId?: never;
-}
+};
 
-export interface QuestionEmbedOptions {
+export type QuestionEmbedOptions = StrictUnion<
+  { questionId: number | string } | { token: string }
+> & {
   componentName: "metabase-question";
-  questionId: number | string;
 
   drills?: boolean;
   withTitle?: boolean;
@@ -97,7 +100,7 @@ export interface QuestionEmbedOptions {
   // incompatible options
   template?: never;
   dashboardId?: never;
-}
+};
 
 export interface ExplorationEmbedOptions {
   componentName: "metabase-question";

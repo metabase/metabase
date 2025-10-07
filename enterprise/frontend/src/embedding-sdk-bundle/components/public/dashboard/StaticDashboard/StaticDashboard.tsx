@@ -30,7 +30,7 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
 
   return (
     <SdkDashboard
-      {...props}
+      {...(props as SdkDashboardProps)}
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled }) =>
         downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
