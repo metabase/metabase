@@ -705,7 +705,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
               key="save"
               disabled={!canSaveChanges}
               actionFn={handleSave}
-              normalText={question.isSaved() ? t`Save changes` : t`Save`}
+              normalText={t`Save`}
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
