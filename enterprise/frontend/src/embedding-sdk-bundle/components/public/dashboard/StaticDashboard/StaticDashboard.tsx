@@ -1,4 +1,3 @@
-import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
@@ -23,11 +22,6 @@ export type StaticDashboardProps = Omit<
 >;
 
 const StaticDashboardInner = (props: StaticDashboardProps) => {
-  const { entityId: dashboardId, token } = useExtractEntityIdFromJwtToken({
-    entityId: props.dashboardId,
-    token: props.token ?? undefined,
-  });
-
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({
       question,
@@ -37,8 +31,6 @@ const StaticDashboardInner = (props: StaticDashboardProps) => {
   return (
     <SdkDashboard
       {...(props as SdkDashboardProps)}
-      dashboardId={dashboardId}
-      token={token}
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled }) =>
         downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
