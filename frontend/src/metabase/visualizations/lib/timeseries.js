@@ -1,5 +1,3 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 const TIMESERIES_UNITS = new Set([
@@ -11,6 +9,15 @@ const TIMESERIES_UNITS = new Set([
   "quarter",
   "year", // https://github.com/metabase/metabase/issues/1992
 ]);
+
+// Comprehensive ISO 8601 regex pattern
+// Covers: YYYY-MM-DD, YYYY-MM-DD HH:mm:ss, YYYY-MM-DDTHH:mm:ss, with optional timezone, compact formats, week dates, ordinal dates
+const ISO_8601_REGEX =
+  /^(\d{4})-?(\d{2})-?(\d{2})([ T](\d{2}):?(\d{2}):?(\d{2})(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$|^(\d{4})-W(\d{2})(-(\d))?$|^(\d{4})-(\d{3})$/;
+
+function isValidISO8601(dateString) {
+  return ISO_8601_REGEX.test(dateString);
+}
 
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
   if (dimensionIsExplicitTimeseries({ cols, rows }, i)) {
@@ -32,7 +39,7 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
       return false;
     }
 
-    if (!moment(value, moment.ISO_8601).isValid()) {
+    if (!isValidISO8601(value)) {
       return false;
     }
   }

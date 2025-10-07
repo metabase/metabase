@@ -15,6 +15,7 @@ describe("visualization.lib.timeseries", () => {
       "2016-W06",
       "2016-W06-5",
       "2016-043",
+      "2024-06-28 00:00:00",
     ];
 
     const NOT_DATES = ["100", "100 %", "scanner 005"];
