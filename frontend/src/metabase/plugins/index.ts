@@ -708,14 +708,14 @@ type PluginMetabotConfig = {
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
   preventRetryMessage?: boolean;
-  suggestionModels: (SearchModel | "transform" | "user")[];
+  suggestionModels?: (SearchModel | "transform" | "user")[];
 };
 
 type PluginMetabotType = {
   isEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
-    w?: string,
+    w?: string;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
   defaultMetabotContextValue: MetabotContext;
