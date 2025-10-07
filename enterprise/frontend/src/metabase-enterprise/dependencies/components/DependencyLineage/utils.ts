@@ -2,6 +2,7 @@ import dagre from "@dagrejs/dagre";
 import type { Edge } from "@xyflow/react";
 import { match } from "ts-pattern";
 
+import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
@@ -116,5 +117,24 @@ export function getNodeIcon(node: DependencyNode): IconName {
     .with({ type: "table" }, () => "table")
     .with({ type: "transform" }, () => "refresh_downstream")
     .with({ type: "snippet" }, () => "sql")
+    .exhaustive();
+}
+
+export function getNodeLink(node: DependencyNode): string | undefined {
+  return match(node)
+    .with({ type: "card" }, (node) =>
+      Urls.question({
+        id: node.id,
+        name: node.data.name,
+        type: node.data.type,
+      }),
+    )
+    .with(
+      { type: "table" },
+      (node) =>
+        `/admin/datamodel/database/${node.data.db_id}/schema/${node.data.db_id}:${encodeURIComponent(node.data.schema ?? "")}/table/${node.id}`,
+    )
+    .with({ type: "transform" }, (node) => `/admin/transforms/${node.id}`)
+    .with({ type: "snippet" }, () => undefined)
     .exhaustive();
 }
