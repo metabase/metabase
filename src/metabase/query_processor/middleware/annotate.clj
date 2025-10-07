@@ -93,16 +93,17 @@
    rf
    [(base-type-inferer metadata)]
    (fn combine [result base-types]
-     (let [cols' (mapv (fn [col base-type]
-                         (assoc col
-                                :base_type      base-type
-                                :effective_type base-type
-                                :field_ref      [:field (:name col) {:base-type base-type}]))
-                       (:cols metadata)
-                       base-types)]
+     (let [incoming-cols (when (map? result)
+                           (-> result :data :cols))]
        (rf (cond-> result
-             (map? result)
-             (assoc-in [:data :cols] cols')))))))
+             (= (count incoming-cols) (count base-types))
+             (assoc-in [:data :cols] (mapv (fn [col base-type]
+                                             (assoc col
+                                                    :base_type      base-type
+                                                    :effective_type base-type
+                                                    :field_ref      [:field (:name col) {:base-type base-type}]))
+                                           incoming-cols
+                                           base-types))))))))
 
 (mu/defn- add-column-info-with-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query
