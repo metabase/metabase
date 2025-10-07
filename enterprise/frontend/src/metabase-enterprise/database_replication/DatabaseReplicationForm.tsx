@@ -12,7 +12,6 @@ import {
   FormSubmitButton,
   FormTextarea,
 } from "metabase/forms";
-import { colors } from "metabase/lib/colors";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   Box,
@@ -428,9 +427,7 @@ export const DatabaseReplicationForm = ({
                     <Progress
                       value={storageUtilizationPercent}
                       color={
-                        previewResponse?.canSetReplication
-                          ? colors.success
-                          : colors.error
+                        previewResponse?.canSetReplication ? "success" : "error"
                       }
                     />
                   ) : (

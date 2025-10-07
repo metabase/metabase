@@ -45,17 +45,17 @@ describe("PaletteResultItem", () => {
   });
 
   it("icons should use provided colors when available", async () => {
-    setup({ item: { icon: "model", extra: { iconColor: "green" } } });
+    setup({ item: { icon: "model", extra: { iconColor: "accent1" } } });
 
     expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
       "color",
-      "green",
+      "var(--mb-color-accent1)",
     );
   });
 
   it("if active, icon color should always be white", async () => {
     setup({
-      item: { icon: "model", extra: { iconColor: "green" } },
+      item: { icon: "model", extra: { iconColor: "accent1" } },
       active: true,
     });
 

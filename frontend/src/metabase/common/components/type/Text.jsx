@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 import PropTypes from "prop-types";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 const Text = styled.div`
   color: ${(props) => color(`text-${props.color ?? "medium"}`)};
