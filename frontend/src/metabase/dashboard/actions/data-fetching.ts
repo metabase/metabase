@@ -1,7 +1,7 @@
 import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
@@ -609,25 +609,35 @@ function getDatasetQueryParams(datasetQuery: Partial<JsonQuery> = {}) {
       }))
       .sort(sortById) ?? [];
 
-  return match(datasetQuery)
-    .with({ type: "native" }, ({ native }) => ({
-      type: "native",
-      query: undefined,
-      native,
-      parameters,
-    }))
-    .with({ type: "query" }, ({ query }) => ({
-      type: "query",
-      query,
-      native: undefined,
-      parameters,
-    }))
-    .otherwise(() => ({
-      type: undefined,
-      native: undefined,
-      query: undefined,
-      parameters: [],
-    }));
+  return (
+    match(datasetQuery)
+      .with({ type: "native" }, ({ native }) => ({
+        type: "native",
+        query: undefined,
+        native,
+        parameters,
+      }))
+      .with({ type: "query" }, ({ query }) => ({
+        type: "query",
+        query,
+        native: undefined,
+        parameters,
+      }))
+      // TODO Alex P - major hack
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      .with({ stages: P.nonNullable }, ({ stages }) => ({
+        type: "stages",
+        stages,
+        parameters,
+      }))
+      .otherwise(() => ({
+        type: undefined,
+        native: undefined,
+        query: undefined,
+        parameters: [],
+      }))
+  );
 }
 
 function sortById(a: UiParameter, b: UiParameter) {
