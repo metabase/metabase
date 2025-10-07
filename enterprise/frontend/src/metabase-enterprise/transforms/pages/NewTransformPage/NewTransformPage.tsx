@@ -18,12 +18,15 @@ import type {
   CardId,
   DatasetQuery,
   DraftTransform,
-  DraftTransformSource,
   Transform,
   TransformSource,
 } from "metabase-types/api";
 
-import { QueryEditor, QueryEditorProvider } from "../../components/QueryEditor";
+import { QueryEditor } from "../../components/QueryEditor";
+import {
+  type TransformEditorValue,
+  useQueryEditor,
+} from "../../hooks/use-query-editor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 import { TransformDrawer } from "../TransformPage";
 
@@ -105,10 +108,7 @@ export function NewTransformPageInner({
     acceptProposed,
     clearProposed,
     isDirty,
-  } = useSourceState<TransformSource | DraftTransformSource>(
-    undefined,
-    initialSource,
-  );
+  } = useSourceState(undefined, initialSource);
 
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
@@ -144,11 +144,10 @@ export function NewTransformPageInner({
     acceptProposed(source);
   };
 
+  const queryEditor = useQueryEditor(source.query, proposedSource?.query);
+
   return (
-    <QueryEditorProvider
-      initialQuery={source.query}
-      proposedQuery={proposedSource?.query}
-    >
+    <>
       <PanelGroup
         autoSaveId="transforms-editor-panel-layout"
         direction="vertical"
@@ -163,11 +162,12 @@ export function NewTransformPageInner({
             onCancel={handleCancel}
             onRejectProposed={clearProposed}
             onAcceptProposed={handleAcceptProposed}
+            queryEditor={queryEditor}
           />
         </Panel>
         <ResizeHandle direction="vertical" />
         <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-          <TransformDrawer transform={{ source }} />
+          <TransformDrawer transform={{ source }} queryEditor={queryEditor} />
         </Panel>
       </PanelGroup>
 
@@ -181,11 +181,12 @@ export function NewTransformPageInner({
       )}
       <LeaveRouteConfirmModal
         key={location.key}
-        isEnabled={isDirty}
+        // TODO: make this calc correct
+        isEnabled={isDirty && !isModalOpened}
         route={route}
         onConfirm={clearProposed}
       />
-    </QueryEditorProvider>
+    </>
   );
 }
 
@@ -197,6 +198,7 @@ interface NewTransformEditorBody {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: TransformSource) => void;
+  queryEditor: TransformEditorValue;
 }
 
 function NewTransformEditorBody({
@@ -207,6 +209,7 @@ function NewTransformEditorBody({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
+  queryEditor,
 }: NewTransformEditorBody) {
   if (initialSource.type === "python") {
     return (
@@ -237,6 +240,7 @@ function NewTransformEditorBody({
       onChange={onChange}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
+      queryEditor={queryEditor}
     />
   );
 }

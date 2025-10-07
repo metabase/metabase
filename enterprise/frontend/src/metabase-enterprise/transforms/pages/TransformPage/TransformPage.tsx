@@ -6,10 +6,13 @@ import { skipToken } from "metabase/api";
 import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { Box, Card, Tabs } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
-import { QueryEditorProvider } from "metabase-enterprise/transforms/components/QueryEditor";
+import {
+  type TransformEditorValue,
+  useQueryEditor,
+} from "metabase-enterprise/transforms/hooks/use-query-editor";
+import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
@@ -37,7 +40,7 @@ type TransformPageProps = {
   params: TransformPageParams;
 };
 
-export function TransformPage({ params, isNew }: TransformPageProps) {
+export function TransformPage({ params }: TransformPageProps) {
   const { transformId } = getParsedParams(params);
   const [isPolling, setIsPolling] = useState(false);
   const {
@@ -53,12 +56,6 @@ export function TransformPage({ params, isNew }: TransformPageProps) {
     setIsPolling(isPollingNeeded(transform));
   }
 
-  useRegisterMetabotContextProvider(async () => {
-    return transform
-      ? { user_is_viewing: [{ type: "transform", ...transform }] }
-      : {};
-  }, [transform]);
-
   if (isLoading || isFetching || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -67,36 +64,57 @@ export function TransformPage({ params, isNew }: TransformPageProps) {
     return <LoadingAndErrorWrapper error={t`Not found.`} />;
   }
 
-  return (
-    <QueryEditorProvider initialQuery={transform.source.query}>
-      <PanelGroup
-        autoSaveId="transforms-editor-panel-layout"
-        direction="vertical"
-        style={{ height: "100%", width: "100%" }}
-      >
-        <Panel>
-          <TransformQueryPage transform={transform} />
-        </Panel>
-        <ResizeHandle direction="vertical" />
-        <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-          <TransformDrawer transform={transform} />
-        </Panel>
-      </PanelGroup>
-    </QueryEditorProvider>
-  );
+  return <TransformPageInner transform={transform} />;
 }
 
-export function TransformDrawer({ transform }: { transform: Transform }) {
+const TransformPageInner = ({ transform }: { transform: Transform }) => {
+  const { setSource, proposedSource, acceptProposed, clearProposed } =
+    useSourceState(transform.id, transform.source);
+
+  // TODO: handle python transforms
+  const queryEditor = useQueryEditor(
+    transform.source.query,
+    proposedSource?.query,
+  );
+
+  return (
+    <PanelGroup
+      autoSaveId="transforms-editor-panel-layout"
+      direction="vertical"
+      style={{ height: "100%", width: "100%" }}
+    >
+      <Panel>
+        <TransformQueryPage
+          transform={transform}
+          setSource={setSource}
+          proposedSource={proposedSource}
+          acceptProposed={acceptProposed}
+          clearProposed={clearProposed}
+          queryEditor={queryEditor}
+        />
+      </Panel>
+      <ResizeHandle direction="vertical" />
+      <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
+        <TransformDrawer transform={transform} queryEditor={queryEditor} />
+      </Panel>
+    </PanelGroup>
+  );
+};
+
+export function TransformDrawer({
+  transform,
+  queryEditor,
+}: {
+  transform: Transform;
+  queryEditor: TransformEditorValue;
+}) {
   const isNew = !transform.id;
 
   return (
     <Card withBorder mx="sm" h="100%">
       <Tabs defaultValue="preview" variant="pills">
         <Tabs.List>
-          <Tabs.Tab
-            name={t`Preview`}
-            value="preview"
-          >{t`Preview`}</Tabs.Tab>
+          <Tabs.Tab name={t`Preview`} value="preview">{t`Preview`}</Tabs.Tab>
           {!isNew && (
             <>
               <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
@@ -110,7 +128,7 @@ export function TransformDrawer({ transform }: { transform: Transform }) {
         </Tabs.List>
         <Box p="md">
           <Tabs.Panel value="preview">
-            <QueryPreview />
+            <QueryPreview queryEditor={queryEditor} />
           </Tabs.Panel>
           {!isNew && (
             <>
@@ -128,7 +146,7 @@ export function TransformDrawer({ transform }: { transform: Transform }) {
         </Box>
       </Tabs>
     </Card>
-  )
+  );
 }
 
 function getParsedParams({

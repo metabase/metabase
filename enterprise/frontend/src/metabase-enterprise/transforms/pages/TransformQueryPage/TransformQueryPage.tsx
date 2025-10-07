@@ -8,24 +8,31 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
-import type {
-  DraftTransformSource,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
+import type { QueryEditorContextValue } from "metabase-enterprise/transforms/hooks/use-query-editor";
+import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
 
-export function TransformQueryPage({ transform }: { transform: Transform }) {
+export function TransformQueryPage({
+  transform,
+  setSource,
+  proposedSource,
+  acceptProposed,
+  clearProposed,
+  queryEditor,
+}: {
+  transform: Transform;
+  setSource: (source: TransformSource) => void;
+  proposedSource: TransformSource | undefined;
+  acceptProposed: (source: TransformSource) => void;
+  clearProposed: () => void;
+  queryEditor: QueryEditorContextValue;
+}) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const { setSource, proposedSource, acceptProposed, clearProposed } =
-    useSourceState<DraftTransformSource>(transform.id, transform.source);
 
   const {
     checkData,
@@ -85,14 +92,18 @@ export function TransformQueryPage({ transform }: { transform: Transform }) {
   return (
     <>
       <QueryEditor
+        transform={transform}
         initialSource={transform.source}
-        proposedSource={proposedSource}
+        proposedSource={
+          proposedSource?.type === "query" ? proposedSource : undefined
+        }
         isSaving={isSaving || isCheckingDependencies}
         onChange={setSource}
         onSave={handleSaveSource}
         onCancel={handleCancel}
         onRejectProposed={clearProposed}
         onAcceptProposed={acceptProposed}
+        queryEditor={queryEditor}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
