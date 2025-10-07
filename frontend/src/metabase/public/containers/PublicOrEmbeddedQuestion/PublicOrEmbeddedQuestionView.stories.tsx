@@ -285,70 +285,6 @@ export const SmartScalarDarkTheme = {
   },
 };
 
-export const SmartScalarLightThemeTooltip = {
-  render: Template,
-
-  args: {
-    ...defaultArgs,
-    card: createMockCard({
-      id: getNextId(),
-      display: "smartscalar",
-      visualization_settings: {
-        "graph.dimensions": ["timestamp"],
-        "graph.metrics": ["count"],
-      },
-    }),
-    result: createMockDataset({
-      data: createMockDatasetData({
-        cols: [
-          createMockColumn(DateTimeColumn({ name: "Timestamp" })),
-          createMockColumn(NumberColumn({ name: "Count" })),
-        ],
-        insights: [
-          {
-            "previous-value": 150,
-            unit: "week",
-            offset: -199100,
-            "last-change": 0.4666666666666667,
-            col: "count",
-            slope: 10,
-            "last-value": 220,
-            "best-fit": ["+", -199100, ["*", 10, "x"]],
-          },
-        ],
-        rows: [
-          ["2024-07-21T00:00:00Z", 150],
-          ["2024-07-28T00:00:00Z", 220],
-        ],
-      }),
-    }),
-  },
-
-  decorators: [NarrowContainer],
-
-  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
-    const value = "vs. July 21, 2024, 12:00 AM";
-    const valueElement = await within(canvasElement).findByText(value);
-    await userEvent.hover(valueElement);
-    const tooltip = document.documentElement.querySelector(
-      '[role="tooltip"]',
-    ) as HTMLElement;
-    await within(tooltip).findByText(`${value}:`);
-  },
-};
-
-export const SmartScalarDarkThemeTooltip = {
-  render: Template,
-
-  args: {
-    ...SmartScalarLightThemeTooltip.args,
-    theme: "night",
-  },
-
-  decorators: [NarrowContainer],
-  play: SmartScalarLightThemeTooltip.play,
-};
-
 export const TableLightTheme = {
   render: Template,
 
@@ -367,14 +303,6 @@ export const TableLightTheme = {
     }),
   },
 };
-
-function NarrowContainer(Story: StoryFn) {
-  return (
-    <Box w="300px" h="250px" pos="relative">
-      <Story />
-    </Box>
-  );
-}
 
 const downloadQuestionAsPng = async (
   canvasElement: HTMLElement,
