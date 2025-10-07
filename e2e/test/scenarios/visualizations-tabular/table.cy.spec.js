@@ -489,6 +489,36 @@ describe("scenarios > visualizations > table", () => {
     cy.tick(5000);
     cy.findByTestId("query-builder-main").findByText("Waiting for results...");
   });
+
+  it("should support 'Local symbol' in 'Currency label style' viz setting", () => {
+    H.openOrdersTable();
+
+    H.tableHeaderClick("Discount ($)");
+    H.popover().icon("gear").click();
+    cy.findByLabelText("Unit of currency").click();
+    cy.findByRole("option", { name: "New Zealand Dollar" }).click();
+    H.tableHeaderColumn("Discount (NZ$)").should("be.visible");
+    H.tableInteractive().findByText("6.42").should("be.visible");
+
+    H.popover().findByText("Local symbol ($)").should("be.visible").click();
+    H.tableHeaderColumn("Discount ($)").should("be.visible");
+    H.tableInteractive().findByText("6.42").should("be.visible");
+
+    H.popover().findByText("In every table cell").click();
+    H.tableHeaderColumn("Discount").should("be.visible");
+    H.tableInteractive().findByText("$6.42").should("be.visible");
+
+    cy.log(
+      "should still show the option if it's already selected but currency does not support it",
+    );
+    cy.findByLabelText("Unit of currency").click();
+    cy.findByRole("option", { name: "US Dollar" }).click();
+    H.popover().findByText("Local symbol ($)").should("be.visible");
+
+    cy.log("but should hide it once a valid option is selected");
+    H.popover().findByText("Symbol ($)").click();
+    H.popover().findByText("Local symbol ($)").should("not.exist");
+  });
 });
 
 describe("scenarios > visualizations > table > dashboards context", () => {
