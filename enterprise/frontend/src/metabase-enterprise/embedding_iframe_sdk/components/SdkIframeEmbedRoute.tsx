@@ -7,7 +7,7 @@ import { SdkBreadcrumbsProvider } from "embedding-sdk-bundle/components/private/
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { MetabotQuestion } from "embedding-sdk-bundle/components/public/MetabotQuestion";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
-import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
+import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import {
   InteractiveDashboard,
   StaticDashboard,
@@ -190,7 +190,7 @@ const SdkIframeEmbedView = ({
           isStatic: true,
         },
         (settings) => (
-          <StaticQuestionInternal
+          <StaticQuestion
             key={rerenderKey}
             token={settings.token}
             questionId={settings.questionId ?? null}
