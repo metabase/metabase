@@ -150,3 +150,283 @@ For effective REPL usage:
 
 - Be careful with parentheses counts when editing Clojure code
 - After EVERY change to Clojure code, verify readability with `-check-readable`
+
+## Code Conventions and Style Guide
+
+### Clojure and ClojureScript
+
+#### General Conventions
+
+- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/).
+
+- Prefer longer, more verbose names for functions and variables; avoid abbreviations unless they are well-known and
+  conventional in the Clojure world. `acc`, `i`, `pred`, `coll`, `n`, `s`, `k`, and `f` are examples of well-known
+  conventions; any Clojure developer has seen them before and can tell you what they mean. Avoid unconventional
+  abbreviations like `tbl` and unclear variable names like `zs'`. A good function or variable name should make its
+  purpose immediately clear.
+
+  ```clj
+  ;; too cryptic
+  (defn mayb+1 [n]
+    (when n
+      (inc n)))
+
+  ;; too verbose
+  (defn add-one-to-a-number-if-non-nil [n]
+    (when n
+      (inc n)))
+
+  ;; just right
+  (defn maybe-inc [n]
+    (when n
+      (inc n)))
+  ```
+
+  **Why?** Code is read many more times than it is written, and clearer variable names make using and tweaking your
+  code easier for others.
+
+- Avoid misleading variable and function names. The names of a variable or function should clearly and unambiguously
+  describe its purpose and match what it does.
+
+  ```clj
+  ;; bad
+  (defn nil-or-maplist? [v]     ; coll would be a better variable name because it's more specific
+    (or (nil? v)
+        (and (sequential? v)    ; v can actually be an array, vector, list, or lazy seq
+             (every? map? v))))
+
+  ;; good
+  (defn nil-or-sequence-of-maps? [coll]
+    (or (nil? coll)
+        (and (sequential? coll)
+             (every? map? coll))))
+  ```
+
+  **Why?** Poorly-named functions are prone to being used in cases where they're inappropriate or avoided in cases
+  when they would be suitable.
+
+- Pure function names should be nouns describing the value they return.
+
+  For example, a function to compute a user's age based on their birthdate should be called `age`, not `calculate-age`
+  or `get-age`.
+
+  **Why?** A pure function is one which can be replaced with its value without affecting the result, so the name
+  should reflect that.
+
+- Don't repeat the usual alias of the namespace a function belongs to in the name of a function itself.
+
+  ```clj
+  (ns metabase.config)
+
+  ;; bad
+  (defn config-is-dev? [] ...)
+
+  ;; good
+  (defn is-dev? [] ...)
+  ```
+
+  **Why?** It's obvious that `is-dev?` in the example above is referring to `dev`, because it's in the `config` namespace.
+  It's also needlessly noisy when using the function in another namespace:
+
+  ```clj
+  ;; bad
+  (when (config/config-is-dev?)
+    ...)
+
+  ;; good
+  (when (config/is-dev?)
+    ...)
+  ```
+
+  In some cases, following this rule will require you to use a `(:refer-clojure :exclude [...])` form in your namespace
+  declaration. This is acceptable, and should be taken as a sign that you're following this rule correctly.
+
+- Make everything `^:private` unless it is used elsewhere.
+
+  Don't make things public just for the sake of tests. Use the var form (e.g. `#'redshift/execute!`) instead in your
+  tests.
+
+  **Why?** It's much easier to read and refactor code when you know its scope is limited to the current namespace.
+
+- Tag variables with `:arglists` metadata if they are functions but wouldn't otherwise have it, such as when using
+  `def` to define partial functions or function compositions e.g.
+
+  ```clj
+  (def ^{:arglists '([n])} plus-one (partial + 1))
+  ```
+
+  **Why?* Good editors use this metadata show the expected arguments to a function as you're writing code.
+
+- Try to organize namespaces in such a way that you don't need to use `declare`. This usually means putting the public
+  portion of a namespace near the end of a file.
+
+  **Why?** Avoiding declare when unnecessary forces us to read and write code in a consistent manner, that is, from
+  top to bottom. When code is written in this consistent order we can safely assume referenced functions sit somewhere
+  above their reference in the namespace; this makes the code easier to navigate.
+
+- Don't mark things `^:const` unless you have a really good reason for doing so. Add a comment explaining why you
+  marked it `^:const`.
+
+- Every public var in Metabase must have a *useful* docstring. A useful docstring should clearly explain the purpose
+  of the function, its inputs and outputs, and anything else that is otherwise not immediately clear. If there are
+  other functions that have similar purposes, explain how the use-cases for this function differ.
+
+- Format docstrings according to Markdown conventions.
+
+- Mentions of other vars in docstrings should use `[[some-other-var]]` (for vars in the same namespace) or
+  `[[metabase.namespace/some-other-var]]` (for vars in a different namespace) instead of backticks; references in
+  docstrings should be valid (i.e., point to something that exists).
+
+- Judiciously use comments to explain sections of code that would not immediately be clear to someone else. Avoid
+  comments that do little more than repeat what the code already says.
+
+- Make sure to update comments and docstrings when you change the code they describe.
+
+- Comments that are on a line by themselves should start with two semicolons, unless they denote a new section of
+  code, in which case they should start with three; comments on the same line as code should start with a single
+  semicolon. You can use four semicolons to denote a new section of code.
+
+  ```clj
+  ;;;; UTIL FUNCTIONS
+
+  ;;; TODO (Cam 10/7/25) - this is a preposterous function
+  (defn call-twice [f x]
+    ;; here's another note
+    (f (f x))) ; should we make this configurable somehow?
+  ```
+
+- `TODO` comments should include the author and date, for example
+
+  ```clj
+  ;; TODO (Cam 10/7/25) -- this is a properly formatted TODO comment
+  (...)
+  ```
+
+- Break up larger functions (> 10 lines) whenever possible. Small functions are much easier to test, understand, and
+  tweak.
+
+- Try to keep lines 118 characters wide or less; use this as a guideline when formatting docstrings.
+
+- **No Blank Lines Within Definition Forms** Do not place blank lines in the middle of a function or macro definition.
+  An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case those
+  don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
+
+#### Tests
+
+- Large tests should be broken out into separate `deftest` forms when they consist of several logically separate test
+  cases.
+
+  ```clj
+  (deftest ^:parallel my-test
+    (testing "Some logically discrete test case"
+      (is ...)))
+
+  (deftest ^:parallel my-other-test
+    (testing "Another logically discrete test case"
+      (is ...)))
+
+  (deftest ^:parallel my-third-different-test
+    (testing "A third logically discrete test case"
+      (is ...)))
+
+  (deftest ^:parallel my-amazing-test
+    (testing "A fourth logically discrete test case"
+      (is ...)))
+  ```
+
+  is preferable to
+
+  ```clj
+  (deftest ^:parallel my-test
+    (testing "Some logically discrete test case"
+      (is ...))
+
+    (testing "Another logically discrete test case"
+      (is ...))
+
+    (testing "A third logically discrete test case"
+      (is ...))
+
+    (testing "A fourth logically discrete test case"
+      (is ...)))
+  ```
+
+- Mark pure function tests `^:parallel`.
+
+#### Modules
+
+- The backend codebase is broken out into separate modules.
+
+- An OSS follows the pattern `metabase.<module>.*` (for the Clojure namespace) and `src/metabase/<module>/**`(for the
+  source files) with tests inside the corresponding `test/metabase/<module>/` directory, e.g. the `dashboards` module
+  is everything inside `src/metabase/dashboards/` and `test/metabase/dashboards/`; it might have a
+  `metabase.dashboards.api` namespace that corresponds to the file `src/metabase/dashboards/api.clj`.
+
+- An EE module follows the pattern `metabase-enterprise.<module>.*` (for the Clojure namespaces) and
+  `enterprise/backend/src/metabase_enterprise/<module>/**` (for the source files). The module name uses the
+  `enterprise/` prefix. For example, `enterprise/billing` is everything in the
+  `enterprise/backend/src/metabase_enterprise/billing/` directory (for source code) and
+  `enterprise/backend/test/metabase_enterprise/billing/` (for tests); it might have a namespace called
+  `metabase-enterprise.billing.api` which corresponds to the file
+  `enterprise/backend/src/metabase_enterprise/billing/api.clj`.
+
+- REST API endpoints (defined by the `defendpoint` macro) should live in a `<module>.api` or `<module>.api.*`
+  namespace, e.g. `metabase.dashboards.api` or `metabase.dashboards.api.x`.
+
+- When you add a new API endpoint namespace, you need to add a mapping for it in `metabase.api-routes.routes`.
+
+- Put any functions used by other modules (the API meant for the rest of the backend code) in `<module>.core` .
+  `.core` should import stuff with Potemkin/ `metabase.util.namespace` and not be used inside the module itself. It’s
+  also nice to put a `:consistent-alias` entry for this namespace in the Kondo config.
+
+- Put Toucan models related to a feature in `<module>.models.*` and add mappings in `metabase.models.resolution`.
+
+- Put scheduled Quartz tasks in `<module>.task.*`.
+
+- Put event handlers (things that use the events subsystem in `metabase.events.core`) in `<module>.event.*`.
+
+- Put `defsetting`s (Settings) in `<module>.settings`.
+
+- Quartz tasks, event handlers, and Setttings all need to be loaded on launch, so if you have any of the above add
+  them to a `<module>.init` namespace and require it in `metabase[-enterprise].core.init`.
+
+- Don't try to cheat the module linters by using things like `#_{:clj-kondo/ignore [:metabase/modules]}`.
+
+#### Settings
+
+- Don't define configurable options that can only be set with environment variables; use an `:internal` `defsetting`
+  instead. We have lots of tooling around `defsetting`.
+
+#### REST API Endpoints
+
+- All new REST API Endpoints (defined by `defendpoint`) should have a response schema.
+
+  ```clj
+  ;;; BAD
+  (api.macros/defendpoint :get "/"
+    "Get a list of all transform tags."
+    ...)
+
+  ;;; GOOD
+  (api.macros/defendpoint :get "/" :- [:sequential ::whatever-this-returns]
+    "Get a list of all transform tags."
+    ...)
+  ```
+
+#### MBQL
+
+- No raw MBQL introspection or manipulation should be done outside of Lib (the `lib` and `lib-be` modules) or the
+  Query Processor (the `query-processor` module) modules. MBQL maps include the `:model/Card` `dataset_query`, you can
+  usually recognize it when you see a map with a `:database` key and either `:type` or `:lib/type`. You should treat
+  this map as an opaque object outside of the aforementioned modules; pretend you didn't know it has a `:database` or
+  `:type` key.
+
+- Use Lib and MBQL 5 in all new code instead of legacy MBQL; avoid use of the `legacy-mbql` module, or the
+  `metabase.query-processor.store` namespace. Any code that checks whether a query `:type` is `:native` or `:query` is
+  a gigantic code smell.
+
+#### Drivers
+
+- All new driver multimethods must be mentioned in `docs/developers-guide/driver-changelog.md`.
+
+- All new driver multimethods should use Lib-style kebab-cased metadata and MBQL 5 queries.
