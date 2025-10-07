@@ -2,6 +2,7 @@ import type { Location } from "history";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { BenchLayout } from "metabase/bench/components/BenchLayout";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Stack, Title } from "metabase/ui";
 import {
@@ -27,11 +28,13 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <div>
-      <Title order={1} mb="sm">{t`Runs`}</Title>
-      <Box mb="xl">{t`A list of when each transform ran.`}</Box>
-      <RunListPageBody params={params} />
-    </div>
+    <BenchLayout name="transform-runs">
+      <Box p="md">
+        <Title order={1} mb="sm">{t`Runs`}</Title>
+        <Box mb="xl">{t`A list of when each transform ran.`}</Box>
+        <RunListPageBody params={params} />
+      </Box>
+    </BenchLayout>
   );
 }
 
@@ -93,7 +96,7 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   return (
-    <Stack data-testid="run-list-page">
+    <Stack data-testid="run-list-page" style={{ overflow: "auto" }} h="100%">
       <RunFilterList params={params} transforms={transforms} tags={tags} />
       <RunList
         runs={data.data}
