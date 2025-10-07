@@ -142,7 +142,7 @@
   [:and
    [:ref :metabase.lib.schema.mbql-clause/clause]
    [:fn
-    {:error/message #(i18n/deferred-tru "Aggregations should contain at least one aggregation function.")
+    {:error/message #(i18n/tru "Aggregations should contain at least one aggregation function.")
      :error/friendly true}
     aggregation-expression?]])
 
