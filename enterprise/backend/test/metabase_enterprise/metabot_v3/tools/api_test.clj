@@ -1176,13 +1176,12 @@
       (testing "Normal call includes related_tables by default"
         (let [response (request {:table_id (mt/id :orders)})
               related-tables (get-in response [:structured_output :related_tables])]
-          (is (= [(mt/id :products) (mt/id :people)]
-                 (map :id related-tables))
+          (is (= (sort [(mt/id :products) (mt/id :people)])
+                 (sort (map :id related-tables)))
               "Should include tables related to Orders by foreign keys")
           (is (every? #(not (contains? % :related_tables)) related-tables)
-              "Related tables should not have nested related_tables"))
-
-        (testing "Without related tables"
-          (is (nil? (-> (request {:table_id (mt/id :orders)
-                                  :with_related_tables false})
-                        (get-in [:structured_output :related_tables])))))))))
+              "Related tables should not have nested related_tables")))
+      (testing "Without related tables"
+        (is (nil? (-> (request {:table_id (mt/id :orders)
+                                :with_related_tables false})
+                      (get-in [:structured_output :related_tables]))))))))
