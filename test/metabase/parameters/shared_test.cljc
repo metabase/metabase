@@ -400,17 +400,17 @@
                      :sectionId "string"}]]
     (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
       (is (= "CA, NY, and NJ"
-               (params/value-string (first parameters) "en"))))
+             (params/value-string (first parameters) "en"))))
 
     (testing "If a filter has a single default value, it is formatted appropriately"
       (is (= "Q1, 2021"
-               (params/value-string (second parameters) "en"))))))
+             (params/value-string (second parameters) "en"))))))
 
 (deftest param-val-or-default-test
   (let [param-val-or-default #'params/param-val-or-default]
     (testing "When the parameter’s :value key is missing, fallback to the :default key"
       (is (= "my default value"
-               (param-val-or-default {:default "my default value"}))))
+             (param-val-or-default {:default "my default value"}))))
     (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
       (is (nil? (param-val-or-default {:value nil :default "my default value"}))))))
 
@@ -424,8 +424,8 @@
                                                            :sectionId "location"}
                                                           "en"))]
       (is (= "contains CA"
-               (format-param ["CA"])))
+             (format-param ["CA"])))
       (is (= "contains CA or NY"
-               (format-param ["CA" "NY"])))
+             (format-param ["CA" "NY"])))
       (is (= "contains CA, NY, or NJ"
-               (format-param ["CA" "NY" "NJ"]))))))
+             (format-param ["CA" "NY" "NJ"]))))))
