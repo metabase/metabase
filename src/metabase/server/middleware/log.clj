@@ -195,7 +195,7 @@
   "The set of URIs that should not be logged."
   []
   (cond-> #{"/api/logger/logs"}
-    (not (server.settings/health-check-logging-enabled)) (conj "/api/health")))
+    (not (server.settings/health-check-logging-enabled)) (into #{"/api/health" "/livez" "/readyz"})))
 
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to /health or /logger/logs because they clutter up the logs (especially the window in admin) with

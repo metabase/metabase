@@ -61,7 +61,7 @@
 (defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
   (when (and (mdb/db-is-set-up?)
              (not (system/site-url))
-             (not= uri "/api/health")
+             (not (#{"/api/health" "/livez" "/readyz"} uri))
              (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/infof "Setting Metabase site URL to %s" site-url)

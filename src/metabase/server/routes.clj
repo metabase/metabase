@@ -60,6 +60,13 @@
   ([_request respond _raise]
    (respond (health-handler))))
 
+(defn- livez-handler
+  "Simple liveness probe that does not perform any database checks. Always returns 200 with the
+  same body format as `/api/health` when healthy."
+  ([] {:status 200, :body {:status "ok"}})
+  ([_request respond _raise]
+   (respond (livez-handler))))
+
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defroutes ^:private static-files-handler
   (GET "/embedding-sdk.js" request
@@ -91,6 +98,10 @@
    (GET "/favicon.ico" [] (response/resource-response (appearance/application-favicon-url)))
    ;; ^/api/health -> Health Check Endpoint
    (GET "/api/health" [] health-handler)
+   ;; ^/readyz -> Readiness probe (same implementation as /api/health)
+   (GET "/readyz" [] health-handler)
+   ;; ^/livez -> Liveness probe (no DB access)
+   (GET "/livez" [] livez-handler)
 
    ;; Handle CORS preflight requests for auth routes
    (OPTIONS "/auth/*" [] {:status 200 :body ""})
