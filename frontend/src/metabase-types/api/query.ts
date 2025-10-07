@@ -53,10 +53,11 @@ interface PublicNativeDatasetQuery {
   };
 }
 
-export type PublicDatasetQuery =
+export type LegacyPublicDatasetQuery =
   | PublicStructuredDatasetQuery
-  | PublicNativeDatasetQuery
-  | OpaqueDatasetQuery;
+  | PublicNativeDatasetQuery;
+
+export type PublicDatasetQuery = OpaqueDatasetQuery | LegacyPublicDatasetQuery;
 
 export const dateTimeAbsoluteUnits = [
   "minute",
