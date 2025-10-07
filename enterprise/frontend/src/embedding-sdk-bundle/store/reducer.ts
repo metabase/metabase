@@ -1,11 +1,18 @@
-import { createAction, createReducer } from "@reduxjs/toolkit";
+import {
+  type AsyncThunkAction,
+  createAction,
+  createReducer,
+} from "@reduxjs/toolkit";
 
 import { samlTokenStorage } from "embedding/auth-common";
 import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import type { SdkEventHandlersConfig } from "embedding-sdk-bundle/types/events";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk-bundle/types/refresh-token";
+import type {
+  MetabaseEmbeddingSessionToken,
+  MetabaseFetchRequestTokenFn,
+} from "embedding-sdk-bundle/types/refresh-token";
 import type { SdkErrorComponent } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -35,6 +42,10 @@ export const setFetchRefreshTokenFn =
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
+let refreshTokenPromise: ReturnType<
+  AsyncThunkAction<MetabaseEmbeddingSessionToken | null, unknown, any>
+> | null = null;
+
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
   async (
@@ -48,15 +59,30 @@ export const getOrRefreshSession = createAsyncThunk(
     // refreshes the page
     const storedAuthToken = samlTokenStorage.get();
     const state = getSessionTokenState(getState() as SdkStoreState);
-    const token = storedAuthToken ?? state?.token;
+    /**
+     * @see {@link https://github.com/metabase/metabase/pull/64238#discussion_r2394229266}
+     *
+     * TODO: I think this should be called session overall e.g. state.session
+     */
+    const session = storedAuthToken ?? state?.token;
 
-    const isTokenValid = token && token.exp * 1000 >= Date.now();
-
-    if (state.loading || isTokenValid) {
-      return token;
+    const shouldRefreshToken =
+      !session ||
+      (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
+    if (!shouldRefreshToken) {
+      return session;
     }
 
-    return dispatch(refreshTokenAsync(authConfig)).unwrap();
+    if (refreshTokenPromise) {
+      return refreshTokenPromise.unwrap();
+    }
+
+    refreshTokenPromise = dispatch(refreshTokenAsync(authConfig));
+    refreshTokenPromise.finally(() => {
+      refreshTokenPromise = null;
+    });
+
+    return refreshTokenPromise.unwrap();
   },
 );
 

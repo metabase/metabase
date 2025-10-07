@@ -87,8 +87,8 @@
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
-                         (log/error e "Error during serialization")
-                         (log/error (u/strip-error e "Error during serialization"))))))]
+                         (log/error e "Error during serialization export")
+                         (log/error (u/strip-error e "Error during serialization export"))))))]
     {:archive       (when (.exists dst)
                       dst)
      :log-file      (when (.exists log-file)
@@ -142,8 +142,8 @@
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
-                         (log/error e "Error during serialization")
-                         (log/error (u/strip-error e "Error during serialization"))))))]
+                         (log/error e "Error during serialization import")
+                         (log/error (u/strip-error e "Error during serialization import"))))))]
     {:log-file      log-file
      :status        (:status (ex-data @err))
      :error-message (when @err

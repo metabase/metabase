@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
@@ -10,7 +11,6 @@ import {
   LayoutIllustration,
   LayoutRoot,
 } from "./AuthLayout.styled";
-
 interface AuthLayoutProps {
   children?: ReactNode;
 }
@@ -20,13 +20,15 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
 
   return (
     <LayoutRoot data-testid="login-page">
-      {loginPageIllustration && (
-        <LayoutIllustration
-          data-testid="login-page-illustration"
-          backgroundImageSrc={loginPageIllustration.src}
-          isDefault={loginPageIllustration.isDefault}
-        />
-      )}
+      {loginPageIllustration &&
+        (loginPageIllustration.isDefault ? (
+          <LighthouseIllustration />
+        ) : (
+          <LayoutIllustration
+            data-testid="login-page-illustration"
+            backgroundImageSrc={loginPageIllustration.src}
+          />
+        ))}
       <LayoutBody>
         <LogoIcon height={65} />
         <LayoutCard>{children}</LayoutCard>

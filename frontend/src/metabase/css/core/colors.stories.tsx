@@ -39,7 +39,6 @@ const COLOR_NAMES = [
   "--mb-color-background-selected",
   "--mb-color-background-disabled",
   "--mb-color-background-inverse",
-  "--mb-color-background-brand",
   // other colors from css-variables.ts
   "--mb-color-brand-alpha-04",
   "--mb-color-brand-alpha-88",

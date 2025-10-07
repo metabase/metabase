@@ -2,7 +2,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
@@ -20,7 +19,7 @@
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentQueue)
-   (java.io BufferedWriter File OutputStream OutputStreamWriter)
+   (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
@@ -147,8 +146,9 @@
     :else
     v))
 
-(defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan]}]
-  (let [query    {:source-table table-id}]
+(defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan limit]}]
+  {:pre [(or (nil? limit) (pos-int? limit))]}
+  (let [query (cond-> {:source-table table-id} limit (assoc :limit limit))]
     (execute-mbql-query driver db-id query
                         (fn [{cols-meta :cols} reducible-rows]
                           (with-open [os (io/output-stream temp-file)]
@@ -174,7 +174,7 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code run-id table-name->id shared-storage]}]
+  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
 
@@ -184,8 +184,8 @@
 
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (* 30 60) ;; 30 mins harcoded for now
-                                  :request_id          run-id
+                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                  :request_id          (or request-id run-id)
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
                                   :events_url          (:url events)
@@ -204,17 +204,24 @@
                                    {:error string-if-error}))
                                string-if-error)))))
 
-;; temporary, we should not need to realize data/events files into memory longer term
-(defn read-output-objects
-  "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
+(defn read-events
+  "Returns a vector of event contents (or nil if the event file does not exist)"
   [{:keys [s3-client bucket-name objects]}]
-  (let [{:keys [output output-manifest events]} objects
-        output-content          (s3/read-to-string s3-client bucket-name (:path output) nil)
-        output-manifest-content (s3/read-to-string s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (s3/read-to-string s3-client bucket-name (:path events))]
-    {:output          output-content
-     :output-manifest (json/decode+kw output-manifest-content)
-     :events          (mapv json/decode+kw (str/split-lines events-content))}))
+  ;; note we expect :events to be a small file, limits ought to be enforced by the runner
+  (when-some [in (s3/open-object s3-client bucket-name (:path (:events objects)))]
+    (with-open [in in
+                rdr (io/reader in)]
+      (mapv json/decode+kw (line-seq rdr)))))
+
+(defn read-output-manifest
+  "Return the output manifest map. Returns nil if it does not exist."
+  [{:keys [s3-client bucket-name objects]}]
+  (json/decode+kw (s3/read-to-string s3-client bucket-name (:path (:output-manifest objects)) "{}")))
+
+(defn open-output
+  "Return an InputStream with the output jsonl contents. Close with .close. Returns nil if the object does not exist."
+  ^InputStream [{:keys [s3-client bucket-name objects]}]
+  (s3/open-object s3-client bucket-name (:path (:output objects))))
 
 (defn cancel-python-code-http-call!
   "Calls the /cancel endpoint of the python runner. Returns immediately."
@@ -245,7 +252,8 @@
   [{:keys [run-id
            shared-storage
            table-name->id
-           cancel-chan]}]
+           cancel-chan
+           limit]}]
   ;; TODO there's scope for some parallelism here, in particular across different databases
   (doseq [[table-name table-id] table-name->id
           :let [{:keys [s3-client bucket-name objects]} shared-storage
@@ -266,7 +274,8 @@
               :table-id    table-id
               :fields-meta fields-meta
               :temp-file   tmp-data-file
-              :cancel-chan cancel-chan}))
+              :cancel-chan cancel-chan
+              :limit       limit}))
 
           (with-open [writer (io/writer tmp-meta-file)]
             (json/encode-to manifest writer {}))

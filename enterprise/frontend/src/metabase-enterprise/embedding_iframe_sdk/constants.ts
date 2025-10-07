@@ -22,6 +22,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "theme",
     "locale",
     "preferredAuthMethod",
+    "fetchRequestToken",
     "useExistingUserSession",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
@@ -38,6 +39,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
+    "hiddenParameters",
     "drills",
     "entityTypes",
   ] satisfies (keyof QuestionEmbedOptions)[],
@@ -78,4 +80,7 @@ export type AllowedEmbedSettingKey =
 export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
+  "fetchRequestToken",
 ] as const satisfies AllowedEmbedSettingKey[];
+
+export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";

@@ -3,13 +3,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
-import ColorS from "metabase/css/core/colors.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
@@ -32,14 +30,8 @@ import S from "./Dashboard.module.css";
 import { Grid, ParametersList } from "./components";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const {
-    dashboard,
-    isEditing,
-    isFullscreen,
-    isSharing,
-    selectedTabId,
-    shouldRenderAsNightMode,
-  } = useDashboardContext();
+  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
+    useDashboardContext();
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -78,9 +70,6 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         S.DashboardLoadingAndErrorWrapper,
         {
           [DashboardS.DashboardFullscreen]: isFullscreen,
-          [DashboardS.DashboardNight]: shouldRenderAsNightMode,
-          [ParametersS.DashboardNight]: shouldRenderAsNightMode,
-          [ColorS.DashboardNight]: shouldRenderAsNightMode,
           [S.isFullHeight]: isFullHeight,
         },
       )}
@@ -100,7 +89,6 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
-            [S.isNightMode]: shouldRenderAsNightMode,
           },
         )}
         data-element-id="dashboard-header-container"

@@ -1,6 +1,10 @@
 import type {
+  BrowserEmbedOptions,
+  DashboardEmbedOptions,
+  ExplorationEmbedOptions,
+  MetabotEmbedOptions,
+  QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
-  SdkIframeEmbedTemplateSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { BaseRecentItem } from "metabase-types/api";
 
@@ -26,6 +30,17 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
   "name" | "description"
 > & { id: string | number };
 
+export type SdkIframeDashboardEmbedSettings = DashboardEmbedOptions;
+
+export type SdkIframeQuestionEmbedSettings = QuestionEmbedOptions;
+
+export type SdkIframeEmbedSetupTemplateSettings =
+  | SdkIframeDashboardEmbedSettings
+  | SdkIframeQuestionEmbedSettings
+  | ExplorationEmbedOptions
+  | BrowserEmbedOptions
+  | MetabotEmbedOptions;
+
 /**
  * Settings used by the embed setup route.
  * Excludes `instanceUrl` as it is derived dynamically from site-url.
@@ -34,4 +49,10 @@ export type SdkIframeEmbedSetupSettings = Omit<
   SdkIframeEmbedBaseSettings,
   "instanceUrl"
 > &
-  SdkIframeEmbedTemplateSettings;
+  SdkIframeEmbedSetupTemplateSettings;
+
+export type SdkIframeEmbedSetupUrlParams = {
+  authMethod?: string | null;
+  resourceType?: string | null;
+  resourceId?: string | null;
+};

@@ -60,7 +60,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("items in trash should have greyed out icons");
     collectionTable().within(() => {
-      cy.icon("model").should("have.css", "color", "rgb(148, 154, 171)");
+      cy.icon("model").should("have.css", "color", "rgba(7, 23, 34, 0.44)");
     });
 
     cy.log("there should not be pins in the trash");

@@ -9,6 +9,8 @@ summary: Getting started with Embedded Analytics JS for embedding Metabase entit
 
 Embedded analytics JS lets you embed Metabase entities like questions, dashboards, or even the query builder into your own application using customizable components.
 
+{% include shared/in-page-promo-embedding-workshop.html %}
+
 Embedded Analytics JS is a JavaScript library built on top of Metabase's [Embedded Analytics React SDK](./sdk/introduction.md). But it does not require using React or setting up full SDK embedding.
 Unlike with [interactive embedding](./interactive-embedding.md), where you embed the entire Metabase app in an iframe, Embedded Analytics JS lets you choose from a set of predefined components like a single chart, a dashboard with optional drill-through, or query builder, and customize those components.
 
@@ -145,6 +147,8 @@ To define the configuration that applies to every embed on the page, use the `de
 - `useExistingUserSession: true|false` (optional, for development only) - lets you preview the embed locally using your Metabase admin account session. Only supported in Google Chrome.
 
 - `apiKey: mb_YourAPIKey` (optional, for development only) - another way to preview embeds locally using an API key.
+
+- `fetchRequestToken: () => Promise<{ jwt: string }>` (optional) - you can customize how the SDK fetches the refresh token for JWT authentication by specifying the `fetchRequestToken` function. See [customizing JWT authentication](./sdk/authentication.md#customizing-jwt-authentication).
 
 ### Theming
 

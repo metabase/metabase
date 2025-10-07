@@ -1,5 +1,7 @@
+import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  getSignedJwtForUser,
   mockAuthSsoEndpointForSamlAuthProvider,
   stubWindowOpenForSamlPopup,
 } from "e2e/support/helpers/embedding-sdk-testing";
@@ -122,6 +124,62 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
 
     assertDashboardLoaded(frame);
+  });
+
+  it("can login via JWT and a custom fetch request token function", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      onVisitPage: (win) => {
+        (win as any).metabaseConfig = {
+          ...(win as any).metabaseConfig,
+          fetchRequestToken: async () => {
+            const jwt = await getSignedJwtForUser({ user: USERS.admin });
+
+            return { jwt };
+          },
+        };
+      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("shows error message if login via JWT and a custom fetch request token is failing", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      onVisitPage: (win) => {
+        (win as any).metabaseConfig = {
+          ...(win as any).metabaseConfig,
+          fetchRequestToken: async () => {
+            return { jwt: "" };
+          },
+        };
+      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+          },
+        },
+      ],
+    });
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .findByText(/Failed to fetch JWT token/)
+        .should("exist");
+    });
   });
 
   it("can login via SAML", () => {

@@ -8,7 +8,6 @@ import CS from "metabase/css/core/index.css";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
-import { trackEmbedWizardExperienceSelected } from "../analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   EMBED_FALLBACK_QUESTION_ID,
@@ -16,7 +15,7 @@ import {
 } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupExperience } from "../types";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { EnableEmbeddedAnalyticsCard } from "./EnableEmbeddedAnalyticsCard";
 
@@ -34,8 +33,6 @@ export const SelectEmbedExperienceStep = () => {
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
   ) => {
-    trackEmbedWizardExperienceSelected(experience);
-
     const persistedSettings = _.pick(
       settings,
       ALLOWED_EMBED_SETTING_KEYS_MAP.base,
@@ -58,7 +55,10 @@ export const SelectEmbedExperienceStep = () => {
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
-      ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
+      ...getDefaultSdkIframeEmbedSettings({
+        experience,
+        resourceId: defaultResourceId,
+      }),
     });
   };
 

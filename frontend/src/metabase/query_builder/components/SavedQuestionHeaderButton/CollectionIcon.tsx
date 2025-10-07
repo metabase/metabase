@@ -1,4 +1,3 @@
-import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
@@ -21,7 +20,7 @@ export const CollectionIcon = ({
 
   return (
     <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-      color={color("brand")}
+      c="brand"
       collection={collection}
       entity={question.type()}
     />

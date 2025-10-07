@@ -14,6 +14,7 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -1060,3 +1061,28 @@
       (t2/update! :model/Card card-id {:name "Updated"
                                        :verified-result-metadata? true})
       (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))
+
+(deftest native-query-search-indexing-test
+  (testing "native queries should have only query text indexed for search, not the full JSON structure (#64121)"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Test Native Card"
+                                              :dataset_query (dummy-dataset-query (mt/id))
+                                              :database_id   (mt/id)}]
+      (let [search-docs (->> (#'search.ingestion/spec-index-reducible "card" [:= :this.id card-id])
+                             (#'search.ingestion/query->documents)
+                             (into []))]
+        (is (= 1 (count search-docs)))
+        (let [doc (first search-docs)]
+          (testing "native-query field contains only the SQL text"
+            (is (= (-> (dummy-dataset-query (mt/id)) :native :query)
+                   (:native_query doc))))))))
+
+  (testing "non-native queries should have nil native-query field"
+    (mt/with-temp [:model/Card {card-id :id} {:name "Test MBQL Card"
+                                              :dataset_query (mt/mbql-query venues)}]
+      (let [search-docs (->> (#'search.ingestion/spec-index-reducible "card" [:= :this.id card-id])
+                             (#'search.ingestion/query->documents)
+                             (into []))]
+        (is (= 1 (count search-docs)))
+        (let [doc (first search-docs)]
+          (testing "native-query field is nil for non-native queries"
+            (is (nil? (:native_query doc)))))))))
