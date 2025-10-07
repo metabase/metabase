@@ -1,3 +1,6 @@
+import { goBack, goForward } from "react-router-redux";
+
+import { useDispatch } from "metabase/lib/redux";
 import { ActionIcon, Box, Group, Icon, TextInput } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
@@ -11,6 +14,8 @@ export function BenchAppBar({
   isSidebarOpen,
 }: BenchToolbarProps) {
   const metabot = useMetabotAgent();
+  const dispatch = useDispatch();
+
   return (
     <Box
       style={{
@@ -27,16 +32,16 @@ export function BenchAppBar({
         <ActionIcon onClick={onSidebarToggle}>
           <Icon name={isSidebarOpen ? "sidebar_open" : "sidebar_closed"} />
         </ActionIcon>
-        <ActionIcon variant="subtle" size="sm">
+        <ActionIcon variant="subtle" size="sm" onClick={() => dispatch(goBack())}>
           <Icon name="chevronleft" />
         </ActionIcon>
-        <ActionIcon variant="subtle" size="sm">
+        <ActionIcon variant="subtle" size="sm" onClick={() => dispatch(goForward())}>
           <Icon name="chevronright" />
         </ActionIcon>
       </Group>
 
       {/* Search input - centered with max-width */}
-      <TextInput
+      {/* <TextInput
         placeholder="Search..."
         leftSection={<Icon name="search" size={16} />}
         style={{
@@ -44,14 +49,14 @@ export function BenchAppBar({
           maxWidth: "600px",
           margin: "0 16px",
         }}
-      />
+      /> */}
 
       <Group gap="xs">
         <ActionIcon
           variant={metabot.visible ? "filled" : "subtle"}
           onClick={() => metabot.setVisible(!metabot.visible)}
         >
-          <Icon name="insight" />
+          <Icon name="metabot" />
         </ActionIcon>
       </Group>
     </Box>
