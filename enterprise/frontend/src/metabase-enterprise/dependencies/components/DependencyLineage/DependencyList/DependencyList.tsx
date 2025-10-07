@@ -1,6 +1,9 @@
+import { useDebouncedValue } from "@mantine/hooks";
+import { memo, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   ActionIcon,
   Box,
@@ -22,8 +25,9 @@ import S from "./DependencyList.module.css";
 import type { LinkInfo } from "./types";
 import {
   getHeaderLabel,
-  getNodeSubtitle,
-  getNodeTitle,
+  getMatchingNodes,
+  getNodeSubtitleInfo,
+  getNodeTitleInfo,
   getRequest,
 } from "./utils";
 
@@ -39,23 +43,42 @@ export function DependencyList({
   const { data: nodes = [] } = useListNodeDependentsQuery(
     getRequest(selection),
   );
+  const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText] = useDebouncedValue(
+    searchText,
+    SEARCH_DEBOUNCE_DURATION,
+  );
+  const matchingNodes = useMemo(
+    () => getMatchingNodes(nodes, debouncedSearchText),
+    [nodes, debouncedSearchText],
+  );
 
   return (
     <Card p={0} shadow="none" withBorder>
-      <ListHeader selection={selection} onSelectionChange={onSelectionChange} />
-      {nodes.map((node) => (
-        <ListItem key={getNodeId(node.id, node.type)} node={node} />
-      ))}
+      <ListHeader
+        selection={selection}
+        searchText={searchText}
+        onSelectionChange={onSelectionChange}
+        onSearchTextChange={setSearchText}
+      />
+      <ListBody nodes={matchingNodes} />
     </Card>
   );
 }
 
 type ListHeaderProps = {
   selection: GraphSelection;
+  searchText: string;
   onSelectionChange: (selection?: GraphSelection) => void;
+  onSearchTextChange: (searchText: string) => void;
 };
 
-function ListHeader({ selection, onSelectionChange }: ListHeaderProps) {
+function ListHeader({
+  selection,
+  searchText,
+  onSelectionChange,
+  onSearchTextChange,
+}: ListHeaderProps) {
   return (
     <Stack pl="lg" pt="lg" pr="lg" gap="md">
       <Group wrap="nowrap">
@@ -66,30 +89,49 @@ function ListHeader({ selection, onSelectionChange }: ListHeaderProps) {
           <Icon name="close" />
         </ActionIcon>
       </Group>
-      <TextInput placeholder={t`Search`} leftSection={<Icon name="search" />} />
+      <TextInput
+        value={searchText}
+        placeholder={t`Search`}
+        leftSection={<Icon name="search" />}
+        onChange={(event) => onSearchTextChange(event.target.value)}
+      />
     </Stack>
   );
 }
+
+type ListBodyProps = {
+  nodes: DependencyNode[];
+};
+
+const ListBody = memo(function ListBody({ nodes }: ListBodyProps) {
+  return (
+    <div>
+      {nodes.map((node) => (
+        <ListItem key={getNodeId(node.id, node.type)} node={node} />
+      ))}
+    </div>
+  );
+});
 
 type ListItemProps = {
   node: DependencyNode;
 };
 
 function ListItem({ node }: ListItemProps) {
-  const titleLink = getNodeTitle(node);
-  const subtitleLink = getNodeSubtitle(node);
+  const titleInfo = getNodeTitleInfo(node);
+  const subtitleInfo = getNodeSubtitleInfo(node);
 
   return (
     <Flex
       className={S.item}
       component={Link}
-      to={titleLink.link ?? ""}
+      to={titleInfo.link ?? ""}
       direction="column"
       p="lg"
       gap="sm"
     >
-      <ListItemLink info={titleLink} />
-      {subtitleLink && <ListItemLink info={subtitleLink} isSecondary />}
+      <ListItemLink info={titleInfo} />
+      {subtitleInfo && <ListItemLink info={subtitleInfo} isSecondary />}
     </Flex>
   );
 }

@@ -27,6 +27,13 @@ export function getRequest(
   };
 }
 
+export function getMatchingNodes(nodes: DependencyNode[], searchText: string) {
+  const searchTextLowerCase = searchText.toLowerCase();
+  return nodes.filter((node) =>
+    getNodeLabel(node).toLowerCase().includes(searchTextLowerCase),
+  );
+}
+
 export function getHeaderLabel(selection: GraphSelection) {
   const nodeLabel = getNodeLabel(selection.node);
 
@@ -40,7 +47,7 @@ export function getHeaderLabel(selection: GraphSelection) {
     .exhaustive();
 }
 
-export function getNodeTitle(node: DependencyNode): LinkInfo {
+export function getNodeTitleInfo(node: DependencyNode): LinkInfo {
   return {
     label: getNodeLabel(node),
     icon: getNodeIcon(node),
@@ -48,7 +55,9 @@ export function getNodeTitle(node: DependencyNode): LinkInfo {
   };
 }
 
-export function getNodeSubtitle(node: DependencyNode): LinkInfo | undefined {
+export function getNodeSubtitleInfo(
+  node: DependencyNode,
+): LinkInfo | undefined {
   return match<DependencyNode, LinkInfo | undefined>(node)
     .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
       label: node.data.dashboard.name,
