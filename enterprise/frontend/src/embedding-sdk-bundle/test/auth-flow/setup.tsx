@@ -16,10 +16,13 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { MOCK_INSTANCE_URL } from "../mocks/sso";
 import { createMockLoginStatusState, createMockSdkState } from "../mocks/state";
 import { setupSdkState } from "../server-mocks/sdk-init";
+
+const MOCK_DB = createSampleDatabase();
 
 const MOCK_CARD = createMockCard({ id: 1 });
 
@@ -41,7 +44,10 @@ export const setup = ({
 }: Pick<MetabaseProviderProps, "authConfig" | "locale">) => {
   setupCardEndpoints(MOCK_CARD);
   setupCardQueryEndpoints(MOCK_CARD, MOCK_DATASET);
-  setupCardQueryMetadataEndpoint(MOCK_CARD, createMockCardQueryMetadata());
+  setupCardQueryMetadataEndpoint(
+    MOCK_CARD,
+    createMockCardQueryMetadata({ databases: [MOCK_DB] }),
+  );
 
   const { state } = setupSdkState({
     sdkState: createMockSdkState({

@@ -1,4 +1,3 @@
-import { updateIn } from "icepick";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -237,21 +236,15 @@ export default class NativeQuery {
     // template tags, and the order is determined by the key order
     // NOTE 2: currently cannot be ported to MBQL lib because maps with keys in
     // different order are considered equal.
-    return new NativeQuery(
-      this._question,
-      updateIn(
-        this._datasetQuery,
-        ["native", "template-tags"],
-        (templateTags: TemplateTags) => {
-          const entries = Array.from(Object.entries(templateTags));
+    const query = this._query();
+    const tags = this.templateTags();
+    const oldIndex = _.findIndex(tags, (tag) => tag.id === id);
 
-          const oldIndex = _.findIndex(entries, (entry) => entry[1].id === id);
+    const newTags = [...tags];
+    newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
+    const newTagsMap = Object.fromEntries(tags.map((tag) => [tag.id, tag]));
 
-          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
-          return _.object(entries);
-        },
-      ),
-    );
+    return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }
 
   lineCount(): number {

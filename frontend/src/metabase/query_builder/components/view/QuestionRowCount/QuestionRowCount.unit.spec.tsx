@@ -5,6 +5,7 @@ import {
   setupDatabasesEndpoints,
   setupUnauthorizedDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   fireEvent,
   renderWithProviders,
@@ -89,7 +90,13 @@ async function setup({
   });
 
   renderWithProviders(<QuestionRowCount />, {
-    storeInitialState: { qb: state },
+    storeInitialState: {
+      qb: state,
+      entities: createMockEntitiesState({
+        databases: isReadOnly ? [] : databases,
+        questions: "id" in card ? [card] : [],
+      }),
+    },
   });
 
   const rowCount = await screen.findByLabelText("Row count");
