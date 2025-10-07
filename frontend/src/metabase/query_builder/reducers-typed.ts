@@ -24,9 +24,6 @@ import {
 
 // the card that is actively being worked on
 export const card = createReducer<Card | null>(null, (builder) => {
-  // too much nested types
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
   builder
     .addCase(RESET_QB, () => null)
     .addCase(CLOSE_QB, () => null)
