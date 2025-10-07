@@ -61,7 +61,8 @@ export const ItemsListSection = ({
               size="compact-md"
               radius="xl"
               c="filter"
-              bg="color-mix(in srgb, var(--mb-color-filter), white 80%)"
+              bg="color-mix(in srgb, var(--mb-color-filter), var(--mb-color-white) 80%)"
+              bd="none"
               rightSection={
                 <Icon
                   name="chevrondown"
@@ -95,7 +96,8 @@ export const ItemsListSection = ({
               size="compact-md"
               radius="xl"
               c="filter"
-              bg="color-mix(in srgb, var(--mb-color-filter), white 80%)"
+              bg="color-mix(in srgb, var(--mb-color-filter), var(--mb-color-white) 80%)"
+              bd="none"
               rightSection={
                 <Icon
                   name="chevrondown"
