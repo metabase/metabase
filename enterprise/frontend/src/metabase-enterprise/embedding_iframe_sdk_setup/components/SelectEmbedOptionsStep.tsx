@@ -131,8 +131,7 @@ const ParametersSection = () => {
 };
 
 const AppearanceSection = () => {
-  const { experience, settings, updateSettings } =
-    useSdkIframeEmbedSetupContext();
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const { theme } = settings;
 
@@ -150,13 +149,20 @@ const AppearanceSection = () => {
     .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
     .with(
       { componentName: P.union("metabase-question", "metabase-dashboard") },
-      (settings) => (
-        <Checkbox
-          label={t`Show ${experience} title`}
-          checked={settings.withTitle}
-          onChange={(e) => updateSettings({ withTitle: e.target.checked })}
-        />
-      ),
+      (settings) => {
+        const label = match(settings.componentName)
+          .with("metabase-dashboard", () => t`Show dashboard title`)
+          .with("metabase-question", () => t`Show question title`)
+          .exhaustive();
+
+        return (
+          <Checkbox
+            label={label}
+            checked={settings.withTitle}
+            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+          />
+        );
+      },
     )
     .otherwise(() => null);
 
