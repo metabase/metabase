@@ -32,7 +32,7 @@ export function useTestPythonTransform(source: PythonTransformSourceDraft) {
     cancel,
     data: executionResult,
     executePython,
-  } = useRunPython<TransformData>(["numpy", "pandas"]);
+  } = useRunPython<TransformData>();
 
   const run = useCallback(async () => {
     const [sampleData, libraries] = await Promise.all([

@@ -29,21 +29,19 @@ type WorkerMessage = ReadyMessage | ResultsMessage | ErrorMessage;
 
 export class PyodideWorkerPool {
   workers: PyodideWorker[];
-  packages: string[];
 
-  constructor(packages: string[] = []) {
-    this.packages = packages;
-    this.workers = Array.from({ length: 5 }, () => new PyodideWorker(packages));
+  constructor() {
+    this.workers = Array.from({ length: 5 }, () => new PyodideWorker());
   }
 
   private getWorker(): PyodideWorker {
     // add a new worker to the pool so there is always at least one
-    this.workers.push(new PyodideWorker(this.packages));
+    this.workers.push(new PyodideWorker());
 
     // pick a worker that is ready if possible
     const idx = this.workers.findIndex((worker) => worker.isReady);
     const jdx = idx === -1 ? 0 : idx;
-    return this.workers.splice(jdx, 1)[0] ?? new PyodideWorker(this.packages);
+    return this.workers.splice(jdx, 1)[0] ?? new PyodideWorker();
   }
 
   async executePython<T>(
