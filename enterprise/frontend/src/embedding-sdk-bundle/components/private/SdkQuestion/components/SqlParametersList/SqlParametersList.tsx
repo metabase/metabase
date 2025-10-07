@@ -64,7 +64,10 @@ export const SqlParametersList = () => {
 
   return (
     <ResponsiveParametersList
-      className={SqlParametersListS.SqlParametersList}
+      classNames={{
+        container: SqlParametersListS.SqlParametersListContainer,
+        parametersList: SqlParametersListS.SqlParametersList,
+      }}
       cardId={question.id()}
       dashboardId={question.dashboardId() ?? undefined}
       parameters={parameters}

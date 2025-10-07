@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { ColorSchemeToggle } from "metabase/common/components/ColorSchemeToggle";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import FormInput from "metabase/common/components/FormInput";
@@ -10,6 +11,7 @@ import FormSelect from "metabase/common/components/FormSelect";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { Box, Flex, Text } from "metabase/ui";
 import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
@@ -53,49 +55,54 @@ const UserProfileForm = ({
   );
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      validationSchema={schema}
-      enableReinitialize
-      onSubmit={handleSubmit}
-    >
-      {({ dirty }) => (
-        <Form disabled={!dirty}>
-          {!isSsoUser && (
-            <>
-              <FormInput
-                name="first_name"
-                title={t`First name`}
-                placeholder={t`Johnny`}
-                nullable
+    <Box>
+      <ColorSchemeSwitcher />
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={schema}
+        enableReinitialize
+        onSubmit={handleSubmit}
+      >
+        {({ dirty }) => (
+          <Form disabled={!dirty}>
+            {!isSsoUser && (
+              <>
+                <FormInput
+                  name="first_name"
+                  title={t`First name`}
+                  placeholder={t`Johnny`}
+                  nullable
+                />
+                <FormInput
+                  name="last_name"
+                  title={t`Last name`}
+                  placeholder={t`Appleseed`}
+                  nullable
+                />
+                <FormInput
+                  name="email"
+                  type="email"
+                  title={t`Email`}
+                  placeholder="nicetoseeyou@email.com"
+                />
+              </>
+            )}
+            <div data-testid="user-locale-select">
+              <FormSelect
+                name="locale"
+                title={t`Language`}
+                options={localeOptions}
+                description={
+                  <CommunityLocalizationNotice isAdminView={false} />
+                }
               />
-              <FormInput
-                name="last_name"
-                title={t`Last name`}
-                placeholder={t`Appleseed`}
-                nullable
-              />
-              <FormInput
-                name="email"
-                type="email"
-                title={t`Email`}
-                placeholder="nicetoseeyou@email.com"
-              />
-            </>
-          )}
-          <div data-testid="user-locale-select">
-            <FormSelect
-              name="locale"
-              title={t`Language`}
-              options={localeOptions}
-              description={<CommunityLocalizationNotice isAdminView={false} />}
-            />
-          </div>
-          <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
-          <FormErrorMessage />
-        </Form>
-      )}
-    </FormProvider>
+            </div>
+            <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
+            <FormErrorMessage />
+          </Form>
+        )}
+      </FormProvider>
+    </Box>
   );
 };
 
@@ -106,6 +113,25 @@ const getLocaleOptions = (locales: LocaleData[] | null) => {
     .value();
 
   return [{ name: t`Use site default`, value: null }, ...options];
+};
+
+const ColorSchemeSwitcher = () => {
+  const toggleId = "color-switcher-toggle";
+  return (
+    <Box mb="lg">
+      {/* this font doesn't match because the old form component is at 12.3px 🙄 */}
+      <Text mt="xs" fw="bold" c="text-medium">
+        {t`Theme`}
+      </Text>
+
+      <Flex align="center" gap="sm" pt="sm">
+        <ColorSchemeToggle id={toggleId} />
+        <label style={{ cursor: "pointer" }} htmlFor={toggleId}>
+          <Text>{t`Toggle between light and dark color schemes`}</Text>
+        </label>
+      </Flex>
+    </Box>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

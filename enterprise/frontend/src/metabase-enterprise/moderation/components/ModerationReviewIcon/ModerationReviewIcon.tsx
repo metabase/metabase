@@ -1,4 +1,3 @@
-import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time-dayjs";
 import { Icon, Text, Tooltip } from "metabase/ui";
 import type { ModerationReview, User } from "metabase-types/api";
@@ -34,7 +33,7 @@ const ModerationReviewIcon = ({
 
   return (
     <Tooltip label={tooltip} disabled={!tooltip}>
-      <Icon color={color(iconColor)} flex="0 0 auto" name={iconName} />
+      <Icon c={iconColor} flex="0 0 auto" name={iconName} />
     </Tooltip>
   );
 };
