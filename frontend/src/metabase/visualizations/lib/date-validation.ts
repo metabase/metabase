@@ -1,4 +1,4 @@
-// A subset of https://en.wikipedia.org/wiki/ISO_8601
+// based on https://github.com/Garbee/Iso8601/blob/main/src/index.ts
 
 /**
  * Years are represented from the gregorian calendar only
