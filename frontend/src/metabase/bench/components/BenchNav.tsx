@@ -17,62 +17,66 @@ import {
   Text,
 } from "metabase/ui";
 
+
 export function BenchNav() {
   return (
-    <Stack
-      style={{
-        flexShrink: 0,
-        borderRight: "1px solid var(--mb-color-border)",
-      }}
-      gap="sm"
-      p="md"
-      h="100%"
-    >
-      <Box data-testid="sidebar-top">
-        <Box px="md" py="sm">
-          <BenchNavTitleMenu />
-        </Box>
-
-        <Stack px="md" gap="sm">
-          <BenchNavItem url="/bench/overview" icon="home" label={t`Overview`} />
-          <BenchNavItem
-            url="/bench/metadata"
-            icon="database"
-            label={t`Metadata`}
-          />
-          <Divider />
-          <BenchNavItem
-            url="/bench/transforms"
-            icon="sql"
-            label={t`Transforms`}
-          />
-          <Box pl="md">
-            <BenchNavItem
-              url="/bench/jobs"
-              icon="play_outlined"
-              label={t`Jobs`}
-            />
-            <BenchNavItem url="/bench/runs" icon="list" label={t`Runs`} />
+    <Box h="100%">
+      <Stack
+        style={{
+          flexShrink: 0,
+          borderRight: "1px solid var(--mb-color-border)",
+        }}
+        gap="sm"
+        p="md"
+        h="100%"
+      >
+        <Box data-testid="sidebar-top">
+          <Box px="md" py="sm">
+            <BenchNavTitleMenu />
           </Box>
-          <BenchNavItem
-            url="/bench/segment"
-            icon="filter"
-            label={t`Segments`}
-          />
+
+          <Stack px="md" gap="sm">
+            <BenchNavItem url="/bench/overview" icon="home" label={t`Overview`} />
+            <BenchNavItem
+              url="/bench/metadata"
+              icon="database"
+              label={t`Metadata`}
+            />
+            <Divider />
+            <BenchNavItem
+              url="/bench/transforms"
+              icon="sql"
+              label={t`Transforms`}
+            />
+            <Box pl="md">
+              <BenchNavItem
+                url="/bench/jobs"
+                icon="play_outlined"
+                label={t`Jobs`}
+              />
+              <BenchNavItem url="/bench/runs" icon="list" label={t`Runs`} />
+            </Box>
+            <BenchNavItem
+              url="/bench/segment"
+              icon="filter"
+              label={t`Segments`}
+            />
+            <Divider />
+            <BenchNavItem url="/bench/model" icon="model" label={t`Models`} />
+            <BenchNavItem url="/bench/metric" icon="metric" label={t`Metrics`} />
+          </Stack>
+        </Box>
+        <Stack data-testid="sidebar-bottom" px="md" gap="sm" mt="auto">
           <Divider />
-          <BenchNavItem url="/bench/model" icon="model" label={t`Models`} />
-          <BenchNavItem url="/bench/metric" icon="metric" label={t`Metrics`} />
+          <BenchNavItem
+            url="/bench/library/common.py"
+            icon="code_block"
+            label={t`Python Library`}
+          />
         </Stack>
-      </Box>
-      <Stack data-testid="sidebar-bottom" px="md" gap="sm" mt="auto">
-        <Divider />
-        <BenchNavItem
-          url="/bench/library/common.py"
-          icon="code_block"
-          label={t`Python Library`}
-        />
       </Stack>
-    </Stack>
+
+    </Box>
   );
 }
 
@@ -97,8 +101,9 @@ function BenchNavTitleMenu() {
             userSelect: "none",
           }}
           onClick={handleMenuToggle}
+          wrap="nowrap"
         >
-          <Text size="lg" fw="bold" c="brand">
+          <Text size="lg" fw="bold" c="brand" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {/* eslint-disable-next-line */}
             {t`Metabase Workbench`}
           </Text>

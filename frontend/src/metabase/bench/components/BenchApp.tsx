@@ -11,12 +11,15 @@ import { BenchNav } from "./BenchNav";
 
 export const ResizeHandle = ({
   direction = "horizontal",
+  handleSize = 8,
 }: {
   direction?: "horizontal" | "vertical";
+  handleSize?: number;
 }) => {
+
   const directionProps = {
-    horizontal: { cursor: "col-resize", height: "100%", width: 4 },
-    vertical: { cursor: "row-resize", height: 4, width: "100%" },
+    horizontal: { cursor: "col-resize", height: "100%", width: handleSize },
+    vertical: { cursor: "row-resize", width: "100%", height: handleSize },
   };
 
   return <PanelResizeHandle style={directionProps[direction]} />;
@@ -32,6 +35,7 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
           <>
             <Panel
               id="bench-nav"
+              order={1}
               collapsible={true}
               collapsedSize={5}
               minSize={10}
@@ -42,7 +46,7 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
             <ResizeHandle />
           </>
         )}
-        <Panel id="bench-main">{children}</Panel>
+        <Panel id="bench-main" order={2}>{children}</Panel>
         <BenchMetabot />
       </PanelGroup>
     </Stack>
@@ -58,7 +62,7 @@ function BenchMetabot() {
   return (
     <>
       <ResizeHandle />
-      <Panel id="bench-metabot" maxSize={30} style={{ height: "100%" }}>
+      <Panel id="bench-metabot" maxSize={30} style={{ height: "100%" }} order={9}>
         <PLUGIN_METABOT.Metabot
           w="100%"
           config={{ hideSuggestedPrompts: true }}
