@@ -1,6 +1,6 @@
-import type { DependencyCategory } from "metabase-types/api";
+import type { DependencyGroupType } from "metabase-types/api";
 
 export type DependentGroup = {
-  category: DependencyCategory;
+  type: DependencyGroupType;
   count: number;
 };

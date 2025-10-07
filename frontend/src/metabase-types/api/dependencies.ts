@@ -6,14 +6,14 @@ import type { Transform } from "./transform";
 export type DependencyId = number;
 
 export type DependencyType = "card" | "table" | "transform" | "snippet";
-export type DependencyCategory = CardType | Exclude<DependencyType, "card">;
+export type DependencyGroupType = CardType | Exclude<DependencyType, "card">;
 
 export type DependencyEntry = {
   id: DependencyId;
   type: DependencyType;
 };
 
-export type DependentStats = Partial<Record<DependencyCategory, number>>;
+export type DependentStats = Partial<Record<DependencyGroupType, number>>;
 
 type BaseDependencyNode<TType, TData> = {
   id: DependencyId;

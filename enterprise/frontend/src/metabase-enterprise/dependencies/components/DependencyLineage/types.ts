@@ -1,6 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 
-import type { DependencyCategory, DependencyNode } from "metabase-types/api";
+import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
 export type NodeId = string;
 export type EdgeId = string;
@@ -13,7 +13,7 @@ export type GraphData = {
 
 export type GraphSelection = {
   node: DependencyNode;
-  category: DependencyCategory;
+  type: DependencyGroupType;
 };
 
 export type GraphContextType = {

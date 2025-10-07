@@ -7,7 +7,14 @@ import {
 import { memo, useContext } from "react";
 import { t } from "ttag";
 
-import { Box, FixedSizeIcon, Group, Pill, Stack } from "metabase/ui";
+import {
+  Box,
+  FixedSizeIcon,
+  Group,
+  Pill,
+  Stack,
+  UnstyledButton,
+} from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { GraphContext } from "../GraphContext";
@@ -37,8 +44,8 @@ export const GraphNode = memo(function ItemNode({
           <>
             <Box c="text-secondary" fz="sm" lh="1rem">{t`Used by`}</Box>
             {groups.map((group) => (
-              <DependentGroupButton
-                key={group.category}
+              <DependencyGroupButton
+                key={group.type}
                 node={node}
                 group={group}
               />
@@ -52,25 +59,26 @@ export const GraphNode = memo(function ItemNode({
   );
 });
 
-type DependentGroupButtonProps = {
+type DependencyGroupButtonProps = {
   node: DependencyNode;
   group: DependentGroup;
 };
 
-function DependentGroupButton({ node, group }: DependentGroupButtonProps) {
+function DependencyGroupButton({ node, group }: DependencyGroupButtonProps) {
   const { selection, setSelection } = useContext(GraphContext);
   const isSelected =
     node.id === selection?.node.id &&
     node.type === selection?.node.type &&
-    group.category === selection.category;
+    group.type === selection.type;
 
   return (
     <Pill
-      key={group.category}
+      key={group.type}
+      component={UnstyledButton}
       c={isSelected ? "white" : "text-primary"}
       bg={isSelected ? "brand" : "bg-medium"}
       fw="normal"
-      onClick={() => setSelection({ node, category: group.category })}
+      onClick={() => setSelection({ node, type: group.type })}
     >
       {getDependentGroupLabel(group)}
     </Pill>
