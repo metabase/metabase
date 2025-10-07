@@ -185,7 +185,7 @@ export function getTableQuery(table: Table | undefined): Lib.Query | undefined {
 
   const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
 
-  return Lib.fromJsQuery(table.db_id, metadataProvider, {
+  return Lib.fromJsQuery(metadataProvider, {
     type: "query",
     database: table.db_id,
     query: {

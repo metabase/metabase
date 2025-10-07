@@ -39,6 +39,7 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
+  OpaqueDatasetQuery,
   ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
@@ -63,7 +64,7 @@ export type QuestionCreatorOpts = {
   name?: string;
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
-  dataset_query?: DatasetQuery;
+  dataset_query?: DatasetQuery | OpaqueDatasetQuery;
 };
 
 export type QuestionDashboardProps = {
@@ -205,12 +206,19 @@ class Question {
     return this;
   }
 
-  datasetQuery(): DatasetQuery {
+  datasetQuery(): DatasetQuery | OpaqueDatasetQuery {
     return this.card().dataset_query;
   }
 
-  setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
+  setDatasetQuery(
+    newDatasetQuery: DatasetQuery | OpaqueDatasetQuery,
+  ): Question {
     return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
+  }
+
+  isNative() {
+    const queryInfo = Lib.queryDisplayInfo(this.query());
+    return queryInfo.isNative;
   }
 
   /**
@@ -834,7 +842,6 @@ class Question {
     }
 
     this.__mlv2Query ??= Lib.fromJsQuery(
-      this.datasetQuery()?.database,
       this.metadataProvider(),
       this.datasetQuery(),
     );

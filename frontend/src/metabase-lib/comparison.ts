@@ -1,11 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatasetQuery, DimensionReference } from "metabase-types/api";
+import type {
+  DatasetQuery,
+  DimensionReference,
+  OpaqueDatasetQuery,
+} from "metabase-types/api";
 
 import type { ColumnMetadata, Query } from "./types";
 
 export function areLegacyQueriesEqual(
-  query1: DatasetQuery,
-  query2: DatasetQuery,
+  query1: DatasetQuery | OpaqueDatasetQuery,
+  query2: DatasetQuery | OpaqueDatasetQuery,
   fieldIds?: number[],
 ): boolean {
   return ML.query_EQ_(query1, query2, fieldIds);

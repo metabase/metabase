@@ -19,7 +19,12 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "./parameters";
-import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
+import type {
+  DatasetQuery,
+  FieldReference,
+  OpaqueDatasetQuery,
+  PublicDatasetQuery,
+} from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
@@ -32,8 +37,11 @@ type CreatorInfo = Pick<
   "first_name" | "last_name" | "email" | "id" | "common_name"
 >;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery | OpaqueDatasetQuery =
+    | DatasetQuery
+    | OpaqueDatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;
@@ -85,10 +93,14 @@ export interface PublicCard {
   display: CardDisplayType;
   visualization_settings: VisualizationSettings;
   parameters?: Parameter[];
-  dataset_query: PublicDatasetQuery;
+  dataset_query: PublicDatasetQuery | OpaqueDatasetQuery;
 }
 
-export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
+export interface UnsavedCard<
+  Q extends DatasetQuery | OpaqueDatasetQuery =
+    | DatasetQuery
+    | OpaqueDatasetQuery,
+> {
   display: VisualizationDisplay;
   dataset_query: Q;
   parameters?: Parameter[];

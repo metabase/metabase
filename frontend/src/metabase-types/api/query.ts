@@ -34,6 +34,12 @@ export interface NativeDatasetQuery {
 
 export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
 
+declare const OpaqueDatasetQuerySymbol: unique symbol;
+export type OpaqueDatasetQuery = unknown & {
+  database: DatabaseId | null;
+  _opaque: typeof OpaqueDatasetQuerySymbol;
+};
+
 interface PublicStructuredDatasetQuery {
   type: "query";
 }

@@ -14,16 +14,8 @@ describe("fromLegacyQuery", () => {
       SAMPLE_DATABASE.id,
       SAMPLE_METADATA,
     );
-    const query1 = Lib.fromJsQuery(
-      SAMPLE_DATABASE.id,
-      metadataProvider,
-      DEFAULT_QUERY,
-    );
-    const query2 = Lib.fromJsQuery(
-      SAMPLE_DATABASE.id,
-      metadataProvider,
-      DEFAULT_QUERY,
-    );
+    const query1 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
+    const query2 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
     expect(query1).toBe(query2);
   });
 });

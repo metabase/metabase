@@ -4,6 +4,7 @@ import type {
   CardType,
   DatabaseId,
   DatasetQuery,
+  OpaqueDatasetQuery,
   TableId,
 } from "metabase-types/api";
 
@@ -139,11 +140,11 @@ export function previewQuery(
 
 export function fromJsQuery(
   metadataProvider: MetadataProvider,
-  jsQuery: DatasetQuery,
+  jsQuery: OpaqueDatasetQuery | DatasetQuery,
 ): Query {
   return ML.js_to_query(metadataProvider, jsQuery);
 }
 
-export function toJsQuery(query: Query): DatasetQuery {
+export function toJsQuery(query: Query): OpaqueDatasetQuery {
   return ML.query_to_js(query);
 }
