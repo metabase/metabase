@@ -59,6 +59,7 @@
 
     .cm-cursor {
       border-left-width: 1.6px;
+      border-color: var(--mb-color-text-dark);
     }
 
     .cm-tooltip:not(.cm-tooltip-autocomplete) {
