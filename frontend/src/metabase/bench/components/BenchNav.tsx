@@ -17,7 +17,6 @@ import {
   Text,
 } from "metabase/ui";
 
-
 export function BenchNav() {
   return (
     <Box h="100%">
@@ -36,7 +35,11 @@ export function BenchNav() {
           </Box>
 
           <Stack px="md" gap="sm">
-            <BenchNavItem url="/bench/overview" icon="home" label={t`Overview`} />
+            <BenchNavItem
+              url="/bench/overview"
+              icon="home"
+              label={t`Overview`}
+            />
             <BenchNavItem
               url="/bench/metadata"
               icon="database"
@@ -63,7 +66,16 @@ export function BenchNav() {
             />
             <Divider />
             <BenchNavItem url="/bench/model" icon="model" label={t`Models`} />
-            <BenchNavItem url="/bench/metric" icon="metric" label={t`Metrics`} />
+            <BenchNavItem
+              url="/bench/metric"
+              icon="metric"
+              label={t`Metrics`}
+            />
+            <BenchNavItem
+              url="/bench/snippet"
+              icon="snippet"
+              label={t`Snippets`}
+            />
           </Stack>
         </Box>
         <Stack data-testid="sidebar-bottom" px="md" gap="sm" mt="auto">
@@ -75,7 +87,6 @@ export function BenchNav() {
           />
         </Stack>
       </Stack>
-
     </Box>
   );
 }
@@ -103,7 +114,16 @@ function BenchNavTitleMenu() {
           onClick={handleMenuToggle}
           wrap="nowrap"
         >
-          <Text size="lg" fw="bold" c="brand" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <Text
+            size="lg"
+            fw="bold"
+            c="brand"
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {/* eslint-disable-next-line */}
             {t`Metabase Workbench`}
           </Text>

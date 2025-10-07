@@ -34,7 +34,11 @@ export const ItemsListSection = ({
       <Flex justify="space-between" align="center" p="md">
         <Flex align="center" gap="sm">
           {onCollapse && (
-            <ActionIcon onClick={onCollapse} aria-label={t`Collapse`} color="brand">
+            <ActionIcon
+              onClick={onCollapse}
+              aria-label={t`Collapse`}
+              color="brand"
+            >
               <Icon name="arrow_left" c="brand" /> {}
             </ActionIcon>
           )}

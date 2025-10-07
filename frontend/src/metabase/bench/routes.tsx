@@ -18,6 +18,10 @@ import { EmptySailboat } from "./components/BenchLayout";
 import { OverviewPage } from "./components/OverviewPage";
 import { MetricEditor, MetricsLayout } from "./components/metrics/MetricsList";
 import { ModelEditor, ModelsLayout } from "./components/models/ModelsList";
+import {
+  SnippetEditor,
+  SnippetsLayout,
+} from "./components/snippets/SnippetsList";
 
 export const getBenchRoutes = () => (
   <Route path="/bench" component={IsAdmin}>
@@ -39,6 +43,11 @@ export const getBenchRoutes = () => (
       <Route path="metric" component={MetricsLayout}>
         <IndexRoute component={EmptySailboat} />
         <Route path=":slug" component={MetricEditor} />
+      </Route>
+      <Route path="snippet" component={SnippetsLayout}>
+        <IndexRoute component={EmptySailboat} />
+        <Route path="new" component={SnippetEditor} />
+        <Route path=":id" component={SnippetEditor} />
       </Route>
       <Route path="metadata">
         <Route title={t`Table Metadata`}>
