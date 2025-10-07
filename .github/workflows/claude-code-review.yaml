@@ -48,9 +48,6 @@ jobs:
 
             Note: The PR branch is already checked out in the current working directory.
 
-            Note: The Clojure Community Style Guide has been fetched and saved as an AsciiDoc file named
-            clojure-style-guide.adoc in the current working directory.
-
             Use `gh pr comment` for top-level feedback.
             Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
             Only post GitHub comments - don't submit review text as messages.

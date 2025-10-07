@@ -157,7 +157,9 @@ For effective REPL usage:
 
 #### General Conventions
 
-- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/).
+- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/). Claude: this guide may be
+  already be fetched and saved in the current working directory as an AsciiDoc file named `clojure-style-guide.adoc`;
+  read guidelines from it if it is present or note if you cannot.
 
 - Prefer longer, more verbose names for functions and variables; avoid abbreviations unless they are well-known and
   conventional in the Clojure world. `acc`, `i`, `pred`, `coll`, `n`, `s`, `k`, and `f` are examples of well-known
@@ -225,8 +227,8 @@ For effective REPL usage:
   (defn is-dev? [] ...)
   ```
 
-  **Why?** It's obvious that `is-dev?` in the example above is referring to `dev`, because it's in the `config` namespace.
-  It's also needlessly noisy when using the function in another namespace:
+  **Why?** It's obvious that `is-dev?` in the example above is referring to `dev`, because it's in the `config`
+  namespace. It's also needlessly noisy when using the function in another namespace:
 
   ```clj
   ;; bad
@@ -267,9 +269,12 @@ For effective REPL usage:
 - Don't mark things `^:const` unless you have a really good reason for doing so. Add a comment explaining why you
   marked it `^:const`.
 
-- Every public var in Metabase must have a *useful* docstring. A useful docstring should clearly explain the purpose
-  of the function, its inputs and outputs, and anything else that is otherwise not immediately clear. If there are
-  other functions that have similar purposes, explain how the use-cases for this function differ.
+- Every public var in `src` or `enterprise/backend/src` must have a *useful* docstring. A useful docstring
+  should clearly explain the purpose of the function, its inputs and outputs, and anything else that is otherwise not
+  immediately clear. If there are other functions that have similar purposes, explain how the use-cases for this
+  function differ.
+
+  Tests and other vars in the `test` or `enterprise/backend/test`.
 
 - Format docstrings according to Markdown conventions.
 
@@ -447,7 +452,7 @@ For effective REPL usage:
 
 - Put `defsetting`s (Settings) in `<module>.settings`.
 
-- Quartz tasks, event handlers, and Setttings all need to be loaded on launch, so if you have any of the above add
+- Quartz tasks, event handlers, and Settings all need to be loaded on launch, so if you have any of the above add
   them to a `<module>.init` namespace and require it in `metabase[-enterprise].core.init`.
 
 - Don't try to cheat the module linters by using things like `#_{:clj-kondo/ignore [:metabase/modules]}`.
