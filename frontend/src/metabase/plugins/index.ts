@@ -849,7 +849,11 @@ export const PLUGIN_TRANSFORMS: TransformsPlugin = {
 export const PLUGIN_GIT_SYNC: {
   LibraryNav: ComponentType;
   GitSyncSettings: ComponentType;
-  SyncedCollectionsSidebarSection: ComponentType;
+  SyncedCollectionsSidebarSection: ComponentType<{
+    syncedCollections: any[];
+    collectionItem: any;
+    onItemSelect: () => void;
+  }>;
   getGitSyncInvalidationTags: () => any[] | null;
 } = {
   LibraryNav: PluginPlaceholder,
