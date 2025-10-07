@@ -11,8 +11,8 @@
   threshold. See :notification/file-too-large and :notification/truncated?."
   (:require
    [clojure.java.io :as io]
-   [metabase.query-processor.schema :as qp.schema]
    [metabase.notification.settings :as notification.settings]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

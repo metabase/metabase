@@ -1949,6 +1949,5 @@
                  decimal?
                  ;; we don't have an easy way to recognize a datetime string. assuming if it's a string and query
                  ;; doesnt error then it worked
-                 string?
-                 ]
+                 string?]
                 (-> results :data :rows deref first)))))))
