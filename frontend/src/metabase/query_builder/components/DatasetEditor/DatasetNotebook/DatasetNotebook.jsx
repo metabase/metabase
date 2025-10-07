@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import PropTypes from "prop-types";
 import { forwardRef } from "react";
 import { ResizableBox } from "react-resizable";
@@ -62,7 +61,7 @@ export function DatasetNotebook({
 }) {
   return (
     <ResizableBox
-      className={cx(CS.borderTop, CS.flex)}
+      className={CS.flex}
       axis="y"
       handle={<Handle />}
       {...resizableBoxProps}
