@@ -1,7 +1,6 @@
 import type {
   CacheStrategy,
   LocalFieldReference,
-  OpaqueDatasetQuery,
   Parameter,
   ParameterValueOrArray,
   VisualizerColumnValueSource,
@@ -98,7 +97,7 @@ export interface DatasetData {
   };
 }
 
-export type JsonQuery = (DatasetQuery | OpaqueDatasetQuery) & {
+export type JsonQuery = DatasetQuery & {
   parameters?: Parameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */

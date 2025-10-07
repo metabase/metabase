@@ -38,9 +38,7 @@ type CreatorInfo = Pick<
 >;
 
 export interface Card<
-  Q extends DatasetQuery | OpaqueDatasetQuery =
-    | DatasetQuery
-    | OpaqueDatasetQuery,
+  Q extends DatasetQuery = DatasetQuery | OpaqueDatasetQuery,
 > extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
@@ -93,13 +91,11 @@ export interface PublicCard {
   display: CardDisplayType;
   visualization_settings: VisualizationSettings;
   parameters?: Parameter[];
-  dataset_query: PublicDatasetQuery | OpaqueDatasetQuery;
+  dataset_query: PublicDatasetQuery;
 }
 
 export interface UnsavedCard<
-  Q extends DatasetQuery | OpaqueDatasetQuery =
-    | DatasetQuery
-    | OpaqueDatasetQuery,
+  Q extends DatasetQuery = DatasetQuery | OpaqueDatasetQuery,
 > {
   display: VisualizationDisplay;
   dataset_query: Q;

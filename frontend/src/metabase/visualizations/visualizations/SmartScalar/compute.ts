@@ -21,8 +21,8 @@ import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
-  DatasetQuery,
   DateTimeAbsoluteUnit,
+  LegacyDatasetQuery,
   RowValue,
   RowValues,
   Series,
@@ -53,7 +53,7 @@ interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
-  queryType: DatasetQuery["type"];
+  queryType: LegacyDatasetQuery["type"];
 }
 
 interface MetricData {

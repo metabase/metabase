@@ -39,7 +39,6 @@ import type {
   DatasetQuery,
   Field,
   LastEditInfo,
-  OpaqueDatasetQuery,
   ParameterDimensionTarget,
   ParameterId,
   Parameter as ParameterObject,
@@ -64,7 +63,7 @@ export type QuestionCreatorOpts = {
   name?: string;
   display?: CardDisplayType;
   visualization_settings?: VisualizationSettings;
-  dataset_query?: DatasetQuery | OpaqueDatasetQuery;
+  dataset_query?: DatasetQuery;
 };
 
 export type QuestionDashboardProps = {
@@ -206,13 +205,11 @@ class Question {
     return this;
   }
 
-  datasetQuery(): DatasetQuery | OpaqueDatasetQuery {
+  datasetQuery(): DatasetQuery {
     return this.card().dataset_query;
   }
 
-  setDatasetQuery(
-    newDatasetQuery: DatasetQuery | OpaqueDatasetQuery,
-  ): Question {
+  setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
     return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
   }
 

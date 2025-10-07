@@ -7,7 +7,6 @@ import type {
   FieldValue,
   GetRemappedParameterValueRequest,
   NativeDatasetResponse,
-  OpaqueDatasetQuery,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -33,7 +32,7 @@ export const datasetApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     getAdhocQuery: builder.query<
       Dataset,
-      (DatasetQuery | OpaqueDatasetQuery) & RefetchDeps & IgnorableError
+      DatasetQuery & RefetchDeps & IgnorableError
     >({
       query: ({ _refetchDeps, ignore_error, ...body }) => ({
         method: "POST",
@@ -44,7 +43,7 @@ export const datasetApi = Api.injectEndpoints({
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
-      (DatasetQuery | OpaqueDatasetQuery) & {
+      DatasetQuery & {
         pivot_rows?: number[];
         pivot_cols?: number[];
         show_row_totals?: boolean;
@@ -59,10 +58,7 @@ export const datasetApi = Api.injectEndpoints({
         noEvent: ignore_error,
       }),
     }),
-    getAdhocQueryMetadata: builder.query<
-      CardQueryMetadata,
-      DatasetQuery | OpaqueDatasetQuery
-    >({
+    getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({
         method: "POST",
         url: "/api/dataset/query_metadata",
@@ -75,10 +71,7 @@ export const datasetApi = Api.injectEndpoints({
           dispatch(updateMetadata(data, QueryMetadataSchema)),
         ),
     }),
-    getNativeDataset: builder.query<
-      NativeDatasetResponse,
-      DatasetQuery | OpaqueDatasetQuery
-    >({
+    getNativeDataset: builder.query<NativeDatasetResponse, DatasetQuery>({
       query: (body) => ({
         method: "POST",
         url: "/api/dataset/native",

@@ -3,6 +3,7 @@ import type {
   CardId,
   CardType,
   DatasetQuery,
+  LegacyDatasetQuery,
   OpaqueDatasetQuery,
   TableId,
 } from "metabase-types/api";
@@ -31,7 +32,7 @@ export function queryFromTableOrCardMetadata(
   return ML.query(metadataProvider, tableOrCardMetadata);
 }
 
-export function toLegacyQuery(query: Query): DatasetQuery {
+export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
 }
 
