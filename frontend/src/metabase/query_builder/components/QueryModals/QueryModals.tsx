@@ -42,6 +42,7 @@ interface QueryModalsProps {
     question: Question,
     options?: OnCreateOptions,
   ) => Promise<Question>;
+  onCreateSuccess: (question: Question) => void;
   onSave: (
     question: Question,
     config?: { rerunQuery: boolean },
@@ -54,6 +55,7 @@ interface QueryModalsProps {
 export function QueryModals({
   onSave,
   onCreate,
+  onCreateSuccess,
   modal,
   modalContext,
   card,
@@ -119,6 +121,11 @@ export function QueryModals({
   const handleSaveModalCreate = useCallback(
     async (question: Question, options?: OnCreateOptions) => {
       const newQuestion = await onCreate(question, options);
+      if (onCreateSuccess) {
+        onCloseModal();
+        onCreateSuccess(newQuestion);
+        return newQuestion;
+      }
       const type = question.type();
       const isDashboardQuestion = _.isNumber(question.dashboardId());
 
@@ -139,6 +146,7 @@ export function QueryModals({
     [
       onCloseModal,
       onCreate,
+      onCreateSuccess,
       onOpenModal,
       setQueryBuilderMode,
       navigateToDashboardQuestionDashboard,

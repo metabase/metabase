@@ -670,7 +670,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   );
 
   return (
-    <>
+    <Flex h="100vh" direction="column">
       <Header
         className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
@@ -782,7 +782,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           onClose={handleCloseConfirmation}
         />
       )}
-    </>
+    </Flex>
   );
 };
 
