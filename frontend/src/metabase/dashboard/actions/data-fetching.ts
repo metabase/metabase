@@ -673,10 +673,19 @@ export const fetchDashboard = createAsyncThunk(
           })),
         };
       } else if (dashboardType === "embed") {
-        result = await EmbedApi.dashboard(
-          { token: dashId, dashboard_load_id: dashboardLoadId },
-          { cancelled: fetchDashboardCancellation.promise },
-        );
+        const [response] = await Promise.all([
+          EmbedApi.dashboard(
+            { token: dashId, dashboard_load_id: dashboardLoadId },
+            { cancelled: fetchDashboardCancellation.promise },
+          ),
+          entityCompatibleQuery(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
+          ),
+        ]);
+        result = response;
         result = {
           ...result,
           id: dashId,

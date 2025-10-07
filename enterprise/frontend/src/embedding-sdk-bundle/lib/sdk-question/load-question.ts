@@ -1,6 +1,5 @@
 import _ from "underscore";
 
-import { getIsStaticEmbedding } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
   SdkStoreState,
