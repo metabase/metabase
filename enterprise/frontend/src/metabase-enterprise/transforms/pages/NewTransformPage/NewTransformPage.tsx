@@ -36,7 +36,6 @@ import {
   getInitialTransformSource,
 } from "./utils";
 
-
 type NewTransformPageParams = {
   type?: string;
   cardId?: string;
@@ -146,7 +145,10 @@ export function NewTransformPageInner({
   };
 
   return (
-    <QueryEditorProvider initialQuery={source.query}>
+    <QueryEditorProvider
+      initialQuery={source.query}
+      proposedQuery={proposedSource?.query}
+    >
       <PanelGroup
         autoSaveId="transforms-editor-panel-layout"
         direction="vertical"

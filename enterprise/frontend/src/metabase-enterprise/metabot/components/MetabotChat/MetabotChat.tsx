@@ -7,7 +7,6 @@ import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
   Box,
-  type BoxProps,
   Button,
   Flex,
   Icon,
@@ -27,20 +26,19 @@ import { MetabotChatEditor } from "./MetabotChatEditor";
 import { Messages } from "./MetabotChatMessage";
 import { MetabotThinking } from "./MetabotThinking";
 import { useScrollManager } from "./hooks";
+import { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
 
-const defaultConfig: MetabotConfig = {
-  suggestionModels: [
-    "dataset",
-    "metric",
-    "card",
-    "table",
-    "database",
-    "dashboard",
-  ],
-};
+const defaultSuggesstionModels: SuggestionModel[] = [
+  "dataset",
+  "metric",
+  "card",
+  "table",
+  "database",
+  "dashboard",
+];
 
 export const MetabotChat = ({
-  config = defaultConfig,
+  config,
   w = "30rem",
 }: {
   config?: MetabotConfig;
@@ -106,7 +104,7 @@ export const MetabotChat = ({
                 <Icon c="text-primary" name="revert" />
               </ActionIcon>
             </Tooltip>
-            {!config.preventClose && (
+            {!config?.preventClose && (
               <ActionIcon
                 onClick={handleClose}
                 data-testid="metabot-close-chat"
@@ -136,11 +134,11 @@ export const MetabotChat = ({
               >
                 <Box component={EmptyDashboardBot} w="6rem" />
                 <Text c="text-light" maw="12rem" ta="center">
-                  {config.emptyText ??
+                  {config?.emptyText ??
                     t`I can help you explore your metrics and models.`}
                 </Text>
               </Flex>
-              {!config.hideSuggestedPrompts && (
+              {!config?.hideSuggestedPrompts && (
                 <Stack
                   gap="sm"
                   className={Styles.promptSuggestionsContainer}
@@ -206,7 +204,9 @@ export const MetabotChat = ({
               placeholder={t`Tell me to do something, or ask a question`}
               onChange={handleEditorChange}
               onSubmit={handleEditorSubmit}
-              suggestionModels={config.suggestionModels}
+              suggestionModels={
+                config?.suggestionModels ?? defaultSuggesstionModels
+              }
             />
           </Paper>
         </Box>
