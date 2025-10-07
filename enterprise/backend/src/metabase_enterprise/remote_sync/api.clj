@@ -89,6 +89,7 @@
   {:dirty (into []
                 (m/distinct-by (juxt :id :model))
                 (remote-sync.object/dirty-for-global))})
+                (remote-sync.object/dirty-for-global))})
 
 (api.macros/defendpoint :post "/export"
   "Export the current state of the Remote Sync collection to a Source
@@ -156,7 +157,7 @@
     (if (and (settings/remote-sync-enabled)
              (= :production (settings/remote-sync-type)))
       {:success true
-       :task_id (async-import! (settings/remote-sync-branch) false)}
+       :task_id (async-import! (settings/remote-sync-branch) true)}
       {:success true})
     (catch Exception e
       (throw (ex-info "Invalid git settings"
