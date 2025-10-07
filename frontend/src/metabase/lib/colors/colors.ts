@@ -509,7 +509,7 @@ export const colorConfig = {
   "tooltip-text-secondary": {
     //should be text-secondary-inverse
     light: baseColors.orionAlphaInverse[60],
-    dark: baseColors.orionAlpha[60],
+    dark: baseColors.orionAlphaInverse[60],
   },
   "tooltip-text": {
     light: baseColors.white,
