@@ -296,18 +296,14 @@
                                                                 :add-default-userland-constraints? false}
                                                   :make-run    (fn make-run [qp _export-format]
                                                                  (^:once fn* [query info]
-                                                                   (qp
-                                                                    (qp/userland-query query info)
-                                                                 ;; Pass streaming rff with 2000 row threshold
-                                                                 (notification.temp-storage/notification-rff
-                                                                  rows-to-disk-threshold
-                                                                  {:card-id card-id})))))))]
+                                                                  (qp
+                                                                   (qp/userland-query query info)
+                                                                   ;; Pass streaming rff with 2000 row threshold
+                                                                   (notification.temp-storage/notification-rff
+                                                                    rows-to-disk-threshold
+                                                                    {:card-id card-id})))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
      :result result
      :type   :card}))
-
-(comment
-  (type (get-in (execute-card 1 309) [:result :data :rows]))
-  )
