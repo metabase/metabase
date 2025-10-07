@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.yaml :as yaml]
+   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -53,13 +53,6 @@
     representation
     (update representation :type versioned-type)))
 
-(defmulti decode-data
-  "If any data is base64-encoded, decodes it."
-  {:arglists '[[entity]]}
-  :type)
-
-(defmethod decode-data :default [representation] representation)
-
 (defn normalize-representation
   "Ensures type is set correctly and de-encodes base64 if necessary."
   [representation]
@@ -68,7 +61,7 @@
       (let [schema (type->schema entity-type)]
         (if-not schema
           (throw (ex-info (str "Unknown type: " entity-type) {:type entity-type}))
-          (decode-data (mu/validate-throw schema representation'))))
+          (mu/validate-throw schema representation')))
       (throw (ex-info "Missing required field: type" {:representation representation})))))
 
 (defn order-representations
@@ -100,7 +93,7 @@
    Returns nil if the file cannot be parsed."
   [file]
   (try
-    (yaml/from-file file)
+    (rep-yaml/from-file file)
     (catch Exception e
       (log/error e "Failed to parse YAML file" file)
       nil)))
@@ -159,7 +152,7 @@
       (when (.isFile file)
         (try
           (let [valid-repr (-> (slurp file)
-                               (yaml/parse-string)
+                               (rep-yaml/parse-string)
                                (normalize-representation))
                 id (-> (:ref valid-repr)
                        (str/split #"-")

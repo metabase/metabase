@@ -46,15 +46,13 @@
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::mbql-query
-  [:or
-   {:description "MBQL query - either embedded map or ref to MBQL data"}
-   ::lib.schema.common/non-blank-string
-   :map])
+  [:and
+   {:description "MBQL query to execute"}
+   any?])
 
 (mr/def ::database
-  [:or
+  [:and
    {:description "Database reference: integer ID, name string, or ref string"}
-   :int
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::collection
@@ -127,15 +125,12 @@
       (v0-mbql/->ref-fields)))
 
 (defmethod export/export-entity :question [card]
-  (let [query (if export/*use-refs*
-                (patch-refs-for-export (:dataset_query card))
-                (:dataset_query card))
-        card-ref (v0-common/unref (v0-common/->ref (:id card) :question))
-        mbql-ref (str "mbql-" card-ref)]
-    (cond-> {:name (:name card)
-             :type (:type card)
-             :ref card-ref
-             :entity-id (:entity_id card)
+  (let [query    (patch-refs-for-export (:dataset_query card))
+        card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
+    (cond-> {:name        (:name card)
+             :type        (:type card)
+             :ref         card-ref
+             :entity-id   (:entity_id card)
              :description (:description card)}
 
       (= :native (:type query))
@@ -143,18 +138,8 @@
              :database (:database query))
 
       (= :query (:type query))
-      (assoc :mbql_query (str "ref:" mbql-ref)
+      (assoc :mbql_query (:query query)
              :database (:database query))
 
       :always
       u/remove-nils)))
-
-(defmethod export/export-mbql-data :question
-  [card]
-  (let [query (if export/*use-refs*
-                (patch-refs-for-export (:dataset_query card))
-                (:dataset_query card))]
-    (when (= :query (:type query))
-      (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :question))
-            mbql-ref (str "mbql-" card-ref)]
-        (v0-mbql/create-mbql-data mbql-ref (:query query) nil)))))
