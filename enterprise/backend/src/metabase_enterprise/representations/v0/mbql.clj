@@ -27,12 +27,10 @@
                    ;; map with database ref - resolve database and lookup table
                    (and (map? table-ref) (v0-common/ref? (:database table-ref)))
                    (let [db-id (v0-common/ref->id (:database table-ref) ref-index)
-
-                         table-id
-                         (t2/select-one-fn :id :model/Table
-                                           :db_id db-id
-                                           :schema (:schema table-ref)
-                                           :name (:table table-ref))]
+                         table-id (t2/select-one-fn :id :model/Table
+                                                    :db_id db-id
+                                                    :schema (:schema table-ref)
+                                                    :name (:table table-ref))]
                      (when (nil? table-id)
                        (throw (ex-info "Could not find matching table."
                                        {:table-ref table-ref})))
@@ -123,7 +121,7 @@
            (number? id)
            (let [field (t2/select-one :model/Field id)
                  tr (table-ref (:table_id field))]
-             (assoc tr :ref/field (:name field)))
+             (assoc tr :field (:name field)))
 
            :else
            node))
