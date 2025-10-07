@@ -686,9 +686,12 @@ function ensurePieChartRendered(rows, middleRows, outerRows, totalValue) {
     H.pieSlices().should("have.length", rowCount);
 
     // legend
-    rows.forEach((name, i) => {
-      cy.findAllByTestId("legend-item").contains(name).should("be.visible");
-    });
+    cy.findByTestId("chart-legend")
+      .find("li")
+      .should("have.length", rows.length)
+      .each(($el, i) => {
+        cy.wrap($el).should("contain.text", rows[i]).and("be.visible");
+      });
   });
 }
 
