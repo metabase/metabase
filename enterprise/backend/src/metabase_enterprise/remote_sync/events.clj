@@ -148,6 +148,36 @@
         (log/infof "Document %s moved out of remote-synced collection, marking as removed" (:id object))
         (create-remote-sync-object-entry! "Document" (:id object) "removed" user-id)))))
 
+;; Native query snippet events
+(derive ::snippet-change-event :metabase/event)
+(derive :event/snippet-create ::snippet-change-event)
+(derive :event/snippet-update ::snippet-change-event)
+(derive :event/snippet-delete ::snippet-change-event)
+
+(methodical/defmethod events/publish-event! ::snippet-change-event
+  [topic event]
+  (let [{:keys [object user-id]} event
+        in-remote-synced? (model-in-remote-synced-collection? object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id object))
+        status (if (:archived object)
+                 "delete"
+                 (case topic
+                   :event/snippet-create "create"
+                   :event/snippet-update "update"
+                   :event/snippet-delete "delete"))]
+    (cond
+      ;; Snippet is in a remote-synced collection - create or update entry
+      in-remote-synced?
+      (do
+        (log/infof "Creating remote sync object entry for snippet %s (status: %s)" (:id object) status)
+        (create-remote-sync-object-entry! "NativeQuerySnippet" (:id object) status user-id))
+
+      ;; Snippet was tracked but moved out of remote-synced collection - mark as removed
+      (and existing-entry (not in-remote-synced?))
+      (do
+        (log/infof "Snippet %s moved out of remote-synced collection, marking as removed" (:id object))
+        (create-remote-sync-object-entry! "NativeQuerySnippet" (:id object) "removed" user-id)))))
+
 ;; Collection create/update events - derive from common parent for shared handling
 (derive ::collection-change-event :metabase/event)
 (derive :event/collection-create ::collection-change-event)

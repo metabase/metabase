@@ -189,6 +189,7 @@
 
 (mr/def ::snippet
   [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
    [:object [:fn #(t2/instance-of? :model/NativeQuerySnippet %)]]])
 
 (mr/def :event/snippet-create ::snippet)
