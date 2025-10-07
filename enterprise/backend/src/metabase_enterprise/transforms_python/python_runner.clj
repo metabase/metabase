@@ -168,7 +168,7 @@
                                                       reducible-rows)]
                       (write-jsonl-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))]
     (execute-mbql-query driver db-id query respond cancel-chan)
-    (throw-if-cancelled cancel-chan)
+    (some-> cancel-chan throw-if-cancelled)
     nil))
 
 (defn get-logs
