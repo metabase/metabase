@@ -10,10 +10,10 @@ import type {
   DependencyId,
   DependencyNode,
   DependencyType,
-  DependentNode,
 } from "metabase-types/api";
 
-import type { EdgeId, GraphData, GraphNode, NodeId } from "./types";
+import S from "./DependencyLineage.module.css";
+import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
 
 function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
@@ -23,15 +23,13 @@ function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-function getNodes(
-  nodes: DependencyNode[],
-  entry: DependencyEntry,
-): GraphNode[] {
+function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
 
     return {
       id: nodeId,
+      className: S.node,
       type: "node",
       data: node,
       position: { x: 0, y: 0 },
@@ -70,9 +68,9 @@ export function getInitialGraph(
 }
 
 export function getNodesWithPositions(
-  nodes: GraphNode[],
+  nodes: NodeType[],
   edges: Edge[],
-): GraphNode[] {
+): NodeType[] {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({ rankdir: "LR" });
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -102,11 +100,11 @@ export function getNodesWithPositions(
   });
 }
 
-export function getNodeLabel(node: DependencyNode | DependentNode) {
+export function getNodeLabel(node: DependencyNode) {
   return node.type === "table" ? node.data.display_name : node.data.name;
 }
 
-export function getNodeIcon(node: DependencyNode | DependentNode): IconName {
+export function getNodeIcon(node: DependencyNode): IconName {
   switch (node.type) {
     case "card":
       switch (node.data.type) {

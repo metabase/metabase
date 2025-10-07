@@ -1,0 +1,11 @@
+.node {
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mb-color-bg-white);
+}
+
+:global(.selected) {
+  &.node {
+    border-color: var(--mb-color-brand);
+  }
+}

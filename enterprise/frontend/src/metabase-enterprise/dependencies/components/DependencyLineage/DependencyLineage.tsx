@@ -14,6 +14,7 @@ import { useEffect, useLayoutEffect, useState } from "react";
 import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 
 import { DataPicker } from "./DataPicker";
+import { DependencyList } from "./DependencyList";
 import { GraphContext } from "./GraphContext";
 import { GraphNode } from "./GraphNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
@@ -93,7 +94,7 @@ export function DependencyLineage({
       >
         <Background />
         <Controls />
-        <NodeLayout />
+        <GraphNodeLayout />
         <Panel position="top-left">
           <DataPicker
             graph={graph}
@@ -102,12 +103,17 @@ export function DependencyLineage({
             onEntryChange={onEntryChange}
           />
         </Panel>
+        {selection && (
+          <Panel position="top-right">
+            <DependencyList selection={selection} />
+          </Panel>
+        )}
       </ReactFlow>
     </GraphContext.Provider>
   );
 }
 
-function NodeLayout() {
+function GraphNodeLayout() {
   const { getNodes, getEdges, setNodes, fitView } = useReactFlow<NodeType>();
   const isInitialized = useNodesInitialized();
 
