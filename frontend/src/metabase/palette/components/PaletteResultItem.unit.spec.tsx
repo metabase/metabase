@@ -45,11 +45,11 @@ describe("PaletteResultItem", () => {
   });
 
   it("icons should use provided colors when available", async () => {
-    setup({ item: { icon: "model", extra: { iconColor: "green" } } });
+    setup({ item: { icon: "model", extra: { iconColor: "accent1" } } });
 
     expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
       "color",
-      "green",
+      "var(--mb-color-accent1)",
     );
   });
 
@@ -132,7 +132,7 @@ describe("Mouse/keyboard interactions", () => {
       section: "search",
       keywords: "hedgehogs",
       icon: "link",
-      perform: () => {},
+      perform: () => { },
       extra: {
         href: searchLocation,
       },

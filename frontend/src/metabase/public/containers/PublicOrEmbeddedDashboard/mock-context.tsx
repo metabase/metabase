@@ -81,24 +81,19 @@ export const MockDashboardContext = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
-  isNightMode = false,
   isFullscreen = false,
   dashboardActions = undefined,
   dashcardMenu = undefined,
   ...reduxProps
 }: PropsWithChildren<MockDashboardContextProps>) => {
-  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
-
   return (
     <ConnectedDashboardContextWithReduxProps
       dashboardId={dashboardId}
       parameterQueryParams={parameterQueryParams}
       onLoad={onLoad}
       onError={onError}
-      isNightMode={isNightMode}
       isFullscreen={isFullscreen}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      shouldRenderAsNightMode={shouldRenderAsNightMode}
       background={background}
       bordered={bordered}
       titled={titled}

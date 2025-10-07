@@ -25,5 +25,5 @@ export function useSdkIframeEmbedSnippet() {
       instanceUrl,
       experience,
     });
-  }, [instanceUrl, settings, experience, applicationColors]);
+  }, [settings, applicationColors, instanceUrl, experience]);
 }

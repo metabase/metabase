@@ -5,8 +5,8 @@ import { t } from "ttag";
 import ExpandingContent from "metabase/common/components/ExpandingContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
+import { color as c } from "metabase/ui/utils/colors";
 import type * as Lib from "metabase-lib";
 
 import type {
