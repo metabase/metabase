@@ -1,5 +1,6 @@
 import dagre from "@dagrejs/dagre";
 import type { Edge } from "@xyflow/react";
+import { match } from "ts-pattern";
 
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
@@ -105,25 +106,15 @@ export function getNodeLabel(node: DependencyNode) {
 }
 
 export function getNodeIcon(node: DependencyNode): IconName {
-  switch (node.type) {
-    case "card":
-      switch (node.data.type) {
-        case "question":
-          return visualizations.get(node.data.display)?.iconName ?? "table2";
-        case "model":
-          return "model";
-        case "metric":
-          return "metric";
-        default:
-          return "unknown";
-      }
-    case "table":
-      return "table";
-    case "snippet":
-      return "sql";
-    case "transform":
-      return "refresh_downstream";
-    default:
-      return "unknown";
-  }
+  return match<DependencyNode, IconName>(node)
+    .with(
+      { type: "card", data: { type: "question" } },
+      (node) => visualizations.get(node.data.display)?.iconName ?? "table2",
+    )
+    .with({ type: "card", data: { type: "model" } }, () => "model")
+    .with({ type: "card", data: { type: "metric" } }, () => "metric")
+    .with({ type: "table" }, () => "table")
+    .with({ type: "transform" }, () => "refresh_downstream")
+    .with({ type: "snippet" }, () => "sql")
+    .exhaustive();
 }

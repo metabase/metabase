@@ -105,7 +105,10 @@ export function DependencyLineage({
         </Panel>
         {selection && (
           <Panel position="top-right">
-            <DependencyList selection={selection} />
+            <DependencyList
+              selection={selection}
+              onSelectionChange={setSelection}
+            />
           </Panel>
         )}
       </ReactFlow>
