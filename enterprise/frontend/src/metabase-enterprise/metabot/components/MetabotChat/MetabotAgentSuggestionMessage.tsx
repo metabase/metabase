@@ -105,7 +105,7 @@ export const AgentSuggestionMessage = ({
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  const { suggestedTransform, editorTransform } = message.payload;
+  const { suggestedTransform } = message.payload;
   const isActive = useSelector((state) =>
     getIsSuggestedTransformActive(state, suggestedTransform.suggestionId),
   );
@@ -117,14 +117,14 @@ export const AgentSuggestionMessage = ({
     getTransformUrl(suggestedTransform),
   );
 
-  const canApply = !isViewing || !isActive;
-  const isNew = !isViewing && !editorTransform && suggestedTransform.id == null;
-
   const {
     data: originalTransform,
     isLoading,
     error,
   } = useGetOldTransform(message.payload);
+
+  const canApply = !isViewing || !isActive;
+  const isNew = !isViewing && !originalTransform;
 
   const oldSource = originalTransform
     ? getSourceCode(originalTransform, metadata)
@@ -140,7 +140,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="white"
+      bg="bg-white"
       style={{ border: `1px solid var(--mb-color-border)` }}
     >
       <Group
