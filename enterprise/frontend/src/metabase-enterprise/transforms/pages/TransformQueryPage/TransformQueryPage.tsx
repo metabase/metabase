@@ -8,7 +8,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import type { QueryEditorContextValue } from "metabase-enterprise/transforms/hooks/use-query-editor";
+import type { TransformEditorValue } from "metabase-enterprise/transforms/hooks/use-transform-editor";
 import type { Transform, TransformSource } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
@@ -20,14 +20,14 @@ export function TransformQueryPage({
   proposedSource,
   acceptProposed,
   clearProposed,
-  queryEditor,
+  transformEditor,
 }: {
   transform: Transform;
   setSource: (source: TransformSource) => void;
   proposedSource: TransformSource | undefined;
   acceptProposed: (source: TransformSource) => void;
   clearProposed: () => void;
-  queryEditor: QueryEditorContextValue;
+  transformEditor: TransformEditorValue;
 }) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -103,7 +103,7 @@ export function TransformQueryPage({
         onCancel={handleCancel}
         onRejectProposed={clearProposed}
         onAcceptProposed={acceptProposed}
-        queryEditor={queryEditor}
+        transformEditor={transformEditor}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
