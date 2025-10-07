@@ -8,6 +8,7 @@ import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
+const publicBase = "/api/public";
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
@@ -77,6 +78,8 @@ export async function runQuestionQuery(
     isDirty = false,
     ignoreCache = false,
     collectionPreview = false,
+    // Ability to override or add extra query params to the request, used by Embedding SDK
+    queryParamsOverride = {},
   } = {},
 ) {
   const canUseCardApiEndpoint = !isDirty && question.isSaved();
@@ -95,6 +98,7 @@ export async function runQuestionQuery(
       ignore_cache: ignoreCache,
       collection_preview: collectionPreview,
       parameters,
+      ...queryParamsOverride,
     };
 
     return [
@@ -159,26 +163,26 @@ export const CollectionsApi = {
   updateGraph: PUT("/api/collection/graph?skip-graph=true"),
 };
 
-const PIVOT_PUBLIC_PREFIX = "/api/public/pivot/";
+const PIVOT_PUBLIC_PREFIX = `${publicBase}/pivot/`;
 
 export const PublicApi = {
-  action: GET("/api/public/action/:uuid"),
+  action: GET(`${publicBase}/action/:uuid`),
   executeDashcardAction: POST(
-    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+    `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
-  executeAction: POST("/api/public/action/:uuid/execute"),
-  card: GET("/api/public/card/:uuid"),
-  cardQuery: GET("/api/public/card/:uuid/query"),
+  executeAction: POST(`${publicBase}/action/:uuid/execute`),
+  card: GET(`${publicBase}/card/:uuid`),
+  cardQuery: GET(`${publicBase}/card/:uuid/query`),
   cardQueryPivot: GET(PIVOT_PUBLIC_PREFIX + "card/:uuid/query"),
-  dashboard: GET("/api/public/dashboard/:uuid"),
+  dashboard: GET(`${publicBase}/dashboard/:uuid`),
   dashboardCardQuery: GET(
-    "/api/public/dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
+    `${publicBase}/dashboard/:uuid/dashcard/:dashcardId/card/:cardId`,
   ),
   dashboardCardQueryPivot: GET(
     PIVOT_PUBLIC_PREFIX + "dashboard/:uuid/dashcard/:dashcardId/card/:cardId",
   ),
   prefetchDashcardValues: GET(
-    "/api/public/dashboard/:dashboardId/dashcard/:dashcardId/execute",
+    `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
 };
 
@@ -338,26 +342,38 @@ export const GeoJSONApi = {
 };
 
 export function setPublicQuestionEndpoints(uuid) {
-  setCardEndpoints(`/api/public/card/${encodeURIComponent(uuid)}`);
+  const encodedUuid = encodeURIComponent(uuid);
+  setCardEndpoints({ base: publicBase, encodedUuid });
 }
 
 export function setPublicDashboardEndpoints(uuid) {
-  setDashboardEndpoints(`/api/public/dashboard/${encodeURIComponent(uuid)}`);
+  const encodedUuid = encodeURIComponent(uuid);
+  setDashboardEndpoints({ base: publicBase, encodedUuid });
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedQuestionEndpoints(token) {
-  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setCardEndpoints({ base: embedBase, encodedToken });
 }
 
+/**
+ * @param token {string}
+ */
 export function setEmbedDashboardEndpoints(token) {
-  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setDashboardEndpoints({ base: embedBase, encodedToken });
 }
 
 function GET_with(url, omitKeys) {
   return (data, options) => GET(url)({ ..._.omit(data, omitKeys) }, options);
 }
 
-function setCardEndpoints(prefix) {
+function setCardEndpoints({ base, encodedUuid, encodedToken }) {
+  const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
+
   // RTK query
   PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
@@ -372,7 +388,9 @@ function setCardEndpoints(prefix) {
   );
 }
 
-function setDashboardEndpoints(prefix) {
+function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
+  const prefix = `${base}/dashboard/${encodedUuid ?? encodedToken}`;
+
   // RTK query
   PLUGIN_API.getRemappedDashboardParameterValueUrl = (
     _dashboardId,
