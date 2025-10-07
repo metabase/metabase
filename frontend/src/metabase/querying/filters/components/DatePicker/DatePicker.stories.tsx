@@ -228,3 +228,44 @@ export const SpecificBetweenDarkTheme = merge(SpecificBetween, {
     theme: "dark",
   },
 });
+
+// Visual regression test for metabase#39487: calendar height should remain constant
+// when navigating between months with different row counts (4, 5, or 6 rows)
+export const SpecificBetweenShortMonth = {
+  render: Template,
+  args: {
+    value: {
+      type: "specific",
+      operator: "between",
+      values: [
+        new Date("2025-02-01T00:00:00.000Z"), // Feb 2025 has 4 rows
+        new Date("2025-02-15T00:00:00.000Z"),
+      ],
+      hasTime: false,
+    },
+    snapshotSize: {
+      width: 700,
+      height: 450,
+    },
+  },
+  decorators: [withMockDate],
+};
+
+export const SpecificBetweenLongMonth = {
+  render: Template,
+  args: {
+    value: {
+      type: "specific",
+      operator: "between",
+      values: [
+        new Date("2024-05-01T00:00:00.000Z"), // May 2024 has 6 rows
+        new Date("2024-05-15T00:00:00.000Z"),
+      ],
+      hasTime: false,
+    },
+    snapshotSize: {
+      width: 700,
+      height: 450,
+    },
+  },
+};
