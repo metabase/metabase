@@ -287,6 +287,10 @@ export const colorConfig = {
   "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[70] }, //should be background-tertiary-inverse
   "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //should be background-secondary-inverse
   "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[90] }, //should be background-error
+  "background-error": {
+    light: baseColors.lobster[10],
+    dark: baseColors.lobster[90],
+  }, //should be background-error
   "bg-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
   "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
   "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?
@@ -514,6 +518,16 @@ export const colorConfig = {
   warning: {
     light: baseColors.dubloon[30],
     dark: baseColors.dubloon[80],
+  },
+
+  "background-warning": {
+    light: baseColors.dubloon[10],
+    dark: baseColors.dubloon[60],
+  },
+
+  info: {
+    light: baseColors.orion[40],
+    dark: baseColors.orion[70],
   },
 
   white: {

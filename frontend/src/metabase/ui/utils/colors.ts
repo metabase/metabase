@@ -61,8 +61,12 @@ export function getThemeColors(
  * @returns string referencing a css variable
  */
 export function color(colorName: ColorName | string): string {
-  if (allColorNames.includes(colorName)) {
+  if (isColorName(colorName)) {
     return `var(--mb-color-${colorName})`;
   }
   return colorName;
 }
+
+export const isColorName = (name?: string | null): name is ColorName => {
+  return allColorNames.includes(name);
+};
