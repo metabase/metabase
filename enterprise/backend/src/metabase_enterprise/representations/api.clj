@@ -46,6 +46,15 @@
         (println (ex-message e))
         (pprint (ex-data e))))))
 
+(api.macros/defendpoint :get "/collection/:collection-id"
+  "Export all representations in a collection as a single yaml file"
+  [{:keys [collection-id]} :- :any
+   _
+   _
+   _]
+  (let [collection-id (Long/parseLong collection-id)]
+    (rep-yaml/generate-string (export/export-entire-collection collection-id))))
+
 (api.macros/defendpoint :post "/collection/:collection-id/export"
   "Export all representations in a collection to the local filesystem"
   [{:keys [collection-id]} :- :any
