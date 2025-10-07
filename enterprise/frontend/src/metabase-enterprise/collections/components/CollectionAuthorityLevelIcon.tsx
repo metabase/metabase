@@ -1,8 +1,8 @@
 /* eslint-disable react/prop-types */
 
-import { color } from "metabase/lib/colors";
 import type { CollectionAuthorityLevelIcon as CollectionAuthorityLevelIconComponent } from "metabase/plugins/index";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { AUTHORITY_LEVELS } from "../constants";
 import { isRegularCollection } from "../utils";

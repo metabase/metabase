@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import { colors } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 export const PermissionsEditorSplitPermsMessage = () => {
   const dispatch = useDispatch();
@@ -31,7 +31,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
       }}
     >
       <Alert
-        icon={<Icon name="info" size={16} color="var(--mb-color-text-dark)" />}
+        icon={<Icon name="info" size={16} c="text-dark" />}
         variant="light"
         p="1rem"
         styles={{
@@ -52,7 +52,7 @@ export const PermissionsEditorSplitPermsMessage = () => {
             fw="bold"
             target="_blank"
             href={docsUrl}
-            style={{ color: colors.accent7 }}
+            style={{ color: color("accent7") }}
           >{t`Learn more`}</Anchor>
         </Text>
       </Alert>

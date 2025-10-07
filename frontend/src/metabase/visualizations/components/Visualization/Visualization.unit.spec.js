@@ -157,7 +157,7 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("brand"))).toHaveLength(2);
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2);
       });
     });
 
@@ -180,7 +180,7 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("brand"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
         expect(chartPathsWithColor(color("accent1"))).toHaveLength(2); // "sum"
       });
     });
@@ -242,7 +242,7 @@ describe("Visualization", () => {
           },
         ]);
 
-        expect(chartPathsWithColor(color("brand"))).toHaveLength(2); // "count"
+        expect(chartPathsWithColor(color("accent0"))).toHaveLength(2); // "count"
         expect(chartPathsWithColor(color("accent2"))).toHaveLength(2); // "Card2"
       });
     });

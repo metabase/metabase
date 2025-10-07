@@ -27,7 +27,7 @@ import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
 import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
-const SdkIframeEmbedSetupContent = () => {
+export const SdkIframeEmbedSetupContent = () => {
   const [updateSettings] = useUpdateSettingsMutation();
   const { currentStep, settings } = useSdkIframeEmbedSetupContext();
 
@@ -59,7 +59,7 @@ const SdkIframeEmbedSetupContent = () => {
     ))
     .with("select-embed-options", () => (
       <Button variant="filled" onClick={handleNext}>
-        {t`Get Code`}
+        {t`Get code`}
       </Button>
     ))
     .otherwise(() => (

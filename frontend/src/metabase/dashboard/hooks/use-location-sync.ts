@@ -4,15 +4,13 @@ import { replace } from "react-router-redux";
 import { usePrevious } from "react-use";
 import { omit } from "underscore";
 
-import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch } from "metabase/lib/redux";
 import { isNullOrUndefined } from "metabase/lib/types";
 
-type SYNCED_KEY = "refresh" | "fullscreen" | "theme";
+type SYNCED_KEY = "refresh" | "fullscreen";
 
 const DEFAULT_SYNCED_DASHBOARD_OPTIONS = {
-  theme: DEFAULT_DASHBOARD_DISPLAY_OPTIONS.theme,
   fullscreen: false,
   refresh: null,
 } as const;

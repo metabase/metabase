@@ -1,6 +1,5 @@
-import { lighten } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { Flex, useMantineTheme } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
 import { CHANGE_TYPE_OPTIONS, type ComparisonResult } from "../compute";
@@ -19,7 +18,6 @@ export function PreviousValueComparisonTooltip({
   comparison,
   formatOptions,
 }: PreviousValueComparisonProps) {
-  const theme = useMantineTheme();
   const { changeType, comparisonValue, display } = comparison;
 
   const valueCandidates = [
@@ -32,11 +30,7 @@ export function PreviousValueComparisonTooltip({
 
   return (
     <Flex gap={TEXT_SPACING} align="flex-start">
-      <VariationPercent
-        color={lighten(theme.fn.themeColor("text-medium"), 0.3)}
-        comparison={comparison}
-        iconSize={TOOLTIP_ICON_SIZE}
-      >
+      <VariationPercent comparison={comparison} iconSize={TOOLTIP_ICON_SIZE}>
         {display.percentChange}
       </VariationPercent>
       <VariationDetails>

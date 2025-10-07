@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
 
-import { getIsNightMode } from "metabase/dashboard/selectors";
-import { lighten } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
-import { Flex, useMantineTheme } from "metabase/ui";
+import { Flex } from "metabase/ui";
 
 import type { ComparisonResult } from "../compute";
 
@@ -14,7 +11,7 @@ import {
 
 interface Props {
   children: ReactNode;
-  color: string;
+  color?: string;
   comparison: ComparisonResult;
   iconSize: string | number;
 }
@@ -25,15 +22,10 @@ export const VariationPercent = ({
   comparison,
   iconSize,
 }: Props) => {
-  const theme = useMantineTheme();
-  const isNightMode = useSelector(getIsNightMode);
   const { changeArrowIconName, changeColor } = comparison;
-  const noChangeColor = isNightMode
-    ? lighten(theme.fn.themeColor("text-medium"), 0.3)
-    : color;
 
   return (
-    <Flex align="center" maw="100%" c={changeColor ?? noChangeColor}>
+    <Flex align="center" maw="100%" c={changeColor ?? color}>
       {changeArrowIconName && (
         <VariationIcon name={changeArrowIconName} size={iconSize} />
       )}

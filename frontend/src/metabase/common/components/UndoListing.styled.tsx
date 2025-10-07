@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 
 import Card from "metabase/common/components/Card";
 import Link from "metabase/common/components/Link";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
 
@@ -65,14 +65,14 @@ export const DefaultText = styled.span`
 
 export const UndoButton = styled(Link)`
   font-weight: bold;
-  background-color: ${() => alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha("bg-white", 0.1)};
   padding: 4px 12px;
   margin-left: var(--mantine-spacing-sm);
   border-radius: 8px;
   white-space: nowrap; /* Prevents button from truncating message */
 
   :hover {
-    background-color: ${() => alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha("bg-white", 0.3)};
   }
 `;
 

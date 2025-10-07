@@ -1,10 +1,8 @@
-import cx from "classnames";
 import innerText from "react-innertext";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { formatValue } from "metabase/lib/formatting/value";
 import { measureTextWidth } from "metabase/lib/measure-text";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Badge, Flex, Group, Icon, Stack, Tooltip } from "metabase/ui";
 import type { ColumnSettings } from "metabase/visualizations/types";
 
@@ -119,14 +117,10 @@ export function PreviousValueComparison({
         justify="center"
         mx="sm"
         lh="1.2rem"
-        className={cx(
-          DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
-        )}
+        className={DashboardS.fullscreenNormalText}
       >
         <VariationPercent
-          color={"text-light"}
+          color="text-light"
           comparison={comparison}
           iconSize={ICON_SIZE}
         >
