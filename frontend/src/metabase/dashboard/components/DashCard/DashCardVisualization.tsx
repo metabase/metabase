@@ -311,8 +311,10 @@ export function DashCardVisualization({
     );
     const card = extendCardWithDashcardSettings(
       {
+        // Visualizer click handling code expect visualizer cards not to have card.id
+        name: dashcard.card.name,
+        description: dashcard.card.description,
         display,
-        name: settings["card.title"],
         visualization_settings: settings,
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
@@ -324,15 +326,7 @@ export function DashCardVisualization({
 
     const series: RawSeries = [
       {
-        card: extendCardWithDashcardSettings(
-          {
-            display,
-            name: settings["card.title"],
-            visualization_settings: settings,
-          } as Card,
-          _.omit(dashcard.visualization_settings, "visualization"),
-        ) as Card,
-
+        card,
         data: mergeVisualizerData({
           columns,
           columnValuesMapping,
