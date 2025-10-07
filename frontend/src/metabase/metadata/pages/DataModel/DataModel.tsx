@@ -22,7 +22,6 @@ import {
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
   TableSection,
 } from "./components";

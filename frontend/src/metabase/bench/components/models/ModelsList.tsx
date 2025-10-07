@@ -25,12 +25,12 @@ import { MetricEditor } from "../metrics/MetricsList";
 
 import S from "./ModelsList.module.css";
 
-function ModelsList({ params }: { params: { slug: string } }) {
+function ModelsList({ params }: { params: { modelId: string } }) {
   const { isLoading, data } = useFetchModels();
   const models = data?.data;
 
-  const selectedModelId = params.slug
-    ? Urls.extractEntityId(params.slug)
+  const selectedModelId = params.modelId
+    ? Urls.extractEntityId(params.modelId)
     : null;
 
   return (

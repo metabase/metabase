@@ -20,7 +20,7 @@ import { MetadataSection } from "./MetadataSection";
 import { useResponsiveButtons } from "./hooks";
 
 interface Props {
-  databaseId: DatabaseId;
+  databaseId?: DatabaseId | null | undefined; // null for models
   field: Field;
   table: Table;
   parent?: Field;
@@ -148,8 +148,16 @@ const FieldSectionBase = ({
 
       <Stack gap="xl" px="xl">
         <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} table={table} />
-        <BehaviorSection databaseId={databaseId} field={field} />
+        {databaseId && (
+          <MetadataSection
+            databaseId={databaseId}
+            field={field}
+            table={table}
+          />
+        )}
+        {databaseId && (
+          <BehaviorSection databaseId={databaseId} field={field} />
+        )}
         <FormattingSection field={field} />
       </Stack>
     </Stack>

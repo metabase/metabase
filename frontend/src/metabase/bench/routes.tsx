@@ -36,7 +36,7 @@ export const getBenchRoutes = () => (
         <Route path=":slug" component={ModelEditor} />
         <Route path=":modelId/metadata" component={ModelMetadata} />
         <Route
-          path=":modelId/metadata/field/:fieldId"
+          path=":modelId/metadata/field/:fieldName"
           component={ModelMetadata}
         />
       </Route>
