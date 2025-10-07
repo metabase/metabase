@@ -176,14 +176,14 @@
                                                             :add-default-userland-constraints? false}
                                             :make-run      (fn make-run [qp _export-format]
                                                              (^:once fn* [query info]
-                                                              (qp
-                                                               (qp/userland-query query info)
+                                                               (qp
+                                                                (qp/userland-query query info)
                                                                ;; Pass streaming rff with 2000 row threshold
-                                                               (notification.temp-storage/notification-rff
-                                                                rows-to-disk-threshold
-                                                                {:dashboard_id dashboard_id
-                                                                 :card_id card-id
-                                                                 :dashcard_id (u/the-id dashcard)}))))))})
+                                                                (notification.temp-storage/notification-rff
+                                                                 rows-to-disk-threshold
+                                                                 {:dashboard_id dashboard_id
+                                                                  :card_id card-id
+                                                                  :dashcard_id (u/the-id dashcard)}))))))})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -296,12 +296,12 @@
                                                                 :add-default-userland-constraints? false}
                                                   :make-run    (fn make-run [qp _export-format]
                                                                  (^:once fn* [query info]
-                                                                  (qp
-                                                                   (qp/userland-query query info)
+                                                                   (qp
+                                                                    (qp/userland-query query info)
                                                                    ;; Pass streaming rff with 2000 row threshold
-                                                                   (notification.temp-storage/notification-rff
-                                                                    rows-to-disk-threshold
-                                                                    {:card-id card-id})))))))]
+                                                                    (notification.temp-storage/notification-rff
+                                                                     rows-to-disk-threshold
+                                                                     {:card-id card-id})))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
