@@ -39,7 +39,8 @@
    "metric"    :model/Card
    "model"     :model/Card
    "database"  :model/Database
-   "transform" :model/Transform})
+   "transform" :model/Transform
+   "snippet"  :model/NativeQuerySnippet})
 
 (defn- read-from-ref [ref]
   (let [[type id] (str/split ref #"-" 2)]

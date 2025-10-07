@@ -1,7 +1,19 @@
 (ns metabase-enterprise.representations.v0.snippet
   (:require
+   [metabase-enterprise.representations.core :as core]
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
+   [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.yaml :as rep-yaml]
+   [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.log :as log]
+   [metabase.util.malli.registry :as mr]
+   [toucan2.core :as t2]))
+
+(defmethod import/type->schema :v0/snippet [_]
+  ::snippet)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
 
@@ -42,8 +54,92 @@
   [:map
    {:description "v0 schema for human-writable SQL snippet representation"}
    [:type ::type]
+   #_[:version ::version]
    [:ref ::ref]
    [:name ::name]
-   [:description ::description]
-   [:sql ::sql]
+   [:description [:maybe ::description]]
+  ;;  [:sql ::sql]
+   [:content ::sql] ;; todo: update this to be :sql
    [:collection {:optional true} ::collection]])
+
+;;; ------------------------------------ Ingestion ------------------------------------
+
+(defmethod import/yaml->toucan :v0/snippet
+  [{:keys [_ref name description sql collection entity-id] :as representation}
+   ref-index]
+  {:name name
+   :description description
+   :content sql
+   :creator_id (or api/*current-user-id* config/internal-mb-user-id)
+   :collection_id collection
+   :entity_id (or entity-id (v0-common/generate-entity-id representation))})
+
+(defmethod import/persist! :v0/snippet
+  [representation ref-index]
+  (let [snippet-data (import/yaml->toucan representation ref-index)
+        entity-id (:entity_id snippet-data)
+        existing (when entity-id (t2/select-one :model/NativeQuerySnippet :entity_id entity-id))]
+    (if existing
+      (do
+        (log/info "Updating existing snippet" (:name snippet-data) "with ref" (:ref representation))
+        (t2/update! :model/NativeQuerySnippet (:id existing) (dissoc snippet-data :entity_id))
+        (t2/select-one :model/NativeQuerySnippet :id (:id existing)))
+      (do
+        (log/info "Creating new snippet" (:name snippet-data))
+        (first (t2/insert-returning-instances! :model/NativeQuerySnippet snippet-data))))))
+
+(defn- template-tag-ref
+  "Given a template tag map, return its ref string."
+  [template-tag]
+  (let [type (:type template-tag)]
+    (cond (= type :snippet) (v0-common/->ref (:snippet-id template-tag) :snippet)
+          (= type :card) (v0-common/->ref (:card-id template-tag) :card)
+          (= type :text) (:name template-tag)
+          :else (throw (ex-info "Unknown template tag type" {:template-tag template-tag})))))
+
+(defmethod export/export-entity :model/NativeQuerySnippet [snippet]
+  (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
+        template-tags (into {}
+                            (map (fn [[k v]]
+                                   [(template-tag-ref v) k]))
+                            (:template_tags snippet))]
+    {:ref snippet-ref
+     :type :snippet
+     :name (:name snippet)
+     :description (:description snippet)
+     :content (:content snippet) ;; todo: change this :sql
+     :template_tags template-tags}))
+
+(comment
+
+  (let [snippet (t2/select-one :model/NativeQuerySnippet 7)
+        snippet-repr (core/export snippet)
+        snippet-yaml (rep-yaml/generate-string snippet-repr)]
+    (spit "/tmp/snippet.yml" snippet-yaml))
+
+  (let [snippet (t2/select-one :model/NativeQuerySnippet 9)
+        snippet-repr (core/export snippet)
+        snippet-yaml (rep-yaml/generate-string snippet-repr)]
+    (spit "/tmp/snippet.yml" snippet-yaml))
+
+  (try (let [snippet-repr (rep-yaml/from-file "/tmp/snippet.yml")]
+         (core/normalize-representation snippet-repr))
+       (catch Exception e
+         (tap> e)
+         (throw e)))
+
+  (let [snippet (t2/select-one :model/Card 1455)
+        snippet-repr (core/export snippet)
+        snippet-yaml (rep-yaml/generate-string snippet-repr)]
+    (spit "/tmp/card.yml" snippet-yaml))
+
+  (try (let [snippet-repr (rep-yaml/from-file "/tmp/card.yml")]
+         (core/normalize-representation snippet-repr))
+       (catch Exception e
+         (tap> e)
+         (throw e)))
+
+  (tap> 1))
+
+
+
