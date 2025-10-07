@@ -1,9 +1,9 @@
 import { Box } from "metabase/ui";
 import { EditorVisualization } from "metabase-enterprise/transforms/components/QueryEditor/EditorVisualization";
-import type { TransformEditorValue } from "metabase-enterprise/transforms/hooks/use-query-editor";
+import type { TransformEditorValue } from "metabase-enterprise/transforms/hooks/use-transform-editor";
 
 export function QueryPreview({
-  queryEditor: {
+  transformEditor: {
     question,
     result,
     rawSeries,
@@ -15,7 +15,7 @@ export function QueryPreview({
     cancelQuery,
   },
 }: {
-  queryEditor: TransformEditorValue;
+  transformEditor: TransformEditorValue;
 }) {
   return (
     <Box pos="relative">

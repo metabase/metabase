@@ -8,7 +8,12 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { useUpdateTransformMutation } from "metabase-enterprise/api";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type { TransformEditorValue } from "metabase-enterprise/transforms/hooks/use-transform-editor";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
 import { getTransformUrl } from "../../urls";
@@ -19,12 +24,14 @@ export function TransformQueryPage({
   proposedSource,
   acceptProposed,
   clearProposed,
+  transformEditor,
 }: {
   transform: Transform;
   setSource: (source: TransformSource) => void;
   proposedSource: TransformSource | undefined;
   acceptProposed: (source: TransformSource) => void;
   clearProposed: () => void;
+  transformEditor: TransformEditorValue;
 }) {
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
@@ -79,6 +86,7 @@ export function TransformQueryPage({
         onCancel={handleCancel}
         onRejectProposed={clearProposed}
         onAcceptProposed={acceptProposed}
+        transformEditor={transformEditor}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
@@ -102,6 +110,7 @@ interface TransformEditorBodyProps {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (source: TransformSource) => void;
+  transformEditor: TransformEditorValue;
 }
 
 function TransformEditorBody({
@@ -114,6 +123,7 @@ function TransformEditorBody({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
+  transformEditor,
 }: TransformEditorBodyProps) {
   if (initialSource.type === "python") {
     return (
@@ -148,6 +158,7 @@ function TransformEditorBody({
       }
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
+      transformEditor={transformEditor}
     />
   );
 }
