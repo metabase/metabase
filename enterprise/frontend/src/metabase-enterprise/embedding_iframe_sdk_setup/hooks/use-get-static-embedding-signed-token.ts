@@ -18,7 +18,6 @@ export const useGetStaticEmbeddingSignedToken = ({
   | "previewParameterValuesBySlug"
   | "embeddingParameters"
 >) => {
-  const siteUrl = useSetting("site-url");
   const secretKey = useSetting("embedding-secret-key");
 
   const [signedToken, setSignedToken] = useState<string | null>(null);
@@ -50,7 +49,8 @@ export const useGetStaticEmbeddingSignedToken = ({
 
     generate();
   }, [
-    siteUrl,
+    isStaticEmbedding,
+    isQuestionOrDashboard,
     previewParameterValuesBySlug,
     experience,
     settings.dashboardId,
