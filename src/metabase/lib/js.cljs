@@ -2653,7 +2653,13 @@
   [metadata-provider js-query]
   (let [db-id (when (js-in "database" js-query)
                 (gobject/get js-query "database"))]
-    (lib.cache/side-channel-cache-weak-refs
-     (str db-id) metadata-provider js-query
-     #(lib.core/query metadata-provider (js->clj %))
-     {:force? true})))
+    (-> (lib.cache/side-channel-cache-weak-refs
+             (str db-id) metadata-provider js-query
+             #(lib.core/query metadata-provider (js->clj %))
+             {:force? true})
+        ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without
+        ;; attached metadata providers -- force them to have them. I can't work out why it is happening, so this is a
+        ;; temporary HACK to keep things moving.
+        ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
+        (cond-> metadata-provider
+          (assoc :lib/metadata metadata-provider)))))
