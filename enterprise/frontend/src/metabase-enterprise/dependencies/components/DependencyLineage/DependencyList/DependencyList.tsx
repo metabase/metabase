@@ -18,13 +18,22 @@ import type { GraphSelection } from "../types";
 import { getNodeId } from "../utils";
 
 import S from "./DependencyList.module.css";
-import { getHeaderLabel, getNodeTitle } from "./utils";
+import type { LinkInfo } from "./types";
+import { getHeaderLabel, getNodeSubtitle, getNodeTitle } from "./utils";
 
 const NODES: DependencyNode[] = [
   {
     id: 1,
     type: "card",
-    data: { name: "Account", type: "model", display: "table" },
+    data: {
+      name: "Account",
+      type: "model",
+      display: "table",
+      collection_id: null,
+      collection: null,
+      dashboard_id: 1,
+      dashboard: { id: 1, name: "Dashboard" },
+    },
   },
   {
     id: 2,
@@ -83,20 +92,42 @@ type ListItemProps = {
 };
 
 function ListItem({ node }: ListItemProps) {
-  const title = getNodeTitle(node);
+  const titleLink = getNodeTitle(node);
+  const subtitleLink = getNodeSubtitle(node);
 
   return (
-    <Stack className={S.item} p="lg" gap="sm">
-      <Flex
-        className={S.link}
-        component={Link}
-        gap="sm"
-        to={title.link ?? ""}
-        target="_blank"
-      >
-        <Icon name={title.icon} />
-        <Box>{title.label}</Box>
-      </Flex>
-    </Stack>
+    <Flex
+      className={S.item}
+      component={Link}
+      to={titleLink.link ?? ""}
+      direction="column"
+      p="lg"
+      gap="sm"
+    >
+      <ListItemLink info={titleLink} />
+      {subtitleLink && <ListItemLink info={subtitleLink} isSecondary />}
+    </Flex>
+  );
+}
+
+type ListItemLinkProps = {
+  info: LinkInfo;
+  isSecondary?: boolean;
+};
+
+function ListItemLink({ info, isSecondary }: ListItemLinkProps) {
+  return (
+    <Flex
+      className={S.itemLink}
+      component={Link}
+      gap="sm"
+      to={info.link ?? ""}
+      target="_blank"
+    >
+      <Icon name={info.icon} />
+      <Box fz={isSecondary ? "sm" : "md"} lh={isSecondary ? "h5" : "h4"}>
+        {info.label}
+      </Box>
+    </Flex>
   );
 }

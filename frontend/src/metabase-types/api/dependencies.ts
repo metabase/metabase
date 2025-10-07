@@ -31,7 +31,14 @@ export type TransformDependencyNodeData = Pick<Transform, "name">;
 
 export type CardDependencyNodeData = Pick<
   Card,
-  "name" | "type" | "display" | "database_id"
+  | "name"
+  | "type"
+  | "display"
+  | "database_id"
+  | "collection_id"
+  | "collection"
+  | "dashboard_id"
+  | "dashboard"
 >;
 
 export type SnippetDependencyNodeData = Pick<NativeQuerySnippet, "name">;

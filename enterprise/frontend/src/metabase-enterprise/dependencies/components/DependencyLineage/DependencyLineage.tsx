@@ -26,7 +26,15 @@ const GRAPH: DependencyGraph = {
     {
       id: 1,
       type: "card",
-      data: { name: "Account", type: "model", display: "table" },
+      data: {
+        name: "Account",
+        type: "model",
+        display: "table",
+        collection_id: null,
+        collection: null,
+        dashboard_id: 1,
+        dashboard: { id: 1, name: "Dashboard" },
+      },
       dependents: { question: 10 },
     },
     {

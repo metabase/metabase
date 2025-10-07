@@ -4,7 +4,7 @@
   }
 }
 
-.link {
+.itemLink {
   &:hover {
     color: var(--mb-color-brand);
   }

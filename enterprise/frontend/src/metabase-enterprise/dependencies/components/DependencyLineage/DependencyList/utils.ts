@@ -1,6 +1,7 @@
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
+import * as Urls from "metabase/lib/urls";
 import type { DependencyNode } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
@@ -27,4 +28,23 @@ export function getNodeTitle(node: DependencyNode): LinkInfo {
     icon: getNodeIcon(node),
     link: getNodeLink(node),
   };
+}
+
+export function getNodeSubtitle(node: DependencyNode): LinkInfo | undefined {
+  return match<DependencyNode, LinkInfo | undefined>(node)
+    .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
+      label: node.data.dashboard.name,
+      icon: "dashboard",
+      link: Urls.dashboard(node.data.dashboard),
+    }))
+    .with({ type: "card", data: { collection: P.nonNullable } }, (node) => ({
+      label: node.data.collection.name,
+      icon: "folder",
+      link: Urls.dashboard(node.data.collection),
+    }))
+    .with({ type: "card" }, () => undefined)
+    .with({ type: "table" }, () => undefined)
+    .with({ type: "transform" }, () => undefined)
+    .with({ type: "snippet" }, () => undefined)
+    .exhaustive();
 }
