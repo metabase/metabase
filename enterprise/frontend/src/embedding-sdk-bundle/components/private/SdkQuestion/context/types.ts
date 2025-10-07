@@ -110,6 +110,12 @@ export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
       questionId: SdkQuestionId | null;
+
+      /**
+       * A valid JWT token for the anonymous embedding.
+       *
+       * @internal
+       */
       token?: SdkEntityToken | null;
 
       /**
