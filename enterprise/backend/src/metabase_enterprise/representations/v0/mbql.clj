@@ -83,14 +83,14 @@
                    (->> (v0-common/ref->id table-ref ref-index)
                         (str "card__"))
                    ;; map with database ref - resolve database and lookup table
-                   (and (map? table-ref) (v0-common/ref? (:ref/database table-ref)))
-                   (let [db-id (v0-common/ref->id (:ref/database table-ref) ref-index)
+                   (and (map? table-ref) (v0-common/ref? (:database table-ref)))
+                   (let [db-id (v0-common/ref->id (:database table-ref) ref-index)
 
                          table-id
                          (t2/select-one-fn :id :model/Table
                                            :db_id db-id
-                                           :schema (:ref/schema table-ref)
-                                           :name (:ref/table table-ref))]
+                                           :schema (:schema table-ref)
+                                           :name (:table table-ref))]
                      (when (nil? table-id)
                        (throw (ex-info "Could not find matching table."
                                        {:table-ref table-ref})))
@@ -105,16 +105,16 @@
   [mbql-query ref-index]
   (walk/postwalk
    (fn [node]
-     (if (and (map? node) (:ref/field node) (:ref/table node))
+     (if (and (map? node) (:field node) (:table node))
        ;; It's a field map - resolve it to [:field id]
-       (let [db-id (v0-common/ref->id (:ref/database node) ref-index)
+       (let [db-id (v0-common/ref->id (:database node) ref-index)
              table-id (t2/select-one-fn :id :model/Table
                                         :db_id db-id
-                                        :schema (:ref/schema node)
-                                        :name (:ref/table node))
+                                        :schema (:schema node)
+                                        :name (:table node))
              field-id (t2/select-one-fn :id :model/Field
                                         :table_id table-id
-                                        :name (:ref/field node))]
+                                        :name (:field node))]
          [:field field-id])
        node))
    mbql-query))
@@ -127,9 +127,9 @@
   "Convert a table ID to a representation ref map."
   [table-id]
   (when-some [t (t2/select-one :model/Table table-id)]
-    (-> {:ref/database (v0-common/->ref (:db_id t) :database)
-         :ref/schema (:schema t)
-         :ref/table (:name t)}
+    (-> {:database (v0-common/->ref (:db_id t) :database)
+         :schema (:schema t)
+         :table (:name t)}
         u/remove-nils)))
 
 (defn- card-ref
