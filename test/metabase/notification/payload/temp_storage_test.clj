@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.notification.payload.temp-storage :as temp-storage]
-   [metabase.test.util :as mt]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -123,3 +123,19 @@
           storage (get-in result [:data :rows])]
       (is (not (realized? storage)))
       (temp-storage/cleanup! storage))))
+
+(deftest fidelity
+  (testing "Untruncated results should be equal"
+    (let [query (mt/mbql-query orders)]
+      ;; its the default value but just ensuring it is high enough
+      (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 10 1024 1024)
+                                         enforce-notification-temp-file-size-limit true]
+        (let [qp-results (mt/process-query query)
+              temp-file-results (mt/process-query query
+                                                  (temp-storage/notification-rff 2000))]
+          (is (not (:notification/truncated? temp-file-results)))
+          (is (temp-storage/is-streaming-temp-file? (-> temp-file-results
+                                                        :data :rows)))
+          (is (= (-> qp-results :data :rows)
+                 (-> temp-file-results :data :rows deref)))
+          (-> temp-file-results :data :rows temp-storage/cleanup!))))))
