@@ -152,7 +152,7 @@ const AppearanceSection = () => {
       (settings) => {
         const label = match(settings.componentName)
           .with("metabase-dashboard", () => t`Show dashboard title`)
-          .with("metabase-question", () => t`Show question title`)
+          .with("metabase-question", () => t`Show chart title`)
           .exhaustive();
 
         return (

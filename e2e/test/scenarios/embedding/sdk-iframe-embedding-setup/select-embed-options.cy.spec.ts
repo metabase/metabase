@@ -496,7 +496,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByTestId("metabot-question-container")
       .should("have.attr", "data-layout", "stacked");
 
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'layout="stacked"');
 
     H.expectUnstructuredSnowplowEvent({
@@ -512,7 +512,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByTestId("metabot-question-container")
       .should("have.attr", "data-layout", "sidebar");
 
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'layout="sidebar"');
 
     H.expectUnstructuredSnowplowEvent({
