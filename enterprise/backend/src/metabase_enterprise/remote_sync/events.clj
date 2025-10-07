@@ -175,3 +175,32 @@
       (do
         (log/infof "Collection %s type changed from remote-synced, marking as removed" (:id object))
         (create-remote-sync-object-entry! "Collection" (:id object) "removed" user-id)))))
+
+;; Timeline events
+(derive ::timeline-change-event :metabase/event)
+(derive :event/timeline-create ::timeline-change-event)
+(derive :event/timeline-update ::timeline-change-event)
+(derive :event/timeline-delete ::timeline-change-event)
+
+(methodical/defmethod events/publish-event! ::timeline-change-event
+  [topic event]
+  (let [{:keys [object user-id]} event
+        in-remote-synced? #p (model-in-remote-synced-collection? object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Timeline" :model_id (:id object))
+        status (if (:archived object)
+                 "delete"
+                 (case topic
+                   :event/timeline-create "create"
+                   :event/timeline-update "update"
+                   :event/timeline-delete "delete"))]
+    (cond
+      #p in-remote-synced?
+      (do
+        (log/infof "Creating remote sync object entry for timeline %s (status: %s)" (:id object) status)
+        (create-remote-sync-object-entry! "Timeline" (:id object) status user-id))
+
+      ;; Timeline was tracked but moved out of remote-synced collection - mark as removed
+      (and existing-entry (not in-remote-synced?))
+      (do
+        (log/infof "Timeline %s moved out of remote-synced collection, marking as removed" (:id object))
+        (create-remote-sync-object-entry! "Timeline" (:id object) "removed" user-id)))))

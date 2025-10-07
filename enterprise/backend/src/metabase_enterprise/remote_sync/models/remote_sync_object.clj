@@ -10,7 +10,7 @@
 (derive :model/RemoteSyncObject :metabase/model)
 
 (def ^:private synced-models
-  {:collection "Collection" :report_card "Card" :document "Document" :report_dashboard "Dashboard" :native_query_snippet "NativeQuerySnippet"})
+  {:collection "Collection" :report_card "Card" :document "Document" :report_dashboard "Dashboard" :native_query_snippet "NativeQuerySnippet" :timeline "Timeline"})
 
 (def ^:private items-select
   {:collection [:collection.id
@@ -67,7 +67,18 @@
                           [nil :description]
                           :native_query_snippet.updated_at
                           [[:inline "snippet"] :model]
-                          [:rs_obj.status :sync_status]]})
+                          [:rs_obj.status :sync_status]]
+   :timeline [:timeline.id
+              :timeline.name
+              :timeline.created_at
+              [nil :authority_level]
+              :timeline.collection_id
+              [nil :display]
+              [nil :query_type]
+              :timeline.description
+              :timeline.updated_at
+              [[:inline "timeline"] :model]
+              [:rs_obj.status :sync_status]]})
 
 (defn- dirty
   "A honeysql select statement that returns dirty children of a collection or any sub items of this collection.
@@ -80,13 +91,13 @@
   [select-options]
   (let [queries (mapv (fn [[table entity-type]]
                         (let [id-col (keyword (str (name table) ".id"))]
-                          {:select (select-options table)
-                           :from [table]
-                           :inner-join [[:remote_sync_object :rs_obj]
-                                        [:and
-                                         [:= :rs_obj.model_id id-col]
-                                         [:= :rs_obj.model_type [:inline entity-type]]]]
-                           :where [:not= :status "synced"]}))
+                          #p {:select (select-options table)
+                              :from [table]
+                              :inner-join [[:remote_sync_object :rs_obj]
+                                           [:and
+                                            [:= :rs_obj.model_id id-col]
+                                            [:= :rs_obj.model_type [:inline entity-type]]]]
+                              :where [:not= :status "synced"]}))
                       synced-models)]
     {:union-all queries}))
 

@@ -673,3 +673,117 @@
     (is (isa? ::lib.events/collection-change-event :metabase/event))
     (is (isa? :event/collection-create ::lib.events/collection-change-event))
     (is (isa? :event/collection-update ::lib.events/collection-change-event))))
+
+(deftest timeline-create-event-creates-entry-test
+  (testing "timeline-create event creates remote sync object entry with create status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/timeline-create
+                               {:object timeline :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Timeline"
+                   :model_id (:id timeline)
+                   :status "create"}
+                  (first entries))))))))
+
+(deftest timeline-update-event-creates-entry-test
+  (testing "timeline-update event creates remote sync object entry with update status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/timeline-update
+                               {:object timeline :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Timeline"
+                   :model_id (:id timeline)
+                   :status "update"}
+                  (first entries))))))))
+
+(deftest timeline-update-archived-sets-delete-test
+  (testing "timeline-update event with archived timeline sets delete status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)
+                                             :archived true}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/timeline-update
+                               {:object timeline :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Timeline"
+                   :model_id (:id timeline)
+                   :status "delete"}
+                  (first entries))))))))
+
+(deftest timeline-delete-event-creates-entry-test
+  (testing "timeline-delete event creates remote sync object entry with delete status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/timeline-delete
+                               {:object timeline :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Timeline"
+                   :model_id (:id timeline)
+                   :status "delete"}
+                  (first entries))))))))
+
+(deftest timeline-event-in-normal-collection-no-entry-test
+  (testing "timeline events in normal collections don't create remote sync entries"
+    (mt/with-temp [:model/Collection normal-collection {:name "Normal Collection"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id normal-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        (events/publish-event! :event/timeline-create
+                               {:object timeline :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 0 (count entries))))))))
+
+(deftest timeline-moved-out-of-remote-synced-collection-test
+  (testing "timeline moved out of remote-synced collection gets marked as removed"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal Collection"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)}]
+      (mt/with-model-cleanup [:model/RemoteSyncObject]
+        (t2/delete! :model/RemoteSyncObject)
+
+        ;; Create initial entry
+        (events/publish-event! :event/timeline-create
+                               {:object timeline :user-id (mt/user->id :rasta)})
+
+        (is (= 1 (count (t2/select :model/RemoteSyncObject))))
+
+        ;; Move to normal collection
+        (events/publish-event! :event/timeline-update
+                               {:object (assoc timeline :collection_id (:id normal-collection))
+                                :user-id (mt/user->id :rasta)})
+
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Timeline"
+                   :model_id (:id timeline)
+                   :status "removed"}
+                  (first entries))))))))
