@@ -5,10 +5,8 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
