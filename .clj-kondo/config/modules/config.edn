@@ -1329,6 +1329,7 @@
    :uses #{analytics
            api
            collections
+           events
            models
            util}}
 

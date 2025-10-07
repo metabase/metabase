@@ -215,7 +215,7 @@
 (methodical/defmethod events/publish-event! ::timeline-change-event
   [topic event]
   (let [{:keys [object user-id]} event
-        in-remote-synced? #p (model-in-remote-synced-collection? object)
+        in-remote-synced? (model-in-remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Timeline" :model_id (:id object))
         status (if (:archived object)
                  "delete"
@@ -224,7 +224,7 @@
                    :event/timeline-update "update"
                    :event/timeline-delete "delete"))]
     (cond
-      #p in-remote-synced?
+      in-remote-synced?
       (do
         (log/infof "Creating remote sync object entry for timeline %s (status: %s)" (:id object) status)
         (create-remote-sync-object-entry! "Timeline" (:id object) status user-id))
