@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
 import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { CodeMirrorEditor as Editor } from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";
@@ -79,7 +78,7 @@ export const NotebookNativePreview = ({
     >
       <Box
         component="header"
-        c={color("text-dark")}
+        c="text-dark"
         fz={rem(20)}
         lh={rem(24)}
         fw="bold"
@@ -101,7 +100,7 @@ export const NotebookNativePreview = ({
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">
-            <Icon name="warning" size="2rem" color={color("error")} />
+            <Icon name="warning" size="2rem" c="error" />
             {t`Error generating the query.`}
             <Box mt="sm">{getErrorMessage(error)}</Box>
           </Flex>
