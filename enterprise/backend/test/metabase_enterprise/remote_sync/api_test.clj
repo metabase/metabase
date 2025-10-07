@@ -39,7 +39,7 @@
 
 (use-fixtures :each
   test-helpers/clean-remote-sync-state
-  (fn [f] (mt/with-premium-features #{:serialization} (f))))
+  (fn [f] (mt/with-premium-features #{:remote-sync} (f))))
 
 (defn- wait-for-task-completion [task-id]
   (when task-id

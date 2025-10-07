@@ -871,6 +871,9 @@
    {:name      :ai-sql-generation
     :available (premium-features/enable-ai-sql-generation?)
     :enabled   (premium-features/enable-ai-sql-generation?)}
+   {:name      :remote-sync
+    :available (premium-features/enable-remote-sync?)
+    :enabled   (premium-features/enable-remote-sync?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
