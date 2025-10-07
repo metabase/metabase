@@ -1,10 +1,14 @@
 import type { Location } from "history";
-import type React from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import { useSelector } from "metabase/lib/redux/hooks";
+import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
+import { getQuestion } from "metabase/query_builder/selectors";
 import {
   Box,
   Center,
@@ -17,8 +21,8 @@ import {
 import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
+import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
-import { MetricEditor } from "../metrics/MetricsList";
 
 import { CreateModelMenu } from "./CreateModelMenu";
 
@@ -97,10 +101,22 @@ export const ModelsLayout = ({
   );
 };
 
+const ModelEditorHeader = ({ buttons }: { buttons?: ReactNode }) => {
+  const question = useSelector(getQuestion);
+  if (!question) {
+    return null;
+  }
+  return (
+    <BenchPaneHeader
+      title={question.displayName() ?? t`New model`}
+      actions={buttons}
+    />
+  );
+};
+
 export const ModelEditor = (props: {
   location: Location;
   params: { slug: string };
 }) => {
-  // TODO: Make MetricEditor less metric-specific
-  return <MetricEditor {...props} />;
+  return <QueryBuilder {...props} Header={ModelEditorHeader} preventCancel />;
 };
