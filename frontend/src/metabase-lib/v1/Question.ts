@@ -217,9 +217,13 @@ class Question {
   }
 
   isNative() {
-    if (this.datasetQuery() == null) {
+    if (
+      this.datasetQuery() == null ||
+      InternalQuery.isDatasetQueryType(this.datasetQuery())
+    ) {
       return false;
     }
+
     const queryInfo = Lib.queryDisplayInfo(this.query());
     return queryInfo.isNative;
   }
