@@ -7,15 +7,15 @@ import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
 import { Box, Flex, Group, Icon, Stack, Tabs, Text, Title } from "metabase/ui";
-
-import type { ExecutionResult } from "../utils";
+import type { PythonTransformResultData } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
+import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditorResults.module.css";
 
 type PythonEditorProps = {
   isRunning?: boolean;
-  executionResult?: ExecutionResult | null;
+  executionResult?: PythonExecutionResult<PythonTransformResultData> | null;
 };
 
 type ResultsTab = "results" | "output";
@@ -27,7 +27,7 @@ export function PythonEditorResults({
   const [tab, setTab] = useState<ResultsTab>("results");
   return (
     <DebouncedFrame className={S.visualization}>
-      <Box data-testid="python-results">
+      <Stack data-testid="python-results" gap={0} h="100%">
         <ExecutionResultHeader
           executionResult={executionResult}
           tab={tab}
@@ -45,7 +45,7 @@ export function PythonEditorResults({
           <ExecutionOutputLogs executionResult={executionResult} />
         )}
         {isRunning && <LoadingState />}
-      </Box>
+      </Stack>
     </DebouncedFrame>
   );
 }
@@ -55,7 +55,7 @@ function ExecutionResultHeader({
   tab,
   onTabChange,
 }: {
-  executionResult?: ExecutionResult | null;
+  executionResult?: PythonExecutionResult | null;
   tab: ResultsTab;
   onTabChange: (tab: ResultsTab) => void;
 }) {
@@ -130,7 +130,7 @@ function ErrorState({ error }: { error: string }) {
 }
 
 function getMessageForExecutionResult(
-  executionResult?: ExecutionResult | null,
+  executionResult?: PythonExecutionResult | null,
 ) {
   if (!executionResult) {
     return null;
@@ -156,7 +156,7 @@ function getMessageForExecutionResult(
 function ExecutionOutputLogs({
   executionResult,
 }: {
-  executionResult: ExecutionResult;
+  executionResult: PythonExecutionResult;
 }) {
   return (
     <Stack gap={0} p="md">

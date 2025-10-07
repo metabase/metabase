@@ -1,6 +1,6 @@
 import { DataGrid, useDataGridInstance } from "metabase/data-grid";
 import { formatValue } from "metabase/lib/formatting";
-import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
+import type { PythonTransformResultData } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type { RowValue } from "metabase-types/api";
 
 export type Row = Record<string, RowValue>;
@@ -8,7 +8,7 @@ export type Row = Record<string, RowValue>;
 export function ExecutionOutputTable({
   output,
 }: {
-  output?: PythonExecutionResult;
+  output?: PythonTransformResultData;
 }) {
   const { columns = [], data = [] } = output ?? {};
 

@@ -18,7 +18,7 @@ export type PyodideTableSource = {
   rows: Record<string, RowValue>[];
 };
 
-type TransformData = {
+export type PythonTransformResultData = {
   columns: string[];
   data: Record<string, RowValue>[];
 };
@@ -32,7 +32,7 @@ export function useTestPythonTransform(source: PythonTransformSourceDraft) {
     cancel,
     data: executionResult,
     executePython,
-  } = useRunPython<TransformData>();
+  } = useRunPython<PythonTransformResultData>();
 
   const run = useCallback(async () => {
     const [sampleData, libraries] = await Promise.all([
