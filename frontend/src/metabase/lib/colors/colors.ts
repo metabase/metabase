@@ -517,7 +517,7 @@ export const colorConfig = {
   },
   warning: {
     light: baseColors.dubloon[30],
-    dark: baseColors.dubloon[80],
+    dark: baseColors.dubloon[30],
   },
 
   "background-warning": {
