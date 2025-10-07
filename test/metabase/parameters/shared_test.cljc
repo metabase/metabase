@@ -375,6 +375,8 @@
    (deftest ^:parallel substitute-tags-js-test
      (is (= "Variable: 15"
             (params/substitute-tags "Variable: {{variable}}"
+                                    ;; the `:name` here is technically wrong, since it should match with the one that
+                                    ;; serves as the map key; but this code doesn't currently care.
                                     #js {:variable #js {:id "e7f8ca", :name "foo bar", :slug "foo_bar", :type "text", :value 15}}
                                     nil
                                     false)))))
