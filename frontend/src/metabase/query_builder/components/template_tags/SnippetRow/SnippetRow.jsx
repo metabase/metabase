@@ -55,6 +55,7 @@ class SnippetRowInner extends Component {
                     insertSnippet(snippet);
                   }
             }
+            style={{ maxWidth: "90%" }}
           >
             <Icon
               name="snippet"
@@ -64,7 +65,7 @@ class SnippetRowInner extends Component {
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
               className={CS.hoverChild}
             />
-            <Ellipsified style={{ maxWidth: 270 }} className={cx(CS.ml1)}>
+            <Ellipsified style={{ maxWidth: "90%" }} className={cx(CS.ml1)}>
               {snippet.name}
             </Ellipsified>
           </Flex>
