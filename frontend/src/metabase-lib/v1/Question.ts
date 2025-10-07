@@ -178,7 +178,7 @@ class Question {
   _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
-    if (NativeQuery.isDatasetQueryType(datasetQuery)) {
+    if (datasetQuery != null) {
       return new NativeQuery(this, datasetQuery);
     }
 
