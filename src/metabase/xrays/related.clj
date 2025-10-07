@@ -32,9 +32,6 @@
   [form]
   ;; legacy usage, temporary until we convert X-Rays to Lib
   (let [form #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query :filter] form)]
-    (when (seq form)
-      (or (mr/validate ::mbql.s/Filter form)
-          (log/errorf "Expected legacy MBQL filter clause, got %s" (pr-str form))))
     (into #{}
           (comp (filter (mr/validator ContextBearingForm))
                 (map #(update % 0 qp.util/normalize-token)))
