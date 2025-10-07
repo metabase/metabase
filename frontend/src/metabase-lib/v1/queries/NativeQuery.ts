@@ -244,7 +244,7 @@ export default class NativeQuery {
     newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
     const newTagsMap = Object.fromEntries(tags.map((tag) => [tag.id, tag]));
 
-    this._setQuery(Lib.withTemplateTags(query, newTagsMap));
+    return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }
 
   lineCount(): number {
