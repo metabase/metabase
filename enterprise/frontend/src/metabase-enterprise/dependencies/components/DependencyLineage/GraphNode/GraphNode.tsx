@@ -10,18 +10,18 @@ import { t } from "ttag";
 import { Box, Chip, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { DependencyContext } from "../DependencyContext";
+import { GraphContext } from "../GraphContext";
 import type { NodeType } from "../types";
 import { getNodeIcon, getNodeLabel } from "../utils";
 
 import type { DependentGroup } from "./types";
 import { getDependentGroupLabel, getDependentGroups } from "./utils";
 
-type DependencyNodeContentProps = NodeProps<NodeType>;
+type GraphNodeProps = NodeProps<NodeType>;
 
-export const DependencyNodeContent = memo(function ItemNode({
+export const GraphNode = memo(function ItemNode({
   data: node,
-}: DependencyNodeContentProps) {
+}: GraphNodeProps) {
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
@@ -38,7 +38,7 @@ export const DependencyNodeContent = memo(function ItemNode({
             <Box c="text-secondary" fz="sm" lh="1rem">{t`Used by`}</Box>
             {groups.map((group) => (
               <DependentGroupButton
-                key={group.type}
+                key={group.category}
                 node={node}
                 group={group}
               />
@@ -58,18 +58,17 @@ type DependentGroupButtonProps = {
 };
 
 function DependentGroupButton({ node, group }: DependentGroupButtonProps) {
-  const { selectedGroupNode, selectedGroupType, handleSelectDependencyGroup } =
-    useContext(DependencyContext);
+  const { selection, setSelection } = useContext(GraphContext);
   const isSelected =
-    node.id === selectedGroupNode?.id &&
-    node.type === selectedGroupNode?.type &&
-    group.type === selectedGroupType;
+    node.id === selection?.node.id &&
+    node.type === selection?.node.type &&
+    group.category === selection.category;
 
   return (
     <Chip
-      key={group.type}
+      key={group.category}
       checked={isSelected}
-      onClick={() => handleSelectDependencyGroup(node, group.type)}
+      onClick={() => setSelection({ node, category: group.category })}
     >
       {getDependentGroupLabel(group)}
     </Chip>

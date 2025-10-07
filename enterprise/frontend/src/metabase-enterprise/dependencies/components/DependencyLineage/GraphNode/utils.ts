@@ -15,19 +15,19 @@ export function getDependentGroups(node: DependencyNode): DependentGroup[] {
   } = node.dependents ?? {};
 
   const groups: DependentGroup[] = [
-    { type: "question", count: question },
-    { type: "model", count: model },
-    { type: "metric", count: metric },
-    { type: "table", count: table },
-    { type: "transform", count: transform },
-    { type: "snippet", count: snippet },
+    { category: "question", count: question },
+    { category: "model", count: model },
+    { category: "metric", count: metric },
+    { category: "table", count: table },
+    { category: "transform", count: transform },
+    { category: "snippet", count: snippet },
   ];
 
   return groups.filter(({ count }) => count !== 0);
 }
 
-export function getDependentGroupLabel({ type, count }: DependentGroup) {
-  switch (type) {
+export function getDependentGroupLabel({ category, count }: DependentGroup) {
+  switch (category) {
     case "question":
       return ngettext(msgid`${count} question`, `${count} questions`, count);
     case "model":

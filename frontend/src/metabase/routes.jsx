@@ -156,10 +156,10 @@ export const getRoutes = (store) => {
           </Route>
 
           <Route title={t`Dependencies`} path="dependencies">
-            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyFlowPage} />
+            <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyLineagePage} />
             <Route
               path=":type/:id"
-              component={PLUGIN_DEPENDENCIES.DependencyFlowPage}
+              component={PLUGIN_DEPENDENCIES.DependencyLineagePage}
             />
           </Route>
 

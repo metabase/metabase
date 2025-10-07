@@ -1,10 +1,10 @@
 import type { DependencyEntry } from "metabase-types/api";
 
-export type DependencyFlowParams = {
+export type DependencyLineageParams = {
   entry?: DependencyEntry;
 };
 
-export type DependencyFlowRawParams = {
+export type DependencyLineageRawParams = {
   id?: string;
   type?: string;
 };

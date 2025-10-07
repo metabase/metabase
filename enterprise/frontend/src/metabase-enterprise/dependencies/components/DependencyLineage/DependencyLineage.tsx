@@ -9,29 +9,15 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
-import type {
-  DependencyEntry,
-  DependencyGraph,
-  DependencyGroupType,
-  DependencyNode,
-} from "metabase-types/api";
+import type { DependencyEntry, DependencyGraph } from "metabase-types/api";
 
-import {
-  DependencyContext,
-  type DependencyContextType,
-} from "./DependencyContext";
-import { DependencyPicker } from "./DependencyPicker";
-import { DependencyNodeContent } from "./NodeContent";
+import { DataPicker } from "./DataPicker";
+import { GraphContext } from "./GraphContext";
+import { GraphNode } from "./GraphNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
-import type { NodeType } from "./types";
+import type { GraphSelection, NodeType } from "./types";
 import { getInitialGraph, getNodesWithPositions } from "./utils";
 
 const GRAPH: DependencyGraph = {
@@ -65,21 +51,22 @@ const GRAPH: DependencyGraph = {
 };
 
 const NODE_TYPES = {
-  node: DependencyNodeContent,
+  node: GraphNode,
 };
 
-type DependencyFlowProps = {
+type DependencyLineageProps = {
   entry: DependencyEntry | undefined;
   onEntryChange: (entry: DependencyEntry) => void;
 };
 
-export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
+export function DependencyLineage({
+  entry,
+  onEntryChange,
+}: DependencyLineageProps) {
   const { data: graph, isFetching } = { data: GRAPH, isFetching: false };
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-  const [selectedGroupNode, setSelectedGroupNode] = useState<DependencyNode>();
-  const [selectedGroupType, setSelectedGroupType] =
-    useState<DependencyGroupType>();
+  const [selection, setSelection] = useState<GraphSelection>();
 
   useEffect(() => {
     if (graph != null && entry != null) {
@@ -92,25 +79,8 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
     }
   }, [graph, entry, setNodes, setEdges]);
 
-  const handleSelectDependencyGroup = useCallback(
-    (node: DependencyNode, type: DependencyGroupType) => {
-      setSelectedGroupNode(node);
-      setSelectedGroupType(type);
-    },
-    [],
-  );
-
-  const contextValue = useMemo(
-    (): DependencyContextType => ({
-      selectedGroupNode,
-      selectedGroupType,
-      handleSelectDependencyGroup,
-    }),
-    [selectedGroupNode, selectedGroupType, handleSelectDependencyGroup],
-  );
-
   return (
-    <DependencyContext.Provider value={contextValue}>
+    <GraphContext.Provider value={{ selection, setSelection }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -125,7 +95,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
         <Controls />
         <NodeLayout />
         <Panel position="top-left">
-          <DependencyPicker
+          <DataPicker
             graph={graph}
             entry={entry}
             isFetching={isFetching}
@@ -133,7 +103,7 @@ export function DependencyFlow({ entry, onEntryChange }: DependencyFlowProps) {
           />
         </Panel>
       </ReactFlow>
-    </DependencyContext.Provider>
+    </GraphContext.Provider>
   );
 }
 

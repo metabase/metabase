@@ -7,10 +7,10 @@ import { CheckDependenciesTitle } from "./components/CheckDependenciesTitle";
 import { useCheckCardDependencies } from "./hooks/use-check-card-dependencies";
 import { useCheckSnippetDependencies } from "./hooks/use-check-snippet-dependencies";
 import { useCheckTransformDependencies } from "./hooks/use-check-transform-dependencies";
-import { DependencyFlowPage } from "./pages/DependencyFlowPage";
+import { DependencyLineagePage } from "./pages/DependencyLineagePage";
 
 if (hasPremiumFeature("dependencies")) {
-  PLUGIN_DEPENDENCIES.DependencyFlowPage = DependencyFlowPage;
+  PLUGIN_DEPENDENCIES.DependencyLineagePage = DependencyLineagePage;
   PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
   PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;
   PLUGIN_DEPENDENCIES.CheckDependenciesTitle = CheckDependenciesTitle;

@@ -13,7 +13,7 @@ import type {
   DependentNode,
 } from "metabase-types/api";
 
-import type { EdgeId, GraphData, NodeId, NodeType } from "./types";
+import type { EdgeId, GraphData, GraphNode, NodeId } from "./types";
 
 function getNodeId(id: DependencyId, type: DependencyType): NodeId {
   return `${type}-${id}`;
@@ -23,7 +23,10 @@ function getEdgeId(sourceId: NodeId, targetId: NodeId): EdgeId {
   return `${sourceId}-${targetId}`;
 }
 
-function getNodes(nodes: DependencyNode[], entry: DependencyEntry): NodeType[] {
+function getNodes(
+  nodes: DependencyNode[],
+  entry: DependencyEntry,
+): GraphNode[] {
   return nodes.map((node) => {
     const nodeId = getNodeId(node.id, node.type);
 
@@ -67,9 +70,9 @@ export function getInitialGraph(
 }
 
 export function getNodesWithPositions(
-  nodes: NodeType[],
+  nodes: GraphNode[],
   edges: Edge[],
-): NodeType[] {
+): GraphNode[] {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setGraph({ rankdir: "LR" });
   dagreGraph.setDefaultEdgeLabel(() => ({}));
