@@ -1,6 +1,7 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
    [honey.sql.helpers :as sql.helpers]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -13,24 +14,24 @@
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]
-   [metabase.api.common :as ap(ns metabase.native-query-snippets.models.native-query-snippet
-  (:require
-   [honey.sql.helpers :as sql.helpers]
-   [metabase.collections.models.collection :as collection]
-   [metabase.events.core :as events]
-   [metabase.lib.core :as lib]
-   [metabase.lib.normalize :as lib.normalize]
-   [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
-   [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
-   [metabase.util.malli :as mu]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]
-   [toucan2.realize :as t2.realize]
-   [metabase.api.common :as api]))thod collection/allowed-namespaces :model/NativeQuerySnippet
+   [toucan2.realize :as t2.realize]))
+
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+
+(methodical/defmethod t2/table-name :model/NativeQuerySnippet [_model] :native_query_snippet)
+
+(doto :model/NativeQuerySnippet
+  (derive :metabase/model)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id))
+
+(t2/deftransforms :model/NativeQuerySnippet
+  {:template_tags {:in mi/json-in
+                   :out (comp (mi/catch-normalization-exceptions
+                               #(lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map %))
+                              mi/json-out-without-keywordization)}})
+
+(defmethod collection/allowed-namespaces :model/NativeQuerySnippet
   [_]
   #{:snippets})
 
@@ -97,7 +98,7 @@
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
   (u/prog1 snippet
-    (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
+    (events/publish-event! :event/snippet-delete {:object <>})))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet
   [_snippet]
