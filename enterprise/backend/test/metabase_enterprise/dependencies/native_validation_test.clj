@@ -78,7 +78,7 @@
 (deftest ^:parallel cross-driver-deps-test
   (testing "native-query-deps handles valid queries in current driver"
     (mt/test-drivers (mt/normal-drivers-with-feature :dependencies/native)
-      (let [{:keys [driver query mp]} (sample-query)]
+      (let [{:keys [driver query mp]} (sample-mbql-query)]
         (is (= #{{:table (mt/id :products)} {:table (mt/id :orders)}}
                (deps.native-validation/native-query-deps driver mp query)))))))
 
@@ -111,7 +111,7 @@
 (deftest ^:parallel cross-driver-validation-test
   (testing "validate-native-query handles valid queries in current driver"
     (mt/test-drivers (mt/normal-drivers-with-feature :dependencies/native)
-      (let [{:keys [driver query mp]} (sample-query)]
+      (let [{:keys [driver query mp]} (sample-mbql-query)]
         (is (empty? (deps.native-validation/validate-native-query driver mp query)))))))
 
 (deftest ^:parallel validate-native-query-with-subquery-columns-test
@@ -276,7 +276,7 @@
 (deftest ^:parallel cross-driver-metadata-test
   (testing "native-result-metadata handles valid queries in current driver"
     (mt/test-drivers (mt/normal-drivers-with-feature :dependencies/native)
-      (let [{:keys [driver query mp]} (sample-query)]
+      (let [{:keys [driver query mp]} (sample-mbql-query)]
         (is (=? (-> (into [(lib.metadata/field mp (mt/id :orders :id))
                            (lib.metadata/field mp (mt/id :orders :user_id))]
                           (lib.metadata/fields mp (mt/id :products))))
