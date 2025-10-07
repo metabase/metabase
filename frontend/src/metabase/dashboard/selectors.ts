@@ -702,13 +702,6 @@ export const getParameterMappingsBeforeEditing = createSelector(
   },
 );
 
-export const getDisplayTheme = (state: State) => state.dashboard.theme;
-
-export const getIsNightMode = createSelector(
-  [getDisplayTheme],
-  (theme) => theme === "night",
-);
-
 export const getHasModelActionsEnabled = createSelector(
   [getMetadata],
   (metadata) => {

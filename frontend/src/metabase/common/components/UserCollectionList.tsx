@@ -13,7 +13,6 @@ import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
-import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Loader } from "metabase/ui";
 
@@ -67,7 +66,7 @@ export const UserCollectionList = () => {
                           <Icon
                             name="person"
                             className={CS.mr1}
-                            color={color("text-medium")}
+                            c="text-medium"
                             size={18}
                           />
                           <h3>{user.common_name}</h3>

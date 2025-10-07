@@ -514,6 +514,10 @@ describe("scenarios > setup", () => {
   });
 
   it("embedded use-case, it should hide the db step and show the embedding homepage", () => {
+    cy.intercept("GET", "/api/activity/recents*").as("getRecents");
+    cy.intercept("GET", "/api/collection/root").as("getRootCollection");
+    cy.intercept("GET", "/api/database").as("getDatabases");
+
     cy.visit("/setup");
 
     cy.location("pathname").should("eq", "/setup");
@@ -572,12 +576,20 @@ describe("scenarios > setup", () => {
 
     // should persist page loads
     cy.reload();
+    cy.wait([
+      "@getRecents",
+      "@getRootCollection",
+      "@getDatabases",
+      "@properties",
+    ]);
 
     H.main()
       .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
+      .should("be.visible");
 
-    H.main().findByText("Hide these").realHover();
+    H.main().scrollTo("top");
+
+    H.main().findByText("Hide these").trigger("mouseover");
 
     H.popover().findByText("Embedding done, all good").click();
 
