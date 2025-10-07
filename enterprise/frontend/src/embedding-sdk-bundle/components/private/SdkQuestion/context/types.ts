@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import type { LoadQuestionHookResult } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type {
@@ -109,6 +110,8 @@ export type SdkQuestionProviderProps = PropsWithChildren<
   SdkQuestionConfig &
     Omit<LoadSdkQuestionParams, "questionId"> & {
       questionId: SdkQuestionId | null;
+      token?: SdkEntityToken | null;
+
       /**
        * @internal
        */

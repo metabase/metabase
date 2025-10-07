@@ -37,6 +37,7 @@ const DEFAULT_OPTIONS = {};
 
 export const SdkQuestionProvider = ({
   questionId,
+  token,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -103,7 +104,6 @@ export const SdkQuestionProvider = ({
     question,
     originalQuestion,
     parameterValues,
-    token,
 
     queryResults,
 
@@ -118,6 +118,7 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
+    token,
     options,
     deserializedCard,
     initialSqlParameters,

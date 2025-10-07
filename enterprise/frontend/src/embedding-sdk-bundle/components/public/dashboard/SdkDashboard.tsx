@@ -162,8 +162,8 @@ const SdkDashboardInner = ({
   const isStaticEmbedding = useSdkSelector(getIsStaticEmbedding);
 
   useEffect(() => {
-    if (isStaticEmbedding && token) {
-      setEmbedDashboardEndpoints(token);
+    if (isStaticEmbedding) {
+      setEmbedDashboardEndpoints(token ?? "");
     }
   }, [isStaticEmbedding, token]);
 

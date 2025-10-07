@@ -113,6 +113,7 @@ export interface ExplorationEmbedOptions {
   // incompatible options
   dashboardId?: never;
   questionId?: never;
+  token?: never;
 }
 
 export interface BrowserEmbedOptions {
@@ -145,6 +146,7 @@ export interface BrowserEmbedOptions {
   template?: never;
   questionId?: never;
   dashboardId?: never;
+  token?: never;
 }
 
 export interface MetabotEmbedOptions {
@@ -157,6 +159,7 @@ export interface MetabotEmbedOptions {
   template?: never;
   questionId?: never;
   dashboardId?: never;
+  token?: never;
 }
 
 type CollectionBrowserEntityTypes =
