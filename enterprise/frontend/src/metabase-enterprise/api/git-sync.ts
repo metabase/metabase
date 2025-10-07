@@ -24,7 +24,7 @@ export type DirtyEntity = {
   collection_id?: number;
   display?: CardDisplayType;
   query_type?: string;
-  sync_status: "create" | "update" | "delete" | "touch";
+  sync_status: "create" | "update" | "delete" | "touch" | "removed";
   authority_level?: string | null;
 };
 

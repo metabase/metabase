@@ -32,6 +32,7 @@ export const getSyncStatusIcon = (status: SyncStatus): IconName => {
   switch (status) {
     case "create":
       return "add";
+    case "removed":
     case "delete":
       return "trash";
     case "update":
@@ -46,6 +47,7 @@ export const getSyncStatusColor = (status: SyncStatus): string => {
   switch (status) {
     case "create":
       return "var(--mb-base-color-palm-50)";
+    case "removed":
     case "delete":
       return "var(--mb-base-color-lobster-50)";
     case "update":
