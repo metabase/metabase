@@ -3,8 +3,8 @@ import styled from "@emotion/styled";
 import type { ComponentPropsWithRef } from "react";
 
 import { inputPadding } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;

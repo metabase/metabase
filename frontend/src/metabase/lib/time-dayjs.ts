@@ -72,6 +72,25 @@ export function parseTimestamp(
   let result: Dayjs;
   if (dayjs.isDayjs(value)) {
     result = value;
+  } else if (typeof value === "string" && /^\d{4}-W\d{2}$/.test(value)) {
+    // Parse ISO week format (e.g., "2019-W33")
+    const match = value.match(/^(\d{4})-W(\d{2})$/);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const week = parseInt(match[2], 10);
+      // Validate week number (ISO weeks range from 1-53, most years have 52)
+      if (week >= 1 && week <= 53) {
+        // ISO week 1 is the week that contains January 4th
+        // Calculate the Monday of week 1
+        const jan4 = dayjs.utc().year(year).month(0).date(4);
+        const mondayOfWeek1 = jan4.startOf("isoWeek");
+        result = mondayOfWeek1.add(week - 1, "week");
+      } else {
+        result = dayjs.utc(value); // will be invalid
+      }
+    } else {
+      result = dayjs.utc(value);
+    }
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     result = dayjs.parseZone(value);
   } else if (unit && unit in TEXT_UNIT_FORMATS && typeof value === "string") {
