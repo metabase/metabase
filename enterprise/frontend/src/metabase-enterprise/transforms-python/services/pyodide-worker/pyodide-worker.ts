@@ -1,24 +1,11 @@
 /// <reference lib="webworker" />
 
-import type { PyodideWorkerCommand, PyodideWorkerMessage } from "./types";
+// The pyodide package is not made for use on the web, so we
+// cannot use it directly. Instead we import it for it's type definitions.
+// eslint-disable-next-line import/namespace
+import type * as Pyodide from "pyodide";
 
-// Pyodide does not come with type definitions, so we have to add them
-// here as best we can.
-type Pyodide = {
-  setStdout(options: { batched: (out: string) => void }): void;
-  setStderr(options: { batched: (out: string) => void }): void;
-  runPythonAsync(code: string): Promise<any>;
-  globals: {
-    get<T>(name: string): T;
-  };
-  FS: {
-    writeFile(
-      name: string,
-      content: string,
-      options: { encoding: string },
-    ): void;
-  };
-};
+import type { PyodideWorkerCommand, PyodideWorkerMessage } from "./types";
 
 const PACKAGES = ["pandas", "numpy"];
 
@@ -60,12 +47,13 @@ async function run() {
 }
 
 async function init() {
-  // Import pyodide from local assets
+  // // Import pyodide from local assets
   self.importScripts("/app/assets/pyodide/pyodide.js");
 
-  // @ts-expect-error - loadPyodide is available after importScripts
-  // eslint-disable-next-line no-undef
-  const pyodide: Pyodide = await loadPyodide({
+  // @ts-expect-error: loadPyodide is put in the global scope by pyodide.js
+  const loader = loadPyodide as typeof Pyodide.loadPyodide;
+
+  const pyodide = await loader({
     indexURL: "/app/assets/pyodide/",
     packages: PACKAGES,
   });
@@ -92,7 +80,7 @@ def __format_exception():
 }
 
 async function execute(
-  pyodide: Pyodide,
+  pyodide: Pyodide.PyodideAPI,
   code: string,
   libraries: Record<string, string> = {},
 ) {
@@ -111,7 +99,7 @@ async function execute(
   });
 
   for (const [name, library] of Object.entries(libraries)) {
-    pyodide.FS.writeFile(name, library, { encoding: "utf8" });
+    pyodide.FS.writeFile(name, library);
   }
 
   try {
@@ -122,7 +110,10 @@ async function execute(
       stderr: stderr.join("\n"),
     };
   } catch (_err) {
-    const error = pyodide.globals.get<() => string>("__format_exception")();
+    const formatException = pyodide.globals.get(
+      "__format_exception",
+    ) as () => string;
+    const error = formatException();
     return {
       error: serialize(error),
       stdout: stdout.join("\n"),
