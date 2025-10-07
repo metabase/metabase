@@ -749,7 +749,7 @@ class Question {
       dashboard_id: card.dashboard_id,
       ...(includeEntityId ? { entity_id: card.entity_id } : {}),
       ...(includeDatasetQuery
-        ? { dataset_query: Lib.toLegacyQuery(this.query()) }
+        ? { dataset_query: Lib.toJsQuery(this.query()) }
         : {}),
       display: card.display,
       ...(_.isEmpty(card.parameters)
@@ -833,7 +833,7 @@ class Question {
       throw new Error("Internal query is not supported by MLv2");
     }
 
-    this.__mlv2Query ??= Lib.fromLegacyQuery(
+    this.__mlv2Query ??= Lib.fromJsQuery(
       this.datasetQuery()?.database,
       this.metadataProvider(),
       this.datasetQuery(),
@@ -858,7 +858,7 @@ class Question {
   }
 
   setQuery(query: Query): Question {
-    return this.setDatasetQuery(Lib.toLegacyQuery(query));
+    return this.setDatasetQuery(Lib.toJsQuery(query));
   }
 
   generateQueryDescription() {

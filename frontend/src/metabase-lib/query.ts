@@ -137,13 +137,13 @@ export function previewQuery(
   return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
 }
 
-export function queryToJs(query: Query): object {
-  return ML.query_to_js(query);
-}
-
-export function jsToQuery(
+export function fromJsQuery(
   metadataProvider: MetadataProvider,
-  jsQuery: object,
+  jsQuery: DatasetQuery,
 ): Query {
   return ML.js_to_query(metadataProvider, jsQuery);
+}
+
+export function toJsQuery(query: Query): DatasetQuery {
+  return ML.query_to_js(query);
 }

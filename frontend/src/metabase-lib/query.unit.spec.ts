@@ -14,12 +14,12 @@ describe("fromLegacyQuery", () => {
       SAMPLE_DATABASE.id,
       SAMPLE_METADATA,
     );
-    const query1 = Lib.fromLegacyQuery(
+    const query1 = Lib.fromJsQuery(
       SAMPLE_DATABASE.id,
       metadataProvider,
       DEFAULT_QUERY,
     );
-    const query2 = Lib.fromLegacyQuery(
+    const query2 = Lib.fromJsQuery(
       SAMPLE_DATABASE.id,
       metadataProvider,
       DEFAULT_QUERY,

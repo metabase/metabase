@@ -12,7 +12,7 @@ export function useHiddenSourceTables(
     datasetQuery.database,
     metadata,
   );
-  const query = Lib.fromLegacyQuery(
+  const query = Lib.fromJsQuery(
     datasetQuery.database,
     metadataProvider,
     datasetQuery,

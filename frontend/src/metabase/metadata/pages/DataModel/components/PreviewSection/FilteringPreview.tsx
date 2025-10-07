@@ -65,7 +65,7 @@ function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
   });
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
 
-  return Lib.fromLegacyQuery(databaseId, metadataProvider, {
+  return Lib.fromJsQuery(databaseId, metadataProvider, {
     type: "query",
     database: databaseId,
     query: {

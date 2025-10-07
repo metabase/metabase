@@ -48,7 +48,7 @@ function patchQuestion(question: Question) {
   if (!isNative) {
     const [sampleColumn] = Lib.orderableColumns(query, 0);
     const nextQuery = Lib.orderBy(query, 0, sampleColumn);
-    return question.setDatasetQuery(Lib.toLegacyQuery(nextQuery));
+    return question.setQuery(nextQuery);
   } else {
     const query = question.legacyNativeQuery() as NativeQuery;
     return query.setQueryText("SELECT * FROM __ORDERS__").question();
