@@ -7,7 +7,7 @@ import {
 import { memo, useContext } from "react";
 import { t } from "ttag";
 
-import { Box, Chip, FixedSizeIcon, Group, Stack } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Pill, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import { GraphContext } from "../GraphContext";
@@ -65,12 +65,14 @@ function DependentGroupButton({ node, group }: DependentGroupButtonProps) {
     group.category === selection.category;
 
   return (
-    <Chip
+    <Pill
       key={group.category}
-      checked={isSelected}
+      c={isSelected ? "white" : "text-primary"}
+      bg={isSelected ? "brand" : "bg-medium"}
+      fw="normal"
       onClick={() => setSelection({ node, category: group.category })}
     >
       {getDependentGroupLabel(group)}
-    </Chip>
+    </Pill>
   );
 }
