@@ -6,4 +6,4 @@ query: |
   SELECT
     *
   FROM orders
-database: 2
+database: ref:sample-database

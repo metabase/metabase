@@ -13,13 +13,7 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (def good-yamls ["test_resources/representations/v0/orders-count.transform.yml"
-                 "test_resources/representations/v0/orders-count-existing.transform.yml"
-
-                 ;;"test_resources/representations/v0/pokemon-cards-limited.question.yml"
-                 ;;"test_resources/representations/v0/collection-8/pokemon-cards.question.yml"
-                 ;;"test_resources/representations/v0/collection-8/sales-data.question.yml"
-                 ;;"test_resources/representations/v0/collection-8/trainers.question.yml"
-                 ])
+                 "test_resources/representations/v0/orders-count-existing.transform.yml"])
 
 (deftest validate-example-yamls
   (testing "Testing valid examples"
@@ -43,10 +37,10 @@
                                                :target {:type "table"
                                                         :name "output_table"
                                                         :schema "output_schema"}}]
-      (let [edn (rep/export-with-refs transform)
+      (let [edn  (rep/export transform)
             ;; convert to yaml and read back in to convert keywords to strings, etc
             yaml (yaml/generate-string edn)
-            rep (yaml/parse-string yaml)]
+            rep  (yaml/parse-string yaml)]
         (is (rep/normalize-representation rep))))))
 
 (deftest can-import
@@ -68,7 +62,7 @@
                          (t2/select-one :model/Database (mt/id))}
               persisted (rep/persist! rep ref-index)]
           (is persisted)
-          (let [edn (rep/export-with-refs persisted)
+          (let [edn (rep/export persisted)
                 yaml (yaml/generate-string edn)
                 rep2 (yaml/parse-string yaml)]
             (is (=? (dissoc rep :ref :database) rep2))))))))
@@ -84,14 +78,14 @@
                                                  :target {:type "table"
                                                           :schema "PUBLIC"
                                                           :name "SOME_TABLE"}}]
-        (let [edn (rep/export-with-refs transform)
+        (let [edn (rep/export transform)
               yaml (yaml/generate-string edn)
               rep (yaml/parse-string yaml)
               rep (rep/normalize-representation rep)
               ref-index {(v0-common/unref (:database edn)) (t2/select-one :model/Database (mt/id))}
               transform (rep/persist! rep ref-index)
               transform (t2/select-one :model/Transform :id (:id transform))
-              edn (rep/export-with-refs transform)
+              edn (rep/export transform)
               yaml (yaml/generate-string edn)
               rep2 (yaml/parse-string yaml)
               rep2 (rep/normalize-representation rep2)]

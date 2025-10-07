@@ -196,15 +196,13 @@
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::mbql-query
-  [:or
-   {:description "MBQL query - either embedded map or ref to MBQL data"}
-   ::lib.schema.common/non-blank-string
-   :map])
+  [:and
+   {:description "MBQL query that defines the model's data"}
+   any?])
 
 (mr/def ::database
-  [:or
-   {:description "Database reference: integer ID, name string, or ref string"}
-   :int
+  [:and
+   {:description "Database reference"}
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::collection
@@ -231,12 +229,7 @@
     (fn [{:keys [query mbql_query]}]
       (= 1 (count (filter some? [query mbql_query]))))]])
 
-;;; ------------------------------------ INGESTION ------------------------------------
-
-;;; ---------------------------- Column Metadata Processing -----------------------------
-
-;;; ------------------------------------ Public API ------------------------------------
-
+;; TODO: we'll still want something like this (QUE-2654)
 (defn- merge-column
   "Merge user-edited fields from a column representation into base column metadata.
    User edits take precedence for display_name, description, semantic_type, visibility_type, and fk_target_field_id.
@@ -262,31 +255,24 @@
 
 (defmethod import/yaml->toucan :v0/model
   [{model-name :name
-    :keys [_type _ref entity-id description database collection columns mbql_query] :as representation}
+    :keys [_type _ref entity-id description database collection columns] :as representation}
    ref-index]
   (let [database-id (v0-common/resolve-database-id database ref-index)
         dataset-query (-> (assoc representation :database database-id)
-                          (v0-mbql/import-dataset-query ref-index))
-        base-result-metadata (if (and (string? mbql_query) (v0-common/ref? mbql_query))
-                               (let [mbql-data (get ref-index (v0-common/unref mbql_query))]
-                                 (:result_metadata mbql-data))
-                               nil)
-        result-metadata (if base-result-metadata
-                          (merge-column-metadata base-result-metadata columns)
-                          columns)]
+                          (v0-mbql/import-dataset-query ref-index))]
     (merge
-     {:name model-name
-      :entity_id (or entity-id
-                     (v0-common/generate-entity-id representation))
-      :description (or description "")
-      :display :table
-      :dataset_query dataset-query
+     {:name                   model-name
+      :entity_id              (or entity-id
+                                  (v0-common/generate-entity-id representation))
+      :description            (or description "")
+      :display                :table
+      :dataset_query          dataset-query
       :visualization_settings {}
-      :database_id database-id
-      :query_type (if (= (:type dataset-query) "native") :native :query)
-      :type :model}
-     (when result-metadata
-       {:result_metadata result-metadata})
+      :database_id            database-id
+      :query_type             (if (= (:type dataset-query) "native") :native :query)
+      :type                   :model}
+     (when columns
+       {:result_metadata columns})
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
@@ -311,6 +297,7 @@
 
 ;;; -- Export --
 
+;; TODO: Are these right? (QUE-2654)
 (defn- extract-user-editable-settings
   "Extract user-editable settings from a column's settings map.
    Returns only the fields that users should be able to edit in YAML."
@@ -342,13 +329,10 @@
       (v0-mbql/->ref-fields)))
 
 (defmethod export/export-entity :model [card]
-  (let [query (if export/*use-refs*
-                (patch-refs-for-export (:dataset_query card))
-                (:dataset_query card))
+  (let [query    (patch-refs-for-export (:dataset_query card))
         card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
-        mbql-ref (str "mbql-" card-ref)
-        columns (when-let [result-metadata (:result_metadata card)]
-                  (seq (mapv extract-user-editable-column-metadata result-metadata)))]
+        columns  (when-let [result-metadata (:result_metadata card)]
+                   (seq (mapv extract-user-editable-column-metadata result-metadata)))]
     (cond-> {:name (:name card)
              :type (:type card)
              :ref card-ref
@@ -360,21 +344,12 @@
              :database (:database query))
 
       (= :query (:type query))
-      (assoc :mbql_query (str "ref:" mbql-ref)
-             :database (:database query))
+      (assoc :mbql_query (:query query)
+             :database (:database query)
+             :columns (:result_metadata card))
 
       columns
       (assoc :columns columns)
 
       :always
       u/remove-nils)))
-
-(defmethod export/export-mbql-data :model
-  [card]
-  (let [query (if export/*use-refs*
-                (patch-refs-for-export (:dataset_query card))
-                (:dataset_query card))]
-    (when (= :query (:type query))
-      (let [card-ref (v0-common/unref (v0-common/->ref (:id card) :model))
-            mbql-ref (str "mbql-" card-ref)]
-        (v0-mbql/create-mbql-data mbql-ref (:query query) (:result_metadata card))))))

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
-   [metabase-enterprise.representations.yaml :as yaml]
+   [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
@@ -13,7 +13,7 @@
     (doseq [filename
             []]
       (testing (str "Validating: " filename)
-        (let [rep (yaml/from-file filename)]
+        (let [rep (rep-yaml/from-file filename)]
           (is (rep/normalize-representation rep)))))))
 
 (deftest validate-exported-metrics
@@ -21,14 +21,14 @@
                  (mt/mbql-query users)]]
     (mt/with-temp [:model/Card model {:type :model
                                       :dataset_query query}]
-      (let [edn (rep/export-with-refs model)
+      (let [edn (rep/export model)
             ;; convert to yaml and read back in to convert keywords to strings, etc
-            yaml (yaml/generate-string edn)
-            rep (yaml/parse-string yaml)]
+            yaml (rep-yaml/generate-string edn)
+            rep (rep-yaml/parse-string yaml)]
         (is (rep/normalize-representation rep))))))
 
 (deftest can-import
   (doseq [filename []]
     (testing (str "Importing: " filename)
-      (let [rep (yaml/from-file filename)]
+      (let [rep (rep-yaml/from-file filename)]
         (is (rep/persist! rep))))))
