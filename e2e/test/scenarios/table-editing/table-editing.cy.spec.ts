@@ -482,18 +482,21 @@ describe("scenarios > table-editing", () => {
       cy.intercept("GET", `/api/table/${ORDERS_ID}/query_metadata`).as(
         "getOrdersTable",
       );
+      const NON_EXISTING_ID = "999999";
+      cy.intercept(
+        "GET",
+        `/api/field/${ORDERS.USER_ID}/search/${ORDERS.USER_ID}?value=${NON_EXISTING_ID}&limit=20`,
+      ).as("getFieldValues");
+      cy.intercept(
+        "GET",
+        `/api/field/${PRODUCTS.CATEGORY}/search/${PRODUCTS.CATEGORY}?value=${NON_EXISTING_ID}&limit=20`,
+      ).as("getCategoryValues");
 
       cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/edit`);
 
       cy.wait("@getOrdersTable");
 
       cy.findByTestId("new-record-button").click();
-
-      const NON_EXISTING_ID = "999999";
-      cy.intercept(
-        "GET",
-        `/api/field/${ORDERS.USER_ID}/search/${ORDERS.USER_ID}?value=${NON_EXISTING_ID}&limit=20`,
-      ).as("getFieldValues");
 
       H.modal().within(() => {
         cy.findByTestId("User ID-field-input").click();
@@ -507,20 +510,23 @@ describe("scenarios > table-editing", () => {
         cy.findByText(`Add option: ${NON_EXISTING_ID}`).should("not.exist");
       });
 
+      H.modal().within(() => {
+        cy.findByText("Cancel").click();
+      });
+
       cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
         "getProductsTable",
       );
 
-      cy.visit(`/browse/databases/${SAMPLE_DB_ID}/tables/${PRODUCTS_ID}/edit`);
+      // navigate via breadcrumbs to avoid page refresh
+      cy.findByTestId("head-crumbs-container")
+        .findByText("Sample Database")
+        .click();
+      openTableEdit("Products");
 
       cy.wait("@getProductsTable");
 
       cy.findByTestId("new-record-button").click();
-
-      cy.intercept(
-        "GET",
-        `/api/field/${PRODUCTS.CATEGORY}/search/${PRODUCTS.CATEGORY}?value=${NON_EXISTING_ID}&limit=20`,
-      ).as("getCategoryValues");
 
       H.modal().within(() => {
         cy.findByTestId("Category-field-input").click();

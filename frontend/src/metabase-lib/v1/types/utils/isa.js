@@ -123,7 +123,7 @@ export const isMetric = (col) =>
   col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
 
 /**
- * @param {Field} field
+ * @param {Field | DatasetColumn} field
  * @returns {boolean}
  */
 export const isFK = (field) => field && isTypeFK(field.semantic_type);
