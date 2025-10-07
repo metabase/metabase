@@ -67,8 +67,10 @@
   (or (env/env :mb-frontend-dev-port) 8080))
 
 (defn ^:private proxy-dev-server [request]
-  ;; TODO add query string
-  (let [proxied-url (str "http://localhost:" frontend-dev-port (:uri request))
+  (let [proxied-url (str "http://localhost:"
+                         frontend-dev-port
+                         (:uri request)
+                         (:query-string request))
         response (http/request {:method (:request-method request)
                                 :url proxied-url
                                 :headers (dissoc (:headers request) "host")
