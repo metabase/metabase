@@ -8,11 +8,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import * as Urls from "metabase/lib/urls";
 import { Box, Card, Tabs } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
 import {
   type TransformEditorValue,
-  useQueryEditor,
-} from "metabase-enterprise/transforms/hooks/use-query-editor";
-import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
+  useTransformEditor,
+} from "metabase-enterprise/transforms/hooks/use-transform-editor";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
@@ -71,11 +71,7 @@ const TransformPageInner = ({ transform }: { transform: Transform }) => {
   const { setSource, proposedSource, acceptProposed, clearProposed } =
     useSourceState(transform.id, transform.source);
 
-  // TODO: handle python transforms
-  const queryEditor = useQueryEditor(
-    transform.source.query,
-    proposedSource?.query,
-  );
+  const transformEditor = useTransformEditor(transform.source, proposedSource);
 
   return (
     <PanelGroup
@@ -90,12 +86,15 @@ const TransformPageInner = ({ transform }: { transform: Transform }) => {
           proposedSource={proposedSource}
           acceptProposed={acceptProposed}
           clearProposed={clearProposed}
-          queryEditor={queryEditor}
+          transformEditor={transformEditor}
         />
       </Panel>
       <ResizeHandle direction="vertical" />
       <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-        <TransformDrawer transform={transform} queryEditor={queryEditor} />
+        <TransformDrawer
+          transform={transform}
+          transformEditor={transformEditor}
+        />
       </Panel>
     </PanelGroup>
   );
@@ -103,10 +102,10 @@ const TransformPageInner = ({ transform }: { transform: Transform }) => {
 
 export function TransformDrawer({
   transform,
-  queryEditor,
+  transformEditor,
 }: {
   transform: Transform;
-  queryEditor: TransformEditorValue;
+  transformEditor: TransformEditorValue;
 }) {
   const isNew = !transform.id;
 
@@ -128,7 +127,7 @@ export function TransformDrawer({
         </Tabs.List>
         <Box p="md">
           <Tabs.Panel value="preview">
-            <QueryPreview queryEditor={queryEditor} />
+            <QueryPreview transformEditor={transformEditor} />
           </Tabs.Panel>
           {!isNew && (
             <>

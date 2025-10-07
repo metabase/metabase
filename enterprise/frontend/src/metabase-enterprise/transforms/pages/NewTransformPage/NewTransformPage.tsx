@@ -25,8 +25,8 @@ import type {
 import { QueryEditor } from "../../components/QueryEditor";
 import {
   type TransformEditorValue,
-  useQueryEditor,
-} from "../../hooks/use-query-editor";
+  useTransformEditor,
+} from "../../hooks/use-transform-editor";
 import { getTransformListUrl, getTransformUrl } from "../../urls";
 import { TransformDrawer } from "../TransformPage";
 
@@ -144,7 +144,7 @@ export function NewTransformPageInner({
     acceptProposed(source);
   };
 
-  const queryEditor = useQueryEditor(source.query, proposedSource?.query);
+  const transformEditor = useTransformEditor(source, proposedSource);
 
   return (
     <>
@@ -162,12 +162,15 @@ export function NewTransformPageInner({
             onCancel={handleCancel}
             onRejectProposed={clearProposed}
             onAcceptProposed={handleAcceptProposed}
-            queryEditor={queryEditor}
+            transformEditor={transformEditor}
           />
         </Panel>
         <ResizeHandle direction="vertical" />
         <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
-          <TransformDrawer transform={{ source }} queryEditor={queryEditor} />
+          <TransformDrawer
+            transform={{ source }}
+            transformEditor={transformEditor}
+          />
         </Panel>
       </PanelGroup>
 
@@ -198,7 +201,7 @@ interface NewTransformEditorBody {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: TransformSource) => void;
-  queryEditor: TransformEditorValue;
+  transformEditor: TransformEditorValue;
 }
 
 function NewTransformEditorBody({
@@ -209,7 +212,7 @@ function NewTransformEditorBody({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
-  queryEditor,
+  transformEditor,
 }: NewTransformEditorBody) {
   if (initialSource.type === "python") {
     return (
@@ -240,7 +243,7 @@ function NewTransformEditorBody({
       onChange={onChange}
       onRejectProposed={onRejectProposed}
       onAcceptProposed={onAcceptProposed}
-      queryEditor={queryEditor}
+      transformEditor={transformEditor}
     />
   );
 }

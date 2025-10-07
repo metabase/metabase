@@ -15,8 +15,8 @@ import type {
   Transform,
 } from "metabase-types/api";
 
-import type { QueryEditorContextValue } from "../../hooks/use-query-editor";
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
+import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
@@ -35,7 +35,7 @@ type QueryEditorProps = {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: QueryTransformSource) => void;
-  queryEditor: QueryEditorContextValue;
+  transformEditor: TransformEditorValue;
 };
 
 export function QueryEditor({
@@ -48,7 +48,7 @@ export function QueryEditor({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
-  queryEditor,
+  transformEditor,
 }: QueryEditorProps) {
   const {
     question,
@@ -61,7 +61,7 @@ export function QueryEditor({
     isNative,
     runQuery,
     cancelQuery,
-  } = queryEditor;
+  } = transformEditor;
 
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
@@ -71,6 +71,7 @@ export function QueryEditor({
     const query = proposedSource?.query ?? question.datasetQuery();
     return { type: "query" as const, query };
   }, [proposedSource, question]);
+
   useRegisterMetabotTransformContext(transform, source);
 
   const handleChange = async (newQuestion: Question) => {
