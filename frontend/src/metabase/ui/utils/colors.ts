@@ -68,5 +68,5 @@ export function color(colorName: ColorName | string): string {
 }
 
 export const isColorName = (name?: string | null): name is ColorName => {
-  return allColorNames.includes(name);
+  return !!name && allColorNames.includes(name);
 };
