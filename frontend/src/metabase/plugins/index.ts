@@ -710,13 +710,13 @@ export const PLUGIN_METABOT = {
   isEnabled: () => false,
   Metabot: (_props: {
     hide?: boolean;
-    w?: string,
+    w?: string;
     config?: {
       emptyText?: string;
       hideSuggestedPrompts?: boolean;
       preventClose?: boolean;
       preventRetryMessage?: boolean;
-      suggestionModels: (SearchModel | "transform" | "user")[];
+      suggestionModels?: (SearchModel | "transform" | "user")[];
     };
   }) => null as React.ReactElement | null,
   defaultMetabotContextValue,
