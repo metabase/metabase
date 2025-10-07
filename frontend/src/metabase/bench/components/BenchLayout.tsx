@@ -21,7 +21,7 @@ export const BenchLayout = ({
   children, nav, name
 }: {
   children: ReactNode;
-  nav: ReactElement;
+  nav?: ReactElement;
   name: string;
 }) => {
   const navPanelRef = useRef<ImperativePanelHandle>(null);
@@ -38,23 +38,25 @@ export const BenchLayout = ({
 
   return (
     <PanelGroup id={`${name}-app-layout`} autoSaveId={`${name}-app-layout`} direction="horizontal">
-      <Panel
-        ref={navPanelRef}
-        id="bench-app-nav"
-        order={1}
-        collapsible
-        onCollapse={collapse}
-        onExpand={expand}
-        collapsedSize={getSize(32)}
-        minSize={15}
-        style={{
-          borderRight: "1px solid var(--mb-color-border)",
-          height: "100%",
-          overflow: "hidden",
-        }}
-      >
-        {isCollapsed ? cloneElement(nav, { onCollapse: collapsePanel}) : <CollapsedNav onClick={expandPanel} /> }
-      </Panel>
+      {nav && (
+        <Panel
+          ref={navPanelRef}
+          id="bench-app-nav"
+          order={1}
+          collapsible
+          onCollapse={collapse}
+          onExpand={expand}
+          collapsedSize={getSize(32)}
+          minSize={15}
+          style={{
+            borderRight: "1px solid var(--mb-color-border)",
+            height: "100%",
+            overflow: "hidden",
+          }}
+        >
+          {isCollapsed ? cloneElement(nav, { onCollapse: collapsePanel}) : <CollapsedNav onClick={expandPanel} /> }
+        </Panel>
+      )}
       <ResizeHandle />
       <Panel
         id="bench-app-main"
