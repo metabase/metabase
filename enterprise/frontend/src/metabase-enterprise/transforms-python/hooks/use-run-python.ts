@@ -22,12 +22,14 @@ export function useRunPython<T = unknown>(packages: string[] = []) {
       controller.current.abort();
     }
     controller.current = new AbortController();
+    const { signal } = controller.current;
 
     try {
       setIsRunning(true);
-      const result = await pool.executePython<T>(code, libraries, {
-        signal: controller.current.signal,
-      });
+      const result = await pool.executePython<T>(code, libraries, { signal });
+      if (signal.aborted) {
+        return;
+      }
       setData(result);
       return result;
     } catch (error) {

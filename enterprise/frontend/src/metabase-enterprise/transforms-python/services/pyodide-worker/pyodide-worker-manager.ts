@@ -53,6 +53,7 @@ export class PyodideWorkerManager {
 
     try {
       await this.ready;
+      options?.signal?.throwIfAborted();
 
       this.send({
         type: "execute",
