@@ -428,9 +428,12 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
 
     // Apply a new filter for order id < 10
-    cy.findByTestId("question-filter-header").click();
-    cy.findByTestId("filter-column-ID").clear().type("10");
-    cy.findByTestId("apply-filters").click();
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByTestId("filter-pill").click();
+    cy.findByTestId("number-filter-picker").within(() => {
+      cy.findByLabelText("Filter value").clear().type("10");
+      cy.findByRole("button", { name: "Update filter" }).click();
+    });
 
     // Verify the pagination footer says "Item 1 of 9"
     cy.findByTestId("pagination-footer").within(() => {
