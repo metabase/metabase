@@ -8,6 +8,6 @@
          (parameters.schema/normalize-parameter {:id "x"}))))
 
 (deftest ^:parallel normalize-parameter-from-json-test
-  (is (= {:type :text, :id "e7f8ca", :name "variable", :slug "foo_bar", :value 15}
+  (is (= {:type :text, :id "e7f8ca", :name "variable", :slug "foo_bar", :value 15, :values_source_type :card}
          (parameters.schema/normalize-parameter
-          {"id" "e7f8ca", "name" "variable", "slug" "foo_bar", "type" "text", "value" 15}))))
+          {"id" "e7f8ca", "name" "variable", "slug" "foo_bar", "type" "text", "value" 15, "values_source_type" "card"}))))

@@ -74,7 +74,7 @@
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   [:map
    {:description      "parameter must be a map with :id and :type keys"
-    :decode/normalize lib.schema.common/normalize-map}
+    :decode/normalize lib.schema.common/normalize-map-no-kebab-case}
    [:default              {:optional true} :any]
    ;; TODO (Cam 9/18/25) -- why are we mixing `camelCase` and `snake_case` here? Is this to make me sad?
    [:filteringParameters  {:optional true} [:maybe [:sequential ::lib.schema.parameter/id]]]
