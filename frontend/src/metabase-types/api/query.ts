@@ -55,7 +55,8 @@ interface PublicNativeDatasetQuery {
 
 export type PublicDatasetQuery =
   | PublicStructuredDatasetQuery
-  | PublicNativeDatasetQuery;
+  | PublicNativeDatasetQuery
+  | OpaqueDatasetQuery;
 
 export const dateTimeAbsoluteUnits = [
   "minute",
