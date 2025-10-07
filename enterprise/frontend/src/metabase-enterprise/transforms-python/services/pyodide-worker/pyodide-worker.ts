@@ -5,27 +5,35 @@
 // eslint-disable-next-line import/namespace
 import type * as Pyodide from "pyodide";
 
-import type { PyodideWorkerCommand, PyodideWorkerMessage } from "./types";
+import type {
+  PyodideWorkerCommand,
+  PyodideWorkerMessage,
+  PythonLibraries,
+} from "./types";
 
 const PACKAGES = ["pandas", "numpy"];
+
+let pyodide: Pyodide.PyodideAPI | null = null;
 
 self.addEventListener("unhandledrejection", (event) => {
   event.stopPropagation();
   send({ type: "error", error: event.reason });
+  terminate();
 });
 
 self.addEventListener(
   "message",
-  function ({ data }: MessageEvent<PyodideWorkerCommand>) {
-    const { type } = data;
-    if (type === "terminate") {
-      send({ type: "terminated" });
-      self.close();
+  ({ data }: MessageEvent<PyodideWorkerCommand>) => {
+    switch (data.type) {
+      case "init":
+        return init();
+      case "terminate":
+        return terminate();
+      case "execute":
+        return execute(data);
     }
   },
 );
-
-run();
 
 /**
  * Send a message to the main thread.
@@ -34,27 +42,9 @@ function send(message: PyodideWorkerMessage) {
   self.postMessage(message);
 }
 
-async function run() {
-  const pyodide = await init();
-
-  self.addEventListener(
-    "message",
-    async function ({ data }: MessageEvent<PyodideWorkerCommand>) {
-      const { type } = data;
-
-      if (type === "execute") {
-        const { libraries, code } = data;
-        const result = await execute(pyodide, code, libraries);
-        send({ type: "results", ...result });
-        return;
-      }
-
-      throw new Error(`Unknown message type: ${type}`);
-    },
-  );
-
-  // Signal that worker is ready to accept messages
-  send({ type: "ready" });
+function terminate() {
+  send({ type: "terminated" });
+  self.close();
 }
 
 async function init() {
@@ -64,7 +54,7 @@ async function init() {
   // @ts-expect-error: loadPyodide is put in the global scope by pyodide.js
   const loader = loadPyodide as typeof Pyodide.loadPyodide;
 
-  const pyodide = await loader({
+  pyodide = await loader({
     indexURL: "/app/assets/pyodide/",
     packages: PACKAGES,
   });
@@ -76,7 +66,7 @@ async function init() {
 
   // Add helper function that grabs the last exception
   // and formats it as a string
-  pyodide.runPythonAsync(
+  await pyodide.runPythonAsync(
     `
 def __format_exception():
   import sys
@@ -87,14 +77,26 @@ def __format_exception():
     `,
   );
 
-  return pyodide;
+  // Signal that worker is ready to accept messages
+  send({ type: "ready" });
 }
 
-async function execute(
-  pyodide: Pyodide.PyodideAPI,
-  code: string,
-  libraries: Record<string, string> = {},
-) {
+async function execute({
+  code,
+  libraries,
+}: {
+  code: string;
+  libraries: PythonLibraries;
+}) {
+  const result = await executePython(code, libraries);
+  send({ type: "results", ...result });
+}
+
+async function executePython(code: string, libraries: PythonLibraries) {
+  if (!pyodide) {
+    throw new Error("Pyodide not initialized");
+  }
+
   const stdout: string[] = [];
   pyodide.setStdout({
     batched(out: string) {

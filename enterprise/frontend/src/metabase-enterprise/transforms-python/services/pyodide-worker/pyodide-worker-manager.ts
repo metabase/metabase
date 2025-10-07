@@ -9,9 +9,10 @@ import type {
   PythonExecutionResult,
   PythonLibraries,
 } from "./types";
+import { withTimeout } from "./utils";
 
 const READY_TIMEOUT = 10_000;
-const EXECUTE_TIMEOUT = 20_000;
+const EXECUTE_TIMEOUT = 60_000;
 
 export class PyodideWorkerManager {
   private worker: Worker;
@@ -31,9 +32,9 @@ export class PyodideWorkerManager {
       { name: "pyodide-worker" },
     );
 
-    this.ready = this.waitFor(this.worker, "ready", {
-      timeout: READY_TIMEOUT,
-    })
+    this.send({ type: "init" });
+
+    this.ready = this.waitFor("ready", { timeout: READY_TIMEOUT })
       .then(() => {
         this.status = "ready";
       })
@@ -55,13 +56,9 @@ export class PyodideWorkerManager {
     try {
       await this.ready;
 
-      this.send({
-        type: "execute",
-        code,
-        libraries,
-      });
+      this.send({ type: "execute", code, libraries });
 
-      const evt = await this.waitFor(this.worker, "results", {
+      const evt = await this.waitFor("results", {
         timeout: EXECUTE_TIMEOUT,
         signal: options?.signal,
       });
@@ -90,18 +87,18 @@ export class PyodideWorkerManager {
   }
 
   private waitFor<T extends PyodideWorkerMessage["type"]>(
-    worker: Worker,
     type: T,
     { timeout, signal }: { timeout: number; signal?: AbortSignal },
   ): Promise<Extract<PyodideWorkerMessage, { type: T }>> {
     return new Promise((resolve, reject) => {
-      signal?.addEventListener("abort", () => {
+      withTimeout(signal, timeout).addEventListener("abort", (reason) => {
         unsubscribe();
-        reject(new Error(t`Aborted`));
+        reject(reason ?? new Error(t`Aborted`));
       });
 
-      const handler = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
+      const handleMessage = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
         unsubscribe();
+
         switch (data.type) {
           case type:
             return resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
@@ -112,24 +109,18 @@ export class PyodideWorkerManager {
         }
       };
 
-      const errHandler = (evt: ErrorEvent) => {
+      const handleError = (evt: ErrorEvent) => {
         unsubscribe();
         reject(evt.error ?? new Error(t`Could not start Python worker.`));
       };
 
       const unsubscribe = () => {
-        clearTimeout(timer);
-        worker.removeEventListener("message", handler);
-        worker.removeEventListener("error", errHandler);
+        this.worker.removeEventListener("message", handleMessage);
+        this.worker.removeEventListener("error", handleError);
       };
 
-      const timer = setTimeout(() => {
-        unsubscribe();
-        reject(new Error(t`Timeout waiting for ${type}`));
-      }, timeout);
-
-      worker.addEventListener("message", handler);
-      worker.addEventListener("error", errHandler);
+      this.worker.addEventListener("message", handleMessage);
+      this.worker.addEventListener("error", handleError);
     });
   }
 }

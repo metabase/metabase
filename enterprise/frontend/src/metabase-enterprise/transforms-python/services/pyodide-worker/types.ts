@@ -1,8 +1,11 @@
 export type PythonLibraries = Record<string, string>;
 
 export type PyodideWorkerCommand =
+  | PyodideInitCommand
   | PyodideExecuteCommand
   | PyodideTerminateCommand;
+
+type PyodideInitCommand = { type: "init" };
 
 type PyodideExecuteCommand = {
   type: "execute";
