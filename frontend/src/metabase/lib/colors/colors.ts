@@ -403,8 +403,8 @@ export const colorConfig = {
     dark: baseColors.lobster[40],
   },
   "saturated-yellow": {
-    light: baseColors.dubloon[60],
-    dark: baseColors.dubloon[40],
+    light: baseColors.dubloon[30],
+    dark: baseColors.dubloon[30],
   },
   "shadow-embedding-hub-card": {
     //I think this can be removed?
