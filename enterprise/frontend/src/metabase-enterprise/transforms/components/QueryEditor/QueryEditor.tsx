@@ -6,7 +6,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
-import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { Center, Loader, Modal, Stack } from "metabase/ui";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -15,13 +15,13 @@ import type {
   Transform,
 } from "metabase-types/api";
 
+import type { QueryEditorContextValue } from "../../hooks/use-query-editor";
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorValidationCard } from "./EditorValidationCard";
 import S from "./QueryEditor.module.css";
-import { useQueryEditorContext } from "./QueryEditorContext";
 import { getValidationResult, useSelectedText } from "./utils";
 
 type QueryEditorProps = {
@@ -35,6 +35,7 @@ type QueryEditorProps = {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: QueryTransformSource) => void;
+  queryEditor: QueryEditorContextValue;
 };
 
 export function QueryEditor({
@@ -47,6 +48,7 @@ export function QueryEditor({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
+  queryEditor,
 }: QueryEditorProps) {
   const {
     question,
@@ -59,7 +61,7 @@ export function QueryEditor({
     isNative,
     runQuery,
     cancelQuery,
-  } = useQueryEditorContext();
+  } = queryEditor;
 
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
