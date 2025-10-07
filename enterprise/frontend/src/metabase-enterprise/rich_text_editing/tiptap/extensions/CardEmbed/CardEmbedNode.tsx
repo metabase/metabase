@@ -253,8 +253,7 @@ export const CardEmbedComponent = memo(
     const isBeingDragged = editor.view.draggingNode === node;
 
     const displayName = name || card?.name;
-    const question =
-      card?.dataset_query != null ? new Question(card) : undefined;
+    const question = card != null ? new Question(card) : undefined;
     const isNativeQuestion = question?.isNative();
 
     useEffect(() => {
