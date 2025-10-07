@@ -60,7 +60,6 @@
                                                                      :fingerprint    nil
                                                                      :name           "ID"
                                                                      :semantic_type  :type/PK}]}]})
-
         (is (=? {:columns ["ID" "ID_2"]}
                 (mt/rows+column-names
                  (qp/process-query

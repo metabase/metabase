@@ -255,7 +255,7 @@ For effective REPL usage:
   (def ^{:arglists '([n])} plus-one (partial + 1))
   ```
 
-  **Why?* Good editors use this metadata show the expected arguments to a function as you're writing code.
+  **Why?** Good editors use this metadata show the expected arguments to a function as you're writing code.
 
 - Try to organize namespaces in such a way that you don't need to use `declare`. This usually means putting the public
   portion of a namespace near the end of a file.
