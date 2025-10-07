@@ -30,7 +30,7 @@ import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 
 import { CreateModelMenu } from "./CreateModelMenu";
 
-function ModelsList({ activeId }: { activeId: number }) {
+function ModelsList({ activeId, onCollapse }: { activeId: number; onCollapse: () => void }) {
   const { isLoading, data } = useFetchModels();
   const models = data?.data;
 
@@ -38,6 +38,7 @@ function ModelsList({ activeId }: { activeId: number }) {
     <ItemsListSection
       sectionTitle="Models"
       AddButton={CreateModelMenu}
+      onCollapse={onCollapse}
       onAddNewItem={() => {}}
       listItems={
         !models || isLoading ? (

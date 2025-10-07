@@ -3,7 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Box, Button, Flex, Group, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Group, Icon, Menu } from "metabase/ui";
 
 import type { BenchItemsListSorting } from "./types";
 
@@ -14,6 +14,7 @@ type ItemsListSectionProps = {
   onChangeSorting: (sorting: BenchItemsListSorting) => void;
   onAddNewItem: () => void;
   listItems: React.ReactNode;
+  onCollapse?: () => void;
 };
 
 export const ItemsListSection = ({
@@ -23,16 +24,24 @@ export const ItemsListSection = ({
   onChangeSorting,
   onAddNewItem,
   listItems,
+  onCollapse,
 }: ItemsListSectionProps) => {
   const [isFiltersMenuOpen, setIsFiltersMenuOpen] = useState(false);
   const [isSortingMenuOpen, setIsSortingMenuOpen] = useState(false);
 
   return (
     <Box w="100%" h="100%" style={{ display: "flex", flexDirection: "column" }}>
-      <Flex direction="row" justify="space-between" align="center" p="md">
-        <Ellipsified fz="lg" fw="bold">
-          {sectionTitle}
-        </Ellipsified>
+      <Flex justify="space-between" align="center" p="md">
+        <Flex align="center" gap="sm">
+          {onCollapse && (
+            <ActionIcon onClick={onCollapse} aria-label={t`Collapse`} color="brand">
+              <Icon name="arrow_left" c="brand" /> {}
+            </ActionIcon>
+          )}
+          <Ellipsified fz="lg" fw="bold">
+            {sectionTitle}
+          </Ellipsified>
+        </Flex>
         <Flex style={{ flexShrink: 0 }}>
           {AddButton ? (
             <AddButton />
