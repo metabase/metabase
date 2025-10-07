@@ -84,7 +84,7 @@
                                     :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
                                     :non-nil #{:name}))
     (u/prog1 (t2/select-one :model/TimelineEvent :id id)
-      #p (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*}))))
+      (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*}))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[TimelineEvent]]."
