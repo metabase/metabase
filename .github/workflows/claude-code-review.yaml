@@ -2,6 +2,17 @@ name: "Claude Code Review"
 
 on:
   pull_request:
+    paths:
+      - "*.clj"
+      - "*.cljs"
+      - "*.cljc"
+      - "*.edn"
+      - "*.js"
+      - "*.ts"
+      - "*.jsx"
+      - "*.tsx"
+      - "*.json"
+      - "*.yaml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
@@ -10,7 +21,6 @@ concurrency:
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -21,13 +31,18 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: actions/checkout@v4
+      - name: Generate GitHub App Token for Claude
+        uses: actions/create-github-app-token@v1
+        id: claude-app-token
         with:
-          fetch-depth: 1
+          app-id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
 
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.claude-app-token.outputs.token }}
+          timeout-minutes: 10
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
