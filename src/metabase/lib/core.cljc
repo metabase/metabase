@@ -402,6 +402,7 @@
   can-run
   can-save
   check-card-overwrite
+  native?
   preview-query
   query
   query-from-legacy-inner-query
@@ -459,6 +460,7 @@
   query-stage
   source-table-id
   source-card-id
+  stage-type
   update-query-stage]
  [lib.validate
   find-bad-refs]

@@ -5,6 +5,7 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -32,7 +33,7 @@
   [[first-stage & more]]
   (let [first-stage (cond-> first-stage
                       (and (= driver/*driver* :mongo)
-                           (= (:lib/type first-stage) :mbql.stage/native))
+                           (lib/native-stage? first-stage))
                       (update :native (fn [x]
                                         (if (map? x)
                                           x
