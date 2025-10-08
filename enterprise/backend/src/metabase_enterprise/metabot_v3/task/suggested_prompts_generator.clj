@@ -10,6 +10,7 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
+   (java.net ConnectException)
    (java.time Instant)
    (java.util Date)
    (org.quartz DisallowConcurrentExecution)))
@@ -20,17 +21,20 @@
 (def ^:private generator-trigger-key (triggers/key "metabase.task.metabot-v3.suggested-prompts-generator.trigger"))
 
 (defn- maybe-generate-suggested-prompts! []
-  (when (premium-features/has-feature? :metabot-v3)
-    (let [metabot-eid (get-in metabot-v3.config/metabot-config
-                              [metabot-v3.config/internal-metabot-id :entity-id])
-          metabot-id (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
-          suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
-      (if (zero? suggested-prompts-cnt)
-        (do
-          (log/info "No suggested prompts found. Generating suggested prompts.")
-          (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
-          (log/info "Suggested prompts generated successfully."))
-        (log/info "Suggested prompts are present. Not generating.")))))
+  (try
+    (when (premium-features/has-feature? :metabot-v3)
+      (let [metabot-eid (get-in metabot-v3.config/metabot-config
+                                [metabot-v3.config/internal-metabot-id :entity-id])
+            metabot-id (t2/select-one-pk :model/Metabot :entity_id metabot-eid)
+            suggested-prompts-cnt (t2/count :model/MetabotPrompt :metabot_id metabot-id)]
+        (if (zero? suggested-prompts-cnt)
+          (do
+            (log/info "No suggested prompts found. Generating suggested prompts.")
+            (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
+            (log/info "Suggested prompts generated successfully."))
+          (log/info "Suggested prompts are present. Not generating."))))
+    (catch ConnectException e
+      (log/errorf "Suggested prompts generation failed: %s" (.getMessage e)))))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Initial _suggested prompts_ generation for internal Metabot."}
