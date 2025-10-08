@@ -34,7 +34,7 @@ Check out the [Interactive embedding quick start](./interactive-embedding-quick-
 
 If you're dealing with a [multi-tenant](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics) situation, check out our recommendations for [Configuring permissions for different customer schemas](../permissions/embedding.md).
 
-If you have your app running locally, and you're using the Pro Cloud version, or hosting Metabase and your app in different domains, you'll need to set your Metabase environment's session cookie samesite option to "none".
+If you have your app running locally, and you're using the Pro Cloud version, or hosting Metabase and your app in different domains, you'll need to set your Metabase environment's session cookie SameSite option to "none".
 
 ## Enabling interactive embedding in Metabase
 
@@ -128,13 +128,13 @@ Note that your interactive embed must be compatible with Safari to run on _any_ 
 
 If you want to embed Metabase in another domain (say, if Metabase is hosted at `metabase.yourcompany.com`, but you want to embed Metabase at `yourcompany.github.io`), you can tell Metabase to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Interactive** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Admin settings** > **Embedding** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 
-- **Lax** (default): Allows cookies to be sent when someone navigates to the origin site from an external site (like when following a link).
-- **None**: Allows all cross-site requests. Incompatible with most Safari and iOS browsers, such as Chrome on iOS. If you set this environment variable to "None", you must use HTTPS in Metabase to prevent browsers from rejecting the request.
-- **Strict** (not recommended): Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.
+- **Lax** (default): Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.
+- **None (requires HTTPS)**: Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.
+- **Strict** (not recommended): Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.
 
 You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../configuring-metabase/environment-variables.md#mb_session_cookie_samesite).
 
