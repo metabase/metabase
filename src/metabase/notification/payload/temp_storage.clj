@@ -13,6 +13,7 @@
   threshold. See :notification/file-too-large and :notification/truncated?."
   (:require
    [clojure.java.io :as io]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.notification.settings :as notification.settings]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
@@ -216,7 +217,13 @@
                   (when-let [remaining-rows (seq (persistent! @rows))]
                     (write-row-block-to-stream! output-stream remaining-rows))
                   (.close output-stream)
-                  (let [file-size (.length file)]
+                  (let [file-size (.length file)
+                        max-bytes (notification.settings/notification-temp-file-size-max-bytes)]
+                    (prometheus/inc! :metabase-notification/temp-storage
+                                     {:storage (cond (:notification/truncated? @streaming-state) :truncated
+                                                     (zero? max-bytes) :not-limited
+                                                     (< max-bytes file-size) :above-threshold
+                                                     :else :disk)})
                     (log/infof "💾 Stored %d rows to disk: %s (never loaded into memory)%s"
                                @row-count
                                (human-readable-size file-size)
@@ -236,6 +243,8 @@
 
               ;; Return in-memory rows
               (do
+                (prometheus/inc! :metabase-notification/temp-storage
+                                 {:storage :memory})
                 (log/infof "✓ Completed with %d rows in memory (under threshold)" @row-count)
                 (-> result
                     (assoc :row_count @row-count
