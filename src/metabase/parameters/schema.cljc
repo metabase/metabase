@@ -115,10 +115,15 @@
 (mr/def ::parameter-mapping
   "Schema for a valid Parameter Mapping"
   [:map
-   {:description "parameter_mapping must be a map with :parameter_id and :target keys"}
+   {:decode/normalize (fn [mapping]
+                        (when (map? mapping)
+                          (let [mapping (lib.schema.common/normalize-map-no-kebab-case mapping)]
+                            (cond-> mapping
+                              (not (pos-int? (:card_id mapping))) (dissoc :card_id)))))
+    :description "parameter_mapping must be a map with :parameter_id and :target keys"}
    [:parameter_id ::lib.schema.parameter/id]
    [:target       ::lib.schema.parameter/target]
-   [:card_id      {:optional true} ::lib.schema.id/card]
+   [:card_id      {:optional true} [:maybe ::lib.schema.id/card]]
    [:dashcard     {:optional true} :map]])
 
 (mu/defn normalize-parameter-mapping :- ::parameter-mapping
