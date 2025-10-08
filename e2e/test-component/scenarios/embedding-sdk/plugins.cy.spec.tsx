@@ -13,6 +13,7 @@ import {
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+import type { MetabaseDataPointObject } from "metabase/embedding-sdk/types/plugins";
 import type {
   ClickAction,
   CustomClickActionWithCustomView,
@@ -101,6 +102,86 @@ describe("scenarios > embedding-sdk > plugins", () => {
         });
 
         cy.findByTestId("click-actions-popover").should("not.exist");
+      });
+    });
+
+    it("should execute action immediately when returning a single object with onClick", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        const onClickSpy = cy.spy().as("onClickSpy");
+
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            plugins={{
+              mapQuestionClickActions: () => ({
+                onClick: onClickSpy,
+              }),
+            }}
+          />,
+        );
+
+        getSdkRoot().within(() => {
+          cy.findByText("Facebook").click();
+
+          // Popover should not appear when returning single action
+          cy.findByTestId("click-actions-popover").should("not.exist");
+        });
+
+        cy.get("@onClickSpy").should("have.been.calledOnce");
+      });
+    });
+
+    it("should pass transformed clicked data to mapQuestionClickActions", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        const customActionSpy = cy.spy().as("customActionSpy");
+
+        mountSdkContent(
+          <InteractiveDashboard
+            dashboardId={dashboardId}
+            plugins={{
+              mapQuestionClickActions: (
+                _clickActions: ClickAction[],
+                clicked: MetabaseDataPointObject,
+              ) => {
+                return {
+                  onClick: () => customActionSpy(clicked),
+                };
+              },
+            }}
+          />,
+        );
+
+        getSdkRoot().within(() => {
+          cy.findByText("Facebook").click();
+        });
+
+        cy.get("@customActionSpy")
+          .should("have.been.calledOnce")
+          .then((spy: any) => {
+            const [arg] = spy.firstCall.args;
+
+            // it doesn't seem that cypress matches have a "loose" check for shapes
+            expect(arg).to.have.property("column");
+            expect(arg.column).to.have.property("name", "SOURCE");
+            expect(arg.column).to.have.property(
+              "display_name",
+              "User → Source",
+            );
+
+            expect(arg).to.have.property("value", "Facebook");
+
+            expect(arg).to.have.property("question");
+            expect(arg.question).to.have.property("id").that.is.a("number");
+            expect(arg.question).to.have.property("name", "Orders");
+            expect(arg.question).to.have.property("description", null);
+            expect(arg.question)
+              .to.have.property("entityId")
+              .that.is.a("string");
+            expect(arg.question).to.have.property("isSavedQuestion", true);
+
+            expect(arg).to.have.property("data");
+            expect(arg.data).to.have.property("SOURCE", "Facebook");
+          });
       });
     });
   });
