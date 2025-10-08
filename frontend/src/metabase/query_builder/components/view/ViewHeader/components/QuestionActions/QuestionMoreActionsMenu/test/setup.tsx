@@ -1,12 +1,16 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import { useState } from "react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks";
+import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { QuestionAlertListModal } from "metabase/notifications/modals";
 import Question from "metabase-lib/v1/Question";
-import type { Notification, User } from "metabase-types/api";
+import type { Card, Notification, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -60,8 +64,9 @@ export function setup({
     } as User,
   });
 
+  fetchMock.get("path:/api/user/recipients", { data: [] });
+  setupWebhookChannelsEndpoint();
   setupListNotificationEndpoints({ card_id: card.id }, alerts);
-
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
     key: "turn_into_model_modal",
@@ -72,15 +77,36 @@ export function setup({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(
-    <QuestionMoreActionsMenu
-      question={new Question(card)}
-      onOpenModal={jest.fn()}
-      onSetQueryBuilderMode={jest.fn()}
-    />,
-    { storeInitialState: state },
-  );
+  renderWithProviders(<TestComponent card={card} />, {
+    storeInitialState: state,
+  });
 }
+
+interface Props {
+  card: Card;
+}
+
+const TestComponent = ({ card }: Props) => {
+  const question = new Question(card);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  return (
+    <>
+      <QuestionMoreActionsMenu
+        question={question}
+        onOpenModal={() => setIsModalOpen(true)}
+        onSetQueryBuilderMode={jest.fn()}
+      />
+
+      {isModalOpen && (
+        <QuestionAlertListModal
+          question={question}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </>
+  );
+};
 
 export function openMenu() {
   return userEvent.click(
