@@ -75,7 +75,6 @@ export function getNodeSubtitleInfo(
 export function getNodeViewCount(node: DependencyNode): number | undefined {
   return match(node)
     .with({ type: "card" }, (node) => node.data.view_count)
-    .with({ type: "table" }, (node) => node.data.view_count)
     .otherwise(() => undefined);
 }
 
