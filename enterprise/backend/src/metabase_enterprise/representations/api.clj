@@ -91,6 +91,17 @@
   (import/import-transform-representations)
   "Ok")
 
+(api.macros/defendpoint :post "/collection/import"
+  "Import a collection from a YAML bundle in the request body. Creates a new collection based on the name in the bundle."
+  [_path-params
+   _query-params
+   _body-params
+   request]
+  (let [yaml-string (slurp (:body request))
+        result (import/import-collection-yaml yaml-string)]
+    {:collection-id (:id result)
+     :status "ok"}))
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/representations` routes."
   (handlers/routes

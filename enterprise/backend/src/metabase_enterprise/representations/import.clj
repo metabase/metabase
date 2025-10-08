@@ -140,6 +140,66 @@
         coll-path (str v0-common/representations-export-dir coll-dir)]
     (persist-dir! coll-path)))
 
+(defn- flatten-collection-children
+  "Flatten collection children and databases into individual representations (excluding the top-level collection itself)."
+  [bundle]
+  (let [{:keys [children databases]} bundle
+        child-reps (mapcat (fn [child]
+                             (if (= (:type child) "v0/collection")
+                               (concat [child] (flatten-collection-children child))
+                               [child]))
+                           children)]
+    (concat databases child-reps)))
+
+(defn- order-collections
+  "Order collections by location depth (parents before children)."
+  [collections]
+  (sort-by (fn [coll]
+             (let [location (or (:location coll) "/")]
+               (count (filter #(= % \/) location))))
+           collections))
+
+(defn import-collection-yaml
+  "Import a collection from a YAML string containing the full bundle.
+   Creates collections first (ordered by parent-child), then other entities."
+  [yaml-string]
+  (let [bundle (-> yaml-string
+                   rep-yaml/parse-string
+                   normalize-representation)
+        top-level-collection (dissoc bundle :children :databases)
+        all-representations (cons top-level-collection (flatten-collection-children bundle))
+        normalized (map normalize-representation all-representations)
+        collections (filter #(= (:type %) :v0/collection) normalized)
+        non-collections (remove #(= (:type %) :v0/collection) normalized)
+        ordered-collections (order-collections collections)
+        ordered-others (order-representations non-collections)]
+
+    (let [index-after-collections
+          (reduce (fn [index entity]
+                    (try
+                      (let [persisted (persist! entity index)]
+                        (assoc index (:ref entity) persisted))
+                      (catch Exception e
+                        (log/warn e (format "Failed to persist collection with ref %s" (:ref entity)))
+                        (dissoc index (:ref entity)))))
+                  {}
+                  ordered-collections)
+
+          root-collection (first ordered-collections)]
+
+      (reduce (fn [index entity]
+                (try
+                  (let [persisted (persist! entity index)]
+                    (assoc index (:ref entity) persisted))
+                  (catch Exception e
+                    (log/warn e (format "Failed to persist entity with ref %s" (:ref entity)))
+                    (dissoc index (:ref entity)))))
+              index-after-collections
+              ordered-others)
+
+      (when root-collection
+        (t2/select-one :model/Collection :name (:name root-collection) :location "/")))))
+
 ;;;;;;;;;;;;;;;;
 ;; Transforms ;;
 

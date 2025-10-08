@@ -1,0 +1,5 @@
+{:collections
+ {"collection-5" "./test_exports/collection-5/"
+  "collection-8" "./test_exports/collection-8/"
+  "9" "./test_exports/collection-9/"
+  "collection-9" "./test_exports/collection-9/"}}
