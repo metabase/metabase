@@ -242,7 +242,7 @@ export default class NativeQuery {
 
     const newTags = [...tags];
     newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
-    const newTagsMap = Object.fromEntries(tags.map((tag) => [tag.id, tag]));
+    const newTagsMap = Object.fromEntries(newTags.map((tag) => [tag.id, tag]));
 
     return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }
