@@ -6,7 +6,7 @@ import { setupListNotificationEndpoints } from "__support__/server-mocks/notific
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
-import type { User } from "metabase-types/api";
+import type { Notification, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockSettings,
@@ -18,16 +18,18 @@ import { createMockState } from "metabase-types/store/mocks";
 import { QuestionMoreActionsMenu } from "../QuestionMoreActionsMenu";
 
 type SetupOpts = {
+  alerts?: Notification[];
   canManageSubscriptions: boolean;
   isAdmin: boolean;
   isEmailSetup: boolean;
   isEnterprise: boolean;
 };
 
-function setup({
-  isEmailSetup = false,
-  isAdmin = false,
+export function setup({
+  alerts = [],
   canManageSubscriptions = false,
+  isAdmin = false,
+  isEmailSetup = false,
   isEnterprise = false,
 }: SetupOpts) {
   const card = createMockCard();
@@ -58,7 +60,7 @@ function setup({
     } as User,
   });
 
-  setupListNotificationEndpoints({ card_id: card.id }, []);
+  setupListNotificationEndpoints({ card_id: card.id }, alerts);
 
   setupGetUserKeyValueEndpoint({
     namespace: "user_acknowledgement",
@@ -80,34 +82,8 @@ function setup({
   );
 }
 
-const openMenu = () => {
+export function openMenu() {
   return userEvent.click(
     screen.getByRole("button", { name: /Move, trash, and more/ }),
   );
-};
-
-describe("QuestionMoreActionsMenu > Enterprise", () => {
-  it('Should show the "Create an alert" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {
-    setup({
-      canManageSubscriptions: true,
-      isAdmin: false,
-      isEmailSetup: true,
-      isEnterprise: true,
-    });
-    await openMenu();
-    expect(screen.getByText("Create an alert")).toBeInTheDocument();
-  });
-
-  describe("alerts permission disabled", () => {
-    it('Should not show the "Create an alert" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
-      setup({
-        canManageSubscriptions: false,
-        isAdmin: false,
-        isEmailSetup: true,
-        isEnterprise: true,
-      });
-      await openMenu();
-      expect(screen.queryByText("Create an alert")).not.toBeInTheDocument();
-    });
-  });
-});
+}

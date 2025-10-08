@@ -74,7 +74,6 @@ export const QuestionMoreActionsMenu = ({
   const isStandaloneQuestion =
     isQuestion && !_.isNumber(question.dashboardId());
 
-  const isArchived = question.isArchived();
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
 
@@ -174,14 +173,13 @@ export const QuestionMoreActionsMenu = ({
         {t`Turn back to saved question`}
       </Menu.Item>
     ),
-    (isAdmin || canManageSubscriptions) &&
-      !(isModel || isArchived || isAnalytics) && (
-        <QuestionAlertsMenuItem
-          key="alerts"
-          question={question}
-          onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
-        />
-      ),
+    (isAdmin || canManageSubscriptions) && !isModel && !isAnalytics && (
+      <QuestionAlertsMenuItem
+        key="alerts"
+        question={question}
+        onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
+      />
+    ),
     enableSettingsSidebar && (
       <Menu.Item
         key="edit-settings"
