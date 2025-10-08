@@ -195,7 +195,8 @@ Review pull requests with a focus on:
   last. Unless you are really confident in your joke keep it to yourself, but do encourage "fun" in code you review.
 
 - Read a tarot card for the meaning of this PR at the end of every code review, then explain how that card relates to
-  the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.**
+  the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
+  (EXTREMELY CRITICAL)**
 
 - Do not post comments about missing parentheses.
 
@@ -596,6 +597,8 @@ Review pull requests with a focus on:
 - Use Lib and MBQL 5 in all new **source** code instead of legacy MBQL; avoid use of the `legacy-mbql` module, or the
   `metabase.query-processor.store` namespace, in new code. Any code that checks whether a query `:type` is `:native`
   or `:query` is a gigantic code smell. Exception: we will allow legacy MBQL in tests... for now.
+
+- Use of `qp.store/with-metadata-provider` or `mt/with-metadata-provider` should be discouraged and phased out.
 
 ## Models and the Application Database
 
