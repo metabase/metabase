@@ -1,6 +1,5 @@
 (ns metabase-enterprise.representations.v0.snippet
   (:require
-   [clojure.string :as str]
    [metabase-enterprise.representations.core :as core]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
@@ -8,8 +7,8 @@
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.humanization :as u.humanization]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
@@ -72,46 +71,16 @@
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
-(defn- build-template-tags [template-tags]
-  (into {}
-        (map (fn [[k v]]
-               (let [parts (str/split v #":")]
-                 (if (= "ref" (first parts))
-                   (let [tag-name (name k)
-                         display-name (u.humanization/name->human-readable-name :simple tag-name)
-                         tag-parts (str/split (second parts) #"-")
-                         tag-id (Integer/parseInt (second tag-parts))
-                         template-type (first tag-parts)]
-                     (case template-type
-                       "snippet"
-                       [tag-name {:type :snippet
-                                  :name tag-name
-                                  :snippet-id tag-id
-                                  :snippet-name (str/replace-first tag-name #"^snippet: " "")
-                                  :display-name display-name}]
-
-                       "card"
-                       [tag-name {:type :card
-                                  :name tag-name
-                                  :card-id tag-id
-                                  :display-name display-name}]
-
-                       :else (throw (ex-info "Unknown template tag format" {:template-tag v}))))
-                   [k {:type :text
-                       :name v
-                       :display-name (u.humanization/name->human-readable-name :simple v)}])))
-             template-tags)))
-
 (defmethod import/yaml->toucan [:v0 :snippet]
-  [{:keys [_ref name description content collection entity-id template_tags] :as representation}
-   ref-index]
+  [{:keys [_ref name description content collection entity-id] :as representation}
+   _ref-index]
   {:name name
    :description description
    :content content
    :creator_id (or api/*current-user-id* config/internal-mb-user-id)
    :collection_id (v0-common/find-collection-id collection)
    :entity_id (or entity-id (v0-common/generate-entity-id representation))
-   :template_tags (build-template-tags template_tags)})
+   :template_tags (lib.native/recognize-template-tags content)})
 
 (defmethod import/persist! [:v0 :snippet]
   [representation ref-index]
@@ -133,14 +102,14 @@
   (let [type (:type template-tag)]
     (cond (= type :snippet) (v0-common/->ref (:snippet-id template-tag) :snippet)
           (= type :card) (v0-common/->ref (:card-id template-tag) :card)
-          (= type :text) (:name template-tag)
           :else (throw (ex-info "Unknown template tag type" {:template-tag template-tag})))))
 
 (defmethod export/export-entity :model/NativeQuerySnippet [snippet]
   (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
         template-tags (into {}
-                            (map (fn [[k v]]
-                                   [k (template-tag-ref v)]))
+                            (comp
+                             (filter (fn [[_ v]] (not= (:type v) :text)))
+                             (map (fn [[k v]] [k (template-tag-ref v)])))
                             (:template_tags snippet))]
     {:ref snippet-ref
      :type :snippet

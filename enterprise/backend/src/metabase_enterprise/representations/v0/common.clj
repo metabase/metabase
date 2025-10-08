@@ -55,9 +55,6 @@
                    (dissoc entity :ref))
     (set (map unref @v))))
 
-;; TODO: Have an implementation of refs that will take a native sql string
-;; and parse out any refs it finds in there.
-
 (defn ->ref
   "Constructs a ref with the shape \"ref:<type>-<id>\""
   [id type]
