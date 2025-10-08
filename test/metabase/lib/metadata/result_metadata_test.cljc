@@ -107,10 +107,11 @@
 
 (deftest ^:parallel col-info-for-field-with-temporal-unit-test
   (lib.tu.macros/$ids venues
-    (testing "when a `:field` with `:temporal-unit` is used, we should add in info about the `:unit`"
-      (is (=? [{:unit      :month
-                :source    :fields
-                :field-ref !month.price}]
+    (testing (str "when a `:field` with `:temporal-unit` is used, we should add in info about the "
+                  "`::result-metadata/unit`")
+      (is (=? [{::result-metadata/unit :month
+                :source                :fields
+                :field-ref             !month.price}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -121,12 +122,12 @@
 (deftest ^:parallel col-info-for-field-literal-with-temporal-unit-test
   (lib.tu.macros/$ids venues
     (testing "datetime unit should work on field literals too"
-      (is (=? [{:name         "price"
-                :base-type    :type/Number
-                :display-name "Price: Month"
-                :unit         :month
-                :source       :fields
-                :field-ref    !month.*price/Number}]
+      (is (=? [{:name                  "price"
+                :base-type             :type/Number
+                :display-name          "Price: Month"
+                ::result-metadata/unit :month
+                :source                :fields
+                :field-ref             !month.*price/Number}]
               (column-info
                (lib/query meta/metadata-provider
                           {:type :query, :query {:source-table (meta/id :venues)
@@ -135,19 +136,23 @@
 
 (deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning-info`"
-    (is (=? [{:name         "price"
-              :base-type    :type/Number
-              :display-name "Price: 10 bins: Month"
-              :unit         :month
-              :source       :fields
-              :binning-info {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
-              :field-ref    [:field "price" {:base-type     :type/Number
-                                             :temporal-unit :month
-                                             :binning       {:strategy  :num-bins
-                                                             :num-bins  10
-                                                             :bin-width 5
-                                                             :min-value -100
-                                                             :max-value 100}}]}]
+    (is (=? [{:name                  "price"
+              :base-type             :type/Number
+              :display-name          "Price: 10 bins: Month"
+              ::result-metadata/unit :month
+              :source                :fields
+              :binning-info          {:num-bins         10
+                                      :bin-width        5
+                                      :min-value        -100
+                                      :max-value        100
+                                      :binning-strategy :num-bins}
+              :field-ref             [:field "price" {:base-type     :type/Number
+                                                      :temporal-unit :month
+                                                      :binning       {:strategy  :num-bins
+                                                                      :num-bins  10
+                                                                      :bin-width 5
+                                                                      :min-value -100
+                                                                      :max-value 100}}]}]
             (column-info
              (lib/query
               meta/metadata-provider
@@ -746,7 +751,9 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) nil], :unit :year)
+      (is (=? [(assoc date-col
+                      :field-ref             [:field (meta/id :checkins :date) nil]
+                      ::result-metadata/unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
@@ -923,7 +930,7 @@
                   :semantic-type                              :type/CreationTimestamp
                   :source                                     :breakout
                   :table-id                                   (meta/id :orders)
-                  :unit                                       :year
+                  ::result-metadata/unit                      :year
                   :lib/deduplicated-name                      "CREATED_AT"
                   :lib/desired-column-alias                   "CREATED_AT"
                   :lib/original-display-name                  "Created At"
@@ -999,11 +1006,11 @@
                                          {:aggregation [[:count]]
                                           :breakout    [[:field %created-at {:temporal-unit :month}]
                                                         [:field %created-at {:temporal-unit :year}]]})}]})]
-      (is (=? [{:display-name "Created At: Month"
-                :unit         :month}
-               {:display-name "Created At: Year"
-                :unit         :year}
-               {:display-name "Count"}]
+      (is (=? [{:display-name          "Created At: Month"
+                ::result-metadata/unit :month}
+               {:display-name          "Created At: Year"
+                ::result-metadata/unit :year}
+               {:display-name          "Count"}]
               (-> (lib/query mp (lib.metadata/card mp 1))
                   lib/append-stage
                   (lib/aggregate (lib/count))

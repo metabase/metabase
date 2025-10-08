@@ -185,7 +185,9 @@
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id)))
         ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
-        (dissoc :ident :model/inner-ident))))
+        (dissoc :ident :model/inner-ident)
+        ;; Remove deprecated :unit; prefer :temporal-unit.
+        (dissoc :unit))))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
@@ -509,7 +511,9 @@
    ;; Additional constraints
    ;;
    ::lib.schema.common/kebab-cased-map
-   [:ref ::column.validate-for-source]])
+   [:ref ::column.validate-for-source]
+   (lib.schema.common/disallowed-keys
+    {:unit "Use :temporal-unit in Lib"})])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
