@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { match } from "ts-pattern";
 
 import { trackSchemaEvent } from "metabase/lib/analytics";
@@ -18,6 +18,10 @@ type UsageAnalytics = {
   embedHostUrl: string;
 };
 
+const sendMessage = (message: SdkIframeEmbedTagMessage) => {
+  window.parent.postMessage(message, "*");
+};
+
 export function useSdkIframeEmbedEventBus({
   onSettingsChanged,
 }: {
@@ -28,10 +32,6 @@ export function useSdkIframeEmbedEventBus({
   const [usageAnalytics, setUsageAnalytics] = useState<UsageAnalytics | null>(
     null,
   );
-
-  const sendMessage = useCallback((message: SdkIframeEmbedTagMessage) => {
-    window.parent.postMessage(message, "*");
-  }, []);
 
   useEffect(() => {
     const messageHandler: Handler = (event) => {
@@ -60,7 +60,7 @@ export function useSdkIframeEmbedEventBus({
     return () => {
       window.removeEventListener("message", messageHandler);
     };
-  }, [onSettingsChanged, sendMessage]);
+  }, [onSettingsChanged]);
 
   useEffect(() => {
     if (embedSettings?.instanceUrl && usageAnalytics) {
