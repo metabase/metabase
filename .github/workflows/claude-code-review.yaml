@@ -47,6 +47,8 @@ jobs:
             - Clear and correct docstrings
             - Clear and correct comments explaining what the code is doing
 
+            Follow additional guidelines in the "Code Review Guidelines" section of CLAUDE.md .
+
             Note: The PR branch is already checked out in the current working directory.
 
             Use `gh pr comment` for top-level feedback.

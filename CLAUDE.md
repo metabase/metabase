@@ -182,6 +182,8 @@ Review pull requests with a focus on:
   > The kondo ignore is properly used here. The comment on lines 42-45 explains why hardcoded driver names are needed,
   > which is good context.
 
+  > Test name properly ends with -test as required by the style guide.
+
 - In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
   considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
   restricted to docstrings and comments rather than user-facing text. Occasionally suggest spelling things this way.
