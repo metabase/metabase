@@ -73,8 +73,8 @@ Whether to display the values in the middle, left, or right in table cells.
 Choose how dates are displayed. Options include formats like:
 
 - January 31, 2018
-- 31/01/2018
-- 2018-01-31
+- 31/1/2018
+- 2018/1/31
 - And other regional date formats
 
 ### Abbreviate days and months
