@@ -37,7 +37,7 @@
             (mt/native-query
              {:query "select name from users;"}))))))
 
-(deftest ^:parallel test-native-with-duplicate-column-names
+(deftest ^:parallel native-query-with-duplicate-column-names
   (testing "Should be able to run native query referring a question referring a question (#25988)"
     (mt/test-drivers (sql.qp-test-util/sql-drivers)
       (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
