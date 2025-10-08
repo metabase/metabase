@@ -169,9 +169,9 @@ Review pull requests with a focus on:
   it as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style
   Guide.
 
-- Do not post "cheerleading" comments congratulating someone for trivial changes, or for following the style
-  guidelines, or confirming that things "look good"; stick to callouts about style violations or potential issues.
-  Example bad code review comments to avoid:
+- Do not post comments congratulating someone for trivial changes, or for following the style guidelines, or
+  confirming that things "look good", or telling them that they did something correctly; only post comments about
+  style violations or potential issues. Example bad code review comments to avoid:
 
   > This TODO comment is properly formatted with author and date - nice work!
 
