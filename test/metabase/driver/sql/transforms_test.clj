@@ -126,3 +126,48 @@
           ;; Drivers might quote these differently, but both parts should be present
           (is (or (re-find #"schema.*my_table" (first result))
                   (re-find #"my_table" (first result)))))))))
+
+(deftest compile-transform-append-test
+  (testing "compile-transform with append? option"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "append? false generates CREATE TABLE AS"
+        (let [result (driver/compile-transform driver/*driver*
+                                               {:query "SELECT * FROM products"
+                                                :output-table :my_table}
+                                               :append? false)]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "generates CREATE TABLE statement"
+            (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
+                    (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
+                    (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
+
+      (testing "append? true generates INSERT INTO"
+        (let [result (driver/compile-transform driver/*driver*
+                                               {:query "SELECT * FROM products"
+                                                :output-table :my_table}
+                                               :append? true)]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "first element is SQL string"
+            (is (string? (first result))))
+          (testing "generates INSERT INTO statement"
+            (is (re-find #"(?i)INSERT\s+INTO.*my_table" (first result))))
+          (testing "includes SELECT statement"
+            (is (re-find #"(?i)SELECT" (first result))))))
+
+      (testing "append? true with schema-qualified table"
+        (let [result (driver/compile-transform driver/*driver*
+                                               {:query "SELECT * FROM products"
+                                                :output-table :my_schema/my_table}
+                                               :append? true)]
+          (testing "returns a vector"
+            (is (vector? result)))
+          (testing "generates INSERT INTO statement"
+            (is (re-find #"(?i)INSERT\s+INTO" (first result))))
+          (testing "includes both schema and table parts"
+            (let [sql (first result)]
+              (is (re-find #"my_schema" sql) "Schema name should be present")
+              (is (re-find #"my_table" sql) "Table name should be present"))))))))

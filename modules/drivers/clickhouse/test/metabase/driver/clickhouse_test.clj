@@ -319,7 +319,17 @@
     (testing "compile transform for clickhouse with empty primary key column"
       (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY () AS SELECT * FROM products"]
              (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
-                                                    :output-table "PRODUCTS_COPY"}))))))
+                                                    :output-table "PRODUCTS_COPY"}))))
+    (testing "compile transform with append? false (default behavior)"
+      (is (= ["CREATE TABLE `PRODUCTS_COPY` ORDER BY () AS SELECT * FROM products"]
+             (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
+                                                    :output-table "PRODUCTS_COPY"}
+                                       :append? false))))
+    (testing "compile transform with append? true generates INSERT INTO"
+      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM SELECT * FROM products"]
+             (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
+                                                    :output-table "PRODUCTS_COPY"}
+                                       :append? true))))))
 
 (deftest ^:parallel clickhouse-db-supports-schemas-test
   (doseq [[schemas-supported? details] [[false? {}]
