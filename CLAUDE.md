@@ -480,6 +480,9 @@ guide as well as other guidelines mentioned in this document.
   lots of other modules (such as `util`) ideally will have no dependencies on other modules. Our goal is to make as
   many modules as possible be "leaf nodes".
 
+- Module names should be match the customer-facing name of the feature they concern, usually a plural noun, for
+  example, `dashboards` rather than `dashboard`.
+
 ### Settings
 
 - Don't define configurable options that can only be set with environment variables; use an `:internal` `defsetting`
@@ -509,6 +512,14 @@ guide as well as other guidelines mentioned in this document.
 
 - HTTP request bodies should use `snake_case`.
 
+- REST API endpoints should have routes that use singular nouns, for example `GET /api/dashboard/:id` to get a
+  Dashboard rather than `GET /api/dashboards/:id`.
+
+- `GET` endpoints should not have side effects outside of analytics like updating last-viewed-at timestamps or
+  recording usage metrics. A `GET` endpoint should not be creating new rows in the application database representing
+  user-facing objects, for example `GET /api/dashboard` should not attempt to populate empty Dashboards with content
+  by creating new rows in the application database.
+
 ### MBQL
 
 - No raw MBQL introspection or manipulation should be done outside of Lib (the `lib` and `lib-be` modules) or the
@@ -526,3 +537,23 @@ guide as well as other guidelines mentioned in this document.
 - All new driver multimethods must be mentioned in `docs/developers-guide/driver-changelog.md`.
 
 - All new driver multimethods should use Lib-style kebab-cased metadata and MBQL 5 queries.
+
+- Driver multimethod implmentations should dispatch off of a keyword named `driver`, and pass this argument explicitly
+  to any other driver multimethods it invokes, rather than hardcoding the driver name.
+
+  ```clj
+  ;;; Good
+  (defmethod driver/driver-method :postgres
+    [driver x]
+    (driver/some-other-method driver x))
+
+  ;;; Bad
+  (defmethod driver/driver-method :postgres
+    [_driver x]
+    (driver/some-other-method :postgres x))
+  ```
+
+  This is because other drivers may inherit from this driver and we need to propagate the driver name passed in to any
+  method implementations it inherits.
+
+- Drivers should only use methods from the `driver` or `driver-api` modules.
