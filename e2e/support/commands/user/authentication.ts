@@ -46,7 +46,7 @@ Cypress.Commands.add(
   "signIn",
   (
     user = "admin",
-    { setupCache, skipCache } = { setupCache: false, skipCache: true },
+    { setupCache, skipCache } = { setupCache: false, skipCache: false },
   ) => {
     if (!skipCache && !setupCache && loginCache[user]) {
       const { sessionId, deviceId } = loginCache[user];
