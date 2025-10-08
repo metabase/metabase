@@ -3,7 +3,6 @@ import { useMemo } from "react";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useListMentionsQuery } from "metabase-enterprise/api";
 import type { MenuItem } from "metabase-enterprise/documents/components/Editor/shared/MenuComponents";
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
 import type {
   MentionableUser,
   RecentItem,
@@ -22,6 +21,7 @@ import {
   buildUserMenuItems,
   filterRecents,
 } from "./suggestionUtils";
+import type { SuggestionModel } from "./types";
 
 interface UseEntitySearchOptions {
   query: string;
@@ -29,6 +29,7 @@ interface UseEntitySearchOptions {
   onSelectSearchResult: (item: SearchResult) => void;
   onSelectUser: (item: MentionableUser) => void;
   enabled?: boolean;
+  shouldFetchRecents?: boolean;
   searchModels?: SuggestionModel[];
 }
 
@@ -44,10 +45,9 @@ export function useEntitySearch({
   onSelectSearchResult,
   onSelectUser,
   enabled = true,
+  shouldFetchRecents = true,
   searchModels = LINK_SEARCH_MODELS,
 }: UseEntitySearchOptions): UseEntitySearchResult {
-  const shouldFetchRecents = enabled && query.length === 0;
-
   const { data: recents = [], isLoading: isRecentsLoading } =
     useListRecentsQuery(undefined, {
       refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
@@ -73,7 +73,7 @@ export function useEntitySearch({
       limit: LINK_SEARCH_LIMIT,
     },
     {
-      skip: !enabled || !query || query.length === 0,
+      skip: !enabled || shouldFetchRecents,
     },
   );
 
@@ -98,7 +98,7 @@ export function useEntitySearch({
   const menuItems = useMemo(() => {
     const items: MenuItem[] = [];
 
-    if (query.length > 0) {
+    if (!shouldFetchRecents) {
       if (!isUsersLoading) {
         items.push(...buildUserMenuItems(users, onSelectUser));
       }
@@ -116,7 +116,7 @@ export function useEntitySearch({
 
     return items;
   }, [
-    query,
+    shouldFetchRecents,
     searchResults,
     users,
     isSearchLoading,
@@ -128,13 +128,9 @@ export function useEntitySearch({
     onSelectUser,
   ]);
 
-  const isLoading =
-    (shouldFetchRecents && isRecentsLoading) ||
-    (query.length > 0 && isSearchLoading);
-
   return {
     menuItems,
-    isLoading,
+    isLoading: shouldFetchRecents ? isRecentsLoading : isSearchLoading,
     searchResults,
   };
 }

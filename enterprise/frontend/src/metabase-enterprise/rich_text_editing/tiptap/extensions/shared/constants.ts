@@ -1,4 +1,4 @@
-import type { SuggestionModel } from "metabase-enterprise/documents/components/Editor/types";
+import type { SuggestionModel } from "./types";
 
 export const LINK_SEARCH_MODELS: SuggestionModel[] = [
   "card",
