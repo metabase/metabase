@@ -1185,12 +1185,12 @@
       (let [native-query "[{\"$project\": {\"product_id\": \"$product_id\", \"subtotal\": \"$subtotal\"}}, {\"$limit\": 1}]"
             mp (lib.tu/mock-metadata-provider
                 (mt/metadata-provider)
-                {:cards [{:id            1
-                          :name          "Orders native mongo"
-                          :dataset-query {:type     :native
-                                          :native   {:collection "orders"
-                                                     :query      native-query}
-                                          :database (mt/id)}
+                {:cards [{:id              1
+                          :name            "Orders native mongo"
+                          :dataset-query   {:type     :native
+                                            :native   {:collection "orders"
+                                                       :query      native-query}
+                                            :database (mt/id)}
                           :result_metadata [{:name         "product_id"
                                              :base_type    :type/Integer
                                              :display_name "product_id"}
