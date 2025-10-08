@@ -31,6 +31,7 @@
   (:refer-clojure :exclude [mapv every? some select-keys])
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -1071,12 +1072,13 @@
 (declare remove-empty-clauses path->special-remove-empty-clauses-fn)
 
 (defn- remove-empty-clauses-in-map [m special-fns]
-  (not-empty (reduce-kv (fn [m k v]
-                          (let [v' (remove-empty-clauses v (get special-fns k))]
-                            (cond (nil? v') (dissoc m k)
-                                  (identical? v v') m
-                                  :else (assoc m k v'))))
-                        m m)))
+  (when (map? m)
+    (not-empty (reduce-kv (fn [m k v]
+                            (let [v' (remove-empty-clauses v (get special-fns k))]
+                              (cond (nil? v')         (dissoc m k)
+                                    (identical? v v') m
+                                    :else             (assoc m k v'))))
+                          m m))))
 
 (defn- remove-empty-clauses-in-sequence* [xs special-fns]
   (let [special-fns (::sequence special-fns)
@@ -1111,11 +1113,12 @@
     (remove-empty-clauses source-query (:query path->special-remove-empty-clauses-fn))))
 
 (defn- remove-empty-clauses-in-parameter [parameter]
-  (merge
-   ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
-   ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
-   (select-keys parameter [:value])
-   (remove-empty-clauses-in-map parameter (-> path->special-remove-empty-clauses-fn :parameters ::sequence))))
+  (when (map? parameter)
+    (merge
+     ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
+     ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
+     (select-keys parameter [:value])
+     (remove-empty-clauses-in-map parameter (-> path->special-remove-empty-clauses-fn :parameters ::sequence)))))
 
 (def ^:private path->special-remove-empty-clauses-fn
   {:native       identity
@@ -1142,7 +1145,10 @@
          (sequential? x)  (remove-empty-clauses-in-sequence x special-fns)
          :else            x))
      (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info "Error removing empty clauses from form."
+       (throw (ex-info (let [msg (ex-message e)]
+                         (if (str/starts-with? msg "Error removing empty clauses")
+                           msg
+                           (str "Error removing empty clauses from form: " msg)))
                        {:form x}
                        e))))))
 

@@ -497,8 +497,11 @@
      :filter       ":filter is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :filters      ":filters is not allowed in the top level of a query, only in MBQL stages"
      :joins        ":joins is not allowed in the top level of a query, only in MBQL stages"
+     :native       ":native is not allowed in MBQL 5, use :stages instead."
+     :query        ":query is not allowed in MBQL 5, use :stages instead."
      :source-query ":source-query is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
-     :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"})])
+     :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"
+     :type         ":type is not allowed in MBQL 5, use :lib/type instead."})])
 
 (defn native-only-query?
   "Whether MBQL 5 `query` only has a single native stage (and is thus pure-native). This is the equivalent of the old
