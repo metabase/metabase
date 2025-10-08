@@ -51,6 +51,7 @@ export const getBenchRoutes = () => (
         <Route path=":id" component={SnippetEditor} />
       </Route>
       <Route path="glossary" component={GlossaryContainer} />
+      <Route path="dependencies" component={EmptySailboat} />
       <Route path="metadata">
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />

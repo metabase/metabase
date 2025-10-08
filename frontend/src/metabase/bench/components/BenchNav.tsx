@@ -81,6 +81,11 @@ export function BenchNav() {
               icon="globe"
               label={t`Glossary`}
             />
+            <BenchNavItem
+              url="/bench/dependencies"
+              icon="beaker"
+              label={t`Dependencies`}
+            />
           </Stack>
         </Box>
         <Stack data-testid="sidebar-bottom" px="md" gap="sm" mt="auto">
