@@ -6,10 +6,14 @@ import { Component } from "react";
 import CS from "metabase/css/core/index.css";
 import { parseDataUri, removeAllChildren } from "metabase/lib/dom";
 import { connect } from "metabase/lib/redux";
-import { getLogoUrl } from "metabase-enterprise/settings/selectors";
+import {
+  getIsDefaultMetabaseLogo,
+  getLogoUrl,
+} from "metabase-enterprise/settings/selectors";
 
 const mapStateToProps = (state) => ({
   url: getLogoUrl(state),
+  isDefaultMetabaseLogo: getIsDefaultMetabaseLogo(state),
 });
 
 class LogoIcon extends Component {
@@ -74,7 +78,7 @@ class LogoIcon extends Component {
         const svg =
           xhr.responseXML && xhr.responseXML.getElementsByTagName("svg")[0];
         if (svg) {
-          svg.setAttribute("fill", "currentcolor");
+          svg.setAttribute("fill", "#ff0000");
           this.updateSize(svg);
 
           removeAllChildren(this._container);
@@ -120,7 +124,13 @@ class LogoIcon extends Component {
   }
 
   render() {
-    const { dark, style = {}, height, className } = this.props;
+    const {
+      dark,
+      style = {},
+      height,
+      className,
+      isDefaultMetabaseLogo,
+    } = this.props;
 
     return (
       <span
@@ -128,7 +138,11 @@ class LogoIcon extends Component {
         className={cx(
           "Icon",
           CS.textCentered,
-          { [CS.textBrand]: !dark },
+          // If using the Metabase logo, use the non-whitelabeled Metabase brand color.
+          {
+            [isDefaultMetabaseLogo ? CS.textMetabaseBrand : CS.textBrand]:
+              !dark,
+          },
           { [CS.textWhite]: dark },
           className,
         )}
