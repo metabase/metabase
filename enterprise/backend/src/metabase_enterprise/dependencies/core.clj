@@ -62,8 +62,7 @@
 ;; those for consistency and discoverability?
 (defmethod check-entity :card
   [mp _entity-type card-id]
-  (let [query  (-> (:dataset-query (lib.metadata/card mp card-id))
-                   (assoc :lib/metadata mp))
+  (let [query  (lib/query mp (:dataset-query (lib.metadata/card mp card-id)))
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
 
