@@ -86,9 +86,8 @@
   transform)
 
 (defn update-transform-tags!
-  "Update the tags associated with a transform using smart diff logic.
-   Only modifies what has changed: deletes removed tags, updates positions for moved tags,
-   and inserts new tags. Duplicate tag IDs are automatically deduplicated."
+  "Update the tags associated with a transform using smart diff logic. Only modifies what has changed: deletes removed
+  tags, updates positions for moved tags, and inserts new tags. Duplicate tag IDs are automatically deduplicated."
   [transform-id tag-ids]
   (when transform-id
     (t2/with-transaction [_conn]

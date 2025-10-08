@@ -333,6 +333,24 @@ Review pull requests with a focus on:
 
 - Make sure to update comments and docstrings when you change the code they describe.
 
+- Docstrings should be indented two spaces.
+
+  ```clj
+  ;;; BAD
+  (defn update-transform-tags!
+    "Update the tags associated with a transform using smart diff logic.
+     Only modifies what has changed: deletes removed tags, updates positions for moved tags,
+     and inserts new tags. Duplicate tag IDs are automatically deduplicated."
+    ...)
+
+  ;;; GOOD
+  (defn update-transform-tags!
+    "Update the tags associated with a transform using smart diff logic.
+    Only modifies what has changed: deletes removed tags, updates positions for moved tags,
+    and inserts new tags. Duplicate tag IDs are automatically deduplicated."
+    ...)
+  ```
+
 - Write heading comments with four semicolons. Those typically serve to outline/separate major section of code, or to
   describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
   (https://guide.clojure.style/#four-semicolons-for-heading-comments)
