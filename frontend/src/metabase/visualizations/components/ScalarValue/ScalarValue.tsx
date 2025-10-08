@@ -13,8 +13,15 @@ import type { VisualizationGridSize } from "metabase/visualizations/types";
 import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 
-export const ScalarWrapper = ({ children }: PropsWithChildren) => (
-  <ScalarRoot>{children}</ScalarRoot>
+interface ScalarWrapperProps extends PropsWithChildren {
+  cardRowHeight?: number;
+}
+
+export const ScalarWrapper = ({
+  children,
+  cardRowHeight,
+}: ScalarWrapperProps) => (
+  <ScalarRoot cardRowHeight={cardRowHeight}>{children}</ScalarRoot>
 );
 
 interface ScalarValueProps {

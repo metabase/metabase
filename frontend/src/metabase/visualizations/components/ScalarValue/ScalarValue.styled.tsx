@@ -10,10 +10,18 @@ interface ScalarRootProps {
 export const ScalarRoot = styled.div<ScalarRootProps>`
   position: relative;
   display: flex;
-  flex: 1;
+  flex: ${(props) => {
+    if (
+      props.cardRowHeight != null &&
+      props.cardRowHeight >= 2 &&
+      props.cardRowHeight <= 4
+    ) {
+      return "0.75 0 auto";
+    }
+    return "0.9 0 auto";
+  }};
   flex-direction: column;
-  justify-content: ${(props) =>
-    props.cardRowHeight === 2 ? "flex-start" : "center"};
+  justify-content: center;
   align-items: center;
   width: 100%;
   min-height: 0;

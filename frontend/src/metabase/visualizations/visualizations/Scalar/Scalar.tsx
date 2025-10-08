@@ -199,7 +199,7 @@ export class Scalar extends Component<
     };
 
     return (
-      <ScalarWrapper>
+      <ScalarWrapper cardRowHeight={gridSize?.height}>
         <ScalarContainer
           className={DashboardS.fullscreenNormalText}
           data-testid="scalar-container"
