@@ -30,13 +30,13 @@ export const ToastCard = styled(Card)<{
   margin-top: var(--mantine-spacing-sm);
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
   background-color: var(--mb-color-background-inverse);
-  color: var(--mb-color-text-secondary-inverse)
-    ${({ noBorder }) =>
-      noBorder &&
-      css`
-        border: none;
-        overflow-x: hidden;
-      `};
+  color: var(--mb-color-text-secondary-inverse);
+  ${({ noBorder }) =>
+    noBorder &&
+    css`
+      border: none;
+      overflow-x: hidden;
+    `};
 `;
 
 export const CardContent = styled.div`
