@@ -40,7 +40,7 @@ export async function runQuestionQuerySdk(
 
   let queryResults;
 
-  if (shouldRunCardQuery(question, isStaticEmbedding)) {
+  if (shouldRunCardQuery({ question, isStaticEmbedding })) {
     const parameters = getParameterValuesBySlug(
       question.card().parameters,
       parameterValues,
@@ -76,10 +76,13 @@ export async function runQuestionQuerySdk(
   return { question, queryResults };
 }
 
-export function shouldRunCardQuery(
-  question: Question,
-  isStaticEmbedding: boolean | null,
-): boolean {
+export function shouldRunCardQuery({
+  question,
+  isStaticEmbedding,
+}: {
+  question: Question;
+  isStaticEmbedding: boolean | null;
+}): boolean {
   if (isStaticEmbedding) {
     return true;
   }
