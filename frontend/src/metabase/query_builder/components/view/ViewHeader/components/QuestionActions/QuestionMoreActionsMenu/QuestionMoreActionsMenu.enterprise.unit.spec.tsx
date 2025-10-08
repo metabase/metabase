@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -25,7 +24,7 @@ type SetupOpts = {
   isEnterprise: boolean;
 };
 
-export function setupQuestionMoreActionsMenu({
+function setup({
   isEmailSetup = false,
   isAdmin = false,
   canManageSubscriptions = false,
@@ -81,8 +80,34 @@ export function setupQuestionMoreActionsMenu({
   );
 }
 
-export const openMenu = () => {
+const openMenu = () => {
   return userEvent.click(
     screen.getByRole("button", { name: /Move, trash, and more/ }),
   );
 };
+
+describe("QuestionMoreActionsMenu > Enterprise", () => {
+  it('Should show the "Create an alert" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {
+    setup({
+      canManageSubscriptions: true,
+      isAdmin: false,
+      isEmailSetup: true,
+      isEnterprise: true,
+    });
+    await openMenu();
+    expect(screen.getByText("Create an alert")).toBeInTheDocument();
+  });
+
+  describe("alerts permission disabled", () => {
+    it('Should not show the "Create an alert" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
+      setup({
+        canManageSubscriptions: false,
+        isAdmin: false,
+        isEmailSetup: true,
+        isEnterprise: true,
+      });
+      await openMenu();
+      expect(screen.queryByText("Create an alert")).not.toBeInTheDocument();
+    });
+  });
+});
