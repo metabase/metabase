@@ -54,7 +54,8 @@
    :auto_apply_filters true,
    :created_at #t "2024-11-22T15:24:50.968098Z",
    :public_uuid nil,
-   :points_of_interest nil}),
+   :points_of_interest nil,
+   :should_localize true}),
  :data_permissions
  ({:id 1,
    :group_id 1,
@@ -3288,7 +3289,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:07:01.967450Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Revenue in the US broken down by state",
    :archived false,
@@ -3324,7 +3326,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:08:46.497605Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Shows the distribution of the product categories along the scale of customer ratings",
    :archived false,
@@ -3360,7 +3363,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:04:29.668182Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Shows a distribution of orders broken down by product categories across our customers' age groups",
    :archived false,
@@ -3396,7 +3400,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:18:03.350204Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Feedback on our products via weekly survey",
    :archived false,
@@ -3432,7 +3437,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T18:09:20.510367Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Flow from viewing our website (empty) to checkout and subscribe",
    :archived false,
@@ -3468,7 +3474,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T18:15:30.282821Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Orders for each product, grouped by product category",
    :archived false,
@@ -3504,7 +3511,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T17:12:40.907417Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Analysis of discounts given vs. the size of the order",
    :archived false,
@@ -3540,7 +3548,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T17:28:38.671406Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Canonical metric for revenue across all product lines",
    :archived false,
@@ -3576,7 +3585,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T19:11:33.837313Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Orders placed per quarter broken down by source and formatted to highlight best and worst quarters",
    :archived false,
@@ -3612,7 +3622,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:45:05.402208Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Sankey flow from visiting our website to taking an action",
    :archived false,
@@ -3648,7 +3659,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T18:44:18.883535Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Cumulative revenue overlaid with number of orders placed each month",
    :archived false,
@@ -3684,7 +3696,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:40:20.256168Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Monthly revenue broken down by products",
    :archived false,
@@ -3720,7 +3733,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:48:05.819360Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Number of seats in an average subscription, showing increase and decrease",
    :archived false,
@@ -3756,7 +3770,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T18:52:12.837319Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Total revenue last quarter compared to the previous",
    :archived false,
@@ -3792,7 +3807,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:27:51.638392Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Customers that signed up for our monthly subscription",
    :archived false,
@@ -3828,7 +3844,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T18:23:12.772461Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Compares total revenue this quarter to our goal",
    :archived false,
@@ -3864,7 +3881,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:36:31.525367Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description
    "Shows a distribution of orders broken down by product category across our customers' individual age values",
@@ -3901,7 +3919,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:19:19.328213Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Canonical metric for number of orders placed",
    :archived false,
@@ -3937,7 +3956,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-23T18:50:29.861577Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Breaks down the overall performance of each of the product categories",
    :archived false,
@@ -3973,7 +3993,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:00:01.293215Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "An ordered list of our most successful products",
    :archived false,
@@ -4009,7 +4030,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:52:15.745463Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Indicates the average customer review of our products",
    :archived false,
@@ -4045,7 +4067,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:06:33.226176Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "The most recent subscription in our database",
    :archived false,
@@ -4081,7 +4104,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T18:24:57.632676Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Compares the orders of each category quarter over quarter",
    :archived false,
@@ -4117,7 +4141,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:58:26.275694Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "More complete look at all recent subscriptions",
    :archived false,
@@ -4153,7 +4178,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T19:02:24.506012Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Compares the total number of orders placed for this product this month with the previous period",
    :archived false,
@@ -4188,7 +4214,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:55:36.665982Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Total sum of products sold last quarter compared to the previous",
    :archived false,
@@ -4224,7 +4251,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:30:41.928984Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Shows the revenue distributed by age group",
    :archived false,
@@ -4260,7 +4288,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:15:06.512570Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Compares the total number of orders placed for this product this month with the previous period",
    :archived false,
@@ -4295,7 +4324,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:56:30.151532Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Unique customer email addresses last quarter compared to the previous",
    :archived false,
@@ -4330,7 +4360,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:32:53.345123Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Flow from viewing our website (empty) to checkout and subscribe",
    :archived false,
@@ -4366,7 +4397,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-25T11:11:52.227936Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description nil,
    :archived false,
@@ -4402,7 +4434,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:10:25.789381Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Shows a distribution of revenue per individual age values",
    :archived false,
@@ -4438,7 +4471,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:16:04.771512Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Total amount of discounts last quarter compared to the previous",
    :archived false,
@@ -4473,7 +4507,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:29:19.935683Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Shows a distribution of orders broken down by source across our customers' individual age values",
    :archived false,
@@ -4509,7 +4544,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:22:31.846447Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Shows a distribution of orders broken down by source across our customers' age groups",
    :archived false,
@@ -4545,7 +4581,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T16:20:40.010971Z",
-   :public_uuid nil}
+   :public_uuid nil
+   :should_localize true}
   {:cache_invalidated_at nil,
    :description "Compares the total number of orders placed for this product this month with the previous period",
    :archived false,
@@ -4580,7 +4617,8 @@
    :metabase_version nil,
    :parameters "[]",
    :created_at #t "2024-11-22T15:54:17.117758Z",
-   :public_uuid nil}),
+   :public_uuid nil
+   :should_localize true}),
  :dashboardcard_series (),
  :collection
  ({:authority_level nil,
@@ -4597,7 +4635,8 @@
    :entity_id "HyB3nRtqb7pBPhFG26evI",
    :location "/",
    :namespace nil,
-   :created_at #t "2024-11-22T15:05:22.685911Z"}
+   :created_at #t "2024-11-22T15:05:22.685911Z",
+   :should_localize true}
   {:authority_level nil,
    :description "Questions and metrics used for the parent dashboard",
    :archived true,
@@ -4612,7 +4651,8 @@
    :entity_id "54O0IbgCzm290Nnxf1wRH",
    :location "/2/",
    :namespace nil,
-   :created_at #t "2024-12-02T19:06:53.806147Z"}),
+   :created_at #t "2024-12-02T19:06:53.806147Z",
+   :should_localize true}),
  :parameter_card ()
  :dimension
  ({:id 1,

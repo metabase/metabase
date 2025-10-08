@@ -15,6 +15,7 @@
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config :refer [*request-id*]]
    [metabase.events.core :as events]
+   [metabase.localization.models.localization :as localization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -111,20 +112,14 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
-(defn maybe-localize-trash-name
-  "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
-  `define-after-select` in all circumstances, e.g. when searching or listing collection items (where we do a direct DB
-  query without `:model/Collection`)."
-  [collection]
-  (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))))
-
-(t2/define-after-select :model/Collection [collection]
-  (maybe-localize-trash-name collection))
+(defmethod localization/localizable-fields :model/Collection
+  [_model]
+  [:name :description])
 
 (doto :model/Collection
   (derive :metabase/model)
   (derive :hook/entity-id)
+  (derive :hook/auto-localize)
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 

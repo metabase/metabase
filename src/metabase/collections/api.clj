@@ -19,6 +19,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.localization.models.localization :as localization]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -767,7 +768,7 @@
               (dissoc row :personal_owner_id)))]
     (for [row (annotate-collections parent-collection rows options)]
       (-> (t2/instance :model/Collection row)
-          collection/maybe-localize-trash-name
+          localization/maybe-localize
           (update :archived api/bit->boolean)
           (t2/hydrate :can_write :effective_location :can_restore :can_delete)
           (dissoc :collection_position :display :moderated_status :icon

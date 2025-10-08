@@ -1902,6 +1902,73 @@ databaseChangeLog:
             path: instance_analytics_views/view_log/v2/mysql-view_log.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v57.2025-10-07T00:00:00
+      author: johnswanson
+      comment: Add should_localize column to collection table for automatic localization of sample content
+      changes:
+        - addColumn:
+            tableName: collection
+            columns:
+              - column:
+                  name: should_localize
+                  type: ${boolean.type}
+                  remarks: true if this collection's name and description should be automatically translated to the user's locale
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-10-07T00:00:01
+      author: johnswanson
+      comment: Add should_localize column to report_card table for automatic localization of sample content
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: should_localize
+                  type: ${boolean.type}
+                  remarks: true if this card's name and description should be automatically translated to the user's locale
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-10-07T00:00:02
+      author: johnswanson
+      comment: Add should_localize column to report_dashboard table for automatic localization of sample content
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: should_localize
+                  type: ${boolean.type}
+                  remarks: true if this dashboard's name and description should be automatically translated to the user's locale
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-10-07T00:00:03
+      author: johnswanson
+      comment: Set should_localize to true for the Trash collection
+      changes:
+        - sql:
+            sql: UPDATE collection SET should_localize = TRUE WHERE type = 'trash'
+
+  # This migration should be changed to a no-op and a new migration inserted that does the load from edn whenever the
+  # sample content is updated, so that it matches when the version that the sample content was updated from. See
+  # metabase#50829 for an example where the content was updated.
+  - changeSet:
+      id: v57.2025-10-08T10:38:53
+      author: johnswanson
+      comment: Create New and improved Sample Content
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.CreateSampleContentV3"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

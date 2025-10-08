@@ -27,6 +27,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.types.isa :as lib.types]
    [metabase.lib.util :as lib.util]
+   [metabase.localization.models.localization :as localization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
@@ -109,12 +110,17 @@
    :parameter_mappings     mi/transform-parameters-list
    :type                   mi/transform-keyword})
 
+(defmethod localization/localizable-fields :model/Card
+  [_model]
+  [:name :description])
+
 (doto :model/Card
   (derive :metabase/model)
   ;; You can read/write a Card if you can read/write its parent Collection
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/auto-localize))
 
 (defmethod mi/can-write? :model/Card
   ([instance]
