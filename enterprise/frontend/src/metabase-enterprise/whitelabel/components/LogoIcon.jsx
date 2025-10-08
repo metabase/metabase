@@ -78,7 +78,7 @@ class LogoIcon extends Component {
         const svg =
           xhr.responseXML && xhr.responseXML.getElementsByTagName("svg")[0];
         if (svg) {
-          svg.setAttribute("fill", "#ff0000");
+          svg.setAttribute("fill", "currentcolor");
           this.updateSize(svg);
 
           removeAllChildren(this._container);
