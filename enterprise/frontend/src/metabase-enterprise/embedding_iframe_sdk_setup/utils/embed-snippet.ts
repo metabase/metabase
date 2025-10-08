@@ -6,13 +6,16 @@ import {
   type AllowedEmbedSettingKey,
 } from "metabase-enterprise/embedding_iframe_sdk/constants";
 import type {
+  DashboardEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import type {
+  SdkIframeDashboardEmbedSettings,
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupSettings,
+  SdkIframeQuestionEmbedSettings,
 } from "../types";
 
 import { filterEmptySettings } from "./filter-empty-settings";
@@ -38,11 +41,17 @@ function defineMetabaseConfig(config) {
 
 <script>
   defineMetabaseConfig({
-    ${getMetabaseConfigSnippet(settings, instanceUrl)}
+    ${getMetabaseConfigSnippet({
+      settings,
+      instanceUrl,
+    })}
   });
 </script>
 
-${getEmbedCustomElementSnippet({ settings, experience })}`;
+${getEmbedCustomElementSnippet({
+  settings,
+  experience,
+})}`;
 }
 
 export function getEmbedCustomElementSnippet({
@@ -57,9 +66,20 @@ export function getEmbedCustomElementSnippet({
     .with("chart", () => "metabase-question")
     .with("exploration", () => "metabase-question")
     .with("browser", () => "metabase-browser")
+    .with("metabot", () => "metabase-metabot")
     .exhaustive();
 
-  const settingsWithExplorationOverride = match(experience)
+  const settingsWithOverrides = match(experience)
+    .with("chart", () => {
+      const questionSettings = settings as SdkIframeQuestionEmbedSettings;
+
+      return {
+        ...settings,
+        hiddenParameters: questionSettings.hiddenParameters?.length
+          ? questionSettings.hiddenParameters
+          : undefined,
+      } as QuestionEmbedOptions;
+    })
     .with(
       "exploration",
       () =>
@@ -69,14 +89,24 @@ export function getEmbedCustomElementSnippet({
           template: undefined,
         }) as QuestionEmbedOptions,
     )
+    .with("dashboard", () => {
+      const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
+
+      return {
+        ...settings,
+        hiddenParameters: dashboardSettings.hiddenParameters?.length
+          ? dashboardSettings.hiddenParameters
+          : undefined,
+      } as DashboardEmbedOptions;
+    })
     .otherwise(() => settings);
 
   const attributes = transformEmbedSettingsToAttributes(
-    settingsWithExplorationOverride,
+    settingsWithOverrides,
     ALLOWED_EMBED_SETTING_KEYS_MAP[experience],
   );
 
-  return `<${elementName} ${attributes}></${elementName}>`;
+  return `<${elementName}${attributes ? ` ${attributes}` : ""}></${elementName}>`;
 }
 
 // Convert camelCase keys to lower-dash-case for web components
@@ -119,10 +149,13 @@ export function transformEmbedSettingsToAttributes(
   return attributes.join(" ");
 }
 
-export function getMetabaseConfigSnippet(
-  settings: Partial<SdkIframeEmbedSetupSettings>,
-  instanceUrl: string,
-): string {
+export function getMetabaseConfigSnippet({
+  settings,
+  instanceUrl,
+}: {
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+  instanceUrl: string;
+}): string {
   const config = _.pick(settings, ALLOWED_EMBED_SETTING_KEYS_MAP.base);
 
   const cleanedConfig = {

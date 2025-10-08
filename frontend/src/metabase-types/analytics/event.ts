@@ -168,29 +168,6 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
-export type EmbeddingSetupStepKey =
-  | "welcome"
-  | "user-creation"
-  | "data-connection"
-  | "table-selection"
-  | "processing"
-  | "add-to-your-app"
-  | "done";
-export type EmbeddingSetupStepSeenEvent = ValidateEvent<{
-  event: "embedding_setup_step_seen";
-  event_detail: EmbeddingSetupStepKey;
-}>;
-
-export type EmbeddingSetupClickEvent = ValidateEvent<{
-  event: "embedding_setup_click";
-  event_detail:
-    | "setup-up-manually"
-    | "add-data-later-or-skip"
-    | "snippet-copied"
-    | "ill-do-this-later";
-  triggered_from: EmbeddingSetupStepKey;
-}>;
-
 export type EventsClickedEvent = ValidateEvent<{
   event: "events_clicked";
   triggered_from: "chart" | "collection";
@@ -224,7 +201,8 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
 export type EmbedWizardOpenedEvent = ValidateEvent<{
   event: "embed_wizard_opened";
@@ -504,8 +482,6 @@ export type SimpleEvent =
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
-  | EmbeddingSetupStepSeenEvent
-  | EmbeddingSetupClickEvent
   | EventsClickedEvent
   | AddDataModalOpenedEvent
   | AddDataModalTabEvent
