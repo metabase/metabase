@@ -23,6 +23,10 @@ import {
   type QueryModalType,
 } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import {
+  canManageSubscriptions as canManageSubscriptionsSelector,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -58,6 +62,8 @@ export const QuestionMoreActionsMenu = ({
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const isQuestion = question.type() === "question";
   const isModel = question.type() === "model";
@@ -168,13 +174,15 @@ export const QuestionMoreActionsMenu = ({
         {t`Turn back to saved question`}
       </Menu.Item>
     ),
-    !(isModel || isArchived || isAnalytics) && (
-      <QuestionAlertsMenuItem
-        key="alerts"
-        question={question}
-        onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
-      />
-    ),
+    isAdmin &&
+      canManageSubscriptions &&
+      !(isModel || isArchived || isAnalytics) && (
+        <QuestionAlertsMenuItem
+          key="alerts"
+          question={question}
+          onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
+        />
+      ),
     enableSettingsSidebar && (
       <Menu.Item
         key="edit-settings"
