@@ -1,10 +1,12 @@
 (ns metabase.notification.payload.temp-storage
-  "Util to put data into a temporary file and delete after the notification sends. Cleanup happens with notification.send/do-after-notification-sent for dashboards and cards which calls cleanup! on each part. This is exetended to Object as a no-op and on the type defined here deletes the temporary file.
+  "Util to put data into a temporary file and delete after the notification sends.  Cleanup happens with
+  notification.send/do-after-notification-sent for dashboards and cards which calls cleanup! on each part. This is
+  extended to Object as a no-op and on the type defined here deletes the temporary file.
 
   When getting query results for notifications (alerts, subscriptions) once the query row count
   exceeds [[metabase.notification.payload.execute/rows-to-disk-threshold]], we then start streaming all rows to
   disk. This ensures that smaller queries don't needlessly write to disk and then reload, while large results don't
-  attempt to reside in memory and kill and instance.
+  attempt to reside in memory and kill an instance.
 
   The key to memory savings here is that the file will not be dereferenced if it is larger than some
   threshold. Because of this, we are safe to truncate results once the filesize goes above this
@@ -41,6 +43,18 @@
   (doto (File/createTempFile "notification-" ".npy" @temp-dir)
     (.deleteOnExit)))
 
+(defn- human-readable-size [bytes]
+  (cond (nil? bytes) "0 bytes"
+        (zero? bytes) "0 bytes"
+        :else
+        (let [units ["b" "kb" "mb" "gb" "tb"]
+              magnitude 1024.0]
+          (loop [[unit & remaining] units
+                 current (double bytes)]
+            (if (and (seq remaining) (> current magnitude))
+              (recur remaining (/ current magnitude))
+              (format "%.1f %s" current unit))))))
+
 (defn- open-streaming-file!
   "Create and open a temp file for streaming rows. Returns map with :file and :output-stream."
   []
@@ -53,7 +67,7 @@
      :output-stream os}))
 
 (defn- write-row-block-to-stream!
-  "Write a single row to the output stream using nippy serialization."
+  "Write a collection of rows to the output stream using nippy serialization."
   [^DataOutputStream os row-block]
   (nippy/freeze-to-out! os row-block)
   (.flush os))
@@ -67,19 +81,18 @@
     (throw (ex-info "Temp file no longer exists" {:file file})))
 
   (let [file-size (.length file)
-        file-size-mb (/ file-size 1024.0 1024.0)]
+        size-human (human-readable-size file-size)]
     (when (and (pos? (notification.settings/notification-temp-file-size-max-bytes))
                (> file-size (notification.settings/notification-temp-file-size-max-bytes)))
-      (log/warnf "⚠️  SKIPPING LOAD - File too large: %.2f MB (max: %.2f MB). File will NOT be loaded into memory."
-                 file-size-mb
-                 (/ (notification.settings/notification-temp-file-size-max-bytes)
-                    1024.0 1024.0))
+      (log/warnf "⚠️  SKIPPING LOAD - File too large: %s (max: %s). File will NOT be loaded into memory."
+                 size-human
+                 (human-readable-size (notification.settings/notification-temp-file-size-max-bytes)))
       (throw (ex-info "Result file too large to load into memory"
                       {:type :notification/file-too-large
                        :file-size file-size
                        :max-size (notification.settings/notification-temp-file-size-max-bytes)})))
 
-    (log/infof "📂 Loading streamed results from disk: %.2f MB" file-size-mb)
+    (log/infof "📂 Loading streamed results from disk: %s" size-human)
 
     (let [start-time (System/nanoTime)
           result (with-open [is (-> (io/input-stream file)
@@ -112,7 +125,7 @@
                            (persistent! rows))))))
           elapsed-ms (/ (- (System/nanoTime) start-time) 1000000.0)
           row-count (count result)]
-      (log/infof "✅ Loaded %d rows from disk in %.0f ms (%.2f MB)" row-count elapsed-ms file-size-mb)
+      (log/infof "✅ Loaded %d rows from disk in %.0f ms (%s)" row-count elapsed-ms size-human)
       result)))
 
 (.addShutdownHook
@@ -128,18 +141,6 @@
 (extend-protocol Cleanable
   Object
   (cleanup! [_] nil))
-
-(defn- human-readable-size [bytes]
-  (cond (nil? bytes) "0 bytes"
-        (zero? bytes) "0 bytes"
-        :else
-        (let [units ["b" "kb" "mb" "gb" "tb"]
-              magnitude 1024.0]
-          (loop [[unit & remaining] units
-                 current (double bytes)]
-            (if (and (seq remaining) (> current magnitude))
-              (recur remaining (/ current magnitude))
-              (format "%.1f %s" current unit))))))
 
 (deftype StreamingTempFileStorage [^File file context]
   Cleanable
@@ -162,7 +163,7 @@
     (if (.exists file)
       (format "#StreamingTempFileStorage{:file %s, :size %.2f KB, :context %s}"
               (.getName file)
-              (/ (.length file) 1024.0)
+              (human-readable-size (.length file))
               (pr-str context))
       (format "#StreamingTempFileStorage{:file %s (deleted), :context %s}"
               (.getName file)
@@ -215,11 +216,10 @@
                   (when-let [remaining-rows (seq (persistent! @rows))]
                     (write-row-block-to-stream! output-stream remaining-rows))
                   (.close output-stream)
-                  (let [file-size (.length file)
-                        file-size-mb (/ file-size 1024.0 1024.0)]
-                    (log/infof "💾 Stored %d rows to disk: %.2f MB (never loaded into memory)%s"
+                  (let [file-size (.length file)]
+                    (log/infof "💾 Stored %d rows to disk: %s (never loaded into memory)%s"
                                @row-count
-                               file-size-mb
+                               (human-readable-size file-size)
                                (if (:notification/truncated? @streaming-state)
                                  " (note query results were truncated)"
                                  ""))
@@ -244,14 +244,13 @@
 
          ;; Step arity - accumulate rows
          ([result row]
-          ;; unconditionally incrememt row count and add rows to internal volatile transient collector. If we are
+          ;; unconditionally increment row count and add rows to internal volatile transient collector. If we are
           ;; streaming to disk, we periodically flush this to disk; if we are collecting in memory the collection is
           ;; used the same as in the default-rff
           (vswap! row-count inc)
           (vswap! rows conj! row)
           (if @streaming?
             ;; Already streaming - write row directly to file
-
             (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
               (if-not (zero? (mod @row-count 5000))
                 ;; only flush the volatile transient every 5000 rows. If we aren't on a 5,000 row multiple, we've
