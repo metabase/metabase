@@ -2,6 +2,7 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -66,6 +67,10 @@ export const QuestionMoreActionsMenu = ({
   const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
   const isStandaloneQuestion =
     isQuestion && !_.isNumber(question.dashboardId());
+
+  const isArchived = question.isArchived();
+  const collection = question.collection();
+  const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
 
   const hasCollectionPermissions = question.canWrite();
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
@@ -163,11 +168,13 @@ export const QuestionMoreActionsMenu = ({
         {t`Turn back to saved question`}
       </Menu.Item>
     ),
-    <QuestionAlertsMenuItem
-      key="alerts"
-      question={question}
-      onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
-    />,
+    !(isModel || isArchived || isAnalytics) && (
+      <QuestionAlertsMenuItem
+        key="alerts"
+        question={question}
+        onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
+      />
+    ),
     enableSettingsSidebar && (
       <Menu.Item
         key="edit-settings"
