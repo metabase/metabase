@@ -15,7 +15,7 @@ You'll write a query or a Python script in Metabase, a transform will run this q
 
 ## Transforms overview
 
-- **Transforms** are queries (either with SQL or the query builder)  or Python scripts that write back to your database as a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
+- **Transforms** are queries (either with SQL or the query builder) or Python scripts that write back to your database as a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
 - Transforms are scheduled and organized using **tags** and **jobs**.
   - You assign tags (e.g., daily, hourly) to group your transforms.
   - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
@@ -56,11 +56,11 @@ Python-based transforms require a dedicated Python execution environment, so you
 - In your Metabase, you write a Python script that returns a `pandas` DataFrame and uses one or more tables from your database.
 - When Metabase runs the transform, a new Python execution environment is spun up. Python transforms run in a separate, isolated environment—not on your Metabase instance.
 - Metabase securely copies your source data to your Python environment and makes it available as pandas DataFrames.
-- The Python code of the transform is executed _in memory_ in the execution environment.
+- The Python environment executes your Python script _in memory_.
 - The Python environment saves the resulting DataFrame as a file.
-- The contents of the file are securely transferred and written into your database as a new table.
+- Your Metabase instance reads the file writes the results to a new table in your database.
 - The new table is synced to Metabase.
-- - On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
+- On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
 
 For more on Python transforms, see [Python transforms](python-transforms.md).
 
@@ -89,7 +89,7 @@ To create a transform:
    For editing Python transforms, see [Python transforms](python-transforms.md).
 
 5. Click **Save** in the top right corner.
-6. Select a target schema for your transform and enter a name for the target table. Metabase will write create the table the results of the transform query into this table.
+6. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform query into this table.
 
    You can only transform data _within_ a database; you can't write from one database to another.
 
@@ -103,7 +103,7 @@ You can edit the transform's name and description, query or script, and target t
 
 To edit the transform's query or script, click on "Edit query" or "Edit script" above the transform definition.
 
-Currently, you can't convert a between different trasform types (e.g. a query builder transform to a SQL-based transfor, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
+Currently, you can't convert between different transform types (e.g. a query builder transform to a SQL-based transform, or a SQL transform into a Python transform). If you want to change your transform built with the query builder into a SQL transform, you'll need to create a new transform with the same target and tags, and delete the old transform.
 
 Once you change the transform's query or script, the next transform run (manual or scheduled) will use the updated query and write the results into the target table. If you have questions that query the transform's target table, they might break. For example, if your new transform query no longer includes a column that a downstream question was relying on, that question will break.
 
