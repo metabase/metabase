@@ -10,21 +10,29 @@
 (defn- query-hash-hex [query]
   (codecs/bytes->hex
    (mu/disable-enforcement
-     (lib-be.hash/query-hash (merge {:database Integer/MAX_VALUE} query)))))
+     (lib-be.hash/query-hash (merge {:database Integer/MAX_VALUE}
+                                    (cond
+                                      (:query query)  {:type :query}
+                                      (:native query) {:type :native}
+                                      :else           {:lib/type :mbql/query})
+                                    query)))))
 
 (deftest ^:parallel query-hash-test
   (testing "lib-be.hash/query-hash"
     (testing "should always hash something the same way, every time"
-      (is (= "c8184360fbcd252e50388361e42a95f25a75f7ea881e18e96cdfab8aebc72dce"
-             (query-hash-hex {:query :abc})))
-      (is (= (query-hash-hex {:query :def})
-             (query-hash-hex {:query :def})))
+      (is (= "85301213594dda83de5e4bb3103f66bde8c7d22472ba7b16029ff5ca176ba75d"
+             (query-hash-hex {:query {:source-table 1}})))
+      (is (= (query-hash-hex {:query {:source-table 2}})
+             (query-hash-hex {:query {:source-table 2}})))
       (let [q (mt/mbql-query products
                 {:aggregation [[:count]]
                  :breakout [$category]
                  :order-by [[:asc [:aggregation 0]]]})]
         (is (= (query-hash-hex q)
-               (query-hash-hex q)))))
+               (query-hash-hex q)))))))
+
+(deftest ^:parallel query-hash-test-1b
+  (testing "lib-be.hash/query-hash"
     (testing "should handle parameter values that mix regular numbers with bigintegers stored as strings"
       (let [q1 (-> (mt/mbql-query orders)
                    (assoc :parameters [{:type :number, :name "p1", :value [1 "9223372036854775808"]}]))
@@ -88,40 +96,40 @@
 (deftest ^:parallel query-hash-test-3
   (testing "lib-be.hash/query-hash"
     (testing "keys that are irrelevant to the query should be ignored"
-      (is (= (query-hash-hex {:query :abc, :random :def})
-             (query-hash-hex {:query :abc, :random :xyz}))))))
+      (is (= (query-hash-hex {:query {:source-table 1}, :random :def})
+             (query-hash-hex {:query {:source-table 1}, :random :xyz}))))))
 
 (deftest ^:parallel query-hash-test-4
   (testing "lib-be.hash/query-hash"
     (testing "empty `:parameters` lists should not affect the hash"
-      (is (= (query-hash-hex {:query :abc})
-             (query-hash-hex {:query :abc, :parameters []})
-             (query-hash-hex {:query :abc, :parameters nil}))))))
+      (is (= (query-hash-hex {:query {:source-table 1}})
+             (query-hash-hex {:query {:source-table 1}, :parameters []})
+             (query-hash-hex {:query {:source-table 1}, :parameters nil}))))))
 
 (deftest ^:parallel query-hash-test-5
   (testing "lib-be.hash/query-hash"
     (testing "empty `:parameters` lists should not affect the hash"
       (testing "...but non-empty ones should"
-        (is (not (= (query-hash-hex {:query :abc})
-                    (query-hash-hex {:query :abc, :parameters ["ABC"]}))))))))
+        (is (not (= (query-hash-hex {:query {:source-table 1}})
+                    (query-hash-hex {:query {:source-table 1}, :parameters [{:id "ABC"}]}))))))))
 
 (deftest ^:parallel query-hash-test-6
   (testing "lib-be.hash/query-hash"
     (testing "empty `:parameters` lists should not affect the hash"
       (testing (str "the presence of a `nil` value for `:constraints` should produce the same hash as not including "
                     "the key at all")
-        (is (= (query-hash-hex {:query :abc})
-               (query-hash-hex {:query :abc, :constraints nil})
-               (query-hash-hex {:query :abc, :constraints {}})))))))
+        (is (= (query-hash-hex {:query {:source-table 1}})
+               (query-hash-hex {:query {:source-table 1}, :constraints nil})
+               (query-hash-hex {:query {:source-table 1}, :constraints {}})))))))
 
 (deftest ^:parallel query-hash-test-7
   (testing "lib-be.hash/query-hash"
     (testing "empty `:parameters` lists should not affect the hash"
       (testing (str "the presence of a `nil` value for `:constraints` should produce the same hash as not including "
                     "the key at all")
-        (is (= (query-hash-hex {:query :abc})
-               (query-hash-hex {:query :abc, :constraints nil})
-               (query-hash-hex {:query :abc, :constraints {}})))))))
+        (is (= (query-hash-hex {:query {:source-table 1}})
+               (query-hash-hex {:query {:source-table 1}, :constraints nil})
+               (query-hash-hex {:query {:source-table 1}, :constraints {}})))))))
 
 (deftest ^:parallel query-hash-test-8
   (testing "lib-be.hash/query-hash"

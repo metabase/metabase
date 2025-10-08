@@ -1772,4 +1772,5 @@
    (lib.schema.common/disallowed-keys
     {:lib/type     "Legacy MBQL queries must not have :lib/type"
      :source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
-     :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])
+     :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"
+     :stages       "Legacy MBQL queries cannot have :stages; use :query or :native instead"})])
