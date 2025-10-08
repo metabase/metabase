@@ -17,7 +17,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -1182,7 +1181,8 @@
 (deftest ^:parallel pivot-query-based-on-native-card-test
   (mt/test-driver :mongo
     (testing "Pivot queries based on a native Mongo card return the right number of columns (#64124)"
-      (let [native-query "[{\"$project\": {\"product_id\": \"$product_id\", \"subtotal\": \"$subtotal\"}}, {\"$limit\": 1}]"
+      (let [native-query (json/encode [{:$project {:product_id :$product_id, :subtotal :$subtotal}}
+                                       {:$limit 1}])
             mp (lib.tu/mock-metadata-provider
                 (mt/metadata-provider)
                 {:cards [{:id              1

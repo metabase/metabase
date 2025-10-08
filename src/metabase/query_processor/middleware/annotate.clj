@@ -106,10 +106,11 @@
                               (-> result :data :cols))]
        (rf (cond-> result
              (and (seq result-data-cols)
-                  ;; For pivot queries, the number of incoming-cols can be greater than the number of base-types
-                  ;; in these cases, the incoming-cols already have the correct type, no calculation is necessary.
-                  ;; For native queries where this correction is needed, the number and position of the columns
-                  ;; and the base-types should match. (#64124)
+                  ;; For pivot queries, when generating the summary column, row, or field, the number of
+                  ;; result-data-cols can be greater than the number of base-types.  In these cases, the
+                  ;; result-data-cols already have the correct type, so no calculation is necessary.
+                  ;; For native queries where this correction is needed, the number and position of the columns and
+                  ;; the base-types should match. (#64124)
                   (= (count result-data-cols) (count base-types)))
              (assoc-in [:data :cols] (mapv enrich-with-inferred-type result-data-cols base-types))))))))
 
