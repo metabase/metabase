@@ -126,7 +126,9 @@
    value        :- :any]
   (let [filter-column  (lib.drill-thru.common/breakout->filterable-column query stage-number column-ref column)
         filter-clauses (or (when (lib.binning/binning column)
-                             (let [unbinned-column (lib.binning/with-binning filter-column nil)]
+                             (let [unbinned-column (-> filter-column
+                                                       (lib.binning/with-binning nil)
+                                                       (dissoc :lib/original-binning))]
                                (if (some? value)
                                  (when-let [{:keys [min-value max-value]} (lib.binning/resolve-bin-width query column value)]
                                    [(lib.filter/>= unbinned-column min-value)
