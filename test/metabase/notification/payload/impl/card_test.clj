@@ -197,7 +197,7 @@
                          :handlers [@notification.tu/default-email-handler]}]
           (notification/send-notification! notification)
           (testing "sanity check that the file exists in the first place"
-            (is (notification.payload/is-cleanable? @f)))
+            (is (notification.payload/cleanable? @f)))
           (testing "the files are cleaned up"
             (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.StreamingTempFileStorage @f))))))))))
 
