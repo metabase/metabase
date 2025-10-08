@@ -134,12 +134,21 @@ const iso8601Date = new RegExp(`^${fullCalendarDatePattern}$`);
 const isIso8601DateTime = new RegExp(fullIso8601DateTimePattern);
 const isSpaceSeparatedDateTime = new RegExp(spaceSeparatedDateTimePattern);
 
-export function isValidIso8601(value: string): boolean {
+/**
+ * Compact date pattern: YYYYMMDD
+ * where YYYY is year (1583-9999), MM is month (01-12), DD is day (01-31)
+ */
+const compactDatePattern =
+  /^(?:158[3-9]|159\d|1[6-9]\d{2}|[2-9]\d{3})(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/;
+
+export function isValidIso8601(value: string | number): boolean {
+  const stringValue = String(value);
   return (
-    iso8601Date.test(value) ||
-    isIso8601DateTime.test(value) ||
-    weekDatePattern.test(value) ||
-    ordinalDatePattern.test(value) ||
-    isSpaceSeparatedDateTime.test(value)
+    iso8601Date.test(stringValue) ||
+    isIso8601DateTime.test(stringValue) ||
+    weekDatePattern.test(stringValue) ||
+    ordinalDatePattern.test(stringValue) ||
+    isSpaceSeparatedDateTime.test(stringValue) ||
+    compactDatePattern.test(stringValue)
   );
 }
