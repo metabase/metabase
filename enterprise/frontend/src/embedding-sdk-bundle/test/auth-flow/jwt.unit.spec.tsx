@@ -7,6 +7,7 @@ import { ComponentProvider } from "embedding-sdk-bundle/components/public/Compon
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import {
   MOCK_INSTANCE_URL,
@@ -169,6 +170,16 @@ describe("Auth Flow - JWT", () => {
         },
       },
     );
+
+    fetchMock.get(`${instanceUrlWithSubpath}/api/user/current`, {
+      status: 200,
+      body: createMockUser(),
+    });
+
+    fetchMock.get(`${instanceUrlWithSubpath}/api/session/properties`, {
+      status: 200,
+      body: createMockSettings(),
+    });
 
     const authConfig = defineMetabaseAuthConfig({
       metabaseInstanceUrl: instanceUrlWithSubpath,

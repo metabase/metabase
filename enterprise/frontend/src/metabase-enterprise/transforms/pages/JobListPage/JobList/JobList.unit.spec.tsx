@@ -64,12 +64,15 @@ function setup({
 
 describe("JobList", () => {
   it("should show the last run status", async () => {
+    const jobId = 1;
     setup({
       jobs: [
         createMockTransformJob({
+          id: jobId,
           last_run: createMockTransformRun({ status: "started" }),
         }),
       ],
+      jobTransforms: new Map([[jobId, { data: [createMockTransform()] }]]),
     });
     expect(await screen.findByText("In progress")).toBeInTheDocument();
   });

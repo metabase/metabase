@@ -96,7 +96,7 @@
           {:keys [error logs output]} (mt/user-http-request :crowberto :post 200 "ee/transforms-python/test-run" body)]
       (is (nil? error))
       (is (str/includes? logs "out1\nerr1\nout2\nerr2"))
-      (is (= {:rows [{:x 42} {:x 43}]} output)))))
+      (is (=? {:cols [{:name "x"}] :rows [{:x 42} {:x 43}]} output)))))
 
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
@@ -175,3 +175,10 @@
     (mt/with-temporary-setting-values [python-runner-test-run-timeout-seconds 1]
       (let [response (test-run :program program)]
         (is (=? {:body {:error {:message "Python execution timed out"}}} response))))))
+
+(deftest test-run-cols-meta-empty-return-test
+  (let [program ["import pandas as pd"
+                 "def transform():"
+                 "  return pd.DataFrame(columns=['y', 'z', 'x'])"]
+        response (test-run :program program)]
+    (is (=? {:output {:cols [{:name "y"} {:name "z"} {:name "x"}]}} (:body response)))))

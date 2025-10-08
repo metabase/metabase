@@ -59,7 +59,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
-  "text-white": ["text-white"],
+  "text-white": ["text-white", "white"],
   error: ["error"],
   "background-error": ["bg-error"],
   "text-hover": ["text-hover"],

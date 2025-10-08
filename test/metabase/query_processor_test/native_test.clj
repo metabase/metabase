@@ -1,7 +1,7 @@
-(ns metabase.query-processor-test.native-test
+(ns ^:mb/driver-tests metabase.query-processor-test.native-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -37,37 +37,43 @@
             (mt/native-query
              {:query "select name from users;"}))))))
 
-(deftest ^:parallel native-with-duplicate-column-names
+(deftest ^:parallel native-with-duplicate-column-names-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"
-    (mt/with-test-drivers (sql.qp-test-util/sql-drivers)
-      (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                        (mt/metadata-provider)
-                                        {:cards [{:id              1
-                                                  :dataset-query   {:native   {:query "select id, id from orders"}
-                                                                    :database (mt/id)
-                                                                    :type     :native}
-                                                  :result-metadata [{:base_type      :type/BigInteger
-                                                                     :display_name   "ID"
-                                                                     :effective_type :type/BigInteger
-                                                                     :field_ref      [:field "ID" {:base-type :type/BigInteger}]
-                                                                     :fingerprint    nil
-                                                                     :name           "ID"
-                                                                     :semantic_type  :type/PK}
-                                                                    {:base_type      :type/BigInteger
-                                                                     :display_name   "ID"
-                                                                     :effective_type :type/BigInteger
-                                                                     :field_ref      [:field "ID_2" {:base-type :type/BigInteger}]
-                                                                     :fingerprint    nil
-                                                                     :name           "ID"
-                                                                     :semantic_type  :type/PK}]}]})
-        (is (=? {:columns ["ID" "ID_2"]}
-                (mt/rows+column-names
-                 (qp/process-query
-                  {:query    {:source-table "card__1"
-                              :fields       [[:field "ID" {:base-type :type/Integer}]
-                                             [:field "ID_2" {:base-type :type/Integer}]]}
-                   :database (mt/id)
-                   :type     :query}))))))))
+    ;; TODO (Cam 10/7/25) -- this should be updated to run against all the SQL drivers, at least all the ones that
+    ;; allow duplicate column names in the `SELECT` list (all of them, I think?). That was the original intention of
+    ;; this test but because of a coding error it only ever ran against H2. I updated it to run against PG as well
+    ;; until we can verify it works on other drivers without issue.
+    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+    (mt/test-drivers #{:h2 :postgres}
+      (let [mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:cards [{:id              1
+                          :dataset-query   {:native   {:query "select id, id from orders limit 1"}
+                                            :database (mt/id)
+                                            :type     :native}
+                          :result-metadata [{:base_type      :type/BigInteger
+                                             :display_name   "ID"
+                                             :effective_type :type/BigInteger
+                                             :field_ref      [:field "ID" {:base-type :type/BigInteger}]
+                                             :fingerprint    nil
+                                             :name           "ID"
+                                             :semantic_type  :type/PK}
+                                            {:base_type      :type/BigInteger
+                                             :display_name   "ID"
+                                             :effective_type :type/BigInteger
+                                             :field_ref      [:field "ID_2" {:base-type :type/BigInteger}]
+                                             :fingerprint    nil
+                                             :name           "ID"
+                                             :semantic_type  :type/PK}]}]})
+            query (lib/query
+                   mp
+                   {:query    {:source-table "card__1"
+                               :fields       [[:field "ID" {:base-type :type/Integer}]
+                                              [:field "ID_2" {:base-type :type/Integer}]]}
+                    :database (mt/id)
+                    :type     :query})]
+        (is (=? ["ID" "ID_2"]
+                (map :name (mt/cols (qp/process-query query)))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"
