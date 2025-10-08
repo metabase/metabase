@@ -44,8 +44,7 @@
       (temp-storage/cleanup! storage)))
 
   (testing "Over max-file-size threshold, aborts query"
-    (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 4 1024)
-                                       enforce-notification-temp-file-size-limit true]
+    (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 4 1024)]
       (let [many-rows 5000000
             result    (run-rff 5 (rows many-rows))
             storage   (get-in result [:data :rows])]
@@ -53,12 +52,27 @@
         (is (< (:row_count result) many-rows))
         (is (temp-storage/is-streaming-temp-file? storage))
         (is (:notification/truncated? result))
-        (mt/with-temporary-setting-values [enforce-notification-temp-file-size-limit false]
-           ;; remove enforcing notification size limit before dereferencing and then see that we _stored_ fewer
-           ;; results than otherwise might have been returned. Without resetting this, dereferencing the rows would
-           ;; error as it was larger than the file size limit
+        (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes 0]
+          ;; remove enforcing notification size limit before dereferencing and then see that we _stored_ fewer
+          ;; results than otherwise might have been returned. Without resetting this, dereferencing the rows would
+          ;; error as it was larger than the file size limit
 
-          (is (< (count @storage) many-rows)))))))
+          (is (< (count @storage) many-rows))))))
+  ;; in testing on my machine, this test takes this whole test from 262ms to 1550 ms. Seems worthwhile to me
+  (testing "When bytes size is set to 0 allows for arbitrary sizes"
+    (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes 0]
+      (let [many-rows 2500000
+            result    (run-rff 5 (rows many-rows))
+            storage   (get-in result [:data :rows])]
+        ;; row count here is how many query results were returned
+        (is (= (:row_count result) many-rows))
+        (is (temp-storage/is-streaming-temp-file? storage))
+        ;; on my machine this was 28.5mb. Don't need to push this into GB but demonstrate we are above the 10mb limit
+        (is (and (:data.rows-file-size result)
+                 (> (:data.rows-file-size result) (* 10 1024 1024)))
+            (format "data.rows-file-size was only : %d" (:data.rows-file-size result)))
+        (is (not (:notification/truncated? result)))
+        (is (= (count @storage) many-rows))))))
 
 (deftest streaming-edge-cases-test
   (testing "Empty rows"
@@ -128,8 +142,7 @@
   (testing "Untruncated results should be equal"
     (let [query (mt/mbql-query orders)]
       ;; its the default value but just ensuring it is high enough
-      (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 10 1024 1024)
-                                         enforce-notification-temp-file-size-limit true]
+      (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes (* 10 1024 1024)]
         (let [qp-results (mt/process-query query)
               temp-file-results (mt/process-query query
                                                   (temp-storage/notification-rff 2000))]

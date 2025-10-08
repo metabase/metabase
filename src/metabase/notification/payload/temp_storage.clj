@@ -60,16 +60,15 @@
 
 (defn- read-rows-from-file
   "Read rows from a temp file. Returns vector of rows.
-  Throws exception if file is larger than [[notification.settings/notification-temp-file-size-max-bytes]]
-  and [[notification.settings/enforce-notification-temp-file-size-limit]] is enabled.  Handles both counted and
-  streaming formats."
+  Throws exception if file is larger than [[notification.settings/notification-temp-file-size-max-bytes]] unless that
+  value is 0. Handles both counted and streaming formats."
   [^File file]
   (when-not (.exists file)
     (throw (ex-info "Temp file no longer exists" {:file file})))
 
   (let [file-size (.length file)
         file-size-mb (/ file-size 1024.0 1024.0)]
-    (when (and (notification.settings/enforce-notification-temp-file-size-limit)
+    (when (and (pos? (notification.settings/notification-temp-file-size-max-bytes))
                (> file-size (notification.settings/notification-temp-file-size-max-bytes)))
       (log/warnf "⚠️  SKIPPING LOAD - File too large: %.2f MB (max: %.2f MB). File will NOT be loaded into memory."
                  file-size-mb
@@ -263,7 +262,7 @@
                   ;; the query with `(reduced result)`
                   (write-row-block-to-stream! output-stream (persistent! @rows))
                   (vreset! rows (transient []))
-                  (if (and (notification.settings/enforce-notification-temp-file-size-limit)
+                  (if (and (pos? (notification.settings/notification-temp-file-size-max-bytes))
                            (> (.length file) (* 1.3 (notification.settings/notification-temp-file-size-max-bytes))))
                     (do (vswap! streaming-state assoc :notification/truncated? true)
                         (log/warnf "Results have exceeded 1.3 times of `notification-temp-file-size-max-bytes` of %s (max: %s). Truncating query results. %s"
