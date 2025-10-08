@@ -533,15 +533,13 @@ describe("scenarios > table-editing", () => {
         cy.findByText(`Add option: ${NON_EXISTING_ID}`).should("not.exist");
       });
 
-      H.modal().within(() => {
-        cy.findByText("Cancel").click();
-      });
+      H.modal().findByText("Cancel").click();
 
       cy.intercept("GET", `/api/table/${PRODUCTS_ID}/query_metadata`).as(
         "getProductsTable",
       );
 
-      // navigate via breadcrumbs to avoid page refresh
+      // navigate via breadcrumbs to avoid calling expensive `cy.visit`
       cy.findByTestId("head-crumbs-container")
         .findByText("Sample Database")
         .click();
