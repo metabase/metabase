@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref IReduceInit)
+   (clojure.lang IDeref)
    (java.io Closeable)
    (java.time Duration Instant)))
 
