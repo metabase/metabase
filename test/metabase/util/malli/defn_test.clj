@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.experimental :as mx]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.defn :as mu.defn]
@@ -38,6 +39,51 @@
     (str "Inputs: ([x :- :int]\n"
          "           [x :- :int y :- :int])\n"
          "  Return: :int")))
+
+(deftest ^:parallel make-jsdoc-test
+  (let [parse #(mc/parse mx/SchematizedParams %)]
+    (testing "single arity function with schemas"
+      (is (= ["@param {number} x"
+              "@return {*}"]
+             (#'mu.defn/make-jsdoc (parse '(bar [x :- :int] (str x)))))))
+
+    (testing "single arity function with map schema"
+      (is (= ["@param {{x: number, y: number}} x"
+              "@return {*}"]
+             (#'mu.defn/make-jsdoc (parse '(bar [x :- [:map [:x int?] [:y int?]]] (str x)))))))
+
+    (testing "malli registry"
+      (is (= ["@param {{source: ('source/card' | 'source/native' | 'source/previous-stage' | 'source/table-defaults' | 'source/aggregations' | 'source/joins' | 'source/expressions' | 'source/implicitly-joinable')}} column"          
+              "@return {*}"]
+             (#'mu.defn/make-jsdoc (parse '(process-column
+                                            [column :- [:map
+                                                        [:lib/source {:optional true} ::lib.schema.metadata/column.source]]]
+                                            column))))))
+
+    (testing "single arity function with return schema"
+      (is (= ["@param {number} x"
+              "@return {number}"]
+             (#'mu.defn/make-jsdoc (parse '(bar :- :int [x :- :int] (str x)))))))
+
+    (testing "single arity function with multiple params"
+      (is (= ["@param {number} x"
+              "@param {string} y"
+              "@return {*}"]
+             (#'mu.defn/make-jsdoc (parse '(bar [x :- :int y :- :string] (str x)))))))
+
+    (testing "single arity function without schemas"
+      (is (= ["@param {*} x"
+              "@return {*}"]
+             (#'mu.defn/make-jsdoc (parse '(bar [x] (str x)))))))
+
+    (testing "multi-arity function uses largest arity"
+      (is (= ["@param {number} x"
+              "@param {number} y"
+              "@return {number}"]
+             (#'mu.defn/make-jsdoc (parse '(bar
+                                            :- :int
+                                            ([x :- :int] (str x))
+                                            ([x :- :int y :- :int] (str x))))))))))
 
 (mu/defn bar [x :- [:map [:x int?] [:y int?]]] (str x))
 

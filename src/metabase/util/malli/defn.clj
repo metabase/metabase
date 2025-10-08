@@ -3,9 +3,11 @@
   (:require
    [clojure.core :as core]
    [clojure.string :as str]
+   [malli.core :as mc]
    [malli.destructure]
    [metabase.util :as u]
    [metabase.util.malli.fn :as mu.fn]
+   [metabase.util.malli.registry :as mr]
    [net.cgrand.macrovich :as macros]))
 
 (set! *warn-on-reflection* true)
@@ -59,6 +61,135 @@
           (when (not-empty doc)
             (str "\n\n  " doc))))))
 
+(core/defn- schema->jsdoc
+  "Convert a Malli schema to a JSDoc/TypeScript type string.
+  Returns nil for :any schemas or schemas that can't be converted.
+
+  `visited` is a set of schema references we've already seen to prevent infinite recursion."
+  ([schema]
+   (schema->jsdoc schema #{}))
+  ([schema visited]
+   (cond
+     (= schema :any) "*"
+
+     ;; Qualified keywords are registry references - try to resolve them
+     (and (keyword? schema) (namespace schema))
+     (when-not (visited schema)
+       (try
+         (let [resolved (mr/resolve-schema schema)]
+           (schema->jsdoc (mc/form resolved) (conj visited schema)))
+         (catch Exception _e
+           nil)))
+
+     (keyword? schema)
+     (case schema
+       :int     "number"
+       :string  "string"
+       :boolean "boolean"
+       :double  "number"
+       :float   "number"
+       :keyword "string"
+       :symbol  "string"
+       :uuid    "string"
+       :nil     "null"
+       nil)
+
+     ;; Handle predicate functions like int?, string?, etc.
+     (symbol? schema)
+     (let [schema-str (name schema)]
+       (when (str/ends-with? schema-str "?")
+         (case (subs schema-str 0 (dec (count schema-str)))
+           "int"     "number"
+           "number"  "number"
+           "string"  "string"
+           "boolean" "boolean"
+           "double"  "number"
+           "float"   "number"
+           "keyword" "string"
+           "symbol"  "string"
+           "uuid"    "string"
+           "nil"     "null"
+           nil)))
+
+     (vector? schema)
+     (case (first schema)
+       :map
+       (let [entries (rest schema)
+             ;; Map entries can be [k v] or [k options v] where options is a map
+             props (keep (fn [entry]
+                           (when (vector? entry)
+                             (let [[k maybe-opts maybe-v] entry
+                                   ;; If second element is a map, it's options
+                                   v (if (map? maybe-opts)
+                                       maybe-v
+                                       maybe-opts)
+                                   k-name (if (keyword? k)
+                                            (name k)
+                                            (str k))
+                                   v-type (schema->jsdoc v visited)]
+                               (when v-type
+                                 (str k-name ": " v-type)))))
+                         entries)]
+         (when (seq props)
+           (str "{" (str/join ", " props) "}")))
+
+       :vector
+       (when-let [item-type (schema->jsdoc (second schema) visited)]
+         (str item-type "[]"))
+
+       :sequential
+       (when-let [item-type (schema->jsdoc (second schema) visited)]
+         (str item-type "[]"))
+
+       :set
+       (when-let [item-type (schema->jsdoc (second schema) visited)]
+         (str "Set<" item-type ">"))
+
+       :enum
+       (let [entries (drop (if (map? (second schema)) 2 1) schema)]
+         (str "(" (str/join " | " (map #(str "'" (subs (str %) 1) "'") entries)) ")"))
+
+       :or
+       (let [types (keep #(schema->jsdoc % visited) (rest schema))]
+         (when (seq types)
+           (str/join " | " types)))
+
+       :maybe
+       (when-let [inner (schema->jsdoc (second schema) visited)]
+         (str "?" inner))
+
+       nil)
+
+     :else nil)))
+
+(core/defn- make-jsdoc
+  "Generate JSDoc for editors to consume"
+  [parsed]
+  (try
+    (let [arities (-> parsed :values :arities)
+          args    (case (:key arities)
+                    :single   (-> arities :value :values :args)
+                    :multiple (-> arities :value :values :arities last :values :args))
+          arglist (:arglist (malli.destructure/parse args))
+
+          fn-schema                                  (mu.fn/fn-schema parsed {:target :target/metadata})
+          ;; this is [:= [:cat :param-schema :param-schema] :return-schema]
+          [_=> [_cat & param-schemas] return-schema] (cond-> fn-schema
+                                                       ;; [:function [:=> schema1 ret1] [:=> schema2 ret2] ...]
+                                                       (= :function (first fn-schema)) last)
+
+          param-jsdoc  (->> (map (fn [param-name param-schema]
+                                   (when-let [jsdoc (schema->jsdoc param-schema)]
+                                    (str "@param {" jsdoc "} " param-name)))
+                                arglist param-schemas)
+                           (filterv identity))
+          return-jsdoc (when-let [jsdoc (schema->jsdoc return-schema)]
+                         (str "@return {" jsdoc "}"))]
+      (cond-> param-jsdoc
+        return-jsdoc (conj return-jsdoc)))
+    (catch Exception _e
+      [])))
+
 (defmacro defn
   "Implementation of [[metabase.util.malli/defn]]. Like [[schema.core/defn]], but for Malli.
 
@@ -92,7 +223,8 @@
         {attr-map :meta} (:values parsed)
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
-                           :schema   (mu.fn/fn-schema parsed {:target :target/metadata})}
+                           :schema   (mu.fn/fn-schema parsed {:target :target/metadata})
+                           :jsdoc    (make-jsdoc parsed)}
                           attr-map)
         docstring        (annotated-docstring parsed)
         instrument?      (mu.fn/instrument-ns? *ns*)]
