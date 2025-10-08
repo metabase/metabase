@@ -360,7 +360,7 @@ Review pull requests with a focus on:
   functions are much easier to test, understand, and tweak. Tests are allowed to be longer, especially when they
   contain mock data, but they should probably never be more than 100 lines.
 
-- Try to keep lines 118 characters wide or less; use this as a guideline when formatting docstrings.
+- Try to keep lines 120 characters wide or less; use this as a guideline when formatting docstrings or comments.
 
 - **No Blank Lines Within Definition Forms** Do not place blank lines in the middle of a function or macro definition.
   An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case
