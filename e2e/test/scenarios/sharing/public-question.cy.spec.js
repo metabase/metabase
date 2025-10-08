@@ -36,7 +36,7 @@ const questionData = {
 const PUBLIC_QUESTION_REGEX =
   /\/public\/question\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
 
-const EXPECTED_QUERY_PARAMS = "?birthdate=past30years&source=Affiliate";
+const EXPECTED_QUERY_PARAMS = "?source=Affiliate&birthdate=past30years";
 
 const USERS = {
   "admin user": () => cy.signInAsAdmin(),
