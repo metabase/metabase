@@ -489,12 +489,14 @@
 
 (defn card-metadata-for-unsigned-token
   "Return the query metadata for the card in `unsigned-token`."
-  [unsigned-token]
-  (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        _ (api/check (pos-int? card-id) [400 (tru "{0} id should be a positive integer." "Card")])
-        card (t2/select-one [:model/Card :archived :id :dataset_query :enable_embedding :type :card_schema] card-id)]
-    (check-embedding-enabled-for-object card)
-    (queries/batch-fetch-card-metadata [card])))
+  ([unsigned-token] (card-metadata-for-unsigned-token unsigned-token nil))
+  ([unsigned-token {:keys [skip-object-enabled-check?]}]
+   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+         _ (api/check (pos-int? card-id) [400 (tru "{0} id should be a positive integer." "Card")])
+         card (t2/select-one [:model/Card :archived :id :dataset_query :enable_embedding :type :card_schema] card-id)]
+     (check-embedding-enabled-for-object (cond-> card
+                                           skip-object-enabled-check?  (assoc :enable_embedding true)))
+     (queries/batch-fetch-card-metadata [card]))))
 
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token."
@@ -600,15 +602,17 @@
 
 (defn dashboard-metadata-for-unsigned-token
   "Get the query metadata for the dasghboard in `unsigned-token`."
-  [unsigned-token]
-  (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        _ (api/check (pos-int? dashboard-id) [400 (tru "{0} id should be a positive integer." "Dashboard")])
-        dashboard (-> (t2/select-one [:model/Dashboard :archived :id :enable_embedding] dashboard-id)
-                      (t2/hydrate [:dashcards
-                                   ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                                   [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                                   [:series :can_write #_:can_run_adhoc_query]
-                                   :dashcard/action
-                                   :dashcard/linkcard-info]))]
-    (check-embedding-enabled-for-object dashboard)
-    (queries/batch-fetch-dashboard-metadata [dashboard])))
+  ([unsigned-token] (dashboard-metadata-for-unsigned-token unsigned-token nil))
+  ([unsigned-token {:keys [skip-object-enabled-check?]}]
+   (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+         _ (api/check (pos-int? dashboard-id) [400 (tru "{0} id should be a positive integer." "Dashboard")])
+         dashboard (-> (t2/select-one [:model/Dashboard :archived :id :enable_embedding] dashboard-id)
+                       (t2/hydrate [:dashcards
+                                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                                    [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                                    [:series :can_write #_:can_run_adhoc_query]
+                                    :dashcard/action
+                                    :dashcard/linkcard-info]))]
+     (check-embedding-enabled-for-object (cond-> dashboard
+                                           skip-object-enabled-check? (assoc :enable_embedding true)))
+     (queries/batch-fetch-dashboard-metadata [dashboard]))))

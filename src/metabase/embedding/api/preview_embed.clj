@@ -77,7 +77,7 @@
   [{:keys [token]} :- [:map
                        [:token string?]]
    _query-params]
-  (api.embed.common/card-metadata-for-unsigned-token (check-and-unsign token)))
+  (api.embed.common/card-metadata-for-unsigned-token (check-and-unsign token) {:skip-object-enabled-check? true}))
 
 (api.macros/defendpoint :get "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
@@ -96,7 +96,7 @@
   [{:keys [token]} :- [:map
                        [:token string?]]
    _query-params]
-  (api.embed.common/dashboard-metadata-for-unsigned-token (check-and-unsign token)))
+  (api.embed.common/dashboard-metadata-for-unsigned-token (check-and-unsign token) {:skip-object-enabled-check? true}))
 
 (api.macros/defendpoint :get "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
