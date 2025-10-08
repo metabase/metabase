@@ -556,11 +556,9 @@ describe("scenarios > table-editing", () => {
         cy.realType(NON_EXISTING_ID);
       });
 
-      H.popover().within(() => {
-        cy.findByRole("option", {
-          name: `Add option: ${NON_EXISTING_ID}`,
-        }).should("be.visible");
-      });
+      H.popover()
+        .findByRole("option", { name: `Add option: ${NON_EXISTING_ID}` })
+        .should("be.visible");
     });
   });
 });
