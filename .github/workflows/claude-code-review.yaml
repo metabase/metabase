@@ -13,12 +13,13 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+          persist-credentials: false
 
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
@@ -26,6 +27,8 @@ jobs:
         with:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          permission-contents: read       # Required for reading repository files and PR diffs
+          permission-pull-requests: write # Required for creating inline comments and PR comments
 
       - name: Fetch Community Clojure Style Guide
         run: >-
