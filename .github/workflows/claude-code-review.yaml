@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   review:
-    if: github.event.pull_request.labels.*.name != 'skip-cc-review'
+    if: "!contains(github.event.pull_request.labels.*.name, 'skip-cc-review')"
     runs-on: ubuntu-latest
     permissions:
       contents: read
