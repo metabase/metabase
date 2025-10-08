@@ -1,5 +1,4 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { match } from "ts-pattern";
 
 import { useSearchQuery } from "metabase/api";
 
@@ -14,11 +13,7 @@ import {
   useRecentItems,
 } from "../hooks";
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
-import type {
-  SdkIframeEmbedSetupExperience,
-  SdkIframeEmbedSetupSettings,
-  SdkIframeEmbedSetupStep,
-} from "../types";
+import type { SdkIframeEmbedSetupStep } from "../types";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -57,15 +52,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   // Which embed experience are we setting up?
   const experience = useMemo(
-    () =>
-      match<SdkIframeEmbedSetupSettings, SdkIframeEmbedSetupExperience>(
-        settings,
-      )
-        .with({ template: "exploration" }, () => "exploration")
-        .with({ componentName: "metabase-question" }, () => "chart")
-        .with({ componentName: "metabase-browser" }, () => "browser")
-        .with({ componentName: "metabase-dashboard" }, () => "dashboard")
-        .exhaustive(),
+    () => getExperienceFromSettings(settings),
     [settings],
   );
 
@@ -93,6 +80,10 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoading,
     isFetching,
     settings,
+    defaultSettings: {
+      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
+      experience: getExperienceFromSettings(defaultSettings),
+    },
     replaceSettings,
     updateSettings,
     recentDashboards,

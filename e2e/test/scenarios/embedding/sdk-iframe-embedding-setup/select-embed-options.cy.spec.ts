@@ -55,11 +55,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("not.be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "drills",
-    });
-
     cy.log("drill-through should be disabled in the preview");
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("110.93").click();
@@ -68,6 +63,13 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,drills=false,withDownloads=false,withTitle=true",
+    });
+
     codeBlock().should("contain", 'drills="false"');
   });
 
@@ -91,17 +93,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withDownloads",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByTestId("export-as-pdf-button")
       .should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true",
+    });
+
     codeBlock().should("contain", 'with-downloads="true"');
   });
 
@@ -125,17 +129,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("not.be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withTitle",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByText("Orders in a dashboard")
       .should("not.exist");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=false",
+    });
+
     codeBlock().should("contain", 'with-title="false"');
   });
 
@@ -160,11 +166,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByLabelText("Allow people to drill through on data points")
       .click()
       .should("not.be.checked");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "drills",
-    });
 
     cy.log("drill-through should be disabled in chart preview");
     H.getSimpleEmbedIframeContent().within(() => {
@@ -200,17 +201,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withDownloads",
-    });
-
     H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("be.visible");
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=true,withTitle=true,isSaveEnabled=false",
+    });
+
     codeBlock().should("contain", 'with-downloads="true"');
   });
 
@@ -232,11 +235,6 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.checked")
       .click()
       .should("not.be.checked");
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "withTitle",
-    });
 
     H.getSimpleEmbedIframeContent()
       .findByText("Orders, Count")
@@ -277,22 +275,15 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.getSimpleEmbedIframeContent()
       .findByText("Orders, Count")
       .should("be.visible");
-
-    H.expectUnstructuredSnowplowEvent(
-      {
-        event: "embed_wizard_option_changed",
-        event_detail: "withTitle",
-      },
-      2,
-    );
   });
 
   ["exploration", "chart"].forEach((experience) => {
     it(`toggles save button for ${experience}`, () => {
-      navigateToEmbedOptionsStep({
-        experience,
-        ...(experience === "chart" && { resourceName: QUESTION_NAME }),
-      });
+      navigateToEmbedOptionsStep(
+        experience === "chart"
+          ? { experience: "chart", resourceName: QUESTION_NAME }
+          : { experience: "exploration" },
+      );
 
       if (experience === "exploration") {
         cy.log("visualize a question to enable the save button");
@@ -315,11 +306,6 @@ H.describeWithSnowplow(suiteTitle, () => {
         .click()
         .should("be.checked");
 
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_option_changed",
-        event_detail: "isSaveEnabled",
-      });
-
       if (experience === "chart") {
         cy.log("select a different visualization to enable the save button");
         H.getSimpleEmbedIframeContent().within(() => {
@@ -334,6 +320,15 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       cy.log("snippet should be updated");
       getEmbedSidebar().findByText("Get code").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_options_completed",
+        event_detail:
+          experience === "chart"
+            ? "settings=custom,theme=default,auth=user_session,drills=true,withDownloads=false,withTitle=true,isSaveEnabled=true"
+            : "settings=custom,theme=default,auth=user_session,isSaveEnabled=true",
+      });
+
       codeBlock().should("contain", 'is-save-enabled="true"');
     });
   });
@@ -358,17 +353,19 @@ H.describeWithSnowplow(suiteTitle, () => {
       .click()
       .should("be.checked");
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "readOnly",
-    });
-
     H.getSimpleEmbedIframeContent().within(() => {
       cy.findByText("New dashboard").should("be.visible");
     });
 
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,readOnly=false",
+    });
+
     codeBlock().should("contain", 'read-only="false"');
   });
 
@@ -397,11 +394,6 @@ H.describeWithSnowplow(suiteTitle, () => {
         .type("rgb(255, 0, 0)");
     });
 
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "theme",
-    });
-
     cy.log("table header cell should now be red");
     H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
@@ -414,6 +406,12 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
+    });
+
     codeBlock().should("contain", '"theme": {');
     codeBlock().should("contain", '"colors": {');
     codeBlock().should("contain", '"brand": "#FF0000"');
@@ -423,11 +421,6 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("click reset button");
     getEmbedSidebar().findByLabelText("Reset colors").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_option_changed",
-      event_detail: "theme",
-    });
 
     cy.log("table header should be back to default blue");
     H.getSimpleEmbedIframeContent()
@@ -441,6 +434,11 @@ H.describeWithSnowplow(suiteTitle, () => {
     cy.log("snippet should not contain theme colors");
     getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("not.contain", '"theme": {');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail: "settings=default",
+    });
   });
 
   it("derives colors for dark theme palette", () => {
@@ -474,6 +472,12 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     cy.log("check that derived colors are applied to snippet");
     getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=custom,auth=user_session,drills=true,withDownloads=false,withTitle=true",
+    });
 
     // derived-colors-for-embed-flow.unit.spec.ts contains the tests for other derived colors.
     cy.log("dark mode colors should be derived");

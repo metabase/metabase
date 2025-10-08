@@ -12,7 +12,10 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
-import { trackEmbedWizardSettingsUpdated } from "../analytics";
+import {
+  trackEmbedWizardOpened,
+  trackEmbedWizardSettingsUpdated,
+} from "../analytics";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 const getSettingsToPersist = (
@@ -116,6 +119,8 @@ export const useSdkIframeEmbedSettings = ({
       setRawSettings({ ...settings, ...persistedSettings });
 
       setEmbedSettingsLoaded(true);
+
+      trackEmbedWizardOpened();
     }
   }, [persistedSettings, isEmbedSettingsLoaded, settings, isRecentsLoading]);
 

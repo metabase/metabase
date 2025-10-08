@@ -115,6 +115,32 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Existing Metabase session").should("be.checked");
       codeBlock().should("contain", '"useExistingUserSession": true');
+
+      cy.findByText(/Copy Code/).click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_code_copied",
+        event_detail: "user_session",
+      });
+    });
+  });
+
+  it("should track embed_wizard_code_copied when copy event triggers", () => {
+    navigateToGetCodeStep({
+      experience: "dashboard",
+      resourceName: DASHBOARD_NAME,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Existing Metabase session").should("be.checked");
+
+      codeBlock().should("contain", '"useExistingUserSession": true');
+      codeBlock().trigger("copy");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_code_copied",
+        event_detail: "user_session",
+      });
     });
   });
 
@@ -127,13 +153,14 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     getEmbedSidebar().within(() => {
       cy.findByLabelText("Single sign-on (SSO)").click();
+      codeBlock().should("not.contain", "useExistingUserSession");
+
+      cy.findByText(/Copy Code/).click();
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_auth_selected",
+        event: "embed_wizard_code_copied",
         event_detail: "sso",
       });
-
-      codeBlock().should("not.contain", "useExistingUserSession");
     });
   });
 

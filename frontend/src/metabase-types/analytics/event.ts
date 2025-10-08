@@ -217,29 +217,28 @@ export type SdkIframeEmbedSetupExperience =
   | "exploration"
   | "browser";
 
-export type EmbedWizardExperienceSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_experience_selected";
-  event_detail: SdkIframeEmbedSetupExperience;
+export type EmbedWizardOpenedEvent = ValidateEvent<{
+  event: "embed_wizard_opened";
 }>;
 
-export type EmbedWizardResourceSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_resource_selected";
-  event_detail: SdkIframeEmbedSetupExperience;
-  target_id: number;
+export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_experience_completed";
+  event_detail: "default" | `custom=${SdkIframeEmbedSetupExperience}`;
 }>;
 
-export type EmbedWizardOptionChangedEvent = ValidateEvent<{
-  event: "embed_wizard_option_changed";
+export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_resource_selection_completed";
+  event_detail: "default" | "custom";
+}>;
+
+export type EmbedWizardOptionsCompletedEvent = ValidateEvent<{
+  event: "embed_wizard_options_completed";
   event_detail: string;
-}>;
-
-export type EmbedWizardAuthSelectedEvent = ValidateEvent<{
-  event: "embed_wizard_auth_selected";
-  event_detail: "sso" | "user-session";
 }>;
 
 export type EmbedWizardCodeCopiedEvent = ValidateEvent<{
   event: "embed_wizard_code_copied";
+  event_detail: "sso" | "user_session";
 }>;
 
 export type ConnectionStringParsedSuccessEvent = ValidateEvent<{
@@ -253,10 +252,10 @@ export type ConnectionStringParsedFailedEvent = ValidateEvent<{
 }>;
 
 export type EmbedWizardEvent =
-  | EmbedWizardExperienceSelectedEvent
-  | EmbedWizardResourceSelectedEvent
-  | EmbedWizardOptionChangedEvent
-  | EmbedWizardAuthSelectedEvent
+  | EmbedWizardOpenedEvent
+  | EmbedWizardExperienceCompletedEvent
+  | EmbedWizardResourceSelectionCompletedEvent
+  | EmbedWizardOptionsCompletedEvent
   | EmbedWizardCodeCopiedEvent;
 
 export type MetabotChatOpenedEvent = ValidateEvent<{
