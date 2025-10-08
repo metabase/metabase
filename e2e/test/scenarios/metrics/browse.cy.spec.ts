@@ -197,7 +197,7 @@ describe("scenarios > browse > metrics", () => {
       cy.get("@open").should("have.been.calledOnce");
       cy.get("@open").should(
         "have.been.calledWithMatch",
-        /^\/question\/\d+-.*$/,
+        /^\/metric\/\d+-.*$/,
         "_blank",
       );
 
@@ -432,7 +432,7 @@ describe("scenarios > browse > metrics", () => {
       findMetric(ORDERS_SCALAR_MODEL_METRIC.name).should("be.visible");
     });
 
-    it("should respect the user setting on wether or not to only show verified metrics", () => {
+    it("should respect the user setting on whether to only show verified metrics", () => {
       cy.intercept("GET", "/api/session/properties", (req) => {
         req.continue((res) => {
           res.body["browse-filter-only-verified-metrics"] = true;
@@ -502,8 +502,6 @@ function verifyMetric(metric: StructuredQuestionDetailsWithName) {
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Verify this metric").click();
 
-  H.openNavigationSidebar();
-
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })
     .click();
@@ -514,8 +512,6 @@ function unverifyMetric(metric: StructuredQuestionDetailsWithName) {
 
   cy.findByLabelText("Move, trash, and more…").click();
   H.popover().findByText("Remove verification").click();
-
-  H.openNavigationSidebar();
 
   H.navigationSidebar()
     .findByRole("listitem", { name: "Browse metrics" })

@@ -61,7 +61,7 @@ describe("browse > models", () => {
     cy.get("@open").should("have.been.calledOnce");
     cy.get("@open").should(
       "have.been.calledOnceWithExactly",
-      `/question/${ORDERS_MODEL_ID}-orders-model`,
+      `/model/${ORDERS_MODEL_ID}-orders-model`,
       "_blank",
     );
   });
