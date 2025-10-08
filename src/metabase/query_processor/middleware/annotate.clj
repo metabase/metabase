@@ -96,7 +96,8 @@
      (let [incoming-cols (when (map? result)
                            (-> result :data :cols))]
        (rf (cond-> result
-             (= (count incoming-cols) (count base-types))
+             (and (seq incoming-cols)
+                  (= (count incoming-cols) (count base-types)))
              (assoc-in [:data :cols] (mapv (fn [col base-type]
                                              (assoc col
                                                     :base_type      base-type

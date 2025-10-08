@@ -1204,29 +1204,29 @@
                       (col-breakout "product_id")
                       (col-breakout "subtotal"))
             pivot-query (assoc query
-                               :privot_rows [0]
-                               :pivot_cols  [1]
-                               :show_row_totals true
+                               :pivot_rows         [0]
+                               :pivot_cols         [1]
+                               :show_row_totals    true
                                :show_column_totals true
-                               :info {:context :ad-hoc})]
+                               :info               {:context :ad-hoc})]
         (is (=? {:data
                  {:cols
                   [{:lib/desired-column-alias "product_id"
-                    :field_ref [:field "product_id" {:base-type :type/Integer}]
-                    :base_type :type/Integer
-                    :effective_type :type/Integer}
+                    :field_ref                [:field "product_id" {:base-type :type/Integer}]
+                    :base_type                :type/Integer
+                    :effective_type           :type/Integer}
                    {:lib/desired-column-alias "subtotal"
-                    :field_ref [:field "subtotal" {:base-type :type/Float}]
-                    :base_type :type/Float
-                    :effective_type :type/Float}
+                    :field_ref                [:field "subtotal" {:base-type :type/Float}]
+                    :base_type                :type/Float
+                    :effective_type           :type/Float}
                    {:lib/desired-column-alias "pivot-grouping"
-                    :field_ref [:expression "pivot-grouping"]
-                    :base_type :type/Integer
-                    :effective_type :type/Integer}
+                    :field_ref                [:expression "pivot-grouping"]
+                    :base_type                :type/Integer
+                    :effective_type           :type/Integer}
                    {:lib/desired-column-alias "count"
-                    :field_ref [:aggregation 0]
-                    :base_type :type/Integer
-                    :semantic_type :type/Quantity
-                    :effective_type :type/Integer}]
-                  :rows [[14 37.65 0 1] [nil 37.65 1 1] [nil nil 3 1]]}}
+                    :field_ref                [:aggregation 0]
+                    :base_type                :type/Integer
+                    :semantic_type            :type/Quantity
+                    :effective_type           :type/Integer}]
+                  :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
                 (qp.pivot/run-pivot-query pivot-query)))))))
