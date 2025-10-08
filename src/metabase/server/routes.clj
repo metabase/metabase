@@ -87,8 +87,9 @@
     ((mw.embedding-sdk-bundle/serve-bundle-handler) request))
 
   ;; proxy the rspack dev server
-  (when config/is-dev?
-    (ANY "/dist/*" req (proxy-dev-server req)))
+  (if config/is-dev?
+    (ANY "/dist/*" req (proxy-dev-server req))
+    (route/resources "/dist/" {:root "frontend_client/app/dist"}))
 
   ;; fall back to serving _all_ other files under /app
   (route/resources "/" {:root "frontend_client/app"})
