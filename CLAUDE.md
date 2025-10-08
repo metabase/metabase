@@ -315,7 +315,8 @@ Review pull requests with a focus on:
   describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
   (https://guide.clojure.style/#four-semicolons-for-heading-comments)
 
-- Write top-level comments with three semicolons. (https://guide.clojure.style/#three-semicolons-for-top-level-comments)
+- Write top-level comments that start at the beginning of the line with three semicolons.
+  (https://guide.clojure.style/#three-semicolons-for-top-level-comments)
 
 - Write comments on a particular fragment of code before that fragment and aligned with it, using two semicolons.
   (https://guide.clojure.style/#two-semicolons-for-code-fragment)
