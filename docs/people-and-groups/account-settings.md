@@ -11,7 +11,13 @@ You can view your account settings by going to the top right of the screen and c
 
 ## Account profile
 
-You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../configuring-metabase/localization.md).
+You can set your first and last names, change your email address, and set your language. See our list of [supported languages](../configuring-metabase/localization.md). If you use SSO to log into your Metabase (e.g. your Google account), you won't be able to edit these settings in Metabase.
+
+## Theme
+
+You can choose to display Metabase in light or dark mode.
+
+The theme will only apply to your account, and only when using standalone, not embedded Metabase. Theme will not affect chart colors.
 
 ## Account password
 
