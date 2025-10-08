@@ -122,8 +122,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
-  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
+  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite? append?]}]
+  (let [queries (cond->> [(driver/compile-transform driver transform-details {:append? append?})]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
