@@ -189,7 +189,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) new-collection-id)
 
           ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-throws-403-missing-new-permission-test
@@ -203,7 +203,7 @@
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) old-collection-id)
 
           ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-throws-403-no-permissions-test
@@ -216,7 +216,7 @@
           ;; No permissions granted
 
           ;; Should throw 403 exception
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                 (document/validate-collection-move-permissions old-collection-id new-collection-id))))))))
 
 (deftest validate-collection-move-permissions-allows-move-from-root-test
@@ -261,7 +261,7 @@
 
           ;; Use a non-existent collection ID
           (let [non-existent-id 999999]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You do not have curate permissions for this Collection."
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid Request."
                                   (document/validate-collection-move-permissions old-collection-id non-existent-id)))))))))
 
 (deftest validate-collection-move-permissions-throws-400-archived-collection-test
