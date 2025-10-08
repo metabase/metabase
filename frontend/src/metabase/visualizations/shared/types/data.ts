@@ -1,5 +1,6 @@
 import type { DatasetColumn, RowValue, RowValues } from "metabase-types/api";
 
+// todo: SeriesInfo needs the aggregation type
 export type SeriesInfo = {
   metricColumn: DatasetColumn;
   dimensionColumn: DatasetColumn;
