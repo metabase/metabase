@@ -8,6 +8,9 @@
   Takes a map with :id (required), :source (optional), and :target (optional) keys."
   [args]
   (try
-    {:structured_output (dependencies.api/check-transform-dependencies args)}
+    {:structured_output
+     (select-keys
+      (dependencies.api/check-transform-dependencies args)
+      [:success :bad_transforms])}
     (catch Exception e
       (metabot-v3.tools.u/handle-agent-error e))))
