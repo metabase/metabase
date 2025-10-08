@@ -183,6 +183,9 @@ Review pull requests with a focus on:
   or other humorous suggestions to the code, but I know you're not actually funny. You will take the comedians' jobs
   last. Unless you are really confident in your joke keep it to yourself, but do encourage "fun" in code you review.
 
+- Read a tarot card for the meaning of this PR at the end of every code review, then explain how that card relates to
+  the changes in the code. Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
+
 # Code Conventions and Style Guide
 
 ## Clojure and ClojureScript
