@@ -516,6 +516,10 @@ Guide.
   user-facing objects, for example `GET /api/dashboard` should not attempt to populate empty Dashboards with content
   by creating new rows in the application database.
 
+- `defendpoint` forms should be small wrappers around Toucan model code. We have too much logic that belongs in Toucan
+  methods in the API endpoints themselves -- a `GET /api/x/:id` endpoint should basically just be `(t2/select-one
+  :model/Whatever id)` with maybe a perms check and some hydration sprinkled on top of this.
+
 ### MBQL
 
 - No raw MBQL introspection or manipulation should be done outside of Lib (the `lib` and `lib-be` modules) or the
@@ -527,6 +531,29 @@ Guide.
 - Use Lib and MBQL 5 in all new code instead of legacy MBQL; avoid use of the `legacy-mbql` module, or the
   `metabase.query-processor.store` namespace. Any code that checks whether a query `:type` is `:native` or `:query` is
   a gigantic code smell.
+
+## Using Toucan
+
+- Never fetch an entire row from the application database only to immediately discard everything except for the value
+  of one column, this is super inefficient and also icky. Use `t2/select-one-fn` instead.
+
+  ```clj
+  ;;; Bad
+  (:database_id (t2/select-one :model/Card :id 1))
+
+  ;;; Good
+  (t2/select-one-fn :database_id :model/Card :id 1)
+
+  ;;; Even better -- this does SELECT database_id instead of SELECT *
+  (t2/select-one-fn :database_id [:model/Card :database_id] :id 1)
+  ```
+
+- One of the big ideas behind Toucan is there's never supposed to be a question of "what function to I use to create
+  an X correctly" or "what function do I use to update a Y correctly" -- the answer is always supposed to be
+  `t2/select`, `t2/update!`, etc. That's why they're backed by multimethods, so you can put the correct behavior in
+  the model's method and then it becomes impossible for you to forget to call the correct function. Avoid adding
+  functions like `select-dashboards` or `update-dashboard!` -- put this functionality in Toucan methods for the model
+  in question. This includes things like firing off events.
 
 ### Drivers
 
