@@ -174,8 +174,7 @@ export const QuestionMoreActionsMenu = ({
         {t`Turn back to saved question`}
       </Menu.Item>
     ),
-    isAdmin &&
-      canManageSubscriptions &&
+    (isAdmin || canManageSubscriptions) &&
       !(isModel || isArchived || isAnalytics) && (
         <QuestionAlertsMenuItem
           key="alerts"
