@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { checkNotNull, checkNumber, isNumber } from "metabase/lib/types";
+import { checkNotNull, checkNumber } from "metabase/lib/types";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import { getPieColumns } from "metabase/visualizations/echarts/pie/model";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
@@ -128,24 +128,6 @@ export function getAggregatedRows(
   return aggregatedRows;
 }
 
-export function getSortedRows(rows: RowValues[], metricIndex: number) {
-  return rows.sort((rowA, rowB) => {
-    const valueA = rowA[metricIndex];
-    const valueB = rowB[metricIndex];
-
-    if (!isNumber(valueA) && !isNumber(valueB)) {
-      return 0;
-    }
-    if (!isNumber(valueA)) {
-      return 1;
-    }
-    if (!isNumber(valueB)) {
-      return -1;
-    }
-    return valueB - valueA;
-  });
-}
-
 export function getColors(
   rawSeries: RawSeries,
   currentSettings: Partial<ComputedVisualizationSettings>,
@@ -161,12 +143,9 @@ export function getColors(
   const metricIndex = cols.findIndex(
     (col) => col.name === currentSettings["pie.metric"],
   );
-  const sortedRows = getSortedRows(
-    getAggregatedRows(rows, dimensionIndex, metricIndex),
-    metricIndex,
-  );
 
-  const dimensionValues = sortedRows.map((r) => String(r[dimensionIndex]));
+  const aggregatedRows = getAggregatedRows(rows, dimensionIndex, metricIndex);
+  const dimensionValues = aggregatedRows.map((r) => String(r[dimensionIndex]));
 
   // Sometimes viz settings are malformed and "pie.colors" does not
   // contain a key for the current dimension value, so we need to compute
@@ -283,12 +262,7 @@ export function getPieRows(
   let newPieRows: PieRow[] = [];
   // Case 1: Auto sorted, sort existing and new rows together
   if (settings["pie.sort_rows"]) {
-    const sortedCurrentDataRows = getSortedRows(
-      currentDataRows,
-      metricDesc.index,
-    );
-
-    newPieRows = sortedCurrentDataRows.map((dataRow) => {
+    newPieRows = currentDataRows.map((dataRow) => {
       const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
       // Historically we have used the dimension value in the `pie.colors`
@@ -345,10 +319,9 @@ export function getPieRows(
 
       return dataRow;
     });
-    const sortedAddedRows = getSortedRows(addedRows, metricDesc.index);
 
     newPieRows.push(
-      ...sortedAddedRows.map((addedDataRow) => {
+      ...addedRows.map((addedDataRow) => {
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const color = Color(colors[String(dimensionValue)]).hex();

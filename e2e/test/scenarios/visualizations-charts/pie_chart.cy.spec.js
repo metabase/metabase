@@ -190,11 +190,11 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    ensurePieChartRendered(["Gadget", "Doohickey"]);
+    ensurePieChartRendered(["Doohickey", "Gadget"]);
 
     changeRowLimit(2, 4);
 
-    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
+    ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"]);
   });
 
   it("should preserve a slice's settings if its row is removed then reappears in the query result", () => {
@@ -203,58 +203,51 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
+    ensurePieChartRendered(["Doohickey", "Gadget", "Gizmo", "Widget"]);
 
     H.openVizSettingsSidebar();
 
     // Open color picker
-    cy.findByLabelText("#F2A86F").click();
+    cy.findByLabelText("#A989C5").click();
 
     H.popover().within(() => {
       // Change color
       cy.findByLabelText("#509EE3").click();
     });
 
-    cy.findByTestId("Widget-settings-button").click();
+    cy.findByTestId("Gizmo-settings-button").click();
 
-    cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
+    cy.findByDisplayValue("Gizmo").type("{selectall}Woooget").realPress("Tab");
 
     H.moveDnDKitElement(H.getDraggableElements().contains("Woooget"), {
-      vertical: 100,
+      vertical: 30,
     });
 
-    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
+    ensurePieChartRendered(["Doohickey", "Gadget", "Widget", "Woooget"]);
     H.chartPathWithFillColor("#509EE3").should("be.visible");
 
-    cy.findByTestId("chart-legend").within(() => {
-      cy.get("li").eq(2).contains("Woooget");
-    });
-
     changeRowLimit(4, 2);
-    ensurePieChartRendered(["Gadget", "Doohickey"]);
+    ensurePieChartRendered(["Doohickey", "Gadget"]);
 
     // Ensure row settings should show only two rows
     H.openVizSettingsSidebar();
     H.getDraggableElements().should("have.length", 2);
     H.getDraggableElements().contains("Woooget").should("not.exist");
-    H.getDraggableElements().contains("Gizmo").should("not.exist");
+    H.getDraggableElements().contains("Widget").should("not.exist");
 
     cy.findByTestId("Gadget-settings-button").click();
     cy.findByDisplayValue("Gadget").type("{selectall}Katget").realPress("Tab");
     H.moveDnDKitElement(H.getDraggableElements().contains("Katget"), {
-      vertical: 30,
+      vertical: -60,
     });
 
+    ensurePieChartRendered(["Katget", "Doohickey"]);
+
     changeRowLimit(2, 4);
-    ensurePieChartRendered(["Doohickey", "Katget", "Gizmo", "Woooget"]);
+    ensurePieChartRendered(["Katget", "Doohickey", "Widget", "Woooget"]);
 
     cy.findByTestId("chart-legend").findByText("Woooget").realHover();
     H.chartPathWithFillColor("#509EE3").should("be.visible");
-
-    cy.findByTestId("chart-legend").within(() => {
-      cy.get("li").eq(1).contains("Katget");
-      cy.get("li").eq(3).contains("Woooget");
-    });
   });
 
   it("should automatically map dimension columns in query to rings", () => {
@@ -440,7 +433,8 @@ describe("scenarios > visualizations > pie chart", () => {
 
       H.echartsContainer().within(() => {
         cy.findAllByText("Doohickey")
-          .first()
+          .should("have.length", 7) // one for each day of the week
+          .last()
           .as("doohickeySlice")
           .trigger("mousemove");
       });
@@ -538,12 +532,12 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     confirmSliceClickBehavior("2025", 6578);
-    confirmSliceClickBehavior("Affiliate", 1270, 0);
-    confirmSliceClickBehavior("Doohickey", 282, 0);
+    confirmSliceClickBehavior("Affiliate", 1270, 2);
+    confirmSliceClickBehavior("Doohickey", 282, 5);
 
     confirmSliceClickBehavior("2024", 5834);
     confirmSliceClickBehavior("Organic", 1180, 1);
-    confirmSliceClickBehavior("Gizmo", 354, 8);
+    confirmSliceClickBehavior("Gizmo", 354, 6);
   });
 
   it("should handle min percentage setting correctly", () => {
@@ -661,6 +655,64 @@ describe("scenarios > visualizations > pie chart", () => {
         secondaryValue: "100 %",
       },
     });
+  });
+
+  [
+    {
+      sortOrder: "asc",
+      legendOrder: {
+        initial: ["Doohickey", "Gadget"],
+        afterSorting: ["Gadget", "Doohickey"],
+        afterNewRows: ["Gadget", "Doohickey", "Gizmo", "Widget"],
+      },
+    },
+    {
+      sortOrder: "desc",
+      legendOrder: {
+        initial: ["Widget", "Gizmo"],
+        afterSorting: ["Gizmo", "Widget"],
+        afterNewRows: ["Gizmo", "Widget", "Gadget", "Doohickey"],
+      },
+    },
+  ].forEach(({ sortOrder, legendOrder }) => {
+    it(
+      "should use query ordering until rows are manually sorted (metabase#63585) - sort order " +
+        sortOrder,
+      () => {
+        H.visitQuestionAdhoc({
+          dataset_query: {
+            type: "query",
+            query: {
+              "source-table": PRODUCTS_ID,
+              aggregation: [["count"]],
+              breakout: [["field", PRODUCTS.CATEGORY, null]],
+              limit: 2,
+              "order-by": [[sortOrder, ["field", PRODUCTS.CATEGORY, null]]],
+            },
+            database: SAMPLE_DB_ID,
+          },
+          display: "pie",
+        });
+
+        ensurePieChartRendered(legendOrder.initial);
+
+        H.openVizSettingsSidebar();
+
+        H.moveDnDKitElement(
+          H.getDraggableElements().contains(legendOrder.initial[0]),
+          {
+            vertical: 40,
+          },
+        );
+
+        ensurePieChartRendered(legendOrder.afterSorting);
+
+        changeRowLimit(2, 4);
+
+        // new rows must follow query ordering
+        ensurePieChartRendered(legendOrder.afterNewRows);
+      },
+    );
   });
 });
 
