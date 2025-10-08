@@ -21,11 +21,11 @@ To write Python transforms, you'll need to have the Python execution add-on. Onc
 
 3. Select one or more tables with the data that you'd like to transform. Optionally, assign aliases to the tables.
 
-   The tables you select will be available as DataFrames in your Python code with your chosen aliases, and will be passed to the `transform()` function as parameter.
+   The tables you select will be available as DataFrames in your Python code with your chosen aliases, and will be passed to the `transform()` function as parameters.
 
 4. Create a function `transform()` that does the data wrangling and returns a [pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html). The DataFrame returned by the function will be written back to your database when the transform is run.
 5. Click **Save** in the top right corner.
-6. Select a target schema for your transform and enter a name for the target table. Metabase will write create the table the results of the transform query into this table.
+6. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform query into this table.
 
    You can only write back to the same database as you chose for the transform source.
 
@@ -35,9 +35,9 @@ To write Python transforms, you'll need to have the Python execution add-on. Onc
 
 - A Python transform must have a function `transform()` that returns a single `pandas` DataFrame.
 - You can use aliases to include tables from your database as DataFrames inside the `transform()` function. The tables will _only_ be available in the transform function. Other functions won't have access to the tables.
-- Only `pandas` will be imported by default, but you can import certain other packages, see [Available packages](#available-packages). You can also use functions from the [common library](#common-library)
+- Only `pandas` will be imported by default, but you can import [certain other packages](#available-packages). You can also use functions from the [common library](#common-python-library)
 - You see the output of `print()` statements in the transform's logs.
-- DataFrame indexes, including indexes created by `groupby()`, are ignored from writing back to the database. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function to make the index into a real column.
+- Metabase won't write DataFrame indexes to the database, including indexes created by `groupby()` If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function.
 
 ## Run a Python transform
 
@@ -45,7 +45,7 @@ See [Run a transform](transforms.md#run-a-transform). You'll see logs for a tran
 
 ## Available Python packages
 
-You can import and the following Python packages in Python transforms:
+You can import any of the following Python packages in Python transforms:
 
 - [`pandas`](https://pandas.pydata.org/);
 - Any dependencies of `pandas`, e.g. [`numpy`](https://numpy.org/);
@@ -53,9 +53,9 @@ You can import and the following Python packages in Python transforms:
 
 Due to security considerations for the Python execution environment, you won't be able to install or import any other packages.
 
-You can alo write your own functions and add them to the [common library](#common-library) in Metabase, which will be available across all your Python transforms.
+You can also write your own functions and add them to the [common library](#common-python-library) in Metabase, which will be available across all your Python transforms.
 
-## Common library
+## Common Python library
 
 If you have functions or classes you'd like to reuse across multiple transforms, you can add them to the common library that will be available across all Python transforms.
 
@@ -78,7 +78,7 @@ To use functions or classes from your Python library:
 ## Current limitations of Python transforms
 
 - Currently, Python transforms are only available on Metabase Cloud.
-- The transform function must return a single pandas DataFrame. Other data manipulation and DataFrame libraries like `polars` or `pyspark` are not supported.
+- The transform function must return a single `pandas` DataFrame. Other data manipulation and DataFrame libraries like `polars` or `pyspark` are not supported.
 - DataFrame indexes, including indexes created by `groupby()`, are ignored from writing back to the database. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function to make the index into a real column.
 - You can't preview the results of a Python transform.
 - Only a [limited set of packages](#available-packages) are available for import. You can't install additional packages.
