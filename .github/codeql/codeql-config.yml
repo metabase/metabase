@@ -5,4 +5,3 @@ paths-ignore:
   - "frontend/test/**"
   - "frontend/**/*.unit.*"
   - "e2e/**"
-  - "resources/frontend_client/app/assets/pyodide/*.js"
