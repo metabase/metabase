@@ -1091,7 +1091,7 @@
           stage (get-in query path)]
       (is (=? {:joins [{:alias "CATEGORIES__via__CATEGORY_ID"}
                        {:alias "CATEGORIES__via__ID"}]}
-              (#'qp.add-implicit-joins/resolve-implicit-joins-this-level query path stage))))))
+              (#'qp.add-implicit-joins/resolve-implicit-joins query path stage))))))
 
 (deftest ^:parallel implicit-join-from-much-earlier-stage-test
   (testing "if a join in stage 1 is used in stage 2, the field should propagate through stage 1 (#63245)"

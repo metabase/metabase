@@ -356,7 +356,7 @@
         (assoc ::reused-join-aliases reused-join-aliases))))
 
 (mu/defn- first-pass :- [:maybe ::lib.schema/stage]
-  "The first pass adds all of the new joins ([[resolve-implicit-joins-this-level]])."
+  "The first pass adds all of the new joins ([[resolve-implicit-joins]])."
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage]
