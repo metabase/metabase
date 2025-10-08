@@ -16,19 +16,15 @@
     (lib.walk/walk-clauses
      query
      (fn [query path-type path clause]
-       (println "(pr-str clause):" (pr-str clause)) ; NOCOMMIT
        (when (and (= path-type :lib.walk/stage)
                   (vector? clause)
                   (= (first clause) :field))
          (let [column (lib.walk/apply-f-for-stage-at-path
                        lib.field.resolution/resolve-field-ref
                        query path clause)]
-           (println "(:name col):" (:name column)) ; NOCOMMIT
-           (println "(::lib.field.resolution/fallback-metadata? column):" (::lib.field.resolution/fallback-metadata? column)) ; NOCOMMIT
            (when (or (not column)
                      (::lib.field.resolution/fallback-metadata? column)
                      (not (:active column true)))
-             (println "<BAD>")
              (vswap! bad-fields conj clause))))
        nil))
     (not-empty @bad-fields)))
