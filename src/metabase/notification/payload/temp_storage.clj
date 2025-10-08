@@ -245,15 +245,22 @@
 
          ;; Step arity - accumulate rows
          ([result row]
+          ;; unconditionally incrememt row count and add rows to internal volatile transient collector. If we are
+          ;; streaming to disk, we periodically flush this to disk; if we are collecting in memory the collection is
+          ;; used the same as in the default-rff
           (vswap! row-count inc)
-
+          (vswap! rows conj! row)
           (if @streaming?
             ;; Already streaming - write row directly to file
 
             (let [{:keys [^DataOutputStream output-stream ^File file]} @streaming-state]
-              (vswap! rows conj! row)
-              (if (zero? (mod @row-count 5000))
+              (if-not (zero? (mod @row-count 5000))
+                ;; only flush the volatile transient every 5000 rows. If we aren't on a 5,000 row multiple, we've
+                ;; already added the row above so nothing to do here.
+                result
                 (do
+                  ;; else we write the row block and then check if the size has gotten too large and we can abandon
+                  ;; the query with `(reduced result)`
                   (write-row-block-to-stream! output-stream (persistent! @rows))
                   (vreset! rows (transient []))
                   (if (and (notification.settings/enforce-notification-temp-file-size-limit)
@@ -264,18 +271,14 @@
                                    (human-readable-size (notification.settings/notification-temp-file-size-max-bytes))
                                    (when context (format "(%s)" (pr-str context))))
                         (reduced result))
-                    result))
-                result))
+                    result))))
 
             ;; Still in memory - check if we should start streaming
             (do
-              (vswap! rows conj! row)
-
-              ;; Check if we've hit the threshold
+              ;; Check if we've hit the threshold to switch to disk based streaming
               (when (>= @row-count max-row-count)
                 (log/infof "Row count reached threshold (%d), switching to streaming mode"
                            max-row-count)
-
                 ;; Open streaming file
                 (let [{:keys [file ^DataOutputStream output-stream]} (open-streaming-file!)]
                   (try
@@ -299,7 +302,6 @@
                       (u/ignore-exceptions (.close output-stream))
                       (u/ignore-exceptions (io/delete-file file))
                       (throw e)))))
-
               result))))))))
 
 ;; ------------------------------------------------------------------------------------------------;;
