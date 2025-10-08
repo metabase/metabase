@@ -42,7 +42,6 @@ export function VirtualizedList({
         });
       }
     },
-    [scrollTo, isMounted],
     isMounted && scrollTo !== undefined && scrollTo !== -1,
   );
 

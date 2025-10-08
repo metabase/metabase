@@ -1,27 +1,19 @@
-import type { DependencyList, EffectCallback } from "react";
+import type { EffectCallback } from "react";
 import { useEffect, useRef } from "react";
 
-export function useEffectOnceIf<TDependencies extends DependencyList>(
+export function useEffectOnceIf(
   effect: EffectCallback,
-  dependencies: TDependencies,
   condition: boolean,
 ): void {
   const hasRunRef = useRef(false);
 
   useEffect(() => {
-    // Stop if we already called `effect` before
-
-    if (hasRunRef.current) {
-      return;
-    }
-
-    // Stop if we have conditions defined but those conditions are not met
-    if (!condition) {
+    // Stop if we already called `effect` before or if the condition is not met
+    if (hasRunRef.current || !condition) {
       return;
     }
 
     hasRunRef.current = true;
-
     return effect();
-  }, [effect, dependencies, condition]);
+  }, [effect, condition]);
 }

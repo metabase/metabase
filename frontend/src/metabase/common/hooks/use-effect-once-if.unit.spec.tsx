@@ -6,7 +6,7 @@ describe("useEffectOnceIf", () => {
   it("should not call effect when condition is false", () => {
     const effect = jest.fn();
 
-    renderHook(() => useEffectOnceIf(effect, [], false));
+    renderHook(() => useEffectOnceIf(effect, false));
 
     expect(effect).not.toHaveBeenCalled();
   });
@@ -14,7 +14,7 @@ describe("useEffectOnceIf", () => {
   it("should call effect when condition is true", () => {
     const effect = jest.fn();
 
-    renderHook(() => useEffectOnceIf(effect, [], true));
+    renderHook(() => useEffectOnceIf(effect, true));
 
     expect(effect).toHaveBeenCalledTimes(1);
   });
@@ -22,7 +22,7 @@ describe("useEffectOnceIf", () => {
   it("should only call effect once even if re-rendered with condition still true", () => {
     const effect = jest.fn();
 
-    const { rerender } = renderHook(() => useEffectOnceIf(effect, [], true));
+    const { rerender } = renderHook(() => useEffectOnceIf(effect, true));
 
     expect(effect).toHaveBeenCalledTimes(1);
 
@@ -36,7 +36,7 @@ describe("useEffectOnceIf", () => {
     const effect = jest.fn();
 
     const { rerender } = renderHook(
-      ({ condition }) => useEffectOnceIf(effect, [], condition),
+      ({ condition }) => useEffectOnceIf(effect, condition),
       { initialProps: { condition: false } },
     );
 
@@ -55,7 +55,7 @@ describe("useEffectOnceIf", () => {
     const effect = jest.fn();
 
     const { rerender } = renderHook(
-      ({ condition }) => useEffectOnceIf(effect, [], condition),
+      ({ condition }) => useEffectOnceIf(effect, condition),
       { initialProps: { condition: true } },
     );
 
@@ -71,7 +71,7 @@ describe("useEffectOnceIf", () => {
     const cleanup = jest.fn();
     const effect = jest.fn(() => cleanup);
 
-    const { unmount } = renderHook(() => useEffectOnceIf(effect, [], true));
+    const { unmount } = renderHook(() => useEffectOnceIf(effect, true));
 
     expect(effect).toHaveBeenCalledTimes(1);
     expect(cleanup).not.toHaveBeenCalled();
@@ -79,35 +79,5 @@ describe("useEffectOnceIf", () => {
     unmount();
 
     expect(cleanup).toHaveBeenCalledTimes(1);
-  });
-
-  it("should respond to dependency changes when condition is true", () => {
-    const effect = jest.fn();
-
-    const { rerender } = renderHook(
-      ({ dep }) => useEffectOnceIf(effect, [dep], true),
-      { initialProps: { dep: 1 } },
-    );
-
-    expect(effect).toHaveBeenCalledTimes(1);
-
-    rerender({ dep: 2 });
-
-    expect(effect).toHaveBeenCalledTimes(1);
-  });
-
-  it("should not respond to dependency changes when condition is false", () => {
-    const effect = jest.fn();
-
-    const { rerender } = renderHook(
-      ({ dep }) => useEffectOnceIf(effect, [dep], false),
-      { initialProps: { dep: 1 } },
-    );
-
-    expect(effect).not.toHaveBeenCalled();
-
-    rerender({ dep: 2 });
-
-    expect(effect).not.toHaveBeenCalled();
   });
 });
