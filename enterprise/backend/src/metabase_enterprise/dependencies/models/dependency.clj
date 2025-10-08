@@ -69,7 +69,7 @@
      (->> (graph/transitive graph starters) ; This returns a flat list.
           (u/group-by first second conj #{})))))
 
-(defn replace-dependencies
+(defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
   the ones specified in `dependencies-by-type`. "
   [entity-type entity-id dependencies-by-type]

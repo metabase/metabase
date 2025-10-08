@@ -72,7 +72,7 @@
          {query :query} :source
          :as _transform} (lib.metadata/transform mp entity-id)
         driver (:engine (lib.metadata/database mp))
-        query (assoc query :lib/metadata mp)
+        query (lib/query mp query)
         output-table (some #(when (and (= (:schema %) target-schema)
                                        (= (:name %) target-name))
                               %)
