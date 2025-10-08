@@ -46,6 +46,5 @@ jobs:
             Use `mcp__github_inline_comment__create_inline_comment` to highlight specific code issues.
             Only post GitHub comments - don't submit review text as messages.
 
-          # not clear whether `ReadFile` is needed or not
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),ReadFile(CLOJURE_STYLE_GUIDE.adoc)"

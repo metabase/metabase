@@ -163,8 +163,9 @@ Review pull requests with a focus on:
 
 - Clear and correct comments explaining what the code is doing
 
-Read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with the style
-guide as well as other guidelines mentioned in this document.
+Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with the
+style guide as well as other guidelines mentioned in this document. Flag all violations of the Community Clojure Style
+Guide.
 
 # Code Conventions and Style Guide
 
@@ -178,16 +179,11 @@ guide as well as other guidelines mentioned in this document.
   conventional in the Clojure world. `acc`, `i`, `pred`, `coll`, `n`, `s`, `k`, and `f` are examples of well-known
   conventions; any Clojure developer has seen them before and can tell you what they mean. Avoid unconventional
   abbreviations like `tbl` and unclear variable names like `zs'`. A good function or variable name should make its
-  purpose immediately clear.
+  purpose immediately clear. Error on the side of longer variable names if needed.
 
   ```clj
   ;; too cryptic
   (defn mayb+1 [n]
-    (when n
-      (inc n)))
-
-  ;; too verbose
-  (defn add-one-to-a-number-if-non-nil [n]
     (when n
       (inc n)))
 
