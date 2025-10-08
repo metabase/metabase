@@ -15,7 +15,7 @@ You'll write a query or a Python script in Metabase, a transform will run this q
 
 ## Transforms overview
 
-- **Transforms** are queries or scripts that write back to your database as a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
+- **Transforms** are queries (either with SQL or the query builder)  or Python scripts that write back to your database as a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
 - Transforms are scheduled and organized using **tags** and **jobs**.
   - You assign tags (e.g., daily, hourly) to group your transforms.
   - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
@@ -43,22 +43,24 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 ### Query-based transforms
 
-- In Metabase, you create a `SELECT` query either using SQL or Metabase's [graphical query builder](../questions/query-builder/editor.md);
-- When the transform is run, the query you wrote is executed _by your database_;
-- The results returned by the query are written back to your database as a new table;
+- In Metabase, you create a `SELECT` query either using SQL or Metabase's [graphical query builder](../questions/query-builder/editor.md).
+- When the transform first runs, your _database_ executes the transform's query.
+- Your database writes the results of the query as new table.
 - The new table is synced to Metabase.
+- On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
 
 ### Python-based transforms
 
 Python-based transforms require a dedicated Python execution environment, so you'll need to buy the Python execution add-on.
 
 - In your Metabase, you write a Python script that returns a `pandas` DataFrame and uses one or more tables from your database.
-- When the transform is run, a new Python execution environment is spun up. Python transforms run in a separate, isolated environment - not on your Metabase instance.
-- The data from the tables you've chosen as a source for your transform is securely copied to the execution environment, and then made available in your Python code as pandas DataFrames.
+- When Metabase runs the transform, a new Python execution environment is spun up. Python transforms run in a separate, isolated environment—not on your Metabase instance.
+- Metabase securely copies your source data to your Python environment and makes it available as pandas DataFrames.
 - The Python code of the transform is executed _in memory_ in the execution environment.
-- The DataFrame result of your Python transform is saved as a file in the Python execution environment.
+- The Python environment saves the resulting DataFrame as a file.
 - The contents of the file are securely transferred and written into your database as a new table.
 - The new table is synced to Metabase.
+- - On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
 
 For more on Python transforms, see [Python transforms](python-transforms.md).
 
@@ -82,7 +84,7 @@ To create a transform:
 
    In SQL transforms, you can reference other saved questions and use snippets, but you can't use SQL parameters.
 
-   In query-based transforms, you can run the query to preview the results when editing the query. Previewing query results won't write data into your database.
+   When editing query-based transforms, you can preview results without writing data into your database.
 
    For editing Python transforms, see [Python transforms](python-transforms.md).
 
