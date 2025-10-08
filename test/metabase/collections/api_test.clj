@@ -2837,7 +2837,7 @@
        (filter #(= (:id %) id))
        first))
 
-(deftest ^:parallel can-restore-dashboard-restorable-test
+(deftest can-restore-dashboard-restorable-test
   (testing "can_restore is correctly populated for dashboard when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -2845,7 +2845,7 @@
       (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard))))))))
 
-(deftest ^:parallel can-restore-dashboard-not-restorable-test
+(deftest can-restore-dashboard-not-restorable-test
   (testing "can_restore is correctly populated for dashboard when I can't restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
