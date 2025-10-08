@@ -23,7 +23,7 @@ const monthPattern = /(?<month>0[1-9]|1[0-2])/;
 const dayPattern = /(?<day>0[1-9]|[12]\d|3[01])/;
 /**
  * Hours are always 2 digits and in 24 hour time.
- * 01-19, 20-23
+ * 00-23
  */
 const hourPattern = /(?<hour>[01]\d|2[0-3])/;
 /**
@@ -103,13 +103,15 @@ const fullIso8601DateTimePattern =
  * Week date pattern: YYYY-Www or YYYY-Www-D
  * where w is the week number (01-53) and D is the day of week (1-7)
  */
-const weekDatePattern = /^(\d{4})-W([0-4]\d|5[0-3])(-[1-7])?$/;
+const weekDatePattern =
+  /^(?:158[3-9]|159\d|1[6-9]\d{2}|[2-9]\d{3})-W([0-4]\d|5[0-3])(-[1-7])?$/;
 
 /**
  * Ordinal date pattern: YYYY-DDD
  * where DDD is the day of the year (001-366)
  */
-const ordinalDatePattern = /^(\d{4})-([0-2]\d{2}|3[0-5]\d|36[0-6])$/;
+const ordinalDatePattern =
+  /^(?:158[3-9]|159\d|1[6-9]\d{2}|[2-9]\d{3})-([0-2]\d{2}|3[0-5]\d|36[0-6])$/;
 
 /**
  * Space-separated datetime pattern: YYYY-MM-DD HH:MM:SS with optional milliseconds

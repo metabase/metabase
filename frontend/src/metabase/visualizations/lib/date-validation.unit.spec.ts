@@ -54,12 +54,20 @@ describe("isValidIso8601", () => {
     expect(isValidIso8601("2024-W03")).toBe(true);
   });
 
+  it("should reject wrong week date format", () => {
+    expect(isValidIso8601("1500-W01")).toBe(false);
+  });
+
   it("should detect week date with day", () => {
     expect(isValidIso8601("2024-W03-5")).toBe(true);
   });
 
   it("should detect ordinal date format", () => {
     expect(isValidIso8601("2024-365")).toBe(true);
+  });
+
+  it("should reject wrong ordinal date format", () => {
+    expect(isValidIso8601("1500-365")).toBe(false);
   });
 
   it("should detect space-separated datetime", () => {
