@@ -31,7 +31,7 @@
     (let [result  (run-rff 5 (rows 5))
           storage (get-in result [:data :rows])]
       (is (= 5 (:row_count result)))
-      (is (temp-storage/is-streaming-temp-file? storage))
+      (is (temp-storage/streaming-temp-file? storage))
       (is (= (rows 5) @storage))
       (temp-storage/cleanup! storage)))
 
@@ -39,7 +39,7 @@
     (let [result  (run-rff 5 (rows 6))
           storage (get-in result [:data :rows])]
       (is (= 6 (:row_count result)))
-      (is (temp-storage/is-streaming-temp-file? storage))
+      (is (temp-storage/streaming-temp-file? storage))
       (is (= (rows 6) @storage))
       (temp-storage/cleanup! storage)))
 
@@ -50,7 +50,7 @@
             storage   (get-in result [:data :rows])]
         ;; row count here is how many query results were returned
         (is (< (:row_count result) many-rows))
-        (is (temp-storage/is-streaming-temp-file? storage))
+        (is (temp-storage/streaming-temp-file? storage))
         (is (:notification/truncated? result))
         (mt/with-temporary-setting-values [notification-temp-file-size-max-bytes 0]
           ;; remove enforcing notification size limit before dereferencing and then see that we _stored_ fewer
@@ -66,7 +66,7 @@
             storage   (get-in result [:data :rows])]
         ;; row count here is how many query results were returned
         (is (= (:row_count result) many-rows))
-        (is (temp-storage/is-streaming-temp-file? storage))
+        (is (temp-storage/streaming-temp-file? storage))
         ;; on my machine this was 28.5mb. Don't need to push this into GB but demonstrate we are above the 10mb limit
         (is (and (:data.rows-file-size result)
                  (> (:data.rows-file-size result) (* 10 1024 1024)))
@@ -90,7 +90,7 @@
     (let [result (run-rff 100 (for [i (range 150)] [i]))
           storage (get-in result [:data :rows])]
       (is (= 150 (:row_count result)))
-      (is (temp-storage/is-streaming-temp-file? storage))
+      (is (temp-storage/streaming-temp-file? storage))
       (is (= 150 (count @storage)))
       (is (= [0] (first @storage)))
       (is (= [149] (last @storage)))
@@ -104,7 +104,7 @@
           data (for [i (range 6)] (vec (repeat 5 i)))
           result (transduce identity rf data)
           storage (get-in result [:data :rows])]
-      (is (temp-storage/is-streaming-temp-file? storage))
+      (is (temp-storage/streaming-temp-file? storage))
       (is (= [[0 0 0 0 0]
               [1 1 1 1 1]
               [2 2 2 2 2]
@@ -147,8 +147,7 @@
               temp-file-results (mt/process-query query
                                                   (temp-storage/notification-rff 2000))]
           (is (not (:notification/truncated? temp-file-results)))
-          (is (temp-storage/is-streaming-temp-file? (-> temp-file-results
-                                                        :data :rows)))
+          (is (temp-storage/streaming-temp-file? (-> temp-file-results :data :rows)))
           (is (= (-> qp-results :data :rows)
                  (-> temp-file-results :data :rows deref)))
           (-> temp-file-results :data :rows temp-storage/cleanup!))))))

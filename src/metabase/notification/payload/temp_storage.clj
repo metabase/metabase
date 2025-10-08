@@ -315,12 +315,12 @@
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn is-cleanable?
+(defn cleanable?
   "Returns true if x implements the Cleanable protocol"
   [x]
   (satisfies? Cleanable x))
 
-(defn is-streaming-temp-file?
+(defn streaming-temp-file?
   "Check if x is a StreamingTempFileStorage instance."
   [x]
   (instance? StreamingTempFileStorage x))

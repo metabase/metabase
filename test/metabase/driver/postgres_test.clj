@@ -1930,7 +1930,7 @@
             results (qp/process-query (mt/native-query {:query sql})
                                       (temp-storage/notification-rff 500))]
         (is (integer? (:data.rows-file-size results)))
-        (is (temp-storage/is-streaming-temp-file? (-> results :data :rows)))
+        (is (temp-storage/streaming-temp-file? (-> results :data :rows)))
         (is (=? [1
                  "User_1"
                  "{\"score\": 1, \"active\": false, \"userId\": 1}"
