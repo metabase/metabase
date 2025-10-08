@@ -2,6 +2,7 @@ name: "Claude Code Review"
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
@@ -9,6 +10,7 @@ concurrency:
 
 jobs:
   review:
+    if: "!contains(github.event.pull_request.labels.*.name, 'skip-cc-review')"
     runs-on: ubuntu-latest
     permissions:
       contents: read
