@@ -17,10 +17,14 @@
   font-weight: bold;
   gap: 0.25rem;
 
-  &:hover .shortcutText {
-    color: var(--mb-color-text-primary);
-    transition: color 100ms ease;
+  &:hover {
     background-color: var(--mb-color-brand-light);
+  }
+
+  &:hover .shortcutText {
+    color: var(--mb-color-text-secondary);
+    transition: color 100ms ease;
+    background-color: var(--mb-color-background-hover);
   }
 }
 
@@ -29,5 +33,9 @@
   user-select: none;
   transition: color 350ms ease;
   border-radius: 2px;
-  padding: 3px 5px;
+  height: 1rem;
+  width: 1rem;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1rem;
 }
