@@ -62,7 +62,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -98,7 +98,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -134,7 +134,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.exist");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -177,7 +177,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'drills="false"');
   });
 
@@ -206,7 +206,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -258,7 +258,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("not.exist");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'with-title="false"');
 
     cy.log("go back to embed options step");
@@ -319,7 +319,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       });
 
       cy.log("snippet should be updated");
-      getEmbedSidebar().findByText("Get Code").click();
+      getEmbedSidebar().findByText("Get code").click();
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
@@ -358,7 +358,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     });
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -384,11 +384,11 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("click on brand color picker");
-    cy.findByLabelText("#509EE3").click();
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
 
     cy.log("change brand color to red");
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3")
+      cy.findByDisplayValue("#509EE2")
         .should("be.visible")
         .clear()
         .type("rgb(255, 0, 0)");
@@ -404,7 +404,7 @@ H.describeWithSnowplow(suiteTitle, () => {
     getEmbedSidebar().findByLabelText("Reset colors").should("be.visible");
 
     cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -426,13 +426,13 @@ H.describeWithSnowplow(suiteTitle, () => {
     H.getSimpleEmbedIframeContent()
       .findAllByTestId("cell-data")
       .first()
-      .should("have.css", "color", "rgb(80, 158, 227)");
+      .should("have.css", "color", "rgb(80, 158, 226)");
 
     cy.log("reset button should be hidden again");
     getEmbedSidebar().findByLabelText("Reset colors").should("not.exist");
 
     cy.log("snippet should not contain theme colors");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("not.contain", '"theme": {');
 
     H.expectUnstructuredSnowplowEvent({
@@ -447,20 +447,21 @@ H.describeWithSnowplow(suiteTitle, () => {
       resourceName: DASHBOARD_NAME,
     });
 
-    cy.log("change brand color");
-    cy.findByLabelText("#509EE3").click();
+    cy.log("click on brand color picker");
+    cy.findByTestId("brand-color-picker").findByRole("button").click();
+
     H.popover().within(() => {
-      cy.findByDisplayValue("#509EE3").clear().type("#BD51FD");
+      cy.findByDisplayValue("#509EE2").clear().type("#BD51FD");
     });
 
     cy.log("change primary text color");
-    cy.findByLabelText("#4C5773").click();
+    cy.findByTestId("text-primary-color-picker").findByRole("button").click();
     H.popover().within(() => {
-      cy.findByDisplayValue("#4C5773").clear().type("#F1F1F1");
+      cy.findByDisplayValue("#303D46").clear().type("#F1F1F1");
     });
 
     cy.log("change background color");
-    cy.findByLabelText("#FFFFFF").click();
+    cy.findByTestId("background-color-picker").findByRole("button").click();
     H.popover().within(() => {
       cy.findByDisplayValue("#FFFFFF").clear().type("#121212");
     });
@@ -471,7 +472,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .should("have.css", "background-color", "rgb(18, 18, 18)");
 
     cy.log("check that derived colors are applied to snippet");
-    getEmbedSidebar().findByText("Get Code").click();
+    getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
@@ -484,5 +485,41 @@ H.describeWithSnowplow(suiteTitle, () => {
     codeBlock().should("contain", '"background-hover": "rgb(27, 27, 27)"');
     codeBlock().should("contain", '"text-secondary": "rgb(169, 169, 169)"');
     codeBlock().should("contain", '"brand-hover": "rgba(189, 81, 253, 0.5)"');
+  });
+
+  it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
+    navigateToEmbedOptionsStep({ experience: "metabot" });
+
+    getEmbedSidebar().findByLabelText("Auto").should("be.checked");
+    getEmbedSidebar().findByLabelText("Stacked").click().should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("metabot-question-container")
+      .should("have.attr", "data-layout", "stacked");
+
+    getEmbedSidebar().findByText("Get code").click();
+    codeBlock().should("contain", 'layout="stacked"');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,layout=stacked",
+    });
+
+    getEmbedSidebar().findByText("Back").click();
+    getEmbedSidebar().findByLabelText("Sidebar").click().should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("metabot-question-container")
+      .should("have.attr", "data-layout", "sidebar");
+
+    getEmbedSidebar().findByText("Get code").click();
+    codeBlock().should("contain", 'layout="sidebar"');
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,theme=default,auth=user_session,layout=sidebar",
+    });
   });
 });

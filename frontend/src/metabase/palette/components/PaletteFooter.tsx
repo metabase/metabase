@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { Flex, Icon, Text } from "metabase/ui";
 
 export const PaletteFooter = () => {
@@ -12,7 +11,7 @@ export const PaletteFooter = () => {
         borderTop: "1px solid var(--mb-color-border)",
       }}
     >
-      <Flex gap=".33rem" c={color("text-medium")} lh="1rem">
+      <Flex gap=".33rem" c={"text-medium"} lh="1rem" align="center">
         <Icon name="sort" />
         <Text size="12px">{t`Select`}</Text>
       </Flex>

@@ -1,9 +1,11 @@
 import { P, match } from "ts-pattern";
 
+import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
+  MetabotEmbedOptions,
   QuestionEmbedOptions,
 } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
@@ -12,16 +14,19 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "../types";
 
-export const getDefaultSdkIframeEmbedSettings = (
-  type: SdkIframeEmbedSetupExperience,
-  defaultResourceId: string | number,
-): SdkIframeEmbedSetupSettings => {
-  const templateDefaults = match(type)
+export const getDefaultSdkIframeEmbedSettings = ({
+  experience,
+  resourceId,
+}: {
+  experience: SdkIframeEmbedSetupExperience;
+  resourceId: SdkDashboardId | SdkQuestionId;
+}): SdkIframeEmbedSetupSettings => {
+  const templateDefaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
         componentName: "metabase-dashboard",
-        dashboardId: defaultResourceId,
+        dashboardId: resourceId,
         drills: true,
         withDownloads: false,
         withTitle: true,
@@ -31,7 +36,7 @@ export const getDefaultSdkIframeEmbedSettings = (
       "chart",
       (): QuestionEmbedOptions => ({
         componentName: "metabase-question",
-        questionId: defaultResourceId,
+        questionId: resourceId,
         drills: true,
         withDownloads: false,
         withTitle: true,
@@ -52,6 +57,12 @@ export const getDefaultSdkIframeEmbedSettings = (
         componentName: "metabase-browser",
         initialCollection: "root",
         readOnly: true,
+      }),
+    )
+    .with(
+      "metabot",
+      (): MetabotEmbedOptions => ({
+        componentName: "metabase-metabot",
       }),
     )
     .exhaustive();
@@ -79,4 +90,5 @@ export const getExperienceFromSettings = (
     .with({ componentName: "metabase-question" }, () => "chart")
     .with({ componentName: "metabase-browser" }, () => "browser")
     .with({ componentName: "metabase-dashboard" }, () => "dashboard")
+    .with({ componentName: "metabase-metabot" }, () => "metabot")
     .exhaustive();

@@ -4,7 +4,6 @@ import { memo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
   LegendItemLabel,
@@ -70,9 +69,7 @@ const LegendItem = ({
         <LegendItemTitle
           className={cx(
             DashboardS.fullscreenNormalText,
-            DashboardS.fullscreenNightText,
             DashboardS.DashboardChartLegend,
-            EmbedFrameS.fullscreenNightText,
           )}
           dotSize={dotSize}
           isInsidePopover={isInsidePopover}
