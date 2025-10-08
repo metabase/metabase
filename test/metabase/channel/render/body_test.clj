@@ -570,7 +570,7 @@
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
-                                                   :total-els-text     #{"TOTAL"}}]
+                                                   :total-els-text     #{"Total"}}]
                                                  [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -581,7 +581,7 @@
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
-                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
+                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"Total") doc)
                                          (map (fn [el] (-> el :content first)))
                                          set)]
                 (testing test-str
