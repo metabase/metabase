@@ -11,12 +11,12 @@ import { Box } from "metabase/ui";
 import type { DatabaseData, Engine, EngineKey } from "metabase-types/api";
 
 import { DatabaseConnectionStringField } from "../DatabaseConnectionUri";
-import { DatabaseDetailField } from "../DatabaseDetailField";
 import { DatabaseEngineField } from "../DatabaseEngineField";
 import DatabaseEngineWarning from "../DatabaseEngineWarning";
 import { DatabaseFormError } from "../DatabaseFormError";
 import { DatabaseNameField } from "../DatabaseNameField";
 
+import { DatabaseFormBodyDetails } from "./DatabaseFormBodyDetails";
 import { useHasConnectionError } from "./utils";
 
 interface DatabaseFormBodyProps {
@@ -96,16 +96,12 @@ export const DatabaseFormBody = ({
           autoFocus={autofocusFieldName === "name"}
         />
       )}
-      {fields.map((field) => (
-        <DatabaseDetailField
-          key={field.name}
-          field={field}
-          autoFocus={autofocusFieldName === field.name}
-          data-kek={field.name}
-          engineKey={engineKey}
-          engine={engine}
-        />
-      ))}
+      <DatabaseFormBodyDetails
+        fields={fields}
+        autofocusFieldName={autofocusFieldName}
+        engineKey={engineKey}
+        engine={engine}
+      />
       {isAdvanced && hasConnectionError && <DatabaseFormError />}
     </Box>
   );
