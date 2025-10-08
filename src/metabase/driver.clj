@@ -1151,13 +1151,7 @@
 
 (defmulti compile-transform
   "Compiles the sql for a transform statement, given an inner sql query and a destination."
-  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmulti compile-drop-table
-  "Compiles the sql for a drop table statement for a given table."
-  {:added "0.57.0", :arglists '([driver table])}
+  {:added "0.57.0", :arglists '([driver query output-table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1176,11 +1170,9 @@
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
   types."
   {:added "0.57.0",
-   :arglists '([driver
-                {:keys [transform-type conn-spec query output-table] :as _transform-details}
-                {:keys [overwrite?] :as _opts}])}
-  (fn [driver transform-details _opts]
-    [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
+   :arglists '([driver {:keys [db-id transform-type query target conn-spec]}])}
+  (fn [driver {:keys [transform-type]}]
+    [(dispatch-on-initialized-driver driver) transform-type])
   :hierarchy #'hierarchy)
 
 (defmulti drop-transform-target!
@@ -1189,9 +1181,9 @@
   Drivers that support any of the `:transforms/...` features must implement this method for the appropriate transform
   types."
   {:added "0.57.0",
-   :arglists '([driver database {:keys [type schema name] :as _transform-details}])}
-  (fn [driver _database transform-details]
-    [(dispatch-on-initialized-driver driver) (:type transform-details)])
+   :arglists '([driver database {:keys [type schema name] :as _target}])}
+  (fn [driver _database {:keys [type]}]
+    [(dispatch-on-initialized-driver driver) (keyword type)])
   :hierarchy #'hierarchy)
 
 (defmulti native-query-deps
