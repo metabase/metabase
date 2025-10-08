@@ -40,6 +40,13 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
+            Review this pull request with a focus on:
+
+            - Compliance with project coding standards and conventions
+            - Code quality and best practices
+            - Clear and correct docstrings
+            - Clear and correct comments explaining what the code is doing
+
             Note: The PR branch is already checked out in the current working directory.
 
             Use `gh pr comment` for top-level feedback.

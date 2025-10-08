@@ -163,17 +163,15 @@ Review pull requests with a focus on:
 
 - Clear and correct comments explaining what the code is doing
 
-Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with the
-style guide as well as other guidelines mentioned in this document. Flag all violations of the Community Clojure Style
-Guide.
+Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` (especially the part about "Test
+Naming") and make sure changes comply with it as well as other guidelines mentioned in this document. Flag *all*
+violations of the Community Clojure Style Guide.
 
 # Code Conventions and Style Guide
 
 ## Clojure and ClojureScript
 
 ### General Conventions
-
-- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/).
 
 - Prefer longer, more verbose names for functions and variables; avoid abbreviations unless they are well-known and
   conventional in the Clojure world. `acc`, `i`, `pred`, `coll`, `n`, `s`, `k`, and `f` are examples of well-known
