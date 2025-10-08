@@ -169,8 +169,11 @@ Review pull requests with a focus on:
   it as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style
   Guide.
 
-- Do not post "cheerleading" comments congratulating someone for trivial changes; stick to callouts about style
-  violations or potential issues.
+- Do not post "cheerleading" comments congratulating someone for trivial changes, or for following the style
+  guidelines, or confirming that things "look good"; stick to callouts about style violations or potential issues.
+  Example bad code review comment to avoid:
+
+  > This TODO comment is properly formatted with author and date - nice work!
 
 - In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
   considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
@@ -356,9 +359,9 @@ Review pull requests with a focus on:
   those don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
   (https://guide.clojure.style/#no-blank-lines-within-def-forms)
 
-  Verify that the line in question is **actually blank** (i.e., only contains whitespace) before warning about this.
-  **A line that contains any non-whitespace character is not a blank line.** You will be shut down if you make this
-  mistake too many times, so be careful.
+  Verify that the line in question is **actually blank** (i.e., only contains whitespace for the **entire line**)
+  before warning about this. **A line that contains any non-whitespace character is not a blank line.** You will be
+  shut down if you make this mistake too many times, so be careful.
 
 - Use `kebab-case` names for variables and defs, including constants.
   (https://guide.clojure.style/#naming-functions-and-variables)
