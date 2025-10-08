@@ -9,7 +9,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
-    :refer [*current-user-id* *current-user-permissions-set*]]
+    :refer [*current-user-id*]]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
@@ -108,7 +108,8 @@
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
   [collection]
-  (str/starts-with? (:location collection) (trash-path)))
+  (or (is-trash? collection)
+      (str/starts-with? (:location collection) (trash-path))))
 
 (defn remote-synced-collection?
   "Is this a remote-synced collection?"
@@ -154,6 +155,7 @@
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
+        (not (is-trash-or-descendant? instance))
         (remote-sync/editable? instance)
         (mi/current-user-has-full-permissions? :write instance)))
   ([_model pk]
@@ -1819,24 +1821,6 @@
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn check-write-perms-for-collection
-  "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
-  `collection-id` is `nil`, this check is done for the Root Collection."
-  [collection-or-id-or-nil]
-  (when (is-trash? collection-or-id-or-nil)
-    (throw (ex-info (tru "You cannot modify the Trash Collection.")
-                    {:status-code 400})))
-  (let [actual-perms   @*current-user-permissions-set*
-        required-perms (perms/collection-readwrite-path (if collection-or-id-or-nil
-                                                          collection-or-id-or-nil
-                                                          root-collection))]
-    (when-not (perms/set-has-full-permissions? actual-perms required-perms)
-      (throw (ex-info (tru "You do not have curate permissions for this Collection.")
-                      {:status-code    403
-                       :collection     collection-or-id-or-nil
-                       :required-perms required-perms
-                       :actual-perms   actual-perms})))))
-
 (defn check-allowed-to-change-collection
   "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
   Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
@@ -1854,9 +1838,13 @@
   ;; if collection_id is set to change...
   (when (api/column-will-change? :collection_id object-before-update object-updates)
     ;; check that we're allowed to modify the old Collection
-    (check-write-perms-for-collection (:collection_id object-before-update))
+    (if-let [coll-id (:collection_id object-before-update)]
+      (api/write-check :model/Collection coll-id)
+      (api/write-check root-collection))
     ;; check that we're allowed to modify the new Collection
-    (check-write-perms-for-collection (:collection_id object-updates))
+    (if-let [coll-id (:collection_id object-updates)]
+      (api/write-check :model/Collection coll-id)
+      (api/write-check root-collection))
     ;; check that the new location is not archived. the root can't be archived.
     (when-let [collection-id (:collection_id object-updates)]
       (api/check-400 (t2/exists? :model/Collection :id collection-id :archived false)))))

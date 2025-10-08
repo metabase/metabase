@@ -4,7 +4,6 @@
    [java-time.api :as t]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -257,37 +256,3 @@
 
     (is (= cols
            (#'mi/result-metadata-out (json/encode cols))))))
-
-(deftest can-create-use-parent-collection-perms-test
-  (testing "can-create? for models using :perms/use-parent-collection-perms checks parent collection write permissions"
-    (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-temp [:model/Collection coll {:name "Test Collection"}]
-        (testing "can create in collection when user has write permissions"
-          (mt/with-temp [:model/PermissionsGroup group {}
-                         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta)
-                                                              :group_id (:id group)}]
-            (perms/grant-collection-readwrite-permissions! group coll)
-            (mt/with-current-user (mt/user->id :rasta)
-              (is (true? (mi/can-create? :model/Card {:collection_id (:id coll)}))))))
-        (testing "cannot create in collection when user lacks write permissions"
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (false? (mi/can-create? :model/Card {:collection_id (:id coll)})))))
-        (testing "cannot create without collection_id (root collection)"
-          (mt/with-current-user (mt/user->id :rasta)
-            (is (false? (mi/can-create? :model/Card {})))
-            (is (false? (mi/can-create? :model/Card {:collection_id nil})))))))
-    (testing "with root collection perms"
-      (testing "can create without collection_id (root collection)"
-        (mt/with-current-user (mt/user->id :rasta)
-          (is (true? (mi/can-create? :model/Card {})))
-          (is (true? (mi/can-create? :model/Card {:collection_id nil}))))))))
-
-(deftest can-create-use-parent-collection-perms-dashboard-test
-  (testing "can-create? works for dashboards using parent collection permissions"
-    (mt/with-temp [:model/Collection coll {:name "Dashboard Collection"}]
-      (mt/with-current-user (mt/user->id :crowberto)
-        (testing "admin can create dashboard in any collection"
-          (is (true? (mi/can-create? :model/Dashboard {:collection_id (:id coll)}))))
-
-        (testing "admin can create dashboard in root collection"
-          (is (true? (mi/can-create? :model/Dashboard {}))))))))

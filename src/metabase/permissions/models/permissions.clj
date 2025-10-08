@@ -285,6 +285,22 @@
     ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
     #{"___no-remote-sync-access"}))
 
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+  [_model k models]
+  (mi/instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id mi/can-write?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
+
+(defmethod mi/can-create? :perms/use-parent-collection-perms
+  [_model m]
+  (if-let [collection-id (:collection_id m)]
+    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+

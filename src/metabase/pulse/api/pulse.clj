@@ -106,14 +106,6 @@
                                pulses)]
     (t2/hydrate pulses :can_write)))
 
-(defn check-card-read-permissions
-  "Users can only create a pulse for `cards` they have access to."
-  [cards]
-  (doseq [card cards
-          :let [card-id (u/the-id card)]]
-    (assert (integer? card-id))
-    (api/read-check :model/Card card-id)))
-
 (api.macros/defendpoint :post "/"
   "Create a new `Pulse`."
   [_route-params
@@ -133,15 +125,6 @@
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
        [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (perms/check-has-application-permission :subscription false)
-  ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-  (check-card-read-permissions cards)
-  ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-  ;; make sure we have write permissions for that collection
-  (when-not dashboard-id
-    (api/create-check :model/Pulse {:collection_id collection-id}))
-  ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
-  (when dashboard-id
-    (api/read-check :model/Dashboard dashboard-id))
   (let [pulse-data {:name                name
                     :creator_id          api/*current-user-id*
                     :skip_if_empty       skip-if-empty
@@ -149,6 +132,7 @@
                     :collection_position collection-position
                     :dashboard_id        dashboard-id
                     :parameters          parameters}]
+    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
     (t2/with-transaction [_conn]
       ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
       ;; check that and fix it if needed
@@ -187,6 +171,14 @@
                         (concat (:recipients channel) recipients-to-add))
                  channel))))
     pulse-updates))
+
+(defn check-card-read-permissions
+  "Users can only create a pulse for `cards` they have access to."
+  [cards]
+  (doseq [card cards
+          :let [card-id (u/the-id card)]]
+    (assert (integer? card-id))
+    (api/read-check :model/Card card-id)))
 
 (api.macros/defendpoint :put "/:id"
   "Update a Pulse with `id`."

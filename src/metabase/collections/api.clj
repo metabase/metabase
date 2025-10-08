@@ -1226,9 +1226,6 @@
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id collection-namespace]
-  (when (collection/is-trash? collection-id)
-    (throw (ex-info (tru "You cannot modify the Trash Collection.")
-                    {:status-code 400})))
   (api/write-check (if collection-id
                      (t2/select-one :model/Collection :id collection-id)
                      (cond-> collection/root-collection
@@ -1306,15 +1303,12 @@
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
       (when (not= orig-location new-location)
+        ;; Check that we have write perms on the new parent collection
+        (api/write-check new-parent)
         ;; ok, make sure we have perms to do this operation
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
                                                   (collection/perms-for-moving collection-before-update new-parent)))
-
-        ;; We can't move a collection to the Trash
-        (api/check
-         (not (collection/is-trash? new-parent))
-         [400 "You cannot modify the Trash Collection."])
 
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location

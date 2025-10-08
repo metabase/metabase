@@ -862,19 +862,3 @@
 (defmethod exclude-internal-content-hsql :default
   [_model & _]
   [:= [:inline 1] [:inline 1]])
-
-(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
-  [_model k models]
-  (instances-with-hydrated-data
-   models k
-   #(into {}
-          (map (juxt :id can-write?))
-          (t2/hydrate (remove nil? models) :collection))
-   :id
-   {:default false}))
-
-(defmethod can-create? :perms/use-parent-collection-perms
-  [_model m]
-  (if-let [collection-id (:collection_id m)]
-    (can-write? (t2/select-one :model/Collection :id collection-id))
-    (can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
