@@ -54,10 +54,16 @@
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode+kw codecs/bytes->str codec/base64-decode))
 
-(def ^:private Base64EncodedJSON
+(mr/def ::base-64-encoded-json
   "form-encoded base-64-encoded JSON"
   [:fn
-   {:api/regex #"(?:[A-Za-z0-9]|(?:%2B)|(?:%2F))+(?:%3D){0,2}"
+   ;; TODO (Cam 10/7/25) -- you would expect `=` to get form-encoded here but apparently the FE is having trouble
+   ;; doing it... allow it for now I guess.
+   ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759892123044939?thread_ts=1759289751.539169&cid=C0645JP1W81
+   ;;
+   ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
+   ;; `+` and `/`... accept either for now I guess
+   {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
     :error/fn  (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
    decode-base64-json])
 
@@ -158,9 +164,12 @@
 
   (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded
   string.)"
+  ;; TODO (Cam 10/7/25) -- you would expect `=` to get form-encoded here but apparently the FE is having trouble doing
+  ;; it... allow it for now I guess.
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759892123044939?thread_ts=1759289751.539169&cid=C0645JP1W81
   [:string
    {:min       1
-    :api/regex #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+"}])
+    :api/regex #"(?:[A-Za-z0-9\-._~=]|%[0-9A-Fa-f]{2})+"}])
 
 (def ^:private ComparisonEntity
   (let [entity-types [:adhoc :segment :table]]
@@ -342,7 +351,7 @@
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
                                                       [:entity             Entity]
                                                       [:entity-id-or-query ::entity-id-or-query]
-                                                      [:cell-query         Base64EncodedJSON]]
+                                                      [:cell-query         ::base-64-encoded-json]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
@@ -357,7 +366,7 @@
                                                                                 [:entity-id-or-query ::entity-id-or-query]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
-                                                                                [:cell-query         Base64EncodedJSON]]
+                                                                                [:cell-query         ::base-64-encoded-json]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
@@ -421,7 +430,7 @@
            comparison-entity-id-or-query]} :- [:map
                                                [:entity                        Entity]
                                                [:entity-id-or-query            ::entity-id-or-query]
-                                               [:cell-query                    Base64EncodedJSON]
+                                               [:cell-query                    ::base-64-encoded-json]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
@@ -448,7 +457,7 @@
                                                [:entity-id-or-query            ::entity-id-or-query]
                                                [:prefix                        Prefix]
                                                [:dashboard-template            DashboardTemplate]
-                                               [:cell-query                    Base64EncodedJSON]
+                                               [:cell-query                    ::base-64-encoded-json]
                                                [:comparison-entity             ComparisonEntity]
                                                [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
