@@ -6,7 +6,6 @@ import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { QuestionAlertsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionAlertsMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -34,6 +33,7 @@ import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import QuestionActionsS from "./QuestionActions.module.css";
+import { QuestionAlertsMenuItem } from "./QuestionAlertsMenuItem";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
