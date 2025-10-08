@@ -211,7 +211,7 @@ export class Scalar extends Component<
             <ScalarValue
               fontFamily={fontFamily}
               gridSize={gridSize}
-              height={Math.max(height - PADDING * 2, 0)}
+              height={height}
               totalNumGridCols={totalNumGridCols}
               value={displayValue as string}
               width={Math.max(width - PADDING, 0)}

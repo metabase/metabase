@@ -50,10 +50,15 @@ export const ScalarValue = ({
       fontFamily: fontFamily ?? "Lato",
       fontWeight: 700,
       unit: "rem",
-      step: 0.2,
-      min: 1,
+      step: 8, // 8px steps for multiples of 8
+      min: 16, // 16px minimum (1rem)
       max: gridSize
-        ? getMaxFontSize(gridSize.width, totalNumGridCols, width)
+        ? getMaxFontSize(
+            gridSize.width,
+            totalNumGridCols,
+            width,
+            gridSize.height,
+          )
         : 4,
     });
   }, [
@@ -67,13 +72,15 @@ export const ScalarValue = ({
   ]);
 
   return (
-    <ScalarValueWrapper
-      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
-      fontSize={fontSize}
-      lineHeight={numberTheme?.value?.lineHeight}
-      data-testid="scalar-value"
-    >
-      {value ?? t`null`}
-    </ScalarValueWrapper>
+    <ScalarRoot cardRowHeight={gridSize?.height}>
+      <ScalarValueWrapper
+        className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
+        fontSize={fontSize}
+        lineHeight={numberTheme?.value?.lineHeight}
+        data-testid="scalar-value"
+      >
+        {value ?? t`null`}
+      </ScalarValueWrapper>
+    </ScalarRoot>
   );
 };

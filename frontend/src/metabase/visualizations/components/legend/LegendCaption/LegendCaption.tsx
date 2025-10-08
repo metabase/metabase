@@ -44,6 +44,7 @@ interface LegendCaptionProps {
   onSelectTitle?: () => void;
   titleMenuItems?: React.ReactNode;
   width?: number;
+  visualizationType?: string;
 }
 
 export const LegendCaption = ({
@@ -57,6 +58,7 @@ export const LegendCaption = ({
   onSelectTitle,
   width,
   titleMenuItems,
+  visualizationType,
 }: LegendCaptionProps) => {
   /*
    * Optimization: lazy computing the href on title focus & mouseenter only.
@@ -97,6 +99,7 @@ export const LegendCaption = ({
       onClick={hasTitleMenuItems ? undefined : onSelectTitle}
       onFocus={handleFocus}
       onMouseEnter={handleMouseEnter}
+      visualizationType={visualizationType}
     >
       <Ellipsified
         data-testid="legend-caption-title"

@@ -10,8 +10,14 @@ export const VisualizationRoot = styled.div`
   height: 100%;
 `;
 
-export const VisualizationHeader = styled.div`
-  padding: 0.625rem 0.5rem 0.375rem 0.5rem;
+interface VisualizationHeaderProps {
+  visualizationType?: string;
+}
+
+export const VisualizationHeader = styled.div<VisualizationHeaderProps>`
+  padding: 0.625rem 0.5rem
+    ${(props) => (props.visualizationType === "scalar" ? "0" : "0.375rem")}
+    0.5rem;
   flex-shrink: 0;
 `;
 

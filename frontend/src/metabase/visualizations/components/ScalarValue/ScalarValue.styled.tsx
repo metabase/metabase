@@ -3,16 +3,20 @@ import styled from "@emotion/styled";
 
 const TITLE_LINE_HEIGHT_REM = 1.4;
 
-export const ScalarRoot = styled.div`
+interface ScalarRootProps {
+  cardRowHeight?: number;
+}
+
+export const ScalarRoot = styled.div<ScalarRootProps>`
   position: relative;
   display: flex;
   flex: 1;
   flex-direction: column;
-  flex-wrap: wrap;
-  justify-content: center;
+  justify-content: ${(props) =>
+    props.cardRowHeight === 2 ? "flex-start" : "center"};
   align-items: center;
   width: 100%;
-  height: 100%;
+  min-height: 0;
 `;
 
 interface ScalarValueWrapperProps {
@@ -23,8 +27,9 @@ interface ScalarValueWrapperProps {
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
   font-size: ${(props) => props.fontSize};
-  line-height: ${(props) => props.lineHeight ?? "var(--mantine-line-height)"};
+  line-height: ${(props) => props.lineHeight ?? "1"};
   cursor: pointer;
+  margin: 0;
 
   &:hover {
     color: var(--mb-color-brand);
