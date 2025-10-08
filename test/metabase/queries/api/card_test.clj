@@ -324,7 +324,7 @@
                                                          "x-metabase-client-version" "2"}}})
       (is (=? {:embedding_client "client-B", :embedding_version "2"}
               ;; The query metadata is handled asynchronously, so we need to poll until it's available:
-              (tu/poll-until 100
+              (tu/poll-until 500
                              (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
                                             :card_id (u/the-id card-1))))))))
 

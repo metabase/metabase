@@ -5,6 +5,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.indexed-entities.models.model-index :as model-index]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -17,9 +19,7 @@
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
