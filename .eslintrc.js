@@ -202,6 +202,7 @@ module.exports = {
         "*.unit.spec.*",
         "frontend/src/metabase/admin/**/*",
         "frontend/src/metabase/setup/**/*",
+        "frontend/src/metabase-types/**/*",
         "enterprise/frontend/src/metabase-enterprise/whitelabel/**/*",
         "frontend/lint/**/*",
         "*.stories.*",
