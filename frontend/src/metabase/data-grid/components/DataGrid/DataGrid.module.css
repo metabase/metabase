@@ -23,7 +23,7 @@
   display: grid;
   top: 0;
   z-index: 2;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-subtle);
   height: 37px;
 }
 
@@ -128,7 +128,7 @@
 }
 
 .row:hover .headerCell {
-  box-shadow: inset -1px 0 0 var(--mb-color-border);
+  box-shadow: inset -1px 0 0 var(--mb-color-border-subtle);
 }
 
 .cellHoverVisible {

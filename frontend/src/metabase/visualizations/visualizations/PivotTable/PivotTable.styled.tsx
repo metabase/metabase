@@ -102,7 +102,7 @@ const borderRight = css`
     top: 0;
     right: 0;
     height: 100%;
-    border-right: 1px solid var(--mb-color-border);
+    border-right: 1px solid ${color("border-subtle")};
   }
 `;
 
@@ -121,14 +121,14 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     ${(props) =>
     props.isBorderedHeader
       ? "var(--mb-color-bg-dark)"
-      : "var(--mb-color-border)"};
+      : color("border-subtle")};
   background-color: ${getCellBackgroundColor};
   ${(props) =>
     props.hasTopBorder &&
     css`
       /* compensate the top border */
       line-height: ${CELL_HEIGHT - 1}px;
-      border-top: 1px solid var(--mb-color-border) (props);
+      border-top: 1px solid ${color("border-subtle")};
     `}
 
   &:hover {
@@ -165,7 +165,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
   ${(props) =>
     props.isDashboard
       ? css`
-          border-top: 1px solid var(--mb-color-border) (props);
+          border-top: 1px solid ${color("border-subtle")};
         `
       : null}
 

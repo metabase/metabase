@@ -49,7 +49,7 @@ export const useRowChartTheme = (
         family: fontFamily,
       },
       grid: {
-        color: "var(--mb-color-border-subtle)",
+        color: color("border-subtle"),
       },
     };
   }, [theme, fontFamily, isDashboard]);

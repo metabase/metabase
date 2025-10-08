@@ -592,6 +592,10 @@ export const colorConfig = {
     light: baseColors.orionAlpha[20],
     dark: baseColors.orionAlphaInverse[20],
   },
+  "border-subtle": {
+    light: baseColors.orionAlpha[10],
+    dark: baseColors.orionAlphaInverse[10],
+  },
 };
 
 export const colors: Record<keyof typeof colorConfig, string> = {

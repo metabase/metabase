@@ -68,8 +68,9 @@ export function echartsIcon(name, isSelected = false) {
 }
 
 export function chartGridLines() {
+  // border-subtle color resolves to hsla(204, 66%, 8%, 0.05) in light mode
   return echartsContainer().find(
-    "path[stroke='var(--mb-color-border-subtle)'][fill='transparent']",
+    "path[stroke='hsla(204, 66%, 8%, 0.05)'][fill='transparent']",
   );
 }
 
