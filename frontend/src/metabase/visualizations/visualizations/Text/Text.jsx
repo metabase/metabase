@@ -78,8 +78,12 @@ export function Text({
   );
 
   const updateParameterMappings = useCallback(() => {
-    dispatch(updateParameterMappingsForDashcardText(dashcard.id));
-  }, [dashcard.id, dispatch]);
+    if (!dashcard.id) {
+      return;
+    }
+
+    dispatch(updateParameterMappingsForDashcardText(dashcard?.id));
+  }, [dashcard?.id, dispatch]);
 
   const hasContent = !isEmpty(settings.text);
   const placeholder = t`You can use Markdown here, and include variables {{like_this}}`;
