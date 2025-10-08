@@ -48,11 +48,6 @@
 
       DRIVERS=h2,mongo clojure -X:dev:test
 
-  *  temporarily from the REPL, by using the `with-test-drivers-macro`
-
-      (with-test-drivers #{:postgres}
-        (some-test))
-
   *  for the duration of a REPL session, by calling `set-test-drivers!`
 
       (set-test-drivers! #{:mysql :postgres})
