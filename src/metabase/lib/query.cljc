@@ -190,8 +190,7 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (or (lib.util/normalized-query-type x)
-        (lib.dispatch/dispatch-value x)))
+    ((some-fn lib.util/normalized-query-type lib.dispatch/dispatch-value) x))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query
@@ -303,7 +302,7 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x]
+   x :- some?]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query

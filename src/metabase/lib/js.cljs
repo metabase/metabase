@@ -2645,6 +2645,9 @@
         lib.core/prepare-for-serialization
         ->js)))
 
+;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
+;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will
+;;; work as expected.
 (defn ^:export from-js-query
   "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
 
