@@ -1236,3 +1236,18 @@
   "Finds the first map in `maps` that contains the value at the given key path."
   [maps ks value]
   (second (find-first-map-indexed maps ks value)))
+
+(defn ram-obj-leaf-paths
+  "Return seq of randomly accesible paths (as for `get-in`) from object `o`. Works on maps and vectors. If `o`
+  is not map or vector return `nil`."
+  [o]
+  (when (or (vector? o) (map? o))
+    (apply concat
+           (for [k (if (map? o)
+                     (keys o)
+                     (range (count o)))]
+             (let [paths (ram-obj-leaf-paths (o k))]
+               (if (empty? paths)
+                 (list (list k))
+                 (for [path paths]
+                   (concat (list k) path))))))))
