@@ -62,7 +62,7 @@
    [:self_service :boolean]
    [:hosting_features [:sequential :string]]
    [:token_features [:sequential :string]]
-   [:trial_to_product_id [:maybe :string]]
+   [:trialup_to_product_id [:maybe :string]]
    [:invoiceable_counterpart [:maybe :string]]
    [:trial_days [:maybe pos-int?]]
    [:is_metered [:maybe :boolean]]
