@@ -55,7 +55,7 @@ You can import and the following Python packages in Python transforms:
 
 Due to security considerations for the Python execution environment, you won't be able to install or import any other packages.
 
-You can alo write your own functions and add them to the [common library](common-library) in Metabase, which will be available across all your Python transforms.
+You can alo write your own functions and add them to the [common library](#common-library) in Metabase, which will be available across all your Python transforms.
 
 ## Common library
 
