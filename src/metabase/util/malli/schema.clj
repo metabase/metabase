@@ -16,31 +16,39 @@
 
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
-;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
+;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
 (def ^{:arglists '([model])} InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
     (ms/defn my-fn
       [user :- (ms/InstanceOf User)]
-      ...)"
+      ...)
+
+  Cachable because the return value is memoized, so it will always be the same object."
   (memoize
    (fn [model]
      (mu/with-api-error-message
       [:fn
-       {:error/message (format "value must be an instance of %s" (name model))}
+       {:error/message (format "value must be an instance of %s" (name model))
+        :mr/cache-key [::InstanceOf (pr-str model)]}
        #(t2/instance-of? model %)]
       (deferred-tru "value must be an instance of {0}" (name model))))))
 
 (def ^{:arglists '([^Class klass])} InstanceOfClass
-  "Helper for creating schemas to check whether something is an instance of a given class."
+  "Helper for creating schemas to check whether something is an instance of a given class.
+
+  Cachable because the return value is memoized, so it will always be the same object."
   (memoize
    (fn [^Class klass]
      [:fn
-      {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+      {:error/message (format "Instance of a %s" (.getCanonicalName klass))
+       :mr/cache-key [::InstanceOfClass (str klass)]}
       (partial instance? klass)])))
 
 (def ^{:arglists '([maps-schema k])} maps-with-unique-key
-  "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
+  "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`.
+
+  Cachable because the return value is memoized, so it will always be the same object."
   (memoize
    (fn [maps-schema k]
      (mu/with-api-error-message
@@ -92,8 +100,7 @@
     [:int
      {:min         0
       :description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
+      :error/message (str message)
       :api/regex   #"\d+"}]))
 
 (def Int
@@ -101,8 +108,7 @@
   (let [message (deferred-tru "value must be an integer.")]
     [:int
      {:description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
+      :error/message (str message)
       :api/regex   #"-?\d+"}]))
 
 (def PositiveInt
@@ -111,8 +117,7 @@
     [:int
      {:min         1
       :description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
+      :error/message message
       :api/regex   #"[1-9]\d*"}]))
 
 (def NegativeInt
@@ -121,8 +126,7 @@
     [:int
      {:max         -1
       :description (str message)
-      :error/fn    (fn [_ _]
-                     (str message))
+      :error/message (str message)
       :api/regex   #"[1-9]\d*"}]))
 
 (def KeywordOrString
