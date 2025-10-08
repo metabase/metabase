@@ -59,13 +59,12 @@ export class Mode {
         transformClickedDataPoint(clicked, question),
       );
 
-      // If the plugin returns a single object, it means we should call that action right away without showing the popover
-      if (
-        !Array.isArray(actionsOrActionObject) &&
-        "onClick" in actionsOrActionObject
-      ) {
+      if (Array.isArray(actionsOrActionObject)) {
+        actions = actionsOrActionObject;
+      } else if ("onClick" in actionsOrActionObject) {
+        // If the plugin returns a single object, it means we should call that action right away without showing the popover
         // `performDefaultAction` checks if it only gets one action, and if it has `default: true`, it's called directly without showing the popover
-        return [
+        actions = [
           {
             // makes it run without showing the popover
             default: true,
@@ -80,7 +79,9 @@ export class Mode {
           },
         ];
       } else {
-        actions = actionsOrActionObject as ClickAction[];
+        console.warn(
+          "mapQuestionClickActions should return an array of actions, or a single object with a `onClick` property",
+        );
       }
     }
 
