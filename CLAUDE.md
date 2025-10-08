@@ -151,14 +151,28 @@ For effective REPL usage:
 - Be careful with parentheses counts when editing Clojure code
 - After EVERY change to Clojure code, verify readability with `-check-readable`
 
-## Code Conventions and Style Guide
+# Code Review Guidelines
 
-### Clojure and ClojureScript
+Review pull requests with a focus on:
 
-#### General Conventions
+- Compliance with project coding standards and conventions
 
-- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/) or `CLOJURE_STYLE_GUIDE.adoc`
-  in the current working directory.
+- Code quality and best practices
+
+- Clear and correct docstrings
+
+- Clear and correct comments explaining what the code is doing
+
+Read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with the style
+guide as well as other guidelines mentioned in this document.
+
+# Code Conventions and Style Guide
+
+## Clojure and ClojureScript
+
+### General Conventions
+
+- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/).
 
 - Prefer longer, more verbose names for functions and variables; avoid abbreviations unless they are well-known and
   conventional in the Clojure world. `acc`, `i`, `pred`, `coll`, `n`, `s`, `k`, and `f` are examples of well-known
@@ -273,7 +287,8 @@ For effective REPL usage:
   immediately clear. If there are other functions that have similar purposes, explain how the use-cases for this
   function differ.
 
-  Tests and other vars in the `test` or `enterprise/backend/test`.
+  Tests and other vars in the `test` or `enterprise/backend/test` do not *require* docstrings, but general helper
+  functions used across many namespaces it should have docstrings.
 
 - Format docstrings according to Markdown conventions.
 
@@ -371,7 +386,7 @@ For effective REPL usage:
   An exception is functions that write log messages or other output to the console; these don't need exclamation
   points.
 
-#### Tests
+### Tests
 
 - Large tests should be broken out into separate `deftest` forms when they consist of several logically separate test
   cases.
@@ -413,7 +428,7 @@ For effective REPL usage:
 
 - Mark pure function tests `^:parallel`.
 
-#### Modules
+### Modules
 
 - The backend codebase is broken out into separate modules.
 
@@ -465,12 +480,12 @@ For effective REPL usage:
   lots of other modules (such as `util`) ideally will have no dependencies on other modules. Our goal is to make as
   many modules as possible be "leaf nodes".
 
-#### Settings
+### Settings
 
 - Don't define configurable options that can only be set with environment variables; use an `:internal` `defsetting`
   instead. We have lots of tooling around `defsetting`.
 
-#### REST API Endpoints
+### REST API Endpoints
 
 - All new REST API Endpoints (defined by `defendpoint`) should have a response schema.
 
@@ -494,7 +509,7 @@ For effective REPL usage:
 
 - HTTP request bodies should use `snake_case`.
 
-#### MBQL
+### MBQL
 
 - No raw MBQL introspection or manipulation should be done outside of Lib (the `lib` and `lib-be` modules) or the
   Query Processor (the `query-processor` module) modules. MBQL maps include the `:model/Card` `dataset_query`, you can
@@ -506,7 +521,7 @@ For effective REPL usage:
   `metabase.query-processor.store` namespace. Any code that checks whether a query `:type` is `:native` or `:query` is
   a gigantic code smell.
 
-#### Drivers
+### Drivers
 
 - All new driver multimethods must be mentioned in `docs/developers-guide/driver-changelog.md`.
 
