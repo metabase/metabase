@@ -134,7 +134,7 @@ const iso8601Date = new RegExp(`^${fullCalendarDatePattern}$`);
 const isIso8601DateTime = new RegExp(fullIso8601DateTimePattern);
 const isSpaceSeparatedDateTime = new RegExp(spaceSeparatedDateTimePattern);
 
-export function isValidISO_8601(value: string): boolean {
+export function isValidIso8601(value: string): boolean {
   return (
     iso8601Date.test(value) ||
     isIso8601DateTime.test(value) ||

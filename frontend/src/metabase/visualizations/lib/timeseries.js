@@ -1,6 +1,6 @@
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 
-import { isValidISO_8601 } from "./date-validation";
+import { isValidIso8601 } from "./date-validation";
 
 const TIMESERIES_UNITS = new Set([
   "minute",
@@ -32,7 +32,7 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
       return false;
     }
 
-    if (!isValidISO_8601(value)) {
+    if (!isValidIso8601(value)) {
       return false;
     }
   }
