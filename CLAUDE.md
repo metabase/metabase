@@ -422,6 +422,9 @@ violations of the Community Clojure Style Guide.
 
 - Mark pure function tests `^:parallel`.
 
+- Test utility functions that are not thread-safe/safe in `^:parallel` tests should have names that end in an
+  exclamation mark.
+
 ### Modules
 
 - The backend codebase is broken out into separate modules.
@@ -529,6 +532,14 @@ violations of the Community Clojure Style Guide.
 - Use Lib and MBQL 5 in all new code instead of legacy MBQL; avoid use of the `legacy-mbql` module, or the
   `metabase.query-processor.store` namespace. Any code that checks whether a query `:type` is `:native` or `:query` is
   a gigantic code smell.
+
+## Models and the Application Database
+
+- Model names should be singular nouns, e.g. `:model/Dashboard` and not `:model/Dashboards`.
+
+- Table names in the application database should be singular nouns, e.g. `transform` instead of `transforms`.
+
+- The application database should use `snake_case` identifiers for table and column names.
 
 ## Using Toucan
 
