@@ -9,6 +9,7 @@ import {
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { uuid } from "metabase/lib/uuid";
 import {
   createMockDashboardCard,
   createMockTextDashboardCard,
@@ -1705,6 +1706,75 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
       cy.button("Save this").should("not.exist");
+    });
+  });
+
+  describe("documents > comments", () => {
+    it("should not display comments in an embedded app", () => {
+      H.activateToken("bleeding-edge");
+      const DOCUMENT_ID = 1;
+      const PARAGRAPH_ID = "b7fa322a-964e-d668-8d30-c772ef4f0022";
+
+      H.createDocument({
+        idAlias: "documentId",
+        name: "Lorem ipsum",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              attrs: {
+                _id: PARAGRAPH_ID,
+              },
+              content: [
+                {
+                  type: "text",
+                  text: "Lorem ipsum dolor sit amet.",
+                },
+              ],
+            },
+          ],
+        },
+      });
+      H.createComment({
+        target_type: "document",
+        target_id: DOCUMENT_ID,
+        child_target_id: PARAGRAPH_ID,
+        parent_comment_id: null,
+        content: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              attrs: { _id: uuid() },
+              content: [{ type: "text", text: "Test comment" }],
+            },
+          ],
+        },
+        html: "<p>Test comment</p>",
+      });
+
+      cy.intercept({
+        method: "GET",
+        path: "/api/ee/document/*",
+      }).as("documentGet");
+
+      cy.intercept({
+        method: "GET",
+        path: "/api/ee/comment/*",
+      }).as("commentGet");
+
+      H.visitFullAppEmbeddingUrl({
+        url: `/document/${DOCUMENT_ID}`,
+      });
+
+      cy.wait("@documentGet");
+
+      cy.findByLabelText("Show all comments").should("not.exist");
+
+      cy.findAllByRole("link", { name: "Comments" }).should("not.exist");
+
+      cy.get("@commentGet.all").should("have.length", 0);
     });
   });
 });

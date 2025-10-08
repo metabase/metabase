@@ -12,7 +12,8 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
 export type SdkIframeEmbedSetupStep =
   | "select-embed-experience"

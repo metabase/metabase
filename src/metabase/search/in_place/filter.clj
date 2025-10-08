@@ -147,6 +147,19 @@
   [filter _model query verified]
   (build-optional-filter-query filter "card" query verified))
 
+(defmethod build-optional-filter-query [:verified "dashboard"]
+  [_filter model query verified]
+  (assert (true? verified) "filter for non-verified dashboards is not supported")
+  (if (premium-features/has-feature? :content-verification)
+    (-> query
+        (sql.helpers/join :moderation_review
+                          [:= :moderation_review.moderated_item_id
+                           (search.config/column-with-model-alias model :id)])
+        (sql.helpers/where [:= :moderation_review.status "verified"]
+                           [:= :moderation_review.moderated_item_type "dashboard"]
+                           [:= :moderation_review.most_recent true]))
+    (sql.helpers/where query false-clause)))
+
 ;; Created at filters
 
 (defn- date-range-filter-clause

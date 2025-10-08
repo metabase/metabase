@@ -2543,4 +2543,16 @@ describe("scenarios > question > custom column > aggregation", () => {
       });
     });
   });
+
+  it("should show a custom error when there are no aggregations in a custom aggregation", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("1 + 1");
+    H.popover()
+      .findByText(
+        "Aggregations should contain at least one aggregation function.",
+      )
+      .should("be.visible");
+  });
 });

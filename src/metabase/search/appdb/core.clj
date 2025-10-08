@@ -101,7 +101,7 @@
           ;; Sync, in case we're just out of sync with the database.
           found-active (:active (#'search.index/sync-tracking-atoms!))
           ;; If there's really no index, and we're running in prod - gulp, try to initialize now.
-          init-now? (and (not found-active) config/is-prod?)]
+          init-now?    (and (not found-active) config/is-prod?)]
       (when init-now?
         (log/warnf "Triggering a late initialization of the %s search index." search-engine)
         (try
@@ -131,13 +131,13 @@
           (log/warn "Returning search results even though they may be stale. Queue size:" (pending-updates)))))
 
     (let [weights (search.config/weights search-ctx)
-          scorers (search.scoring/scorers search-ctx)]
-      (->> (search.index/search-query search-string search-ctx [:legacy_input])
-           (add-collection-join-and-where-clauses search-ctx)
-           (add-table-where-clauses search-ctx)
-           (search.scoring/with-scores search-ctx scorers)
-           (search.filter/with-filters search-ctx)
-           t2/query
+          scorers (search.scoring/scorers search-ctx)
+          query   (->> (search.index/search-query search-string search-ctx [:legacy_input])
+                       (add-collection-join-and-where-clauses search-ctx)
+                       (add-table-where-clauses search-ctx)
+                       (search.scoring/with-scores search-ctx scorers)
+                       (search.filter/with-filters search-ctx))]
+      (->> (t2/query query)
            (map (partial rehydrate weights (keys scorers)))))
     (catch Exception e
       ;; Rule out the error coming from stale index metadata.
