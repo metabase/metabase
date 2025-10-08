@@ -101,6 +101,15 @@ export const getMaxFontSize = (
     maxSizeRem = Math.min(maxSizeRem, 5);
   }
 
+  // Apply height bonus for cards taller than 3 units (after height constraints)
+  if (cardRowHeight != null && cardRowHeight > 3) {
+    const heightBonus = (cardRowHeight - 3) * 0.25;
+    maxSizeRem += heightBonus;
+  }
+
+  // Final cap at 7rem maximum
+  maxSizeRem = Math.min(maxSizeRem, 7);
+
   const finalSize = Math.min(baseSize, maxSizeRem);
 
   return finalSize;
