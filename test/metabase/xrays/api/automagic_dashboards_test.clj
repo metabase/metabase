@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.core :as mc]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -11,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.api.automagic-dashboards :as api.magic]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.test-util.automagic-dashboards :refer [with-rollback-only-transaction]]
@@ -608,3 +610,12 @@
        {:tables (sort-by :id [{:id (mt/id :venues)}
                               {:id (mt/id :categories)}])}
        (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata")))))
+
+(deftest ^:paralell allow-equals-in-base-64-encoding-for-now-test
+  (testing "Allow `=` in the route part of X-Rays API requests... for now"
+    (doseq [schema [::api.magic/base-64-encoded-json
+                    ::api.magic/entity-id-or-query]]
+      (testing schema
+        (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
+          (assert (instance? java.util.regex.Pattern pattern))
+          (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
