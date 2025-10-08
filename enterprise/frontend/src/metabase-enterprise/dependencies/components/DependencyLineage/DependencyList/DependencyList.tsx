@@ -28,6 +28,8 @@ import {
   getMatchingNodes,
   getNodeSubtitleInfo,
   getNodeTitleInfo,
+  getNodeViewCount,
+  getNodeViewCountLabel,
   getRequest,
 } from "./utils";
 
@@ -120,19 +122,20 @@ type ListItemProps = {
 function ListItem({ node }: ListItemProps) {
   const titleInfo = getNodeTitleInfo(node);
   const subtitleInfo = getNodeSubtitleInfo(node);
+  const viewCount = getNodeViewCount(node);
 
   return (
-    <Flex
-      className={S.item}
-      component={Link}
-      to={titleInfo.link ?? ""}
-      direction="column"
-      p="lg"
-      gap="sm"
-    >
-      <ListItemLink info={titleInfo} />
+    <Stack className={S.item} p="lg" gap="sm">
+      <Group justify="space-between">
+        <ListItemLink info={titleInfo} />
+        {viewCount != null && (
+          <Box c="text-secondary" fz="sm">
+            {getNodeViewCountLabel(viewCount)}
+          </Box>
+        )}
+      </Group>
       {subtitleInfo && <ListItemLink info={subtitleInfo} isSecondary />}
-    </Flex>
+    </Stack>
   );
 }
 

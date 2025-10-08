@@ -1,5 +1,5 @@
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import type {
@@ -69,9 +69,16 @@ export function getNodeSubtitleInfo(
       icon: "folder",
       link: Urls.dashboard(node.data.collection),
     }))
-    .with({ type: "card" }, () => undefined)
-    .with({ type: "table" }, () => undefined)
-    .with({ type: "transform" }, () => undefined)
-    .with({ type: "snippet" }, () => undefined)
-    .exhaustive();
+    .otherwise(() => undefined);
+}
+
+export function getNodeViewCount(node: DependencyNode): number | undefined {
+  return match(node)
+    .with({ type: "card" }, (node) => node.data.view_count)
+    .with({ type: "table" }, (node) => node.data.view_count)
+    .otherwise(() => undefined);
+}
+
+export function getNodeViewCountLabel(viewCount: number) {
+  return ngettext(msgid`${viewCount} view`, `${viewCount} views`, viewCount);
 }

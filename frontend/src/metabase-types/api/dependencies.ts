@@ -25,7 +25,9 @@ type BaseDependencyNode<TType, TData> = {
 export type TableDependencyNodeData = Pick<
   Table,
   "name" | "display_name" | "db_id" | "schema"
->;
+> & {
+  view_count?: number;
+};
 
 export type TransformDependencyNodeData = Pick<Transform, "name">;
 
@@ -39,7 +41,9 @@ export type CardDependencyNodeData = Pick<
   | "collection"
   | "dashboard_id"
   | "dashboard"
->;
+> & {
+  view_count?: number;
+};
 
 export type SnippetDependencyNodeData = Pick<NativeQuerySnippet, "name">;
 
