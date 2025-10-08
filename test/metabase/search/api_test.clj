@@ -1872,5 +1872,6 @@
           (t2/delete! :model/Database :id db-id)
           (is (not (t2/exists? :model/Card :id card-id)))
           (let [search-results (mt/user-http-request :crowberto :get 200 "search" :q card-name)]
-            (is (not (some #(= (:id %) card-id) (:data search-results)))
+            (is (not (some #{card-id}
+                           (mapv :id (:data search-results))))
                 "Card should not be found in search results after database deletion")))))))
