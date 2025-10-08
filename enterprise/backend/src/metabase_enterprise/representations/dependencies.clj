@@ -16,9 +16,11 @@
                       {}
                       (map vector (range) representations))
         entities (reduce #(merge-with concat %1 %2)
+                         {}
                          (map (fn [entity]
                                 {(case (::type entity)
                                    :v0/question :card
+                                   :v0/collection :collection
                                    :model/Transform :transform
                                    :model/Snippet :snippet
                                    :v0/database :database)
@@ -26,7 +28,7 @@
                               (vals index)))
         ;;entities (dissoc entities :database)
         ]
-    (dependencies/errors-from-proposed-edits (dissoc entities :database))))
+    (dependencies/errors-from-proposed-edits (dissoc entities :database :collection))))
 
 (comment
 

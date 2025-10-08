@@ -2,6 +2,7 @@
   (:require
    [clojure.pprint :refer [pprint]]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.dependencies :as deps]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.yaml :as rep-yaml]
@@ -54,6 +55,36 @@
    _]
   (let [collection-id (Long/parseLong collection-id)]
     (rep-yaml/generate-string (export/export-entire-collection collection-id))))
+
+(api.macros/defendpoint :put "/collection/:collection-id"
+  "Import into a collection. Will delete everything in the collection first."
+  [{:keys [collection-id]} :- :any
+   _
+   _
+   request]
+  ;; TODO: remove everything from the collection, maybe put it into an archive collection
+  (let [yaml-string (slurp (:body request))
+        collection (rep-yaml/parse-string yaml-string)
+        representations (import/collection-representations collection)
+        representations (import/order-representations representations)
+        representations (map import/normalize-representation representations)
+        errors (deps/check-dependencies representations)]
+    (rep-yaml/generate-string errors)))
+
+(api.macros/defendpoint :post "/collection/validate"
+  "Validate a collection. Will return empty yml map when it's nothing."
+  [_ :- :any
+   _
+   _
+   request]
+  ;; TODO: remove everything from the collection, maybe put it into an archive collection
+  (let [yaml-string (slurp (:body request))
+        collection (rep-yaml/parse-string yaml-string)
+        representations (import/collection-representations collection)
+        representations (import/order-representations representations)
+        representations (map import/normalize-representation representations)
+        errors (deps/check-dependencies representations)]
+    (rep-yaml/generate-string errors)))
 
 (api.macros/defendpoint :post "/collection/:collection-id/export"
   "Export all representations in a collection to the local filesystem"
