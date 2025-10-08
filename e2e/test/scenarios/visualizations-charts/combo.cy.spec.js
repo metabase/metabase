@@ -35,8 +35,13 @@ describe("scenarios > visualizations > combo", () => {
         "graph.show_values": true,
       },
     });
+
+    // Ensure chart is fully rendered before checking for data labels
+    // (larger font sizes may affect label collision detection and positioning)
+    H.ensureChartIsActive();
+
     // 2nd value label on the chart
-    cy.findAllByText("390.99");
+    cy.findAllByText("390.99").should("exist");
   });
 
   it("should support stacking", () => {
