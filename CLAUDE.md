@@ -622,8 +622,8 @@ Review pull requests with a focus on:
 
 - All new driver multimethods should use Lib-style kebab-cased metadata and MBQL 5 queries.
 
-- Driver multimethod implmentations should dispatch off of a keyword named `driver`, and pass this argument explicitly
-  to any other driver multimethods it invokes, rather than hardcoding the driver name.
+- Driver multimethod implementations (`defmethod` forms) should explicitly pass any `driver` argument to any other
+  driver multimethods it invokes, rather than hardcoding the driver name.
 
   ```clj
   ;;; Good
