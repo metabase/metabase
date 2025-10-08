@@ -89,7 +89,7 @@ To create a transform:
    For editing Python transforms, see [Python transforms](python-transforms.md).
 
 5. Click **Save** in the top right corner.
-6. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform query into this table.
+6. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform into this table.
 
    You can only transform data _within_ a database; you can't write from one database to another.
 

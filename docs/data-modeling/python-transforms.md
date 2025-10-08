@@ -13,7 +13,7 @@ For general information about Metabase transforms, see [Transforms](transforms.m
 
 ## Create a Python transform
 
-To write Python transforms, you'll need to have the Python execution add-on. Once you enabled the add-on:
+To write Python transforms, you'll need to have the Python execution add-on. Once you've enabled the add-on:
 
 1. Go to **Admin settings > Transforms** and click **Create a transform > Python script**.
 
@@ -25,7 +25,7 @@ To write Python transforms, you'll need to have the Python execution add-on. Onc
 
 4. Create a function `transform()` that does the data wrangling and returns a [pandas DataFrame](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html). The DataFrame returned by the function will be written back to your database when the transform is run.
 5. Click **Save** in the top right corner.
-6. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform query into this table.
+6. Select a target schema for your transform and enter a name for the target table. Metabase will write the results of the transform into this table.
 
    You can only write back to the same database as you chose for the transform source.
 
@@ -36,7 +36,7 @@ To write Python transforms, you'll need to have the Python execution add-on. Onc
 - A Python transform must have a function `transform()` that returns a single `pandas` DataFrame.
 - You can use aliases to include tables from your database as DataFrames inside the `transform()` function. The tables will _only_ be available in the transform function. Other functions won't have access to the tables.
 - Only `pandas` will be imported by default, but you can import [certain other packages](#available-python-packages). You can also use functions from the [common library](#common-python-library).
-- You see the output of `print()` statements in the transform's logs.
+- You'll see the output of `print()` statements in the transform's logs.
 - Metabase won't write DataFrame indexes to the database, including indexes created by `groupby()`. If you're using a custom index that you'd like to include in the target table, you'll need to [reset index](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.reset_index.html) on your DataFrame inside the `transform()` function.
 
 ## Run a Python transform
