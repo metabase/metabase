@@ -45,7 +45,7 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 - In Metabase, you create a `SELECT` query either using SQL or Metabase's [graphical query builder](../questions/query-builder/editor.md).
 - When the transform first runs, your _database_ executes the transform's query.
-- Your database writes the results of the query as new table.
+- Your database writes the results of the query as a new table.
 - The new table is synced to Metabase.
 - On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
 
@@ -58,7 +58,7 @@ Python-based transforms require a dedicated Python execution environment, so you
 - Metabase securely copies your source data to your Python environment and makes it available as pandas DataFrames.
 - The Python environment executes your Python script _in memory_.
 - The Python environment saves the resulting DataFrame as a file.
-- Your Metabase instance reads the file writes the results to a new table in your database.
+- Your Metabase instance reads the file and writes the results to a new table in your database.
 - The new table is synced to Metabase.
 - On subsequent transform runs, your database will overwrite that table with the updated results (updates are not incremental).
 
