@@ -71,7 +71,7 @@
      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
                                  ;; TODO return the full query only for embedding and when drill thrus are enabled
                                  #_[:dataset_query :type [:native :template-tags]]
-                                 :dataset_query]))))
+                                 :dataset_query :database_id]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -79,7 +79,9 @@
   [& conditions]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
     (-> (api/check-404 (apply t2/select-one [:model/Card :id :dataset_query :description :display :name :parameters
-                                             :visualization_settings :card_schema]
+                                             :visualization_settings :card_schema
+                                             ;; TODO return the full query only for embedding and when drill thrus are enabled
+                                             :database_id]
                               :archived false, conditions))
         remove-card-non-public-columns
         combine-parameters-and-template-tags
