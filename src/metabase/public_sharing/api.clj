@@ -69,7 +69,9 @@
     (mi/instance
      :model/Card
      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters :entity_id
-                                 [:dataset_query :type [:native :template-tags]]]))))
+                                 ;; TODO return the full query only for embedding and when drill thrus are enabled
+                                 #_[:dataset_query :type [:native :template-tags]]
+                                 :dataset_query]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
