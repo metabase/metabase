@@ -868,7 +868,9 @@
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]} & {:keys [append?]}]
   (let [table-str (get-table-str output-table)]
-    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+    (if append?
+      [(format "INSERT INTO %s %s" table-str query)]
+      [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)])))
 
 (defmethod driver/compile-drop-table :bigquery-cloud-sdk
   [_driver table]
