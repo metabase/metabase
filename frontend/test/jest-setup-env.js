@@ -7,7 +7,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   // Wait for any pending fetch requests to complete
-  // await fetchMock.callHistory.flush();
+  await fetchMock.callHistory.flush();
 
   // Fail the test if there were any unmocked routes
   const calls = fetchMock.callHistory.calls();
