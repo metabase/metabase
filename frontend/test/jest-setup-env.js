@@ -5,10 +5,18 @@ beforeEach(() => {
   fetchMock.mockGlobal();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // Wait for any pending fetch requests to complete
+  // await fetchMock.callHistory.flush();
+
   // Fail the test if there were any unmocked routes
   const calls = fetchMock.callHistory.calls();
   const unmatched = calls.filter((call) => !call.route);
+
+  // ensure we always reset, even if there were unmatched calls
+  fetchMock.removeRoutes();
+  fetchMock.callHistory.clear();
+
   if (unmatched.length > 0) {
     const errors = unmatched.map(
       (call) => `Unmocked ${call.options.method} request to: ${call.url}`,
@@ -17,7 +25,4 @@ afterEach(() => {
       `Test completed with unmocked routes:\n${errors.join("\n")}`,
     );
   }
-
-  fetchMock.removeRoutes();
-  fetchMock.callHistory.clear();
 });
