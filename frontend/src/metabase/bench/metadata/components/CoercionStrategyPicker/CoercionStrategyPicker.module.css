@@ -1,0 +1,3 @@
+.root {
+  overflow: visible; /* prevent scrollbar when error is displayed */
+}

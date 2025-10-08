@@ -12,7 +12,7 @@ import {
   type CollectionContentTableColumn,
   DEFAULT_VISIBLE_COLUMNS_LIST,
 } from "metabase/collections/components/CollectionContent/constants";
-import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
+import PinnedItemOverviewWithTransforms from "metabase/collections/components/PinnedItemOverviewWithTransforms";
 import Header from "metabase/collections/containers/CollectionHeader";
 import type {
   CollectionOrTableIdProps,
@@ -242,7 +242,7 @@ const CollectionContentViewInner = ({
         </ErrorBoundary>
 
         <ErrorBoundary>
-          <PinnedItemOverview
+          <PinnedItemOverviewWithTransforms
             databases={databases}
             bookmarks={bookmarks}
             createBookmark={createBookmark}
