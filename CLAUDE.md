@@ -486,7 +486,8 @@ violations or potential issues.
 - Quartz tasks, event handlers, and Settings all need to be loaded on launch, so if you have any of the above add
   them to a `<module>.init` namespace and require it in `metabase[-enterprise].core.init`.
 
-- Don't try to cheat the module linters by using things like `#_{:clj-kondo/ignore [:metabase/modules]}`.
+- Don't try to cheat the module linters by using things like `#_{:clj-kondo/ignore [:metabase/modules]}`. Note that
+  this does not apply to using `:clj-kondo/ignore` to disable warnings for other linters besides `:metabase/modules`.
 
 - Put Malli schemas in `<module>.schema`.
 
