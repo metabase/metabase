@@ -316,12 +316,14 @@
 
 (defmethod driver/compile-transform :clickhouse
   [driver {:keys [query output-table]} & {:keys [append?]}]
-  (let [pieces [(sql.qp/format-honeysql driver {:create-table output-table})
-                ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
-                ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
-                (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
-                ["AS"]
-                (sql.qp/format-honeysql driver {:raw query})]
+  (let [pieces (if append?
+                 [(sql.qp/format-honeysql driver {:insert-into [output-table {:select :* :raw query}]})]
+                 [(sql.qp/format-honeysql driver {:create-table output-table})
+                  ;; TODO(rileythomp, 2025-08-22): Is there a better way to do this?
+                  ;; i.e. only do this if we don't have a non-nullable field to use as a primary key?
+                  (sql.qp/format-honeysql driver {:raw "ORDER BY ()"})
+                  ["AS"]
+                  (sql.qp/format-honeysql driver {:raw query})])
         query (str/join " " (map first pieces))]
     (into [query] (mapcat rest) pieces)))
 
