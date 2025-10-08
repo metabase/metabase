@@ -771,3 +771,20 @@
       :type/Text               [:text]
       :type/Time               [:time]
       :type/UUID               [:uniqueidentifier])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :sqlserver
+    (testing "compile transform creates SELECT INTO by default"
+      (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM products"]
+             (driver/compile-transform :sqlserver {:query "SELECT * FROM products"
+                                                   :output-table "PRODUCTS_COPY"}))))
+    (testing "compile transform with append? false"
+      (is (= ["SELECT * INTO [PRODUCTS_COPY] FROM products"]
+             (driver/compile-transform :sqlserver {:query "SELECT * FROM products"
+                                                   :output-table "PRODUCTS_COPY"}
+                                       :append? false))))
+    (testing "compile transform with append? true generates INSERT INTO"
+      (is (= ["INSERT INTO [PRODUCTS_COPY] SELECT * FROM products"]
+             (driver/compile-transform :sqlserver {:query "SELECT * FROM products"
+                                                   :output-table "PRODUCTS_COPY"}
+                                       :append? true))))))

@@ -1346,3 +1346,20 @@
       :type/JSON               [[:raw "JSON"]]
       :type/SerializedJSON     [[:raw "JSON"]]
       :type/Decimal            [[:raw "BIGDECIMAL"]])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "compile transform creates CREATE OR REPLACE TABLE by default"
+      (is (= ["CREATE OR REPLACE TABLE `PRODUCTS_COPY` AS SELECT * FROM products"]
+             (driver/compile-transform :bigquery-cloud-sdk {:query "SELECT * FROM products"
+                                                            :output-table "PRODUCTS_COPY"}))))
+    (testing "compile transform with append? false"
+      (is (= ["CREATE OR REPLACE TABLE `PRODUCTS_COPY` AS SELECT * FROM products"]
+             (driver/compile-transform :bigquery-cloud-sdk {:query "SELECT * FROM products"
+                                                            :output-table "PRODUCTS_COPY"}
+                                       :append? false))))
+    (testing "compile transform with append? true generates INSERT INTO"
+      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products"]
+             (driver/compile-transform :bigquery-cloud-sdk {:query "SELECT * FROM products"
+                                                            :output-table "PRODUCTS_COPY"}
+                                       :append? true))))))
