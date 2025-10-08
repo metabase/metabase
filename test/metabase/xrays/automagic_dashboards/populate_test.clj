@@ -24,15 +24,17 @@
                           {:group "Overview", :k 3}]]
              ["Geographical" [{:group "Geographical", :k 1}]]
              ["ByTime" [{:group "ByTime", :k 1}]]]
-            results)))
+            results))))
 
+(deftest ^:parallel ordered-group-by-seq-test-2
   (testing "If there's no key order we just get a seq of the grouped map"
     (let [results (populate/ordered-group-by-seq
                    :group nil
                    [{:k 1} {:k 2} {:k 3}])]
       (is (=? [[nil [{:k 1} {:k 2} {:k 3}]]]
-              results))))
+              results)))))
 
+(deftest ^:parallel ordered-group-by-seq-test-3
   (testing "Returns remaining keys at end if they aren't asked for"
     (let [groups {"Overview"     {:title "Summary", :score 90},
                   "Singletons"   {:title "These are the same for all [[this.short-name]]",
