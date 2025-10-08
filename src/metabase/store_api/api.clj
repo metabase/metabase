@@ -66,7 +66,7 @@
    [:invoiceable_counterpart [:maybe :string]]
    [:trial_days [:maybe pos-int?]]
    [:is_metered [:maybe :boolean]]
-   [:default_total_units]
+   [:default_total_units :int]
    [:default_included_units :int]
    [:default_prepaid_units :int]
    [:default_price_per_unit :int]
