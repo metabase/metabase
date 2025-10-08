@@ -11,10 +11,10 @@ export function QuestionAlertsMenuItem({
   question: Question;
   onClick: () => void;
 }) {
-  const { data: questionNotifications, isLoading } = useListNotificationsQuery({
-    card_id: question.id() ?? skipToken,
-    include_inactive: false,
-  });
+  const id = question.id();
+  const { data: questionNotifications, isLoading } = useListNotificationsQuery(
+    id == null ? skipToken : { card_id: id, include_inactive: false },
+  );
 
   return (
     <CommonNotificationsMenuItem
