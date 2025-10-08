@@ -252,8 +252,8 @@ export const colorConfig = {
     dark: baseColors.octopus[80],
   },
   "background-brand": {
-    light: baseColors.brand[40],
-    dark: baseColors.brand[40],
+    light: baseColors.brand[20],
+    dark: baseColors.brand[70],
   },
   "background-disabled": {
     light: baseColors.orionAlpha[10],
@@ -267,7 +267,7 @@ export const colorConfig = {
     light: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
     dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[20],
   },
-  "background-info": { light: baseColors.orion[5], dark: baseColors.orion[80] },
+
   "background-inverse": {
     light: baseColors.orion[80],
     dark: baseColors.orion[20],
@@ -527,7 +527,12 @@ export const colorConfig = {
 
   info: {
     light: baseColors.orion[40],
-    dark: baseColors.orion[70],
+    dark: baseColors.orion[50],
+  },
+
+  "background-info": {
+    light: baseColors.orion[10],
+    dark: baseColors.orion[80],
   },
 
   white: {
