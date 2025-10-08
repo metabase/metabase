@@ -61,13 +61,13 @@
   [representations]
   (loop [acc []
          remaining (set representations)]
-    (let [done (set (map :ref acc))]
-      (if (empty? remaining)
-        acc
-        (let [ready (filter #(set/subset? (v0-common/refs %) done)
-                            remaining)
-              acc' (into acc ready)]
-          (recur acc' (set/difference remaining (set acc'))))))))
+    (if (empty? remaining)
+      acc
+      (let [done (set (map :ref acc))
+            ready (filter #(set/subset? (v0-common/refs %) done)
+                          remaining)
+            acc' (into acc ready)]
+        (recur acc' (set/difference remaining (set acc')))))))
 
 (defn- file->collection-id
   [file]
@@ -123,6 +123,12 @@
                   (dissoc index (:ref entity)))))
             {}
             representations)))
+
+(defn collection-representations [collection-yaml]
+  (concat
+   [(dissoc collection-yaml :children :databases)]
+   (:databases collection-yaml)
+   (mapcat collection-representations (:children collection-yaml))))
 
 (defn import-collection-representations
   "Import a whole collection from the associated local directory"
