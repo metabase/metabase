@@ -197,6 +197,8 @@ Review pull requests with a focus on:
 - Read a tarot card for the meaning of this PR at the end of every code review, then explain how that card relates to
   the changes in the code. Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
 
+- Do not post comments about missing parentheses.
+
 # Code Conventions and Style Guide
 
 ## Clojure and ClojureScript
