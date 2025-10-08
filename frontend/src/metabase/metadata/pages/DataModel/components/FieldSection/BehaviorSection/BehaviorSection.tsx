@@ -1,13 +1,17 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
+import { useGetDatabaseQuery } from "metabase/api";
 import {
   FieldValuesTypePicker,
   FieldVisibilityPicker,
   UnfoldJsonPicker,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type {
+  FieldChangeParams,
+  MetadataEditMode,
+} from "metabase/metadata/pages/DataModel/types";
 import {
   canFieldUnfoldJson,
   getRawTableFieldId,
@@ -27,25 +31,38 @@ import { TitledSection } from "../../TitledSection";
 import { RemappingPicker } from "./RemappingPicker";
 
 interface Props {
+  mode: MetadataEditMode;
   databaseId: DatabaseId;
   field: Field;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
 }
 
-const BehaviorSectionBase = ({ databaseId, field }: Props) => {
-  const id = getRawTableFieldId(field);
-  const { data: database } = useGetDatabaseQuery({
-    id: databaseId,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  });
-  const [updateField] = useUpdateFieldMutation();
+const BehaviorSectionBase = ({
+  mode,
+  databaseId,
+  field,
+  onFieldChange,
+}: Props) => {
+  const fieldIdentity =
+    mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
+  const { data: database } = useGetDatabaseQuery(
+    {
+      id: databaseId,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    {
+      skip: mode !== "table",
+    },
+  );
+
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
   const handleVisibilityChange = async (
     visibilityType: FieldVisibilityType,
   ) => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       visibility_type: visibilityType,
     });
 
@@ -57,8 +74,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendSuccessToast(
         t`Visibility of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             visibility_type: field.visibility_type,
           });
           sendUndoToast(error);
@@ -68,8 +85,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   };
 
   const handleFilteringChange = async (hasFieldValues: FieldValuesType) => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       has_field_values: hasFieldValues,
     });
 
@@ -81,8 +98,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
       sendSuccessToast(
         t`Filtering of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             has_field_values: field.has_field_values,
           });
           sendUndoToast(error);
@@ -94,8 +111,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   const handleUnfoldJsonChange = async (
     jsonUnfolding: boolean,
   ): Promise<void> => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       json_unfolding: jsonUnfolding,
     });
 
@@ -113,8 +130,8 @@ const BehaviorSectionBase = ({ databaseId, field }: Props) => {
           ? t`JSON unfolding enabled for ${field.display_name}`
           : t`JSON unfolding disabled for ${field.display_name}`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             json_unfolding: field.json_unfolding ?? false,
           });
           sendUndoToast(error);

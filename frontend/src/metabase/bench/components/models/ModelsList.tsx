@@ -23,7 +23,7 @@ import { BenchLayout } from "../BenchLayout";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
 import { MetricEditor } from "../metrics/MetricsList";
 
-import S from "./ModelsList.module.css";
+import { ModelListItem } from "./ModelListItem";
 
 function ModelsList({ params }: { params: { modelId: string } }) {
   const { isLoading, data } = useFetchModels();
@@ -53,42 +53,6 @@ function ModelsList({ params }: { params: { modelId: string } }) {
         )
       }
     />
-  );
-}
-
-function ModelListItem({
-  model,
-  isSelected,
-}: {
-  model: RecentCollectionItem;
-  isSelected: boolean;
-}) {
-  const icon = getIcon({ type: "dataset", ...model });
-
-  return (
-    <Group
-      mb="sm"
-      className={cx({ [S.selectedModelItem]: isSelected })}
-      justify="space-between"
-      p="xs"
-    >
-      <Link to={`/bench/model/${model.id}`}>
-        <Flex gap="sm" align="center">
-          <FixedSizeIcon {...icon} size={16} c="brand" />
-          <Text fw="bold">{model.name}</Text>
-        </Flex>
-        <Flex gap="sm" c="text-light" ml="lg">
-          <FixedSizeIcon name="folder" />
-          <EllipsifiedCollectionPath collection={model.collection} />
-        </Flex>
-      </Link>
-
-      <Button
-        leftSection={<Icon name="gear" />}
-        component={Link}
-        to={`/bench/model/${model.id}/metadata`}
-      />
-    </Group>
   );
 }
 

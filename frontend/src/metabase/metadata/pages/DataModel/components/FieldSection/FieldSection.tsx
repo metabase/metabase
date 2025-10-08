@@ -1,10 +1,13 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type {
+  FieldChangeParams,
+  MetadataEditMode,
+} from "metabase/metadata/pages/DataModel/types";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Group, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -19,25 +22,39 @@ import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 import { useResponsiveButtons } from "./hooks";
 
-interface Props {
-  databaseId?: DatabaseId | null | undefined; // null for models
-  field: Field;
-  table: Table;
+type FieldSectionProps = {
+  mode: MetadataEditMode;
   parent?: Field;
   onFieldValuesClick: () => void;
   onPreviewClick: () => void;
-}
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
+} & (
+  | {
+      mode: "table";
+      databaseId: DatabaseId;
+      field: Field;
+      table: Table;
+    }
+  | {
+      mode: "model";
+      table: Table; // use Table type for models as a temp hack
+      field: Field;
+    }
+);
 
 const FieldSectionBase = ({
+  mode,
   databaseId,
   field,
   parent,
   table,
   onFieldValuesClick,
   onPreviewClick,
-}: Props) => {
-  const id = getRawTableFieldId(field);
-  const [updateField] = useUpdateFieldMutation();
+  onFieldChange,
+}: FieldSectionProps) => {
+  const fieldIdentity =
+    mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
+
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
   const {
@@ -48,14 +65,17 @@ const FieldSectionBase = ({
   } = useResponsiveButtons();
 
   const handleNameChange = async (name: string) => {
-    const { error } = await updateField({ id, display_name: name });
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
+      display_name: name,
+    });
 
     if (error) {
       sendErrorToast(t`Failed to update name of ${field.display_name}`);
     } else {
       sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
-        const { error } = await updateField({
-          id,
+        const { error } = await onFieldChange({
+          ...fieldIdentity,
           display_name: field.display_name,
         });
         sendUndoToast(error);
@@ -64,8 +84,8 @@ const FieldSectionBase = ({
   };
 
   const handleDescriptionChange = async (description: string) => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       // API does not accept empty strings
       description: description.length === 0 ? null : description,
     });
@@ -76,8 +96,8 @@ const FieldSectionBase = ({
       sendSuccessToast(
         t`Description of ${field.display_name} updated`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             description: field.description ?? "",
           });
           sendUndoToast(error);
@@ -119,45 +139,56 @@ const FieldSectionBase = ({
         >
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
-          <Group
-            flex="1"
-            gap="md"
-            justify="flex-end"
-            miw={0}
-            ref={buttonsContainerRef}
-            wrap="nowrap"
-          >
-            {/* keep this in sync with getRequiredWidth in useResponsiveButtons */}
+          {mode === "table" && (
+            <Group
+              flex="1"
+              gap="md"
+              justify="flex-end"
+              miw={0}
+              ref={buttonsContainerRef}
+              wrap="nowrap"
+            >
+              {/* keep this in sync with getRequiredWidth in useResponsiveButtons */}
 
-            <ResponsiveButton
-              icon="eye"
-              showLabel={showButtonLabel}
-              onClick={onPreviewClick}
-              onRequestWidth={setPreviewButtonWidth}
-            >{t`Preview`}</ResponsiveButton>
+              <ResponsiveButton
+                icon="eye"
+                showLabel={showButtonLabel}
+                onClick={onPreviewClick}
+                onRequestWidth={setPreviewButtonWidth}
+              >{t`Preview`}</ResponsiveButton>
 
-            <ResponsiveButton
-              icon="gear_settings_filled"
-              showLabel={showButtonLabel}
-              onClick={onFieldValuesClick}
-              onRequestWidth={setFieldValuesButtonWidth}
-            >{t`Field values`}</ResponsiveButton>
-          </Group>
+              <ResponsiveButton
+                icon="gear_settings_filled"
+                showLabel={showButtonLabel}
+                onClick={onFieldValuesClick}
+                onRequestWidth={setFieldValuesButtonWidth}
+              >{t`Field values`}</ResponsiveButton>
+            </Group>
+          )}
         </Group>
       </Stack>
 
       <Stack gap="xl" px="xl">
-        <DataSection field={field} />
-        {databaseId && (
-          <MetadataSection
-            databaseId={databaseId}
+        {mode === "table" && (
+          <DataSection
+            mode={mode}
             field={field}
-            table={table}
+            onFieldChange={onFieldChange}
           />
         )}
-        {databaseId && (
-          <BehaviorSection databaseId={databaseId} field={field} />
-        )}
+        <MetadataSection
+          mode={mode}
+          databaseId={databaseId}
+          field={field}
+          table={table}
+          onFieldChange={onFieldChange}
+        />
+        <BehaviorSection
+          mode={mode}
+          databaseId={databaseId}
+          field={field}
+          onFieldChange={onFieldChange}
+        />
         <FormattingSection field={field} />
       </Stack>
     </Stack>

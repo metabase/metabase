@@ -32,7 +32,6 @@ export const FieldItem = ({
   parent,
   onChangeSettings,
 }: Props) => {
-  const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -55,7 +54,7 @@ export const FieldItem = ({
     } else {
       sendSuccessToast(t`Name of ${field.display_name} updated`, async () => {
         const { error } = await updateField({
-          id,
+          name: field.name,
           display_name: field.display_name,
         });
         sendUndoToast(error);
@@ -82,7 +81,7 @@ export const FieldItem = ({
         t`Description of ${field.display_name} updated`,
         async () => {
           const { error } = await updateField({
-            id,
+            name: field.name,
             description: field.description ?? "",
           });
           sendUndoToast(error);

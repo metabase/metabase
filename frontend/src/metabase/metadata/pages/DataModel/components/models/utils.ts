@@ -5,5 +5,5 @@ export const getModelFieldMetadataUrl = ({
   modelId: number;
   fieldName: string;
 }): string => {
-  return `/bench/model/${modelId}/metadata/field/${fieldName}`;
+  return `/bench/metadata/model/${modelId}/field/${fieldName}`;
 };

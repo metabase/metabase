@@ -1,6 +1,6 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,11 +8,19 @@ import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetTableQueryMetadataQuery,
   useListDatabasesQuery,
+  useUpdateCardMutation,
+  useUpdateFieldMutation,
 } from "metabase/api";
+import { ModelListItem } from "metabase/bench/components/models/ModelListItem";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import * as Urls from "metabase/lib/urls";
+import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Stack, rem } from "metabase/ui";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { UpdateFieldRequest } from "metabase-types/api";
 
 import S from "./DataModel.module.css";
 import {
@@ -36,7 +44,8 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId, modelId, fieldName } =
+    parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
@@ -51,21 +60,58 @@ export const DataModel = ({ children, location, params }: Props) => {
     isFieldValuesModalOpen,
     { close: closeFieldValuesModal, open: openFieldValuesModal },
   ] = useDisclosure();
-  const isEmptyStateShown =
-    databaseId == null || tableId == null || fieldId == null;
+  const isModelMode = modelId != null;
+  const isEmptyStateShown = isModelMode
+    ? fieldName == null
+    : databaseId == null || tableId == null || fieldId == null;
   const {
     data: table,
     error,
     isLoading: isLoadingTables,
-  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
+  } = useGetTableQueryMetadataQuery(
+    isModelMode
+      ? getTableMetadataQuery(getQuestionVirtualTableId(modelId))
+      : getTableMetadataQuery(tableId),
+  );
+  const { data: modelsData, isLoading: isLoadingDatabasesModels } =
+    useFetchModels();
+  const [updateField] = useUpdateFieldMutation();
+  const [updateCard] = useUpdateCardMutation();
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
-  const field = table?.fields?.find((field) => field.id === fieldId);
+  const field = table?.fields?.find(
+    isModelMode
+      ? (field) => field.name === fieldName
+      : (field) => field.id === fieldId,
+  );
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading =
+    isLoadingTables || isLoadingDatabases || isLoadingDatabasesModels;
+
+  const handleTableFieldChange = useCallback(
+    (update: UpdateFieldRequest) => {
+      return updateField(update);
+    },
+    [updateField],
+  );
+
+  const handleModelColumnChange = useCallback(
+    (update: UpdateFieldRequest) => {
+      const metadata = table?.fields;
+      const newMetadata = metadata?.map((column) => {
+        return update.name === column.name ? { ...column, ...update } : column;
+      });
+
+      return updateCard({
+        id: modelId,
+        result_metadata: newMetadata,
+      });
+    },
+    [modelId, table?.fields, updateCard],
+  );
 
   useWindowEvent(
     "keydown",
@@ -108,6 +154,17 @@ export const DataModel = ({ children, location, params }: Props) => {
           schemaName={schemaName}
           tableId={tableId}
         />
+
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          {modelsData?.data?.map((model) => (
+            <ModelListItem
+              key={model.id}
+              model={model}
+              href={`/bench/metadata/model/${model.id}`} // TODO: support relative URL hosting
+              isSelected={model.id === modelId}
+            />
+          ))}
+        </LoadingAndErrorWrapper>
       </Stack>
 
       {isSegments && children}
@@ -154,6 +211,34 @@ export const DataModel = ({ children, location, params }: Props) => {
             </Stack>
           )}
 
+          {isModelMode && modelId && (
+            <Stack
+              className={S.column}
+              flex={COLUMN_CONFIG.table.flex}
+              h="100%"
+              justify={error ? "center" : undefined}
+              maw={COLUMN_CONFIG.table.max}
+              miw={COLUMN_CONFIG.table.min}
+            >
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {table && (
+                  <ModelColumnsSection
+                    /**
+                     * Make sure internal component state is reset when changing tables.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={table.id}
+                    modelId={modelId}
+                    fieldName={fieldName}
+                    table={table}
+                    onSyncOptionsClick={openSyncModal}
+                    onFieldChange={handleModelColumnChange}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </Stack>
+          )}
+
           {!isEmptyStateShown && (
             <Stack
               className={S.column}
@@ -169,17 +254,23 @@ export const DataModel = ({ children, location, params }: Props) => {
                 {field && table && (
                   <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                     <FieldSection
+                      mode={isModelMode ? "model" : "table"}
                       databaseId={databaseId}
                       field={field}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
-                      key={getRawTableFieldId(field)}
+                      key={isModelMode ? fieldName : getRawTableFieldId(field)}
                       parent={parentField}
                       table={table}
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
+                      onFieldChange={
+                        isModelMode
+                          ? handleModelColumnChange
+                          : handleTableFieldChange
+                      }
                     />
                   </Box>
                 )}
