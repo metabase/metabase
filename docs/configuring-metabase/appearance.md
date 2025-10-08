@@ -30,7 +30,7 @@ Appearance settings are split across different tabs:
 
 ## Dark mode
 
-People can choose to display their Metabase in dark mode, see [Account settings](../people-and-groups/account-settings.md#theme). This is a user-level, not instance-level setting. Currently, there's no way to change theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
+People can choose to display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). This is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
 
 ## Branding
 
