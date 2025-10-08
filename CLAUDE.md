@@ -163,9 +163,11 @@ Review pull requests with a focus on:
 
 - Clear and correct comments explaining what the code is doing
 
-Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` (especially the part about "Test
-Naming") and make sure changes comply with it as well as other guidelines mentioned in this document. Flag *all*
-violations of the Community Clojure Style Guide.
+Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with it
+as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style Guide.
+
+Do not post "cheerleading" comments congratulating someone for trivial changes; stick to callouts about style
+violations or potential issues.
 
 # Code Conventions and Style Guide
 
@@ -250,6 +252,8 @@ violations of the Community Clojure Style Guide.
   In some cases, following this rule will require you to use a `(:refer-clojure :exclude [...])` form in your namespace
   declaration. This is acceptable, and should be taken as a sign that you're following this rule correctly.
 
+- If you shadow a `clojure.core` var, make sure you use `(:refer-clojure :exclude ...)` in the `ns` form.
+
 - Make everything `^:private` unless it is used elsewhere.
 
   Don't make things public just for the sake of tests. Use the var form (e.g. `#'redshift/execute!`) instead in your
@@ -284,20 +288,31 @@ violations of the Community Clojure Style Guide.
   Tests and other vars in the `test` or `enterprise/backend/test` do not *require* docstrings, but general helper
   functions used across many namespaces it should have docstrings.
 
-- Format docstrings according to Markdown conventions.
+- Format docstrings according to Markdown conventions. (https://guide.clojure.style/#markdown-docstrings)
 
 - Mentions of other vars in docstrings should use `[[some-other-var]]` (for vars in the same namespace) or
   `[[metabase.namespace/some-other-var]]` (for vars in a different namespace) instead of backticks; references in
   docstrings should be valid (i.e., point to something that exists).
+  (https://guide.clojure.style/#document-references)
 
 - Judiciously use comments to explain sections of code that would not immediately be clear to someone else. Avoid
   comments that do little more than repeat what the code already says.
 
 - Make sure to update comments and docstrings when you change the code they describe.
 
-- Comments that are on a line by themselves should start with two semicolons, unless they denote a new section of
-  code, in which case they should start with three; comments on the same line as code should start with a single
-  semicolon. You can use four semicolons to denote a new section of code.
+- Write heading comments with four semicolons. Those typically serve to outline/separate major section of code, or to
+  describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
+  (https://guide.clojure.style/#four-semicolons-for-heading-comments)
+
+- Write top-level comments with three semicolons. (https://guide.clojure.style/#three-semicolons-for-top-level-comments)
+
+- Write comments on a particular fragment of code before that fragment and aligned with it, using two semicolons.
+  (https://guide.clojure.style/#two-semicolons-for-code-fragment)
+
+- Write margin comments (comments at the end of a line with code on it) with one semicolon.
+  (https://guide.clojure.style/#one-semicolon-for-margin-comments)
+
+- Good comment semicolon examples:
 
   ```clj
   ;;;; UTIL FUNCTIONS
@@ -321,10 +336,12 @@ violations of the Community Clojure Style Guide.
 - Try to keep lines 118 characters wide or less; use this as a guideline when formatting docstrings.
 
 - **No Blank Lines Within Definition Forms** Do not place blank lines in the middle of a function or macro definition.
-  An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case those
-  don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
+  An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case
+  those don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
+  (https://guide.clojure.style/#no-blank-lines-within-def-forms)
 
 - Use `kebab-case` names for variables and defs, including constants.
+  (https://guide.clojure.style/#naming-functions-and-variables)
 
   ```clj
   ;;; BAD
@@ -375,7 +392,7 @@ violations of the Community Clojure Style Guide.
 - Functions that have side-effects such as writing to the application database or mutating the global state of the
   application should have names that end in exclamation points. Exclamation points should be considered "sticky", so
   if a function uses another function with a name ending in an exclamation point, it too should have a name that ends
-  in an exclamation point.
+  in an exclamation point. (https://guide.clojure.style/#naming-unsafe-functions)
 
   An exception is functions that write log messages or other output to the console; these don't need exclamation
   points.
@@ -424,6 +441,9 @@ violations of the Community Clojure Style Guide.
 
 - Test utility functions that are not thread-safe/safe in `^:parallel` tests should have names that end in an
   exclamation mark.
+
+- Test names in `deftest` forms should end in `-test` or `-test-<number>` e.g. `whatever-test` or `whatever-test-2` or
+  even `whatever-test-2b`. (https://guide.clojure.style/#test-naming)
 
 ### Modules
 
@@ -530,8 +550,8 @@ violations of the Community Clojure Style Guide.
   `:type` key.
 
 - Use Lib and MBQL 5 in all new code instead of legacy MBQL; avoid use of the `legacy-mbql` module, or the
-  `metabase.query-processor.store` namespace. Any code that checks whether a query `:type` is `:native` or `:query` is
-  a gigantic code smell.
+  `metabase.query-processor.store` namespace, in new code. Any code that checks whether a query `:type` is `:native`
+  or `:query` is a gigantic code smell.
 
 ## Models and the Application Database
 
