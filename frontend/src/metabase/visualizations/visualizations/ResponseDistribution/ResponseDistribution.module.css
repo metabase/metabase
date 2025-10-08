@@ -1,0 +1,102 @@
+/* Response Distribution visualization styles */
+
+.container {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 40px;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  flex: 1;
+}
+
+.scoreBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--mb-color-score-text, var(--mb-color-text-dark));
+  min-width: 80px;
+  justify-content: center;
+}
+
+.segmentedBarContainer {
+  display: flex;
+  width: 100%;
+  height: 32px;
+  gap: 3px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.segment {
+  height: 100%;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+.segment:hover {
+  opacity: 0.85;
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.colorIndicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.optionText {
+  flex: 1;
+  color: var(--mb-color-text-dark);
+}
+
+.optionStats {
+  font-weight: 600;
+  color: var(--mb-color-text-dark);
+  white-space: nowrap;
+}
+
+.legendItem:nth-child(even) {
+  background-color: var(--mb-color-bg-light);
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--mb-color-text-light);
+  font-size: 0.875rem;
+}

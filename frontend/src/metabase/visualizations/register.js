@@ -19,12 +19,13 @@ import ObjectDetail from "./visualizations/ObjectDetail";
 import { PieChart } from "./visualizations/PieChart";
 import PivotTable from "./visualizations/PivotTable";
 import Progress from "./visualizations/Progress";
+import { ResponseDistribution } from "./visualizations/ResponseDistribution";
 import RowChart from "./visualizations/RowChart";
+import SQLPivot from "./visualizations/SQLPivot";
 import { SankeyChart } from "./visualizations/SankeyChart";
 import { Scalar } from "./visualizations/Scalar";
 import { ScatterPlot } from "./visualizations/ScatterPlot";
 import { SmartScalar } from "./visualizations/SmartScalar";
-import SQLPivot from "./visualizations/SQLPivot";
 import Table from "./visualizations/Table/Table";
 import { Text } from "./visualizations/Text";
 import { WaterfallChart } from "./visualizations/WaterfallChart";
@@ -49,6 +50,7 @@ export default function () {
   registerVisualization(PivotTable);
   registerVisualization(SQLPivot);
   registerVisualization(SankeyChart);
+  registerVisualization(ResponseDistribution);
 
   registerVisualization(ActionViz);
   registerVisualization(DashCardPlaceholder);

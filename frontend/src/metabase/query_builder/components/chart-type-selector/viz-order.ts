@@ -19,4 +19,5 @@ export const DEFAULT_VIZ_ORDER: CardDisplayType[] = [
   "map",
   "scatter",
   "waterfall",
+  "response_distribution",
 ] as const;
