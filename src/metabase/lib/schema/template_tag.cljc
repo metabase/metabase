@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.common :as common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
@@ -71,7 +71,7 @@
 
 (mr/def ::field-filter.options
   [:map
-   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}])
+   {:decode/normalize common/normalize-map-no-kebab-case}])
 
 ;; Example:
 ;;
