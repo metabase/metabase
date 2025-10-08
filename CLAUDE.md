@@ -596,7 +596,7 @@ Review pull requests with a focus on:
   (api.macros/defendpoint :post "/check_transform" ...)
 
   ;;; Good
-  (api.macros/defendpoint :post "/check_transform" ...)
+  (api.macros/defendpoint :post "/check-transform" ...)
   ```
 
 - Query parameters should also use kebab-case e.g. `GET /api/dashboards?include-archived=true` is good while `GET
