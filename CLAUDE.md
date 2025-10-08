@@ -661,3 +661,24 @@ Review pull requests with a focus on:
 # Misc
 
 - Example data should be bird-themed if possible.
+
+# Kondo
+
+- Kondo linter warnings are suppressed with a comment proceeding the form to ignore warnings in e.g.
+
+  ```clj
+  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+  (do-x ...)
+  ```
+
+  to ignore the `:metabase/disallow-hardcoded-driver-names-in-tests` Linter inside the `(do-x ...)` form. You do not
+  need to point these out to us, we know what they do.
+
+  ```clj
+  ^{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+  (do-x ...)
+  ```
+
+  is an acceptable alternative.
+
+- Avoid ignoring **everything** with a `#_:clj-kondo/ignore` (a keyword instead of a map).
