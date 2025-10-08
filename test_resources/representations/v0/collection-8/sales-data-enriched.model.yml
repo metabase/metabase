@@ -1,6 +1,7 @@
 # Vastly overcomplicated, I know, but experimental
 
-type: v0/model
+type: model
+version: v0
 ref: sales-data-experiment
 name: Sales Data
 description: Monthly sales analysis with product categories and financial metrics

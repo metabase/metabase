@@ -1,4 +1,5 @@
 type: question
+version: v0
 ref: invalid-question
 name: 12
 description: 10

@@ -15,16 +15,16 @@
 (defmulti persist!
   "Ingest a validated representation and create/update the entity in the database.
    Dispatches on the :type field of the representation."
-  {:arglists '[[entity ref-index]]}
-  (fn [entity _ref-index] (:type entity)))
+  {:arglists '([entity ref-index])}
+  (fn [entity _ref-index] ((juxt :version :type) entity)))
 
 (defmulti yaml->toucan
   "Convert a validated representation into data suitable for creating/updating an entity.
    Returns a map with keys matching the Toucan model fields.
    Does NOT insert into the database - just transforms the data.
    Dispatches on the :type field of the representation."
-  {:arglists '[[entity ref-index]]}
-  (fn [entity _ref-index] (:type entity)))
+  {:arglists '([entity ref-index])}
+  (fn [entity _ref-index] ((juxt :version :type) entity)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Representation Normalization ;;
@@ -32,33 +32,25 @@
 (defmulti type->schema
   "Returns the schema for a given type keyword.
    Each v0 namespace implements this for its own type."
-  {:arglists '[[type-kw]]}
-  identity)
+  {:arglists '([{:keys [version type]}])}
+  (juxt :version :type))
 
-(defmethod type->schema :default [type]
-  (throw (ex-info (str "Unknown type: " type) {:type type})))
-
-(def ^:private default-version "v0")
-
-(defn- versioned-type
-  [type-str]
-  (if (str/includes? type-str "/")
-    (keyword type-str)
-    (keyword default-version type-str)))
+(defmethod type->schema :default
+  [{:keys [version type] :as schema}]
+  (throw (ex-info (format "Unknown version: %s or type: %s" version type) schema)))
 
 (defn normalize-type
-  "If the :type of the representation is a string, converts it to a versioned keyword"
+  "Convert the type and version of the representation to keywords."
   [representation]
-  (if-not (string? (:type representation))
-    representation
-    (update representation :type versioned-type)))
+  (reduce #(update %1 %2 keyword) representation [:version :type]))
 
 (defn normalize-representation
   "Ensures type is set correctly and de-encodes base64 if necessary."
   [representation]
   (let [representation' (normalize-type representation)]
     (if-let [entity-type (:type representation')]
-      (let [schema (type->schema entity-type)]
+      (let [version+type (select-keys representation' [:version :type])
+            schema (type->schema version+type)]
         (if-not schema
           (throw (ex-info (str "Unknown type: " entity-type) {:type entity-type}))
           (mu/validate-throw schema representation')))

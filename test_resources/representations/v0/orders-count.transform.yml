@@ -3,6 +3,7 @@ ref: transform-4
 name: Orders count by month (transform)
 target_table: {schema: PUBLIC, table: ORDERS_COUNT}
 type: transform
+version: v0
 mbql_query:
   source-table: {ref/database: 'ref:database-53', ref/schema: PUBLIC, ref/table: ORDERS}
   aggregation:

@@ -12,7 +12,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/question [_]
+(defmethod import/type->schema [:v0 :question] [_]
   ::question)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -20,7 +20,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Type must be 'question'"}
-   :v0/question])
+   :question])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this question schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -67,6 +72,7 @@
    [:map
     {:description "v0 schema for human-writable question representation"}
     [:type ::type]
+    [:version ::version]
     [:ref ::ref]
     [:name {:optional true} ::name]
     [:description {:optional true} ::description]
@@ -80,7 +86,7 @@
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
-(defmethod import/yaml->toucan :v0/question
+(defmethod import/yaml->toucan [:v0 :question]
   [{question-name :name
     :keys [_type _ref entity-id description database collection] :as representation}
    ref-index]
@@ -101,7 +107,7 @@
      :type :question
      :collection_id (v0-common/find-collection-id collection)}))
 
-(defmethod import/persist! :v0/question
+(defmethod import/persist! [:v0 :question]
   [representation ref-index]
   (let [question-data (import/yaml->toucan representation ref-index)
         entity-id (:entity_id question-data)
@@ -129,6 +135,7 @@
         card-ref (v0-common/unref (v0-common/->ref (:id card) :question))]
     (cond-> {:name        (:name card)
              :type        (:type card)
+             :version     :v0
              :ref         card-ref
              :entity-id   (:entity_id card)
              :description (:description card)}

@@ -13,7 +13,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/model [_]
+(defmethod import/type->schema [:v0 :model] [_]
   ::model)
 
 ;;; ----------------------------- Column Schema Definitions -----------------------------
@@ -172,7 +172,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Type must be 'model' or 'v0/model'"}
-   :model :v0/model "model" "v0/model"])
+   :model "model"])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this model schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -217,6 +222,7 @@
    [:map
     {:description "v0 schema for human-writable model representation"}
     [:type ::type]
+    [:version ::version]
     [:ref ::ref]
     [:name {:optional true} ::name]
     [:description {:optional true} ::description]
@@ -253,7 +259,7 @@
                 base-col))
             base-metadata))))
 
-(defmethod import/yaml->toucan :v0/model
+(defmethod import/yaml->toucan [:v0 :model]
   [{model-name :name
     :keys [_type _ref entity-id description database collection columns] :as representation}
    ref-index]
@@ -276,7 +282,7 @@
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
-(defmethod import/persist! :v0/model
+(defmethod import/persist! [:v0 :model]
   [representation ref-index]
   (let [model-data (import/yaml->toucan representation ref-index)
         entity-id (:entity_id model-data)
@@ -335,6 +341,7 @@
                    (seq (mapv extract-user-editable-column-metadata result-metadata)))]
     (cond-> {:name (:name card)
              :type (:type card)
+             :version :v0
              :ref card-ref
              :entity-id (:entity_id card)
              :description (:description card)}

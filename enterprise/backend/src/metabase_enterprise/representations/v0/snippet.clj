@@ -12,7 +12,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/snippet [_]
+(defmethod import/type->schema [:v0 :snippet] [_]
   ::snippet)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -20,7 +20,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'snippet' for this schema"}
-   :v0/snippet])
+   :snippet])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this snippet schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -54,17 +59,16 @@
   [:map
    {:description "v0 schema for human-writable SQL snippet representation"}
    [:type ::type]
-   #_[:version ::version]
+   [:version ::version]
    [:ref ::ref]
    [:name ::name]
    [:description [:maybe ::description]]
-  ;;  [:sql ::sql]
    [:content ::sql] ;; todo: update this to be :sql
    [:collection {:optional true} ::collection]])
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
-(defmethod import/yaml->toucan :v0/snippet
+(defmethod import/yaml->toucan [:v0 :snippet]
   [{:keys [_ref name description sql collection entity-id] :as representation}
    ref-index]
   {:name name
@@ -74,7 +78,7 @@
    :collection_id collection
    :entity_id (or entity-id (v0-common/generate-entity-id representation))})
 
-(defmethod import/persist! :v0/snippet
+(defmethod import/persist! [:v0 :snippet]
   [representation ref-index]
   (let [snippet-data (import/yaml->toucan representation ref-index)
         entity-id (:entity_id snippet-data)
@@ -101,10 +105,11 @@
   (let [snippet-ref (v0-common/unref (v0-common/->ref (:id snippet) :snippet))
         template-tags (into {}
                             (map (fn [[k v]]
-                                   [(template-tag-ref v) k]))
+                                   [k (template-tag-ref v)]))
                             (:template_tags snippet))]
     {:ref snippet-ref
      :type :snippet
+     :version :v0
      :name (:name snippet)
      :description (:description snippet)
      :content (:content snippet) ;; todo: change this :sql

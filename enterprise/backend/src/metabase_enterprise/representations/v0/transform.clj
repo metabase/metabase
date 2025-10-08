@@ -12,7 +12,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/transform [_]
+(defmethod import/type->schema [:v0 :transform] [_]
   ::transform)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -20,7 +20,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'transform' for this schema"}
-   :v0/transform])
+   :transform])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this transform schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -87,6 +92,7 @@
    [:map
     {:description "v0 schema for human-writable transform representation"}
     [:type ::type]
+    [:version ::version]
     [:ref ::ref]
     [:name {:optional true} ::name]
     [:description {:optional true} ::description]
@@ -128,7 +134,7 @@
               :schema (-> representation :target_table :schema)
               :name (-> representation :target_table :table)}}))
 
-(defmethod import/yaml->toucan :v0/transform
+(defmethod import/yaml->toucan [:v0 :transform]
   [representation ref-index]
   (yaml->toucan representation ref-index))
 
@@ -143,7 +149,7 @@
                                                   :tag_id (-> tag by-name :id)
                                                   :position i})))))
 
-(defmethod import/persist! :v0/transform
+(defmethod import/persist! [:v0 :transform]
   [representation ref-index]
   (let [transform-data (import/yaml->toucan representation ref-index)
         entity-id (:entity_id transform-data)
@@ -178,7 +184,8 @@
 (defmethod export/export-entity :model/Transform [transform]
   (let [query (patch-refs-for-export (-> transform :source :query))]
     (cond-> {:name (:name transform)
-             :type "transform"
+             :type :transform
+             :version :v0
              :ref (v0-common/unref (v0-common/->ref (:id transform) :transform))
              :description (:description transform)
              :entity_id (:entity_id transform)

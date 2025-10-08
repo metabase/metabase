@@ -13,7 +13,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/database [_]
+(defmethod import/type->schema [:v0 :database] [_]
   ::database)
 
 (set! *warn-on-reflection* true)
@@ -23,7 +23,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'database' for this schema"}
-   :v0/database])
+   :database])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this database schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -107,6 +112,7 @@
   [:map
    {:description "v0 schema for human-writable database representation"}
    [:type ::type]
+   [:version ::version]
    [:ref ::ref]
    [:name ::name]
    [:engine ::engine]
@@ -121,14 +127,14 @@
                     node))
                 database))
 
-(defmethod import/yaml->toucan :v0/database
+(defmethod import/yaml->toucan [:v0 :database]
   [representation _ref-index]
   (-> representation
       (set/rename-keys {:connection_details :details})
       (select-keys [:name :engine :description :details :schemas :ref])
       (hydrate-env-vars)))
 
-(defmethod import/persist! :v0/database
+(defmethod import/persist! [:v0 :database]
   [representation ref-index]
   (let [representation (import/yaml->toucan representation ref-index)]
     (if-some [existing (t2/select-one :model/Database
@@ -199,7 +205,8 @@
 
 (defmethod export/export-entity :model/Database [database]
   (let [ref (v0-common/unref (v0-common/->ref (:id database) :database))]
-    (-> {:type :v0/database
+    (-> {:type :database
+         :version :v0
          :ref ref
          :name (:name database)
          :engine (:engine database)

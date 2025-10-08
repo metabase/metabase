@@ -8,7 +8,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'document' for this schema"}
-   :v0/document])
+   :document])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this document schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -45,6 +50,7 @@
   [:map
    {:description "v0 schema for human-writable document representation"}
    [:type ::type]
+   [:version ::version]
    [:ref ::ref]
    [:name ::name]
    [:content_type ::content-type]

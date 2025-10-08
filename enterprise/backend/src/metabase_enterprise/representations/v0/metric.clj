@@ -13,7 +13,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/metric [_]
+(defmethod import/type->schema [:v0 :metric] [_]
   ::metric)
 
 ;;; ----------------------------- Column Schema Definitions -----------------------------
@@ -150,7 +150,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Type must be 'metric' or 'v0/metric'"}
-   :metric :v0/metric "metric" "v0/metric"])
+   :metric "metric"])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this metric schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -195,6 +200,7 @@
    [:map
     {:description "v0 schema for human-writable model representation"}
     [:type ::type]
+    [:version ::version]
     [:ref ::ref]
     [:name {:optional true} ::name]
     [:description {:optional true} ::description]
@@ -248,6 +254,7 @@
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
+;; TODO(rileythomp): Update this to be the import/persist! multimethod
 (defn persist!
   "Ingest a v0 metric representation and create or update a Card (Metric) in the database.
 
@@ -257,6 +264,7 @@
 
    Returns the created/updated Card."
   [representation ref-index]
+  ;; TODO(rileythomp): Update this to use import/yaml->toucan multimethod
   (let [metric-data (yaml->toucan representation ref-index)
         ;; Generate stable entity_id from ref and collection
         entity-id (v0-common/generate-entity-id representation)
@@ -291,8 +299,8 @@
 (defmethod export/export-entity :metric [card]
   (let [query (patch-refs-for-export (:dataset_query card))]
     (cond-> {:name (:name card)
-             ;;:version "question-v0"
              :type (:type card)
+             :version :v0
              :ref (v0-common/unref (v0-common/->ref (:id card) :metric))
              :description (:description card)}
 

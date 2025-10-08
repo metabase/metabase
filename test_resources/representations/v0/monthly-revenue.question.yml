@@ -1,4 +1,5 @@
 type: question
+version: v0
 ref: monthly-revenue
 name: Monthly Revenue Report
 description: Tracks total revenue by month for the current year

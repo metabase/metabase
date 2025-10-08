@@ -9,7 +9,7 @@
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
-(defmethod import/type->schema :v0/collection [_]
+(defmethod import/type->schema [:v0 :collection] [_]
   ::collection)
 
 ;;; ------------------------------------ Schema Definitions ------------------------------------
@@ -17,7 +17,12 @@
 (mr/def ::type
   [:enum {:decode/json keyword
           :description "Entity type, must be 'collection' for this schema"}
-   :v0/collection])
+   :collection])
+
+(mr/def ::version
+  [:enum {:decode/json keyword
+          :description "Version of this collection schema"}
+   :v0])
 
 (mr/def ::ref
   [:and
@@ -43,6 +48,7 @@
                   Collections organize cards, dashboards, and other resources.
                   Every representations directory MUST have a collection.yml file."}
    [:type ::type]
+   [:version ::version]
    [:ref ::ref]
    [:name {:optional true} [:maybe ::name]]
    [:description {:optional true} [:maybe ::description]]
@@ -63,7 +69,7 @@
        :data
        (mapv model->url)))
 
-(defmethod import/yaml->toucan :v0/collection
+(defmethod import/yaml->toucan [:v0 :collection]
   [{collection-name :name
     :keys [entity-id description collection] :as _representation}
    _ref-index]
@@ -83,14 +89,15 @@
 (defn export
   "Export the collection, returning EDN suitable for yml"
   [collection]
-  (-> {:type "collection"
+  (-> {:type :collection
+       :version :v0
        :ref (format "%s-%s" "collection" (:id collection))
        :name (:name collection)
        :description (:description collection)
        :children (children collection)}
       u/remove-nils))
 
-(defmethod import/persist! :v0/collection
+(defmethod import/persist! [:v0 :collection]
   [representation ref-index]
   (let [collection-data (import/yaml->toucan representation ref-index)
         entity-id (:entity_id collection-data)

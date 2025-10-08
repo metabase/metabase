@@ -1,10 +1,11 @@
-type: v0/model
+type: model
+version: v0
 ref: product-performance
 name: Product Performance Model
 description: Product analytics model showing sales performance, inventory metrics, and ratings
 database: Sample Database
 query: |
-  SELECT 
+  SELECT
     p.ID AS "product_id",
     p.TITLE AS "product_name",
     p.CATEGORY AS "category",
@@ -22,7 +23,7 @@ query: |
     AVG(o.TAX) AS "avg_tax",
     MAX(o.CREATED_AT) AS "last_order_date",
     MIN(o.CREATED_AT) AS "first_order_date",
-    CASE 
+    CASE
       WHEN SUM(o.SUBTOTAL) > 10000 THEN 'Star Product'
       WHEN SUM(o.SUBTOTAL) > 5000 THEN 'High Performer'
       WHEN SUM(o.SUBTOTAL) > 1000 THEN 'Standard'
@@ -45,112 +46,112 @@ columns:
     description: Unique identifier for each product
     base_type: type/BigInteger
     semantic_type: type/PK
-    
+
   - name: product_name
     display_name: Product Name
     description: Full product title
     base_type: type/Text
     semantic_type: type/Name
-    
+
   - name: category
     display_name: Product Category
     description: Product categorization
     base_type: type/Text
     semantic_type: type/Category
-    
+
   - name: product_code
     display_name: EAN/Barcode
     description: European Article Number or product barcode
     base_type: type/Text
-    
+
   - name: vendor
     display_name: Vendor/Supplier
     description: Company that supplies this product
     base_type: type/Text
     semantic_type: type/Company
-    
+
   - name: price
     display_name: List Price
     description: Current selling price of the product
     base_type: type/Float
     semantic_type: type/Price
     currency: USD
-    
+
   - name: rating
     display_name: Customer Rating
     description: Average customer rating (1-5 scale)
     base_type: type/Float
     semantic_type: type/Score
-    
+
   - name: product_created
     display_name: Product Launch Date
     description: When the product was added to catalog
     base_type: type/DateTime
     semantic_type: type/CreationTimestamp
-    
+
   - name: order_count
     display_name: Total Orders
     description: Number of orders containing this product
     base_type: type/Integer
     semantic_type: type/Quantity
-    
+
   - name: unique_buyers
     display_name: Unique Customers
     description: Number of different customers who purchased this product
     base_type: type/Integer
     semantic_type: type/Quantity
-    
+
   - name: total_units_sold
     display_name: Units Sold
     description: Total quantity of this product sold
     base_type: type/Integer
     semantic_type: type/Quantity
-    
+
   - name: gross_revenue
     display_name: Gross Revenue
     description: Total revenue before taxes and discounts
     base_type: type/Float
     semantic_type: type/Currency
     currency: USD
-    
+
   - name: net_revenue
     display_name: Net Revenue
     description: Total revenue after taxes and discounts
     base_type: type/Float
     semantic_type: type/Currency
     currency: USD
-    
+
   - name: avg_discount
     display_name: Average Discount
     description: Average discount applied to this product
     base_type: type/Float
     semantic_type: type/Discount
     currency: USD
-    
+
   - name: avg_tax
     display_name: Average Tax
     description: Average tax amount on this product
     base_type: type/Float
     semantic_type: type/Currency
     currency: USD
-    
+
   - name: last_order_date
     display_name: Last Sale Date
     description: Most recent order date for this product
     base_type: type/DateTime
     semantic_type: type/UpdatedTimestamp
-    
+
   - name: first_order_date
     display_name: First Sale Date
     description: Earliest order date for this product
     base_type: type/DateTime
-    
+
   - name: performance_tier
     display_name: Performance Tier
     description: Product classification based on revenue (Star Product, High Performer, Standard, Low Performer, No Sales)
     base_type: type/Text
     semantic_type: type/Category
-    
+
   - name: rating_category
     display_name: Rating Category
     description: Categorized rating (Excellent, Good, Average, Poor, Not Rated)
