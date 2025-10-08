@@ -13,19 +13,16 @@ const getSameSiteOptions = (): Options[] => [
   {
     value: "lax",
     name: t`Lax (default)`,
-    // eslint-disable-next-line no-literal-metabase-strings -- admin settings
     description: t`Allows Metabase session cookies to be shared on the same domain. Used for production instances on the same domain.`,
   },
   {
     value: "strict",
     name: t`Strict (not recommended)`,
-    // eslint-disable-next-line no-literal-metabase-strings -- admin settings
     description: t`Does not allow Metabase session cookies to be shared with embedded instances. Use this if you do not want to enable session sharing with embedding.`,
   },
   {
     value: "none",
     name: t`None (requires HTTPS)`,
-    // eslint-disable-next-line no-literal-metabase-strings -- admin settings
     description: t`Use "None" when your app and Metabase are hosted on different domains. Incompatible with Safari and iOS-based browsers.`,
   },
 ];
