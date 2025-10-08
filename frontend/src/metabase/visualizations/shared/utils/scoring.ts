@@ -5,6 +5,37 @@
  */
 
 /**
+ * Rounds a number to the specified number of decimal places using half-round-to-even (banker's rounding).
+ * This means that when the digit to be rounded is exactly 5, it rounds to the nearest even number.
+ *
+ * @param value - The number to round
+ * @param decimals - The number of decimal places to round to
+ * @returns The rounded number
+ *
+ * @example
+ * halfRoundToEven(54.165, 2) // returns 54.16
+ * halfRoundToEven(54.155, 2) // returns 54.16
+ * halfRoundToEven(54.175, 2) // returns 54.18
+ */
+export function halfRoundToEven(value: number, decimals: number): number {
+  const factor = Math.pow(10, decimals);
+  const scaled = value * factor;
+
+  // Check if the fractional part is exactly 0.5
+  const fractionalPart = scaled - Math.floor(scaled);
+  const isHalf = Math.abs(fractionalPart - 0.5) < Number.EPSILON;
+
+  if (isHalf) {
+    // For half values, round to even
+    const integerPart = Math.floor(scaled);
+    return (integerPart % 2 === 0 ? integerPart : integerPart + 1) / factor;
+  } else {
+    // For non-half values, use standard rounding
+    return Math.round(scaled) / factor;
+  }
+}
+
+/**
  * Score threshold constants based on WPM-2848 specification
  * ≤78.6 → "Needs Improvement"
  * 78.6–92.9 → "Satisfactory"
@@ -134,13 +165,16 @@ export function calculateWeightedScore(items: ScoredItem[]): number {
 }
 
 /**
- * Formats a score for display (2 decimal places)
+ * Formats a score for display (2 decimal places) using Banker's rounding
  *
  * @param score - Score value to format
  * @returns Formatted string
  */
 export function formatScore(score: number): string {
-  return Number.isFinite(score) ? score.toFixed(2) : "0.00";
+  if (!Number.isFinite(score)) {
+    return "0.00";
+  }
+  return halfRoundToEven(score, 2).toFixed(2);
 }
 
 /**

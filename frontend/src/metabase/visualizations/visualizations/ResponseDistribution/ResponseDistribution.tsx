@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Tooltip } from "metabase/ui";
-import { getColorForWeight } from "metabase/visualizations/shared/utils/scoring";
+import {
+  getColorForWeight,
+  halfRoundToEven,
+} from "metabase/visualizations/shared/utils/scoring";
 import {
   getDefaultSize,
   getMinSize,
@@ -52,6 +55,7 @@ export function ResponseDistribution({
   // Get score badge color based on overall score
   // Handle edge cases for score calculation
   const safeScore = Number.isFinite(overallScore) ? overallScore : 0;
+  const roundedScore = halfRoundToEven(safeScore, 2);
   const scoreBadgeColor = getColorForWeight(safeScore, false);
 
   return (
@@ -67,9 +71,9 @@ export function ResponseDistribution({
         <div
           className={styles.scoreBadge}
           role="status"
-          aria-label={t`Overall score: ${safeScore.toFixed(2)}`}
+          aria-label={t`Overall score: ${roundedScore.toFixed(2)}`}
         >
-          {safeScore.toFixed(2)}
+          {roundedScore.toFixed(2)}
         </div>
       </div>
 

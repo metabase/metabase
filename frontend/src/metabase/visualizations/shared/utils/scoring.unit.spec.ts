@@ -7,9 +7,46 @@ import {
   getColorCategoryLabel,
   getColorForWeight,
   getScoreCategory,
+  halfRoundToEven,
 } from "./scoring";
 
 describe("scoring utilities", () => {
+  describe("halfRoundToEven", () => {
+    it("should round half values to the nearest even number", () => {
+      // Examples from the function documentation
+      expect(halfRoundToEven(54.165, 2)).toBe(54.16);
+      expect(halfRoundToEven(54.155, 2)).toBe(54.16);
+      expect(halfRoundToEven(54.175, 2)).toBe(54.18);
+    });
+
+    it("should round non-half values using standard rounding", () => {
+      expect(halfRoundToEven(54.163, 2)).toBe(54.16);
+      expect(halfRoundToEven(54.167, 2)).toBe(54.17);
+      expect(halfRoundToEven(54.174, 2)).toBe(54.17);
+      expect(halfRoundToEven(54.176, 2)).toBe(54.18);
+    });
+
+    it("should handle various decimal places", () => {
+      expect(halfRoundToEven(2.5, 0)).toBe(2); // Round to even
+      expect(halfRoundToEven(3.5, 0)).toBe(4); // Round to even
+      expect(halfRoundToEven(1.234, 1)).toBe(1.2);
+      expect(halfRoundToEven(1.256, 1)).toBe(1.3);
+      expect(halfRoundToEven(1.25, 1)).toBe(1.2); // Round to even
+    });
+
+    it("should handle negative numbers", () => {
+      expect(halfRoundToEven(-2.5, 0)).toBe(-2);
+      expect(halfRoundToEven(-3.5, 0)).toBe(-4);
+      expect(halfRoundToEven(-54.165, 2)).toBe(-54.16);
+    });
+
+    it("should handle edge cases", () => {
+      expect(halfRoundToEven(0, 2)).toBe(0);
+      expect(halfRoundToEven(0.005, 2)).toBe(0);
+      expect(halfRoundToEven(100, 2)).toBe(100);
+    });
+  });
+
   describe("SCORE_THRESHOLDS", () => {
     it("should have correct threshold values", () => {
       expect(SCORE_THRESHOLDS.NEEDS_IMPROVEMENT_MAX).toBe(78.6);
@@ -150,10 +187,14 @@ describe("scoring utilities", () => {
   });
 
   describe("formatScore", () => {
-    it("should format valid scores to 2 decimal places", () => {
+    it("should format valid scores to 2 decimal places using Banker's rounding", () => {
       expect(formatScore(88.123456)).toBe("88.12");
       expect(formatScore(100)).toBe("100.00");
       expect(formatScore(0)).toBe("0.00");
+      // Test Banker's rounding specifically
+      expect(formatScore(54.165)).toBe("54.16"); // Round to even
+      expect(formatScore(54.155)).toBe("54.16"); // Round to even
+      expect(formatScore(54.175)).toBe("54.18"); // Round to even
     });
 
     it("should handle edge cases", () => {
