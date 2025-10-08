@@ -32,10 +32,10 @@ jobs:
           curl https://raw.githubusercontent.com/bbatsov/clojure-style-guide/refs/heads/master/README.adoc -o CLOJURE_STYLE_GUIDE.adoc
 
       - uses: anthropics/claude-code-action@v1
+        timeout-minutes: 10
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.claude-app-token.outputs.token }}
-          timeout-minutes: 10
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}

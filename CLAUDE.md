@@ -578,3 +578,31 @@ violations of the Community Clojure Style Guide.
   method implementations it inherits.
 
 - Drivers should only use methods from the `driver` or `driver-api` modules.
+
+- Be sure to minimize the amount of logic you're doing inside the `read-column-thunk` in JDBC-based drivers as much as
+  possible. Here's our Athena code for java.sql.Types/TIMESTAMP_WITH_TIMEZONE for example:
+
+  ```clj
+  (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
+    [_driver ^ResultSet rs _rs-meta ^Long i]
+    (fn []
+      ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
+      (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
+        (let [timestamp-instant (.toInstant timestamp)
+              results-timezone (driver-api/results-timezone-id)]
+          ...))))
+  ```
+
+  Here's a tiny change that will avoid calling (driver-api/results-timezone-id) potentially 10 million times (for a
+  potential million-row result with 10 timestamp columns)
+
+  ```clj
+  (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
+    [_driver ^ResultSet rs _rs-meta ^Long i]
+    (let [results-timezone (driver-api/results-timezone-id)]
+      (fn []
+        ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
+        (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
+          (let [timestamp-instant (.toInstant timestamp)]
+            ...)))))
+  ```
