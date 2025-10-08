@@ -38,7 +38,12 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <Stack h="100vh" style={{ overflow: "hidden" }} gap={0}>
       <BenchAppBar onSidebarToggle={toggle} isSidebarOpen={showBenchNav} />
-      <PanelGroup id="workbench-layout" autoSaveId="workbench-layout" direction="horizontal" style={{ width: '100%' }}>
+      <PanelGroup
+        id="workbench-layout"
+        autoSaveId="workbench-layout"
+        direction="horizontal"
+        style={{ width: '100%' }}
+      >
         {showBenchNav && (
           <>
             <Panel
@@ -47,7 +52,7 @@ export const BenchApp = ({ children }: { children: React.ReactNode }) => {
               collapsible={true}
               collapsedSize={getSize(64)}
               minSize={15}
-              style={{ overflow: "hidden" }}
+              style={{ overflow: "auto" }}
             >
               <BenchNav />
             </Panel>
