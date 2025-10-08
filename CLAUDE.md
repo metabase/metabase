@@ -344,8 +344,9 @@ Review pull requests with a focus on:
   (...)
   ```
 
-- Break up larger functions (> 10 lines) whenever possible. Small functions are much easier to test, understand, and
-  tweak.
+- Break up larger functions (> 20 lines) in source code (`src` or `enterprise/backend/src`) whenever possible. Small
+  functions are much easier to test, understand, and tweak. Tests are allowed to be longer, especially when they
+  contain mock data, but they should probably never be more than 100 lines.
 
 - Try to keep lines 118 characters wide or less; use this as a guideline when formatting docstrings.
 
