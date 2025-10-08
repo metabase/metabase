@@ -238,7 +238,7 @@
 (deftest max-ttl-test
   (testing (str "Check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should "
                 "evict any entries older that `query-caching-max-ttl`. Set max-ttl to 100 ms, run query `:abc`, "
-                "then wait 200 ms, and run `:def`. This should trigger the cache flush for entries past "
+                "then wait 200 ms, and run the query. This should trigger the cache flush for entries past "
                 "`:max-ttl`; and the cached entry for `:abc` should be deleted. Running `:abc` a subsequent time "
                 "should not return cached results")
     (with-mock-cache! [purge-chan]
@@ -246,7 +246,7 @@
         (run-query)
         (mt/wait-for-result purge-chan)
         (Thread/sleep 200)
-        (run-query :query :def)
+        (run-query :stages [{:lib/type :mbql.stage/native, :native "SELECT abc;"}])
         (mt/wait-for-result purge-chan)
         (is (= :not-cached
                (run-query)))))))
