@@ -226,8 +226,8 @@ const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
   const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
-  const isNative = firstQuestion?.isNative();
-  const isNativeView = isNative && props.queryBuilderMode === "view";
+  const isNativeView =
+    props.queryBuilderMode === "view" && firstQuestion?.isNative();
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
