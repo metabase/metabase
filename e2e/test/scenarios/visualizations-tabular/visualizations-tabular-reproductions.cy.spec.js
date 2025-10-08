@@ -916,8 +916,8 @@ describe("issue 7884", () => {
             cy.request("PUT", `/api/card/${sourceQuestion.id}`, {
               ...sourceQuestion,
               dataset_query: {
-                ...sourceQuestion.dataset_query,
                 native: newSourceQuestionDetails.native,
+                "template-tags": {},
               },
             });
             H.visitQuestion(nestedQuestion.id);
