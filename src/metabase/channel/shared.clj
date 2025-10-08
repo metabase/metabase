@@ -32,8 +32,8 @@
   "Realize the data rows in a [[metabase.notification.payload.execute/Part]].
 
   If the rows are stored in a StreamingTempFileStorage and the file is too large
-  (> 10MB), returns the part with an :error field set so the render pipeline
-  will display an appropriate error message."
+  (> 10MB)[[metabase.notification.settings/notification-temp-file-size-max-bytes]], returns the part with an :error
+  field set so the render pipeline will display an appropriate error message."
   [part]
   (when part
     (try

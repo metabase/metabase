@@ -161,7 +161,7 @@
   Object
   (toString [_]
     (if (.exists file)
-      (format "#StreamingTempFileStorage{:file %s, :size %.2f KB, :context %s}"
+      (format "#StreamingTempFileStorage{:file %s, :size %s, :context %s}"
               (.getName file)
               (human-readable-size (.length file))
               (pr-str context))
