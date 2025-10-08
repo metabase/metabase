@@ -178,17 +178,18 @@ export const QuestionMoreActionsMenu = ({
         {t`Edit settings`}
       </Menu.Item>
     ),
+    (hasCollectionPermissions || hasDataPermissions) && (
+      <Menu.Divider key="divider" />
+    ),
     hasCollectionPermissions && (
-      <Fragment key="move">
-        <Menu.Divider />
-        <Menu.Item
-          leftSection={<Icon name="move" />}
-          data-testid={MOVE_TESTID}
-          onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
-        >
-          {c("A verb, not a noun").t`Move`}
-        </Menu.Item>
-      </Fragment>
+      <Menu.Item
+        key="move"
+        leftSection={<Icon name="move" />}
+        data-testid={MOVE_TESTID}
+        onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
+      >
+        {c("A verb, not a noun").t`Move`}
+      </Menu.Item>
     ),
     hasDataPermissions && (
       <Menu.Item
