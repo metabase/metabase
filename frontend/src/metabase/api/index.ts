@@ -32,6 +32,7 @@ export * from "./session";
 export * from "./settings";
 export * from "./slack";
 export * from "./snippet";
+export * from "./store-api";
 export * from "./subscription";
 export * from "./table";
 export * from "./task";
