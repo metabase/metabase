@@ -54,7 +54,7 @@ export function DependencyList({
   );
 
   return (
-    <Card p={0} shadow="none" withBorder>
+    <Card className={S.root} shadow="none" withBorder>
       <ListHeader
         selection={selection}
         searchText={searchText}
@@ -105,7 +105,7 @@ type ListBodyProps = {
 
 const ListBody = memo(function ListBody({ nodes }: ListBodyProps) {
   return (
-    <div>
+    <div className={S.body}>
       {nodes.map((node) => (
         <ListItem key={getNodeId(node.id, node.type)} node={node} />
       ))}
@@ -146,9 +146,10 @@ function ListItemLink({ info, isSecondary }: ListItemLinkProps) {
     <Flex
       className={S.itemLink}
       component={Link}
-      gap="sm"
       to={info.link ?? ""}
       target="_blank"
+      gap="sm"
+      align="center"
     >
       <Icon name={info.icon} />
       <Box fz={isSecondary ? "sm" : "md"} lh={isSecondary ? "h5" : "h4"}>

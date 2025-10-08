@@ -16,6 +16,7 @@ import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import { DataPicker } from "./DataPicker";
+import S from "./DependencyLineage.module.css";
 import { DependencyList } from "./DependencyList";
 import { GraphContext } from "./GraphContext";
 import { GraphNode } from "./GraphNode";
@@ -78,7 +79,7 @@ export function DependencyLineage({
           />
         </Panel>
         {selection && (
-          <Panel position="top-right">
+          <Panel className={S.dependencyPanel} position="top-right">
             <DependencyList
               selection={selection}
               onSelectionChange={setSelection}

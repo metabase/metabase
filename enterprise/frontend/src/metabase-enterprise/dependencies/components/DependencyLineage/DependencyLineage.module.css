@@ -9,3 +9,9 @@
     border-color: var(--mb-color-brand);
   }
 }
+
+.dependencyPanel {
+  display: flex;
+  flex-direction: column;
+  bottom: 0;
+}
