@@ -997,12 +997,13 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/let-404 [db (t2/select-one :model/Database :id id)]
-    (api/check-403 (mi/can-write? db))
-    (t2/delete! :model/Database :router_database_id id)
-    (database-routing/delete-associated-database-router! id)
-    (t2/delete! :model/Database :id id)
-    (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*}))
+  (t2/with-transaction [_conn]
+    (api/let-404 [db (t2/select-one :model/Database :id id)]
+      (api/check-403 (mi/can-write? db))
+      (t2/delete! :model/Database :router_database_id id)
+      (database-routing/delete-associated-database-router! id)
+      (t2/delete! :model/Database :id id)
+      (events/publish-event! :event/database-delete {:object db :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 ;;; ------------------------------------------ POST /api/database/:id/sync_schema -------------------------------------------

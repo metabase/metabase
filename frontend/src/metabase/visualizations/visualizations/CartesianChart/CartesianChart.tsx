@@ -151,7 +151,7 @@ function _CartesianChart(props: VisualizationProps) {
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {showTitle && (
         <LegendCaption
-          title={settings["card.title"]}
+          title={settings["card.title"] ?? card.name}
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
