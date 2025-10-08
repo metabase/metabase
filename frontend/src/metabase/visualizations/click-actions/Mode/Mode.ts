@@ -1,3 +1,4 @@
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type { DrillThruDisplayInfo } from "metabase-lib";
@@ -60,6 +61,7 @@ export class Mode {
           column: clicked.column,
           event: clicked.event,
           data: clicked.data,
+          question: transformSdkQuestion(question),
         },
       );
 
