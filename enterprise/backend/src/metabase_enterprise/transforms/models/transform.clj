@@ -37,8 +37,8 @@
    :run_trigger mi/transform-keyword})
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
-  [_model _k runs]
   "Add transform to a TransformRun"
+  [_model _k runs]
   (if-not (seq runs)
     runs
     (let [transform-ids (into #{} (map :transform_id) runs)
