@@ -165,6 +165,8 @@ Review pull requests with a focus on:
 
 ## More Instructions
 
+- Use **tons** of emojis in every comment you write -- the more, the better! 🥰
+
 - Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with
   it as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style
   Guide.
