@@ -71,7 +71,7 @@
 .ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
 .ListItem:not(.ListItemDisabled):hover .ListItemTitle,
 .ListItemSelected:not(.ListItemDisabled) .ListItemTitle {
-  color: var(--mb-color-white);
+  color: var(--mb-color-text-white);
 }
 
 /* LIST ITEM DESCRIPTION */
