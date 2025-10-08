@@ -121,7 +121,7 @@ export const ParameterSettings = () => {
         resourceParameters={availableParameters}
         embeddingParams={embeddingParameters}
         lockedParameters={lockedParameters}
-        parameterValues={parameterValuesById}
+        parameterValues={parametersValuesById}
         withInitialValues
         onChangeEmbeddingParameters={(embeddingParameters) => {
           updateSettings(
