@@ -1197,12 +1197,13 @@
                                             {:name         "subtotal"
                                              :base_type    :type/Float
                                              :display_name "subtotal"}]}]})
-            col-breakout (fn [query col-name]
-                           (lib/breakout query (m/find-first (comp #{col-name} :name) (lib/breakoutable-columns query))))
+            breakout-by-column-name (fn [query col-name]
+                                      (lib/breakout query (m/find-first (comp #{col-name} :name)
+                                                                        (lib/breakoutable-columns query))))
             query (-> (lib/query mp (lib.metadata/card mp 1))
                       (lib/aggregate (lib/count))
-                      (col-breakout "product_id")
-                      (col-breakout "subtotal"))
+                      (breakout-by-column-name "product_id")
+                      (breakout-by-column-name "subtotal"))
             pivot-query (assoc query
                                :pivot_rows         [0]
                                :pivot_cols         [1]
