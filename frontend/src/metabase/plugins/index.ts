@@ -856,11 +856,25 @@ export const PLUGIN_GIT_SYNC: {
     onItemSelect: () => void;
   }>;
   getGitSyncInvalidationTags: () => any[] | null;
+  useSyncStatus: () => {
+    isIdle: boolean;
+    taskType: any;
+    progress: number;
+    message: string;
+    progressModal: ReactNode;
+  };
 } = {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   getGitSyncInvalidationTags: () => null,
+  useSyncStatus: () => ({
+    isIdle: true,
+    taskType: null,
+    progress: 0,
+    message: "",
+    progressModal: null,
+  }),
 };
 
 export type PythonTransformsPlugin = {

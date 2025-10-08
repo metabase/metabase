@@ -41,8 +41,8 @@ import {
 } from "metabase-enterprise/api/git-sync";
 import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 
-import { CollectionSyncManager } from "./CollectionSyncManager";
-import { GIT_SYNC_SCHEMA } from "./constants";
+import { CollectionSyncManager } from "../CollectionSyncManager";
+import { GIT_SYNC_SCHEMA } from "../constants";
 
 const URL_KEY = "remote-sync-url";
 const TOKEN_KEY = "remote-sync-token";
