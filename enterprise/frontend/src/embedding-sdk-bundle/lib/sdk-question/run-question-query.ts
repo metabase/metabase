@@ -83,6 +83,8 @@ export function shouldRunCardQuery({
   question: Question;
   isStaticEmbedding: boolean | null;
 }): boolean {
+  // Static embedding questions have some fields missing, and it forces the this.legacyNativeQuery().canRun() to return `false`
+  // To avoid it we just force-return true for static embedding
   if (isStaticEmbedding) {
     return true;
   }
