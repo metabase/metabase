@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [every?])
   (:require
    [malli.core :as mc]
-   [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
@@ -69,6 +69,10 @@
     [:alias       {:optional true} :string]
     [:dimension   {:optional true} [:ref :mbql.clause/field]]]])
 
+(mr/def ::field-filter.options
+  [:map
+   {:decode/normalize lib.schema.common/normalize-map-no-kebab-case}])
+
 ;; Example:
 ;;
 ;;    {:id           "c20851c7-8a80-0ffa-8a99-ae636f0e9539"
@@ -90,7 +94,7 @@
     ;; are allowed to be specified for it.
     [:widget-type [:ref ::widget-type]]
     ;; optional map to be appended to filter clause
-    [:options {:optional true} [:maybe :map]]]])
+    [:options {:optional true} [:maybe ::field-filter.options]]]])
 
 (mr/def ::disallow-dimension
   (common/disallowed-keys {:dimension ":dimension is only allowed for :type :dimension template tags"}))

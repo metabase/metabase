@@ -37,3 +37,26 @@
                                          :display-name "id"
                                          :type         :temporal-unit
                                          :dimension    [:field 1]}})))))
+
+(deftest ^:parallel normalize-template-tag-options-map-test
+  (is (= {:default      nil
+          :id           "f7672b4d-1e84-1fa8-bf02-b5e584cd4535"
+          :name         "state"
+          :display-name "State"
+          :type         :dimension
+          :options      {:case-sensitive false}
+          :dimension    [:field
+                         {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
+                         1]
+          :widget-type  :string/contains}
+         (lib/normalize ::lib.schema.template-tag/template-tag
+                        {:default      nil
+                         :id           "f7672b4d-1e84-1fa8-bf02-b5e584cd4535"
+                         :name         "state"
+                         :display-name "State"
+                         :type         :dimension
+                         :options      {"case-sensitive" false}
+                         :dimension    [:field
+                                        {:base-type :type/Text, :lib/uuid "15f3559e-5c7a-4684-9a7a-d906da2eaf61", :effective-type :type/Text}
+                                        1]
+                         :widget-type  :string/contains}))))
