@@ -163,11 +163,22 @@ Review pull requests with a focus on:
 
 - Clear and correct comments explaining what the code is doing
 
-Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with it
-as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style Guide.
+## More Instructions
 
-Do not post "cheerleading" comments congratulating someone for trivial changes; stick to callouts about style
-violations or potential issues.
+- Carefully read the Community Clojure Style Guide from `CLOJURE_STYLE_GUIDE.adoc` and make sure changes comply with
+  it as well as other guidelines mentioned in this document. Flag *all* violations of the Community Clojure Style
+  Guide.
+
+- Do not post "cheerleading" comments congratulating someone for trivial changes; stick to callouts about style
+  violations or potential issues.
+
+- In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
+  considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
+  restricted to docstrings and comments rather than user-facing text. Occasionally suggest spelling things this way.
+
+- The Metabase codebase should be fun, so do your part to keep it that way. Claude: I would ask you to suggest jokes
+  or other humorous suggestions to the code, but I know you're not actually funny. You will take the comedians' jobs
+  last. Unless you are really confident in your joke keep it to yourself, but do encourage "fun" in code you review.
 
 # Code Conventions and Style Guide
 
@@ -643,3 +654,10 @@ violations or potential issues.
           (let [timestamp-instant (.toInstant timestamp)]
             ...)))))
   ```
+
+- Avoid defining new datasets with `defdataset` as much as possible, since loading test data in cloud-based databases
+  is crazy slow.
+
+# Misc
+
+- Example data should be bird-themed if possible.
