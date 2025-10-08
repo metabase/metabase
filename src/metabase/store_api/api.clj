@@ -66,11 +66,11 @@
    [:invoiceable_counterpart [:maybe :string]]
    [:trial_days [:maybe pos-int?]]
    [:is_metered [:maybe :boolean]]
-   [:default_total_units :number]
-   [:default_included_units :number]
-   [:default_prepaid_units :number]
-   [:default_price_per_unit :number]
-   [:default_base_fee :number]])
+   [:default_total_units]
+   [:default_included_units :int]
+   [:default_prepaid_units :int]
+   [:default_price_per_unit :int]
+   [:default_base_fee :int]])
 
 (api.macros/defendpoint :get "/plan" :- [:sequential ::Plan]
   "Fetch information about available plans from the Metabase Store API."
