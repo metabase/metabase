@@ -11,7 +11,7 @@ import type {
 } from "./types";
 import { withTimeout } from "./utils";
 
-const READY_TIMEOUT = 10_000;
+const READY_TIMEOUT = 60_000;
 const EXECUTE_TIMEOUT = 60_000;
 
 export class PyodideWorkerManager {
@@ -98,6 +98,8 @@ export class PyodideWorkerManager {
 
       const handleMessage = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
         unsubscribe();
+
+        console.error("Received message", data);
 
         switch (data.type) {
           case type:
