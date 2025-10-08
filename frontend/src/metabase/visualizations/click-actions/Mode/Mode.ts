@@ -1,4 +1,4 @@
-import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
+import { transformClickedDataPoint } from "metabase/embedding-sdk/lib/transform-clicked";
 import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { queryDrill } from "metabase/querying/drills/utils/query-drill";
 import type { DrillThruDisplayInfo } from "metabase-lib";
@@ -56,13 +56,7 @@ export class Mode {
     if (this._plugins?.mapQuestionClickActions) {
       const actionsOrActionObject = this._plugins.mapQuestionClickActions(
         actions,
-        {
-          value: clicked.value,
-          column: clicked.column,
-          event: clicked.event,
-          data: clicked.data,
-          question: transformSdkQuestion(question),
-        },
+        transformClickedDataPoint(clicked, question),
       );
 
       // If the plugin returns a single object, it means we should call that action right away without showing the popover
