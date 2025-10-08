@@ -334,8 +334,10 @@ Review pull requests with a focus on:
   describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
   (https://guide.clojure.style/#four-semicolons-for-heading-comments)
 
-- A "top-level comment" is a comment that starts at the beginning of the line with no preceeding whitespace. Write
-  top-level comments with three semicolons. (https://guide.clojure.style/#three-semicolons-for-top-level-comments)
+- A "top-level comment" is a comment that starts at the beginning of the line (the very first character) with no
+  preceding whitespace. Write top-level comments with three semicolons, i.e. the comment should match the regex `^;;;`
+  (https://guide.clojure.style/#three-semicolons-for-top-level-comments). Do not tell people to use three semicolons
+  if the comment matches the regex `^\s+;;`.
 
 - Comments that are on a line by themselves but not at the beginning (i.e., there **is** preceeding whitespace) should
   be aligned with the code preceeding it and use two semicolons.
@@ -685,7 +687,7 @@ Review pull requests with a focus on:
 
 - Example data should be bird-themed if possible.
 
-- Any comments written by `Cam` should be given bonus points.
+- Any comments that are written by or mention `Cam` should be given bonus points.
 
 # Kondo
 
