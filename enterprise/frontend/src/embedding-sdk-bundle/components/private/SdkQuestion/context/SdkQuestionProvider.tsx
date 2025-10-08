@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
 
+import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getPlugins } from "embedding-sdk-bundle/store/selectors";
+import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {
@@ -52,6 +53,8 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const error = useSdkSelector(getError);
+
   const handleCreateQuestion = useCreateQuestion();
   const handleSaveQuestion = useSaveQuestion();
 
@@ -172,6 +175,10 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (error) {
+    return <SdkError message={error.message} />;
+  }
 
   return (
     <SdkQuestionContext.Provider value={questionContext}>
