@@ -97,6 +97,10 @@
                            (-> result :data :cols))]
        (rf (cond-> result
              (and (seq incoming-cols)
+                  ;; For pivot queries, the number of incoming-cols can be greater than the number of base-types
+                  ;; in these cases, the incoming-cols already have the correct type, no calculation is necessary.
+                  ;; For native queries where this correction is needed, the number and position of the columns
+                  ;; and the base-types should match. (#64124)
                   (= (count incoming-cols) (count base-types)))
              (assoc-in [:data :cols] (mapv (fn [col base-type]
                                              (cond-> (assoc col :base_type base-type, :effective_type base-type)
