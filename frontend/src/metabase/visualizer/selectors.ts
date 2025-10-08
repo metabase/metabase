@@ -52,7 +52,8 @@ export const getVisualizerRawSettings = (state: State) =>
 export const getCards = (state: State) => getCurrentHistoryItem(state).cards;
 
 export function getVisualizationTitle(state: State) {
-  const settings = getVisualizerRawSettings(state);
+  // Using computed settings to capture computed default "card.title" value if was not explicitly saved
+  const settings = getVisualizerComputedSettings(state);
   return settings["card.title"];
 }
 
@@ -145,8 +146,13 @@ export const getVisualizerDatasetColumns = createSelector(
 );
 
 const getVisualizerFlatRawSeries = createSelector(
-  [getVisualizationType, getVisualizerRawSettings, getVisualizerDatasetData],
-  (display, settings, data): RawSeries => {
+  [
+    getVisualizationType,
+    getVisualizerRawSettings,
+    getVisualizerDatasetData,
+    getCards,
+  ],
+  (display, settings, data, cards): RawSeries => {
     if (!display) {
       return [];
     }
@@ -156,6 +162,8 @@ const getVisualizerFlatRawSeries = createSelector(
         card: {
           display,
           dataset_query: {},
+          name: cards[0].name,
+          description: cards[0].description,
           visualization_settings: settings,
         } as Card,
 
