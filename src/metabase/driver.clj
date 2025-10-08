@@ -1208,7 +1208,7 @@
 (mr/def ::native-query-deps.transform-dep
   [:map
    {:closed true}
-   [:transform pos-int?]])
+   [:transform :metabase.lib.schema.id/transform]])
 
 (mr/def ::native-query-deps
   [:set [:or

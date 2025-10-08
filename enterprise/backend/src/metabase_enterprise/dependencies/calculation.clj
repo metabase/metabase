@@ -35,13 +35,13 @@
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  [{{:keys [query]} :source :as transform} :- [:map
-                                               [:source [:map
-                                                         [:query ::lib.schema/query]]]]]
-  (if (lib/native-only-query? query)
-    (do (log/warnf "Don't know how to analyze the deps of native-only Transform %d" (:id transform))
-        {})
-    (upstream-deps:query query)))
+  [{{:keys [query], source-type :type} :source :as transform} :- [:map
+                                                                  [:source [:map
+                                                                            [:query ::lib.schema/query]]]]]
+  (if (= (keyword source-type) :query)
+    (upstream-deps:query query)
+    (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
+        {})))
 
 (mu/defn upstream-deps:snippet :- ::deps.schema/upstream-deps
   "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."
