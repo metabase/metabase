@@ -124,10 +124,11 @@
     :transform [:name]
     []))
 
-(defn- entity-value [entity-type {:keys [id] :as entity}]
+(defn- entity-value [entity-type {:keys [id] :as entity} usages]
   {:id id
    :type entity-type
-   :data (select-keys entity (entity-keys entity-type))})
+   :data (select-keys entity (entity-keys entity-type))
+   :dependents (usages [entity-type id])})
 
 #_(defn- expanded-entity-keys [entity-type]
     (case entity-type
@@ -151,26 +152,36 @@
            [(entity-model entity-type) :id]
            extra-conditions))
 
-#_(defn- calc-usages
-    "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
-    [graph nodes]
-    (let [children-map (graph/children-of graph nodes)
-          all-cards (->> (vals children-map)
-                         (apply concat)
-                         distinct
-                         (keep #(when (= (first %) :card)
-                                  (second %))))
-          card->type (when (seq all-cards)
-                       (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
-      (m/map-vals (fn [children]
-                    (->> children
-                         (map (fn [[entity-type entity-id]]
-                                (let [dependency-type (if (= entity-type :card)
-                                                        (card->type entity-id)
-                                                        entity-type)]
-                                  {dependency-type 1})))
-                         (apply merge-with +)))
-                  children-map)))
+(defn- calc-usages
+  "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
+  [graph nodes]
+  (let [children-map (graph/children-of graph nodes)
+        all-cards (->> (vals children-map)
+                       (apply concat)
+                       distinct
+                       (keep #(when (= (first %) :card)
+                                (second %))))
+        card->type (when (seq all-cards)
+                     (t2/select-fn->fn :id :type [:model/Card :id :type :card_schema] :id [:in all-cards]))]
+    (m/map-vals (fn [children]
+                  (->> children
+                       (map (fn [[entity-type entity-id]]
+                              (let [dependency-type (if (= entity-type :card)
+                                                      (card->type entity-id)
+                                                      entity-type)]
+                                {dependency-type 1})))
+                       (apply merge-with +)))
+                children-map)))
+
+(defn- expanded-nodes [downstream-graph nodes]
+  (let [usages (calc-usages downstream-graph nodes)
+        nodes-by-type (->> (group-by first nodes)
+                           (m/map-vals #(map second %)))]
+    (mapcat (fn [[entity-type entity-ids]]
+              (t2/select-fn-vec #(entity-value entity-type % usages)
+                                (entity-model entity-type)
+                                :id [:in entity-ids]))
+            nodes-by-type)))
 
 (api.macros/defendpoint :get "/graph"
   "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
@@ -188,30 +199,34 @@
         ;; edges, we'll call this multiple times on the same nodes.
         downstream-graph (graph/cached-graph (dependency/graph-dependents))
         nodes (-> (into #{} starting-nodes)
-                  (into (graph/transitive upstream-graph starting-nodes))
-                  (into (graph/transitive downstream-graph starting-nodes)))
-        edges (graph/calc-edges downstream-graph nodes)
-        ;; usages (calc-usages downstream-graph nodes)
-        nodes-by-type (->> (group-by first nodes)
-                           (m/map-vals #(map second %)))]
-    {:nodes (mapcat (fn [[entity-type entity-ids]]
-                      (t2/select-fn-vec #(entity-value entity-type %)
-                                        (entity-model entity-type)
-                                        :id [:in entity-ids]))
-                    nodes-by-type)
+                  (into (graph/transitive upstream-graph starting-nodes)))
+        edges (graph/calc-edges downstream-graph nodes)]
+    {:nodes (expanded-nodes downstream-graph nodes)
      :edges edges}))
 
-(api.macros/defendpoint :get "/graph/node"
+(def ^:private dependents-args
+  [:map
+   [:id ms/PositiveInt]
+   [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]
+   [:dependent_type (ms/enum-decode-keyword [:table :card :snippet :transform])]
+   [:dependent_card_type {:optional true} (ms/enum-decode-keyword
+                                           [:question :model :metric])]])
+
+(api.macros/defendpoint :get "/graph/dependents"
   "TODO: This endpoint is supposed to take an :id and :type of an entity (currently :table, :card, :snippet,
   or :transform) and return the entity with all its upstream and downstream dependencies that should be fetched
   recursively. :edges match our :model/Dependency format. Each node in :nodes has :id, :type, and :data, and :data
   depends on the node type. For :table, there should be :display_name. For :card, there should be :name
   and :type. For :snippet -> :name. For :transform -> :name."
   [_route-params
-   {:keys [id type]} :- [:map
-                         [:id ms/PositiveInt]
-                         [:type (ms/enum-decode-keyword [:table :card :snippet :transform])]]]
-  (t2/select-one-fn #(entity-value type %) (entity-model type) :id id))
+   {:keys [id type dependent_type dependent_card_type]} :- dependents-args]
+  (let [downstream-graph (graph/cached-graph (dependency/graph-dependents))
+        nodes (-> (graph/children-of downstream-graph [[type id]])
+                  (get [type id]))]
+    (->> (expanded-nodes downstream-graph nodes)
+         (filter #(and (= (:type %) dependent_type)
+                       (or (not= dependent_type :card)
+                           (= (-> % :data :type) dependent_card_type)))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
