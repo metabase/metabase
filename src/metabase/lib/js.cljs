@@ -2651,6 +2651,8 @@
   Attaches a cache to `metadata-provider` so that subsequent calls with the same `js-query` return the same query
   object. If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying the cache."
   [metadata-provider js-query]
+  (when (gobject/equals js-query #js {})
+    (throw (ex-info "Invalid query: query cannot be empty" {:query js-query})))
   (let [db-id (when (js-in "database" js-query)
                 (gobject/get js-query "database"))]
     (-> (lib.cache/side-channel-cache-weak-refs
