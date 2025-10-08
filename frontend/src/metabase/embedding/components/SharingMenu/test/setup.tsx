@@ -1,5 +1,4 @@
 /* eslint-disable i18next/no-literal-string */
-import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -10,7 +9,7 @@ import {
 import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders } from "__support__/ui";
 import { useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import Question from "metabase-lib/v1/Question";
@@ -201,7 +200,3 @@ export function setupQuestionSharingMenu({
     { storeInitialState: state },
   );
 }
-
-export const openMenu = () => {
-  return userEvent.click(screen.getByTestId("sharing-menu-button"));
-};
