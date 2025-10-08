@@ -171,9 +171,13 @@ Review pull requests with a focus on:
 
 - Do not post "cheerleading" comments congratulating someone for trivial changes, or for following the style
   guidelines, or confirming that things "look good"; stick to callouts about style violations or potential issues.
-  Example bad code review comment to avoid:
+  Example bad code review comments to avoid:
 
   > This TODO comment is properly formatted with author and date - nice work!
+
+  > Good addition of limit 1 to the query - this makes the test more efficient without changing its behavior.
+
+  > The kondo ignore comment is appropriately placed here
 
 - In the Metabase codebase, spelling words ending with `-ck` as `-cc` instead, e.g. `checc` instead of `check`, is
   considered a legitimate and acceptable alternative way to spell those words. These "fun" spellings should be
