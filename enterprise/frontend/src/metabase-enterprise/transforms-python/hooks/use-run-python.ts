@@ -8,8 +8,8 @@ import {
   type PythonLibraries,
 } from "../services/pyodide-worker";
 
-export function useRunPython<T = unknown>(packages: string[] = []) {
-  const [pool] = useState(() => new PyodideWorkerPool(packages));
+export function useRunPython<T = unknown>() {
+  const [pool] = useState(() => new PyodideWorkerPool());
   const controller = useRef<AbortController | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [data, setData] = useState<PythonExecutionResult<T> | null>(null);
