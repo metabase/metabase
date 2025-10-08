@@ -29,7 +29,9 @@ export type MetabaseDataPointObject = {
 export type MetabaseClickActionPluginsConfig = (
   clickActions: MetabaseClickAction[],
   clickedDataPoint: MetabaseDataPointObject,
-) => MetabaseClickAction[] | MetabaseClickAction;
+) =>
+  | MetabaseClickAction[]
+  | { onClick: (context: { closePopover: () => void }) => void };
 
 export type MetabaseDashboardPluginsConfig = {
   dashboardCardMenu?: DashboardCardMenu;

@@ -57,9 +57,6 @@ export const PluginDoActionDirectly = (_args: any) => {
         plugins={{
           mapQuestionClickActions: (clickActions, clicked) => {
             return {
-              name: "custom",
-              title: "Open modal",
-              buttonType: "horizontal",
               onClick: () => {
                 setModalData(clicked);
               },
@@ -95,9 +92,6 @@ export const PluginDoActionDependingOnData = (_args: any) => {
             // this should be the first chart in the E-Commerce Insights dashboard
             if (clicked.question?.id === 12) {
               return {
-                name: "custom",
-                title: "Open modal",
-                buttonType: "horizontal",
                 onClick: () => {
                   setModalData(clicked);
                 },
