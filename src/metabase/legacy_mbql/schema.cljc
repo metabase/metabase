@@ -1710,10 +1710,11 @@
     (complement (every-pred :native :query))]
    [:fn
     {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
-    (fn [{native :native, mbql :query, query-type :type}]
+    (fn [{native :native, mbql :query, query-type :type :as outer}]
       (core/case query-type
         :native (core/not mbql)
         :query  (core/not native)
+        :internal (and (core/not mbql) (core/not native) (:args outer))
         false))]])
 
 (mr/def ::check-query-does-not-have-source-metadata
@@ -1741,7 +1742,7 @@
     [:type
      [:enum
       {:description "Type of query. `:query` = MBQL; `:native` = native."}
-      :query :native]]
+      :query :native :internal]]
 
     [:native     {:optional true} NativeQuery]
     [:query      {:optional true} MBQLQuery]
