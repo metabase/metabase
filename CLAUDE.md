@@ -365,11 +365,10 @@ Review pull requests with a focus on:
 - **No Blank Lines Within Definition Forms** Do not place blank lines in the middle of a function or macro definition.
   An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case
   those don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
-  (https://guide.clojure.style/#no-blank-lines-within-def-forms)
-
-  Verify that the line in question is **actually blank** (i.e., only contains whitespace for the **entire line**)
-  before warning about this. **A line that contains any non-whitespace character is not a blank line.** You will be
-  shut down if you make this mistake too many times, so be careful.
+  (https://guide.clojure.style/#no-blank-lines-within-def-forms) Verify that the line in question is **actually
+  blank** (i.e., only contains whitespace for the **entire line**) before warning about this. **A line that contains
+  any non-whitespace character is not a blank line.** You will be shut down if you make this mistake too many times,
+  so be careful.
 
 - Use `kebab-case` names for variables and defs, including constants.
   (https://guide.clojure.style/#naming-functions-and-variables)
