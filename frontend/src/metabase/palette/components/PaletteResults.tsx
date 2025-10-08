@@ -10,6 +10,7 @@ import {
   Flex,
   Group,
   Icon,
+  Skeleton,
   Stack,
   type StackProps,
   Text,
@@ -20,6 +21,7 @@ import type { SearchResponse } from "metabase-types/api";
 import type { PaletteActionImpl } from "../types";
 import { navigateActionIndex, processResults } from "../utils";
 
+import S from "./Palette.module.css";
 import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
 
@@ -77,6 +79,10 @@ export const PaletteResults = ({
     );
   });
 
+  if (processedResults.length === 0) {
+    return <PaletteResultsSkeleton />;
+  }
+
   return (
     <Stack {...props}>
       <PaletteResultList
@@ -112,6 +118,7 @@ export const PaletteResults = ({
                           q: searchTerm,
                         },
                       }}
+                      className={S.viewAndFilterResults}
                       onClick={() => {
                         query.setVisualState(VisualState.hidden);
 
@@ -128,7 +135,7 @@ export const PaletteResults = ({
                       }}
                     >
                       <Group align="center" gap={rem(4)}>
-                        {t`View and filter all ${searchResults?.total} results`}
+                        <span>{t`View and filter all ${searchResults?.total} results`}</span>
 
                         <Icon name="chevronright" size={12} />
                       </Group>
@@ -145,3 +152,22 @@ export const PaletteResults = ({
     </Stack>
   );
 };
+
+function PaletteResultsSkeleton() {
+  return (
+    <>
+      <Skeleton natural height={30} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+      <Skeleton natural height={30} mt={6} radius="sm" />
+    </>
+  );
+}

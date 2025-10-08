@@ -204,7 +204,7 @@ export const useCommandPalette = ({
             },
             extra: {
               moderatedStatus: result.moderated_status,
-              href: wrappedResult.getUrl(),
+              href: wrappedResult.getUrl?.(),
               iconColor: icon.color,
               subtext: getSearchResultSubtext(wrappedResult),
             },
@@ -371,7 +371,7 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
       </>
     );
   } else {
-    return wrappedSearchResult.getCollection().name;
+    return wrappedSearchResult.getCollection?.()?.name;
   }
 };
 
