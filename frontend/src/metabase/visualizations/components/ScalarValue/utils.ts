@@ -26,12 +26,12 @@ export const findSize = ({
 }: FindSizeInput) => {
   const size = max;
 
-  // Convert to pixels for 8px step calculation
+  // Convert to pixels for step calculation
   const sizePx = typeof size === "string" ? parseFloat(size) * 16 : size * 16;
   const minPx = typeof min === "string" ? parseFloat(min) * 16 : min * 16;
 
-  // Start with the maximum size, rounded down to nearest 8px multiple
-  let currentPx = Math.floor(sizePx / 8) * 8;
+  // Start with the maximum size
+  let currentPx = sizePx;
 
   let metrics = measureText(text, {
     size: `${currentPx}px`,
@@ -39,12 +39,12 @@ export const findSize = ({
     weight: fontWeight,
   });
 
-  // Reduce size by 8px increments until text fits within bounds
+  // Reduce size by 1px increments until text fits within bounds
   while (
     (metrics.width > targetWidth || metrics.height > targetHeight) &&
     currentPx > minPx
   ) {
-    currentPx = Math.max(currentPx - 8, minPx);
+    currentPx = Math.max(currentPx - 1, minPx);
 
     metrics = measureText(text, {
       size: `${currentPx}px`,
@@ -80,7 +80,7 @@ export const getMaxFontSize = (
   const widthBasedSizes: Record<number, number> = {
     2: 1.25,
     3: 1.5,
-    4: 2,
+    4: 2.25,
     5: 2.5,
     6: 2.75,
     7: 3,
@@ -136,7 +136,7 @@ export const getMaxFontSize = (
     const blendFactor = cardColWidth - 7; // 0 at 7 units, 1 at 8 units
     const baseSizeComponent = constrainedBaseSize * (1 - blendFactor);
     const maxSizeComponent = maxSizeRem * blendFactor;
-    finalSize = baseSizeComponent + maxSizeComponent;
+    finalSize = Math.min(baseSizeComponent + maxSizeComponent, maxSizeRem);
   }
 
   return finalSize;
