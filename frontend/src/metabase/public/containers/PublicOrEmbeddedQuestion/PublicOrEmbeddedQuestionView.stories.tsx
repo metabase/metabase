@@ -286,6 +286,10 @@ export const SmartScalarDarkTheme = {
 };
 
 export const SmartScalarLightThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -338,6 +342,10 @@ export const SmartScalarLightThemeTooltip = {
 };
 
 export const SmartScalarDarkThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {

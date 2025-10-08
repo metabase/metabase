@@ -57,7 +57,7 @@
                      (stacktrace/print-stack-trace (Exception. "tracker")))
                    str/split-lines)]
     (some-> (u/seek #(and (re-find #"^\s*metabase\." %)
-                          (not (re-find #"^\s*metabase\.db" %))) trace)
+                          (not (re-find #"^\s*metabase\.(db|app_db\.connection)" %))) trace)
             str/trim)))
 
 (defn- track-query-execution-fn
