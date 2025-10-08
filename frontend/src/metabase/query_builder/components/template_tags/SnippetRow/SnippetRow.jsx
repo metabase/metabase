@@ -43,6 +43,7 @@ class SnippetRowInner extends Component {
             CS.hoverParent,
             CS.hoverDisplay,
           )}
+          style={{ minWidth: 0 }}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <Flex
@@ -55,7 +56,6 @@ class SnippetRowInner extends Component {
                     insertSnippet(snippet);
                   }
             }
-            flex={1}
             miw={0}
           >
             <Icon
@@ -74,7 +74,10 @@ class SnippetRowInner extends Component {
           </Flex>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            className={cx({ [CS.hoverChild]: !isOpen })}
+            className={cx(
+              { [CS.hoverChild]: !isOpen },
+              SnippetRowS.SnippetIcon,
+            )}
           />
         </div>
         {isOpen && (
