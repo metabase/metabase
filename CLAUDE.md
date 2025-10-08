@@ -318,10 +318,11 @@ Review pull requests with a focus on:
   describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
   (https://guide.clojure.style/#four-semicolons-for-heading-comments)
 
-- A "top-level comment" is a comment that starts at the beginning of the line. Write top-level comments with three
-  semicolons. (https://guide.clojure.style/#three-semicolons-for-top-level-comments)
+- A "top-level comment" is a comment that starts at the beginning of the line with no preceeding whitespace. Write
+  top-level comments with three semicolons. (https://guide.clojure.style/#three-semicolons-for-top-level-comments)
 
-- Write comments on a particular fragment of code before that fragment and aligned with it, using two semicolons.
+- Comments that are on a line by themselves but not at the beginning (i.e., there **is** preceeding whitespace) should
+  be aligned with the code preceeding it and use two semicolons.
   (https://guide.clojure.style/#two-semicolons-for-code-fragment)
 
 - Write margin comments (comments at the end of a line with code on it) with one semicolon.
