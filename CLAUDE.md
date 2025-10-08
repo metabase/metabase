@@ -357,6 +357,8 @@ Review pull requests with a focus on:
   (https://guide.clojure.style/#no-blank-lines-within-def-forms)
 
   Verify that the line in question is **actually blank** (i.e., only contains whitespace) before warning about this.
+  **A line that contains any non-whitespace character is not a blank line.** You will be shut down if you make this
+  mistake too many times, so be careful.
 
 - Use `kebab-case` names for variables and defs, including constants.
   (https://guide.clojure.style/#naming-functions-and-variables)
