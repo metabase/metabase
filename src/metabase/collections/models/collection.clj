@@ -109,7 +109,8 @@
   "Is this the trash collection, or a descendant of it?"
   [collection]
   (or (is-trash? collection)
-      (str/starts-with? (:location collection) (trash-path))))
+      (and (:location collection)
+           (str/starts-with? (:location collection) (trash-path)))))
 
 (defn remote-synced-collection?
   "Is this a remote-synced collection?"
