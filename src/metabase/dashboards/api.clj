@@ -128,27 +128,28 @@
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
-  (let [dashboard-data {:name                name
-                        :description         description
-                        :parameters          (or parameters [])
-                        :creator_id          api/*current-user-id*
-                        :cache_ttl           cache_ttl
-                        :collection_id       collection_id
-                        :collection_position collection_position}
-        dash           (t2/with-transaction [_conn]
-                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
-                         ;; collection to change position, check that and fix up if needed
-                         (api/maybe-reconcile-collection-position! dashboard-data)
-                         ;; Ok, now save the Dashboard
-                         (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
-    (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
-    (analytics/track-event! :snowplow/dashboard
-                            {:event        :dashboard-created
-                             :dashboard-id (u/the-id dash)})
-    (-> dash
-        hydrate-dashboard-details
-        collection.root/hydrate-root-collection
-        (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*)))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [dashboard-data {:name                name
+                          :description         description
+                          :parameters          (or parameters [])
+                          :creator_id          api/*current-user-id*
+                          :cache_ttl           cache_ttl
+                          :collection_id       collection_id
+                          :collection_position collection_position}
+          dash           (t2/with-transaction [_conn]
+                           ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                           ;; collection to change position, check that and fix up if needed
+                           (api/maybe-reconcile-collection-position! dashboard-data)
+                           ;; Ok, now save the Dashboard
+                           (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
+      (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
+      (analytics/track-event! :snowplow/dashboard
+                              {:event        :dashboard-created
+                               :dashboard-id (u/the-id dash)})
+      (-> dash
+          hydrate-dashboard-details
+          collection.root/hydrate-root-collection
+          (assoc :last-edit-info (revisions/edit-information-for-user @api/*current-user*))))))
 
 ;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
@@ -1126,10 +1127,11 @@
   [{:keys [id param-key]}      :- [:map
                                    [:id ms/PositiveInt]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
-    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-    (binding [qp.perms/*param-values-query* true]
-      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
+      ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+      (binding [qp.perms/*param-values-query* true]
+        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -1144,11 +1146,12 @@
                                     [:id    ms/PositiveInt]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
-  (let [dashboard (api/read-check :model/Dashboard id)]
-    ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-    (binding [qp.perms/*param-values-query* true
-              chain-filter/*allow-implicit-uuid-field-remapping* false]
-      (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query))))
+  (lib.metadata.jvm/with-metadata-provider-cache
+    (let [dashboard (api/read-check :model/Dashboard id)]
+      ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
+      (binding [qp.perms/*param-values-query* true
+                chain-filter/*allow-implicit-uuid-field-remapping* false]
+        (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"
   "Fetch the remapped value for a given value of the parameter with ID `:param-key`.
