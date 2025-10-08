@@ -2,10 +2,10 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
-import { transformSdkQuestion } from "embedding-sdk-bundle/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {
   type OnCreateOptions,
