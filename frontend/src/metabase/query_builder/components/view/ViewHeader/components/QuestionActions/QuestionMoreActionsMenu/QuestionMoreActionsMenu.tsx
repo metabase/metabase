@@ -5,6 +5,7 @@ import _ from "underscore";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { QuestionAlertsMenuItem } from "metabase/notifications/NotificationsActionsMenu/QuestionAlertsMenuItem";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -162,6 +163,11 @@ export const QuestionMoreActionsMenu = ({
         {t`Turn back to saved question`}
       </Menu.Item>
     ),
+    <QuestionAlertsMenuItem
+      key="alerts"
+      question={question}
+      onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
+    />,
     enableSettingsSidebar && (
       <Menu.Item
         key="edit-settings"
