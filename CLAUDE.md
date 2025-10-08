@@ -157,9 +157,8 @@ For effective REPL usage:
 
 #### General Conventions
 
-- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/). Claude: this guide may be
-  already be fetched and saved in the current working directory as an AsciiDoc file named `clojure-style-guide.adoc`;
-  read guidelines from it if it is present or note if you cannot.
+- Follow the rules in the [Community Clojure Style Guide](https://guide.clojure.style/) or `CLOJURE_STYLE_GUIDE.adoc`
+  in the current working directory.
 
 - Prefer longer, more verbose names for functions and variables; avoid abbreviations unless they are well-known and
   conventional in the Clojure world. `acc`, `i`, `pred`, `coll`, `n`, `s`, `k`, and `f` are examples of well-known
