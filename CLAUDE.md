@@ -688,6 +688,11 @@ Review pull requests with a focus on:
 - Avoid defining new datasets with `defdataset` as much as possible, since loading test data in cloud-based databases
   is crazy slow.
 
+### Lib and the Query Processor (QP)
+
+- `metabase-provider` and `mp` are good conventional variable names for MetadataProviders. Especially as a binding
+  in a `let` form of a small or simple function, `mp` is OK. Avoid other weird names like `meta-p` `or mprovider`.
+
 # Misc
 
 - Example data should be bird-themed if possible.
