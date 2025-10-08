@@ -299,7 +299,7 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards!
+  with-verified!
   works-after]
 
  [tu.async
@@ -347,8 +347,7 @@
   sorts-nil-first?]
 
  [tx.env
-  set-test-drivers!
-  with-test-drivers]
+  set-test-drivers!]
 
  [schema-migrations-test.impl
   with-temp-empty-app-db])
