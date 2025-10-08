@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-python.python-runner
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
@@ -38,14 +39,14 @@
 
 (defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
-  [server-url method endpoint & [request-options]]
+  [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
         base-options {:content-type     :json
                       :accept           :json
                       :throw-exceptions false
                       :as               :json
                       :headers          (authorization-headers)}]
-    (http/request (merge base-options request-options {:method method, :url url}))))
+    (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
 
 (defn- write-jsonl-to-stream! [^OutputStream os col-names reducible-rows]
   (let [none? (volatile! true)
@@ -146,24 +147,29 @@
     :else
     v))
 
+(defn- throw-if-cancelled [cancel-chan]
+  (when (a/poll! cancel-chan)
+    (throw (ex-info "Run cancelled" {:error-type :cancelled}))))
+
 (defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan limit]}]
   {:pre [(or (nil? limit) (pos-int? limit))]}
-  (let [query (cond-> {:source-table table-id} limit (assoc :limit limit))]
-    (execute-mbql-query driver db-id query
-                        (fn [{cols-meta :cols} reducible-rows]
-                          (with-open [os (io/output-stream temp-file)]
-                            (let [filtered-col-meta (m/index-by :name fields-meta)
-                                  col-names         (map :name cols-meta)
-                                  filtered-rows     (eduction (map (fn [row]
-                                                                     (->>
-                                                                      (map vector col-names row)
-                                                                      (filter (fn [[n _]]
-                                                                                (contains? filtered-col-meta n)))
-                                                                      (map (fn [[n v]]
-                                                                             (maybe-fixup-value (filtered-col-meta n) v))))))
-                                                              reducible-rows)]
-                              (write-jsonl-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))
-                        cancel-chan)))
+  (let [query   (cond-> {:source-table table-id} limit (assoc :limit limit))
+        respond (fn [{cols-meta :cols} reducible-rows]
+                  (with-open [os (io/output-stream temp-file)]
+                    (let [filtered-col-meta (m/index-by :name fields-meta)
+                          col-names         (map :name cols-meta)
+                          filtered-rows     (eduction (map (fn [row]
+                                                             (->>
+                                                              (map vector col-names row)
+                                                              (filter (fn [[n _]]
+                                                                        (contains? filtered-col-meta n)))
+                                                              (map (fn [[n v]]
+                                                                     (maybe-fixup-value (filtered-col-meta n) v))))))
+                                                      reducible-rows)]
+                      (write-jsonl-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))]
+    (execute-mbql-query driver db-id query respond cancel-chan)
+    (some-> cancel-chan throw-if-cancelled)
+    nil))
 
 (defn get-logs
   "Return the logs of the current running python process"
