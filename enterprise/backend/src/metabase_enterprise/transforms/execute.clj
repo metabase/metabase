@@ -21,6 +21,7 @@
 
 (mr/def ::transform-opts
   [:map
+   [:append? :boolean]
    [:overwrite? :boolean]])
 
 (defn run-mbql-transform!
@@ -30,7 +31,7 @@
   by delivering the `start-promise` just before the start when the beginning of the execution has been booked
   in the database."
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
+  ([{:keys [id source target append?] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
@@ -42,7 +43,7 @@
                               :query (transforms.util/compile-source source)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? true}]
+           opts {:overwrite? (not append?) :append? append?}]
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))

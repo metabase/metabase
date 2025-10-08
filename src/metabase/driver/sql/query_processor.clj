@@ -2078,7 +2078,7 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]}]
+  [driver {:keys [query output-table]} & {:keys [append?]}]
   (format-honeysql driver
                    {:create-table-as [(keyword output-table)]
                     :raw query}))
