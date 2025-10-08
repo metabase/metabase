@@ -99,10 +99,13 @@
              (and (seq incoming-cols)
                   (= (count incoming-cols) (count base-types)))
              (assoc-in [:data :cols] (mapv (fn [col base-type]
-                                             (assoc col
-                                                    :base_type      base-type
-                                                    :effective_type base-type
-                                                    :field_ref      [:field (:name col) {:base-type base-type}]))
+                                             (cond-> (assoc col :base_type base-type, :effective_type base-type)
+                                               ;; if we have a field_ref for a named column, set the base_type options
+                                               (string? (get-in col [:field_ref 1]))
+                                               (update-in [:field_ref 2] assoc :base-type base-type)
+                                               ;; if there is no field_ref at all, add it
+                                               (nil? (:field_ref col))
+                                               (assoc :field_ref [:field (:name col) {:base-type base-type}])))
                                            incoming-cols
                                            base-types))))))))
 
