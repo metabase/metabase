@@ -76,6 +76,11 @@ export function BenchNav() {
               icon="snippet"
               label={t`Snippets`}
             />
+            <BenchNavItem
+              url="/bench/glossary"
+              icon="globe"
+              label={t`Glossary`}
+            />
           </Stack>
         </Box>
         <Stack data-testid="sidebar-bottom" px="md" gap="sm" mt="auto">

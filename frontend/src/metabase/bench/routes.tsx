@@ -11,6 +11,7 @@ import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPag
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 import { IsAdmin } from "metabase/route-guards";
 
 import { BenchApp } from "./components/BenchApp";
@@ -49,6 +50,7 @@ export const getBenchRoutes = () => (
         <Route path="new" component={SnippetEditor} />
         <Route path=":id" component={SnippetEditor} />
       </Route>
+      <Route path="glossary" component={GlossaryContainer} />
       <Route path="metadata">
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
