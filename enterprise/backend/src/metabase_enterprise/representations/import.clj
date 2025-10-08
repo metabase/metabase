@@ -158,39 +158,35 @@
   (let [bundle (-> yaml-string
                    rep-yaml/parse-string
                    normalize-representation)
-        top-level-collection (dissoc bundle :children :databases)
-        all-representations (cons top-level-collection (flatten-collection-children bundle))
-        normalized (map normalize-representation all-representations)
-        collections (filter #(= (:type %) :v0/collection) normalized)
-        non-collections (remove #(= (:type %) :v0/collection) normalized)
-        ordered-collections (order-collections collections)
-        ordered-others (order-representations non-collections)]
-
-    (let [index-after-collections
-          (reduce (fn [index entity]
-                    (try
-                      (let [persisted (persist! entity index)]
-                        (assoc index (:ref entity) persisted))
-                      (catch Exception e
-                        (log/warn e (format "Failed to persist collection with ref %s" (:ref entity)))
-                        (dissoc index (:ref entity)))))
-                  {}
-                  ordered-collections)
-
-          root-collection (first ordered-collections)]
-
+        collection-name (:name bundle)
+        existing-collections (t2/select :model/Collection :name collection-name :location "/")]
+    (when (> (count existing-collections) 1)
+      (throw (ex-info (str "Multiple collections found with name: " collection-name)
+                      {:collection-name collection-name
+                       :count (count existing-collections)})))
+    (when (= (count existing-collections) 1)
+      (let [existing (first existing-collections)
+            archived-name (str collection-name " (archived)")]
+        (log/info "Renaming existing collection" collection-name "to" archived-name)
+        (t2/update! :model/Collection (:id existing) {:name archived-name})))
+    (let [new-collection (t2/insert-returning-instance! :model/Collection
+                                                        {:name collection-name
+                                                         :description (:description bundle)
+                                                         :location "/"})
+          collection-id (:id new-collection)
+          representations (flatten-collection-children bundle)
+          normalized (map normalize-representation representations)
+          ordered (order-representations normalized)]
       (reduce (fn [index entity]
                 (try
-                  (let [persisted (persist! entity index)]
+                  (let [persisted (persist! (assoc entity :collection collection-id) index)]
                     (assoc index (:ref entity) persisted))
                   (catch Exception e
                     (log/warn e (format "Failed to persist entity with ref %s" (:ref entity)))
                     (dissoc index (:ref entity)))))
-              index-after-collections
-              ordered-others)
-
-      (when root-collection
-        (t2/select-one :model/Collection :name (:name root-collection) :location "/")))))
+              {}
+              ordered)
+      new-collection)))
 
 ;;;;;;;;;;;;;;;;
 ;; Transforms ;;

@@ -45,30 +45,19 @@
        files))))
 
 (defn- reconstruct-collection
-  "Recursively reconstruct a collection bundle from directory structure.
-   Adds :collection ref to each child entity for backend processing."
+  "Recursively reconstruct a collection bundle from directory structure."
   [dir-path]
   (let [collection-file (io/file dir-path "collection.yml")
         collection-meta (when (.exists collection-file)
                           (read-entity (.getPath collection-file)))
         {:keys [databases children subdirs]} (find-entity-files dir-path)
-        collection-ref (:ref collection-meta)
-        database-entities (keep (fn [file]
-                                  (when-let [entity (read-entity (.getPath file))]
-                                    (assoc entity :collection collection-ref)))
-                                databases)
-        child-entities (keep (fn [file]
-                               (when-let [entity (read-entity (.getPath file))]
-                                 (assoc entity :collection collection-ref)))
-                             children)
-        subdir-collections (keep (fn [dir]
-                                   (when-let [coll (reconstruct-collection (.getPath dir))]
-                                     (assoc coll :collection collection-ref)))
-                                 subdirs)
+        database-entities (keep #(read-entity (.getPath %)) databases)
+        child-entities (keep #(read-entity (.getPath %)) children)
+        subdir-collections (keep #(reconstruct-collection (.getPath %)) subdirs)
         all-children (concat child-entities subdir-collections)]
     (when collection-meta
       (assoc collection-meta
-             :databases (vec database-entities)
+             :databases database-entities
              :children (vec all-children)))))
 
 (set! *warn-on-reflection* true)
