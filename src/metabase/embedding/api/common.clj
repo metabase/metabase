@@ -492,7 +492,7 @@
   [unsigned-token]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
         _ (api/check (pos-int? card-id) [400 (tru "{0} id should be a positive integer." "Card")])
-        card (t2/select-one [:model/Card :archived :id :dataset_query :enable_embedding :type] card-id)]
+        card (t2/select-one [:model/Card :archived :id :dataset_query :enable_embedding :type :card_schema] card-id)]
     (check-embedding-enabled-for-object card)
     (queries/batch-fetch-card-metadata [card])))
 
