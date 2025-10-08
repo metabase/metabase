@@ -29,6 +29,7 @@
     [:join-alias                                 {:optional true} [:ref ::lib.schema.join/alias]]
     [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
     [:binning                                    {:optional true} [:ref ::binning/binning]]
+    [:lib/original-binning                       {:optional true} [:ref ::binning/binning]]
     [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]
     [:metabase.lib.field/original-temporal-unit  {:optional true} [:ref ::temporal-bucketing/unit]]
     ;;
