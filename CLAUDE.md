@@ -323,6 +323,9 @@ violations or potential issues.
     (f (f x))) ; should we make this configurable somehow?
   ```
 
+- Note that comment rules listed above regarding number of semicolons **DO NOT** apply to comment forms using `#_`...
+  those can appear on their own line or on a line with other code.
+
 - `TODO` comments should include the author and date, for example
 
   ```clj
@@ -339,6 +342,8 @@ violations or potential issues.
   An exception can be made to indicate grouping of pairwise constructs as found in e.g. `let` and `cond`, in case
   those don’t fit on the same line. `deftest` is **NOT** an exception to this rule.
   (https://guide.clojure.style/#no-blank-lines-within-def-forms)
+
+  Verify that the line in question is **actually blank** (i.e., only contains whitespace) before warning about this.
 
 - Use `kebab-case` names for variables and defs, including constants.
   (https://guide.clojure.style/#naming-functions-and-variables)
