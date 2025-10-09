@@ -9,16 +9,16 @@
    [:type [:= "append"]]
    #_[:tag-run-id? {:optional true} :boolean]]) ; whether to tag rows with run_id
 
-(mr/def ::merge-config
-  [:map
-   [:type [:= "merge"]]
-   [:primary-key [:sequential :string]]
-   [:update-columns {:optional true} [:sequential :string]]]) ; columns to update on conflict
+#_(mr/def ::merge-config
+    [:map
+     [:type [:= "merge"]]
+     [:primary-key [:sequential :string]]
+     [:update-columns {:optional true} [:sequential :string]]]) ; columns to update on conflict
 
 (mr/def ::target-strategy
   [:multi {:dispatch :type}
    ["append" ::append-config]
-   ["merge" ::merge-config]])
+   #_["merge" ::merge-config]])
 
 (mr/def ::transform-source
   [:multi {:dispatch (comp keyword :type)}
