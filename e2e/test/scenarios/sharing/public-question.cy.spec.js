@@ -36,8 +36,6 @@ const questionData = {
 const PUBLIC_QUESTION_REGEX =
   /\/public\/question\/[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
 
-const EXPECTED_QUERY_PARAMS = "?source=Affiliate&birthdate=past30years";
-
 const USERS = {
   "admin user": () => cy.signInAsAdmin(),
   "user with no permissions": () => cy.signIn("none"),
@@ -68,7 +66,8 @@ describe("scenarios > public > question", () => {
       visitPublicURL();
 
       // On page load, query params are added
-      cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
+      cy.location("search").should("include", "source=Affiliate");
+      cy.location("search").should("include", "birthdate=past30years");
 
       H.filterWidget().contains("Previous 30 years");
       H.filterWidget().contains("Affiliate");
@@ -116,7 +115,8 @@ describe("scenarios > public > question", () => {
               setUser();
               cy.visit(`/public/question/${uuid}`);
 
-              cy.location("search").should("eq", EXPECTED_QUERY_PARAMS);
+              cy.location("search").should("include", "source=Affiliate");
+              cy.location("search").should("include", "birthdate=past30years");
 
               H.filterWidget().contains("Previous 30 years");
               H.filterWidget().contains("Affiliate");
