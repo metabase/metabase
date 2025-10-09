@@ -239,9 +239,9 @@
                                                    :type "remote-synced"})
               regular-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                        {:name "Regular Collection"})]
-          ;; Create a card in the regular collection without document_id (remote-sync violation)
-          (mt/with-temp [:model/Card _ {:collection_id (:id regular-collection)
-                                        :document_id nil}]
+          (mt/with-temp [:model/Card {up-card-id :id} {:dataset_query (mt/mbql-query venues)}
+                         :model/Card _ {:collection_id (:id regular-collection)
+                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" up-card-id)})}]
             ;; Try to move regular-collection into remote-parent - should fail
             (let [response (mt/user-http-request :crowberto :put 400 (str "collection/" (:id regular-collection))
                                                  {:parent_id (:id remote-parent)})]
@@ -262,9 +262,9 @@
               child-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                      {:name "Child Collection"
                                                       :parent_id (:id regular-collection)})]
-          ;; Create a card in the child collection without document_id (remote-sync violation)
-          (mt/with-temp [:model/Card _ {:collection_id (:id child-collection)
-                                        :document_id nil}]
+          (mt/with-temp [:model/Card {up-card-id :id} {:dataset_query (mt/mbql-query venues)}
+                         :model/Card _ {:collection_id (:id child-collection)
+                                        :dataset_query (mt/mbql-query nil {:source-table (str "card__" up-card-id)})}]
             ;; Try to move regular-collection into remote-parent - should fail
             (mt/user-http-request :crowberto :put 400 (str "collection/" (:id regular-collection))
                                   {:parent_id (:id remote-parent)})
