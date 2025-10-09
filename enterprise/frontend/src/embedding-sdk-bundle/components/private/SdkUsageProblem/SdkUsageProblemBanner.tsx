@@ -8,7 +8,7 @@ import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import DefaultLogoIcon from "metabase/common/components/LogoIcon";
+import MetabaseLogo from "metabase/common/components/LogoIcon";
 import { originalColors } from "metabase/lib/colors";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 
@@ -59,7 +59,7 @@ export const SdkUsageProblemBanner = ({
           i-should-be-flex="true"
         >
           <Flex bg="white" px="sm" className={S.Logo} align="center">
-            <DefaultLogoIcon height={24} />
+            <MetabaseLogo height={24} />
           </Flex>
 
           <Flex justify="center" align="center" className={S.Content}>
