@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import {
@@ -41,5 +42,15 @@ describe("command palette", () => {
 
     await userEvent.keyboard("[ControlLeft>]k");
     expect(screen.queryByTestId("command-palette")).not.toBeInTheDocument();
+  });
+
+  it("should not call recents API when palette is disabled", async () => {
+    setup({ routeProps: { disableCommandPalette: true } });
+
+    await userEvent.keyboard("[ControlLeft>]k");
+
+    expect(fetchMock.callHistory.called(/\/api\/activity\/recents/)).toBe(
+      false,
+    );
   });
 });
