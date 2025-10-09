@@ -5,11 +5,23 @@ import type {
   PythonLibraries,
 } from "./types";
 
+const MAX_PYODIDE_WORKERS = 5;
+
+// A pool of Pyodide workers.
+// The pool attemps to keep MAX_PYODIDE_WORKERS workers ready at all times.
+// Pyodide workers cannot be reused because the user-script can polute
+// the global namespace in the Python vm.
+//
+// Starting up a worker is a little bit slow, and running the actual script is relatively fast.
+// Therefore, we start up MAX_PYODIDE_WORKERS at once so they are ready to use when needed.
 export class PyodideWorkerPool {
   workers: PyodideWorkerManager[];
 
   constructor() {
-    this.workers = Array.from({ length: 5 }, () => new PyodideWorkerManager());
+    this.workers = Array.from(
+      { length: MAX_PYODIDE_WORKERS },
+      () => new PyodideWorkerManager(),
+    );
   }
 
   async executePython<T>(
