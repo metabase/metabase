@@ -1,4 +1,5 @@
 import type { Middleware } from "@reduxjs/toolkit";
+import type { TagDescription } from "@reduxjs/toolkit/query";
 import React, {
   type ComponentType,
   type Dispatch,
@@ -855,7 +856,7 @@ export const PLUGIN_GIT_SYNC: {
     collectionItem: any;
     onItemSelect: () => void;
   }>;
-  getGitSyncInvalidationTags: () => any[] | null;
+  GIT_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
   useSyncStatus: () => {
     isIdle: boolean;
     taskType: any;
@@ -867,7 +868,7 @@ export const PLUGIN_GIT_SYNC: {
   LibraryNav: PluginPlaceholder,
   GitSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
-  getGitSyncInvalidationTags: () => null,
+  GIT_SYNC_INVALIDATION_TAGS: null,
   useSyncStatus: () => ({
     isIdle: true,
     taskType: null,

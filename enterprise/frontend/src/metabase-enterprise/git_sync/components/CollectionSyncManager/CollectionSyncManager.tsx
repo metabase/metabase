@@ -38,11 +38,13 @@ interface CollectionSyncManagerProps {
 interface CollectionSelectProps {
   availableCollections: Collection[];
   onAddCollection: (collectionId: string | null) => void;
+  isAdding: boolean;
 }
 
 const CollectionSelect = ({
   availableCollections,
   onAddCollection,
+  isAdding,
 }: CollectionSelectProps) => {
   const selectData = availableCollections.map((collection) => ({
     value: String(collection.id),
@@ -63,8 +65,11 @@ const CollectionSelect = ({
         searchable
         clearable
         w="100%"
-        leftSection={<Icon name="add" size={16} />}
-        disabled={availableCollections.length === 0}
+        maw={400}
+        leftSection={
+          isAdding ? <Loader size="xs" /> : <Icon name="add" size={16} />
+        }
+        disabled={availableCollections.length === 0 || isAdding}
         classNames={{
           option: S.CollectionSelectOption,
         }}
@@ -112,12 +117,14 @@ interface SyncedCollectionItemProps {
   collection: Collection;
   mode: EnterpriseSettings["remote-sync-type"];
   onRemove: (collectionId: number | string) => void;
+  isRemoving: boolean;
 }
 
 const SyncedCollectionItem = ({
   collection,
   mode,
   onRemove,
+  isRemoving,
 }: SyncedCollectionItemProps) => (
   <Paper key={collection.id} withBorder p="md" radius="md">
     <Flex justify="space-between" align="center">
@@ -145,8 +152,9 @@ const SyncedCollectionItem = ({
           color="error"
           size="sm"
           onClick={() => onRemove(collection.id)}
+          disabled={isRemoving}
         >
-          <Icon name="close" size={14} />
+          {isRemoving ? <Loader size="xs" /> : <Icon name="close" size={14} />}
         </ActionIcon>
       )}
     </Flex>
@@ -179,6 +187,8 @@ const EmptyState = ({ mode, hasAvailableCollections }: EmptyStateProps) => {
 };
 
 export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
+  const [sendToast] = useToast();
+
   const { data: allCollections = [], isLoading } = useListCollectionsTreeQuery({
     "exclude-archived": true,
     "exclude-other-user-collections": true,
@@ -196,9 +206,8 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
     [syncedCollectionsResponse],
   );
 
-  const [updateCollection, { isLoading: isUpdatingCollection }] =
+  const [updateCollection, { isLoading: isUpdating, originalArgs }] =
     useUpdateCollectionMutation();
-  const [sendToast] = useToast();
 
   const topLevelCollections = useMemo(
     () =>
@@ -224,33 +233,37 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
   const handleAddCollection = useCallback(
     async (collectionId: string | null) => {
       if (collectionId) {
-        await updateCollection({
-          id: Number(collectionId),
-          type: "remote-synced",
-        })
-          .unwrap()
-          .catch((error) => {
-            let message = t`Unable to sync collection`;
-
-            if (typeof error.data?.cause === "string") {
-              message += `: ${error.data.cause}`;
-            }
-
-            sendToast({ message, toastColor: "error", icon: "warning" });
+        try {
+          await updateCollection({
+            id: Number(collectionId),
+            type: "remote-synced",
+          }).unwrap();
+        } catch (error) {
+          sendToast({
+            message: t`Failed to add collection to sync`,
+            icon: "warning",
           });
+        }
       }
     },
     [updateCollection, sendToast],
   );
 
   const handleRemoveCollection = useCallback(
-    (collectionId: number | string) => {
-      updateCollection({
-        id: Number(collectionId),
-        type: null,
-      });
+    async (collectionId: number | string) => {
+      try {
+        await updateCollection({
+          id: Number(collectionId),
+          type: null,
+        }).unwrap();
+      } catch (error) {
+        sendToast({
+          message: t`Failed to remove collection from sync`,
+          icon: "warning",
+        });
+      }
     },
-    [updateCollection],
+    [updateCollection, sendToast],
   );
 
   if (isLoading || isSyncedLoading) {
@@ -264,16 +277,18 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
   const hasSyncedCollections = syncedCollections.length > 0;
   const hasAvailableCollections = availableCollections.length > 0;
 
+  const isAdding = isUpdating && originalArgs?.type === "remote-synced";
+  const removingCollectionId =
+    isUpdating && originalArgs?.type === null ? originalArgs.id : null;
+
   return (
     <Stack gap="lg">
       {mode === "development" && (
-        <Flex gap="md" align="center" direction={{ base: "column", sm: "row" }}>
-          <CollectionSelect
-            availableCollections={availableCollections}
-            onAddCollection={handleAddCollection}
-          />
-          {isUpdatingCollection && <Loader size="sm" />}
-        </Flex>
+        <CollectionSelect
+          availableCollections={availableCollections}
+          onAddCollection={handleAddCollection}
+          isAdding={isAdding}
+        />
       )}
 
       {hasSyncedCollections ? (
@@ -292,6 +307,7 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
                 collection={collection}
                 mode={mode}
                 onRemove={handleRemoveCollection}
+                isRemoving={removingCollectionId === collection.id}
               />
             ))}
           </Stack>

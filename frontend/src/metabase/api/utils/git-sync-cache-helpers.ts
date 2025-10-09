@@ -32,7 +32,7 @@ function shouldInvalidateForCollection(
 }
 
 function invalidateTags(dispatch: (action: unknown) => void) {
-  const tags = PLUGIN_GIT_SYNC.getGitSyncInvalidationTags();
+  const tags = PLUGIN_GIT_SYNC.GIT_SYNC_INVALIDATION_TAGS;
   if (tags) {
     dispatch(Api.util.invalidateTags(tags));
   }

@@ -89,7 +89,9 @@ export function SyncProgressModal({
               : t`Your changes have been pushed to Git successfully.`}
           </Text>
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onDismiss}>{t`Dismiss`}</Button>
+            <Button variant="outline" onClick={onDismiss}>
+              {taskType === "import" ? t`Dismiss` : t`Close`}
+            </Button>
             {taskType === "import" ? (
               <Button
                 variant="filled"
