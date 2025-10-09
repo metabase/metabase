@@ -232,11 +232,11 @@ export const GitSyncSettings = (): JSX.Element => {
 
       {isGitSyncEnabled && syncMode != null ? (
         <SettingsSection
-          title={t`Collections`}
+          title={t`Synced collection`}
           description={
             syncMode === "development"
-              ? t`Choose which collections to sync with Git`
-              : t`Collections synced from your Git repository`
+              ? t`Choose which collection to sync with Git`
+              : t`Collection synced from your Git repository`
           }
         >
           <CollectionSyncManager mode={syncMode} />

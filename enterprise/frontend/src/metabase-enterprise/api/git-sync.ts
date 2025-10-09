@@ -1,3 +1,4 @@
+import { listTag } from "metabase/api/tags";
 import type {
   CardDisplayType,
   EnterpriseSettings,
@@ -97,6 +98,8 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
           tag("collection-dirty-entities"),
           tag("collection-is-dirty"),
           tag("remote-sync-current-task"),
+          listTag("collection"),
+          tag("collection-tree"),
         ]),
     }),
     importFromBranch: builder.mutation<
@@ -113,6 +116,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: () => [
         tag("session-properties"),
+        listTag("collection"),
         tag("collection-tree"),
         tag("remote-sync-current-task"),
         tag("collection-dirty-entities"),
@@ -155,6 +159,8 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           tag("session-properties"),
           tag("remote-sync-current-task"),
+          tag("collection"),
+          tag("collection-tree"),
         ]),
     }),
     getBranches: builder.query<{ items: string[] }, void>({

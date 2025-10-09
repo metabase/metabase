@@ -1,5 +1,6 @@
 import { PLUGIN_GIT_SYNC } from "metabase/plugins";
 import type { Card, Collection, Dashboard, Document } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
 
 import { Api } from "../api";
 
@@ -31,7 +32,7 @@ function shouldInvalidateForCollection(
   return (typeChanged && isOrWasRemoteSynced) || newType === "remote-synced";
 }
 
-function invalidateTags(dispatch: (action: unknown) => void) {
+function invalidateRemoteSyncTags(dispatch: Dispatch) {
   const tags = PLUGIN_GIT_SYNC.GIT_SYNC_INVALIDATION_TAGS;
   if (tags) {
     dispatch(Api.util.invalidateTags(tags));
@@ -48,7 +49,7 @@ export async function invalidateGitSyncOnUpdate<
   try {
     const { data: newEntity } = await queryFulfilled;
     if (shouldInvalidateForEntity(oldEntity, newEntity)) {
-      invalidateTags(dispatch);
+      invalidateRemoteSyncTags(dispatch);
     }
   } catch (error) {
     console.warn("Failed to invalidate git sync cache on update:", error);
@@ -64,7 +65,7 @@ export async function invalidateGitSyncOnCreate<
   try {
     const { data: newEntity } = await queryFulfilled;
     if (newEntity.is_remote_synced) {
-      invalidateTags(dispatch);
+      invalidateRemoteSyncTags(dispatch);
     }
   } catch (error) {
     console.warn("Failed to invalidate git sync cache on create:", error);
@@ -76,7 +77,7 @@ export function invalidateGitSyncOnDelete(
   dispatch: (action: unknown) => void,
 ) {
   if (entity?.is_remote_synced) {
-    invalidateTags(dispatch);
+    invalidateRemoteSyncTags(dispatch);
   }
 }
 
@@ -88,7 +89,7 @@ export async function invalidateGitSyncOnCollectionUpdate(
   try {
     const { data: newCollection } = await queryFulfilled;
     if (shouldInvalidateForCollection(oldCollection, newCollection)) {
-      invalidateTags(dispatch);
+      invalidateRemoteSyncTags(dispatch);
     }
   } catch (error) {
     console.warn(
@@ -105,7 +106,7 @@ export async function invalidateGitSyncOnCollectionCreate(
   try {
     const { data: newCollection } = await queryFulfilled;
     if (newCollection.type === "remote-synced") {
-      invalidateTags(dispatch);
+      invalidateRemoteSyncTags(dispatch);
     }
   } catch (error) {
     console.warn(
@@ -120,7 +121,7 @@ export function invalidateGitSyncOnCollectionDelete(
   dispatch: (action: unknown) => void,
 ) {
   if (collection?.type === "remote-synced") {
-    invalidateTags(dispatch);
+    invalidateRemoteSyncTags(dispatch);
   }
 }
 

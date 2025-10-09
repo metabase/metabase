@@ -17,4 +17,5 @@ export const GIT_SYNC_SCHEMA = Yup.object({
 export const GIT_SYNC_INVALIDATION_TAGS = [
   tag("collection-dirty-entities"),
   tag("collection-is-dirty"),
+  tag("remote-sync-current-task"),
 ];
