@@ -83,7 +83,7 @@ def __run_transform_${random}():
   for column in columns:
     kwargs[column['alias']] = pd.DataFrame(column['rows'])
 
-  # run user-defind transform
+  # run user-defined transform
   result = transform(**kwargs)
 
   if result is None:
