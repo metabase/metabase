@@ -2854,7 +2854,7 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard))))))))
 
-(deftest ^:parallel can-restore-card-restorable-test
+(deftest can-restore-card-restorable-test
   (testing "can_restore is correctly populated for card when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -2862,7 +2862,7 @@
       (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
 
-(deftest ^:parallel can-restore-card-not-restorable-test
+(deftest can-restore-card-not-restorable-test
   (testing "can_restore is correctly populated for card when I can't restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
@@ -2871,14 +2871,14 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
 
-(deftest ^:parallel can-restore-collection-restorable-test
+(deftest can-restore-collection-restorable-test
   (testing "can_restore is correctly populated for collection when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection))))))))
 
-(deftest ^:parallel can-restore-collection-not-restorable-parent-archived-test
+(deftest can-restore-collection-not-restorable-parent-archived-test
   (testing "can_restore is correctly populated for collection when I can't restore it because parent archived"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
@@ -2886,20 +2886,20 @@
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection))))))))
 
-(deftest ^:parallel can-restore-collection-not-restorable-parent-trashed-test
+(deftest can-restore-collection-not-restorable-parent-trashed-test
   (testing "can_restore is correctly populated for collection when I can't restore it because its parent was the one that was trashed"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
       (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id subcollection))))))))
 
-(deftest ^:parallel can-restore-collection-from-root-test
+(deftest can-restore-collection-from-root-test
   (testing "can_restore is correctly populated for collections trashed from the root collection when I can actually restore it"
     (mt/with-temp [:model/Collection collection {:name "A"}]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
       (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection))))))))
 
-(deftest ^:parallel can-restore-items-in-root-collection-test
+(deftest can-restore-items-in-root-collection-test
   (testing "can_restore is correctly populated for things in the root collection"
     (mt/with-temp [:model/Collection collection {:name "A"}
                    :model/Dashboard dashboard {:name "Dashboard"}]
@@ -2908,7 +2908,7 @@
       (is (false? (:can_restore (get-item-with-id-in-root (u/the-id dashboard)))))
       (is (false? (:can_restore (get-item-with-id-in-root (u/the-id collection))))))))
 
-(deftest ^:parallel can-restore-items-in-other-collections-test
+(deftest can-restore-items-in-other-collections-test
   (testing "can_restore is correctly populated for things in other collections"
     (mt/with-temp [:model/Collection collection {:name "container"}
                    :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id collection)}]
