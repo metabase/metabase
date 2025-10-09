@@ -53,11 +53,11 @@
     (seq root-dependencies) (ingestable/wrap-root-dep-ingestable root-dependencies)))
 
 (methodical/defmethod source.p/->ingestable GitSource
-  [{:keys [url] :as source} opts]
+  [{:keys [remote-url] :as source} opts]
   (git/fetch! source)
   (if-let [commit-ref (git/->commit-id source)]
     (next-method (assoc source :commit-ish commit-ref) opts)
-    (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url url
+    (throw (ex-info (str "Unable to find branch " (:commit-ish source) " to read from") {:url remote-url
                                                                                          :branch (:commit-ish source)}))))
 (defn- remote-sync-path
   [opts entity]

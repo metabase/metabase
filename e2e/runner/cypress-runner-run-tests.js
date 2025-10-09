@@ -1,4 +1,18 @@
+import fs from "fs";
+import path from "path";
+
+import { booleanify } from "./cypress-runner-utils";
+
 const cypress = require("cypress");
+
+const cypressEnvPath = path.join(__dirname, "../../cypress.env.json");
+const cypressEnv = JSON.parse(fs.readFileSync(cypressEnvPath, "utf8"));
+
+Object.entries(booleanify(cypressEnv)).forEach(([key, value]) => {
+  process.env[key] = String(value);
+});
+
+console.log(process.env);
 
 const { BACKEND_PORT } = require("./constants/backend-port");
 const { FAILURE_EXIT_CODE } = require("./constants/exit-code");
