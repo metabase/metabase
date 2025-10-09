@@ -4,7 +4,7 @@
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [metabase.analytics.core :as analytics]
-   [metabase.app-db.core :as mdb]
+   [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.appdb.specialization.h2 :as h2]
@@ -176,13 +176,15 @@
 (defn create-table!
   "Create an index table with the given name. Should fail if it already exists."
   [table-name]
-  (t2/with-transaction [_]
-    (-> (sql.helpers/create-table table-name)
-        (sql.helpers/with-columns (specialization/table-schema base-schema))
-        t2/query)
-    (let [table-name (name table-name)]
-      (doseq [stmt (specialization/post-create-statements table-name table-name)]
-        (t2/query stmt)))))
+  ;; don't create tables inside tests that are supposed to roll back at the end of the test.
+  (when-not (app-db/in-rollback-only-transaction?)
+    (t2/with-transaction [conn]
+      (-> (sql.helpers/create-table table-name)
+          (sql.helpers/with-columns (specialization/table-schema base-schema))
+          t2/query)
+      (let [table-name (name table-name)]
+        (doseq [stmt (specialization/post-create-statements table-name table-name)]
+          (t2/query stmt))))))
 
 (defn maybe-create-pending!
   "Create a search index table if one doesn't exist. Record and return the name of the table, regardless."

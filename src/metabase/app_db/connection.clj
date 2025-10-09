@@ -4,6 +4,8 @@
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [metabase.app-db.connection-pool-setup :as connection-pool-setup]
    [metabase.app-db.env :as mdb.env]
+   [metabase.config.core :as config]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.connection :as t2.conn]
@@ -169,40 +171,63 @@
                     (f next-retry-count)))))]
       (f 0))))
 
-(defn- rollback! [^java.sql.Connection connection ^java.sql.Savepoint savepoint]
-  (do-with-mysql-deadlock-retries #(.rollback connection savepoint)))
+(defn- rollback!
+  ([^java.sql.Connection connection]
+   (do-with-mysql-deadlock-retries (fn [] (.rollback connection))))
+  ([^java.sql.Connection connection ^java.sql.Savepoint savepoint]
+   (do-with-mysql-deadlock-retries (fn [] (.rollback connection savepoint)))))
 
 (defn- commit! [^java.sql.Connection connection]
-  (do-with-mysql-deadlock-retries #(.commit connection)))
+  (do-with-mysql-deadlock-retries (fn [] (.commit connection))))
+
+;;; this code is here to help us find code that incorrectly commits its changes inside a nested transaction, thus it
+;;; only does anything in tests or dev (and only for H2)
+(defn- h2-session-has-uncommited-changes? [^java.sql.Connection conn]
+  (when (and (or config/is-dev? config/is-test?)
+             (= (db-type) :h2))
+    (with-open [stmt (.createStatement conn)
+                rset (.executeQuery stmt "SELECT contains_uncommitted FROM information_schema.sessions WHERE session_id = session_id();")]
+      (when (.next rset)
+        (.getObject rset 1)))))
 
 (defn- do-transaction [^java.sql.Connection connection f options]
   (letfn [(thunk []
-            (let [savepoint (.setSavepoint connection)]
+            (assert (false? (.getAutoCommit connection)))
+            (let [savepoint                (.setSavepoint connection (format "app_db_savepoint_%d" *transaction-depth*))
+                  had-uncommitted-changes? (h2-session-has-uncommited-changes? connection)]
               (try
-                (let [result (f connection)]
+                (let [result (try
+                               (f connection)
+                               (catch Throwable txn-e
+                                 (try
+                                   (rollback! connection savepoint)
+                                   (catch Exception rollback-e
+                                     (throw (ex-info
+                                             (str "Error rolling back after previous error: " (ex-message txn-e))
+                                             {:rollback-error rollback-e}
+                                             txn-e))))
+                                 (throw txn-e)))]
+                  (when (and had-uncommitted-changes?
+                             (not (h2-session-has-uncommited-changes? connection)))
+                    (throw (ex-info "Nested transaction unexpected committed its changes. Look at the stacktrace to find the offending code and fix it." {})))
                   (cond
-                    ;; for rollback-only connections (mostly used in tests) we can roll back to the last save point.
+                    ;; for rollback-only connections (mostly used in tests) we can roll back to the last save point. For
+                    ;; top-level transactions, we can just rollback everything -- this seems to work more reliably than
+                    ;; rolling back to a top-level save point.
                     (:rollback-only options)
-                    (rollback! connection savepoint)
+                    (if (= *transaction-depth* 1)
+                      (rollback! connection)
+                      (try
+                        (rollback! connection savepoint)
+                        (catch Throwable e
+                          (log/warn e "Failed to roll back to nested savepoint: this probably means code inside the transaction incorrectly committed changes"))))
 
                     ;; top-level transaction without `:rollback-only`, commit
                     (= *transaction-depth* 1)
-                    (commit! connection)
-
-                    ;; nested transaction without `:rollback-only`, release the savepoint as it's no longer needed.
-                    ;; Note that the rollback and commit code above should release the savepoints automatically
-                    :else
-                    (.releaseSavepoint connection savepoint))
+                    (commit! connection))
                   result)
-                (catch Throwable txn-e
-                  (try
-                    (rollback! connection savepoint)
-                    (catch Exception rollback-e
-                      (throw (ex-info
-                              (str "Error rolling back after previous error: " (ex-message txn-e))
-                              {:rollback-error rollback-e}
-                              txn-e))))
-                  (throw txn-e)))))]
+                (finally
+                  (.releaseSavepoint connection savepoint)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
       (try
@@ -216,6 +241,14 @@
   ;; in toucan2.jdbc.connection, there is a 'defmethod' for t2.conn/do-with-transaction java.sql.Connection
   ;; since we don't want our implementation to be overwritten, we need to require it here first before defininng ours
   t2.jdbc.conn/keepme)
+
+(def ^:private ^:dynamic *rollback-only-transaction* false)
+
+(defn in-rollback-only-transaction?
+  "Whether we are currently in a `:rollback-only` transaction. Avoid doing anything that will trigger a `COMMIT`, like
+  creating new tables (ok in some DBs)."
+  []
+  *rollback-only-transaction*)
 
 (methodical/defmethod t2.conn/do-with-transaction java.sql.Connection
   "Support nested transactions without introducing a lock like `next.jdbc` does, as that can cause deadlocks -- see
@@ -243,7 +276,8 @@
                     {:options options}))
 
     :else
-    (binding [*transaction-depth* (inc *transaction-depth*)]
+    (binding [*transaction-depth*         (inc *transaction-depth*)
+              *rollback-only-transaction* (or *rollback-only-transaction* (:rollback-only options))]
       (do-transaction connection f options))))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default

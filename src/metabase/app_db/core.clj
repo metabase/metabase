@@ -35,6 +35,7 @@
   application-db
   data-source
   db-type
+  in-rollback-only-transaction?
   in-transaction?
   quoting-style
   unique-identifier]
