@@ -97,14 +97,15 @@ export class PyodideWorkerManager {
       });
 
       const handleMessage = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
-        unsubscribe();
-
         switch (data.type) {
           case type:
+            unsubscribe();
             return resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
           case "error":
+            unsubscribe();
             return reject(data.error);
           case "terminated":
+            unsubscribe();
             return reject(new Error(t`Worker terminated`));
         }
       };
