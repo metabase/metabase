@@ -139,15 +139,24 @@ export const useSdkIframeEmbedSettings = ({
   // If they are, set them as the current settings.
   useEffect(() => {
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
-      setRawSettings({
-        ...settings,
-        ...persistedSettings,
+      setRawSettings((prevSettings) => {
+        const mergedSettings = {
+          ...settings,
+          ...persistedSettings,
 
-        // Override the persisted settings if `auth_method` is specified.
-        // This is used for Embedding Hub.
-        ...(urlParams.authMethod !== null && {
-          useExistingUserSession: urlParams.authMethod === "user_session",
-        }),
+          // Override the persisted settings if `auth_method` is specified.
+          // This is used for Embedding Hub.
+          ...(urlParams.authMethod !== null && {
+            useExistingUserSession: urlParams.authMethod === "user_session",
+          }),
+        };
+
+        const adjustedSettings = getAdjustedSdkIframeEmbedSetting({
+          prevSettings: prevSettings ?? defaultSettings,
+          settings: mergedSettings,
+        });
+
+        return adjustedSettings;
       });
 
       setEmbedSettingsLoaded(true);
@@ -160,6 +169,7 @@ export const useSdkIframeEmbedSettings = ({
     settings,
     isRecentsLoading,
     urlParams,
+    defaultSettings,
   ]);
 
   return {

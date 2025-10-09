@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { PLUGIN_ANONYMOUS_EMBEDDING } from "metabase/plugins";
+
 import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
@@ -112,19 +114,19 @@ export const SET_INITIAL_PARAMETER_DEBOUNCE_MS = 500;
  */
 export const USER_SETTINGS_DEBOUNCE_MS = 800;
 
-export const ENABLE_STATIC_EMBEDDING_SETTINGS: SdkIframeEmbedSetupStaticEmbeddingSettings &
-  Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> = {
-  isStatic: true,
+export const GET_ENABLE_STATIC_EMBEDDING_SETTINGS: () => SdkIframeEmbedSetupStaticEmbeddingSettings &
+  Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> = () => ({
+  isStatic: PLUGIN_ANONYMOUS_EMBEDDING.isFeatureEnabled(),
   useExistingUserSession: false,
-};
+});
 
-export const DISABLE_STATIC_EMBEDDING_SETTINGS: SdkIframeEmbedSetupStaticEmbeddingSettings &
+export const GET_DISABLE_STATIC_EMBEDDING_SETTINGS: () => SdkIframeEmbedSetupStaticEmbeddingSettings &
   Pick<SdkIframeEmbedSetupSettings, "useExistingUserSession"> &
   Pick<
     SdkIframeDashboardEmbedSettings | SdkIframeQuestionEmbedSettings,
     "lockedParameters"
-  > = {
+  > = () => ({
   isStatic: false,
   useExistingUserSession: false,
   lockedParameters: [],
-};
+});
