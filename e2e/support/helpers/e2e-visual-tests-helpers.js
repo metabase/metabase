@@ -68,9 +68,8 @@ export function echartsIcon(name, isSelected = false) {
 }
 
 export function chartGridLines() {
-  // cartesian grid line color resolves to hsla(195, 6%, 87%, 0.5) in light mode
   return echartsContainer().find(
-    "path[stroke='hsla(195, 6%, 87%, 0.5)'][fill='transparent']",
+    "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='transparent']",
   );
 }
 
