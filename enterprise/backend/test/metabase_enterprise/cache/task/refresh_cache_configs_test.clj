@@ -21,7 +21,8 @@
   []
   {:database (mt/id)
    :type     :native
-   :native   {:template-tags {"date" {:name         "date"
+   :native   {:template-tags {"date" {:id           "04ae45bd-f8fd-4e8d-9bc6-a9737f231a50"
+                                      :name         "date"
                                       :display-name "Check-In Date"
                                       :type         :text}}
               :query "SELECT count(*) FROM CHECKINS [[WHERE date = {{date}}]]"}})

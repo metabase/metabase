@@ -252,8 +252,8 @@ export const colorConfig = {
     dark: baseColors.octopus[80],
   },
   "background-brand": {
-    light: baseColors.brand[40],
-    dark: baseColors.brand[40],
+    light: baseColors.brand[20],
+    dark: baseColors.brand[70],
   },
   "background-disabled": {
     light: baseColors.orionAlpha[10],
@@ -267,7 +267,7 @@ export const colorConfig = {
     light: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[10],
     dark: `color-mix(in srgb, var(--mb-color-brand) 15%, transparent)`, //baseColors.oceanAlpha[20],
   },
-  "background-info": { light: baseColors.orion[5], dark: baseColors.orion[80] },
+
   "background-inverse": {
     light: baseColors.orion[80],
     dark: baseColors.orion[20],
@@ -287,6 +287,10 @@ export const colorConfig = {
   "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[70] }, //should be background-tertiary-inverse
   "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //should be background-secondary-inverse
   "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[90] }, //should be background-error
+  "background-error": {
+    light: baseColors.lobster[10],
+    dark: baseColors.lobster[90],
+  },
   "bg-light": { light: baseColors.orion[5], dark: baseColors.black }, //should be background-secondary
   "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
   "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?
@@ -399,8 +403,8 @@ export const colorConfig = {
     dark: baseColors.lobster[40],
   },
   "saturated-yellow": {
-    light: baseColors.dubloon[60],
-    dark: baseColors.dubloon[40],
+    light: baseColors.dubloon[30],
+    dark: baseColors.dubloon[30],
   },
   "shadow-embedding-hub-card": {
     //I think this can be removed?
@@ -505,7 +509,7 @@ export const colorConfig = {
   "tooltip-text-secondary": {
     //should be text-secondary-inverse
     light: baseColors.orionAlphaInverse[60],
-    dark: baseColors.orionAlpha[60],
+    dark: baseColors.orionAlphaInverse[60],
   },
   "tooltip-text": {
     light: baseColors.white,
@@ -513,7 +517,22 @@ export const colorConfig = {
   },
   warning: {
     light: baseColors.dubloon[30],
-    dark: baseColors.dubloon[80],
+    dark: baseColors.dubloon[30],
+  },
+
+  "background-warning": {
+    light: baseColors.dubloon[10],
+    dark: baseColors.dubloon[60],
+  },
+
+  info: {
+    light: baseColors.orion[40],
+    dark: baseColors.orion[50],
+  },
+
+  "background-info": {
+    light: baseColors.orion[10],
+    dark: baseColors.orion[80],
   },
 
   white: {
@@ -575,7 +594,7 @@ export const colorConfig = {
   overlay: {
     //see the other color above where I mentioned it should be called overlay
     light: baseColors.orionAlpha[60],
-    dark: "hsla(255, 0%, 0%, 0.8)", // FIXME: should be part of palette
+    dark: "hsla(207, 100%, 4.3%, 0.8)", // FIXME: should be part of palette
   },
   "text-inverse": {
     //should be text-primary-inverse

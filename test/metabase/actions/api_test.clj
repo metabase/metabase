@@ -2,9 +2,12 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.actions.api :as api.action]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -40,12 +43,14 @@
    [:id                     ms/PositiveInt]
    [:type                   [:= "query"]]
    [:model_id               ms/PositiveInt]
-   [:database_id            ms/PositiveInt]
+   [:database_id            ::lib.schema.id/database]
    [:dataset_query          [:map
-                             [:database ms/PositiveInt]
-                             [:type     [:= "native"]]
-                             [:native   [:map
-                                         [:query :string]]]]]
+                             [:database ::lib.schema.id/database]
+                             [:stages   [:sequential
+                                         {:min 1, :max 1}
+                                         [:map
+                                          [:lib/type [:= "mbql.stage/native"]]
+                                          [:native   string?]]]]]]
    [:parameters             :any]
    [:parameter_mappings     :any]
    [:visualization_settings :map]
@@ -54,7 +59,7 @@
    [:creator_id             ms/PositiveInt]
    [:creator                DefaultUser]])
 
-(defn all-actions-default
+(defn- all-actions-default
   [card-id]
   [{:name            "Get example"
     :description     "A dummy HTTP action"
@@ -69,15 +74,15 @@
     :description   "A simple update query action"
     :type          "query"
     :model_id      card-id
-    :dataset_query (update (mt/native-query {:query "update users set name = 'foo' where id = {{x}}"})
-                           :type name)
+    :dataset_query (lib/native-query (mt/metadata-provider) "update users set name = 'foo' where id = {{x}}")
     :database_id   (t2/select-one-fn :database_id :model/Card :id card-id)
-    :parameters    [{:id "x" :type "type/biginteger"}]}
+    :parameters    [{:id "x" :type "number"}]}
    {:name       "Implicit example"
     :type       "implicit"
     :model_id   card-id
     :kind       "row/create"
-    :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]}])
+    :parameters [{:id "nonexistent" :special "shouldbeignored", :type "number"}
+                 {:id "id" :special "hello", :type "number"}]}])
 
 (deftest list-actions-test
   (search/reset-tracking!)
@@ -252,18 +257,30 @@
                                        (assoc :kind "row/update" :description "A new description")
 
                                        (= (:type initial-action) "query")
-                                       (assoc :dataset_query (update (mt/native-query {:query "update users set name = 'bar' where id = {{x}}"})
-                                                                     :type name))
+                                       (assoc :dataset_query
+                                              (lib/native-query (mt/metadata-provider) "update users set name = 'bar' where id = {{x}}"))
 
                                        (= (:type initial-action) "http")
                                        (-> (assoc :response_handle ".body.result"  :description nil))))
                     expected-fn    (fn [m]
-                                     (cond-> m
-                                       (= (:type initial-action) "implicit")
-                                       (assoc :database_id (mt/id)
-                                              :parameters (if (= "row/create" (:kind initial-action))
-                                                            []
-                                                            [{:id "id" :type "type/BigInteger" :special "hello"}]))))
+                                     (-> m
+                                         (cond-> (= (:type initial-action) "implicit")
+                                           (assoc :database_id (mt/id)
+                                                  :parameters (if (= "row/create" (:kind initial-action))
+                                                                []
+                                                                [{:id "id" :type "number" :special "hello"}])))
+                                         (m/update-existing :dataset_query (letfn [(update-template-tags [template-tags]
+                                                                                     (update-vals template-tags #(dissoc % :id)))
+                                                                                   (update-stage [stage]
+                                                                                     (m/update-existing stage :template-tags update-template-tags))
+                                                                                   (update-stages [stages]
+                                                                                     (mapv update-stage stages))
+                                                                                   (update-query [query]
+                                                                                     (-> query
+                                                                                         mt/obj->json->obj
+                                                                                         (dissoc :lib/metadata)
+                                                                                         (update :stages update-stages)))]
+                                                                             update-query))))
                     updated-action (update-fn initial-action)]
                 (testing "Create fails with"
                   (testing "no permission"
@@ -335,7 +352,8 @@
                                       :type       "implicit"
                                       :model_id   model-id
                                       :kind       "row/create"
-                                      :parameters [{:id "nonexistent" :special "shouldbeignored"} {:id "id" :special "hello"}]})))))))
+                                      :parameters [{:type "number", :id "nonexistent" :special "shouldbeignored"}
+                                                   {:type "number", :id "id" :special "hello"}]})))))))
 
 (deftest snowplow-test
   (snowplow-test/with-fake-snowplow-collector
@@ -352,7 +370,6 @@
                                    "num_parameters" (count parameters)
                                    "type"           type}}
                         (last (snowplow-test/pop-event-data-and-user-id!)))))
-
               (testing (format "update an action of type %s" type)
                 (let [updated-action (mt/user-http-request :crowberto :put 200 (str "action/" (:id new-action)) {:name "new name"})]
                   (is (=? {:user-id (str (mt/user->id :crowberto))
@@ -360,7 +377,6 @@
                                      "event"          "action_updated"
                                      "type"           type}}
                           (last (snowplow-test/pop-event-data-and-user-id!))))))
-
               (testing (format "delete an action of type %s" type)
                 (mt/user-http-request :crowberto :delete 204 (str "action/" (:id new-action)))
                 (is (=? {:user-id (str (mt/user->id :crowberto))
@@ -394,27 +410,27 @@
               (is (=? {:errors {:name "string"},
                        :specific-errors {:name ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "http"})))
-              (is (=? {:errors {:model_id "value must be an integer greater than zero."}
+              (is (=? {:errors {:model_id "Valid Card ID"}
                        :specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "http" :name "test"}))))
             (testing "Handles need to be valid jq"
-              (is (=? {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"}
+              (is (=? {:errors {:response_handle "nullable must be a valid json-query, something like '.item.title'"}
                        :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title', received: \"body\""]}}
                       (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :response_handle "body"))))
-              (is (=? {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"}
+              (is (=? {:errors {:error_handle "nullable must be a valid json-query, something like '.item.title'"}
                        :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title', received: \"x\""]}}
                       (mt/user-http-request :crowberto :post 400 "action" (assoc initial-action :error_handle "x"))))))
           (testing "Validate PUT"
             (testing "Template needs method and url"
               (is (=? {:specific-errors
                        {:template {:method ["missing required key, received: nil"], :url ["missing required key, received: nil"]}},
-                       :errors {:template "nullable map where {:method -> <enum of GET, POST, PUT, DELETE, PATCH>, :url -> <string with length >= 1>, :body (optional) -> <nullable string>, :headers (optional) -> <nullable string>, :parameters (optional) -> <nullable sequence of map>, :parameter_mappings (optional) -> <nullable map>} with no other keys"}}
+                       :errors {:template {:method "enum of GET, POST, PUT, DELETE, PATCH", :url "string with length >= 1"}}}
                       (mt/user-http-request :crowberto :put 400 action-path {:type "http" :template {}}))))
             (testing "Handles need to be valid jq"
-              (is (=? {:errors {:response_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+              (is (=? {:errors {:response_handle "nullable must be a valid json-query, something like '.item.title'"},
                        :specific-errors {:response_handle ["must be a valid json-query, something like '.item.title', received: \"body\""]}}
                       (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :response_handle "body"))))
-              (is (=? {:errors {:error_handle "nullable string, and must be a valid json-query, something like '.item.title'"},
+              (is (=? {:errors {:error_handle "nullable must be a valid json-query, something like '.item.title'"},
                        :specific-errors {:error_handle ["must be a valid json-query, something like '.item.title', received: \"x\""]}}
                       (mt/user-http-request :crowberto :put 400 action-path (assoc initial-action :error_handle "x")))))))))))
 

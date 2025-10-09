@@ -3,6 +3,7 @@
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -41,14 +42,13 @@
 (defn- filter-fields-for-sandboxing [table query-metadata-response]
   ;; If we have sandboxed permissions and the associated sandbox limits the fields returned, we need to make sure
   ;; the query_metadata endpoint also excludes any fields the sandbox query would exclude.
-  (if-let [sandbox-source-card (find-sandbox-source-card table api/*current-user-id*)]
-    (case (get-in sandbox-source-card [:dataset_query :type])
-      :native (update query-metadata-response :fields
-                      (partial filter-fields-by-name
-                               (->> sandbox-source-card :result_metadata (map :name) set)))
-      :query  (update query-metadata-response :fields
-                      (partial filter-fields-by-id
-                               (->> sandbox-source-card :result_metadata (map u/id) set))))
+  (if-let [{sandbox-query :dataset_query, :as sandbox-source-card} (find-sandbox-source-card table api/*current-user-id*)]
+    (update query-metadata-response :fields
+            (if (lib/native-only-query? sandbox-query)
+              (partial filter-fields-by-name
+                       (->> sandbox-source-card :result_metadata (map :name) set))
+              (partial filter-fields-by-id
+                       (->> sandbox-source-card :result_metadata (map u/id) set))))
     ;; Sandboxed via user attribute, not a source question, so no column-level sandboxing is in place
     query-metadata-response))
 

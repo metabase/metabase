@@ -31,7 +31,7 @@
 
 .error {
   color: var(--mb-color-error);
-  background-color: var(--mb-color-bg-error);
+  background-color: var(--mb-color-background-error);
   border-bottom: 1px solid var(--mb-color-border);
 }
 

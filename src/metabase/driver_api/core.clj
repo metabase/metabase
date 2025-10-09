@@ -3,8 +3,9 @@
                        ;; this is actually ok here since this is a drivers namespace
                        {:discouraged-namespace {metabase.query-processor.store {:level :off}}
                         ;; this is also ok here since this is a drivers namespace
-                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}}}}
-  (:refer-clojure :exclude [replace compile require])
+                        :discouraged-var       {metabase.lib.core/->legacy-MBQL {:level :off}}
+                        :missing-docstring     {:level :off}}}}
+  (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -19,7 +20,6 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
@@ -49,7 +49,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
@@ -62,7 +62,6 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
@@ -100,7 +99,7 @@
  events/publish-event!
  lib-be/start-of-week
  lib.field/json-field?
- lib.metadata.jvm/instance->metadata
+ lib-be/instance->metadata
  lib.metadata/database
  lib.metadata/field
  lib.metadata/fields
@@ -116,7 +115,10 @@
  lib.util.match/replace
  lib.util/truncate-alias
  lib/->legacy-MBQL
+ lib/->metadata-provider
+ lib/order-by-clause
  lib/query-from-legacy-inner-query
+ lib/raw-native-query
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
@@ -171,7 +173,6 @@
  qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.writeback/execute-write-sql!
  qp/process-query
- schema.metadata-queries/add-required-filters-if-needed
  secrets/clean-secret-properties-from-details
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
@@ -189,22 +190,19 @@
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)
-
-#_{:clj-kondo/ignore [:missing-docstring]}
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
-(do
-  (p/import-fn setting/get-value-of-type setting-get-value-of-type)
-  (p/import-fn secrets/value-as-string secret-value-as-string)
-  (p/import-fn secrets/value-as-file! secret-value-as-file!)
-  (p/import-fn table/database table->database)
+(p/import-fn setting/get-value-of-type setting-get-value-of-type)
+(p/import-fn secrets/value-as-string secret-value-as-string)
+(p/import-fn secrets/value-as-file! secret-value-as-file!)
+(p/import-fn table/database table->database)
 
-  (p/import-def qp.error-type/db qp.error-type.db)
-  (p/import-def qp.error-type/driver qp.error-type.driver)
-  (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
-  (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
-  (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
-  (p/import-def qp.error-type/qp qp.error-type.qp)
-  (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature))
+(p/import-def qp.error-type/db qp.error-type.db)
+(p/import-def qp.error-type/driver qp.error-type.driver)
+(p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
+(p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
+(p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
+(p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"
@@ -313,3 +311,7 @@
 (def qp.util.transformations.nest-breakouts.externally-remapped-field
   ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
   ::qp.util.transformations.nest-breakouts/externally-remapped-field)
+
+(def qp.compile.query-with-compiled-query
+  "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
+  ::qp.compile/query-with-compiled-query)

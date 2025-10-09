@@ -36,7 +36,9 @@
   :- [:map
       [:logs :string]
       [:error {:optional true} [:map [:message i18n/LocalizedString]]]
-      [:output {:optional true} [:map [:rows :any]]]]
+      [:output {:optional true} [:map
+                                 [:cols [:sequential [:map [:name :string]]]]
+                                 [:rows [:sequential :any]]]]]
   "Evaluate an ad-hoc python transform on a sample of input data.
   Intended for short runs for early feedback. Input/output/timeout limits apply."
   [_
@@ -80,11 +82,14 @@
          :error {:message (i18n/deferred-tru "Python execution failure (exit code {0})" (:exit_code runner-body "?"))}}
 
         :else
-        {:logs   run-logs
-         :output (with-open [in  (python-runner/open-output @shared-storage-ref)
-                             rdr (io/reader in)]
-                   (let [sample-rows (take output_row_limit (line-seq rdr))]
-                     {:rows (mapv json/decode (remove str/blank? sample-rows))}))}))))
+        (let [output-manifest (python-runner/read-output-manifest @shared-storage-ref)]
+          {:logs   run-logs
+           :output (with-open [in  (python-runner/open-output @shared-storage-ref)
+                               rdr (io/reader in)]
+                     (let [sample-rows (take output_row_limit (line-seq rdr))
+                           {:keys [fields]} output-manifest]
+                       {:cols (mapv #(select-keys % [:name]) fields)
+                        :rows (mapv json/decode (remove str/blank? sample-rows))}))})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms-python` routes."
