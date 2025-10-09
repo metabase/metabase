@@ -13,6 +13,8 @@
 (derive :event/card-create ::card-event)
 (derive :event/card-update ::card-event)
 (derive :event/card-delete ::card-event)
+(derive :event/card-public-link-created ::card-event)
+(derive :event/card-public-link-deleted ::card-event)
 
 (methodical/defmethod events/publish-event! ::card-event
   [topic event]
@@ -21,6 +23,8 @@
 (derive ::dashboard-event ::event)
 (derive :event/dashboard-create ::dashboard-event)
 (derive :event/dashboard-delete ::dashboard-event)
+(derive :event/dashboard-public-link-created ::dashboard-event)
+(derive :event/dashboard-public-link-deleted ::dashboard-event)
 
 (methodical/defmethod events/publish-event! ::dashboard-event
   [topic event]
