@@ -47,9 +47,11 @@ export function PythonTransformEditor({
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
+  const [testRunner, setTestRunner] = useState<"pyodide" | "api">("pyodide");
+
   const { isRunning, cancel, run, executionResult } = useTestPythonTransform(
     source,
-    "pyodide",
+    testRunner,
   );
 
   const handleScriptChange = (body: string) => {
@@ -136,6 +138,8 @@ export function PythonTransformEditor({
           <PythonEditorResults
             isRunning={isRunning}
             executionResult={executionResult}
+            testRunner={testRunner}
+            onTestRunnerChange={setTestRunner}
           />
         </Stack>
       </Flex>

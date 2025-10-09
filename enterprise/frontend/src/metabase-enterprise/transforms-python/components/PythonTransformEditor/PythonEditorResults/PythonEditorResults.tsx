@@ -6,16 +6,18 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
-import { Box, Flex, Group, Icon, Stack, Tabs, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Stack, Switch, Tabs, Text } from "metabase/ui";
 import type { PythonTransformResultData } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
 
 import { ExecutionOutputTable } from "./ExecutionOutputTable";
 import S from "./PythonEditorResults.module.css";
 
-type PythonEditorProps = {
+type PythonResultsProps = {
   isRunning?: boolean;
   executionResult?: PythonExecutionResult<PythonTransformResultData> | null;
+  testRunner: "pyodide" | "api";
+  onTestRunnerChange: (runner: "pyodide" | "api") => void;
 };
 
 type ResultsTab = "results" | "output";
@@ -23,7 +25,9 @@ type ResultsTab = "results" | "output";
 export function PythonEditorResults({
   executionResult,
   isRunning,
-}: PythonEditorProps) {
+  testRunner,
+  onTestRunnerChange,
+}: PythonResultsProps) {
   const [tab, setTab] = useState<ResultsTab>("results");
   return (
     <DebouncedFrame className={S.visualization}>
@@ -32,6 +36,8 @@ export function PythonEditorResults({
           executionResult={executionResult}
           tab={tab}
           onTabChange={setTab}
+          testRunner={testRunner}
+          onTestRunnerChange={onTestRunnerChange}
         />
         {!executionResult && <EmptyState />}
         {executionResult &&
@@ -54,31 +60,41 @@ function ExecutionResultHeader({
   executionResult,
   tab,
   onTabChange,
+  testRunner,
+  onTestRunnerChange,
 }: {
   executionResult?: PythonExecutionResult | null;
   tab: ResultsTab;
   onTabChange: (tab: ResultsTab) => void;
+  testRunner: "pyodide" | "api";
+  onTestRunnerChange: (runner: "pyodide" | "api") => void;
 }) {
   const message = getMessageForExecutionResult(executionResult);
 
   return (
     <Group className={S.header} justify="space-between">
-      <Box mt="xs">
-        <Tabs
-          value={tab}
-          onChange={(value) => {
-            if (value) {
-              onTabChange(value as ResultsTab);
-            }
-          }}
-        >
-          <Tabs.List>
-            <Tabs.Tab value="results">{t`Results`}</Tabs.Tab>
-            <Tabs.Tab value="output">{t`Output`}</Tabs.Tab>
-          </Tabs.List>
-        </Tabs>
-      </Box>
-      {message}
+      <Group align="center">
+        <Box mt="xs">
+          <Tabs
+            value={tab}
+            onChange={(value) => {
+              if (value) {
+                onTabChange(value as ResultsTab);
+              }
+            }}
+          >
+            <Tabs.List>
+              <Tabs.Tab value="results">{t`Results`}</Tabs.Tab>
+              <Tabs.Tab value="output">{t`Output`}</Tabs.Tab>
+            </Tabs.List>
+          </Tabs>
+        </Box>
+        {message}
+      </Group>
+      <RunnerToggle
+        testRunner={testRunner}
+        onTestRunnerChange={onTestRunnerChange}
+      />
     </Group>
   );
 }
@@ -170,5 +186,27 @@ function ExecutionOutputLogs({
         >{t`No output to display`}</Text>
       )}
     </Box>
+  );
+}
+
+function RunnerToggle({
+  testRunner,
+  onTestRunnerChange,
+}: {
+  testRunner: "pyodide" | "api";
+  onTestRunnerChange: (runner: "pyodide" | "api") => void;
+}) {
+  return (
+    <Group align="center" pr="md" c="text-light">
+      {testRunner === "pyodide"
+        ? t`Emulating runner in-browser`
+        : t`Running test script on Python runner`}
+      <Switch
+        checked={testRunner === "pyodide"}
+        onChange={({ target }) => {
+          onTestRunnerChange(target.checked ? "pyodide" : "api");
+        }}
+      />
+    </Group>
   );
 }
