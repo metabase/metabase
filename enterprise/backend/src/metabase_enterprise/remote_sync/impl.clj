@@ -129,37 +129,40 @@
   (if source
     (let [sync-timestamp (t/instant)
           collections (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/")]
-      (try
-        (analytics/inc! :metabase-remote-sync/exports)
-        (serdes/with-cache
-          (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
-                                               :no-collections           false
-                                               :no-data-model            true
-                                               :no-settings              true
-                                               :no-transforms            true
-                                               :include-field-values     false
-                                               :include-database-secrets false
-                                               :continue-on-error        false
-                                               :skip-archived            true})]
-            (remote-sync.task/update-progress! task-id 0.3)
-            (source/store! models source task-id message)
-            (remote-sync.task/set-version! task-id (source.p/version source))
-            (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
-        {:status :success
-         :version       (source.p/version source)}
+      (if (empty? collections)
+        {:status  :error
+         :message "No remote-synced collections available to sync."}
+        (try
+          (analytics/inc! :metabase-remote-sync/exports)
+          (serdes/with-cache
+            (let [models (serialization/extract {:targets                  (mapv #(vector "Collection" %) collections)
+                                                 :no-collections           false
+                                                 :no-data-model            true
+                                                 :no-settings              true
+                                                 :no-transforms            true
+                                                 :include-field-values     false
+                                                 :include-database-secrets false
+                                                 :continue-on-error        false
+                                                 :skip-archived            true})]
+              (remote-sync.task/update-progress! task-id 0.3)
+              (source/store! models source task-id message)
+              (remote-sync.task/set-version! task-id (source.p/version source))
+              (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
+          {:status :success
+           :version       (source.p/version source)}
 
-        (catch Exception e
-          (if (:cancelled? (ex-data e))
-            (log/info "Export to git repository was cancelled")
-            (do
-              (analytics/inc! :metabase-remote-sync/imports-failed)
-              (remote-sync.task/fail-sync-task! task-id (ex-message e))
-              {:status  :error
-               :version       (source.p/version source)
+          (catch Exception e
+            (if (:cancelled? (ex-data e))
+              (log/info "Export to git repository was cancelled")
+              (do
+                (analytics/inc! :metabase-remote-sync/imports-failed)
+                (remote-sync.task/fail-sync-task! task-id (ex-message e))
+                {:status  :error
+                 :version       (source.p/version source)
 
-               :message (format "Failed to export to git repository: %s" (ex-message e))})))
-        (finally
-          (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis)))))
+                 :message (format "Failed to export to git repository: %s" (ex-message e))})))
+          (finally
+            (analytics/observe! :metabase-remote-sync/export-duration-ms (t/as (t/duration sync-timestamp (t/instant)) :millis))))))
     {:status  :error
      :message "Remote sync source is not enabled. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}))
 
