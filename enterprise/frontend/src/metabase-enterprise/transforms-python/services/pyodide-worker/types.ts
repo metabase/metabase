@@ -23,10 +23,9 @@ type PyodideTerminatedMessage = { type: "terminated" };
 
 export type PyodideResultsMessage = {
   type: "results";
-  error?: string;
+  error?: { message: string };
   result?: string;
-  stdout: string;
-  stderr: string;
+  logs?: string;
 };
 
 export type PyodideWorkerMessage =
@@ -41,7 +40,6 @@ export type ExecutePythonOptions = {
 
 export type PythonExecutionResult<T = unknown> = {
   output?: T;
-  error?: string;
-  stdout?: string;
-  stderr?: string;
+  error?: { message: string };
+  logs?: string;
 };

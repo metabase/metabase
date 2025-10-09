@@ -6,7 +6,7 @@ import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import DebouncedFrame from "metabase/common/components/DebouncedFrame";
 import { LoadingSpinner } from "metabase/common/components/MetadataInfo/MetadataInfo.styled";
 import { isMac } from "metabase/lib/browser";
-import { Box, Flex, Group, Icon, Stack, Tabs, Text, Title } from "metabase/ui";
+import { Box, Flex, Group, Icon, Stack, Tabs, Text } from "metabase/ui";
 import type { PythonTransformResultData } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type { PythonExecutionResult } from "metabase-enterprise/transforms-python/services/pyodide-worker";
 
@@ -37,7 +37,7 @@ export function PythonEditorResults({
         {executionResult &&
           tab === "results" &&
           (executionResult?.error ? (
-            <ErrorState error={executionResult.error} />
+            <ErrorState error={executionResult.error.message} />
           ) : (
             <ExecutionOutputTable output={executionResult?.output} />
           ))}
@@ -159,36 +159,16 @@ function ExecutionOutputLogs({
   executionResult: PythonExecutionResult;
 }) {
   return (
-    <Stack gap={0} p="md">
-      <ExecutionLogs label={t`stdout`} content={executionResult.stdout} />
-      <ExecutionLogs label={t`stderr`} content={executionResult.stderr} />
-    </Stack>
-  );
-}
-
-function ExecutionLogs({
-  label,
-  content,
-}: {
-  label: string;
-  content?: string | null;
-}) {
-  return (
-    <Box pb="md">
-      <Title order={5} mb="xs">
-        {label}
-      </Title>
-      <Box fz="sm" px="md" py="sm" bg="bg-light" mah="200px" className={S.logs}>
-        {content ? (
-          <AnsiLogs>{content}</AnsiLogs>
-        ) : (
-          <Text
-            c="text-light"
-            fz="sm"
-            fs="italic"
-          >{t`No output to display`}</Text>
-        )}
-      </Box>
+    <Box fz="sm" p="md" bg="bg-light" h="100%" className={S.logs}>
+      {executionResult.logs ? (
+        <AnsiLogs>{executionResult.logs}</AnsiLogs>
+      ) : (
+        <Text
+          c="text-light"
+          fz="sm"
+          fs="italic"
+        >{t`No output to display`}</Text>
+      )}
     </Box>
   );
 }

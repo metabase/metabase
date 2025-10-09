@@ -10,14 +10,14 @@ export function ExecutionOutputTable({
 }: {
   output?: PythonTransformResultData;
 }) {
-  const { columns = [], data = [] } = output ?? {};
+  const { cols = [], rows = [] } = output ?? {};
 
   const tableProps = useDataGridInstance<Row, unknown>({
-    data,
-    columnsOptions: columns.map((column) => ({
-      id: column,
-      name: column,
-      accessorFn: (row) => row[column],
+    data: rows,
+    columnsOptions: cols.map((column) => ({
+      id: column.name,
+      name: column.name,
+      accessorFn: (row) => row[column.name],
       formatter: (value) => {
         return formatValue(value, {
           type: "cell",
@@ -28,7 +28,7 @@ export function ExecutionOutputTable({
     })),
   });
 
-  if (!output || columns.length === 0) {
+  if (!output || cols.length === 0) {
     return null;
   }
 

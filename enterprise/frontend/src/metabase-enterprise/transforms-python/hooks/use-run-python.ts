@@ -33,7 +33,7 @@ export function useRunPython<T = unknown>() {
       setData(result);
       return result;
     } catch (error) {
-      setData({ error: getErrorMessage(error) });
+      setData({ error: { message: getErrorMessage(error) } });
     } finally {
       setIsRunning(false);
     }

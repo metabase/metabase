@@ -66,12 +66,11 @@ export class PyodideWorkerManager {
       return {
         output: evt.result ? JSON.parse(evt.result) : null,
         error: evt.error,
-        stdout: evt.stdout,
-        stderr: evt.stderr,
+        logs: evt.logs,
       };
     } catch (error) {
       return {
-        error: getErrorMessage(error),
+        error: { message: getErrorMessage(error) },
       };
     } finally {
       this.terminate();

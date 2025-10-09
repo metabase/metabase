@@ -5,9 +5,7 @@
 
 .logs {
   white-space: pre;
-  border-block: 1px solid var(--mb-color-border);
   font-family: var(--mb-default-monospace-font-family);
-  margin-inline: calc(-1 * var(--mantine-spacing-md));
   overflow: auto;
 }
 

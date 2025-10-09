@@ -97,17 +97,16 @@ async function executePython(code: string, libraries: PythonLibraries) {
     throw new Error("Pyodide not initialized");
   }
 
-  const stdout: string[] = [];
+  const logs: string[] = [];
   pyodide.setStdout({
     batched(out: string) {
-      stdout.push(out);
+      logs.push(out);
     },
   });
 
-  const stderr: string[] = [];
   pyodide.setStderr({
     batched(out: string) {
-      stderr.push(out);
+      logs.push(out);
     },
   });
 
@@ -119,8 +118,7 @@ async function executePython(code: string, libraries: PythonLibraries) {
     const result = await pyodide.runPythonAsync(code);
     return {
       result: serialize(result),
-      stdout: stdout.join("\n"),
-      stderr: stderr.join("\n"),
+      logs: logs.join("\n"),
     };
   } catch (_err) {
     const formatException = pyodide.globals.get(
@@ -128,9 +126,8 @@ async function executePython(code: string, libraries: PythonLibraries) {
     ) as () => string;
     const error = formatException();
     return {
-      error: serialize(error),
-      stdout: stdout.join("\n"),
-      stderr: stderr.join("\n"),
+      error: { message: serialize(error) },
+      logs: logs.join("\n"),
     };
   }
 }

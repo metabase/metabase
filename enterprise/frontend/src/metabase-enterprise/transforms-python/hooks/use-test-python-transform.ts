@@ -19,8 +19,8 @@ export type PyodideTableSource = {
 };
 
 export type PythonTransformResultData = {
-  columns: string[];
-  data: Record<string, RowValue>[];
+  cols: { name: string }[];
+  rows: Record<string, RowValue>[];
 };
 
 export function useTestPythonTransform(source: PythonTransformSourceDraft) {
@@ -46,7 +46,6 @@ export function useTestPythonTransform(source: PythonTransformSourceDraft) {
 
   return {
     isRunning: isRunningPython || isFetchingData || isFetchingLibraries,
-    isDirty: true,
     cancel,
     run,
     executionResult,
@@ -92,9 +91,15 @@ def __run_transform_${random}():
   if not isinstance(result, pd.DataFrame):
     raise Exception('Transform function did not return a DataFrame')
 
+  def as_column(name):
+    return { 'name': name }
+
+  cols = [{'name': name} for name in result.columns.tolist()]
+  rows = result.to_dict('records')
+
   return json.dumps({
-    'columns': result.columns.tolist(),
-    'data': result.to_dict('records')
+    'cols': cols,
+    'rows': rows,
   })
 
 __run_transform_${random}()
