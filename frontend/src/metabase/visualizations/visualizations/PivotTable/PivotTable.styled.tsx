@@ -121,7 +121,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
     ${(props) =>
     props.isBorderedHeader
       ? color("border-secondary")
-      : color("border-subtle")};
+      : "var(--mb-color-table-border)"};
   background-color: ${getCellBackgroundColor};
   ${(props) =>
     props.hasTopBorder &&

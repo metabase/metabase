@@ -4,7 +4,6 @@ import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
-import { color } from "metabase/lib/colors";
 import type { MantineThemeOverride } from "metabase/ui";
 
 export const DEFAULT_SDK_FONT_SIZE = 14;
@@ -89,7 +88,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     splitLine: {
       lineStyle: {
-        color: color("border-subtle"),
+        color: "var(--mb-color-cartesian-grid-line)",
       },
     },
   },

@@ -23,4 +23,12 @@ export const DYNAMIC_CSS_VARIABLES: DynamicCssVarConfig = {
   "--mb-color-bg-error": {
     dark: { source: "negative", alpha: 0.1 },
   },
+  "--mb-color-cartesian-grid-line": {
+    light: { source: "border", alpha: 0.5 },
+    dark: { source: "border" },
+  },
+  "--mb-color-table-border": {
+    light: { source: "border", alpha: 0.5 },
+    dark: { source: "border", alpha: 0.15 },
+  },
 };
