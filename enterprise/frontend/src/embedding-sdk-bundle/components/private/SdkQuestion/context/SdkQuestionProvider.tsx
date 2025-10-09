@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useExtractEntityIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-entity-id-from-jwt-token";
@@ -71,6 +72,8 @@ export const SdkQuestionProvider = ({
     entityId: rawQuestionId,
     token: rawToken ?? undefined,
   });
+
+  const isNewQuestion = questionId === "new";
 
   const error = useSdkSelector(getError);
 
@@ -201,6 +204,12 @@ export const SdkQuestionProvider = ({
   useEffect(() => {
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
+
+  if (isStaticEmbedding && isNewQuestion) {
+    return (
+      <SdkError message={t`You can't save questions in anonymous embedding`} />
+    );
+  }
 
   if (tokenError) {
     return <SdkError message={tokenError} />;

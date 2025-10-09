@@ -352,8 +352,8 @@ const SdkDashboardInner = ({
       }}
       autoScrollToDashcardId={autoScrollToDashcardId}
     >
-      {match(finalRenderMode)
-        .with("question", () => (
+      {match({ finalRenderMode, isStaticEmbedding })
+        .with({ finalRenderMode: "question" }, () => (
           <SdkDashboardStyledWrapperWithRef className={className} style={style}>
             <SdkAdHocQuestion
               // `adhocQuestionUrl` would have value if renderMode is "question"
@@ -366,7 +366,7 @@ const SdkDashboardInner = ({
             </SdkAdHocQuestion>
           </SdkDashboardStyledWrapperWithRef>
         ))
-        .with("dashboard", () => (
+        .with({ finalRenderMode: "dashboard" }, () => (
           <SdkDashboardProvider
             plugins={plugins}
             onEditQuestion={onEditQuestion}
@@ -381,20 +381,28 @@ const SdkDashboardInner = ({
             )}
           </SdkDashboardProvider>
         ))
-        .with("queryBuilder", () => (
-          <DashboardQueryBuilder
-            onCreate={(question) => {
-              setNewDashboardQuestionId(question.id);
-              setRenderMode("dashboard");
-              dashboardContextProviderRef.current?.refetchDashboard();
-            }}
-            onNavigateBack={() => {
-              setRenderMode("dashboard");
-            }}
-            dataPickerProps={dataPickerProps}
-            onVisualizationChange={onVisualizationChange}
-          />
-        ))
+        .with({ finalRenderMode: "queryBuilder" }, ({ isStaticEmbedding }) =>
+          isStaticEmbedding ? (
+            <SdkDashboardStyledWrapper className={className} style={style}>
+              <SdkError
+                message={t`You can't save questions in anonymous embedding`}
+              />
+            </SdkDashboardStyledWrapper>
+          ) : (
+            <DashboardQueryBuilder
+              onCreate={(question) => {
+                setNewDashboardQuestionId(question.id);
+                setRenderMode("dashboard");
+                dashboardContextProviderRef.current?.refetchDashboard();
+              }}
+              onNavigateBack={() => {
+                setRenderMode("dashboard");
+              }}
+              dataPickerProps={dataPickerProps}
+              onVisualizationChange={onVisualizationChange}
+            />
+          ),
+        )
         .exhaustive()}
       {modalContent}
     </DashboardContextProvider>
