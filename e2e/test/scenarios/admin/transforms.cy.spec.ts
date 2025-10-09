@@ -1716,11 +1716,12 @@ LIMIT
 
         H.PythonEditor.clear().type(
           dedent`
-          import pandas as pd
+            import pandas as pd
 
-          def transform():
-          return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
-        `,
+            def transform():
+                return pd.DataFrame([{"foo": common.useful_calculation(1, 2)}])
+          `,
+          { allowFastSet: true },
         );
 
         getQueryEditor().findByText("Import common library").click();
@@ -1731,6 +1732,8 @@ LIMIT
           .click();
 
         H.popover().findByText(DB_NAME).click();
+
+        cy.findByTestId("python-data-picker").should("not.be.disabled");
 
         cy.findByTestId("python-data-picker")
           .findByText("Select a table…")
