@@ -3,7 +3,6 @@ import { useState } from "react";
 
 import { Flex, Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
-import { useTestPythonTransform } from "metabase-enterprise/transforms-python/hooks/use-test-python-transform";
 import type {
   DatabaseId,
   PythonTransformSource,
@@ -14,6 +13,7 @@ import type {
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
+import { useTestPythonTransform } from "./hooks";
 import {
   getValidationResult,
   isPythonTransformSource,
@@ -47,8 +47,10 @@ export function PythonTransformEditor({
   const [source, setSource] = useState(initialSource);
   const [isSourceDirty, setIsSourceDirty] = useState(false);
 
-  const { isRunning, cancel, run, executionResult } =
-    useTestPythonTransform(source);
+  const { isRunning, cancel, run, executionResult } = useTestPythonTransform(
+    source,
+    "pyodide",
+  );
 
   const handleScriptChange = (body: string) => {
     const newSource = {
