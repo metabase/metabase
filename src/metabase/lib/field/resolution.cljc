@@ -628,7 +628,11 @@
                            :metabase.lib.join/join-alias join-alias})))
                    (options-metadata opts)
                    {:lib/original-ref field-ref}])
-                 (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))
+                 (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col))
+                   (cond-> $col
+                     (and (contains? #{nil :type/*} (:effective-type $col))
+                          (not (contains? #{nil :type/*} (:base-type $col))))
+                     (assoc :effective-type (:base-type $col))))
                  ;; `:lib/desired-column-alias` needs to be recalculated in the context of the stage where the ref
                  ;; appears, go ahead and remove it so we don't accidentally try to use it when it may or may not be
                  ;; accurate at all.
