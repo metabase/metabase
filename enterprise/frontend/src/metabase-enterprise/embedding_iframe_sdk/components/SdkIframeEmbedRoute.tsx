@@ -163,33 +163,41 @@ const SdkIframeEmbedView = ({
     .with(
       {
         componentName: "metabase-question",
+        questionId: P.intersection(P.nonNullable, P.not("new")),
+        drills: false,
+      },
+      (settings) => (
+        <StaticQuestion
+          key={rerenderKey}
+          questionId={settings.questionId}
+          withDownloads={settings.withDownloads}
+          height="100%"
+          initialSqlParameters={settings.initialSqlParameters}
+          hiddenParameters={settings.hiddenParameters}
+          title={settings.withTitle ?? true}
+        />
+      ),
+    )
+    .with(
+      {
+        componentName: "metabase-question",
         questionId: P.nonNullable,
+        drills: P.optional(true),
       },
-      (settings) => {
-        const commonProps = {
-          questionId: settings.questionId,
-          withDownloads: settings.withDownloads,
-          height: "100%",
-          initialSqlParameters: settings.initialSqlParameters,
-          title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
-        };
-
-        // note: to create a new question we need to render InteractiveQuestion
-        if (settings.drills === false && settings.questionId !== "new") {
-          // note: this disable drills but also removes the top toolbar
-          return <StaticQuestion {...commonProps} key={rerenderKey} />;
-        }
-
-        return (
-          <SdkQuestion
-            {...commonProps}
-            isSaveEnabled={settings.isSaveEnabled ?? false}
-            key={rerenderKey}
-            targetCollection={settings.targetCollection}
-            entityTypes={settings.entityTypes}
-          />
-        );
-      },
+      (settings) => (
+        <SdkQuestion
+          key={rerenderKey}
+          questionId={settings.questionId}
+          withDownloads={settings.withDownloads}
+          height="100%"
+          initialSqlParameters={settings.initialSqlParameters}
+          hiddenParameters={settings.hiddenParameters}
+          title={settings.withTitle ?? true}
+          isSaveEnabled={settings.isSaveEnabled ?? false}
+          targetCollection={settings.targetCollection}
+          entityTypes={settings.entityTypes}
+        />
+      ),
     )
     .with(
       {
