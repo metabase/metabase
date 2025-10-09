@@ -1,3 +1,5 @@
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getLinkUrl } from "metabase/lib/formatting";
 import { isCoordinate, isNumber } from "metabase-lib/v1/types/utils/isa";
 
 /**
@@ -45,6 +47,32 @@ export function getTableCellClickedObject(
   const column = cols[columnIndex];
   const row = rows[rowIndex];
   const value = row[columnIndex];
+
+  // EMB-890: map urls to click behavior to support `mapQuestionClickActions`
+  if (
+    isEmbeddingSdk() &&
+    typeof value === "string" &&
+    getLinkUrl(value, settings)
+  ) {
+    const originalColumnFn = settings.column;
+    settings = {
+      ...settings,
+      column: (col) => {
+        const colSettings = originalColumnFn?.(col) ?? {};
+        if (col === column && !colSettings.click_behavior) {
+          return {
+            ...colSettings,
+            click_behavior: {
+              type: "link",
+              linkType: "url",
+              linkTemplate: value,
+            },
+          };
+        }
+        return colSettings;
+      },
+    };
+  }
 
   if (isPivoted) {
     // if it's a pivot table, the first column is

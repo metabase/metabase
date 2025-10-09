@@ -83,7 +83,7 @@ function getLinkText(value: string, options: OptionsType) {
   return collapseNewlines ? removeNewLines(text) : text;
 }
 
-function getLinkUrl(
+export function getLinkUrl(
   value: string,
   { view_as, link_url, clicked, column }: OptionsType,
 ) {
