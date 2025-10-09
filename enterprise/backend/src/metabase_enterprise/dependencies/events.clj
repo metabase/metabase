@@ -21,7 +21,7 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies :card (:id object) (deps.calculation/upstream-deps:card object))
+      (models.dependency/replace-dependencies! :card (:id object) (deps.calculation/upstream-deps:card object))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Card (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -43,7 +43,7 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies :snippet (:id object) (deps.calculation/upstream-deps:snippet object))
+      (models.dependency/replace-dependencies! :snippet (:id object) (deps.calculation/upstream-deps:snippet object))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/NativeQuerySnippet (:id object)
                     {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
@@ -90,7 +90,7 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/with-transaction [_conn]
-      (models.dependency/replace-dependencies :transform (:id object) (deps.calculation/upstream-deps:transform object))
+      (models.dependency/replace-dependencies! :transform (:id object) (deps.calculation/upstream-deps:transform object))
       (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
         (t2/update! :model/Transform (:id object) {:dependency_analysis_version models.dependency/current-dependency-analysis-version}))
       (drop-outdated-target-dep! object))))
@@ -114,7 +114,7 @@
   (let [;; output-table is a keyword like :my_schema/my_table
         table-name (name output-table)]
     (when-let [table-id (t2/select-one-fn :id :model/Table :db_id db-id :schema output-schema :name table-name)]
-      (models.dependency/replace-dependencies :table table-id {:transform #{transform-id}}))))
+      (models.dependency/replace-dependencies! :table table-id {:transform #{transform-id}}))))
 
 (methodical/defmethod events/publish-event! ::transform-run
   [_ {:keys [object]}]

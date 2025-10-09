@@ -165,10 +165,14 @@
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     stages]
-   (->> {:lib/type     :mbql/query
-         :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
-         :database     database-id
-         :stages       stages}
+   (->> (merge
+         {:lib/type     :mbql/query
+          :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
+          :stages       stages}
+         ;; this can be nil in the FE with empty metadata providers, don't stomp on existing DB IDs that are
+         ;; not nil.
+         (when database-id
+           {:database database-id}))
         (lib.normalize/normalize ::lib.schema/query))))
 
 (defn- query-from-legacy-query
@@ -190,8 +194,7 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    (or (lib.util/normalized-query-type x)
-        (lib.dispatch/dispatch-value x)))
+    ((some-fn lib.util/normalized-query-type lib.dispatch/dispatch-value) x))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query
@@ -303,7 +306,7 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x]
+   x :- some?]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query

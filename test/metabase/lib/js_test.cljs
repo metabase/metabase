@@ -666,3 +666,21 @@
         (let [q1 (lib.js/from-js-query (:lib/metadata query) js-query)
               q2 (lib.js/from-js-query (:lib/metadata query) js-query)]
           (is (identical? q1 q2)))))))
+
+(deftest ^:parallel from-js-query-preserve-database-id-test
+  (is (=? {:lib/type :mbql/query,
+           :stages   [{:lib/type :mbql.stage/mbql, :source-table 2}]
+           :database 1}
+          (lib.js/from-js-query
+           (lib.js/metadataProvider 1 #js {})
+           #js {:database 1, :type "query", :query #js {:source-table 2}}))))
+
+(deftest ^:parallel query-equals-should-work-on-js-and-cljs-mbql-4-and-5
+  (let [queries {"Cljs MBQL 4" {:database 1, :type :query, :query {:source-table 2}}
+                 "JS MBQL 4"   #js {:database 1, :type :query, :query #js {:source-table 2}}
+                 "Cljs MBQL 5" {:database 1, :lib/type :mbql/query, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}]}
+                 "JS MBQL 5"   #js {:database 1, "lib/type" :mbql/query, :stages #js [#js {"lib/type" :mbql.stage/mbql, :source-table 2}]}}]
+    (doseq [[q1-type q1] queries
+            [q2-type q2] queries]
+      (testing (str "q1 = " q1-type ", q2 = " q2-type)
+        (lib.js/query= q1 q2)))))

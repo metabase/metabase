@@ -643,18 +643,11 @@
 
 (defn- normalize-to-clj
   [a-query]
-  (let [normalize-fn (fn [q]
-                       (if (= (lib.util/normalized-query-type q) :mbql/query)
-                         (lib.normalize/normalize q)
-                         (mbql.normalize/normalize q)))]
-    (-> a-query (js->clj :keywordize-keys true) unwrap normalize-fn)))
-
-(defn ^:export normalize
-  "Normalize the MBQL or pMBQL query `a-query`.
-
-  Returns the JS form of the normalized query."
-  [a-query]
-  (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
+  (letfn [(normalize* [q]
+            (if (= (lib.util/normalized-query-type q) :mbql/query)
+              (lib.normalize/normalize q)
+              (mbql.normalize/normalize q)))]
+    (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
 ;; # Comparing queries
 ;; There are a few places in the FE where we need to compare two queries, typically to check whether the current
@@ -683,21 +676,20 @@
       ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
       (dissoc :info)))
 
-(defn- prep-query-for-equals-pMBQL
+;;; TODO (Cam 10/8/25) -- we're currently converting MBQL 5 to legacy to do the equality check (icky). It would be
+;;; better to convert both to 5 and use [[metabase.lib.equality/=]]... but that's a task for another day.
+(defn- prep-query-for-equals-mbql5
   [a-query field-ids]
-  (let [fields (or (some->> (lib.core/fields a-query)
-                            (map #(assoc % 1 {})))
-                   (mapv (fn [id] [:field {} id]) field-ids))]
-    (lib.util/update-query-stage a-query -1
-                                 #(-> %
-                                      (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-lib-uuids))))
+  (-> a-query
+      lib.core/->legacy-MBQL
+      (prep-query-for-equals-legacy field-ids)))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
-    (if (contains? normalized-query :lib/type)
-      (prep-query-for-equals-pMBQL normalized-query field-ids)
-      (prep-query-for-equals-legacy normalized-query field-ids))))
+    (let [f (if (= (lib.core/normalized-mbql-version normalized-query) :mbql-version/mbql5)
+              prep-query-for-equals-mbql5
+              prep-query-for-equals-legacy)]
+      (f normalized-query field-ids))))
 
 (defn- compare-field-refs
   [[key1 id1 opts1]
@@ -744,7 +736,7 @@
 
   If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
 
-  Currently this works only for legacy queries in JS form!
+  Works on either MBQL 4 or MBQL 5 in either JS or Cljs form.
   It duplicates the logic formerly found in `query_builder/selectors.js`.
 
   > **Code health:** Legacy. New calls are acceptable if necessary. Eventually this will be replaced with an equivalent
@@ -753,9 +745,9 @@
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
    (let [ids (mapv js->clj field-ids)
-         n1 (prep-query-for-equals query1 ids)
-         n2 (prep-query-for-equals query2 ids)]
-     (query=* n1 n2))))
+         q1  (prep-query-for-equals query1 ids)
+         q2  (prep-query-for-equals query2 ids)]
+     (query=* q1 q2))))
 
 ;; # Column Groups
 ;; In many places in the FE we show a list of columns which might be used to filter, aggregate, etc. These are shown in
@@ -2645,6 +2637,9 @@
         lib.core/prepare-for-serialization
         ->js)))
 
+;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
+;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will
+;;; work as expected.
 (defn ^:export from-js-query
   "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
 

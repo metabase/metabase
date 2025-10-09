@@ -728,6 +728,7 @@
                                   92.0]]}]
                 (:stages query')))
         (is (= ["Total is greater than or equal to 90"
-                "Total is less than 92.0"]
+                #?(:clj  "Total is less than 92.0"
+                   :cljs "Total is less than 92")]
                (map #(:long-display-name (lib/display-info query' %))
                     (lib/filters query'))))))))

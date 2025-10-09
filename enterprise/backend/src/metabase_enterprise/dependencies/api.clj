@@ -73,7 +73,11 @@
   [:map
    [:id     {:optional false} ms/PositiveInt]
    [:name   {:optional true}  :string]
-   [:source {:optional true}  [:maybe ms/Map]]
+   ;; TODO (Cam 10/8/25) -- no idea what the correct schema for these is supposed to be -- it was just `map` before --
+   ;; this is my attempt to guess it
+   [:source {:optional true}  [:maybe [:map
+                                       [:type  {:optional true} :keyword]
+                                       [:query {:optional true} ::queries.schema/query]]]]
    [:target {:optional true}  [:maybe ms/Map]]])
 
 (api.macros/defendpoint :post "/check_transform"

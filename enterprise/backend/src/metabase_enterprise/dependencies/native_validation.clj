@@ -39,6 +39,7 @@
 (mu/defn native-query-deps :- [:set
                                [:or
                                 ::driver/native-query-deps.table-dep
+                                ::driver/native-query-deps.transform-dep
                                 [:map {:closed true} [:snippet ::lib.schema.id/snippet]]
                                 [:map {:closed true} [:card ::lib.schema.id/card]]]]
   "Returns the upstream dependencies of a native query, as a set of `{:kind id}` pairs."
