@@ -1,5 +1,5 @@
 .dropdown {
   padding: 0;
   overflow: auto;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-bg-medium);
 }
