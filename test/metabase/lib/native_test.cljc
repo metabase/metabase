@@ -239,6 +239,22 @@
          (-> (lib.tu/venues-query)
              (lib/with-template-tags {"myid" (assoc (get original-tags "myid") :display-name "My ID")}))))))
 
+(deftest ^:parallel with-template-tags-update-map-order-test
+  ;; yes, I know template tags are sorted as a map, but for small maps we should preserve the order passed in by the
+  ;; FE. See
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759974826834279?thread_ts=1759289751.539169&cid=C0645JP1W81
+  (testing "it should be possible to reorder template tags with with-template-tags"
+    (let [query         (lib/native-query meta/metadata-provider "{{x}} {{y}} {{z}}")
+          original-tags (lib/template-tags query)]
+      (is (=? {"x" {}, "y" {}, "z" {}}
+              original-tags))
+      (is (= ["x" "y" "z"]
+             (keys original-tags)))
+      (let [updated-tags {"y" (get original-tags "y"), "x" (get original-tags "x")}
+            query'       (lib/with-template-tags query updated-tags)]
+        (is (= ["y" "x" "z"]
+               (keys (lib/template-tags query'))))))))
+
 (defn ^:private metadata-provider-requiring-collection []
   (meta/updated-metadata-provider update :features conj :native-requires-specified-collection))
 

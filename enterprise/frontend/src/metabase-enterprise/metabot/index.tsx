@@ -1,23 +1,19 @@
-import { useMemo } from "react";
 import { IndexRoute } from "react-router";
 import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { Route } from "metabase/hoc/Title";
-import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { trackMetabotChatOpened } from "./analytics";
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
-import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotToggleButton } from "./components/MetabotToggleButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
-import { useMetabotAgent } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
@@ -50,33 +46,9 @@ if (hasPremiumFeature("metabot_v3")) {
   // TODO: make enterprise store + fix type
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
-  PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { startNewConversation, visible } = useMetabotAgent();
 
-    return useMemo(() => {
-      const ret: PaletteAction[] = [
-        {
-          id: "initialize_metabot",
-          name: searchText
-            ? t`Ask Metabot, "${searchText}"`
-            : t`Ask me to do something, or ask me a question`,
-          section: "metabot",
-          keywords: searchText,
-          icon: "metabot",
-          perform: () => {
-            if (!visible) {
-              trackMetabotChatOpened("command_palette");
-            }
-            startNewConversation(searchText);
-          },
-        },
-      ];
-      return ret;
-    }, [searchText, startNewConversation, visible]);
-  };
-
-  PLUGIN_METABOT.SearchButton = MetabotSearchButton;
   PLUGIN_METABOT.MetabotToggleButton = MetabotToggleButton;
+  PLUGIN_METABOT.MetabotAppBarButton = MetabotAppBarButton;
 
   PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 } else if (hasPremiumFeature("offer_metabase_ai")) {

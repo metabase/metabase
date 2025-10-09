@@ -56,7 +56,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -529,6 +529,7 @@
      ;; MBQL 4 inner MBQL query
      ((some-fn :source-table :source-query) query)
      (-> query
+         #_{:clj-kondo/ignore [:deprecated-var]}
          annotate.legacy-helper-fns/legacy-inner-query->mlv2-query
          (add-alias-info options)
          lib/->legacy-MBQL

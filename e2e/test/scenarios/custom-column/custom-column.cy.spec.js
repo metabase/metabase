@@ -2133,6 +2133,7 @@ describe("scenarios > question > custom column > aggregation", () => {
           {
             type: "question",
             dataset_query: {
+              type: "query",
               database: SAMPLE_DB_ID,
               query: {
                 "source-table": `card__${res.body.id}`,
@@ -2541,5 +2542,17 @@ describe("scenarios > question > custom column > aggregation", () => {
         firstRows: [["April 2022", "3", "2"]],
       });
     });
+  });
+
+  it("should show a custom error when there are no aggregations in a custom aggregation", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("1 + 1");
+    H.popover()
+      .findByText(
+        "Aggregations should contain at least one aggregation function.",
+      )
+      .should("be.visible");
   });
 });

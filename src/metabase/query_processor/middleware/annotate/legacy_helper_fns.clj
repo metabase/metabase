@@ -13,6 +13,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as-alias add]
    [metabase.util.i18n :refer [tru]]
@@ -20,6 +21,7 @@
 
 (mu/defn legacy-inner-query->mlv2-query :- ::lib.schema/query
   "Convert a legacy `inner-query` to an MLv2 query. Requires bound QP store."
+  {:deprecated "0.57.0"}
   [inner-query :- [:and
                    :map
                    [:fn
@@ -49,6 +51,7 @@
     (or (::add/desired-alias (lib/options ag-clause))
         (:name (lib/options ag-clause))
         (lib/column-name
+         #_{:clj-kondo/ignore [:deprecated-var]}
          (legacy-inner-query->mlv2-query legacy-inner-query)
          (lib/->pMBQL legacy-ag-clause)))))
 

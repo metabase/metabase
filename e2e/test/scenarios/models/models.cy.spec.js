@@ -199,9 +199,6 @@ describe("scenarios > models", () => {
 
     cy.get("@questionId").then((questionId) => {
       cy.wait("@dataset").then(({ response }) => {
-        expect(response.body.json_query.query["source-table"]).to.equal(
-          `card__${questionId}`,
-        );
         expect(response.body.error).to.not.exist;
       });
     });

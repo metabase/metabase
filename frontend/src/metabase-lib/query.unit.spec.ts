@@ -7,24 +7,16 @@ import {
   createQuery,
 } from "./test-helpers";
 
-describe("fromLegacyQuery", () => {
+describe("fromJsQuery", () => {
   // this is a very important optimization that the FE heavily relies upon
   it("should return the same object for the same database id, query, and metadata", () => {
     const metadataProvider = Lib.metadataProvider(
       SAMPLE_DATABASE.id,
       SAMPLE_METADATA,
     );
-    const query1 = Lib.fromLegacyQuery(
-      SAMPLE_DATABASE.id,
-      metadataProvider,
-      DEFAULT_QUERY,
-    );
-    const query2 = Lib.fromLegacyQuery(
-      SAMPLE_DATABASE.id,
-      metadataProvider,
-      DEFAULT_QUERY,
-    );
-    expect(query1).toBe(query2);
+    const query1 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
+    const query2 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
+    expect(query1 === query2).toBe(true);
   });
 });
 
