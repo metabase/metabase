@@ -9,6 +9,7 @@ import {
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import * as Urls from "metabase/lib/urls";
+import { isJWT } from "metabase/lib/utils";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -126,7 +127,7 @@ const findDashboardById = (
   dashboardId: DashboardId,
   dashboards: Record<DashboardId, StoreDashboard>,
 ): StoreDashboard | null => {
-  if (typeof dashboardId === "number") {
+  if (typeof dashboardId === "number" || isJWT(dashboardId)) {
     return dashboards[dashboardId] ?? null;
   }
 
