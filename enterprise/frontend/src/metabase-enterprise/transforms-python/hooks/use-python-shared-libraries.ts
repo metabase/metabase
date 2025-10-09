@@ -18,7 +18,6 @@ export function usePythonLibraries() {
         [SHARED_LIB_IMPORT_PATH]: sharedLib?.source ?? "",
       };
     } catch (error) {
-      // TODO: handle error better?
       return {
         [SHARED_LIB_IMPORT_PATH]: "",
       };
