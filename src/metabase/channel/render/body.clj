@@ -640,11 +640,19 @@
   @card-error-rendered-info)
 
 (mu/defmethod render :card-error/results-too-large :- ::RenderedPartCard
-  [_chart-type _render-type _timezone-id _card _dashcard _data]
-  {:attachments nil,
-   :content [:div
-             {:style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif; color: #EF8C8C; font-weight: 700; padding: 16px;"}
-             "The results returned from this question were too large. Perhaps add an aggregation or a filter."]})
+  [_chart-type _render-type _timezone-id _card _dashcard data]
+  (let [filesize-limit (:max-size-human-readable data "10.0 mb")]
+    {:attachments nil,
+     :content [:div
+               {:style "font-family: Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif; margin: 16px 0;"}
+               [:div
+                {:style "background-color: #F9FBFC; border: 1px solid #DCE1E4; border-radius: 8px; padding: 24px;"}
+                [:p
+                 {:style "margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: #4C5773; line-height: 1.4;"}
+                 (trs "This chart exceeded the {0} size limit." filesize-limit)]
+                [:p
+                 {:style "margin: 0; font-size: 12px; font-weight: 400; color: #696E7B; line-height: 1.5;"}
+                 (trs "You can make it smaller by adding filters, or summarizing the data.")]]]}))
 
 (mu/defmethod render :render-error :- ::RenderedPartCard
   [_chart-type _render-type _timezone-id _card _dashcard _data]

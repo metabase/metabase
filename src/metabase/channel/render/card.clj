@@ -155,12 +155,15 @@
     (catch Throwable e
       (let [data (ex-data e)]
         (cond
-          (:render/too-large? data) (do
-                                      (log/error "Pulse card query error: results too large")
-                                      (body/render :card-error/results-too-large nil nil nil nil nil))
-          (:card-error data) (do
-                               (log/error e "Pulse card query error")
-                               (body/render :card-error nil nil nil nil nil))
+          (:render/too-large? data)
+          (do
+            (log/error "Pulse card query error: results too large")
+            (body/render :card-error/results-too-large nil nil nil nil data))
+
+          (:card-error data)
+          (do
+            (log/error e "Pulse card query error")
+            (body/render :card-error nil nil nil nil nil))
           :else (do
                   (log/error e "Pulse card render error")
                   (body/render :render-error nil nil nil nil nil)))))))

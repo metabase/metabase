@@ -91,7 +91,9 @@
       (throw (ex-info "Result file too large to load into memory"
                       {:type :notification/file-too-large
                        :file-size file-size
-                       :max-size (notification.settings/notification-temp-file-size-max-bytes)})))
+                       :max-size (notification.settings/notification-temp-file-size-max-bytes)
+                       :max-size-human-readable (human-readable-size
+                                                 (notification.settings/notification-temp-file-size-max-bytes))})))
 
     (log/infof "📂 Loading streamed results from disk: %s" size-human)
 

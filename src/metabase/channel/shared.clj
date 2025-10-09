@@ -41,14 +41,14 @@
       (catch clojure.lang.ExceptionInfo e
         (if (= :notification/file-too-large
                (:type (ex-data e)))
-          (let [{:keys [file-size max-size]} (ex-data e)
-                file-size-mb (/ file-size 1024.0 1024.0)
-                max-size-mb (/ max-size 1024.0 1024.0)]
-            (log/warnf "🚫 Result file too large (%.2f MB > %.2f MB max). Skipping load to protect memory."
-                       file-size-mb max-size-mb)
+          (let [{:keys [file-size max-size-human-readable]} (ex-data e)
+                file-size-mb (/ file-size 1024.0 1024.0)]
+            (log/warnf "🚫 Result file too large (%.2f MB > %s max). Skipping load to protect memory."
+                       file-size-mb max-size-human-readable)
             ;; Return part with error marker so render pipeline shows an error
             (update part :result merge {:error (tru "Results too large to display. The query returned too much data to show in this notification.")
-                                        :render/too-large? true}))
+                                        :render/too-large? true
+                                        :max-size-human-readable max-size-human-readable}))
           ;; Re-throw other exceptions
           (throw e))))))
 
