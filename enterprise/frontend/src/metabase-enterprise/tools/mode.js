@@ -1,6 +1,8 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { question } from "metabase/lib/urls";
+
 const CARD_ID_ROW_IDX = 0;
 
 const ErrorDrill = ({ clicked }) => {
@@ -16,7 +18,7 @@ const ErrorDrill = ({ clicked }) => {
       title: t`View this`,
       default: true,
       action() {
-        return push(`/admin/tools/errors/${cardId}`);
+        return push(question({ id: cardId }));
       },
     },
   ];
@@ -24,5 +26,5 @@ const ErrorDrill = ({ clicked }) => {
 
 export const ErrorMode = {
   name: "error",
-  drills: [ErrorDrill],
+  fallback: (props) => ErrorDrill(props),
 };

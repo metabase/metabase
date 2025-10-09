@@ -95,7 +95,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -141,6 +141,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/database_partitioned
                 :field/database_type
                 :field/description
                 :field/display_name
@@ -524,10 +525,20 @@
 (defmacro with-metadata-provider-cache
   "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
 
-  If there is already a [[*metadata-provider-cache*]], this leaves it in place."
+  If there is already a [[*metadata-provider-cache*]], this leaves it in place.
+
+  Note that the metadata provider cache is initialized automatically in a REST API request context by
+  the [[metabase.server.middleware.metadata-provider-cache]] middleware; if writing a REST API endpoint you do not
+  need to manually initialize one."
   [& body]
   `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
                                            (atom (cache/basic-cache-factory {})))]
+     ~@body))
+
+(defmacro with-existing-metadata-provider-cache
+  "Wrapper to bind [[*metadata-provider-cache*]] to an existing cache, if you are doing something weird."
+  [metadata-provider-cache & body]
+  `(binding [*metadata-provider-cache* ~metadata-provider-cache]
      ~@body))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider

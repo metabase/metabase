@@ -17,19 +17,36 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
-(def ^{:arglists '([model])} InstanceOf
+;;;
+;;; TODO (Cam 9/29/25) -- maybe we should just automatically generate schemas for all the known models
+;;; in [[metabase.models.resolution]] e.g. `:model/Card` that way you can just do
+;;;
+;;;    [card :- :model/Card]
+;;;
+;;; instead of
+;;;
+;;;    [card :- (ms/InstanceOf :model/Card)]
+(def ^{:arglists '([model-or-models])} InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
     (ms/defn my-fn
       [user :- (ms/InstanceOf User)]
       ...)"
   (memoize
-   (fn [model]
+   (mu/fn [model-or-models :- [:or
+                               :keyword
+                               [:sequential {:min 1} :keyword]
+                               [:set {:min 1} :keyword]]]
      (mu/with-api-error-message
       [:fn
-       {:error/message (format "value must be an instance of %s" (name model))}
-       #(t2/instance-of? model %)]
-      (deferred-tru "value must be an instance of {0}" (name model))))))
+       {:error/message (format "value must be an instance of %s" (pr-str model-or-models))}
+       (if (keyword? model-or-models)
+         #(t2/instance-of? model-or-models %)
+         (fn [instance]
+           (some (fn [model]
+                   (t2/instance-of? model instance))
+                 model-or-models)))]
+      (deferred-tru "value must be an instance of {0}" (pr-str model-or-models))))))
 
 (def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."

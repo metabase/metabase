@@ -1,4 +1,11 @@
 (ns metabase.models.interface
+  "Stuff useful to ALL models.
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!                                                                                             !!!
+    !!! PLEASE DON'T ADD NEW TRANSFORMS HERE, GO PUT THEM IN RELEVANT MODULES THAT USE THEM INSTEAD !!!
+    !!!                                                                                             !!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
@@ -9,8 +16,6 @@
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -193,100 +198,19 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
-(defn- serialize-mbql5-query
-  "Saving MBQL 5 queries​ we can assume MBQL 5 queries are normalized enough already, but remove the metadata provider
-  before saving it, because it's not something that lends itself well to serialization."
-  [query]
-  (dissoc query :lib/metadata))
-
-(defn- deserialize-mbql5-query
-  "Reading MBQL 5 queries​: normalize them, then attach a MetadataProvider based on their Database."
-  [query]
-  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
-                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
-                            ;; preserve the existing metadata provider.
-                            (:lib/metadata query)
-                            ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
-                             (u/the-id (some #(get query %) [:database "database"]))))]
-    (lib/query metadata-provider query)))
-
-(mu/defn maybe-normalize-query
-  "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
-  [in-or-out :- [:enum :in :out]
-   query]
-  (letfn [(normalize [query]
-            (let [f (if (= (lib/normalized-query-type query) :mbql/query)
-                      ;; MBQL 5 queries
-                      (case in-or-out
-                        :in  serialize-mbql5-query
-                        :out deserialize-mbql5-query)
-                      ;; legacy queries: just normalize them with the legacy normalization code for now... in the near
-                      ;; future we'll probably convert to MBQL 5 before saving so everything in the app DB is MBQL 5
-                      (case in-or-out
-                        :in  mbql.normalize/normalize
-                        :out mbql.normalize/normalize))]
-              (f query)))]
-    (cond-> query
-      (and (map? query) (seq query))
-      normalize)))
-
-(defn maybe-normalize-transform-source
-  "Normalizes the `source` of a transform."
-  [in-or-out raw-source]
-  (let [{source-type :type :as source} (m/map-keys keyword raw-source)]
-    (cond-> source
-      (= (keyword source-type) :query) (update :query (partial maybe-normalize-query in-or-out)))))
-
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
   invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
   letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
   [f]
-  (fn [query]
+  (fn [x]
     (try
-      (doall (f query))
+      (doall (f x))
       (catch Throwable e
-        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red query))
+        (log/errorf e "Unable to normalize:\n%s" (u/pprint-to-str 'red x))
         nil))))
 
-(defn normalize-parameters-list
-  "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
-  [parameters]
-  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
-      []))
-
-(defn- keywordize-temporal_units
-  [parameter]
-  (m/update-existing parameter :temporal_units (fn [units] (mapv keyword units))))
-
-(defn normalize-card-parameters-list
-  "Normalize `parameters` of actions, cards, and dashboards when coming out of the application database."
-  [parameters]
-  (->> parameters
-       normalize-parameters-list
-       (mapv keywordize-temporal_units)))
-
-(def transform-metabase-query
-  "Transform for metabase-query."
-  {:in  (comp json-in (partial maybe-normalize-query :in))
-   :out (comp (catch-normalization-exceptions (partial maybe-normalize-query :out)) json-out-without-keywordization)})
-
-(def transform-transform-source
-  "Transform for transform source fields."
-  {:in  (comp json-in (partial maybe-normalize-transform-source :in))
-   :out (comp (catch-normalization-exceptions (partial maybe-normalize-transform-source :out)) json-out-without-keywordization)})
-
-(def transform-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-parameters-list) json-out-with-keywordization)})
-
-(def transform-card-parameters-list
-  "Transform for parameters list."
-  {:in  (comp json-in normalize-card-parameters-list)
-   :out (comp (catch-normalization-exceptions normalize-card-parameters-list) json-out-with-keywordization)})
-
-(def transform-field-ref
+(def ^{:deprecated "0.57.0"} transform-legacy-field-ref
   "Transform field refs"
   {:in  json-in
    :out (comp (catch-normalization-exceptions mbql.normalize/normalize-field-ref) json-out-with-keywordization)})
@@ -518,6 +442,12 @@
     "Transform for compressed fields."
     {:in identity
      :out decompress})
+
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+;;; !!!                                                                                             !!!
+;;; !!! PLEASE DON'T ADD NEW TRANSFORMS HERE, GO PUT THEM IN RELEVANT MODULES THAT USE THEM INSTEAD !!!
+;;; !!!                                                                                             !!!
+;;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ;; --- predefined hooks
 

@@ -9,7 +9,7 @@ import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type {
   CardId,
-  DatasetQuery,
+  LegacyDatasetQuery,
   Transform,
   TransformSource,
 } from "metabase-types/api";
@@ -29,7 +29,7 @@ type NewTransformPageParams = {
 };
 
 type NewTransformPageParsedParams = {
-  type: DatasetQuery["type"] | "python";
+  type: LegacyDatasetQuery["type"] | "python";
   cardId?: CardId;
 };
 
@@ -78,7 +78,7 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
 }
 
 function NewTransformEditorBody(props: {
-  type: DatasetQuery["type"] | "python";
+  type: LegacyDatasetQuery["type"] | "python";
   cardId?: CardId;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;
@@ -104,7 +104,7 @@ function NewQueryTransformEditorBody({
   onSave,
   onCancel,
 }: {
-  type: DatasetQuery["type"];
+  type: LegacyDatasetQuery["type"];
   cardId?: CardId;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;

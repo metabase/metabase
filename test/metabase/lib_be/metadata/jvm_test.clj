@@ -257,3 +257,13 @@
         {:lib/type :metadata/segment, :table-id 1}
         {:lib/type :metadata/native-query-snippet, :id #{1}}
         {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))
+
+(deftest ^:parallel return-database-require-filter-test
+  (mt/with-temp [:model/Database db       {:engine :h2}
+                 :model/Table    buyer    {:name "BUYER" :database_require_filter true :db_id (:id db)}
+                 :model/Field    buyer-id {:name "ID" :table_id (:id buyer) :base_type :type/Integer :database_partitioned true}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:id db))]
+      (is (=? {:database-require-filter true}
+              (lib.metadata/table mp (:id buyer))))
+      (is (=? {:database-partitioned true}
+              (lib.metadata/field mp (:id buyer-id)))))))

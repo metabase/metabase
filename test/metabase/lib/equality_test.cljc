@@ -320,6 +320,8 @@
                [:field {} "Cat__NAME"]]  ; 7
               refs))
       (testing (str "\n" (with-out-str
+                           ;; usage is ok since we're wrapping it in `with-out-str`
+                           #_{:clj-kondo/ignore [:discouraged-var]}
                            (pprint/print-table
                             [:name :lib/original-join-alias :lib/original-name :lib/deduplicated-name :lib/source-column-alias :lib/desired-column-alias]
                             cols)))
