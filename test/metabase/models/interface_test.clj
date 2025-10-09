@@ -194,7 +194,6 @@
                :database-type             "CHARACTER VARYING"
                :display-name              "Category"
                :effective-type            :type/Text
-               :field-ref                 [:field 61339 nil]
                :fingerprint               {:global {:distinct-count 4, :nil% 0.0}
                                            :type   {:type/Text {:average-length 6.375
                                                                 :percent-email  0.0
@@ -205,7 +204,6 @@
                :name                      "CATEGORY"
                :position                  3
                :semantic-type             :type/Category
-               :source                    :breakout
                :table-id                  10808
                :visibility-type           :normal
                :lib/breakout?             true

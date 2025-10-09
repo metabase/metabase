@@ -7,7 +7,9 @@
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.drill-thru.zoom-in-bins :as zoom-in]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util.malli :as mu]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -380,7 +382,8 @@
             (lib/with-binning {:strategy :num-bins, :min-value 0, :max-value 160, :num-bins 8, :bin-width 20})
             ;; I have to construct this weird column because I cannot find a way to reproduce
             ;; the columns that lib/existing-breakouts is being passed
-            (assoc :source-alias "Orders"))
+            (assoc :source-alias "Orders")
+            (->> (lib/normalize ::lib.schema.metadata/column)))
 
         people-orders-ref
         (first (lib/breakouts people-orders-query-breakout))
@@ -394,14 +397,11 @@
     ;; make sure we're testing the right thing
     (assert (get-in people-orders-ref [1 :join-alias]))
     (assert (nil? (:metabase.lib.join/join-alias people-orders-clicked-column)))
-    ;; somehow the column (as printed out in console.log) has :source-alias but not :metabase.lib.join/join-alias
-    (assert (:source-alias people-orders-clicked-column))
-
+    (assert (:lib/original-join-alias people-orders-clicked-column))
     (assert (nil? (get-in orders-people-ref [1 :join-alias])))
     (assert (nil? (:metabase.lib.join/join-alias orders-people-clicked-column)))
     (assert (nil? (:source-alias orders-people-clicked-column)))
-
     (testing "zoom-in binning should not depend on join order"
       (is (= orders-people-zoom
              (some-> people-orders-zoom
-                     (update :column dissoc :source-alias)))))))
+                     (update :column dissoc :lib/original-join-alias)))))))
