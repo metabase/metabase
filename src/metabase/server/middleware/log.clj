@@ -200,7 +200,8 @@
 (defn- should-log-request? [{:keys [uri], :as request}]
   ;; don't log calls to health checks or /logger/logs because they clutter up the logs (especially the window in admin)
   ;; with useless lines
-  (and (request/api-call? request)
+  (and (or (request/api-call? request)
+           (contains? #{"/livez" "/readyz"} uri))
        (not ((logging-disabled-uris) uri))))
 
 (defn log-api-call
