@@ -15,7 +15,11 @@ import type {
 } from "metabase-types/api";
 
 import { QueryEditor } from "../../components/QueryEditor";
-import { getTransformListUrl, getTransformUrl } from "../../urls";
+import {
+  getTransformListUrl,
+  getTransformQueryUrl,
+  getTransformUrl,
+} from "../../urls";
 
 import { CreateTransformModal } from "./CreateTransformModal";
 import {
@@ -41,12 +45,18 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
   const { type, cardId } = getParsedParams(params);
 
   const [source, setSource] = useState<TransformSource | null>(null);
+  const [wantsIncremental, setWantsIncremental] = useState(false);
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const dispatch = useDispatch();
 
   const handleCreate = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
+    // If user wanted incremental, redirect to query edit page instead of transform detail page
+    if (wantsIncremental) {
+      dispatch(push(getTransformQueryUrl(transform.id)));
+    } else {
+      dispatch(push(getTransformUrl(transform.id)));
+    }
   };
 
   const handleSave = (newSource: TransformSource) => {
@@ -58,6 +68,12 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
     dispatch(push(getTransformListUrl()));
   };
 
+  const handleModalClose = () => {
+    // If modal is closed without saving, reset the incremental checkbox
+    setWantsIncremental(false);
+    closeModal();
+  };
+
   return (
     <>
       <NewTransformEditorBody
@@ -65,12 +81,15 @@ export function NewTransformPage({ params }: NewTransformPageProps) {
         cardId={cardId}
         onSave={handleSave}
         onCancel={handleCancel}
+        wantsIncremental={wantsIncremental}
+        onWantsIncrementalChange={setWantsIncremental}
       />
       {isModalOpened && source !== null && (
         <CreateTransformModal
           source={source}
           onCreate={handleCreate}
-          onClose={closeModal}
+          onClose={handleModalClose}
+          initialIncremental={wantsIncremental}
         />
       )}
     </>
@@ -82,6 +101,8 @@ function NewTransformEditorBody(props: {
   cardId?: CardId;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;
+  wantsIncremental: boolean;
+  onWantsIncrementalChange: (wants: boolean) => void;
 }) {
   const { type, ...rest } = props;
   if (type === "python") {
@@ -103,11 +124,15 @@ function NewQueryTransformEditorBody({
   cardId,
   onSave,
   onCancel,
+  wantsIncremental,
+  onWantsIncrementalChange,
 }: {
   type: LegacyDatasetQuery["type"];
   cardId?: CardId;
   onSave: (source: TransformSource) => void;
   onCancel: () => void;
+  wantsIncremental: boolean;
+  onWantsIncrementalChange: (wants: boolean) => void;
 }) {
   const {
     data: card,
@@ -119,12 +144,18 @@ function NewQueryTransformEditorBody({
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
+  const handleIncrementalChange = (incremental: boolean) => {
+    onWantsIncrementalChange(incremental);
+  };
+
   return (
     <QueryEditor
       initialSource={getInitialQueryTransformSource(card, type)}
       isNew
       onSave={onSave}
       onCancel={onCancel}
+      isIncremental={wantsIncremental}
+      onIncrementalChange={handleIncrementalChange}
     />
   );
 }

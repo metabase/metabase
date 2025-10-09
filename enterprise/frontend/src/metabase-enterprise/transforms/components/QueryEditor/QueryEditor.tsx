@@ -40,6 +40,9 @@ type QueryEditorProps = {
   isSaving?: boolean;
   onSave: (source: QueryTransformSource) => void;
   onCancel: () => void;
+  transformId?: number;
+  isIncremental?: boolean;
+  onIncrementalChange?: (incremental: boolean) => void;
 };
 
 export function QueryEditor({
@@ -48,6 +51,9 @@ export function QueryEditor({
   isSaving = false,
   onSave,
   onCancel,
+  transformId,
+  isIncremental,
+  onIncrementalChange,
 }: QueryEditorProps) {
   const { question, isQueryDirty, setQuestion } = useQueryState(
     initialSource.query,
@@ -152,6 +158,9 @@ export function QueryEditor({
           isQueryDirty={isQueryDirty}
           onSave={handleSave}
           onCancel={onCancel}
+          transformId={transformId}
+          isIncremental={isIncremental}
+          onIncrementalChange={onIncrementalChange}
         />
         <Flex h="100%" w="100%" mih="0">
           <Stack flex="2 1 100%" pos="relative">

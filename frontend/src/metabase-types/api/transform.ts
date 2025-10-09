@@ -39,7 +39,7 @@ export type QueryTransformSource = {
 
 export type TransformSource = QueryTransformSource | PythonTransformSource;
 
-export type TransformTargetType = "table";
+export type TransformTargetType = "table" | "table-incremental";
 
 export type TransformTarget = {
   type: TransformTargetType;

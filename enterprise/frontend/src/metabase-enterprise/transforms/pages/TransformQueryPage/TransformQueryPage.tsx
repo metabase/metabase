@@ -88,6 +88,26 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
+  const handleIncrementalChange = async (incremental: boolean) => {
+    const newType = incremental ? "table-incremental" : "table";
+    const { error } = await updateTransform({
+      id: transform.id,
+      target: {
+        ...transform.target,
+        type: newType,
+      },
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update transform type`);
+    } else {
+      sendSuccessToast(
+        incremental
+          ? t`Transform set to incremental mode`
+          : t`Transform set to full refresh mode`,
+      );
+    }
+  };
+
   if (transform.source.type === "python") {
     return (
       <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
@@ -107,6 +127,9 @@ export function TransformQueryPageBody({
         isSaving={isSaving || isCheckingDependencies}
         onSave={handleSaveSource}
         onCancel={handleCancel}
+        transformId={transform.id}
+        isIncremental={transform.target.type === "table-incremental"}
+        onIncrementalChange={handleIncrementalChange}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
