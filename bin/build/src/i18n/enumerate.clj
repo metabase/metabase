@@ -5,6 +5,7 @@
   out either the string literal or a call to `str` concatenating several string literals. Main function will write the
   pot file and exit with 0 if all forms could be analyzed else returns 1."
   (:require
+   [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -103,6 +104,16 @@
             (form->messages result))))
        (g/grasp roots ::translate)))
 
+(def ^:private sample-content-translations
+  (->> (slurp (io/resource "unsafe-translations.yml"))
+       (yaml/parse-string)
+       (mapcat (fn [{:keys [file messages]}]
+                 (map (fn [message] {:file file :message message}) messages)))))
+
+(def ^:private trash-translations
+  [{:file "resources/migrations/001_update_migrations.yaml"
+    :message "Trash"}])
+
 (defn- group-results-by-string
   "Each string can be in the pot file once and only once (a string can only have a single translation). Want all
   filenames collapsed into a list for each message."
@@ -162,7 +173,10 @@
   "String sources and an output filename. Writes the pot file of translation strings found in sources and returns a map
   of number of valid usages, number of distinct translation strings, and the bad forms that could not be identified."
   [sources filename]
-  (let [analyzed   (analyze-translations sources)
+  (let [analyzed   (concat
+                    (analyze-translations sources)
+                    sample-content-translations
+                    trash-translations)
         valid?     (comp string? :message)
         bad-forms  (remove valid? analyzed)
         good-forms (filter valid? analyzed)

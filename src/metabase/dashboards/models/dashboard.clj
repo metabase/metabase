@@ -10,6 +10,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
    [metabase.events.core :as events]
+   [metabase.localization.models.localization :as localization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
@@ -40,7 +41,8 @@
   (derive :metabase/model)
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
-  (derive :hook/entity-id))
+  (derive :hook/entity-id)
+  (derive :hook/auto-localize))
 
 (defmethod mi/can-write? :model/Dashboard
   ([instance]
@@ -68,6 +70,10 @@
 (t2/deftransforms :model/Dashboard
   {:parameters       mi/transform-card-parameters-list
    :embedding_params mi/transform-json})
+
+(defmethod localization/localizable-fields :model/Dashboard
+  [_model]
+  [:name :description])
 
 (t2/define-before-delete :model/Dashboard
   [dashboard]

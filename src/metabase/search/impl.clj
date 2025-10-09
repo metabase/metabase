@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.localization.models.localization :as localization]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -368,7 +369,7 @@
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-trash-name))
+    (localization/maybe-localize)))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]

@@ -1199,50 +1199,53 @@
                           (update-vals replace-temporals)
                           (dissoc :id))))))
 
-(define-migration CreateSampleContentV2
+(define-migration CreateSampleContentV2)
+  ;; Does nothing. This is left in so we do not alter the liquibase migration history. See: [[CreateSampleContentV2]].
+
+(define-migration CreateSampleContentV3
   ;; Adds sample content to a fresh install. Adds curate permissions to the collection for the 'All Users' group.
-  (when *create-sample-content*
-    (when (and (config/load-sample-content?)
-               (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
-               (no-user?)
-               (no-db?))
-      (let [table-name->raw-rows (load-edn "sample-content.edn")
-            example-dashboard-id  1
-            example-collection-id 2 ;; trash collection is 1
-            expected-sample-db-id 1
-            dbs                   (table-name->rows table-name->raw-rows :metabase_database)
-            _                     (t2/query {:insert-into :metabase_database :values dbs})
-            db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
-        ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
-        ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database rows
-        ;; and do nothing else, to be safe.
-        (if (not= db-ids #{expected-sample-db-id})
-          (when (seq db-ids)
-            (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
-          (do (doseq [table-name [:collection
-                                  :metabase_table
-                                  :metabase_field
-                                  :report_card
-                                  :parameter_card
-                                  :report_dashboard
-                                  :dashboard_tab
-                                  :report_dashboardcard
-                                  :dashboardcard_series
-                                  :permissions_group
-                                  :data_permissions
-                                  :dimension]]
-                (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
-                  (t2/query {:insert-into table-name :values values})))
-              (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
-                (t2/query {:insert-into :permissions
-                           :values      [{:object        (format "/collection/%s/" example-collection-id)
-                                          :group_id      group-id
-                                          :perm_type     "perms/collection-access"
-                                          :perm_value    "read-and-write"
-                                          :collection_id example-collection-id}]}))
-              (t2/query {:insert-into :setting
-                         :values      [{:key   "example-dashboard-id"
-                                        :value (str example-dashboard-id)}]})))))))
+  (when (and *create-sample-content*
+             (config/load-sample-content?)
+             (not (config/config-bool :mb-enable-test-endpoints)) ; skip sample content for e2e tests to avoid coupling the tests to the contents
+             (no-user?)
+             (no-db?))
+    (let [table-name->raw-rows (load-edn "sample-content.edn")
+          example-dashboard-id  1
+          example-collection-id 2 ;; trash collection is 1
+          expected-sample-db-id 1
+          dbs                   (table-name->rows table-name->raw-rows :metabase_database)
+          _                     (t2/query {:insert-into :metabase_database :values dbs})
+          db-ids                (set (map :id (t2/query {:select :id :from :metabase_database})))]
+      ;; If that did not succeed in creating the metabase_database rows we could be reusing a database that
+      ;; previously had rows in it even if there are no users. in this rare care we delete the metabase_database rows
+      ;; and do nothing else, to be safe.
+      (if (not= db-ids #{expected-sample-db-id})
+        (when (seq db-ids)
+          (t2/query {:delete-from :metabase_database :where [:in :id db-ids]}))
+        (do (doseq [table-name [:collection
+                                :metabase_table
+                                :metabase_field
+                                :report_card
+                                :parameter_card
+                                :report_dashboard
+                                :dashboard_tab
+                                :report_dashboardcard
+                                :dashboardcard_series
+                                :permissions_group
+                                :data_permissions
+                                :dimension]]
+              (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
+                (t2/query {:insert-into table-name :values values})))
+            (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
+              (t2/query {:insert-into :permissions
+                         :values      [{:object        (format "/collection/%s/" example-collection-id)
+                                        :group_id      group-id
+                                        :perm_type     "perms/collection-access"
+                                        :perm_value    "read-and-write"
+                                        :collection_id example-collection-id}]}))
+            (t2/query {:insert-into :setting
+                       :values      [{:key   "example-dashboard-id"
+                                      :value (str example-dashboard-id)}]}))))))
 
 (comment
   ;; How to create `resources/sample-content.edn` used in `CreateSampleContent`

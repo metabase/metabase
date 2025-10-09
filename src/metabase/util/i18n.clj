@@ -164,6 +164,42 @@
   (validate-number-of-args format-string-or-str args)
   `(UserLocalizedString. ~format-string-or-str ~(vec args) {}))
 
+(defmacro unsafe-deferred-tru
+  "The same as `deferred-tru`, but does not validate the arguments!
+
+  This allows `(unsafe-deferred-tru some-var)`, where `(deferred-tru some-var)` would fail.
+
+  If you use this, YOU ARE RESPONSIBLE for guaranteeing that all the possible values of `some-var` are included in the
+  output enumerated by `bin/build/src/i18n/enumerate.clj`!!!
+
+  For example, `i18n.enumerate/sample-content-translations` collects all of the sample content that should be
+  translated, and a test in `metabase.localization.models.localization-test` verifies that no sample content exists
+  that isn't included in this enumeration.
+
+  Please don't use this unless you are 100% confident that you've done the above correctly! Generally `deferred-tru`
+  is vastly preferred!"
+  {:style/indent [:form]}
+  [str & args]
+  `(UserLocalizedString. ~str ~(vec args) {}))
+
+(defmacro unsafe-tru
+  "The same as `tru`, but does not validate the arguments!
+
+  This allows `(unsafe-tru some-var)`, where `(tru some-var)` would fail.
+
+  If you use this, YOU ARE RESPONSIBLE for guaranteeing that all the possible values of `some-var` are included in the
+  output enumerated by `bin/build/src/i18n/enumerate.clj`!!!
+
+  For example, `i18n.enumerate/sample-content-translations` collects all of the sample content that should be
+  translated, and a test in `metabase.localization.models.localization-test` verifies that no sample content exists
+  that isn't included in this enumeration.
+
+  Please don't use this unless you are 100% confident that you've done the above correctly! Generally `tru` is vastly
+  preferred!"
+  {:style/indent [:form]}
+  [str & args]
+  `(str* (unsafe-deferred-tru ~str ~@args)))
+
 (defmacro deferred-trs
   "Similar to `trs` but creates a `SiteLocalizedString` instance so that conversion to the correct locale can be
   delayed until it is needed. This is needed as the system locale from the JVM can be overridden/changed by a setting.
