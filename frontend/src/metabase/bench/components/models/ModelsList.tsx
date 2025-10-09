@@ -1,14 +1,20 @@
 import type { Location } from "history";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { replace } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { searchApi } from "metabase/api";
+import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { Tree } from "metabase/common/components/tree/Tree";
+import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import {
+  type CollectionTreeItem,
+  buildCollectionTree,
+} from "metabase/entities/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
@@ -22,21 +28,128 @@ import {
   Text,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { RecentCollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  RecentCollectionItem,
+  SearchResult,
+} from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
+import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
+import type { BenchItemsListSorting } from "../ItemsListSection/types";
 
 import { CreateModelMenu } from "./CreateModelMenu";
 
-function ModelsList({ activeId, onCollapse }: { activeId: number; onCollapse: () => void }) {
-  const { isLoading, data } = useFetchModels();
-  const models = data?.data;
+function buildNestedCollectionsAndModels(
+  collections: Collection[],
+  models: SearchResult[],
+): ITreeNodeItem[] {
+  const collectionTree = buildCollectionTree(collections);
+
+  function hasModelsInDescendants(collection: CollectionTreeItem): boolean {
+    const modelsInCollection = models.filter(
+      (model) => model.collection.id === collection.id,
+    );
+
+    if (modelsInCollection.length > 0) {
+      return true;
+    }
+
+    if (collection.children && collection.children.length > 0) {
+      return collection.children.some(hasModelsInDescendants);
+    }
+
+    return false;
+  }
+
+  function convertCollectionToTreeNode(
+    collection: CollectionTreeItem,
+  ): ITreeNodeItem | null {
+    if (!hasModelsInDescendants(collection)) {
+      return null;
+    }
+
+    const modelsInCollection = models.filter(
+      (model) => model.collection.id === collection.id,
+    );
+
+    const modelNodes: ITreeNodeItem[] = modelsInCollection.map((model) => {
+      return {
+        id: model.id,
+        name: model.name,
+        icon: getIcon({ type: "dataset", ...model }),
+      };
+    });
+
+    const childCollectionNodes = (collection.children || [])
+      .map(convertCollectionToTreeNode)
+      .filter(
+        (node: ITreeNodeItem | null): node is ITreeNodeItem => node !== null,
+      );
+
+    return {
+      id: `collection-${collection.id}`,
+      name: collection.name,
+      icon: collection.icon || "folder",
+      children: [...childCollectionNodes, ...modelNodes],
+    };
+  }
+
+  return [
+    ...collectionTree
+      .map(convertCollectionToTreeNode)
+      .filter(
+        (node: ITreeNodeItem | null): node is ITreeNodeItem => node !== null,
+      ),
+    ...models
+      .filter((m) => !m.collection.id)
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        icon: getIcon({ type: "dataset", ...m }),
+      })),
+  ];
+}
+
+function ModelsList({
+  activeId,
+  onCollapse,
+}: {
+  activeId: number;
+  onCollapse: () => void;
+}) {
+  const dispatch = useDispatch();
+  const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
+    filter_items_in_personal_collection: undefined, // include all models
+  });
+  const { isLoading: isLoadingCollections, data: collections } =
+    useListCollectionsTreeQuery({ "exclude-archived": true });
+
+  const models = modelsData?.data;
+  const isLoading = isLoadingModels || isLoadingCollections;
+
+  const treeData = useMemo(() => {
+    return models && collections
+      ? buildNestedCollectionsAndModels(collections, models)
+      : [];
+  }, [collections, models]);
+
+  const handleModelSelect = (item: ITreeNodeItem) => {
+    if (typeof item.id === "number") {
+      dispatch(push(`/bench/model/${item.id}`));
+    }
+  };
+
+  const [sorting, setSorting] = useState<BenchItemsListSorting>("collection");
 
   return (
     <ItemsListSection
-      sectionTitle="Models"
+      sectionTitle={t`Models`}
+      titleMenuItems={null}
+      sorting={sorting}
+      onChangeSorting={setSorting}
       AddButton={CreateModelMenu}
       onCollapse={onCollapse}
       onAddNewItem={() => {}}
@@ -45,6 +158,16 @@ function ModelsList({ activeId, onCollapse }: { activeId: number; onCollapse: ()
           <Center>
             <Loader />
           </Center>
+        ) : sorting === "collection" ? (
+          <Box mx="-md">
+            <Tree
+              data={treeData}
+              selectedId={activeId}
+              onSelect={handleModelSelect}
+              emptyState={<Text c="text-light">{t`No models found`}</Text>}
+              TreeNode={ItemsListTreeNode}
+            />
+          </Box>
         ) : (
           models.map((model) => (
             <ModelListItem

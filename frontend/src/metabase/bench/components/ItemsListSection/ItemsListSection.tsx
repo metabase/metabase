@@ -11,6 +11,7 @@ type ItemsListSectionProps = {
   sectionTitle: React.ReactNode;
   titleMenuItems: React.ReactNode;
   AddButton?: React.ComponentType;
+  sorting?: BenchItemsListSorting;
   onChangeSorting: (sorting: BenchItemsListSorting) => void;
   onAddNewItem: () => void;
   listItems: React.ReactNode;
@@ -21,6 +22,7 @@ export const ItemsListSection = ({
   sectionTitle,
   titleMenuItems,
   AddButton,
+  sorting,
   onChangeSorting,
   onAddNewItem,
   listItems,
@@ -28,6 +30,12 @@ export const ItemsListSection = ({
 }: ItemsListSectionProps) => {
   const [isFiltersMenuOpen, setIsFiltersMenuOpen] = useState(false);
   const [isSortingMenuOpen, setIsSortingMenuOpen] = useState(false);
+  const sortingLabels: Record<BenchItemsListSorting, string> = {
+    alphabetical: t`Alphabetical`,
+    collection: t`By collection`,
+    "least-recent": t`Least recent`,
+    "most-recent": t`Most recent`,
+  };
 
   return (
     <Box w="100%" h="100%" style={{ display: "flex", flexDirection: "column" }}>
@@ -124,10 +132,13 @@ export const ItemsListSection = ({
                 />
               }
             >
-              {t`Date created`}
+              {sorting ? sortingLabels[sorting] : t`Date created`}
             </Button>
           </Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item
+              onClick={() => onChangeSorting("collection")}
+            >{t`By collection`}</Menu.Item>
             <Menu.Item
               onClick={() => onChangeSorting("alphabetical")}
             >{t`Alphabetical`}</Menu.Item>
