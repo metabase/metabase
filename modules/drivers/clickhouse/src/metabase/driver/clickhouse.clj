@@ -327,7 +327,7 @@
 
 (defmethod driver/compile-insert :clickhouse
   [driver {:keys [query output-table]}]
-  (sql.qp/format-honeysql driver {:insert-into [output-table {:select :* :raw query}]}))
+  (sql.qp/format-honeysql driver {:insert-into [output-table {:raw query}]}))
 
 (defmethod driver/create-schema-if-needed! :clickhouse
   [driver conn-spec schema]

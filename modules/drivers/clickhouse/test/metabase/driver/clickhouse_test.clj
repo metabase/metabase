@@ -321,7 +321,7 @@
              (driver/compile-transform :clickhouse {:query "SELECT * FROM products"
                                                     :output-table "PRODUCTS_COPY"}))))
     (testing "compile-insert generates INSERT INTO"
-      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM SELECT * FROM products"]
+      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products"]
              (driver/compile-insert :clickhouse {:query "SELECT * FROM products"
                                                  :output-table "PRODUCTS_COPY"}))))))
 
