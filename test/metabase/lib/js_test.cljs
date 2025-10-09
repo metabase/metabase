@@ -666,3 +666,11 @@
         (let [q1 (lib.js/from-js-query (:lib/metadata query) js-query)
               q2 (lib.js/from-js-query (:lib/metadata query) js-query)]
           (is (identical? q1 q2)))))))
+
+(deftest ^:parallel from-js-query-preserve-database-id-test
+  (is (=? {:lib/type :mbql/query,
+           :stages   [{:lib/type :mbql.stage/mbql, :source-table 2}]
+           :database 1}
+          (lib.js/from-js-query
+           (lib.js/metadataProvider 1 #js {})
+           #js {:database 1, :type "query", :query #js {:source-table 2}}))))

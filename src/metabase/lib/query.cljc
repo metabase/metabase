@@ -165,10 +165,14 @@
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     stages]
-   (->> {:lib/type     :mbql/query
-         :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
-         :database     database-id
-         :stages       stages}
+   (->> (merge
+         {:lib/type     :mbql/query
+          :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
+          :stages       stages}
+         ;; this can be nil in the FE with empty metadata providers, don't stomp on existing DB IDs that are
+         ;; not nil.
+         (when database-id
+           {:database database-id}))
         (lib.normalize/normalize ::lib.schema/query))))
 
 (defn- query-from-legacy-query
