@@ -138,70 +138,24 @@
   []
   (pos? *transaction-depth*))
 
-(def ^:private mysql-deadlock-error-codes
-  "This is taken from
-  https://github.com/mariadb-corporation/mariadb-connector-j/blob/5222bfb7b30f8bcb71447b03d86843e872d19ec2/src/main/java/org/mariadb/jdbc/export/ExceptionFactory.java#L26"
-  #{1205 1213 1614})
-
-(def ^:private ^Long mysql-deadlock-max-retries 3)
-
-(defn- do-with-mysql-deadlock-retries
-  "MySQL and MariaDB are fussy and tend to deadlock a lot when rolling back or committing in a transaction when lots of
-  parallel threads are doing the same thing (this is mostly a problem in heavily-parallelized tests); the recommended
-  best practice is to wait for a short delay and then retry.
-
-  This code wraps the `java.sql.Connection` `.rollback()` and `.commit()` calls below and retries them a few times if
-  they fail because of a MySQL deadlock error."
-  [thunk]
-  (if-not (= (db-type) :mysql)
-    (thunk)
-    (letfn [(f [retry-count]
-              (try
-                (thunk)
-                (catch java.sql.SQLException e
-                  (when-not (mysql-deadlock-error-codes (.getErrorCode e))
-                    (throw e))
-                  (let [next-retry-count (inc retry-count)]
-                    (when (> next-retry-count mysql-deadlock-max-retries)
-                      (throw e))
-                    ;; exponential backoff: wait 100ms before retrying, then 200ms, and so forth
-                    (Thread/sleep (long (* 100 next-retry-count)))
-                    (f next-retry-count)))))]
-      (f 0))))
-
-(defn- rollback! [^java.sql.Connection connection ^java.sql.Savepoint savepoint]
-  (do-with-mysql-deadlock-retries #(.rollback connection savepoint)))
-
-(defn- commit! [^java.sql.Connection connection]
-  (do-with-mysql-deadlock-retries #(.commit connection)))
-
-(defn- do-transaction [^java.sql.Connection connection f options]
+(defn- do-transaction [^java.sql.Connection connection f]
   (letfn [(thunk []
             (let [savepoint (.setSavepoint connection)]
               (try
                 (let [result (f connection)]
-                  (cond
-                    ;; for rollback-only connections (mostly used in tests) we can roll back to the last save point.
-                    (:rollback-only options)
-                    (rollback! connection savepoint)
-
-                    ;; top-level transaction without `:rollback-only`, commit
-                    (= *transaction-depth* 1)
-                    (commit! connection)
-
-                    ;; nested transaction without `:rollback-only`, release the savepoint as it's no longer needed.
-                    ;; Note that the rollback and commit code above should release the savepoints automatically
-                    :else
-                    (.releaseSavepoint connection savepoint))
+                  (when (= *transaction-depth* 1)
+                    ;; top-level transaction, commit
+                    (.commit connection))
                   result)
                 (catch Throwable txn-e
                   (try
-                    (rollback! connection savepoint)
+                    (.rollback connection savepoint)
                     (catch Exception rollback-e
                       (throw (ex-info
                               (str "Error rolling back after previous error: " (ex-message txn-e))
                               {:rollback-error rollback-e}
                               txn-e))))
+
                   (throw txn-e)))))]
     ;; optimization: don't set and unset autocommit if it's already false
     (if (.getAutoCommit connection)
@@ -244,7 +198,7 @@
 
     :else
     (binding [*transaction-depth* (inc *transaction-depth*)]
-      (do-transaction connection f options))))
+      (do-transaction connection f))))
 
 (methodical/defmethod t2.pipeline/transduce-query :before :default
   "Make sure application database calls are not done inside core.async dispatch pool threads. This is done relatively
