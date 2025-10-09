@@ -8,9 +8,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
   cancel-in-progress: true
 
+env:
+  EXCLUDED_PR_AUTHORS: '["kamilmielnik", "romeovs"]'
+
 jobs:
   review:
-    if: "!contains(github.event.pull_request.labels.*.name, 'skip-cc-review')"
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-cc-review') && !contains(fromJSON(env.EXCLUDED_PR_AUTHORS), github.event.pull_request.user.login) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
