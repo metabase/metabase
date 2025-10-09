@@ -1181,8 +1181,8 @@
 (deftest ^:parallel pivot-query-based-on-native-card-test
   (mt/test-driver :mongo
     (testing "Pivot queries based on a native Mongo card return the right number of columns (#64124)"
-      (let [native-query (json/encode [{:$project {:product_id :$product_id, :subtotal :$subtotal}}
-                                       {:$limit 1}])
+      (let [native-query (json/encode [{:$match {:_id 1}}
+                                       {:$project {:product_id :$product_id, :subtotal :$subtotal}}])
             mp (lib.tu/mock-metadata-provider
                 (mt/metadata-provider)
                 {:cards [{:id              1
