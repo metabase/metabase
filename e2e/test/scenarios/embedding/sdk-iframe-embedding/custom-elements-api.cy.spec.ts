@@ -426,6 +426,11 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
       H.getSimpleEmbedIframeContent()
         .findByTestId("metabot-question-container")
         .should("have.attr", "data-layout", "stacked");
+
+      cy.log("should show disclaimer text in stacked layout");
+      H.getSimpleEmbedIframeContent()
+        .findByText("AI isn't perfect. Double-check results.")
+        .should("be.visible");
     });
   });
 
