@@ -3,21 +3,27 @@ import { t } from "ttag";
 import { ActionIcon, Group, Icon, Stack, TextInput, Title } from "metabase/ui";
 
 import type { GraphSelection } from "../../types";
+import type { SortOptions } from "../types";
 
+import { SortOptionsPicker } from "./SortOptionsPicker";
 import { getHeaderLabel } from "./utils";
 
 type ListHeaderProps = {
   selection: GraphSelection;
   searchText: string;
+  sortOptions: SortOptions;
   onSelectionChange: (selection?: GraphSelection) => void;
   onSearchTextChange: (searchText: string) => void;
+  onSortOptionsChange: (sortOptions: SortOptions) => void;
 };
 
 export function ListHeader({
   selection,
   searchText,
+  sortOptions,
   onSelectionChange,
   onSearchTextChange,
+  onSortOptionsChange,
 }: ListHeaderProps) {
   return (
     <Stack pl="lg" pt="lg" pr="lg" gap="md">
@@ -33,6 +39,12 @@ export function ListHeader({
         value={searchText}
         placeholder={t`Search`}
         leftSection={<Icon name="search" />}
+        rightSection={
+          <SortOptionsPicker
+            sortOptions={sortOptions}
+            onSortOptionsChange={onSortOptionsChange}
+          />
+        }
         onChange={(event) => onSearchTextChange(event.target.value)}
       />
     </Stack>
