@@ -2,8 +2,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.queries.core :as queries]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.util.malli :as mu]
+   [metabase.xrays.transforms.specs :as transforms.specs]
    [toucan2.core :as t2]))
 
 (declare get-or-create-root-container-collection!)
@@ -49,17 +53,19 @@
     (t2/delete! :model/Card :collection_id collection-id)
     (create-collection! name description)))
 
-(defn make-card-for-step!
+(mu/defn make-card-for-step! :- ::queries.schema/card
   "Make and save a card for a given transform step and query."
-  [{:keys [name transform description]} query]
-  (->> {:creator_id             api/*current-user-id*
-        :dataset_query          query
-        :description            description
-        :name                   name
-        :collection_id          (get-collection transform)
-        :result_metadata        (qp.preprocess/query->expected-cols query)
-        :visualization_settings {}
-        :display                :table}
-       queries/populate-card-query-fields
-       (t2/insert-returning-instances! :model/Card)
-       first))
+  [{:keys [name transform description]} :- transforms.specs/Step
+   query                                :- ::transforms.specs/query]
+  (let [query (lib-be/normalize-query query)]
+    (->> {:creator_id             api/*current-user-id*
+          :dataset_query          query
+          :description            description
+          :name                   name
+          :collection_id          (get-collection transform)
+          :result_metadata        (qp.preprocess/query->expected-cols query)
+          :visualization_settings {}
+          :display                :table}
+         queries/populate-card-query-fields
+         (t2/insert-returning-instances! :model/Card)
+         first)))

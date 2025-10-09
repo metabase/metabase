@@ -152,6 +152,15 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   cy.findByLabelText("Only duplicate the dashboard").should(
                     "not.be.checked",
                   );
+                  cy.icon("info").realHover();
+                });
+
+                H.tooltip().should(
+                  "contain.text",
+                  "If you check this, the cards in the duplicated dashboard will reference the original questions.",
+                );
+
+                H.modal().within(() => {
                   cy.button("Duplicate").click();
                   assertOnRequest("copyDashboard");
                 });
@@ -386,18 +395,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
       cy.findByRole("heading", {
         name: `Duplicate "${dashboardName}" and its questions`,
       });
-      cy.findByLabelText("Only duplicate the dashboard")
-        .as("shallowCopyCheckbox")
-        .should("not.be.checked")
-        .should("be.disabled");
-
-      cy.icon("info").realHover();
+      cy.findByLabelText("Only duplicate the dashboard").should("not.exist");
     });
-
-    H.tooltip().should(
-      "contain.text",
-      "Only available when none of the questions are saved to the dashboard.",
-    );
   });
 });
 

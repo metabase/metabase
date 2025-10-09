@@ -1,5 +1,5 @@
 (ns metabase.lib.schema.common
-  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
+  (:refer-clojure :exclude [update-keys every? #?@(:clj [some])])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -8,7 +8,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :refer [update-keys #?@(:clj [some])]]))
+   [metabase.util.performance :refer [update-keys every? #?@(:clj [some])]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -192,6 +192,41 @@
         ;; remove deprecated `:ident` key
         (dissoc :ident))))
 
+(defn- unfussy-sorted-map-compare [x y]
+  (cond
+    (= (type x) (type y))
+    (compare x y)
+
+    (keyword? x)
+    -1
+
+    (keyword? y)
+    1
+
+    :else
+    (compare (str x) (str y))))
+
+(defn unfussy-sorted-map
+  "Like [[clojure.core/sorted-map]] but unfussy if you try to [[get]] a keyword in a string-keyed map or [[get]] a
+  string in a keyword-keyed map."
+  [& kvs]
+  (apply sorted-map-by unfussy-sorted-map-compare kvs))
+
+(defn encode-map-for-hashing
+  "Base encoding for hashing for all MBQL 5 maps.
+
+  - Convert to a sorted map
+  - Remove all namespaced keywords"
+  [m]
+  (when (map? m)
+    (reduce-kv
+     (fn [m k v]
+       (cond-> m
+         (or (= k :lib/type)
+             (not (qualified-keyword? k))) (assoc k v)))
+     (unfussy-sorted-map)
+     m)))
+
 (mu/defn disallowed-keys
   "Helper for generating a schema to disallow certain keys in a map.
 
@@ -232,7 +267,8 @@
   [:and
    {:default {}}
    [:map
-    {:decode/normalize normalize-options-map}
+    {:decode/normalize   #'normalize-options-map
+     :encode/for-hashing #'encode-map-for-hashing}
     [:lib/uuid ::uuid]
     ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
     [:base-type      {:optional true} [:maybe ::base-type]]
@@ -268,3 +304,29 @@
    (def ^{:arglists '([& classes])} instance-of-class
      "Convenience for defining a Malli schema for an instance of a particular Class."
      (memoize instance-of-class*)))
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (not (str/includes? (str k) "_"))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])
+
+(def url-encoded-string-regex
+  "Schema for a URL-encoded string
+
+  This matches strings containing:
+
+  - Unreserved characters: letters, digits, hyphens, periods, underscores, tildes
+  - Percent-encoded characters: `%` followed by exactly 2 hex digits"
+  #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")

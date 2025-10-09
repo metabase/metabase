@@ -114,19 +114,22 @@
   (mt/with-actions-enabled
     (testing "when updating a model to include any clauses will disable implicit actions if they exist\n"
       (testing "happy paths\n"
-        (let [base (mt/mbql-query users)]
-          (doseq [query-change [{:limit 1}
-                                {:expressions {"id + 1" [:+ (mt/$ids $users.id) 1]}}
-                                {:filter [:> (mt/$ids $users.id) 2]}
-                                {:breakout [(mt/$ids !month.users.last_login)]}
-                                {:aggregation [[:count]]}
-                                {:joins [{:fields       :all
-                                          :source-table (mt/id :checkins)
-                                          :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                          :alias        "People"}]}
-                                {:order-by [[(mt/$ids $users.id) :asc]]}
-                                {:fields [(mt/$ids $users.id)]}]]
-            (testing (format "when adding %s to the query" (first (keys query-change)))
+        (let [mp   (mt/metadata-provider)
+              base (lib/query
+                    mp
+                    (mt/mbql-query users))]
+          (doseq [[f & args] [[#'lib/limit 1]
+                              [#'lib/expression "id + 1" (lib/+ (lib.metadata/field mp (mt/id :users :id)) 1)]
+                              [#'lib/filter (lib/> (lib.metadata/field mp (mt/id :users :id)) 2)]
+                              [#'lib/breakout (-> (lib.metadata/field mp (mt/id :users :last_login))
+                                                  (lib/with-temporal-bucket :month))]
+                              [#'lib/aggregate (lib/count)]
+                              [#'lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :checkins)))
+                                              (lib/with-join-fields :all)
+                                              (lib/with-join-alias "People"))]
+                              [#'lib/order-by (lib.metadata/field mp (mt/id :users :id))]
+                              [#'lib/with-fields [(lib.metadata/field mp (mt/id :users :id))]]]]
+            (testing (format "when applying %s to the query" (pr-str f))
               (mt/with-actions [{model-id :id
                                  query    :dataset_query}   {:type :model, :dataset_query base}
                                 {action-id-1 :action-id} {:type :implicit
@@ -135,13 +138,13 @@
                                                           :kind "row/update"}]
                 ;; make sure we have thing exists to start with
                 (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
-                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))
+                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))
                 ;; should be gone by now
                 (is (= 0 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
-                ;; call it twice to make we don't get delete error if no actions are found
-                ;; Returns zero because there are no actual changes happening here
-                (is (= 0 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
+                ;; call it twice to make we don't get delete error if no actions are found Returns either zero or one
+                ;; depending on the change because the query will possibly have different UUIDs
+                (is (#{0 1} (t2/update! :model/Card :id model-id {:dataset_query (apply f query args)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -403,7 +406,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with :id and :type keys"
+           #"Invalid output: \{:parameters \[\"invalid type, got: \{:a :b\}\"\]\}"
            (mt/with-temp [:model/Card _ {:parameters {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameters [{:id   "valid-id"
                                                      :type "id"}]}]
@@ -415,7 +418,7 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with :id and :type keys"
+             #"Invalid output:.*:parameters"
              (t2/update! :model/Card id {:parameters [{:id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameters [{:id   "new-valid-id"
                                                             :type "id"}]})))))))
@@ -437,7 +440,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+           #"Invalid output:.*:parameter_mappings"
            (mt/with-temp [:model/Card _ {:parameter_mappings {:a :b}}])))
       (mt/with-temp [:model/Card card {:parameter_mappings [{:parameter_id "valid-id"
                                                              :target       [:field 1000 nil]}]}]
@@ -449,12 +452,12 @@
       (mt/with-temp [:model/Card {:keys [id]} {:parameter_mappings []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameter_mappings must be a sequence of maps with :parameter_id and :type keys"
+             #"Invalid output:.*:parameter_mappings"
              (t2/update! :model/Card id {:parameter_mappings [{:parameter_id 100}]})))
         (is (pos? (t2/update! :model/Card id {:parameter_mappings [{:parameter_id "new-valid-id"
                                                                     :target       [:field 1000 nil]}]})))))))
 
-(deftest normalize-parameter-mappings-test
+(deftest ^:parallel normalize-parameter-mappings-test
   (testing ":parameter_mappings should get normalized when coming out of the DB"
     (mt/with-temp [:model/Card {card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
                                                                     :card_id      1
@@ -464,7 +467,7 @@
                :target       [:dimension [:field 1 nil]]}]
              (t2/select-one-fn :parameter_mappings :model/Card :id card-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Card hashes are composed of the name and the collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection  coll {:name "field-db" :location "/" :created_at now}
@@ -599,7 +602,7 @@
             (is (=? [{:name                 "Param 1"
                       :id                   "param_1"
                       :type                 :category
-                      :values_source_type   "card"
+                      :values_source_type   :card
                       :values_source_config {:card_id     source-card-id
                                              :value_field (mt/$ids $products.title)}}]
                     (t2/select-one-fn :parameters :model/Card :id (:id card)))))))
@@ -833,19 +836,17 @@
                      :database_id   (mt/id)}
                     (t2/select-one :model/Card :id (u/the-id card))))))))))
 
-(deftest can-run-adhoc-query-test
-  (testing "User with data permissions can run adhoc queries"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
-      (mt/with-test-user :rasta
-        (let [card-with-can-run (t2/hydrate (t2/select-one :model/Card :id card-id) :can_run_adhoc_query)]
-          (is (true? (:can_run_adhoc_query card-with-can-run)))))))
-
-  (testing "User without data permissions cannot run adhoc queries"
-    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-test-user :rasta
-          (let [card-with-can-run (t2/hydrate (t2/select-one :model/Card :id card-id) :can_run_adhoc_query)]
-            (is (false? (:can_run_adhoc_query card-with-can-run)))))))))
+(deftest ^:parallel can-run-adhoc-query-test
+  (let [metadata-provider (mt/metadata-provider)
+        venues            (lib.metadata/table metadata-provider (mt/id :venues))
+        query             (lib/query metadata-provider venues)]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card card {:dataset_query query}
+                     :model/Card no-query {}]
+        (is (=? {:can_run_adhoc_query true}
+                (t2/hydrate card :can_run_adhoc_query)))
+        (is (=? {:can_run_adhoc_query false}
+                (t2/hydrate no-query :can_run_adhoc_query)))))))
 
 (deftest audit-card-permisisons-test
   (testing "Cards in audit collections are not readable or writable on OSS, even if they exist (#42645)"
@@ -864,15 +865,62 @@
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
 
-(deftest breakouts-->identifier->action-fn-test
-  (testing "breakouts-->identifier->action-fn returns correct mapping"
-    ;; This test was referencing a private function that doesn't need testing
-    (is (= 1 1))))
+(deftest ^:parallel breakouts->identifier->action-fn-test
+  (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
+                                               (#'card/breakouts->identifier->action
+                                                (map lib/normalize b1)
+                                                (map lib/normalize b2)))
+    [[:field {:temporal-unit :day} 10]]
+    nil
+    nil
 
-(deftest update-for-dashcard-fn-test
-  (testing "update-for-dashcard-fn returns function that updates mappings"
-    ;; This test was referencing a private function that doesn't need testing
-    (is (= 1 1))))
+    [[:expression {:temporal-unit :day} "x"]]
+    nil
+    nil
+
+    [[:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :month} "x"]]
+    {[:expression "x"] [:update [:expression {:temporal-unit :month} "x"]]}
+
+    [[:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :day} "x"]]
+    nil
+
+    [[:field {:temporal-unit :day} 10]
+     [:expression {:temporal-unit :day} "x"]]
+    [[:expression {:temporal-unit :day} "x"]
+     [:field {:temporal-unit :month} 10]]
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+
+    [[:field {:temporal-unit :year} 10]
+     [:field {:temporal-unit :day-of-week} 10]]
+    [[:field {:temporal-unit :year} 10]]
+    nil))
+
+(deftest ^:parallel update-for-dashcard-fn-test
+  (are [indetifier->action quasi-dashcards expected-quasi-dashcards]
+       (= expected-quasi-dashcards
+          (#'card/updates-for-dashcards indetifier->action quasi-dashcards))
+
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+    [{:parameter_mappings []}]
+    nil
+
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]
+
+    {[:field 10] [:noop]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 nil]]}]}]
+    nil
+
+    {[:field 10] [:update [:field {:temporal-unit :month} 10]]}
+    [{:id 1 :parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :year}]]}
+                                 {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                                 {:target [:dimension [:field 10 {:temporal-unit :day}]]}]}]
+    [[1 {:parameter_mappings [{:target [:dimension [:field 10 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 33 {:temporal-unit :month}]]}
+                              {:target [:dimension [:field 10 {:temporal-unit :month}]]}]}]]))
 
 (deftest we-cannot-insert-invalid-dashboard-internal-cards
   (mt/with-temp [:model/Collection {coll-id :id} {}
@@ -998,8 +1046,8 @@
         (t2/update! :model/Card card-id {:dataset_query unnormalized-query})
         ;; Verify the query was normalized (field-id -> field)
         (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
-          (is (= [:= [:field (mt/id :venues :name) nil] "Test"]
-                 (get-in updated-query [:query :filter]))))))))
+          (is (=? [:= {} [:field {} (mt/id :venues :name)] "Test"]
+                  (get-in updated-query [:stages 0 :filters 0]))))))))
 
 (deftest before-update-query-fields-population-test
   (testing "populate-query-fields is called"
@@ -1242,3 +1290,10 @@
         (let [doc (first search-docs)]
           (testing "native-query field is nil for non-native queries"
             (is (nil? (:native_query doc)))))))))
+
+(deftest normalize-card-on-update-test
+  (mt/with-temp [:model/Card card {:name "some card", :type "model"}]
+    (let [card' (assoc card :type "question")]
+      (t2/save! card')
+      (is (= :question
+             (t2/select-one-fn :type :model/Card :id (:id card)))))))

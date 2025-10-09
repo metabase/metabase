@@ -71,39 +71,42 @@ describe("command palette utils", () => {
     const testDoc = [createMockAction({ name: "doc action", section: "docs" })];
 
     it("should limit to 6 actions including header", () => {
-      const result = processResults(testActions);
+      const result = processResults(testActions, "xyz");
       expect(result).toHaveLength(6);
       expect(result[0]).toBe("Actions");
     });
 
     it("should not limit the other action types", () => {
-      expect(processResults([...testActions, ...testSearch])).toHaveLength(12);
-      expect(processResults([...testActions, ...testRecent])).toHaveLength(12);
       expect(
-        processResults([...testRecent, ...testAdmin, ...testDoc]),
+        processResults([...testActions, ...testSearch], "xyz"),
+      ).toHaveLength(12);
+      expect(
+        processResults([...testActions, ...testRecent], "xyz"),
+      ).toHaveLength(12);
+      expect(
+        processResults([...testRecent, ...testAdmin, ...testDoc], "xyz"),
       ).toHaveLength(19);
     });
 
     it("should add a header to doc", () => {
-      expect(processResults([...testDoc])).toHaveLength(2);
+      expect(processResults([...testDoc], "xyz")).toHaveLength(2);
     });
 
     it("should enforce a specific order", () => {
-      const results = processResults([
-        ...testSearch,
-        ...testDoc,
-        ...testAdmin,
-        ...testActions,
-        ...testRecent,
-      ]);
+      const results = processResults(
+        [
+          ...testSearch,
+          ...testDoc,
+          ...testAdmin,
+          ...testActions,
+          ...testRecent,
+        ],
+        "xyz",
+      );
 
       const actionsIndex = results.findIndex((action) => action === "Actions");
-      const searchIndex = results.findIndex(
-        (action) => action === "Search results",
-      );
-      const recentsIndex = results.findIndex(
-        (action) => action === "Recent items",
-      );
+      const searchIndex = results.findIndex((action) => action === "Results");
+      const recentsIndex = results.findIndex((action) => action === "Recents");
       const adminIndex = results.findIndex((action) => action === "Admin");
 
       [recentsIndex, actionsIndex, adminIndex, searchIndex].forEach(
@@ -113,6 +116,11 @@ describe("command palette utils", () => {
           expect(val).toBeLessThan(next);
         },
       );
+    });
+
+    it("should not show actions if there is no search query", () => {
+      const result = processResults(testActions, "");
+      expect(result).toHaveLength(0);
     });
   });
 

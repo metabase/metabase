@@ -2,7 +2,7 @@
   (:require
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
@@ -148,7 +148,7 @@
 (defn- query-metric*
   [{:keys [metric-id filters group-by] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+        mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
         visible-cols (lib/visible-columns base-query)
@@ -232,7 +232,7 @@
 (defn- query-model*
   [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card model-id)
-        mp (lib.metadata.jvm/application-database-metadata-provider (:database_id card))
+        mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
         visible-cols (lib/visible-columns base-query)
         filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
@@ -352,7 +352,7 @@
         handle-query (fn [query query-id]
                        (let [database-id (:database query)
                              _ (api/read-check :model/Database database-id)
-                             mp (lib.metadata.jvm/application-database-metadata-provider database-id)]
+                             mp (lib-be/application-database-metadata-provider database-id)]
                          [(if query-id
                             (metabot-v3.tools.u/query-field-id-prefix query-id)
                             metabot-v3.tools.u/any-prefix-pattern)

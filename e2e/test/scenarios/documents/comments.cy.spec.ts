@@ -42,15 +42,15 @@ H.describeWithSnowplowEE("document comments", () => {
     cy.findByRole("link", { name: "All comments" }).should("not.exist");
 
     cy.get<DocumentId>("@documentId").then((documentId) => {
-      testCommentingOnNode(documentId, HEADING_1_ID, getHeading1);
-      testCommentingOnNode(documentId, HEADING_2_ID, getHeading2);
-      testCommentingOnNode(documentId, HEADING_3_ID, getHeading3);
-      testCommentingOnNode(documentId, PARAGRAPH_ID, getParagraph);
-      testCommentingOnNode(documentId, BULLET_LIST_ID, getBulletList);
-      testCommentingOnNode(documentId, BLOCKQUOTE_ID, getBlockquote);
-      testCommentingOnNode(documentId, ORDERED_LIST_ID, getOrderedList);
-      testCommentingOnNode(documentId, CODE_BLOCK_ID, getCodeBlock);
-      testCommentingOnNode(documentId, CARD_EMBED_ID, getEmbed, {
+      testCommentingOnNode(documentId, HEADING_1_ID, H.getHeading1);
+      testCommentingOnNode(documentId, HEADING_2_ID, H.getHeading2);
+      testCommentingOnNode(documentId, HEADING_3_ID, H.getHeading3);
+      testCommentingOnNode(documentId, PARAGRAPH_ID, H.getParagraph);
+      testCommentingOnNode(documentId, BULLET_LIST_ID, H.getBulletList);
+      testCommentingOnNode(documentId, BLOCKQUOTE_ID, H.getBlockquote);
+      testCommentingOnNode(documentId, ORDERED_LIST_ID, H.getOrderedList);
+      testCommentingOnNode(documentId, CODE_BLOCK_ID, H.getCodeBlock);
+      testCommentingOnNode(documentId, CARD_EMBED_ID, H.getEmbed, {
         isCardEmbedNode: true,
       });
     });
@@ -155,7 +155,7 @@ H.describeWithSnowplowEE("document comments", () => {
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 1);
-      getParagraph("lor sit amet.").realHover();
+      H.getParagraph("lor sit amet.").realHover();
       Comments.getDocumentNodeButtons()
         .filter(":visible")
         .should("have.length", 2)
@@ -600,7 +600,7 @@ H.describeWithSnowplowEE("document comments", () => {
         .should("be.visible")
         .and("have.value", "Lorem ipsum");
 
-      getParagraph().realHover();
+      H.getParagraph().realHover();
       Comments.getDocumentNodeButton({
         targetId: documentId,
         childTargetId: PARAGRAPH_ID,
@@ -612,7 +612,7 @@ H.describeWithSnowplowEE("document comments", () => {
       H.documentContent().click();
       cy.realType("xyz");
 
-      getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
+      H.getParagraph("Lorem ipsum dolor sit amet.xyz").realHover();
 
       cy.findByLabelText("Comments").should("not.be.disabled").click();
       Comments.getSidebar().should("be.visible");
@@ -645,7 +645,7 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.realType("bold italic strike code");
 
       selectCharactersLeft("code".length);
-      cy.realPress([META_KEY, "E"]);
+      cy.realPress([META_KEY, "e"]);
 
       cy.realPress("ArrowLeft");
       cy.realPress("ArrowLeft");
@@ -1270,11 +1270,15 @@ H.describeWithSnowplowEE("document comments", () => {
 
         cy.log("verify blockquote is rendered during typing");
         cy.realType("> blockquote");
-        getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
+        H.getBlockquote("blockquote", Comments.getSidebar()).should(
+          "be.visible",
+        );
 
         cy.log("verify blockquote is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
-        getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
+        H.getBlockquote("blockquote", Comments.getSidebar()).should(
+          "be.visible",
+        );
       });
 
       it("should support ordered lists", () => {
@@ -1284,14 +1288,14 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realPress("Enter");
         cy.realType("two");
         cy.log("verify ordered list is rendered during typing");
-        getOrderedList("one", Comments.getSidebar()).should("be.visible");
-        getOrderedList("two", Comments.getSidebar()).should("be.visible");
+        H.getOrderedList("one", Comments.getSidebar()).should("be.visible");
+        H.getOrderedList("two", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify ordered list is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
-        getOrderedList("one", Comments.getSidebar()).should("be.visible");
-        getOrderedList("two", Comments.getSidebar()).should("be.visible");
+        H.getOrderedList("one", Comments.getSidebar()).should("be.visible");
+        H.getOrderedList("two", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support unordered lists", () => {
@@ -1301,14 +1305,14 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realPress("Enter");
         cy.realType("b");
         cy.log("verify bullet list is rendered during typing");
-        getBulletList("a", Comments.getSidebar()).should("be.visible");
-        getBulletList("b", Comments.getSidebar()).should("be.visible");
+        H.getBulletList("a", Comments.getSidebar()).should("be.visible");
+        H.getBulletList("b", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify bullet list is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
-        getBulletList("a", Comments.getSidebar()).should("be.visible");
-        getBulletList("b", Comments.getSidebar()).should("be.visible");
+        H.getBulletList("a", Comments.getSidebar()).should("be.visible");
+        H.getBulletList("b", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support code blocks", () => {
@@ -1318,12 +1322,12 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realPress("Enter");
         cy.log("verify code block is rendered during typing");
         cy.realType("code");
-        getCodeBlock("code", Comments.getSidebar()).should("be.visible");
+        H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
 
         cy.log("verify code block is rendered after submitting");
         cy.realPress([META_KEY, "Enter"]);
 
-        getCodeBlock("code", Comments.getSidebar()).should("be.visible");
+        H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
       });
     });
 
@@ -1334,7 +1338,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("ol");
         cy.realPress([META_KEY, "Shift", "7"]);
 
-        getOrderedList("ol", Comments.getSidebar()).should("be.visible");
+        H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support bullet list", () => {
@@ -1343,7 +1347,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("ul");
         cy.realPress([META_KEY, "Shift", "8"]);
 
-        getBulletList("ul", Comments.getSidebar()).should("be.visible");
+        H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
       });
 
       it("should support code block", () => {
@@ -1352,7 +1356,7 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("code");
         cy.realPress([META_KEY, "Alt", "c"]);
 
-        getCodeBlock("code", Comments.getSidebar()).should("be.visible");
+        H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
       });
 
       // explicitly disabled in CustomStarterKit to keep default browser behavior
@@ -1362,7 +1366,9 @@ H.describeWithSnowplowEE("document comments", () => {
         cy.realType("blockquote");
         cy.realPress([META_KEY, "Shift", "k"]);
 
-        getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
+        H.getBlockquote("blockquote", Comments.getSidebar()).should(
+          "be.visible",
+        );
       });
     });
 
@@ -1389,10 +1395,10 @@ H.describeWithSnowplowEE("document comments", () => {
 
       cy.reload();
 
-      getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
-      getOrderedList("ol", Comments.getSidebar()).should("be.visible");
-      getBulletList("ul", Comments.getSidebar()).should("be.visible");
-      getCodeBlock("code", Comments.getSidebar()).should("be.visible");
+      H.getBlockquote("blockquote", Comments.getSidebar()).should("be.visible");
+      H.getOrderedList("ol", Comments.getSidebar()).should("be.visible");
+      H.getBulletList("ul", Comments.getSidebar()).should("be.visible");
+      H.getCodeBlock("code", Comments.getSidebar()).should("be.visible");
     });
   });
 
@@ -1579,7 +1585,7 @@ function selectCharactersLeft(count: number) {
 function startNewCommentIn1ParagraphDocument() {
   createAndVisit1ParagraphDocument();
 
-  getParagraph().realHover();
+  H.getParagraph().realHover();
 
   cy.get<DocumentId>("@documentId").then((targetId) => {
     Comments.getDocumentNodeButton({
@@ -1909,57 +1915,6 @@ function createComment(
     },
     html: html ?? `<p>${text}</p>`,
   });
-}
-
-function getHeading1(name = "Heading 1") {
-  return H.documentContent().findByRole("heading", {
-    name,
-    level: 1,
-  });
-}
-
-function getHeading2(name = "Heading 2") {
-  return H.documentContent().findByRole("heading", {
-    name,
-    level: 2,
-  });
-}
-
-function getHeading3(name = "Heading 3") {
-  return H.documentContent().findByRole("heading", {
-    name,
-    level: 3,
-  });
-}
-
-function getParagraph(text = "Lorem ipsum dolor sit amet.") {
-  return H.documentContent().findByText(text).parent();
-}
-
-function getBulletList(text = "Bullet A", container = H.documentContent()) {
-  return container.findByText(text).closest("ul");
-}
-
-function getBlockquote(
-  text = "A famous quote",
-  container = H.documentContent(),
-) {
-  return container.findByText(text).closest("blockquote");
-}
-
-function getOrderedList(text = "Item 1", container = H.documentContent()) {
-  return container.findByText(text).closest("ol");
-}
-
-function getCodeBlock(
-  text = "while (true) {}",
-  container = H.documentContent(),
-) {
-  return container.findByText(text).closest("pre");
-}
-
-function getEmbed() {
-  return H.documentContent().findByTestId("document-card-embed");
 }
 
 function verifyEmail({

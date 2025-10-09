@@ -201,7 +201,8 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
 export type EmbedWizardOpenedEvent = ValidateEvent<{
   event: "embed_wizard_opened";
@@ -371,7 +372,7 @@ export type TableEditingEvent =
 export type MetabotChatOpenedEvent = ValidateEvent<{
   event: "metabot_chat_opened";
   triggered_from:
-    | "search"
+    | "header"
     | "command_palette"
     | "keyboard_shortcut"
     | "native_editor";

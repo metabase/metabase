@@ -7,7 +7,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.driver :as driver]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]

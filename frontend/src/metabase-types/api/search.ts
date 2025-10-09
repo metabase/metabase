@@ -90,7 +90,7 @@ export interface SearchResult<
   collection_authority_level: "official" | null;
   type?: "instance-analytics" | "trash" | "remote-synced" | null;
   updated_at: string;
-  moderated_status: string | null;
+  moderated_status: ModerationReviewStatus | null;
   model_id: CardId | null;
   model_name: string | null;
   model_index_id: number | null;

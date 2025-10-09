@@ -1,10 +1,11 @@
 import cx from "classnames";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
@@ -29,6 +30,7 @@ export const SelectEmbedExperienceStep = () => {
   } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
 
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
@@ -46,8 +48,7 @@ export const SelectEmbedExperienceStep = () => {
         "dashboard",
         () => recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       )
-      .with("exploration", () => 0) // resource id does not apply
-      .with("browser", () => 0) // resource id does not apply
+      .with(P.union("exploration", "browser", "metabot"), () => 0) // resource id does not apply
       .exhaustive();
 
     replaceSettings({
@@ -61,6 +62,8 @@ export const SelectEmbedExperienceStep = () => {
       }),
     });
   };
+
+  const experiences = getEmbedExperiences({ isMetabotAvailable });
 
   return (
     <>
@@ -85,7 +88,7 @@ export const SelectEmbedExperienceStep = () => {
           }
         >
           <Stack gap="md">
-            {getEmbedExperiences().map((experience) => (
+            {experiences.map((experience) => (
               <Radio
                 key={experience.value}
                 value={experience.value}
