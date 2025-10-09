@@ -344,6 +344,11 @@
       {"foo" {:type :string/= :value "foo"}}
       "foofoo"
 
+      ;; Make sure we handle multiple optional blocks without values correctly. This has to do with regex greediness.
+      "[[{{foo}}]] between [[{{bar}}]]"
+      {}
+      " between "
+
       "[[{{foo}}]] [[{{bar}}]]"
       {"foo" {:type :string/= :value 1} "bar" {:type :string/= :value 2}}
       "1 2"
