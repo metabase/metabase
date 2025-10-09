@@ -54,10 +54,11 @@
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))
-         (transforms.util/run-cancelable-transform!
-          run-id driver transform-details
-          (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
-         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
+         (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
+           (transforms.util/run-cancelable-transform!
+            run-id driver transform-details
+            (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
+         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
            (transforms.util/sync-target! target database run-id)
          ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
            (events/publish-event! :event/transform-run-complete {:object transform-details}))))

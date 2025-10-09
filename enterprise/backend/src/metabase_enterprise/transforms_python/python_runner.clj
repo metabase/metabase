@@ -7,12 +7,14 @@
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.config.core :as config]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentQueue)
@@ -113,7 +115,9 @@
 
 (defn- execute-mbql-query
   [db-id query rff cancel-chan]
-  (binding [qp.pipeline/*canceled-chan* (a/go (a/<! cancel-chan))]
+  (binding [qp.pipeline/*canceled-chan* (if cancel-chan
+                                          (a/go (a/<! cancel-chan))
+                                          qp.pipeline/*canceled-chan*)]
     (qp/process-query {:type :query :database db-id :query query} rff)))
 
 (defn- throw-if-cancelled [cancel-chan]
@@ -173,6 +177,25 @@
   (let [server-url (transforms-python.settings/python-runner-url)]
     (python-runner-request server-url :get "/logs" {:query-params {:request_id run-id}})))
 
+(mu/defn record-python-api-call!
+  "Record metrics about Python API calls."
+  [job-run-id :- [:maybe pos-int?]
+   duration-ms :- int?
+   status :- [:enum :success :error :timeout]]
+  (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
+  (prometheus/inc! :metabase-transforms/python-api-calls-total {:status (name status)})
+  (prometheus/observe! :metabase-transforms/python-api-call-duration-ms {} duration-ms))
+
+(defmacro with-python-api-timing
+  "Execute body while timing a Python API call."
+  [[job-run-id] & body]
+  `(transforms.instrumentation/with-timing {:success-fn (fn [job-run-id# duration-ms#]
+                                                          (record-python-api-call! job-run-id# duration-ms# :success))
+                                            :error-fn   (fn [job-run-id# duration-ms#]
+                                                          (record-python-api-call! job-run-id# duration-ms# :error))}
+     [~job-run-id]
+     (^:once fn* [] ~@body)))
+
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
@@ -194,7 +217,7 @@
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
 
-        response                 (transforms.instrumentation/with-python-api-timing [run-id]
+        response                 (with-python-api-timing [run-id]
                                    (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
     ;; always try to parse the returned string as json before yielding (could tighten this up at some point)
@@ -269,7 +292,7 @@
               fields-meta (fields-metadata driver table-id)
               manifest    (generate-manifest table-id fields-meta)]
 
-          (transforms.instrumentation/with-stage-timing [run-id :dwh-to-file]
+          (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
             (write-table-data-to-file!
              {:db-id       db-id
               :driver      driver
@@ -285,7 +308,7 @@
                 meta-size (.length tmp-meta-file)]
             (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file data-size nil)
 
-            (transforms.instrumentation/with-stage-timing [run-id :file-to-s3]
+            (transforms.instrumentation/with-stage-timing [run-id [:export :file-to-s3]]
               (s3/upload-file s3-client bucket-name data-path tmp-data-file)
               (s3/upload-file s3-client bucket-name manifest-path tmp-meta-file))
 

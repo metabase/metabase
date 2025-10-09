@@ -285,7 +285,7 @@
               (with-open [in (python-runner/open-output @shared-storage-ref)]
                 (io/copy in temp-file))
               (let [file-size (.length temp-file)]
-                (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
+                (transforms.instrumentation/with-stage-timing [run-id [:import :file-to-dwh]]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
                 (transforms.instrumentation/record-data-transfer! run-id :file-to-dwh file-size nil))
               (finally
@@ -332,8 +332,9 @@
                                 (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)
-            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn)]
-        (transforms.instrumentation/with-stage-timing [run-id :table-sync]
+            result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
+                                (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
+        (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id
          :result result}))
