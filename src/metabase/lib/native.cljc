@@ -302,7 +302,21 @@
             ;; the way we do this is really weird, but it's important that we use the order of the keys in
             ;; `updated-tags` See
             ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759975007383889?thread_ts=1759289751.539169&cid=C0645JP1W81
-            (into updated-tags (select-keys existing-tags (set/difference (set (keys existing-tags)) (set (keys updated-tags))))))
+            ;;
+            ;; first, filter out the tags in `updated-tags` not in existing tags, preserving the original order.
+            (let [tags (reduce-kv
+                        (fn [m k v]
+                          (cond-> m
+                            (contains? existing-tags k) (assoc k v)))
+                        {}
+                        updated-tags)]
+              ;; merge in old values that weren't in the `updated-tags` map
+              (reduce-kv
+               (fn [m k v]
+                 (cond-> m
+                   (not (contains? m k)) (assoc k v)))
+               tags
+               existing-tags)))
           (update-stage [stage]
             (assert-native-query stage)
             (update stage :template-tags update-template-tags))]
