@@ -4,12 +4,14 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as rs-object]
+   [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :each th/clean-remote-sync-state)
 
 ;;; ------------------------------------------------------------------------------------------------
 ;;; Tests for dirty-global?
