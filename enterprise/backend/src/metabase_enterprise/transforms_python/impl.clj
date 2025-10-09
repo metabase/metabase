@@ -15,7 +15,7 @@
   [transform options]
   (transforms-python.execute/execute-python-transform! transform options))
 
-(defmethod transforms.i/dependencies :python
+(defmethod transforms.i/table-dependencies :python
   [transform]
   (into #{}
         (map #(hash-map :table %))

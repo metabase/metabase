@@ -29,14 +29,18 @@
   (fn [transform _options]
     (transform->transform-type transform)))
 
-(defmulti dependencies
-  "Return a set of dependencies required to run this transform.
-
-  Returns a set of maps, where each dependency is represented as either:
-  - `{:table <table-id>}` for dependencies on database tables
-  - `{:transform <transform-id>}` for dependencies on other transforms
-
+(defmulti table-dependencies
+  "Return a set of logical table dependencies of the transform, including indirect dependencies via cards.
   The transform execution system uses these dependencies to determine the correct order of execution
-  and to detect circular dependencies. An empty set indicates no dependencies."
+  and to detect circular dependencies.
+
+  Each dependency is represented as either:
+  - `{:table <table-id>}`
+     A dependency on a table that exists and has been synced.
+  - `{:transform <transform-id>}`
+     A dependency on a table that does not yet exist, but is known to be the target of another transform.
+     Represents a 'placeholder' table (as we no table id / metadata) for the same purposes.
+
+  An empty set indicates no dependencies."
   {:added "0.47.0" :arglists '([transform])}
   transform->transform-type)

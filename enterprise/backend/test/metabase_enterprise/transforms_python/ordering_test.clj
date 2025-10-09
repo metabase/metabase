@@ -37,7 +37,7 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'transforms.i/dependencies transform)))
+    (#'transforms.i/table-dependencies transform)))
 
 (deftest python-transform-basic-dependencies-test
   (testing "Python transforms with source-tables dependencies are extracted correctly"

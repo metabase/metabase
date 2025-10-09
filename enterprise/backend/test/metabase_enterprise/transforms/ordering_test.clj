@@ -53,7 +53,7 @@
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)
-    (#'transforms.i/dependencies transform)))
+    (#'transforms.i/table-dependencies transform)))
 
 (deftest not-run-transform-dependency-ordering-test
   (mt/test-driver :postgres

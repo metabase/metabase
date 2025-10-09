@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod transforms.i/dependencies :query
+(defmethod transforms.i/table-dependencies :query
   [transform]
   (let [query (-> (get-in transform [:source :query])
                   transforms.util/massage-sql-query
@@ -38,7 +38,7 @@
 
 (defn- dependency-map [transforms]
   (into {}
-        (map (juxt :id transforms.i/dependencies))
+        (map (juxt :id transforms.i/table-dependencies))
         transforms))
 
 (defn- output-table-map [transforms]
@@ -127,9 +127,9 @@
       (let [db-transforms (filter #(= (get-in % [:source :query :database]) db-id) transforms)
             output-tables (output-table-map db-transforms)
             transform-ids (into #{} (map :id) db-transforms)
-            node->children #(->> % transforms-by-id transforms.i/dependencies (keep (fn [{:keys [table transform]}]
-                                                                                      (or (output-tables table)
-                                                                                          (transform-ids transform)))))
+            node->children #(->> % transforms-by-id transforms.i/table-dependencies (keep (fn [{:keys [table transform]}]
+                                                                                            (or (output-tables table)
+                                                                                                (transform-ids transform)))))
             id->name (comp :name transforms-by-id)
             cycle (find-cycle node->children [transform-id])]
         (when cycle
