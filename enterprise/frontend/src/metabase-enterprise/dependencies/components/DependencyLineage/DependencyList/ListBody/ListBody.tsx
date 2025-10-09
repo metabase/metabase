@@ -4,8 +4,7 @@ import { Link } from "react-router";
 import { Box, Flex, Group, Icon, Stack } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeId } from "../../utils";
-import { getNodeViewCount } from "../utils";
+import { getNodeId, getNodeViewCount } from "../../utils";
 
 import S from "./ListBody.module.css";
 import type { LinkInfo } from "./types";

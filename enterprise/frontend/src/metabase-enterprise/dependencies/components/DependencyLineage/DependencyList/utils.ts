@@ -6,9 +6,11 @@ import type {
 } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
-import { getNodeLabel } from "../utils";
+import { getNodeLabel, getNodeLocationLabel, getNodeViewCount } from "../utils";
 
-export function getRequest(
+import type { SearchOptions, SortColumn } from "./types";
+
+export function getListRequest(
   selection: GraphSelection,
 ): ListNodeDependentsRequest {
   return {
@@ -23,15 +25,41 @@ export function getRequest(
   };
 }
 
-export function getMatchingNodes(nodes: DependencyNode[], searchText: string) {
-  const searchTextLowerCase = searchText.toLowerCase();
-  return nodes.filter((node) =>
-    getNodeLabel(node).toLowerCase().includes(searchTextLowerCase),
-  );
+function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
+  return getNodeLabel(node).toLowerCase().includes(searchQuery);
 }
 
-export function getNodeViewCount(node: DependencyNode): number | undefined {
-  return match(node)
-    .with({ type: "card" }, (node) => node.data.view_count)
-    .otherwise(() => undefined);
+function compareNodes(
+  node1: DependencyNode,
+  node2: DependencyNode,
+  column: SortColumn,
+) {
+  switch (column) {
+    case "name":
+      return getNodeLabel(node1).localeCompare(getNodeLabel(node2));
+    case "location":
+      return (getNodeLocationLabel(node1) ?? "").localeCompare(
+        getNodeLocationLabel(node2) ?? "",
+      );
+    case "view_count":
+      return (getNodeViewCount(node1) ?? 0) - (getNodeViewCount(node2) ?? 0);
+    default:
+      return 0;
+  }
+}
+
+export function getVisibleNodes(
+  nodes: DependencyNode[],
+  options: SearchOptions,
+) {
+  const searchQuery = options.searchQuery.trim().toLowerCase();
+  const visibleNodes = nodes.filter((node) =>
+    isMatchingSearchQuery(node, searchQuery),
+  );
+  visibleNodes.sort((node1, node2) => {
+    const result = compareNodes(node1, node2, options.sortOptions.column);
+    const factor = options.sortOptions.direction === "asc" ? 1 : -1;
+    return result * factor;
+  });
+  return visibleNodes;
 }

@@ -11,7 +11,8 @@ import type { GraphSelection } from "../types";
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
-import { getMatchingNodes, getRequest } from "./utils";
+import type { SortOptions } from "./types";
+import { getListRequest, getVisibleNodes } from "./utils";
 
 type DependencyListProps = {
   selection: GraphSelection;
@@ -26,15 +27,16 @@ export function DependencyList({
     data: nodes = [],
     isFetching,
     error,
-  } = useListNodeDependentsQuery(getRequest(selection));
+  } = useListNodeDependentsQuery(getListRequest(selection));
   const [searchText, setSearchText] = useState("");
-  const [debouncedSearchText] = useDebouncedValue(
-    searchText,
-    SEARCH_DEBOUNCE_DURATION,
-  );
+  const [searchQuery] = useDebouncedValue(searchText, SEARCH_DEBOUNCE_DURATION);
+  const [sortOptions] = useState<SortOptions>({
+    column: "name",
+    direction: "asc",
+  });
   const matchingNodes = useMemo(
-    () => getMatchingNodes(nodes, debouncedSearchText),
-    [nodes, debouncedSearchText],
+    () => getVisibleNodes(nodes, { searchQuery, sortOptions }),
+    [nodes, searchQuery, sortOptions],
   );
 
   return (

@@ -138,3 +138,21 @@ export function getNodeLink(node: DependencyNode): string | undefined {
     .with({ type: "snippet" }, () => undefined)
     .exhaustive();
 }
+
+export function getNodeLocationLabel(node: DependencyNode): string | undefined {
+  if (node.type === "card") {
+    if (node.data.dashboard != null) {
+      return node.data.dashboard.name;
+    }
+
+    if (node.data.collection != null) {
+      return node.data.collection.name;
+    }
+  }
+}
+
+export function getNodeViewCount(node: DependencyNode): number | undefined {
+  if (node.type === "card") {
+    return node.data.view_count;
+  }
+}

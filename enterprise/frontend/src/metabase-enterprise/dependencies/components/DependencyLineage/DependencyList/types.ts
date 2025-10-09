@@ -1,7 +1,13 @@
-import type { IconName } from "metabase/ui";
+export type SortColumn = "name" | "location" | "view_count";
 
-export type LinkInfo = {
-  label: string;
-  icon: IconName;
-  link?: string;
+export type SortDirection = "asc" | "desc";
+
+export type SortOptions = {
+  column: SortColumn;
+  direction: SortDirection;
+};
+
+export type SearchOptions = {
+  searchQuery: string;
+  sortOptions: SortOptions;
 };
