@@ -421,9 +421,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        // Adjusted coordinates to account for larger axis labels (13px) in dashboard charts
-        // Timeseries (date) labels are wider, so need more horizontal offset
-        applyBrushFilter({ left: 140, right: 340 }),
+        applyBrushFilter({ left: 150, right: 300 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
@@ -434,9 +432,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        // Adjusted coordinates to account for larger axis labels (13px) in dashboard charts
-        // Numeric labels are narrower than dates but still wider with 13px font
-        applyBrushFilter({ left: 130, right: 330 }),
+        applyBrushFilter({ left: 100, right: 320 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(6);

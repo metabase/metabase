@@ -36,15 +36,7 @@ describe("scenarios > visualizations > combo", () => {
       },
     });
 
-    // Ensure chart is fully rendered before checking for data labels
-    // (larger font sizes may affect label collision detection and positioning)
-    H.ensureChartIsActive();
-
-    // Wait for echarts container to have SVG content fully rendered
-    H.ensureEchartsContainerHasSvg();
-
-    // 2nd value label on the chart - with larger fonts, check more leniently
-    cy.findAllByText("390.99").should("have.length.at.least", 1);
+    H.echartsContainer().findByText("500.96");
   });
 
   it("should support stacking", () => {
