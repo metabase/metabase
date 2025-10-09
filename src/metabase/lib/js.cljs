@@ -2647,17 +2647,14 @@
 ;;; work as expected.
 (defn- from-js-query*
   [mp js-query]
-  (when (gobject/equals js-query #js {})
+  (when (zero? (alength (js/Object.keys js-query)))
     (throw (ex-info "Invalid query: query cannot be empty" {:query js-query})))
   (-> js-query
       js->clj
       (->> (lib.core/query mp))
-      ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without attached
-      ;; metadata providers -- force them to have them. I can't work out why it is happening, so this is a temporary
-      ;; HACK to keep things moving.
-      ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
-      (cond-> mp
-        (assoc :lib/metadata mp))))
+      ;; remove `:lib/metadata` to prevent circular references that will prevent us from printing the MP... we'll
+      ;; reattach later
+      (dissoc :lib/metadata)))
 
 (defn ^:export from-js-query
   "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
@@ -2667,12 +2664,14 @@
   [^js mp js-query]
   ;; even in JS, this will never work right without a valid MetadataProvider, so error if we don't get one.
   (assert (satisfies? lib.metadata.protocols/MetadataProvider mp))
-  ;;; TODO (Cam 10/8/25) -- I attempted to use the side-channel cache stuff here and it didn't work correctly, so I
-  ;;; made a different cache instead... this seems to work correctly now. Maybe we can fix it and use the existing
-  ;;; stuff.
-  (let [cache (if-let [cache (.-__fromJsQueryCache mp)]
-                cache
-                (set! (.-__fromJsQueryCache mp) (js/WeakMap.)))]
-    (or (gobject/get cache js-query)
-        (u/prog1 (from-js-query* mp js-query)
-          (gobject/set cache js-query <>)))))
+  ;; TODO (Cam 10/8/25) -- I attempted to use the side-channel cache stuff here and it didn't work correctly, so I
+  ;; made a different cache instead... this seems to work correctly now. Maybe we can fix it and use the existing
+  ;; stuff.
+  (let [^js/WeakMap cache (if-let [cache (.-__fromJsQueryCache mp)]
+                            cache
+                            (u/prog1 (js/WeakMap.)
+                              (set! (.-__fromJsQueryCache mp) <>)))]
+    (-> (or (.get cache js-query)
+            (u/prog1 (from-js-query* mp js-query)
+              (.set cache js-query <>)))
+        (assoc :lib/metadata mp))))
