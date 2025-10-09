@@ -74,31 +74,32 @@
   ([id] (export-collection-representations id v0-common/representations-export-dir))
   ([id path]
    (let [collection (t2/select-one :model/Collection :id id)
-         coll-dir (v0-common/file-sys-name id (:name collection) "/")
+         coll-dir (str path (v0-common/file-sys-name id (:name collection) "/"))
+         refs-dir (str coll-dir "refs/")
          children (-> collection
                       (coll.api/collection-children {:show-dashboard-questions? true :archived? false})
                       :data)
          database-ids (into #{} (mapcat child->database-ids) children)]
-     (.mkdirs (File. (str path coll-dir)))
+     (.mkdirs (File. refs-dir))
      (doseq [db-id database-ids]
        (try
          (let [database (t2/select-one :model/Database :id db-id)
                db-yaml (-> database export-entity rep-yaml/generate-string)
                file-name (v0-common/file-sys-name db-id (:name database) ".database.yml")]
-           (spit (str path coll-dir file-name) db-yaml))
+           (spit (str refs-dir file-name) db-yaml))
          (catch Exception e
            (log/errorf e "Unable to export database with id %s" db-id))))
      (doseq [child children]
        (let [child-id (:id child)
              model-type (model->card-type child)]
          (if (= model-type :collection)
-           (export-collection-representations child-id (str path coll-dir))
+           (export-collection-representations child-id coll-dir)
            (try
              (let [card (t2/select-one :model/Card :id child-id :type model-type)
                    entity-yaml (-> card export-entity rep-yaml/generate-string)
                    suffix (format ".%s.yml" (name model-type))
                    card-file-name (v0-common/file-sys-name child-id (:entity_id child) suffix)]
-               (spit (str path coll-dir card-file-name) entity-yaml))
+               (spit (str coll-dir card-file-name) entity-yaml))
              (catch Exception e
                (log/errorf e "Unable to export representation of type %s with id %s" model-type child-id)))))))))
 
