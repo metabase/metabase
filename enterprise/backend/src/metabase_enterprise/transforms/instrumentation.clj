@@ -12,7 +12,7 @@
 
 (mu/defn record-stage-start!
   "Record the start of a transform stage."
-  [job-run-id :- [:maybe pos-int?]
+  [job-run-id               :- [:maybe pos-int?]
    [stage-type stage-label] :- ::stage]
   (log/infof "Transform stage started: run-id=%d type=%s label=%s" job-run-id (name stage-type) (name stage-label))
   (prometheus/inc! :metabase-transforms/stage-started
