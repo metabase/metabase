@@ -208,33 +208,35 @@
 (deftest export-with-default-settings-test
   (testing "POST /api/ee/remote-sync/export succeeds with default settings"
     (mt/with-temporary-setting-values [remote-sync-type :development]
-      (let [mock-main (test-helpers/create-mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
-                  task (wait-for-task-completion task_id)]
-              (is (remote-sync.task/successful? task))
-              (is (=? {:message string? :task_id int?}
-                      resp)))))))))
+      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+        (let [mock-main (test-helpers/create-mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings (constantly mock-main)]
+              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                    task (wait-for-task-completion task_id)]
+                (is (remote-sync.task/successful? task))
+                (is (=? {:message string? :task_id int?}
+                        resp))))))))))
 
 (deftest export-with-custom-branch-and-message-test
   (testing "POST /api/ee/remote-sync/export succeeds with custom branch and message"
     (mt/with-temporary-setting-values [remote-sync-type :development]
-      (let [mock-main (test-helpers/create-mock-source)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
-                                                                   {:branch "feature-branch" :message "Custom export message"})
-                  task (wait-for-task-completion task_id)]
-              (is (=? {:message string? :task_id int?}
-                      resp))
-              (is (remote-sync.task/successful? task)))))))))
+      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+        (let [mock-main (test-helpers/create-mock-source)]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings (constantly mock-main)]
+              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export"
+                                                                     {:branch "feature-branch" :message "Custom export message"})
+                    task (wait-for-task-completion task_id)]
+                (is (=? {:message string? :task_id int?}
+                        resp))
+                (is (remote-sync.task/successful? task))))))))))
 
 (deftest export-requires-superuser-test
   (testing "POST /api/ee/remote-sync/export requires superuser permissions"
@@ -253,15 +255,16 @@
 (deftest export-handles-write-errors-test
   (testing "POST /api/ee/remote-sync/export handles write errors"
     (mt/with-temporary-setting-values [remote-sync-type :development]
-      (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
-        (mt/with-temporary-setting-values [remote-sync-enabled true
-                                           remote-sync-url "https://github.com/test/repo.git"
-                                           remote-sync-token "test-token"
-                                           remote-sync-branch "main"]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
-                  task (wait-for-task-completion (:task_id response))]
-              (is (remote-sync.task/failed? task)))))))))
+      (mt/with-temp [:model/Collection _ {:type "remote-synced" :name "Test Collection" :location "/"}]
+        (let [mock-main (test-helpers/create-mock-source :fail-mode :write-files-error)]
+          (mt/with-temporary-setting-values [remote-sync-enabled true
+                                             remote-sync-url "https://github.com/test/repo.git"
+                                             remote-sync-token "test-token"
+                                             remote-sync-branch "main"]
+            (with-redefs [source/source-from-settings (constantly mock-main)]
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/export" {})
+                    task (wait-for-task-completion (:task_id response))]
+                (is (remote-sync.task/failed? task))))))))))
 
 (deftest export-errors-when-task-already-exists-test
   (testing "POST /api/ee/remote-sync/export errors when task already exists"

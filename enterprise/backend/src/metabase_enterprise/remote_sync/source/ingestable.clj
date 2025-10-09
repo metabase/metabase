@@ -105,14 +105,14 @@
     (keys (or @cache (reset! cache (ingest-all source)))))
 
   (ingest-one [_ serdes-path]
-    (when-not @cache
+    source
+    (when-not cache
       (reset! cache (ingest-all source)))
-    (if-let [target (get @cache (serialization/strip-labels serdes-path))]
+    (when-let [target (get @cache (serialization/strip-labels serdes-path))]
       (try
         (ingest-content (second target))
         (catch Exception e
-          (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))
-      (throw (ex-info "Cannot find file" {:abs-path serdes-path})))))
+          (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e)))))))
 
 (defn ingestable-version
   "Returns the version of the given ingestable source."
