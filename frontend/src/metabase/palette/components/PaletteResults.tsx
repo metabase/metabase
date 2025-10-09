@@ -1,4 +1,3 @@
-/* eslint-disable no-color-literals */
 import type { Query } from "history";
 import { VisualState, useKBar, useMatches } from "kbar";
 import { useEffect, useMemo } from "react";
@@ -157,12 +156,12 @@ export const PaletteResults = ({
 function PaletteResultsSkeleton() {
   return (
     <Stack my="3.75rem" mx="4rem">
-      <Skeleton bg="#F0EDED" height={20} radius={4} />
-      <Skeleton bg="#F0EDED" height={20} mt={16} radius={4} />
-      <Skeleton bg="#F0EDED" height={20} w="80%" mt={16} radius={4} />
-      <Skeleton bg="#F0EDED" height={20} w="80%" mt={16} radius={4} />
-      <Skeleton bg="#F0EDED" height={20} w="60%" mt={16} radius={4} />
-      <Skeleton bg="#F0EDED" height={20} w="60%" mt={16} radius={4} />
+      <Skeleton height={20} radius={4} />
+      <Skeleton height={20} mt={16} radius={4} />
+      <Skeleton height={20} w="80%" mt={16} radius={4} />
+      <Skeleton height={20} w="80%" mt={16} radius={4} />
+      <Skeleton height={20} w="60%" mt={16} radius={4} />
+      <Skeleton height={20} w="60%" mt={16} radius={4} />
     </Stack>
   );
 }
