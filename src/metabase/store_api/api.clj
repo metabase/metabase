@@ -4,7 +4,6 @@
    [clj-http.client :as http]
    [metabase.api.macros :as api.macros]
    [metabase.store-api.core :as store-api]
-   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -12,23 +11,8 @@
 (defn- make-store-request
   "Make a GET request to the Metabase Store API endpoint."
   [endpoint]
-  (try
-    (let [url (str (store-api/store-api-url) "/api/v2" endpoint)
-          response (http/get url {:as :json
-                                  :throw-exceptions false
-                                  :timeout 30000})]
-      (if (= 200 (:status response))
-        (:body response)
-        (do
-          (log/warn "Store API request failed" {:endpoint endpoint
-                                                :status (:status response)
-                                                :url url})
-          {:error "Store API request failed"
-           :status (:status response)})))
-    (catch Exception e
-      (log/error e "Error making Store API request" {:endpoint endpoint})
-      {:error "Store API request failed"
-       :message (.getMessage e)})))
+  (let [url (str (store-api/store-api-url) "/api/v2" endpoint)]
+    (:body (http/get url {:as :json}))))
 
 (mr/def ::Plan
   [:map
@@ -64,13 +48,13 @@
    [:token_features [:sequential :string]]
    [:trialup_to_product_id [:maybe :string]]
    [:invoiceable_counterpart [:maybe :string]]
-   [:trial_days [:maybe pos-int?]]
+   [:trial_days [:maybe number?]]
    [:is_metered [:maybe :boolean]]
-   [:default_total_units :int]
-   [:default_included_units :int]
-   [:default_prepaid_units :int]
-   [:default_price_per_unit :int]
-   [:default_base_fee :int]])
+   [:default_total_units number?]
+   [:default_included_units number?]
+   [:default_prepaid_units number?]
+   [:default_price_per_unit number?]
+   [:default_base_fee number?]])
 
 (api.macros/defendpoint :get "/plan" :- [:sequential ::Plan]
   "Fetch information about available plans from the Metabase Store API."
