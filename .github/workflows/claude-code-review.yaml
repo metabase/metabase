@@ -13,7 +13,7 @@ env:
 
 jobs:
   review:
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-cc-review') && !contains(fromJSON(env.EXCLUDED_PR_AUTHORS), github.event.pull_request.user.login) }}
+    if: github.event.pull_request.draft == false && !contains(fromJSON(env.EXCLUDED_PR_AUTHORS), github.event.pull_request.user.login) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
