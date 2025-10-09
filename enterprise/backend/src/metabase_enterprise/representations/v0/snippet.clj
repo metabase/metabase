@@ -65,22 +65,22 @@
    [:ref ::ref]
    [:name ::name]
    [:description [:maybe ::description]]
-   [:content ::sql] ;; todo: update this to be :sql
+   [:sql ::sql]
    [:collection {:optional true} ::collection]
    [:template_tags :any]])
 
 ;;; ------------------------------------ Ingestion ------------------------------------
 
 (defmethod import/yaml->toucan [:v0 :snippet]
-  [{:keys [_ref name description content collection entity-id] :as representation}
+  [{:keys [_ref name description sql collection entity-id] :as representation}
    _ref-index]
   {:name name
    :description description
-   :content content
+   :content sql
    :creator_id (or api/*current-user-id* config/internal-mb-user-id)
    :collection_id (v0-common/find-collection-id collection)
    :entity_id (or entity-id (v0-common/generate-entity-id representation))
-   :template_tags (lib.native/recognize-template-tags content)})
+   :template_tags (lib.native/recognize-template-tags sql)})
 
 (defmethod import/persist! [:v0 :snippet]
   [representation ref-index]
@@ -116,7 +116,7 @@
      :version :v0
      :name (:name snippet)
      :description (:description snippet)
-     :content (:content snippet) ;; todo: change this :sql
+     :sql (:content snippet) ;; todo: change this :sql
      :template_tags template-tags}))
 
 (comment
