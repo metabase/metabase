@@ -36,14 +36,10 @@
       "name": "Workflows",
       "label": ".Team/Workflows",
       "members": [
-        "qnkhuat",
         "piranha",
         "crisptrutski",
         "spalt08",
-        "stasgavrylov",
-        "uladzimirdev",
-        "kulyk",
-        "kamilmielnik"
+        "kulyk"
       ]
     },
     {
@@ -70,10 +66,8 @@
         "retro",
         "sloansparger",
         "somtom",
-        "wotbrew",
         "tsplude",
-        "lbrdnk",
-        "bronsa"
+        "lbrdnk"
       ]
     },
     {
@@ -81,7 +75,6 @@
       "label": ".Team/ProductGrowth",
       "members": [
         "nemanjaglumac",
-        "chodorowicz",
         "andsalves"
       ]
     },
