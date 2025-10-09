@@ -163,22 +163,3 @@
                  :error-fn record-job-failure!}
      [~job-id ~run-method]
      (^:once fn* [] ~@body)))
-
-(mu/defn record-python-api-call!
-  "Record metrics about Python API calls."
-  [job-run-id :- [:maybe pos-int?]
-   duration-ms :- int?
-   status :- [:enum :success :error :timeout]]
-  (log/infof "Python API call %s: run-id=%d duration=%dms" (name status) job-run-id duration-ms)
-  (prometheus/inc! :metabase-transforms/python-api-calls-total {:status (name status)})
-  (prometheus/observe! :metabase-transforms/python-api-call-duration-ms {} duration-ms))
-
-(defmacro with-python-api-timing
-  "Execute body while timing a Python API call."
-  [[job-run-id] & body]
-  `(with-timing {:success-fn (fn [job-run-id# duration-ms#]
-                               (record-python-api-call! job-run-id# duration-ms# :success))
-                 :error-fn (fn [job-run-id# duration-ms#]
-                             (record-python-api-call! job-run-id# duration-ms# :error))}
-     [~job-run-id]
-     (^:once fn* [] ~@body)))
