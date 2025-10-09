@@ -164,10 +164,10 @@ const SdkIframeEmbedPreviewInner = () => {
               ? { token: staticEmbeddingSignedToken }
               : {
                   "question-id": s.questionId,
-                  drills: s.drills,
                   "is-save-enabled": s.isSaveEnabled,
                 }),
             "with-title": s.withTitle,
+            drills: s.drills,
             "with-downloads": s.withDownloads,
             "target-collection": s.targetCollection,
             "entity-types": s.entityTypes
@@ -192,9 +192,9 @@ const SdkIframeEmbedPreviewInner = () => {
               ? { token: staticEmbeddingSignedToken }
               : {
                   "dashboard-id": s.dashboardId,
-                  drills: s.drills,
                 }),
             "with-title": s.withTitle,
+            drills: s.drills,
             "with-downloads": s.withDownloads,
             "initial-parameters": s.initialParameters
               ? JSON.stringify(

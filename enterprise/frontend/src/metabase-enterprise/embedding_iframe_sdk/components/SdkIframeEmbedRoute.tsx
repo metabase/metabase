@@ -126,14 +126,17 @@ const SdkIframeEmbedView = ({
         ),
       )
       .with(
+        // Embedding based on a dashboardId (non-anonymous) with disabled drills
         {
           componentName: "metabase-dashboard",
           dashboardId: P.nonNullable,
           drills: false,
         },
+        // Embedding based on a token (anonymous) with default/disabled drills
         {
           componentName: "metabase-dashboard",
           token: P.nonNullable,
+          drills: P.optional(false),
         },
         (settings) => (
           <StaticDashboard
@@ -148,15 +151,22 @@ const SdkIframeEmbedView = ({
         ),
       )
       .with(
+        // Embedding based on a questionId (non-anonymous) with default/enabled drills
         {
           componentName: "metabase-dashboard",
           dashboardId: P.nonNullable,
-          isStatic: P.optional(false),
           drills: P.optional(true),
+        },
+        // Embedding based on a token (anonymous) with enabled drills
+        {
+          componentName: "metabase-dashboard",
+          token: P.nonNullable,
+          drills: true,
         },
         (settings) => (
           <InteractiveDashboard
-            dashboardId={settings.dashboardId}
+            dashboardId={settings.dashboardId ?? null}
+            token={settings.token}
             withTitle={settings.withTitle}
             withDownloads={settings.withDownloads}
             initialParameters={settings.initialParameters}
@@ -168,14 +178,17 @@ const SdkIframeEmbedView = ({
         ),
       )
       .with(
+        // Embedding based on a questionId (non-anonymous) with disabled drills
         {
           componentName: "metabase-question",
           questionId: P.nonNullable,
           drills: false,
         },
+        // Embedding based on a token (anonymous) with default/disabled drills
         {
           componentName: "metabase-question",
           token: P.nonNullable,
+          drills: P.optional(false),
         },
         (settings) => (
           <StaticQuestion
@@ -192,16 +205,23 @@ const SdkIframeEmbedView = ({
       )
       // Anonymous embedding for question
       .with(
+        // Embedding based on a questionId (non-anonymous) with default/enabled drills
         {
           componentName: "metabase-question",
           questionId: P.nonNullable,
-          isStatic: P.optional(false),
           drills: P.optional(true),
+        },
+        // Embedding based on a token (anonymous) with enabled drills
+        {
+          componentName: "metabase-question",
+          token: P.nonNullable,
+          drills: true,
         },
         (settings) => (
           <SdkQuestion
             key={rerenderKey}
-            questionId={settings.questionId}
+            questionId={settings.questionId ?? null}
+            token={settings.token}
             withDownloads={settings.withDownloads}
             height="100%"
             initialSqlParameters={settings.initialSqlParameters}
