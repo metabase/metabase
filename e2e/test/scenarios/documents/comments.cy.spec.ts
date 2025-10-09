@@ -645,7 +645,7 @@ H.describeWithSnowplowEE("document comments", () => {
       cy.realType("bold italic strike code");
 
       selectCharactersLeft("code".length);
-      cy.realPress([META_KEY, "E"]);
+      cy.realPress([META_KEY, "e"]);
 
       cy.realPress("ArrowLeft");
       cy.realPress("ArrowLeft");
