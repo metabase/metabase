@@ -333,36 +333,6 @@ Review pull requests with a focus on:
 
 - Make sure to update comments and docstrings when you change the code they describe.
 
-- Write heading comments with four semicolons. Those typically serve to outline/separate major section of code, or to
-  describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
-  (https://guide.clojure.style/#four-semicolons-for-heading-comments)
-
-- A "top-level comment" is a comment that starts at the beginning of the line (the very first character) with no
-  preceding whitespace. Write top-level comments with three semicolons, i.e. the comment should match the regex `^;;;`
-  (https://guide.clojure.style/#three-semicolons-for-top-level-comments). Do not tell people to use three semicolons
-  if the comment matches the regex `^\s+;;`.
-
-- Comments that are on a line by themselves but not at the beginning (i.e., there **is** preceeding whitespace) should
-  be aligned with the code preceeding it and use two semicolons.
-  (https://guide.clojure.style/#two-semicolons-for-code-fragment)
-
-- Write margin comments (comments at the end of a line with code on it) with one semicolon.
-  (https://guide.clojure.style/#one-semicolon-for-margin-comments)
-
-- Good comment semicolon examples:
-
-  ```clj
-  ;;;; UTIL FUNCTIONS
-
-  ;;; TODO (Cam 10/7/25) - this is a preposterous function
-  (defn call-twice [f x]
-    ;; here's another note
-    (f (f x))) ; should we make this configurable somehow?
-  ```
-
-- Note that comment rules listed above regarding number of semicolons **DO NOT** apply to comment forms using `#_`...
-  those can appear on their own line or on a line with other code.
-
 - `TODO` comments should include the author and date, for example
 
   ```clj
