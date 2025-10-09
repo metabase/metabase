@@ -1,0 +1,54 @@
+name: Number of Orders
+type: metric
+version: v0
+ref: metric-19
+description: Canonical metric for number of orders placed
+mbql_query:
+  aggregation:
+    -   - count
+  breakout:
+    - database: ref:database-1
+      schema: PUBLIC
+      table: ORDERS
+      field: CREATED_AT
+  filter:
+    - time-interval
+    - database: ref:database-1
+      schema: PUBLIC
+      table: ORDERS
+      field: CREATED_AT
+    - -3
+    - year
+    - include-current: true
+  source-table:
+    database: ref:database-1
+    schema: PUBLIC
+    table: ORDERS
+database: ref:database-1
+columns:
+  - description: The date and time an order was submitted.
+    semantic_type: type/CreationTimestamp
+    coercion_strategy: null
+    unit: month
+    name: CREATED_AT
+    settings:
+      time_enabled: milliseconds
+    fk_target_field_id: null
+    field_ref:
+      - field
+      - 13
+      - base-type: type/DateTime
+        temporal-unit: month
+    effective_type: type/DateTime
+    id: 13
+    visibility_type: normal
+    display_name: 'Created At: Month'
+    base_type: type/DateTime
+  - base_type: type/BigInteger
+    display_name: Count
+    effective_type: type/BigInteger
+    field_ref:
+      - aggregation
+      - 0
+    name: count
+    semantic_type: type/Quantity

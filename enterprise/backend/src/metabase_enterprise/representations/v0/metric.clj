@@ -159,28 +159,28 @@
 
 (mr/def ::ref
   [:and
-   {:description "Unique reference identifier for the model, used for cross-references"}
+   {:description "Unique reference identifier for the metric, used for cross-references"}
    ::lib.schema.common/non-blank-string
    [:re #"^[a-z0-9][a-z0-9-_]*$"]])
 
 (mr/def ::name
   [:and
-   {:description "Human-readable name for the model"}
+   {:description "Human-readable name for the metric"}
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::description
   [:and
-   {:description "Documentation explaining what the model represents"}
+   {:description "Documentation explaining what the metric represents"}
    [:or :nil :string]])
 
 (mr/def ::query
   [:and
-   {:description "Native SQL query that defines the model's data"}
+   {:description "Native SQL query that defines the metric's data"}
    ::lib.schema.common/non-blank-string])
 
 (mr/def ::mbql-query
   [:and
-   {:description "MBQL (Metabase Query Language) query that defines the model's data"}
+   {:description "MBQL (Metabase Query Language) query that defines the metric's data"}
    any?])
 
 (mr/def ::database
@@ -190,15 +190,15 @@
 
 (mr/def ::collection
   [:and
-   {:description "Optional collection path for organizing the model"}
+   {:description "Optional collection path for organizing the metric"}
    any?])
 
-;;; ------------------------------------ Main Model Schema ------------------------------------
+;;; ------------------------------------ Main Metric Schema ------------------------------------
 
 (mr/def ::metric
   [:and
    [:map
-    {:description "v0 schema for human-writable model representation"}
+    {:description "v0 schema for human-writable metric representation"}
     [:type ::type]
     [:version ::version]
     [:ref ::ref]
@@ -219,18 +219,9 @@
 
 ;;; ------------------------------------ Public API ------------------------------------
 
-(defn yaml->toucan
-  "Convert a validated v0 model representation into data suitable for creating/updating a Card (Model).
-
-   Returns a map with keys matching the Card model fields.
-   Does NOT insert into the database - just transforms the data.
-
-   Key differences from questions:
-   - :type is :model instead of :question
-   - Includes result_metadata with column definitions
-   - Display is typically :table since models represent structured data"
-  [{model-name :name
-    :keys [_type _ref description database collection columns] :as representation}
+(defmethod import/yaml->toucan [:v0 :metric]
+  [{metric-name :name
+    :keys [description database collection columns] :as representation}
    ref-index]
   (let [database-id (v0-common/ref->id database ref-index)
         dataset-query (v0-mbql/import-dataset-query representation ref-index)]
@@ -239,14 +230,14 @@
                       {:database database})))
     (merge
      {;; Core fields
-      :name model-name
+      :name metric-name
       :description (or description "")
-      :display :table ; Models are typically displayed as tables
+      :display :table ; Metrics are typically displayed as tables
       :dataset_query dataset-query
       :visualization_settings {}
       :database_id database-id
       :query_type (if (= (:type dataset-query) "native") :native :query)
-      :type :model}
+      :type :metric}
      ;; Result metadata with column definitions
      (when columns
        {:result_metadata columns})
@@ -254,18 +245,9 @@
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
-;; TODO(rileythomp): Update this to be the import/persist! multimethod
-(defn persist!
-  "Ingest a v0 metric representation and create or update a Card (Metric) in the database.
-
-   Uses ref as a stable identifier for upserts.
-   If a model with the same ref exists (via entity_id), it will be updated.
-   Otherwise a new metric will be created.
-
-   Returns the created/updated Card."
+(defmethod import/persist! [:v0 :metric]
   [representation ref-index]
-  ;; TODO(rileythomp): Update this to use import/yaml->toucan multimethod
-  (let [metric-data (yaml->toucan representation ref-index)
+  (let [metric-data (import/yaml->toucan representation ref-index)
         ;; Generate stable entity_id from ref and collection
         entity-id (v0-common/generate-entity-id representation)
         existing (when entity-id
@@ -284,11 +266,6 @@
           (first (t2/insert-returning-instances! :model/Card metric-data-with-creator)))))))
 
 ;;; -- Export --
-
-(defn ->ref
-  "Make a ref"
-  [card]
-  (format "%s-%s" (name (:type card)) (:id card)))
 
 (defn- patch-refs-for-export [query]
   (-> query
