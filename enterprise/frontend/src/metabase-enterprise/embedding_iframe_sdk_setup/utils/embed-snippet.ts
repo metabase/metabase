@@ -109,7 +109,7 @@ export function getEmbedCustomElementSnippet({
       const dashboardSettings = settings as SdkIframeDashboardEmbedSettings;
 
       return {
-        ..._.omit(settings, "questionId", "token"),
+        ..._.omit(settings, "dashboardId", "token"),
         ...(isStaticEmbedding
           ? { token: staticEmbeddingSignedToken }
           : { dashboardId: settings?.dashboardId }),
