@@ -1,4 +1,4 @@
-(ns metabase-enterprise.transforms.impl
+(ns metabase-enterprise.transforms.query-impl
   (:require
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.interface :as transforms.i]))
