@@ -290,7 +290,7 @@
               fields-meta (fields-metadata driver table-id)
               manifest    (generate-manifest table-id fields-meta)]
 
-          (transforms.instrumentation/with-stage-timing [run-id :dwh-to-file]
+          (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]
             (write-table-data-to-file!
              {:db-id       db-id
               :driver      driver
@@ -306,7 +306,7 @@
                 meta-size (.length tmp-meta-file)]
             (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file data-size nil)
 
-            (transforms.instrumentation/with-stage-timing [run-id :file-to-s3]
+            (transforms.instrumentation/with-stage-timing [run-id [:export :file-to-s3]]
               (s3/upload-file s3-client bucket-name data-path tmp-data-file)
               (s3/upload-file s3-client bucket-name manifest-path tmp-meta-file))
 

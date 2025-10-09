@@ -76,10 +76,7 @@
           (when (transform-run/running-run-for-transform-id transform-id)
             (recur))))
       (log/info "Executing job transform" (pr-str transform-id))
-      (transforms.instrumentation/with-stage-timing [run-id (if (transforms.util/python-transform? transform)
-                                                              :python-execution
-                                                              :mbql-query)]
-        (transforms.i/execute! transform {:run-method run-method}))
+      (transforms.i/execute! transform {:run-method run-method})
       (transforms.job-run/add-run-activity! run-id))))
 
 (defn run-transforms!
