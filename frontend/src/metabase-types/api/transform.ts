@@ -1,4 +1,5 @@
 import type { DatabaseId } from "./database";
+import type { RowValue } from "./dataset";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { DatasetQuery } from "./query";
 import type { ScheduleDisplayType } from "./settings";
@@ -166,18 +167,18 @@ export type ListTransformRunsResponse = {
   data: TransformRun[];
 } & PaginationResponse;
 
-export type ExecutePythonTransformRequest = {
+export type TestPythonTransformRequest = {
   code: string;
-  tables: PythonTransformTableAliases;
+  source_tables: PythonTransformTableAliases;
 };
 
-export type ExecutePythonTransformResponse = {
-  output?: string;
-  stdout?: string;
-  stderr?: string;
-  error?: string;
-  exit_code?: number;
-  timeout?: boolean;
+export type TestPythonTransformResponse = {
+  logs?: string;
+  error?: { message: string };
+  output?: {
+    cols: { name: string }[];
+    rows: Record<string, RowValue>[];
+  };
 };
 
 export type PythonLibrary = {
