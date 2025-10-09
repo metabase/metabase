@@ -20,7 +20,7 @@ import { getStore } from "metabase/store";
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { sdk } from "./reducer";
-import type { SdkStoreState } from "./types";
+import type { SdkDispatch, SdkStoreState } from "./types";
 
 export const sdkReducers = {
   ...commonReducers,
@@ -47,7 +47,7 @@ export const getSdkStore = () =>
 export const useSdkDispatch = () => {
   useCheckSdkReduxContext();
 
-  return useDispatch();
+  return useDispatch() as SdkDispatch;
 };
 
 export const useSdkStore = () => {
