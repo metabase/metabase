@@ -222,13 +222,12 @@
                                                   {:name "Remote Parent"
                                                    :type "remote-synced"})
               regular-collection (mt/user-http-request :crowberto :post 200 "collection"
-                                                       {:name "Regular Collection"})]
-          ;; Move regular-collection into remote-parent
-          (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (:id regular-collection))
-                                               {:parent_id (:id remote-parent)})]
-            (is (= (:id remote-parent) (:parent_id response)))
-            (is (= "remote-synced" (:type response)))
-            (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id regular-collection))))))))))
+                                                       {:name "Regular Collection"})
+              response (mt/user-http-request :crowberto :put 200 (str "collection/" (:id regular-collection))
+                                             {:parent_id (:id remote-parent)})]
+          (is (= (:id remote-parent) (:parent_id response)))
+          (is (= "remote-synced" (:type response)))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id regular-collection)))))))))
 
 (deftest api-move-collection-into-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
