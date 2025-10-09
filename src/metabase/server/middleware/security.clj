@@ -181,7 +181,7 @@
                   :manifest-src ["'self'"]
                   :media-src    ["www.metabase.com"]
                   :worker-src   ["'self'"
-                                 ;; For remote-web-worker to work
+                                ;;; For remote-web-worker to work
                                  "blob:"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
