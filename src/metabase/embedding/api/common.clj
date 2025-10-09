@@ -496,7 +496,9 @@
          card (t2/select-one [:model/Card :archived :id :dataset_query :enable_embedding :type :card_schema] card-id)]
      (check-embedding-enabled-for-object (cond-> card
                                            skip-object-enabled-check?  (assoc :enable_embedding true)))
-     (queries/batch-fetch-card-metadata [card]))))
+     (binding [api/*current-user-permissions-set* (atom #{"/"})
+               api/*is-superuser?* true]
+       (queries/batch-fetch-card-metadata [card])))))
 
 (defn unsigned-token->dashboard-id
   "Get the Dashboard ID from an unsigned token."
@@ -615,4 +617,6 @@
                                     :dashcard/linkcard-info]))]
      (check-embedding-enabled-for-object (cond-> dashboard
                                            skip-object-enabled-check? (assoc :enable_embedding true)))
-     (queries/batch-fetch-dashboard-metadata [dashboard]))))
+     (binding [api/*current-user-permissions-set* (atom #{"/"})
+               api/*is-superuser?* true]
+       (queries/batch-fetch-dashboard-metadata [dashboard])))))
