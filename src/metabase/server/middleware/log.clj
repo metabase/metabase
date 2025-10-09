@@ -198,8 +198,8 @@
     (not (server.settings/health-check-logging-enabled)) (into #{"/api/health" "/livez" "/readyz"})))
 
 (defn- should-log-request? [{:keys [uri], :as request}]
-  ;; don't log calls to /health or /logger/logs because they clutter up the logs (especially the window in admin) with
-  ;; useless lines
+  ;; don't log calls to health checks or /logger/logs because they clutter up the logs (especially the window in admin)
+  ;; with useless lines
   (and (request/api-call? request)
        (not ((logging-disabled-uris) uri))))
 
