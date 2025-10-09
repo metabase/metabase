@@ -40,7 +40,7 @@
 
   (ingest-one [_ serdes-path]
     (u/prog1 (serialization/ingest-one ingestable serdes-path)
-      (callback serdes-path))))
+      (callback <> serdes-path))))
 
 (defn wrap-progress-ingestable
   "Updates a RemoteSyncTask model with a progress indcator.
@@ -55,10 +55,11 @@
   [task-id normalize ingestable]
   (let [total (count (serialization/ingest-list ingestable))
         calls (atom 0)]
-    (letfn [(progress-callback [_]
-              (let [current-calls (swap! calls inc)]
-                (t2/with-connection [_conn (app-db/app-db)]
-                  (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize)))))]
+    (letfn [(progress-callback [item _]
+              (when item
+                (let [current-calls (swap! calls inc)]
+                  (t2/with-connection [_conn (app-db/app-db)]
+                    (remote-sync.task/update-progress! task-id (* (/ current-calls total) normalize))))))]
       (->CallbackIngestable ingestable progress-callback))))
 
 ;; Wraps another Ingestable and filters the `list-files` content to only content that has the specified

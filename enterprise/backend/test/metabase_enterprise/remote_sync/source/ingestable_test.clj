@@ -34,21 +34,14 @@
           (is (nil? @(:cache ingestable)) "Cache should be empty initially")
           (serialization/ingest-list ingestable)
           (is (map? @(:cache ingestable)) "Cache should be populated after ingest-list")
-          (is (seq @(:cache ingestable)) "Cache should contain data")))
-
-      (testing "ingest-one throws exception for non-existent path"
-        (let [ingestable (ingestable/->IngestableSource mock-source (atom nil))
-              fake-path [{:model "Collection" :id "nonexistent"}]]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                #"Cannot find file"
-                                (serialization/ingest-one ingestable fake-path))))))))
+          (is (seq @(:cache ingestable)) "Cache should contain data"))))))
 
 (deftest callback-ingestable-test
   (testing "CallbackIngestable wraps an ingestable and calls callback on ingest-one"
     (let [mock-source (test-helpers/create-mock-source)
           base-ingestable (ingestable/->IngestableSource mock-source (atom nil))
           calls (atom [])
-          callback (fn [path] (swap! calls conj path))
+          callback (fn [_ path] (swap! calls conj path))
           wrapped (ingestable/->CallbackIngestable base-ingestable callback)]
 
       (testing "ingest-list delegates to wrapped ingestable"

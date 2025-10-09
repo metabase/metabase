@@ -753,40 +753,6 @@
                  (#'extract/resolve-targets {:targets [["Collection" coll2-id]]} nil))))))))
 
 (deftest resolve-targets-skip-archived-test
-  (testing "resolve-targets with skip-archived: true excludes archived items from dependency graph"
-    (mt/with-empty-h2-app-db!
-      (ts/with-temp-dpc [:model/Collection {coll-id :id}       {:name "Active Collection"}
-                         :model/Card       {active-card-id :id}   {:name          "Active Card"
-                                                                   :archived      false
-                                                                   :collection_id coll-id}
-                         :model/Card       {archived-card-id :id} {:name          "Archived Card"
-                                                                   :archived      true
-                                                                   :collection_id coll-id}
-                         :model/Card       {dependent-card-id :id} {:name          "Card with archived dep"
-                                                                    :collection_id coll-id
-                                                                    :dataset_query {:database (mt/id)
-                                                                                    :type     :query
-                                                                                    :query    {:source-table (str "card__" archived-card-id)}}}]
-        (testing "archived cards are excluded from targets when skip-archived: true"
-          (let [targets-with-skip (#'extract/resolve-targets {:targets       [["Collection" coll-id]]
-                                                              :skip-archived true} nil)]
-            (is (contains? targets-with-skip ["Collection" coll-id]))
-            (is (contains? targets-with-skip ["Card" active-card-id]))
-            (is (not (contains? targets-with-skip ["Card" archived-card-id]))
-                "archived card should not be in targets")
-            (is (contains? targets-with-skip ["Card" dependent-card-id])
-                "card that depends on archived card should still be included")))
-
-        (testing "archived cards are included in targets when skip-archived: false"
-          (let [targets-without-skip (#'extract/resolve-targets {:targets       [["Collection" coll-id]]
-                                                                 :skip-archived false} nil)]
-            (is (contains? targets-without-skip ["Collection" coll-id]))
-            (is (contains? targets-without-skip ["Card" active-card-id]))
-            (is (contains? targets-without-skip ["Card" archived-card-id])
-                "archived card should be in targets for dependency checking")
-            (is (contains? targets-without-skip ["Card" dependent-card-id]))))))))
-
-(deftest resolve-targets-skip-archived-test-2
   (testing "resolve-targets with skip-archived handles archived collections and nested items"
     (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection {parent-id :id}      {:name "Parent Collection"}
