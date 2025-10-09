@@ -12,6 +12,7 @@ import {
   isTopLevelCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
+import { useToast } from "metabase/common/hooks";
 import * as Urls from "metabase/lib/urls";
 import {
   ActionIcon,
@@ -49,7 +50,7 @@ const CollectionSelect = ({
   }));
 
   return (
-    <Box>
+    <Box maw="100%" w={400}>
       <Select
         placeholder={
           availableCollections.length > 0
@@ -62,7 +63,6 @@ const CollectionSelect = ({
         searchable
         clearable
         w="100%"
-        maw={400}
         leftSection={<Icon name="add" size={16} />}
         disabled={availableCollections.length === 0}
         classNames={{
@@ -196,7 +196,9 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
     [syncedCollectionsResponse],
   );
 
-  const [updateCollection] = useUpdateCollectionMutation();
+  const [updateCollection, { isLoading: isUpdatingCollection }] =
+    useUpdateCollectionMutation();
+  const [sendToast] = useToast();
 
   const topLevelCollections = useMemo(
     () =>
@@ -220,15 +222,25 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
   );
 
   const handleAddCollection = useCallback(
-    (collectionId: string | null) => {
+    async (collectionId: string | null) => {
       if (collectionId) {
-        updateCollection({
+        await updateCollection({
           id: Number(collectionId),
           type: "remote-synced",
-        });
+        })
+          .unwrap()
+          .catch((error) => {
+            let message = t`Unable to sync collection`;
+
+            if (typeof error.data?.cause === "string") {
+              message += `: ${error.data.cause}`;
+            }
+
+            sendToast({ message, toastColor: "error", icon: "warning" });
+          });
       }
     },
-    [updateCollection],
+    [updateCollection, sendToast],
   );
 
   const handleRemoveCollection = useCallback(
@@ -255,10 +267,13 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
   return (
     <Stack gap="lg">
       {mode === "development" && (
-        <CollectionSelect
-          availableCollections={availableCollections}
-          onAddCollection={handleAddCollection}
-        />
+        <Flex gap="md" align="center" direction={{ base: "column", sm: "row" }}>
+          <CollectionSelect
+            availableCollections={availableCollections}
+            onAddCollection={handleAddCollection}
+          />
+          {isUpdatingCollection && <Loader size="sm" />}
+        </Flex>
       )}
 
       {hasSyncedCollections ? (
