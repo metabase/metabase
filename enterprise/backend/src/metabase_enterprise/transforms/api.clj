@@ -9,6 +9,7 @@
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.models.transform-run-cancelation :as transform-run-cancelation]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
+   [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -30,26 +31,6 @@
          metabase-enterprise.transforms.api.transform-tag/keep-me)
 
 (set! *warn-on-reflection* true)
-
-(mr/def ::transform-source
-  [:multi {:dispatch (comp keyword :type)}
-   [:query
-    [:map
-     [:type [:= "query"]]
-     [:query [:map [:database :int]]]]]
-   [:python
-    [:map {:closed true}
-     [:source-database {:optional true} :int]
-     [:source-tables   [:map-of :string :int]]
-     [:type [:= "python"]]
-     [:body :string]]]])
-
-(mr/def ::transform-target
-  [:map
-   [:database {:optional true} :int]
-   [:type [:enum "table"]]
-   [:schema {:optional true} [:or ms/NonBlankString :nil]]
-   [:name :string]])
 
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
@@ -110,8 +91,8 @@
    body :- [:map
             [:name :string]
             [:description {:optional true} [:maybe :string]]
-            [:source ::transform-source]
-            [:target ::transform-target]
+            [:source ::transforms.schema/transform-source]
+            [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (api/check-superuser)
@@ -185,8 +166,8 @@
    body :- [:map
             [:name {:optional true} :string]
             [:description {:optional true} [:maybe :string]]
-            [:source {:optional true} ::transform-source]
-            [:target {:optional true} ::transform-target]
+            [:source {:optional true} ::transforms.schema/transform-source]
+            [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "put transform" id)
