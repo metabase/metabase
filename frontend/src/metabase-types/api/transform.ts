@@ -46,6 +46,7 @@ export type TransformTarget = {
   name: string;
   schema: string | null;
   database: number;
+  watermarkField?: string | null;
 };
 
 export type TransformRun = {
