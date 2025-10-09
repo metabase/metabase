@@ -42,7 +42,6 @@
       height: 40%;
       width: 100%;
       max-width: none;
-      border-top: 1px solid var(--mb-color-border);
       border-left: none;
     }
 
@@ -61,6 +60,13 @@
       &:hover {
         background-color: var(--mb-color-brand-lighter);
       }
+    }
+  }
+
+  /** Only show the top border when there are messages. */
+  &[data-layout="stacked"][data-has-messages="true"] {
+    .chat {
+      border-top: 1px solid var(--mb-color-border);
     }
   }
 }
