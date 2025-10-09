@@ -33,12 +33,14 @@ type CreateTransformModalProps = {
   source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  initialIncremental?: boolean;
 };
 
 export function CreateTransformModal({
   source,
   onCreate,
   onClose,
+  initialIncremental = false,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -47,6 +49,7 @@ export function CreateTransformModal({
         source={source}
         onCreate={onCreate}
         onClose={onClose}
+        initialIncremental={initialIncremental}
       />
     </Modal>
   );
@@ -56,6 +59,7 @@ type CreateTransformFormProps = {
   source: TransformSource;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
+  initialIncremental: boolean;
 };
 
 type NewTransformValues = {
@@ -78,6 +82,7 @@ function CreateTransformForm({
   source,
   onCreate,
   onClose,
+  initialIncremental,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -103,8 +108,8 @@ function CreateTransformForm({
   const supportsSchemas = database && hasFeature(database, "schemas");
 
   const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas),
-    [schemas],
+    () => getInitialValues(schemas, initialIncremental),
+    [schemas, initialIncremental],
   );
 
   if (isLoading || error != null) {
@@ -172,13 +177,16 @@ function CreateTransformForm({
   );
 }
 
-function getInitialValues(schemas: string[]): NewTransformValues {
+function getInitialValues(
+  schemas: string[],
+  initialIncremental: boolean,
+): NewTransformValues {
   return {
     name: "",
     description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
-    incremental: false,
+    incremental: initialIncremental,
   };
 }
 
