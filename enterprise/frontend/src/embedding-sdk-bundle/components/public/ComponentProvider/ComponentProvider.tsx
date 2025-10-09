@@ -3,6 +3,7 @@ import { type JSX, memo, useEffect, useId, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { SdkIncompatibilityWithInstanceBanner } from "embedding-sdk-bundle/components/private/SdkVersionCompatibilityHandler/SdkIncompatibilityWithInstanceBanner";
+import * as MetabaseError from "embedding-sdk-bundle/errors";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import {
@@ -17,6 +18,7 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { PLUGIN_ANONYMOUS_EMBEDDING } from "metabase/plugins";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -53,7 +55,15 @@ export const ComponentProviderInternal = ({
   useInitDataInternal({ reduxStore, isStatic, authConfig });
 
   useEffect(() => {
-    reduxStore.dispatch(setIsStaticEmbedding(isStatic || false));
+    if (isStatic) {
+      if (PLUGIN_ANONYMOUS_EMBEDDING.isFeatureEnabled()) {
+        reduxStore.dispatch(setIsStaticEmbedding(true));
+      } else {
+        throw MetabaseError.ANONYMOUS_EMBEDDING_NOT_ALLOWED();
+      }
+    } else {
+      reduxStore.dispatch(setIsStaticEmbedding(false));
+    }
   }, [reduxStore, isStatic]);
 
   useEffect(() => {

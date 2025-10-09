@@ -19,6 +19,7 @@ import "./whitelabel";
 import "./embedding";
 import "./embedding-sdk";
 import "./embedding_iframe_sdk_setup";
+import "./anonymous_embedding";
 import "./snippets";
 import "./smtp-override";
 import "./sharing";

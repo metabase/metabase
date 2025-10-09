@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
+import { PLUGIN_ANONYMOUS_EMBEDDING } from "metabase/plugins";
 import {
   Card,
   Checkbox,
@@ -111,33 +112,34 @@ const AuthenticationSection = () => {
               disabled={!isSsoEnabledAndConfigured}
             />
 
-            {isQuestionOrDashboardEmbed && (
-              <Radio
-                value="no-user"
-                label={
-                  <Flex align="center" gap="xs">
-                    {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-                    <Text>{t`Without user`}</Text>
-                    <HoverCard position="bottom">
-                      <HoverCard.Target>
-                        <Icon
-                          name="info"
-                          size={14}
-                          c="text-medium"
-                          cursor="pointer"
-                        />
-                      </HoverCard.Target>
-                      <HoverCard.Dropdown>
-                        <Text size="sm" p="md" style={{ width: 300 }}>
-                          {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
-                          {t`This option lets you run Embedded Analytics JS without a user authorization.`}
-                        </Text>
-                      </HoverCard.Dropdown>
-                    </HoverCard>
-                  </Flex>
-                }
-              />
-            )}
+            {PLUGIN_ANONYMOUS_EMBEDDING.isFeatureEnabled() &&
+              isQuestionOrDashboardEmbed && (
+                <Radio
+                  value="no-user"
+                  label={
+                    <Flex align="center" gap="xs">
+                      {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                      <Text>{t`Without user`}</Text>
+                      <HoverCard position="bottom">
+                        <HoverCard.Target>
+                          <Icon
+                            name="info"
+                            size={14}
+                            c="text-medium"
+                            cursor="pointer"
+                          />
+                        </HoverCard.Target>
+                        <HoverCard.Dropdown>
+                          <Text size="sm" p="md" style={{ width: 300 }}>
+                            {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+                            {t`This option lets you run Embedded Analytics JS without a user authorization.`}
+                          </Text>
+                        </HoverCard.Dropdown>
+                      </HoverCard>
+                    </Flex>
+                  }
+                />
+              )}
           </Stack>
         </Radio.Group>
 

@@ -50,3 +50,10 @@ export function EXISTING_USER_SESSION_FAILED() {
     "Failed to authenticate using an existing Metabase user session.",
   );
 }
+
+export function ANONYMOUS_EMBEDDING_NOT_ALLOWED() {
+  return new MetabaseError(
+    "ANONYMOUS_EMBEDDING_NOT_ALLOWED",
+    "Anonymous embedding is not allowed on this instance.",
+  );
+}
