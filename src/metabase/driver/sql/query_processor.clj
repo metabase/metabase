@@ -2086,7 +2086,7 @@
 (defmethod driver/compile-insert :sql
   [driver {:keys [query output-table]}]
   (format-honeysql driver
-                   {:insert-into [(keyword output-table) {:select :* :raw query}]}))
+                   {:insert-into [(keyword output-table) {:raw query}]}))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]
