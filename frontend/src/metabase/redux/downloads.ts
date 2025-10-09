@@ -30,7 +30,7 @@ export interface DownloadQueryResultsOpts {
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
   uuid?: string;
-  token?: string;
+  token?: string | null;
   params?: Record<string, unknown>;
   visualizationSettings?: VisualizationSettings;
 }

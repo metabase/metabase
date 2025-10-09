@@ -121,6 +121,7 @@ export const StaticEmbedSetupPane = ({
     resourceId: resource.id,
     params: previewParametersBySlug,
     displayOptions,
+    withIframeSnippet: true,
   });
 
   const [selectedServerCodeOptionId, setSelectedServerCodeOptionId] = useState(
