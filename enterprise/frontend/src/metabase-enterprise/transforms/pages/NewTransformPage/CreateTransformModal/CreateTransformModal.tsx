@@ -11,6 +11,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
+  FormCheckbox,
   FormErrorMessage,
   FormProvider,
   FormSubmitButton,
@@ -62,6 +63,7 @@ type NewTransformValues = {
   description: string | null;
   targetName: string;
   targetSchema: string | null;
+  incremental: boolean;
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
@@ -69,6 +71,7 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   description: Yup.string().nullable(),
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
+  incremental: Yup.boolean().required(),
 });
 
 function CreateTransformForm({
@@ -152,6 +155,10 @@ function CreateTransformForm({
             label={t`Table name`}
             placeholder={t`descriptive_name`}
           />
+          <FormCheckbox
+            name="incremental"
+            label={t`Incremental?`}
+          />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -171,12 +178,13 @@ function getInitialValues(schemas: string[]): NewTransformValues {
     description: null,
     targetName: "",
     targetSchema: schemas?.[0] || null,
+    incremental: false,
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
+  { name, description, targetName, targetSchema, incremental }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   return {
@@ -184,7 +192,7 @@ function getCreateRequest(
     description,
     source,
     target: {
-      type: "table",
+      type: incremental ? "table-incremental" : "table",
       name: targetName,
       schema: targetSchema,
       database: databaseId,
