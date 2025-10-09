@@ -91,9 +91,6 @@ def __run_transform_${random}():
   if not isinstance(result, pd.DataFrame):
     raise Exception('Transform function did not return a DataFrame')
 
-  def as_column(name):
-    return { 'name': name }
-
   cols = [{'name': name} for name in result.columns.tolist()]
   rows = result.to_dict('records')
 
