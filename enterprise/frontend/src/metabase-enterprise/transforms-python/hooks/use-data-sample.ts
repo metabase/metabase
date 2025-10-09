@@ -76,7 +76,7 @@ function getPreviewQuery(
 }
 
 function formatData(alias: string, data: DatasetData): SampleData {
-  const rows = data.rows.map((row: any[]) =>
+  const rows = data.rows.map((row: RowValue[]) =>
     Object.fromEntries(
       data.cols.map((column, index) => [column.name, row[index]]),
     ),
