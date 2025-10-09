@@ -58,7 +58,7 @@
    [:context                 {:optional true} [:maybe [:ref ::context]]]
    [:executed-by             {:optional true} [:maybe ::lib.schema.id/user]]
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
-   [:card-id                 {:optional true} [:maybe [:or ::lib.schema.id/card [:and integer? neg?]]]]
+   [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]

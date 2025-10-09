@@ -41,7 +41,7 @@
 
 (mr/def ::card
   "Valid Card ID"
-  [:or pos-int? neg-int?])
+  pos-int?)
 
 (mr/def ::segment
   "Valid legacy Segment ID"

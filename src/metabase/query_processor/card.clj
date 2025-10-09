@@ -297,7 +297,7 @@
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
   options."
-  [card-id :- [:or ::lib.schema.id/card [:and integer? neg?]]
+  [card-id :- ::lib.schema.id/card
    export-format
    & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
@@ -306,13 +306,11 @@
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
-  (let [card       (api/read-check (if (pos? card-id)
-                                     (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
-                                                     :type :result_metadata :visualization_settings :display
-                                                     :cache_invalidated_at :entity_id :created_at :card_schema
-                                                     :parameters]
-                                                    :id card-id)
-                                     ((resolve 'metabase-enterprise.representations.core/fetch) :question card-id)))
+  (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
+                                                   :type :result_metadata :visualization_settings :display
+                                                   :cache_invalidated_at :entity_id :created_at :card_schema
+                                                   :parameters]
+                                                  :id card-id))
         parameters (enrich-parameters-from-card parameters (combined-parameters-and-template-tags card))
         dash-viz   (when (and (not= context :question)
                               dashcard-id)

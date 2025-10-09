@@ -347,10 +347,8 @@
 (defn check-card-result-metadata-data-perms
   "Using `card-id` check current user has view data perms on all of card's result_metadata elements."
   [database-id card-id]
-  (if (neg? card-id)
-    true
-    (let [result-metadata (:result_metadata (card database-id card-id))]
-      (check-result-metadata-data-perms database-id result-metadata))))
+  (let [result-metadata (:result_metadata (card database-id card-id))]
+    (check-result-metadata-data-perms database-id result-metadata)))
 
 (mu/defn has-perm-for-query? :- :boolean
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
@@ -375,16 +373,14 @@
 (mu/defn check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
-   card-id     :- [:or ::lib.schema.id/card [:and integer? neg?]]]
-  (if (neg? card-id)
-    true
-    (qp.store/with-metadata-provider database-id
-      (let [card (card database-id card-id)]
-        (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
-        (when-not (mi/can-read? card)
-          (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
-                                  (mi/perms-objects-set card :read)
-                                  {:card-id card-id})))))))
+   card-id     :- ::lib.schema.id/card]
+  (qp.store/with-metadata-provider database-id
+    (let [card (card database-id card-id)]
+      (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
+      (when-not (mi/can-read? card)
+        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
+                                (mi/perms-objects-set card :read)
+                                {:card-id card-id}))))))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the

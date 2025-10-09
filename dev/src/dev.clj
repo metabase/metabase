@@ -51,7 +51,6 @@
   "Put everything needed for REPL development within easy reach"
   (:require
    [clojure.core.async :as a]
-   [clojure.java.io :as io]
    [clojure.main]
    [clojure.string :as str]
    [clojure.test]
@@ -142,9 +141,9 @@
 
 (defn init!
   "Trigger general initialization, but only once."
-  [options]
+  []
   (when-not @initialized?
-    (mbc/init! options)
+    (mbc/init!)
     (reset! initialized? true)))
 
 (defn migration-timestamp
@@ -181,7 +180,7 @@
   "Start Metabase"
   []
   (server/start-web-server! (server.test-handler/test-handler))
-  (init! nil)
+  (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)
     (with-out-str (malli-dev/start!))))
@@ -191,17 +190,6 @@
   []
   (malli-dev/stop!)
   (server/stop-web-server!))
-
-(defn start-static!
-  "Start metabase in static serving mode, serving a directory"
-  [directory]
-  (assert (string? directory) "Must provide a directory in a string")
-  (assert (.exists (io/file directory)) (format "%s does not exist" directory))
-  (server/start-web-server! (server.test-handler/test-handler))
-  (init! {:directory directory})
-  (when config/is-dev?
-    (prune-deleted-inmem-databases!)
-    (with-out-str (malli-dev/start!))))
 
 (defn restart!
   "Restart Metabase"

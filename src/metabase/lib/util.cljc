@@ -476,13 +476,13 @@
            truncated (u/truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
        (str truncated \_ checksum)))))
 
-(mu/defn legacy-string-table-id->card-id :- [:maybe [:or ::lib.schema.id/card [:and integer? neg?]]]
+(mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
   queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
   `:source-card`."
   [table-id]
   (when (string? table-id)
-    (when-let [[_match card-id-str] (re-find #"^card__((?:-)?\d+)$" table-id)]
+    (when-let [[_match card-id-str] (re-find #"^card__(\d+)$" table-id)]
       (parse-long card-id-str))))
 
 (mu/defn source-table-id :- [:maybe ::lib.schema.id/table]

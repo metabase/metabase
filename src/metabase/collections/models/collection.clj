@@ -191,12 +191,10 @@
 (defn- valid-location-path? [s]
   (boolean
    (and (string? s)
-        (re-matches #"^/((?:-)?\d+/)*$" s)
+        (re-matches #"^/(\d+/)*$" s)
         (let [ids (unchecked-location-path->ids s)]
           (or (empty? ids)
-              (and (apply distinct? ids)
-                   (or (every? pos? ids)
-                       (every? neg? ids))))))))
+              (apply distinct? ids))))))
 
 (def ^:private LocationPath
   "Schema for a directory-style 'path' to the location of a Collection."
@@ -206,7 +204,7 @@
   "Build a 'location path' from a sequence of `collections-or-ids`.
 
      (location-path 10 20) ; -> \"/10/20/\""
-  [& collections-or-ids :- [:* [:or ms/PositiveInt :map [:and integer? neg?]]]]
+  [& collections-or-ids :- [:* [:or ms/PositiveInt :map]]]
   (if-not (seq collections-or-ids)
     "/"
     (str
@@ -215,7 +213,7 @@
                      (u/the-id collection-or-id)))
      "/")))
 
-(mu/defn location-path->ids :- [:sequential [:or ms/PositiveInt [:and integer? neg?]]]
+(mu/defn location-path->ids :- [:sequential ms/PositiveInt]
   "'Explode' a `location-path` into a sequence of Collection IDs, and parse them as integers.
 
      (location-path->ids \"/10/20/\") ; -> [10 20]"

@@ -1472,7 +1472,7 @@
 
 (def source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
-  #"^card__(?:-)?[1-9]\d*$")
+  #"^card__[1-9]\d*$")
 
 (def ^:private SourceTable
   "Schema for a valid value for the `:source-table` clause of an MBQL query."

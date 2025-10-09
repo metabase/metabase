@@ -204,14 +204,11 @@
                                                  [:shallow                        {:default false} [:maybe :boolean]]
                                                  [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
   (let [archived    (if exclude-archived false nil)
-        collections (concat (select-collections {:archived                       archived
-                                                 :exclude-other-user-collections exclude-other-user-collections
-                                                 :namespace                      namespace
-                                                 :shallow                        shallow
-                                                 :collection-id                  collection-id})
-                            (let [load-static-collections (resolve 'metabase-enterprise.representations.core/collections)]
-                              (when load-static-collections
-                                (load-static-collections))))]
+        collections (select-collections {:archived                       archived
+                                         :exclude-other-user-collections exclude-other-user-collections
+                                         :namespace                      namespace
+                                         :shallow                        shallow
+                                         :collection-id                  collection-id})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
@@ -1406,12 +1403,9 @@
 (api.macros/defendpoint :get "/:id"
   "Fetch a specific Collection with standard details added"
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString [:and integer? neg?]]]]]
-  (if (pos? id)
-    (let [resolved-id (eid-translation/->id-or-404 :collection id)]
-      (collection-detail (api/read-check :model/Collection resolved-id)))
-    (let [get-item (resolve 'metabase-enterprise.representations.core/fetch)]
-      (api/check-404 (get-item :collection id)))))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)]
+    (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -1479,7 +1473,7 @@
   Note that this endpoint should return results in a similar shape to `/api/dashboard/:id/items`, so if this is
   changed, that should too."
   [{:keys [id]} :- [:map
-                    [:id [:or ms/PositiveInt ms/NanoIdString [:and integer? neg?]]]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {:keys [models archived pinned_state sort_column sort_direction official_collections_first
            include_can_run_adhoc_query
            show_dashboard_questions]} :- [:map
@@ -1491,27 +1485,20 @@
                                           [:sort_direction              {:optional true} [:maybe (into [:enum] valid-sort-directions)]]
                                           [:official_collections_first  {:optional true} [:maybe ms/MaybeBooleanValue]]
                                           [:show_dashboard_questions    {:default false} [:maybe ms/BooleanValue]]]]
-  (if (neg? id)
-    (let [items ((resolve 'metabase-enterprise.representations.core/collection-items) id)]
-      {:total  (count items)
-       :data   items
-       :limit  (request/limit)
-       :offset (request/offset)
-       :models [:card]})
-    (let [resolved-id (eid-translation/->id-or-404 :collection id)
-          model-kwds (set (map keyword (u/one-or-many models)))
-          collection (api/read-check :model/Collection resolved-id)]
-      (u/prog1 (collection-children collection
-                                    {:show-dashboard-questions?   show_dashboard_questions
-                                     :models                      model-kwds
-                                     :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
-                                     :pinned-state                (keyword pinned_state)
-                                     :include-can-run-adhoc-query include_can_run_adhoc_query
-                                     :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
-                                                                   :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
-                                                                   ;; default to sorting official collections first, except for the trash.
-                                                                   :official-collections-first? (if (and (nil? official_collections_first)
-                                                                                                         (not (collection/is-trash? collection)))
-                                                                                                  true
-                                                                                                  (boolean official_collections_first))}})
-        (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*})))))
+  (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        model-kwds (set (map keyword (u/one-or-many models)))
+        collection (api/read-check :model/Collection resolved-id)]
+    (u/prog1 (collection-children collection
+                                  {:show-dashboard-questions?   show_dashboard_questions
+                                   :models                      model-kwds
+                                   :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
+                                   :pinned-state                (keyword pinned_state)
+                                   :include-can-run-adhoc-query include_can_run_adhoc_query
+                                   :sort-info                   {:sort-column                 (or (some-> sort_column normalize-sort-choice) :name)
+                                                                 :sort-direction              (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                                 ;; default to sorting official collections first, except for the trash.
+                                                                 :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                                       (not (collection/is-trash? collection)))
+                                                                                                true
+                                                                                                (boolean official_collections_first))}})
+      (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
