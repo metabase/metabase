@@ -17114,7 +17114,7 @@ redirect_from:
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "map where {:logs -> <string>, :error (optional) -> <map where {:message -> <function, or function>}>, :output (optional) -> <map where {:rows -> <anything>}>}",
+            "description" : "map where {:logs -> <string>, :error (optional) -> <map where {:message -> <function, or function>}>, :output (optional) -> <map where {:cols -> <sequence of map where {:name -> <string>}>, :rows -> <sequence of anything>}>}",
             "content" : {
               "application/json" : {
                 "schema" : {
@@ -17135,9 +17135,24 @@ redirect_from:
                     "output" : {
                       "type" : "object",
                       "properties" : {
-                        "rows" : { }
+                        "cols" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "object",
+                            "properties" : {
+                              "name" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "name" ]
+                          }
+                        },
+                        "rows" : {
+                          "type" : "array",
+                          "items" : { }
+                        }
                       },
-                      "required" : [ "rows" ]
+                      "required" : [ "cols", "rows" ]
                     }
                   },
                   "required" : [ "logs" ]
