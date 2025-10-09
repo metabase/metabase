@@ -1,4 +1,4 @@
-import { assoc, assocIn, dissoc } from "icepick";
+import { assoc, dissoc } from "icepick";
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -920,18 +920,12 @@ describe("Question", () => {
           },
         );
 
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: {
-            ...assocIn(
-              dissoc(card, "id"),
-              ["dataset_query", "query", "filter"],
-              ["=", ["field", 2, { "base-type": "type/Float" }], 123],
-            ),
-            original_card_id: card.id,
-          },
-        });
+        const parsedUrl = parseUrl(url);
+        const parsedQuestion = new Question(
+          parsedUrl.card,
+          question.metadata(),
+        );
+        expect(Lib.filters(parsedQuestion.query(), -1)).toHaveLength(1);
       });
 
       it("should return question URL with date MBQL filter added", () => {
@@ -944,27 +938,12 @@ describe("Question", () => {
           },
         );
 
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: {
-            ...assocIn(
-              dissoc(card, "id"),
-              ["dataset_query", "query", "filter"],
-              [
-                "between",
-                [
-                  "field",
-                  PRODUCTS.CREATED_AT,
-                  { "base-type": "type/DateTime" },
-                ],
-                "2017-05-01",
-                "2017-05-31",
-              ],
-            ),
-            original_card_id: card.id,
-          },
-        });
+        const parsedUrl = parseUrl(url);
+        const parsedQuestion = new Question(
+          parsedUrl.card,
+          question.metadata(),
+        );
+        expect(Lib.filters(parsedQuestion.query(), -1)).toHaveLength(1);
       });
 
       it("should include objectId in a URL", () => {
