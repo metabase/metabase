@@ -201,7 +201,8 @@ export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
   | "exploration"
-  | "browser";
+  | "browser"
+  | "metabot";
 
 export type EmbedWizardOpenedEvent = ValidateEvent<{
   event: "embed_wizard_opened";

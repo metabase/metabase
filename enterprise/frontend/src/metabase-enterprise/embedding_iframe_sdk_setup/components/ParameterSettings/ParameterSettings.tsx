@@ -21,7 +21,7 @@ export const ParameterSettings = () => {
     settings,
     updateSettings,
     availableParameters,
-    parameterValuesById,
+    parametersValuesById,
     isLoading,
   } = useSdkIframeEmbedSetupContext();
 
@@ -61,10 +61,10 @@ export const ParameterSettings = () => {
     () =>
       getValuePopulatedParameters({
         parameters: availableParameters,
-        values: parameterValuesById,
+        values: parametersValuesById,
         defaultRequired: true,
       }),
-    [availableParameters, parameterValuesById],
+    [availableParameters, parametersValuesById],
   );
 
   // Only show parameters for dashboards and questions
