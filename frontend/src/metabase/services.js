@@ -1,7 +1,10 @@
 import _ from "underscore";
 
-import { Api } from "metabase/api";
-import { provideCollectionTags } from "metabase/api/tags";
+import {
+  Api,
+  getCardQueryDefinition,
+  getCollectionQueryDefinition,
+} from "metabase/api";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -376,6 +379,7 @@ function setCardEndpoints({ base, encodedUuid, encodedToken }) {
   Api.injectEndpoints({
     endpoints: (builder) => ({
       getCard: builder.query({
+        ...getCardQueryDefinition,
         query: ({ id, ...params }) => ({
           url: prefix,
           params,
@@ -417,14 +421,13 @@ function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
   Api.injectEndpoints({
     endpoints: (builder) => ({
       getCollection: builder.query({
+        ...getCollectionQueryDefinition,
         query: ({ id, ...params }) => {
           return {
             url: prefix,
             params,
           };
         },
-        providesTags: (collection) =>
-          collection ? provideCollectionTags(collection) : [],
       }),
     }),
     overrideExisting: true,

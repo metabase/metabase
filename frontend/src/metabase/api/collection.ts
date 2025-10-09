@@ -1,3 +1,5 @@
+import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
+
 import type {
   Collection,
   CreateCollectionRequest,
@@ -23,6 +25,21 @@ import {
   provideCollectionListTags,
   provideCollectionTags,
 } from "./tags";
+
+export const getCollectionQueryDefinition = {
+  query: ({ id, ...params }) => {
+    return {
+      method: "GET",
+      url: `/api/collection/${id}`,
+      params,
+    };
+  },
+  providesTags: (collection) =>
+    collection ? provideCollectionTags(collection) : [],
+} satisfies Omit<
+  QueryDefinition<getCollectionRequest, BaseQueryFn, any, Collection>,
+  "type"
+>;
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -65,17 +82,9 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
-    getCollection: builder.query<Collection, getCollectionRequest>({
-      query: ({ id, ...params }) => {
-        return {
-          method: "GET",
-          url: `/api/collection/${id}`,
-          params,
-        };
-      },
-      providesTags: (collection) =>
-        collection ? provideCollectionTags(collection) : [],
-    }),
+    getCollection: builder.query<Collection, getCollectionRequest>(
+      getCollectionQueryDefinition,
+    ),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({
         method: "POST",
