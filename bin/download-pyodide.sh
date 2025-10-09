@@ -18,7 +18,6 @@ REQUIRED_FILES=(
   "pyodide/packaging-24.2-py3-none-any.whl"
   "pyodide/six-1.17.0-py2.py3-none-any.whl"
 )
-declare -a REQUIRED_FILES
 
 PYODIDE_VERSION="0.28.3"
 DOWNLOAD_URL="https://github.com/pyodide/pyodide/releases/download/${PYODIDE_VERSION}/pyodide-${PYODIDE_VERSION}.tar.bz2"
@@ -41,7 +40,7 @@ if all_files_exist; then
 fi
 
 echo "Downloading Pyodide $PYODIDE_VERSION into $DEST_DIR"
-echo "This might tage a while"
+echo "This might take a while"
 
 rm -rf "$DEST_DIR/pyodide"
 mkdir -p "$DEST_DIR"
