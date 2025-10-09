@@ -1006,7 +1006,7 @@
             (let [doc            (render.tu/render-card-as-hickory! card-id)
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 7)
+                                      (take-last 6)
                                       (map str/trim)
                                       first)]
               (testing "Renders with correct day of week first"

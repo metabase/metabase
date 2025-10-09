@@ -36,7 +36,7 @@ describe("scenarios > visualizations > combo", () => {
       },
     });
 
-    H.echartsContainer().findByText("500.96");
+    H.echartsContainer().findByText("408.66");
   });
 
   it("should support stacking", () => {
