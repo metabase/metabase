@@ -2,8 +2,9 @@ import { useMounted } from "@mantine/hooks";
 import { type VirtualItem, useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 
-import { useEffectOnceIf } from "metabase/common/hooks/use-effect-once-if";
 import { Box } from "metabase/ui";
+
+import { useEffectOnceIf } from "./use-effect-once-if";
 
 /**
  * Use this when you need to virtualize a 1-dimensional list of items with variable heights.
