@@ -164,7 +164,7 @@
                   (let [next-retry-count (inc retry-count)]
                     (when (> next-retry-count mysql-deadlock-max-retries)
                       (throw e))
-                    ;; exponential backoff: wait 100ms before retrying, then 200ms, and so forth
+                    ;; ~~exponential~~ linear backoff: wait 100ms before retrying, then 200ms, and so forth
                     (Thread/sleep (long (* 100 next-retry-count)))
                     (f next-retry-count)))))]
       (f 0))))

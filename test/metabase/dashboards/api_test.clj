@@ -2904,28 +2904,29 @@
     (mt/with-full-data-perms-for-all-users!
       (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
         ;; make sure we have a clean start
-        (field-values/clear-field-values-for-field! (mt/id :categories :name))
-        (testing "Show me names of categories"
-          (is (= {:values          [["African"] ["American"] ["Artisan"]]
-                  :has_more_values false}
-                 (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                                           (:id dashboard)
-                                                                                           (:category-name param-keys)))))))
-        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
-          (testing "\nShow me names of categories that have expensive venues (price = 4)"
-            (is (= {:values          [["Japanese"] ["Steakhouse"]]
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (field-values/clear-field-values-for-field! (mt/id :categories :name))
+          (testing "Show me names of categories"
+            (is (= {:values          [["African"] ["American"] ["Artisan"]]
                     :has_more_values false}
-                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
-        ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
-        ;; middleware does the right thing and converts the values to a vector
-        (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys))]
-          (testing "\nmultiple values"
-            (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
-              (is (= {:values          [["American"] ["Asian"] ["BBQ"]]
+                   (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
+                                                                                             (:id dashboard)
+                                                                                             (:category-name param-keys)))))))
+          (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
+            (testing "\nShow me names of categories that have expensive venues (price = 4)"
+              (is (= {:values          [["Japanese"] ["Steakhouse"]]
                       :has_more_values false}
-                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url
-                                                                              (keyword (:price param-keys)) 3
-                                                                              (keyword (:price param-keys)) 4))))))))
+                     (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url))))))
+          ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
+          ;; middleware does the right thing and converts the values to a vector
+          (mt/let-url [url (chain-filter-values-url dashboard (:category-name param-keys))]
+            (testing "\nmultiple values"
+              (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
+                (is (= {:values          [["American"] ["Asian"] ["BBQ"]]
+                        :has_more_values false}
+                       (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url
+                                                                                (keyword (:price param-keys)) 3
+                                                                                (keyword (:price param-keys)) 4)))))))))
       (testing "Should require perms for the Dashboard"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection collection]
