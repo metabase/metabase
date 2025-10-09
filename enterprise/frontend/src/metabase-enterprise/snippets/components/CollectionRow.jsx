@@ -2,6 +2,7 @@
 import cx from "classnames";
 import { Component } from "react";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { Icon } from "metabase/ui";
@@ -30,11 +31,20 @@ class CollectionRow extends Component {
         )}
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
-        <Icon name="folder" size={ICON_SIZE} style={{ opacity: 0.25 }} />
-        <span className={cx(CS.flexFull, CS.ml1, CS.textBold)}>
+        <Icon
+          name="folder"
+          size={ICON_SIZE}
+          style={{ opacity: 0.25 }}
+          className={CS.flexNoShrink}
+        />
+        <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
           {collection.name}
-        </span>
-        <CollectionOptionsButton {...this.props} collection={collection} />
+        </Ellipsified>
+        <CollectionOptionsButton
+          {...this.props}
+          collection={collection}
+          className={CS.flexNoShrink}
+        />
       </div>
     );
   }

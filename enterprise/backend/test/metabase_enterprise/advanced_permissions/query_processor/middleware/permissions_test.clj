@@ -4,8 +4,8 @@
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-permissions.query-processor.middleware.permissions :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
@@ -13,10 +13,10 @@
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming-test :as streaming-test]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.malli :as mu])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -36,9 +36,8 @@
     (_ :guard (every-pred map? :source-metadata))
     (remove-metadata (dissoc &match :source-metadata))))
 
-(defn- apply-row-level-permissions [query]
-  (-> (qp.store/with-metadata-provider (mt/id)
-        (#'sandboxing/apply-sandboxing (mbql.normalize/normalize query)))
+(mu/defn- apply-row-level-permissions [query :- ::lib.schema/query]
+  (-> (#'sandboxing/apply-sandboxing query)
       remove-metadata))
 
 (defmacro ^:private with-download-perms!

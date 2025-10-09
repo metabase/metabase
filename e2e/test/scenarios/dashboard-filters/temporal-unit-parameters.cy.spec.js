@@ -469,7 +469,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
         cy.findByText("Q1 2023").should("be.visible");
-        cy.findByText("Question 1").click();
+        cy.findAllByTestId("legend-item").contains("Question 1").click();
       });
       H.appBar()
         .should("contain.text", "Started from")
@@ -481,7 +481,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       H.getDashboardCard().within(() => {
         cy.findByText("Q1 2023").should("be.visible");
-        cy.findByText("Question 2").click();
+        cy.findAllByTestId("legend-item").contains("Question 2").click();
       });
       H.appBar()
         .should("contain.text", "Started from")

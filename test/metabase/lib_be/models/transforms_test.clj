@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.lib-be.core :as lib-be]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel handle-bad-template-tags-test
   (testing (str "an malformed template tags map like the one below is invalid. Rather than potentially destroy an entire API "
@@ -27,3 +28,35 @@
 (deftest ^:parallel normalize-empty-query-test
   (is (= {}
          ((:out lib-be/transform-query) "{}"))))
+
+(deftest ^:parallel normalize-busted-query-test
+  ;; this validation should be done even in prod
+  (mu/disable-enforcement
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QQuery must include :database\E"
+         (lib-be/normalize-query {:query {:source-table "card__117"}})))))
+
+(deftest ^:parallel normalize-busted-query-test-2
+  ;; this validation should be done even in prod
+  (mu/disable-enforcement
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QQuery must include :lib/type or :type\E"
+         (lib-be/normalize-query {:database 1, :query {:source-table "card__117"}})))))
+
+(deftest ^:parallel normalize-busted-query-test-3
+  ;; this validation should be done even in prod
+  (mu/disable-enforcement
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QMBQL 4 keys like :type, :query, or :native are not allowed in MBQL 5 queries with :lib/type\E"
+         (lib-be/normalize-query {:database 1, :lib/type :mbql/query, :query {:source-table "card__117"}})))))
+
+(deftest ^:parallel normalize-busted-query-test-4
+  ;; this validation should be done even in prod
+  (mu/disable-enforcement
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"\QMBQL 5 :stages is not allowed in an MBQL 4 query with :type\E"
+         (lib-be/normalize-query {:database 1, :type :query, :stages []})))))

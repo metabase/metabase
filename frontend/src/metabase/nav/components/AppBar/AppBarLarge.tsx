@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
 import { PLUGIN_METABOT } from "metabase/plugins";
+import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { DetailViewState } from "metabase-types/store";
 
@@ -11,14 +12,9 @@ import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
-import {
-  AppBarInfoContainer,
-  AppBarLeftContainer,
-  AppBarProfileLinkContainer,
-  AppBarRightContainer,
-  AppBarRoot,
-} from "./AppBarLarge.styled";
+import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
 
@@ -70,7 +66,7 @@ const AppBarLarge = ({
         isCommentSidebarOpen
       }
     >
-      <AppBarLeftContainer>
+      <Flex align="center" miw="5rem" flex="1 1 auto">
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}
           isNavBarOpen={isNavBarOpen}
@@ -95,22 +91,25 @@ const AppBarLarge = ({
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
-      </AppBarLeftContainer>
+      </Flex>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
-        <AppBarRightContainer>
+        <Flex
+          align="center"
+          gap="sm"
+          justify="flex-end"
+          maw="32.5rem"
+          flex="1 1 auto"
+        >
           {isSearchVisible &&
-            (isEmbeddingIframe ? (
-              <SearchBar />
-            ) : (
-              <PLUGIN_METABOT.SearchButton />
-            ))}
+            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
+          {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
+            <Box c="var(--mb-color-text-primary)" aria-label={t`Settings menu`}>
               <ProfileLink onLogout={onLogout} />
-            </AppBarProfileLinkContainer>
+            </Box>
           )}
-        </AppBarRightContainer>
+        </Flex>
       )}
     </AppBarRoot>
   );

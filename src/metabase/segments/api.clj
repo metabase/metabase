@@ -59,7 +59,8 @@
         clean-body (u/select-keys-when body
                                        :present #{:description :caveats :points_of_interest}
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
-        new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
+        ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
+        new-def    (->> clean-body :definition #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query]))
         new-body   (merge
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))

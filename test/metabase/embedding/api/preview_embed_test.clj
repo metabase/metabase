@@ -367,7 +367,8 @@
       (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
                                                        :type     :native
                                                        :native   {:query         "SELECT {{num}} AS num"
-                                                                  :template-tags {:num {:name         "num"
+                                                                  :template-tags {:num {:id           "X"
+                                                                                        :name         "num"
                                                                                         :display_name "Num"
                                                                                         :type         "number"
                                                                                         :required     true

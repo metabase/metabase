@@ -21,7 +21,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
@@ -134,7 +134,11 @@
    :min-duration-ms  *query-caching-min-ttl*})
 
 (defn- test-query [query-kvs]
-  (merge {:cache-strategy (ttl-strategy), :lib/type :mbql/query, :database 1, :stages [{:abc :def}]} query-kvs))
+  (merge {:cache-strategy (ttl-strategy)
+          :lib/type       :mbql/query
+          :database       1
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+         query-kvs))
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
@@ -234,7 +238,7 @@
 (deftest max-ttl-test
   (testing (str "Check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should "
                 "evict any entries older that `query-caching-max-ttl`. Set max-ttl to 100 ms, run query `:abc`, "
-                "then wait 200 ms, and run `:def`. This should trigger the cache flush for entries past "
+                "then wait 200 ms, and run the query. This should trigger the cache flush for entries past "
                 "`:max-ttl`; and the cached entry for `:abc` should be deleted. Running `:abc` a subsequent time "
                 "should not return cached results")
     (with-mock-cache! [purge-chan]
@@ -242,7 +246,7 @@
         (run-query)
         (mt/wait-for-result purge-chan)
         (Thread/sleep 200)
-        (run-query :query :def)
+        (run-query :stages [{:lib/type :mbql.stage/native, :native "SELECT abc;"}])
         (mt/wait-for-result purge-chan)
         (is (= :not-cached
                (run-query)))))))
@@ -465,7 +469,8 @@
                           (is (=? {:cache/details {:cached     true
                                                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
                                                    :hash       some?
-                                                   ;; TODO: this check is not working if the key is not present in the data
+                                                   ;; TODO: this check is not working if the key is not present in the
+                                                   ;; data
                                                    :cache-hash some?}
                                    :row_count     5
                                    :status        :completed}
