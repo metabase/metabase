@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  EXCLUDED_PR_AUTHORS: '["kamilmielnik"]'
+  EXCLUDED_PR_AUTHORS: '["kamilmielnik", "romeovs"]'
 
 jobs:
   review:
