@@ -4,11 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -16,28 +14,28 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
 
 (mu/defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
-  [{:keys [base_type semantic_type]} :- ::ads/field
+  [{:keys [base-type semantic-type]} :- ::ads/column
    ;; for some insane reason this is called with totally imaginary types like `:type/GenericNumber`
    t :- [:and
          qualified-keyword?
          [:fn
           {:error/message "should be a keyword starting with :type/ or :entity/ (not necessarily an actual metabase.types.core type)"}
           #(#{"type" "entity"} (namespace %))]]]
-  (or (isa? (keyword semantic_type) t)
-      (isa? (keyword base_type) t)))
+  (or (isa? (keyword semantic-type) t)
+      (isa? (keyword base-type) t)))
 
 (mu/defn key-col?
   "Workaround for our leaky type system which conflates types with properties."
-  [{:keys [base_type semantic_type name]} :- ::ads/field]
-  (and (isa? base_type :type/Number)
-       (or (#{:type/PK :type/FK} semantic_type)
+  [{:keys [base-type semantic-type name]} :- ::ads/column]
+  (and (isa? base-type :type/Number)
+       (or (#{:type/PK :type/FK} semantic-type)
            (let [name (u/lower-case-en name)]
              (or (= name "id")
                  (str/starts-with? name "id_")
@@ -48,13 +46,15 @@
   [tablespec tables :- [:maybe [:sequential ::ads/source]]]
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
-(def ^{:arglists '([metric])} saved-metric?
+(defn saved-metric?
   "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
-  (partial mbql.u/is-clause? :metric))
+  [metric]
+  (lib/clause-of-type? metric :metric))
 
-(def ^{:arglists '([metric])} custom-expression?
+(defn custom-expression?
   "Is this a custom expression?"
-  (partial mbql.u/is-clause? :aggregation-options))
+  [metric]
+  (mr/validate ::lib.schema.aggregation/aggregation metric))
 
 (def ^{:arglists '([metric])} adhoc-metric?
   "Is this an adhoc metric?"
@@ -64,32 +64,31 @@
   "Encode given object as form-encoded base-64-encoded JSON."
   (comp codec/form-encode codec/base64-encode codecs/str->bytes json/encode))
 
-(mu/defn field-reference->id :- [:maybe [:or ms/NonBlankString ms/PositiveInt]]
+(mu/defn field-reference->id :- [:maybe [:or :string ::lib.schema.id/field]]
   "Extract field ID from a given field reference form."
   [clause]
-  (lib.util.match/match-one clause [:field id _] id))
+  (lib.util.match/match-one clause [:field _opts id] id))
 
-(mu/defn collect-field-references :- [:maybe [:sequential mbql.s/field]]
+(mu/defn collect-field-references :- [:maybe [:sequential :mbql.clause/field]]
   "Collect all `:field` references from a given form."
   [form]
   (lib.util.match/match form :field &match))
 
-(mu/defn ->field :- [:maybe [:and
-                             (ms/InstanceOf :model/Field)
-                             ::ads/field]]
+(mu/defn ->field :- [:maybe ::ads/column]
   "Return `Field` instance for a given ID or name in the context of root."
   [{{result-metadata :result_metadata} :source, :as root} :- ::ads/root
    field-id-or-name-or-clause                             :- [:or
                                                               ::lib.schema.id/field
-                                                              ms/NonBlankString
-                                                              ::mbql.s/field-or-expression-ref]]
+                                                              :name
+                                                              :mbql.clause/field
+                                                              :mbql.clause/expression]]
   (let [id-or-name (if (sequential? field-id-or-name-or-clause)
                      (field-reference->id field-id-or-name-or-clause)
                      field-id-or-name-or-clause)]
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (t2/select-one :model/Field :id id-or-name))
+       (t2/select-one :metadata/column :id id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata
@@ -101,7 +100,8 @@
              (update :semantic_type keyword)
              (->> (mi/instance :model/Field))
              (assoc :xrays/database-id (:database root))
-             (analyze/run-classifiers {}))))
+             (analyze/run-classifiers {})
+             (lib-be/instance->metadata :metadata/column))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
 
@@ -109,28 +109,3 @@
   "Generate a parameter ID for the given field. In X-ray dashboards a parameter is mapped to a single field only."
   [field]
   (-> field ((juxt :id :name :unit)) hash str))
-
-(defn do-with-legacy-query
-  "Call
-
-    (apply f query args)
-
-  with `query` converted to a legacy MBQL query if needed."
-  [query f & args]
-  (when (seq query)
-    (case (lib/normalized-mbql-version query)
-      :mbql-version/legacy (apply f query args)
-      :mbql-version/mbql5  (apply f #_{:clj-kondo/ignore [:discouraged-var]} (lib/->legacy-MBQL query) args))))
-
-(defn do-with-mbql5-query
-  "Call
-
-    (apply f query args)
-
-  with `query` converted to an MBQL 5 query if needed."
-  [query f & args]
-  (when (seq query)
-    (case (lib/normalized-mbql-version query)
-      :mbql-version/legacy (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
-                             (apply f (lib-be/normalize-query query) args))
-      :mbql-version/mbql5  (apply f query args))))

@@ -1,4 +1,5 @@
 (ns metabase.legacy-mbql.schema.helpers
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:refer-clojure :exclude [distinct])
   (:require
    [clojure.string :as str]

@@ -607,7 +607,7 @@
                       (for [dashcard (:dashcards dashboard)
                             :let     [query (get-in dashcard [:card :dataset_query])]
                             :when    query
-                            :let     [breakouts (magic.util/do-with-mbql5-query query lib/breakouts)]
+                            :let     [breakouts (lib/breakouts query)]
                             id       (lib.util.match/match breakouts
                                        [:field (_opts :guard :binning) (id :guard pos-int?)]
                                        id)]
@@ -641,7 +641,7 @@
                   temporal-field-ids (for [dashcard (:dashcards dashboard)
                                            :let     [query (get-in dashcard [:card :dataset_query])]
                                            :when    query
-                                           :let     [breakouts (magic.util/do-with-mbql5-query query lib/breakouts)]
+                                           :let     [breakouts (lib/breakouts query)]
                                            id       (lib.util.match/match breakouts
                                                       [:field (_opts :guard :temporal-unit) (id :guard pos-int?)]
                                                       id)]
@@ -911,7 +911,7 @@
                                                      :dashcards
                                                      (keep #(-> %
                                                                 (get-in [:card :dataset_query])
-                                                                (magic.util/do-with-legacy-query get-in [:query :filter]))))
+                                                                lib/filters)))
                     filter-contains-cell-query? #(= cell-query (some #{cell-query} %))]
                 (is (pos? (count all-dashcard-filters)))
                 (is (every? filter-contains-cell-query? all-dashcard-filters))))))))))
@@ -1616,11 +1616,13 @@
                                      (= "Distinct Product ID"
                                         (get-in dashcard [:card :name]))))
                            first)
+            _         (assert (some? dashcard))
             aggregate (-> dashcard
                           (get-in [:card :dataset_query])
-                          (magic.util/do-with-legacy-query get-in [:query :aggregation]))]
+                          lib/aggregations)]
         (testing "Fields requiring a join should have :source-field populated in the aggregate."
-          (is (= [[:distinct [:field (mt/id :products :id)
-                              ;; This should be present vs. nil (value before issue)
-                              {:source-field (mt/id :reviews :product_id)}]]]
-                 aggregate)))))))
+          (is (=? [[:distinct {} [:field
+                                  ;; This should be present vs. nil (value before issue)
+                                  {:source-field (mt/id :reviews :product_id)}
+                                  (mt/id :products :id)]]]
+                  aggregate)))))))

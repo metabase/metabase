@@ -1,5 +1,6 @@
 (ns metabase.legacy-mbql.util
   "Utilitiy functions for working with MBQL queries."
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:refer-clojure :exclude [replace some mapv every?])
   (:require
    #?@(:clj
@@ -86,7 +87,7 @@
   and duplicate subclauses from the clauses.
 
   DEPRECATED: This will be removed in the near future.
-  Use [[metabase.lib.filter.simplify-compound/simplify-compound-filter]] going forward."
+  Use [[metabase.lib.core/simplify-compound-filter]] going forward."
   {:deprecated "0.57.0"}
   [x]
   #_{:clj-kondo/ignore [:deprecated-var]}

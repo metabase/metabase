@@ -27,7 +27,10 @@
 
   Removing empty clauses like `{:aggregation nil}` or `{:breakout []}`.
 
-  Token normalization occurs first, followed by canonicalization, followed by removing empty clauses."
+  Token normalization occurs first, followed by canonicalization, followed by removing empty clauses.
+
+  DEPRECATED: use [[metabase.lib.core/normalize]] to normalize things going forward."
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}, :deprecated "0.57.0"}
   (:refer-clojure :exclude [mapv every? some select-keys])
   (:require
    [clojure.set :as set]

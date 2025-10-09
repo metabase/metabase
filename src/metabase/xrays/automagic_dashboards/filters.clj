@@ -1,7 +1,7 @@
 (ns metabase.xrays.automagic-dashboards.filters
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
@@ -12,13 +12,13 @@
 
 (defn- temporal?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
-  [{base-type :base_type, effective-type :effective_type, unit :unit}]
+  [{base-type :base-type, effective-type :effective-type, unit :unit}]
   ;; TODO -- not sure why we're excluding year here? Is it because we normally returned it as an integer in the past?
   (and (not ((disj u.date/extract-units :year) unit))
        (isa? (or effective-type base-type) :type/Temporal)))
 
-(defn- interestingness
-  [{base-type :base_type, effective-type :effective_type, semantic-type :semantic_type, :keys [fingerprint]}]
+(mu/defn- interestingness
+  [{:keys [base-type effective-type semantic-type fingerprint]} :- ::ads/column]
   (cond-> 0
     (some-> fingerprint :global :distinct-count (< 10)) inc
     (some-> fingerprint :global :distinct-count (> 20)) dec
@@ -34,40 +34,40 @@
    (when (seq colls)
      (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
 
-(defn- sort-by-interestingness
-  [fields]
+(mu/defn- sort-by-interestingness
+  [fields :- [:sequential ::ads/column]]
   (->> fields
        (map #(assoc % :interestingness (interestingness %)))
        (sort-by :interestingness >)
        (partition-by :interestingness)
        (mapcat (fn [fields]
                  (->> fields
-                      (group-by (juxt :base_type :semantic_type))
+                      (group-by (juxt :base-type :semantic-type))
                       vals
                       (apply interleave-all))))))
 
-(defn interesting-fields
+(mu/defn interesting-fields
   "Pick out interesting fields and sort them by interestingness."
-  [fields]
+  [fields :- [:sequential ::ads/column]]
   (->> fields
-       (filter (fn [{:keys [base_type effective_type semantic_type] :as field}]
+       (filter (fn [{:keys [base-type effective-type semantic-type] :as field}]
                  (or (temporal? field)
-                     (isa? (or effective_type base_type) :type/Boolean)
-                     (isa? semantic_type :type/Category))))
+                     (isa? (or effective-type base-type) :type/Boolean)
+                     (isa? semantic-type :type/Category))))
        sort-by-interestingness))
 
 (defn- build-fk-map
   [fks field]
   (if (:id field)
     (->> fks
-         (filter (comp #{(:table_id field)} :table_id :target))
-         (group-by :table_id)
+         (filter (comp #{(:table-id field)} :table-id :target))
+         (group-by :table-id)
          (keep (fn [[_ [fk & fks]]]
                  ;; Bail out if there is more than one FK from the same table
                  (when (empty? fks)
-                   [(:table_id fk) [:field (u/the-id field) {:source-field (u/the-id fk)}]])))
-         (into {(:table_id field) [:field (u/the-id field) nil]}))
-    (constantly [:field (:name field) {:base-type (:base_type field)}])))
+                   [(:table-id fk) [:field (u/the-id field) {:source-field (u/the-id fk)}]])))
+         (into {(:table-id field) [:field (u/the-id field) nil]}))
+    (constantly field)))
 
 (defn- filter-for-card
   [card field]
@@ -87,27 +87,27 @@
       (nil? (:card dashcard)) dashcard
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
-(defn- filter-type-info
+(mu/defn- filter-type-info
   "Return parameter type and section id for a given field."
-  [{:keys [effective_type semantic_type] :as _field}]
+  [{:keys [effective-type semantic-type] :as _field} :- ::ads/column]
   (cond
-    (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
+    (or (isa? effective-type :type/Date) (isa? effective-type :type/DateTime))
     {:type "date/all-options"
      :sectionId "date"}
 
-    (or (isa? effective_type :type/Text) (isa? effective_type :type/TextLike))
+    (or (isa? effective-type :type/Text) (isa? effective-type :type/TextLike))
     {:type "string/="
-     :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
+     :sectionId (if (isa? semantic-type :type/Address) "location" "string")}
 
-    (isa? effective_type :type/Number)
-    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
+    (isa? effective-type :type/Number)
+    (if (or (isa? semantic-type :type/PK) (isa? semantic-type :type/FK))
       {:type "id"
        :sectionId "id"}
       {:type "number/="
        :sectionId "number"})
 
     ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
-    (isa? effective_type :type/Boolean)
+    (isa? effective-type :type/Boolean)
     {:type "string/="
      :sectionId "string"}))
 
@@ -141,7 +141,7 @@
                 (-> dashboard
                     (assoc :dashcards dashcards-new)
                     (update :parameters conj (merge {:id   filter-id
-                                                     :name (:display_name candidate)
+                                                     :name (:display-name candidate)
                                                      :slug (:name candidate)}
                                                     filter-info)))
                 dashboard)))
@@ -162,10 +162,10 @@
   (when (seq filter-clause)
     (if (= clause-name :and)
       #_{:clj-kondo/ignore [:deprecated-var]}
-      (rest (mbql.u/simplify-compound-filter filter-clause))
+      (drop 2 (lib/simplify-compound-filter filter-clause))
       [filter-clause])))
 
-(defn inject-refinement
+(mu/defn inject-refinement :- ::lib.schema.expression/boolean
   "Inject a filter refinement into an MBQL filter clause, returning a new filter clause.
 
   There are two reasons why we want to do this: 1) to reduce visual noise when we display applied filters; and 2) some
@@ -175,7 +175,8 @@
   of the latter. Therefore we can rewrite the combined clause to ommit the more broad version from the main clause.
   Assumes both filter clauses can be flattened by recursively merging `:and` claueses
   (ie. no `:and`s inside `:or` or `:not`)."
-  [filter-clause refinement]
+  [filter-clause :- ::lib.schema.expression/boolean
+   refinement    :- ::lib.schema.expression/boolean]
   (let [in-refinement?   (into #{}
                                (map magic.util/collect-field-references)
                                (flatten-filter-clause refinement))
@@ -183,9 +184,5 @@
                               flatten-filter-clause
                               (remove (comp in-refinement? magic.util/collect-field-references)))]
     (if (seq existing-filters)
-      ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
-      ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
-      #_{:clj-kondo/ignore [:deprecated-var]}
-      (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
-                                                (cons refinement existing-filters)))
+      (apply lib/and refinement existing-filters)
       refinement)))

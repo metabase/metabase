@@ -10,6 +10,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -21,7 +22,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [select-keys mapv]]))
+   [metabase.util.performance :refer [mapv select-keys]]))
 
 (mu/defn column-metadata->aggregation-ref :- :mbql.clause/aggregation
   "Given `:metadata/column` column metadata for an aggregation, construct an `:aggregation` reference."
@@ -481,3 +482,16 @@
   [query stage-number ag-ref]
   (let [expression (resolve-aggregation query stage-number ag-ref)]
     (lib.metadata.calculation/type-of query stage-number expression)))
+
+(mu/defn remove-all-aggregations :- ::lib.schema/query
+  "Remove all aggregations from a query stage."
+  ([query]
+   (remove-all-aggregations query -1))
+
+  ([query        :- ::lib.schema/query
+    stage-number :- :int]
+   (reduce
+    (fn [query ag]
+      (lib.remove-replace/remove-clause query stage-number ag))
+    query
+    (aggregations query stage-number))))
