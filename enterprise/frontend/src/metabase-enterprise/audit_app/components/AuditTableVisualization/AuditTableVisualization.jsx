@@ -17,11 +17,7 @@ import Table from "metabase/visualizations/visualizations/Table/Table";
 
 import { getColumnName, getRowValuesByColumns } from "../../lib/mode";
 
-import {
-  HeaderCell,
-  RemoveRowButton,
-  RowCell,
-} from "./AuditTableVisualization.styled";
+import { HeaderCell, RowCell } from "./AuditTableVisualization.styled";
 
 const propTypes = {
   series: PropTypes.array,
@@ -107,10 +103,8 @@ export class AuditTableVisualization extends Component {
       isSortable,
       isSelectable,
       rowChecked,
-      onRemoveRow,
     } = this.props;
 
-    const canRemoveRows = !!onRemoveRow;
     const columnIndexes = settings["table.columns"]
       .filter(({ enabled }) => enabled)
       .map(({ name }) => _.findIndex(cols, (col) => col.name === name));
@@ -123,6 +117,7 @@ export class AuditTableVisualization extends Component {
         />
       );
     }
+
     return (
       <table className={AdminS.ContentTable}>
         <thead>
@@ -230,16 +225,6 @@ export class AuditTableVisualization extends Component {
                   </RowCell>
                 );
               })}
-
-              {canRemoveRows && (
-                <td>
-                  <RemoveRowButton
-                    onClick={() => this.handleRemoveRowClick(row, cols)}
-                  >
-                    <Icon name="close" color="text-light" />
-                  </RemoveRowButton>
-                </td>
-              )}
             </tr>
           ))}
         </tbody>
