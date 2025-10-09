@@ -1,3 +1,5 @@
+import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
+
 import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
@@ -36,6 +38,23 @@ import { handleQueryFulfilled } from "./utils/lifecycle";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
 
+export const getCardQueryDefinition = {
+  query: ({ id, ignore_error, ...params }) => ({
+    method: "GET",
+    url: `/api/card/${id}`,
+    params,
+    noEvent: ignore_error,
+  }),
+  providesTags: (card) => (card ? provideCardTags(card) : []),
+  onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+    handleQueryFulfilled(queryFulfilled, (data) =>
+      dispatch(updateMetadata(data, QuestionSchema)),
+    ),
+} satisfies Omit<
+  QueryDefinition<GetCardRequest, BaseQueryFn, any, Card>,
+  "type"
+>;
+
 export const cardApi = Api.injectEndpoints({
   endpoints: (builder) => {
     const updateCardPropertyMutation = <
@@ -68,19 +87,7 @@ export const cardApi = Api.injectEndpoints({
             dispatch(updateMetadata(data, [QuestionSchema])),
           ),
       }),
-      getCard: builder.query<Card, GetCardRequest>({
-        query: ({ id, ignore_error, ...params }) => ({
-          method: "GET",
-          url: `/api/card/${id}`,
-          params,
-          noEvent: ignore_error,
-        }),
-        providesTags: (card) => (card ? provideCardTags(card) : []),
-        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-          handleQueryFulfilled(queryFulfilled, (data) =>
-            dispatch(updateMetadata(data, QuestionSchema)),
-          ),
-      }),
+      getCard: builder.query<Card, GetCardRequest>(getCardQueryDefinition),
       getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
         query: (id) => ({
           method: "GET",
