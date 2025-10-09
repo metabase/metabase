@@ -8,6 +8,7 @@ const COLLECTION_CONTENT_COLUMNS = [
   "lastEditedBy",
   "lastEditedAt",
   "actionMenu",
+  "archive",
 ] as const;
 
 export type CollectionContentTableColumn =

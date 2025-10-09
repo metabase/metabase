@@ -1,8 +1,10 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
+import { useGetCollectionQuery } from "metabase/api";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import { canArchiveItem } from "metabase/collections/utils";
 import CheckBox from "metabase/common/components/CheckBox";
 import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -12,7 +14,7 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import type { IconProps } from "metabase/ui";
-import { Tooltip } from "metabase/ui";
+import { Button, Icon, Tooltip } from "metabase/ui";
 import type {
   CollectionItem,
   ListCollectionItemsSortColumn,
@@ -311,6 +313,35 @@ export const Columns = {
               createBookmark={createBookmark}
               deleteBookmark={deleteBookmark}
             />
+          </RowActionsContainer>
+        </ItemCell>
+      );
+    },
+  },
+  Archive: {
+    Header: () => <th></th>,
+    Col: () => <col style={{ width: "100px" }} />,
+    Cell: ({ item }: { item: CollectionItem }) => {
+      const { data: collection } = useGetCollectionQuery({
+        id: item.collection_id ?? "root",
+      });
+      const canArchive = collection ? canArchiveItem(item, collection) : false;
+
+      if (!canArchive) {
+        return null;
+      }
+
+      return (
+        <ItemCell>
+          <RowActionsContainer>
+            <Tooltip label={t`Move to trash`}>
+              <Button
+                leftSection={<Icon name="archive" />}
+                variant="inverse"
+                py="sm"
+                px="md"
+              />
+            </Tooltip>
           </RowActionsContainer>
         </ItemCell>
       );

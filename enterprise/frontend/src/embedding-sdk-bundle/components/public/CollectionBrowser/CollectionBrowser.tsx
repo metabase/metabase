@@ -24,26 +24,28 @@ import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
 
-const USER_FACING_ENTITY_NAMES = [
+const USER_FACING_ENTITY_NAMES: UserFacingEntityName[] = [
   "collection",
   "dashboard",
   "question",
   "model",
-] as const;
+];
 
-type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
+type UserFacingEntityName = "collection" | "dashboard" | "question" | "model";
 
 export type CollectionBrowserListColumns =
   | "type"
   | "name"
   | "lastEditedBy"
-  | "lastEditedAt";
+  | "lastEditedAt"
+  | "archive";
 
 const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
   "type",
   "name",
   "lastEditedBy",
   "lastEditedAt",
+  "archive",
 ];
 
 const ENTITY_NAME_MAP: Partial<
@@ -96,7 +98,7 @@ export const CollectionBrowserInner = ({
   collectionId = "personal",
   onClick,
   pageSize = COLLECTION_PAGE_SIZE,
-  visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
+  visibleEntityTypes = USER_FACING_ENTITY_NAMES,
   EmptyContentComponent = null,
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
