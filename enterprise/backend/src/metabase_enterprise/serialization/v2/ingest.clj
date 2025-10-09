@@ -85,20 +85,20 @@
         (concat (for [k (keys settings)]
                   [{:model "Setting" :id (name k)}]))))
 
-  (ingest-one [_ abs-path]
+  (ingest-one [_ serdes-meta]
     (when-not @cache
       (reset! cache (ingest-all root-dir)))
-    (let [{:keys [id]} (first abs-path)
+    (let [{:keys [id]} (first serdes-meta)
           kw-id        (keyword id)]
-      (if (= ["Setting"] (mapv :model abs-path))
-        {:serdes/meta abs-path :key kw-id :value (get settings kw-id)}
-        (if-let [target (get @cache (strip-labels abs-path))]
+      (if (= ["Setting"] (mapv :model serdes-meta))
+        (when (contains? settings kw-id)
+          {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
+        (when-let [target (get @cache (strip-labels serdes-meta))]
           (try
             (ingest-file (second target))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File (second target))
-                                                       :abs-path abs-path} e))))
-          (throw (ex-info "Cannot find file" {:abs-path abs-path})))))))
+                                                       :abs-path serdes-meta} e)))))))))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by
