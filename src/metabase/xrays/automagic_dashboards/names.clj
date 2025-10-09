@@ -204,7 +204,13 @@
 (mu/defmethod humanize-filter-value :between
   [root :- ::ads/root
    [_ field-reference min-value max-value]]
-  (tru "{0} is between {1} and {2}" (item-name root field-reference) min-value max-value))
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (or (when (isa? (or effective_type base_type) :type/Temporal)
+          (let [humanized-min (humanize-datetime min-value unit)
+                humanized-max (humanize-datetime max-value unit)]
+            (when (= humanized-min humanized-max)
+              (tru "{0} is {1}" item-name humanized-min))))
+        (tru "{0} is between {1} and {2}" item-name min-value max-value))))
 
 (mu/defmethod humanize-filter-value :inside
   [root :- ::ads/root
