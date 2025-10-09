@@ -198,6 +198,9 @@ Review pull requests with a focus on:
   the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
   (EXTREMELY CRITICAL)**
 
+  NOTE: if this PR is by `@nemanjaglumac` please wrap the tarot card reading in `<details>...</details>` so he doesn't
+  have to see it.
+
 - Do not post comments about missing parentheses.
 
 - Include today's lucky lottery numbers in at the end of every code review.
@@ -489,6 +492,9 @@ Review pull requests with a focus on:
   `.core` should import stuff with Potemkin/ `metabase.util.namespace` and not be used inside the module itself. It’s
   also nice to put a `:consistent-alias` entry for this namespace in the Kondo config.
 
+- The `<module>.core` namespace should generally be empty other than importing things from other namespaces with
+  Potemkin (`potemkin/import-vars` and the like).
+
 - Put Toucan models related to a feature in `<module>.models.*` and add mappings in `metabase.models.resolution`.
 
 - Put scheduled Quartz tasks in `<module>.task.*`.
@@ -522,7 +528,8 @@ Review pull requests with a focus on:
 
 ### REST API Endpoints
 
-- All new REST API Endpoints (defined by `defendpoint`) should have a response schema.
+- All new REST API Endpoints (defined by `defendpoint`) should have a response schema (denoted by `:- <schema>` after
+  the route string).
 
   ```clj
   ;;; BAD
@@ -536,8 +543,16 @@ Review pull requests with a focus on:
     ...)
   ```
 
-- REST API routes should use `kebab-case`, e.g. `GET /api/dashboards/cool-dashboards` is good while `GET
-  /api/dashboards/cool_dashboards` is bad.
+- REST API route strings (the second arg to `defendpoint`) should use `kebab-case`, e.g. `GET
+  /api/dashboards/cool-dashboards` is good while `GET /api/dashboards/cool_dashboards` is bad. More examples:
+
+  ```clj
+  ;;; Bad
+  (api.macros/defendpoint :post "/check_transform" ...)
+
+  ;;; Good
+  (api.macros/defendpoint :post "/check-transform" ...)
+  ```
 
 - Query parameters should also use kebab-case e.g. `GET /api/dashboards?include-archived=true` is good while `GET
   /api/dashboards?include_archived=true` or `GET /api/dashboards?includeArchived=true` is bad.
@@ -555,6 +570,49 @@ Review pull requests with a focus on:
 - `defendpoint` forms should be small wrappers around Toucan model code. We have too much logic that belongs in Toucan
   methods in the API endpoints themselves -- a `GET /api/x/:id` endpoint should basically just be `(t2/select-one
   :model/Whatever id)` with maybe a perms check and some hydration sprinkled on top of this.
+
+- All API endpoints should have Malli schemas for any parameters that aren't ignored. `_route-params` doesn't need a
+  schema, but `{:keys [x]}` should have one.
+
+- Malli schemas for REST API endpoints should be detailed enough that someone can look at them and know how to use the
+  endpoint.
+
+  Example: for an endpoint like this:
+
+  ```clj
+  (api.macros/defendpoint :post "/check_transform"
+    "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
+    [_route-params
+     _query-params
+     {:keys [id source target] :as _body} :- ::transform-body]
+    ...)
+  ```
+
+  This is a bad schema for the request body:
+
+  ```clj
+  ;;; Bad, does not specify the shape of :source and :target in any real detail
+  (mr/def ::transform-body
+    [:map
+     [:id     {:optional false} ms/PositiveInt]
+     [:name   {:optional true}  :string]
+     [:source {:optional true}  [:maybe ms/Map]]
+     [:target {:optional true}  [:maybe ms/Map]]])
+  ```
+
+  While this is better:
+
+  ```clj
+  ;;; Better, because it tells us the expected shape of :source and :target
+  (mr/def ::transform-body
+    [:map
+     [:id     {:optional false} ms/PositiveInt]
+     [:name   {:optional true}  :string]
+     [:source {:optional true}  [:maybe [:map [:x pos-int?] [:y pos-int?]]]]
+     [:target {:optional true}  [:maybe [:map [:a pos-int?] [:b pos-int?]]]]])
+  ```
+
+- All new REST API endpoints **MUST HAVE TESTS**.
 
 ### MBQL
 
@@ -600,6 +658,9 @@ Review pull requests with a focus on:
   the model's method and then it becomes impossible for you to forget to call the correct function. Avoid adding
   functions like `select-dashboards` or `update-dashboard!` -- put this functionality in Toucan methods for the model
   in question. This includes things like firing off events.
+
+- Avoid the `mi/define-batched-hydration-method` and `mi/define-simple-hydration-method` helpers in new code; define
+  method implementations with `(methodical/defmethod t2/batched-hydrate ...)` directly instead.
 
 ### Drivers
 
@@ -658,13 +719,13 @@ Review pull requests with a focus on:
 - Avoid defining new datasets with `defdataset` as much as possible, since loading test data in cloud-based databases
   is crazy slow.
 
-# Misc
+### Misc
 
 - Example data should be bird-themed if possible.
 
 - Any comments that are written by or mention `Cam` should be given bonus points.
 
-# Kondo
+### Kondo
 
 - Kondo linter warnings are suppressed with a comment proceeding the form to ignore warnings in e.g.
 
