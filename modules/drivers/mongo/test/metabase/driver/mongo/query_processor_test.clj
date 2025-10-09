@@ -3,16 +3,20 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -713,3 +717,57 @@
                                   (-> (lib/query mp dogs)
                                       (lib/filter (lib/contains person-id "e"))
                                       qp/process-query))))))))
+
+(deftest ^:parallel pivot-query-based-on-native-card-test
+  (mt/test-driver :mongo
+    (testing "Pivot queries based on a native Mongo card return the right number of columns (#64124)"
+      (let [native-query (json/encode [{:$match {:_id 1}}
+                                       {:$project {:product_id :$product_id, :subtotal :$subtotal}}])
+            mp (lib.tu/mock-metadata-provider
+                (mt/metadata-provider)
+                {:cards [{:id              1
+                          :name            "Orders native mongo"
+                          :dataset-query   {:type     :native
+                                            :native   {:collection "orders"
+                                                       :query      native-query}
+                                            :database (mt/id)}
+                          :result_metadata [{:name         "product_id"
+                                             :base_type    :type/Integer
+                                             :display_name "product_id"}
+                                            {:name         "subtotal"
+                                             :base_type    :type/Float
+                                             :display_name "subtotal"}]}]})
+            breakout-by-column-name (fn [query col-name]
+                                      (lib/breakout query (m/find-first (comp #{col-name} :name)
+                                                                        (lib/breakoutable-columns query))))
+            query (-> (lib/query mp (lib.metadata/card mp 1))
+                      (lib/aggregate (lib/count))
+                      (breakout-by-column-name "product_id")
+                      (breakout-by-column-name "subtotal"))
+            pivot-query (assoc query
+                               :pivot_rows         [0]
+                               :pivot_cols         [1]
+                               :show_row_totals    true
+                               :show_column_totals true
+                               :info               {:context :ad-hoc})]
+        (is (=? {:data
+                 {:cols
+                  [{:lib/desired-column-alias "product_id"
+                    :field_ref                [:field "product_id" {:base-type :type/Integer}]
+                    :base_type                :type/Integer
+                    :effective_type           :type/Integer}
+                   {:lib/desired-column-alias "subtotal"
+                    :field_ref                [:field "subtotal" {:base-type :type/Float}]
+                    :base_type                :type/Float
+                    :effective_type           :type/Float}
+                   {:lib/desired-column-alias "pivot-grouping"
+                    :field_ref                [:expression "pivot-grouping"]
+                    :base_type                :type/Integer
+                    :effective_type           :type/Integer}
+                   {:lib/desired-column-alias "count"
+                    :field_ref                [:aggregation 0]
+                    :base_type                :type/Integer
+                    :semantic_type            :type/Quantity
+                    :effective_type           :type/Integer}]
+                  :rows [[14 37.65 0 1] [nil 37.65 1 1] [14 nil 2 1] [nil nil 3 1]]}}
+                (qp.pivot/run-pivot-query pivot-query)))))))
