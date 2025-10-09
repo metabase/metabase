@@ -105,6 +105,35 @@
    (log/info "Syncing target" (pr-str target) "for transform")
    (activate-table-and-mark-computed! database target)))
 
+(defn upsert-watermark!
+  "Update the watermark tracking table for an incremental transform.
+   Deletes any existing watermark entry for this transform and inserts a new one
+   with the MAX value of the watermark field from the transform output table."
+  [{:keys [id target] :as transform} driver database]
+  (when (= :table-incremental (keyword (:type target)))
+    (let [watermark-field (or (:watermarkField target) "id")
+          output-table (qualified-table-name driver target)
+          watermark-table (qualified-table-name driver {:schema (:schema target)
+                                                        :name "mb__watermark_table"})
+          conn-spec (driver/connection-spec driver database)
+          ;; lol
+          select-query (format "SELECT %d as transform_id, MAX(%s) as watermark_id FROM %s"
+                               id
+                               watermark-field
+                               (name output-table))
+          delete-sql (format "DELETE FROM %s WHERE transform_id = %d"
+                             (name watermark-table)
+                             id)]
+      (log/info "Upserting watermark for transform" id "with field" watermark-field)
+      (try
+        (let [insert-queries (driver/compile-insert driver {:query select-query
+                                                            :output-table watermark-table})]
+          (driver/execute-raw-queries! driver conn-spec [[delete-sql]
+                                                         insert-queries]))
+        (catch Exception e
+          (log/error e "Failed to upsert watermark for transform" id))))))
+
+;; TODO this and target-database-id can be transforms multimethods?
 (mu/defn target-database-id :- ::lib.schema.id/database
   "Return the target database id of a transform"
   [transform]
@@ -186,7 +215,7 @@
   (if (python-transform? transform)
     :transforms/python
     (case (-> transform :target :type keyword)
-      :table             :transforms/table
+      :table :transforms/table
       :table-incremental :transforms/table)))
 
 (defn ->instant
@@ -194,15 +223,15 @@
   ^Instant [t]
   (when t
     (condp instance? t
-      Instant        t
-      Date           (.toInstant ^Date t)
+      Instant t
+      Date (.toInstant ^Date t)
       OffsetDateTime (.toInstant ^OffsetDateTime t)
-      ZonedDateTime  (.toInstant ^ZonedDateTime t)
-      LocalDateTime  (recur (.atZone ^LocalDateTime t (t/zone-id)))
-      String         (recur (u.date/parse t))
-      LocalTime      (recur (.atDate ^LocalTime t (t/local-date)))
-      OffsetTime     (recur (.atDate ^OffsetTime t (t/local-date)))
-      LocalDate      (recur (.atStartOfDay ^LocalDate t))
+      ZonedDateTime (.toInstant ^ZonedDateTime t)
+      LocalDateTime (recur (.atZone ^LocalDateTime t (t/zone-id)))
+      String (recur (u.date/parse t))
+      LocalTime (recur (.atDate ^LocalTime t (t/local-date)))
+      OffsetTime (recur (.atDate ^OffsetTime t (t/local-date)))
+      LocalDate (recur (.atStartOfDay ^LocalDate t))
       (throw (ex-info (str "Cannot convert temporal " t " of type " (type t) " to an Instant")
                       {:temporal t})))))
 
@@ -216,7 +245,7 @@
   [run]
   (-> run
       (u/update-some :start_time utc-timestamp-string)
-      (u/update-some :end_time   utc-timestamp-string)))
+      (u/update-some :end_time utc-timestamp-string)))
 
 (mr/def ::column-definition
   [:map
@@ -260,14 +289,14 @@
   "Generate a temporary table name with current timestamp in milliseconds.
   If table name would exceed max table name length for the driver, fallback to using a shorter timestamp"
   [driver schema]
-  (let [max-len   (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
+  (let [max-len (max 1 (or (driver/table-name-length-limit driver) Integer/MAX_VALUE))
         timestamp (str (System/currentTimeMillis))
-        prefix    (str transform-temp-table-prefix "_")
+        prefix (str transform-temp-table-prefix "_")
         available (- max-len (count prefix))
         ;; If we don't have enough space, take the later digits of the timestamp
-        suffix    (if (>= available (count timestamp))
-                    timestamp
-                    (subs timestamp (- (count timestamp) available)))
+        suffix (if (>= available (count timestamp))
+                 timestamp
+                 (subs timestamp (- (count timestamp) available)))
         table-name (str prefix suffix)]
     (keyword schema table-name)))
 

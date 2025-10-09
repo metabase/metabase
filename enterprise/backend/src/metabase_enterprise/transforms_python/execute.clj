@@ -361,6 +361,8 @@
                                 (save-log-to-transform-run-message! run-id message-log))
             ex-message-fn     #(exceptional-run-message message-log %)
             result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn)]
+        ;; Update watermark tracking for incremental transforms
+        (transforms.util/upsert-watermark! transform driver db)
         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id
