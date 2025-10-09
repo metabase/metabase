@@ -13,7 +13,7 @@
 
 (defmethod transforms.i/execute! :python
   [transform options]
-  (transforms-python.execute/execute! transform options))
+  (transforms-python.execute/execute-python-transform! transform options))
 
 (defmethod transforms.i/dependencies :python
   [transform]
