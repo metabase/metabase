@@ -56,7 +56,7 @@
    [:default_price_per_unit number?]
    [:default_base_fee number?]])
 
-(api.macros/defendpoint :get "/plan" :- [:sequential ::Plan]
+(api.macros/defendpoint :get "/plans" :- [:sequential ::Plan]
   "Fetch information about available plans from the Metabase Store API."
   []
   (make-store-request "/plan"))
