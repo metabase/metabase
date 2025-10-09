@@ -212,13 +212,13 @@ function getInitialValues(
     targetName: "",
     targetSchema: schemas?.[0] || null,
     incremental: initialIncremental,
-    watermarkField: null,
+    watermarkField: initialIncremental ? "id" : null,
   };
 }
 
 function getCreateRequest(
   source: TransformSource,
-  { name, description, targetName, targetSchema, incremental }: NewTransformValues,
+  { name, description, targetName, targetSchema, incremental, watermarkField }: NewTransformValues,
   databaseId: number,
 ): CreateTransformRequest {
   return {
@@ -230,6 +230,7 @@ function getCreateRequest(
       name: targetName,
       schema: targetSchema,
       database: databaseId,
+      watermarkField: incremental ? watermarkField : null,
     },
   };
 }
