@@ -5,6 +5,7 @@
   instead of running like 10 separate queries? -- Cam"
   (:refer-clojure :exclude [every? mapv some select-keys update-keys])
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
@@ -109,7 +110,36 @@
                         {:type          qp.error-type/invalid-query
                          :num-breakouts num-breakouts
                          :pivot-rows    pivot-rows
+                         :pivot-cols    pivot-cols})))
+      (when (< i 0)
+        (throw (ex-info (tru "Invalid {0}: breakout index {1} must be non-negative"
+                             (name k) i)
+                        {:type          qp.error-type/invalid-query
+                         :num-breakouts num-breakouts
+                         :pivot-rows    pivot-rows
                          :pivot-cols    pivot-cols}))))
+    ;; validate pivot-rows and pivot-cols don't have duplicates
+    (doseq [[k pivots] [[:pivot-rows pivot-rows]
+                        [:pivot-cols pivot-cols]]]
+      (when (not= (count pivots) (count (distinct pivots)))
+        (throw (ex-info (tru "Invalid {0}: contains duplicate breakout indexes"
+                             (name k))
+                        {:type          qp.error-type/invalid-query
+                         :num-breakouts num-breakouts
+                         :pivot-rows    pivot-rows
+                         :pivot-cols    pivot-cols}))))
+    ;; validate pivot-rows and pivot-cols don't overlap
+    (let [pivot-rows-set (set pivot-rows)
+          pivot-cols-set (set pivot-cols)
+          overlap        (set/intersection pivot-rows-set pivot-cols-set)]
+      (when (seq overlap)
+        (throw (ex-info (tru "Invalid pivot configuration: breakout indexes {0} cannot be specified in both pivot-rows and pivot-cols"
+                             (vec overlap))
+                        {:type          qp.error-type/invalid-query
+                         :num-breakouts num-breakouts
+                         :pivot-rows    pivot-rows
+                         :pivot-cols    pivot-cols
+                         :overlap       overlap}))))
     (sort-by
      (partial group-bitmask num-breakouts)
      (m/distinct-by
