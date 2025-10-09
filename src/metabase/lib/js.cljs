@@ -78,7 +78,6 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -2640,23 +2639,39 @@
 ;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
 ;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will
 ;;; work as expected.
+(defn- from-js-query*
+  [mp js-query]
+  (when (gobject/equals js-query #js {})
+    (throw (ex-info "Invalid query: query cannot be empty" {:query js-query})))
+  (let [cljs-query (->> js-query
+                        js->clj
+                        (lib.core/query mp))]
+    ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without attached
+    ;; metadata providers -- force them to have them. I can't work out why it is happening, so this is a temporary
+    ;; HACK to keep things moving.
+    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
+    ;;
+    ;; Only update metadata provider if it's different, otherwise you can get a different object even if the assoc is
+    ;; a no-op.
+    (cond-> cljs-query
+      (and mp
+           (not= (:lib/metadata cljs-query) mp))
+      (assoc :lib/metadata mp))))
+
 (defn ^:export from-js-query
   "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
 
   Attaches a cache to `metadata-provider` so that subsequent calls with the same `js-query` return the same query
   object. If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying the cache."
-  [metadata-provider js-query]
-  (when (gobject/equals js-query #js {})
-    (throw (ex-info "Invalid query: query cannot be empty" {:query js-query})))
-  (let [db-id (when (js-in "database" js-query)
-                (gobject/get js-query "database"))]
-    (-> (lib.cache/side-channel-cache-weak-refs
-         (str db-id) metadata-provider js-query
-         #(lib.core/query metadata-provider (js->clj %))
-         {:force? true})
-        ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without
-        ;; attached metadata providers -- force them to have them. I can't work out why it is happening, so this is a
-        ;; temporary HACK to keep things moving.
-        ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
-        (cond-> metadata-provider
-          (assoc :lib/metadata metadata-provider)))))
+  [^js mp js-query]
+  ;; even in JS, this will never work right without a valid MetadataProvider, so error if we don't get one.
+  (assert (satisfies? lib.metadata.protocols/MetadataProvider mp))
+  ;;; TODO (Cam 10/8/25) -- I attempted to use the side-channel cache stuff here and it didn't work correctly, so I
+  ;;; made a different cache instead... this seems to work correctly now. Maybe we can fix it and use the existing
+  ;;; stuff.
+  (let [cache (if-let [cache (.-__fromJsQueryCache mp)]
+                cache
+                (set! (.-__fromJsQueryCache mp) (js/WeakMap.)))]
+    (or (gobject/get cache js-query)
+        (u/prog1 (from-js-query* mp js-query)
+          (gobject/set cache js-query <>)))))
