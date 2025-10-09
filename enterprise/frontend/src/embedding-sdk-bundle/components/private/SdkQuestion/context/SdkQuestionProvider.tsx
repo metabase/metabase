@@ -19,6 +19,7 @@ import {
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 
@@ -150,7 +151,7 @@ export const SdkQuestionProvider = ({
         question &&
         getEmbeddingMode({
           question,
-          isStaticEmbedding,
+          queryMode: EmbeddingSdkMode,
           plugins: plugins as InternalMetabasePluginsConfig,
         })
       );
