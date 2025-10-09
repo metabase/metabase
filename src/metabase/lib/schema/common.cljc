@@ -287,7 +287,7 @@
    [:operator [:multi {:dispatch string?}
                [true  :string]
                [false :keyword]]]
-   [:args     [:sequential :any]]
+   [:args     [:maybe [:sequential :any]]]
    [:options {:optional true} ::options]])
 
 #?(:clj

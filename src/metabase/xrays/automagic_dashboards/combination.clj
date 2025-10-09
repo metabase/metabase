@@ -21,8 +21,12 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
@@ -35,19 +39,26 @@
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.automagic-dashboards.visualization-macros :as visualization]))
 
-(defn add-breakouts-and-filter
+(mu/defn add-breakouts-and-filter
   "Add breakouts and filters to a query based on the breakout fields and filter clauses"
-  [query
-   breakout-fields
-   filter-clauses]
-  (let [breakouts  (mapv (partial interesting/->reference :mbql) breakout-fields)]
-    (cond-> (assoc query :breakout breakouts)
-      (seq filter-clauses) (assoc :filter (into [:and] filter-clauses)))))
+  [query           :- ::ads/query
+   breakout-fields :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   filter-clauses  :- [:maybe [:sequential
+                               [:or
+                                ::lib.schema.expression/boolean
+                                ::ads/external-op]]]]
+  (as-> query $query
+    (reduce lib/breakout $query breakout-fields)
+    (reduce lib/filter   $query filter-clauses)))
 
-(defn- add-aggregations
+(mu/defn- add-aggregations
   "Add aggregations to a query."
-  [query aggregations]
-  (assoc query :aggregation aggregations))
+  [query        :- ::ads/query
+   aggregations :- [:maybe [:sequential
+                            [:or
+                             ::lib.schema.aggregation/aggregation
+                             ::ads/external-op]]]]
+  (reduce lib/aggregate query aggregations))
 
 (defn matching-types?
   "Given two seqs of types, return true of the types of the child
@@ -81,21 +92,20 @@
                                 [:dataset_query ::ads/query]]
   "Add the `:dataset_query` key to this metric. Requires both the current metric-definition (from the grounded metric)
   and the database and table ids (from the source object)."
-  [{:keys [metric-definition] :as ground-metric-with-dimensions}
+  [{:xrays/keys [aggregation] :as ground-metric-with-dimensions} :- ::ads/grounded-metric
    {{:keys [database]} :root :keys [source query-filter]} :- ::ads/context]
   (let [source-table (if (->> source (mi/instance-of? :model/Table))
                        (-> source u/the-id)
                        (->> source u/the-id (str "card__")))
         model?       (and (mi/instance-of? :model/Card source)
-                          (queries/model? source))]
-    (assoc ground-metric-with-dimensions
-           :dataset_query (-> {:database database
-                               :type     :query
-                               :query    (cond-> (assoc metric-definition
-                                                        :source-table source-table)
-                                           (and (not model?)
-                                                query-filter) (assoc :filter query-filter))}
-                              mbql.normalize/normalize))))
+                          (queries/model? source))
+        mp           (lib-be/application-database-metadata-provider database)
+        query        (-> (lib/query mp (lib.metadata/table mp source-table))
+                         (lib/aggregate aggregation)
+                         (cond-> (and (not model?)
+                                      query-filter)
+                           (lib/filter query-filter)))]
+    (assoc ground-metric-with-dimensions :dataset_query query)))
 
 (defn- instantiate-visualization
   [[k v] dimensions metrics]
@@ -113,7 +123,7 @@
   (let [s (str s)]
     (str (u/upper-case-en (subs s 0 1)) (subs s 1))))
 
-(defn- fill-templates
+(mu/defn- fill-templates :- :string
   [template-type {:keys [root tables]} bindings s]
   (let [binding-fn (some-fn (merge {"this" (-> root
                                                :entity
@@ -124,13 +134,14 @@
     (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
                  (fn [[_ identifier attribute]]
                    (let [entity    (binding-fn identifier)
-                         attribute (some-> attribute qp.util/normalize-token)]
-                     (str (or (and (ifn? entity) (entity attribute))
+                         attribute (some-> attribute keyword)]
+                     (str (or (when (ifn? entity)
+                                (entity attribute))
                               (root attribute)
-                              (interesting/->reference template-type entity))))))))
+                              ((some-fn :display-name :display_name :name) entity))))))))
 
 (defn- instantiate-metadata
-  [x context available-metrics bindings]
+  [card-template context available-metrics bindings]
   (-> (walk/postwalk
        (fn [form]
          (if (i18n/localized-string? form)
@@ -140,7 +151,7 @@
                (capitalize-first new-s)
                s))
            form))
-       x)
+       card-template)
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
 (defn- combine-dimensions
@@ -172,9 +183,9 @@
          set)))
 
 (defn- valid-breakout-dimension?
-  [{:keys [base_type db fingerprint aggregation]}]
+  [{:keys [base-type db fingerprint aggregation]}]
   (or (nil? aggregation)
-      (not (isa? base_type :type/Number))
+      (not (isa? base-type :type/Number))
       (and (driver.u/supports? (:engine db) :binning db)
            (-> fingerprint :type :type/Number :min)
            (not= (-> fingerprint :type :type/Number :min)
@@ -190,20 +201,14 @@
                              (complement (comp cell-dimension? id-or-name)))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(mu/defn grounded-metrics->dashcards :- [:sequential
-                                         [:merge
-                                          ads/combined-metric
-                                          [:map
-                                           [:dataset_query
-                                            [:map
-                                             [:database ::lib.schema.id/database]]]]]]
+(mu/defn grounded-metrics->dashcards :- [:sequential ::ads/grounded-metric-with-query]
   "Generate dashcards from ground dimensions, using the base context, ground dimensions,
   card templates, and grounded metrics as input."
   [base-context      :- ::ads/context
    card-templates
    ground-dimensions :- ads/dim-name->matching-fields
-   ground-filters
-   grounded-metrics :- [:sequential ads/grounded-metric]]
+   ground-filters   :- ::ads/grounded-filters
+   grounded-metrics :- [:sequential ::ads/grounded-metric]]
   (let [metric-name->metric (zipmap
                              (map :metric-name grounded-metrics)
                              (map-indexed
@@ -255,8 +260,9 @@
             ;; Update dimension-name->field to include named contributions from both metrics and dimensions
             :dimension-name->field all-names->field
             :score-components score-components)
-           (update :metric-definition add-aggregations final-aggregate)
-           (update :metric-definition add-breakouts-and-filter
+           (add-dataset-query base-context)
+           (update :dataset_query add-aggregations final-aggregate)
+           (update :dataset_query
+                   add-breakouts-and-filter
                    (vals merged-dims)
-                   (mapv (comp :filter simple-grounded-filters) card-filters))
-           (add-dataset-query base-context))))))
+                   (mapv (comp :filter simple-grounded-filters) card-filters)))))))

@@ -149,8 +149,9 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
@@ -223,7 +224,7 @@
      :dashboard-templates-prefix ["metric"]}))
 
 (mu/defmethod ->root :model/Field :- ::ads/root
-  [field :- ::ads/field]
+  [field :- ::ads/column]
   (let [table (field/table field)]
     {:entity                     field
      :full-name                  (trun "{0} field" "{0} fields" (:display_name field))
@@ -235,9 +236,10 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(mu/defn- source-card-id [card-or-question :- [:map
-                                               [:dataset_query ::ads/query]]]
-  (magic.util/do-with-mbql5-query (:dataset_query card-or-question) lib/source-card-id))
+(mu/defn- source-card-id
+  [{query :dataset_query, :as _card-or-question} :- [:map
+                                                     [:dataset_query ::ads/query]]]
+  (lib/source-card-id query))
 
 (mu/defn- nested-query?
   "Is this card or question derived from another model or question?"
@@ -249,7 +251,7 @@
   "Is this card or question native (SQL)?"
   [{query :dataset_query, :as _card-or-question} :- [:map
                                                      [:dataset_query ::ads/query]]]
-  (magic.util/do-with-legacy-query query #(= (:type %) :native)))
+  (lib/native-only-query? query))
 
 (mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
   [card-or-question :- [:map
@@ -258,14 +260,10 @@
     (t2/select-one :model/Card :id source-card-id)))
 
 (mu/defn- table-like?
-  [card-or-question :- [:map
-                        [:dataset_query ::ads/query]]]
-  (magic.util/do-with-legacy-query
-   (:dataset_query card-or-question)
-   (fn [query]
-     (and
-      (nil? (get-in query [:query :aggregation]))
-      (nil? (get-in query [:query :breakout]))))))
+  [{query :dataset_query, :as _card-or-question} :- [:map
+                                                     [:dataset_query ::ads/query]]]
+  (and (empty? (lib/aggregations query))
+       (empty? (lib/breakouts query))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -292,7 +290,8 @@
     :else                   (->> card table-id (t2/select-one :model/Table :id))))
 
 (mu/defmethod ->root :model/Card :- ::ads/root
-  [card]
+  [card :- [:map
+            [:dataset_query ::ads/query]]]
   (let [card   (update card
                        :dataset_query
                        ;; temporary until we rework X-rays to use Lib/MBQL 5
@@ -302,7 +301,7 @@
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
-     :query-filter               (magic.util/do-with-legacy-query (:dataset_query card) get-in [:query :filter])
+     :query-filter               (lib/filter (:dataset_query card))
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
@@ -320,7 +319,7 @@
     {:entity                     query
      :source                     source
      :database                   (:database-id query)
-     :query-filter               (magic.util/do-with-legacy-query (:dataset_query query) get-in [:query :filter])
+     :query-filter               (lib/filter (:dataset_query query))
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
                                    (table-like? query)   (-> source ->root :full-name)
@@ -383,7 +382,7 @@
   "Return the set of ids referenced in a cell query"
   [{:keys [cell-query]}]
   (letfn [(collect-dimensions [[op & args]]
-            (case (some-> op qp.util/normalize-token)
+            (case (some-> op keyword)
               :and (mapcat collect-dimensions args)
               :=   (magic.util/collect-field-references args)
               nil))]
@@ -426,20 +425,18 @@
                                   {:source source})))]
     (t2/select-one :model/Database :id db-id)))
 
-(defn- relevant-fields
+(mu/defn- relevant-fields :- [:=> [:cat ::lib.schema.id/table] [:sequential ::ads/column]]
   "Source fields from tables that are applicable to the entity being x-rayed."
   [{:keys [source _entity] :as _root} tables]
   (let [db (source->db source)]
     (if (mi/instance-of? :model/Table source)
-      (comp (->> (-> (t2/select :model/Field
-                                :table_id [:in (map u/the-id tables)]
-                                :visibility_type "normal"
-                                :preview_display true
-                                :active true)
-                     (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field))
-                 field/with-targets
+      (comp (->> (t2/select :metadata/column
+                            :table_id        [:in (map u/the-id tables)]
+                            :visibility_type "normal"
+                            :preview_display true
+                            :active          true)
                  (map #(assoc % :db db))
-                 (group-by :table_id))
+                 (group-by :table-id))
             u/the-id)
       (if (table-like? source)
         (let [source-fields (->> source
@@ -450,7 +447,8 @@
                                           (update field :semantic_type keyword)
                                           (mi/instance :model/Field field)
                                           (analyze/run-classifiers field {})
-                                          (assoc field :db db)))))]
+                                          (assoc field :db db))))
+                                 (map #(lib-be/instance->metadata % :metadata/column)))]
           (constantly source-fields))
         (constantly [])))))
 
@@ -559,13 +557,19 @@
                       :url         (format "%s/rule/%s/%s" url dashboard-template-name indepth-template-name)}))))
          (hash-map :indepth))))
 
-(defn- drilldown-fields
-  [root available-dimensions]
+(mu/defn- drilldown-fields
+  [root available-dimensions :- ::ads/dim-name->dim-def]
   (when (->> root :source (mi/instance-of? :model/Table))
     (->> available-dimensions
          vals
          (mapcat :matches)
-         (filter mi/can-read?)
+         ((fn [cols]
+            (let [table-ids       (into #{} (keep :table-id) cols)
+                  table-id->table (when (seq table-ids)
+                                    (t2/select-pk->fn identity :model/Table :id [:in table-ids]))]
+              (filter (fn can-read? [col]
+                        (mi/can-read? (table-id->table (:table-id col))))
+                      cols))))
          filters/interesting-fields
          (map ->related-entity)
          (hash-map :drilldown-fields))))
@@ -759,11 +763,8 @@
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (map (mu/fn [aggregation-clause :- ::mbql.s/Aggregation]
-         (if (-> aggregation-clause
-                 first
-                 qp.util/normalize-token
-                 (= :metric))
+  (map (mu/fn [aggregation-clause :- ::lib.schema.aggregation/aggregation]
+         (if (lib/clause-of-type? aggregation-clause :metric)
            ;; any [:metric ...] MBQL clauses these days are V2 Metrics and Automagic Dashboards do not handle them.
            (log/error "X-Rays do not support V2 Metrics.")
            (let [table-id (table-id question)]
@@ -771,13 +772,13 @@
                                                       :source-table table-id}
                                          :name       (names/metric->description root aggregation-clause)
                                          :table_id   table-id}))))
-       (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :aggregation])))
+       (-> question :dataset_query lib/aggregations)))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (for [breakout     (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :breakout])
+  (for [breakout     (-> question :dataset_query lib/breakouts)
         field-clause (take 1 (magic.util/collect-field-references breakout))
         :let         [field (magic.util/->field root field-clause)]
         :when        (and field
@@ -806,16 +807,16 @@
           [(collect-metrics root question)
            (collect-breakout-fields root question)])))
 
-(defn- preserve-entity-element
+(mu/defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
   [dashboard
    entity
-   entity-element]
-  (if-let [element-value (magic.util/do-with-legacy-query (:dataset_query entity) get-in [:query entity-element])]
+   lib-get-fn :- fn?
+   lib-set-fn :- fn?]
+  (if-let [element-value (lib-get-fn (:dataset_query entity))]
     (letfn [(splice-element [dashcard]
               (m/update-existing-in dashcard [:card :dataset_query]
-                                    magic.util/do-with-legacy-query
-                                    update-in [:query entity-element]
+                                    lib-set-fn
                                     (fnil into (empty element-value))
                                     element-value))]
       (update dashboard :dashcards (partial map splice-element)))
@@ -846,8 +847,18 @@
                                       {:transient_name title
                                        :name           title})))))]
     (-> transient-dash
-        (preserve-entity-element (:entity root) :joins)
-        (preserve-entity-element (:entity root) :expressions))))
+        (preserve-entity-element (:entity root) lib/joins (fn [query joins]
+                                                            (reduce lib/join query joins)))
+        (preserve-entity-element (:entity root) lib/expressions (fn [query expressions]
+                                                                  ;; TODO (Cam 10/9/25) -- this needs a lib function,
+                                                                  ;; or just let `lib/expression` do this with a
+                                                                  ;; 2-arity
+                                                                  (reduce (fn [query expression]
+                                                                            (lib/expression query
+                                                                                            (:lib/expression-name (lib/options expression))
+                                                                                            expression))
+                                                                          query
+                                                                          expressions))))))
 
 (defmethod automagic-analysis :model/Card
   [card {:keys [cell-query] :as opts}]
@@ -877,7 +888,7 @@
                              :cell-url   cell-url}))))
 
 (mu/defmethod automagic-analysis :model/Field
-  [field :- ::ads/field
+  [field :- ::ads/column
    opts]
   (automagic-dashboard (merge (->root field) opts)))
 

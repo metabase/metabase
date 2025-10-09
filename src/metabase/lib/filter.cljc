@@ -401,9 +401,9 @@
     boolean-expression]
    (metabase.lib.filter/filter query nil boolean-expression))
 
-  ([query :- :metabase.lib.schema/query
-    stage-number :- [:maybe :int]
-    boolean-expression]
+  ([query              :- :metabase.lib.schema/query
+    stage-number       :- [:maybe :int]
+    boolean-expression :- some?]
    ;; if this is a Segment metadata, convert it to `:segment` MBQL clause before adding
    (if (clojure.core/= (lib.dispatch/dispatch-value boolean-expression) :metadata/segment)
      (recur query stage-number (lib.ref/ref boolean-expression))

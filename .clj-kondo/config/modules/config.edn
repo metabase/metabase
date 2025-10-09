@@ -621,6 +621,7 @@
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
+           metabase.lib.schema.aggregation
            metabase.lib.schema.binning
            metabase.lib.schema.common
            metabase.lib.schema.constraints

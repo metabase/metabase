@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -25,9 +27,9 @@
    :cum-count (deferred-tru "cumulative count")
    :cum-sum   (deferred-tru "cumulative sum")})
 
-(defn metric-name
+(mu/defn metric-name
   "Return the name of the metric or name by describing it."
-  [[op & args :as metric]]
+  [[op _opts & args :as metric] :- ::lib.schema.aggregation/aggregation]
   (if (magic.util/adhoc-metric? metric)
     (-> op qp.util/normalize-token op->name)
     (second args)))
@@ -41,7 +43,7 @@
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the source of a given root object."
-  (comp (some-fn :display_name :name) :source))
+  (comp (some-fn :display-name :display_name :name) :source))
 
 (defn metric->description
   "Return a description for the metric."
@@ -54,7 +56,7 @@
        (tru "{0} of {1}" (metric-name metric) (or (some->> metric
                                                            second
                                                            (magic.util/->field root)
-                                                           :display_name)
+                                                           :display-name)
                                                   (source-name root)))
        (metric-name metric)))))
 
@@ -63,12 +65,12 @@
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (let [aggregations (->> (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :aggregation])
+  (let [aggregations (->> (some-> question :dataset_query not-empty lib/aggregations)
                           (metric->description root))
-        dimensions   (->> (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :breakout])
+        dimensions   (->> (some-> question :dataset_query not-empty lib/breakouts)
                           (mapcat magic.util/collect-field-references)
                           (map (partial magic.util/->field root))
-                          (map :display_name)
+                          (map :display-name)
                           join-enumeration)]
     (if dimensions
       (tru "{0} by {1}" aggregations dimensions)
@@ -77,50 +79,48 @@
 (defmulti ^:private humanize-filter-value
   {:arglists '([root mbql-clause])}
   (fn [_root [tag]]
-    (qp.util/normalize-token tag)))
+    (keyword tag)))
 
-(def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
-                                :hour-of-day     (deferred-tru "hour")
-                                :day-of-week     (deferred-tru "day of week")
-                                :day-of-month    (deferred-tru "day of month")
-                                :day-of-year     (deferred-tru "day of year")
-                                :week-of-year    (deferred-tru "week")
-                                :month-of-year   (deferred-tru "month")
-                                :quarter-of-year (deferred-tru "quarter")
-                                :year            (deferred-tru "year")}
-                               qp.util/normalize-token))
+(defn- unit-name [unit]
+  (case (keyword unit)
+    :minute-of-hour  (deferred-tru "minute")
+    :hour-of-day     (deferred-tru "hour")
+    :day-of-week     (deferred-tru "day of week")
+    :day-of-month    (deferred-tru "day of month")
+    :day-of-year     (deferred-tru "day of year")
+    :week-of-year    (deferred-tru "week")
+    :month-of-year   (deferred-tru "month")
+    :quarter-of-year (deferred-tru "quarter")
+    :year            (deferred-tru "year")))
 
 (mu/defn- item-reference->field
   "Turn a field reference into a field."
   [root :- ::ads/root
-   [item-type :as item-reference]]
+   [item-type :as item-reference] :- ::lib.schema.mbql-clause/clause]
   (case item-type
-    (:field "field") (let [normalized-field-reference (mbql.normalize/normalize item-reference)
-                           temporal-unit              (lib.util.match/match-one normalized-field-reference
-                                                        [:field _ (opts :guard :temporal-unit)]
-                                                        (:temporal-unit opts))
-                           {:keys [display_name] :as field-record} (cond-> (->> normalized-field-reference
+    (:field "field") (let [temporal-unit              (lib/raw-temporal-bucket item-reference)
+                           {:keys [display-name] :as field-record} (cond-> (->> item-reference
                                                                                 magic.util/collect-field-references
                                                                                 first
                                                                                 (magic.util/->field root))
                                                                      temporal-unit
                                                                      (assoc :unit temporal-unit))
-                           item-name                  (cond->> display_name
+                           item-name                  (cond->> display-name
                                                         (some-> temporal-unit u.date/extract-units)
                                                         (tru "{0} of {1}" (unit-name temporal-unit)))]
                        (assoc field-record :item-name item-name))
     (:expression "expression") {:item-name (second item-reference)}
     {:item-name "item"}))
 
-(defn item-name
+(mu/defn item-name
   "Determine the right name to display from an individual humanized item."
-  ([root [field-type potential-name :as field-reference]]
-   (case field-type
-     (:field "field") (->> field-reference (item-reference->field root) item-name)
-     (:expression "expression") potential-name
+  ([root [tag _opts potential-name :as a-ref] :- ::lib.schema.ref/ref]
+   (case tag
+     :field      (->> a-ref (item-reference->field root) item-name)
+     :expression potential-name
      "item"))
-  ([{:keys [display_name unit] :as _field}]
-   (cond->> display_name
+  ([{:keys [display-name unit] :as _field} :- ::ads/column]
+   (cond->> display-name
      (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
 (defn- pluralize
@@ -231,8 +231,9 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (-> (get-in root [:entity :dataset_query])
-                                          (magic.util/do-with-legacy-query get-in [:query :aggregation]))]
+  (str/join " " [(if-let [aggregation (some-> (get-in root [:entity :dataset_query])
+                                              not-empty
+                                              lib/aggregations)]
                    (metric->description root aggregation)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))
