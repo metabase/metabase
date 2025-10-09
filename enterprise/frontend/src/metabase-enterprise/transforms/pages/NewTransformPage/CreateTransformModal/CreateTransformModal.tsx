@@ -1,3 +1,4 @@
+import { useFormikContext } from "formik";
 import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
@@ -68,6 +69,7 @@ type NewTransformValues = {
   targetName: string;
   targetSchema: string | null;
   incremental: boolean;
+  watermarkField: string | null;
 };
 
 const NEW_TRANSFORM_SCHEMA = Yup.object({
@@ -76,7 +78,29 @@ const NEW_TRANSFORM_SCHEMA = Yup.object({
   targetName: Yup.string().required(Errors.required),
   targetSchema: Yup.string().nullable(),
   incremental: Yup.boolean().required(),
+  watermarkField: Yup.string().nullable().when("incremental", {
+    is: true,
+    then: (schema) => schema.required(Errors.required),
+    otherwise: (schema) => schema.nullable(),
+  }),
 });
+
+function WatermarkFieldInput() {
+  const { values } = useFormikContext<NewTransformValues>();
+
+  if (!values.incremental) {
+    return null;
+  }
+
+  return (
+    <FormTextInput
+      name="watermarkField"
+      label={t`Watermark field`}
+      placeholder={t`e.g., id, row_num`}
+      description={t`An integer field used to track incremental updates`}
+    />
+  );
+}
 
 function CreateTransformForm({
   source,
@@ -164,6 +188,7 @@ function CreateTransformForm({
             name="incremental"
             label={t`Incremental?`}
           />
+          <WatermarkFieldInput />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
@@ -187,6 +212,7 @@ function getInitialValues(
     targetName: "",
     targetSchema: schemas?.[0] || null,
     incremental: initialIncremental,
+    watermarkField: null,
   };
 }
 

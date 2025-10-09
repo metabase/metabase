@@ -88,13 +88,17 @@ export function TransformQueryPageBody({
     dispatch(push(getTransformUrl(transform.id)));
   };
 
-  const handleIncrementalChange = async (incremental: boolean) => {
+  const handleIncrementalChange = async (
+    incremental: boolean,
+    watermarkField?: string,
+  ) => {
     const newType = incremental ? "table-incremental" : "table";
     const { error } = await updateTransform({
       id: transform.id,
       target: {
         ...transform.target,
         type: newType,
+        watermarkField: incremental ? watermarkField : null,
       },
     });
     if (error) {
@@ -130,6 +134,7 @@ export function TransformQueryPageBody({
         transformId={transform.id}
         isIncremental={transform.target.type === "table-incremental"}
         onIncrementalChange={handleIncrementalChange}
+        watermarkField={transform.target.watermarkField}
       />
       {isConfirmationShown && checkData != null && (
         <PLUGIN_DEPENDENCIES.CheckDependenciesModal
