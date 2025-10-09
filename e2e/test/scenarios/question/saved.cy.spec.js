@@ -741,7 +741,7 @@ describe(
     it("should allow you to test a webhook", { tags: "@skip" }, () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
 
       H.modal().within(() => {
