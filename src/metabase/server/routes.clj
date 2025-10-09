@@ -62,7 +62,7 @@
 
 (defn- livez-handler
   "Simple liveness probe that does not perform any database checks. Always returns 200 with the
-  "Simple liveness probe that does not perform any database checks. Always returns 200 with the
+  same body format as `/api/health` when healthy."
   ([] {:status 200, :body {:status "ok"}})
   ([_request respond _raise]
    (respond (livez-handler))))
