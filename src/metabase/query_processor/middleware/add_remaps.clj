@@ -29,7 +29,7 @@
   (:require
    [clojure.data :as data]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -43,7 +43,7 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -608,7 +608,7 @@
     rff
     (fn remap-results-rff* [metadata]
       (let [mlv2-cols          (map
-                                #(lib.metadata.jvm/instance->metadata % :metadata/column)
+                                #(lib-be/instance->metadata % :metadata/column)
                                 (:cols metadata))
             internal-cols-info (internal-columns-info mlv2-cols)
             metadata           (add-remapped-to-and-from-metadata metadata external-remaps internal-cols-info)]

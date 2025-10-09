@@ -6,7 +6,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.field :as lib.field]
    [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
@@ -297,7 +297,7 @@
   See [[lib.field/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib.field/infer-has-field-values (lib.metadata.jvm/instance->metadata field :metadata/column))]
+    (let [has-field-values (lib.field/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
       (assoc field k has-field-values))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]

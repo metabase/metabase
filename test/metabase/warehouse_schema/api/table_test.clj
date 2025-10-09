@@ -889,7 +889,10 @@
                                      :database_id    (mt/id)
                                      :name           "Venues metric"
                                      :type           "metric"
-                                     :dataset_query  metric-query
+                                     :dataset_query  {:database (mt/id)
+                                                      :lib/type "mbql/query"
+                                                      :stages   [{:source-card (:id model)
+                                                                  :aggregation [["count" {}]]}]}
                                      :id             (:id metric)}]}
                     (mt/user-http-request :crowberto :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id model))))))

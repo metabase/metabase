@@ -1,4 +1,4 @@
-(ns ^:deprecated metabase.pulse.core
+(ns metabase.pulse.core
   "API namespace for the `metabase.pulse` module.
 
   This namespace is deprecated, soon everything will be migrated to notifications."

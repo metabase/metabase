@@ -78,7 +78,6 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
@@ -643,15 +642,14 @@
 
 (defn- normalize-to-clj
   [a-query]
-  (let [normalize-fn (fn [q]
-                       (if (= (lib.util/normalized-query-type q) :mbql/query)
-                         (lib.normalize/normalize q)
-                         (mbql.normalize/normalize q)))]
-    (-> a-query (js->clj :keywordize-keys true) unwrap normalize-fn)))
+  (letfn [(normalize* [q]
+            (if (= (lib.util/normalized-query-type q) :mbql/query)
+              (lib.normalize/normalize q)
+              (mbql.normalize/normalize q)))]
+    (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
 (defn ^:export normalize
   "Normalize the MBQL or pMBQL query `a-query`.
-
   Returns the JS form of the normalized query."
   [a-query]
   (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
@@ -683,21 +681,20 @@
       ;; Ignore :info since it contains the randomized :card-entity-id. (This is no longer populated either.)
       (dissoc :info)))
 
-(defn- prep-query-for-equals-pMBQL
+;;; TODO (Cam 10/8/25) -- we're currently converting MBQL 5 to legacy to do the equality check (icky). It would be
+;;; better to convert both to 5 and use [[metabase.lib.equality/=]]... but that's a task for another day.
+(defn- prep-query-for-equals-mbql5
   [a-query field-ids]
-  (let [fields (or (some->> (lib.core/fields a-query)
-                            (map #(assoc % 1 {})))
-                   (mapv (fn [id] [:field {} id]) field-ids))]
-    (lib.util/update-query-stage a-query -1
-                                 #(-> %
-                                      (assoc :fields (frequencies fields))
-                                      lib.schema.util/remove-lib-uuids))))
+  (-> a-query
+      lib.core/->legacy-MBQL
+      (prep-query-for-equals-legacy field-ids)))
 
 (defn- prep-query-for-equals [a-query field-ids]
   (when-let [normalized-query (some-> a-query normalize-to-clj)]
-    (if (contains? normalized-query :lib/type)
-      (prep-query-for-equals-pMBQL normalized-query field-ids)
-      (prep-query-for-equals-legacy normalized-query field-ids))))
+    (let [f (if (= (lib.core/normalized-mbql-version normalized-query) :mbql-version/mbql5)
+              prep-query-for-equals-mbql5
+              prep-query-for-equals-legacy)]
+      (f normalized-query field-ids))))
 
 (defn- compare-field-refs
   [[key1 id1 opts1]
@@ -744,7 +741,7 @@
 
   If `field-ids` is specified, an input MBQL query without `:fields` set defaults to the `field-ids`.
 
-  Currently this works only for legacy queries in JS form!
+  Works on either MBQL 4 or MBQL 5 in either JS or Cljs form.
   It duplicates the logic formerly found in `query_builder/selectors.js`.
 
   > **Code health:** Legacy. New calls are acceptable if necessary. Eventually this will be replaced with an equivalent
@@ -753,9 +750,9 @@
   ([query1 query2] (query= query1 query2 nil))
   ([query1 query2 field-ids]
    (let [ids (mapv js->clj field-ids)
-         n1 (prep-query-for-equals query1 ids)
-         n2 (prep-query-for-equals query2 ids)]
-     (query=* n1 n2))))
+         q1  (prep-query-for-equals query1 ids)
+         q2  (prep-query-for-equals query2 ids)]
+     (query=* q1 q2))))
 
 ;; # Column Groups
 ;; In many places in the FE we show a list of columns which might be used to filter, aggregate, etc. These are shown in
@@ -1476,7 +1473,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
-      (->> (mbql.normalize/normalize-fragment nil))
+      mbql.normalize/normalize-field-ref
       lib.convert/->pMBQL
       (->> (lib.normalize/normalize ::lib.schema.ref/ref))))
 
@@ -2616,3 +2613,67 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
+
+(defn ^:export to-js-query
+  "Serialize a query to a plain JS object."
+  [cljs-query]
+  (letfn [(->js [x]
+            (cond
+              (map? x)
+              (-> (reduce-kv (fn [m k v]
+                               (assoc m (->js k) (->js v)))
+                             {}
+                             x)
+                  clj->js)
+
+              (sequential? x)
+              (-> (mapv ->js x)
+                  clj->js)
+
+              (qualified-keyword? x)
+              (str (namespace x) "/" (name x))
+
+              (simple-keyword? x)
+              (name x)
+
+              :else
+              (clj->js x)))]
+    (-> cljs-query
+        lib.core/prepare-for-serialization
+        ->js)))
+
+;;; TODO (Cam 10/8/25) -- I'm starting to think that we should just have this be a Cljs-specific implementation
+;;; of [[metabase.lib.query/query-method]], then you can just use the normal `lib/query` with a JS map and things will
+;;; work as expected.
+(defn- from-js-query*
+  [mp js-query]
+  (when (zero? (alength (js/Object.keys js-query)))
+    (throw (ex-info "Invalid query: query cannot be empty" {:query js-query})))
+  (-> js-query
+      js->clj
+      (->> (lib.core/query mp))
+      ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without attached
+      ;; metadata providers -- force them to have them. I can't work out why it is happening, so this is a temporary
+      ;; HACK to keep things moving.
+      ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
+      (cond-> mp
+        (assoc :lib/metadata mp))))
+
+(defn ^:export from-js-query
+  "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
+
+  Attaches a cache to `metadata-provider` so that subsequent calls with the same `js-query` return the same query
+  object. If the metadata gets updated, the `metadata-provider` will be discarded and replaced, destroying the cache."
+  [^js mp js-query]
+  ;; even in JS, this will never work right without a valid MetadataProvider, so error if we don't get one.
+  (assert (satisfies? lib.metadata.protocols/MetadataProvider mp))
+  ;; TODO (Cam 10/8/25) -- I attempted to use the side-channel cache stuff here and it didn't work correctly, so I
+  ;; made a different cache instead... this seems to work correctly now. Maybe we can fix it and use the existing
+  ;; stuff.
+  (let [^js/WeakMap cache (if-let [cache (.-__fromJsQueryCache mp)]
+                            cache
+                            (u/prog1 (js/WeakMap.)
+                              (set! (.-__fromJsQueryCache mp) <>)))]
+    (or (.get cache js-query)
+        (u/prog1 (from-js-query* mp js-query)
+          (.set cache js-query <>)))))

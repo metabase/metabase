@@ -52,7 +52,7 @@ export function createQuery({
   query = DEFAULT_QUERY,
 }: QueryOpts = {}) {
   const metadataProvider = createMetadataProvider({ databaseId, metadata });
-  return Lib.fromLegacyQuery(databaseId, metadataProvider, query);
+  return Lib.fromJsQuery(metadataProvider, query);
 }
 
 export const columnFinder =
