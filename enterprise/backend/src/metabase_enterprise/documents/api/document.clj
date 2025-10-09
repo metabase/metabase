@@ -9,6 +9,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
@@ -238,6 +239,44 @@
                            {:object document
                             :user-id api/*current-user-id*})
     api/generic-204-no-content))
+
+;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
+
+(api.macros/defendpoint :post "/:document-id/public_link"
+  "Generate publicly-accessible links for this Document. Returns UUID to be used in public links. (If this
+  Document has already been shared, it will return the existing public link rather than creating a new one.) Public
+  sharing must be enabled."
+  [{:keys [document-id]} :- [:map
+                              [:document-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one :model/Document :id document-id))
+  (api/check-not-archived (api/read-check :model/Document document-id))
+  {:uuid (or (t2/select-one-fn :public_uuid :model/Document :id document-id)
+             (u/prog1 (str (random-uuid))
+               (t2/update! :model/Document document-id
+                           {:public_uuid       <>
+                            :made_public_by_id api/*current-user-id*})))})
+
+(api.macros/defendpoint :delete "/:document-id/public_link"
+  "Delete the publicly-accessible link to this Document."
+  [{:keys [document-id]} :- [:map
+                              [:document-id ms/PositiveInt]]]
+  (api/check-superuser)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (api/check-exists? :model/Document :id document-id, :public_uuid [:not= nil], :archived false)
+  (t2/update! :model/Document document-id
+              {:public_uuid       nil
+               :made_public_by_id nil})
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :get "/public"
+  "Fetch a list of Documents with public UUIDs. These documents are publicly-accessible *if* public sharing is
+  enabled."
+  []
+  (api/check-superuser)
+  (public-sharing.validation/check-public-sharing-enabled)
+  (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/document/` routes."

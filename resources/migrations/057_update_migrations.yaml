@@ -1966,6 +1966,53 @@ databaseChangeLog:
             SET dataset_query = legacy_query
             WHERE legacy_query IS NOT NULL;
 
+  - changeSet:
+      id: v57.2025-10-09T00:00:00
+      author: assistant
+      comment: Add public_uuid and made_public_by_id columns to document table for public sharing
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: UUID for publicly-accessible version of this document
+                  constraints:
+                    nullable: true
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: ID of the user who made this document public
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:01
+      author: assistant
+      comment: Add index on document.public_uuid
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_public_uuid
+            unique: true
+            columns:
+              - column:
+                  name: public_uuid
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:02
+      author: assistant
+      comment: Add foreign key constraint for document.made_public_by_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_made_public_by_id
+            onDelete: CASCADE
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -197,6 +197,31 @@
                 :format-rows?          format_rows
                 :pivot?                pivot_results}))
 
+;;; ----------------------------------------------- Public Documents -------------------------------------------------
+
+(defn- remove-document-non-public-columns
+  "Remove everything from public `document` that shouldn't be visible to the general public."
+  [document]
+  (select-keys document [:id :name :document :created_at :updated_at]))
+
+(defn public-document
+  "Return a public Document matching key-value `conditions`, removing all columns that should not be visible to the
+  general public. Throws a 404 if the Document doesn't exist."
+  [& conditions]
+  (-> (api/check-404 (apply t2/select-one [:model/Document :id :name :document :created_at :updated_at]
+                            :archived false, conditions))
+      remove-document-non-public-columns))
+
+(defn- document-with-uuid [uuid] (public-document :public_uuid uuid))
+
+(api.macros/defendpoint :get "/document/:uuid"
+  "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled."
+  [{:keys [uuid]} :- [:map
+                      [:uuid ms/UUIDString]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (u/prog1 (document-with-uuid uuid)
+    (events/publish-event! :event/document-read {:object-id (:id <>), :user-id api/*current-user-id*})))
+
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (def ^:private action-public-keys
