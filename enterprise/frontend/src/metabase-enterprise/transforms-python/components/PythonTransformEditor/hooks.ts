@@ -1,8 +1,11 @@
 import { useRef, useState } from "react";
+import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
 import type { ExecutePythonTransformResponse } from "metabase-types/api";
+
+import type { PythonTransformSourceDraft } from "./PythonTransformEditor";
 
 export type ExecutionResult = {
   output?: string;
