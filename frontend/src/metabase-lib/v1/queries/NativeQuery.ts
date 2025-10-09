@@ -238,11 +238,13 @@ export default class NativeQuery {
     // different order are considered equal.
     const query = this._query();
     const tags = this.templateTags();
-    const oldIndex = _.findIndex(tags, (tag) => tag.id === id);
+    const oldIndex = tags.findIndex((tag) => tag.id === id);
 
     const newTags = [...tags];
     newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
-    const newTagsMap = Object.fromEntries(newTags.map((tag) => [tag.id, tag]));
+    const newTagsMap = Object.fromEntries(
+      newTags.map((tag) => [tag.name, tag]),
+    );
 
     return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }

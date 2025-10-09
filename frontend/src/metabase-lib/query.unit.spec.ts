@@ -16,7 +16,7 @@ describe("fromJsQuery", () => {
     );
     const query1 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
     const query2 = Lib.fromJsQuery(metadataProvider, DEFAULT_QUERY);
-    expect(query1).toBe(query2);
+    expect(query1 === query2).toBe(true);
   });
 });
 

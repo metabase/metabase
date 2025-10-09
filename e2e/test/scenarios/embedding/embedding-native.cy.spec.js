@@ -131,7 +131,7 @@ describe("scenarios > embedding > native questions", () => {
 
       cy.location("search").should(
         "eq",
-        "?id=926&created_at=&state=KS&product_id=10",
+        "?product_id=10&created_at=&id=926&state=KS",
       );
     });
 

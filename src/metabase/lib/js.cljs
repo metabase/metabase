@@ -648,6 +648,12 @@
               (mbql.normalize/normalize q)))]
     (-> a-query (js->clj :keywordize-keys true) unwrap normalize*)))
 
+(defn ^:export normalize
+  "Normalize the MBQL or pMBQL query `a-query`.
+  Returns the JS form of the normalized query."
+  [a-query]
+  (-> a-query normalize-to-clj (clj->js :keyword-fn u/qualified-name)))
+
 ;; # Comparing queries
 ;; There are a few places in the FE where we need to compare two queries, typically to check whether the current
 ;; question has been changed and needs to be saved.
