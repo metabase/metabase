@@ -108,6 +108,12 @@
   --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
   --mb-color-switch-off: var(--mb-base-color-orion-10);
 
+  /* Response Distribution specific colors - Scored Question */
+  --mb-color-scoring-needs-improvement: #fac849;
+  --mb-color-scoring-satisfactory: #00a080;
+  --mb-color-scoring-exceptional: #2196f3;
+  --mb-color-scoring-cna: #969696;
+
   /**
     * Base colors
     *

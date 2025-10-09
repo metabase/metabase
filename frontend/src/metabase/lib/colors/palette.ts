@@ -57,6 +57,12 @@ export const colors = {
   "saturated-purple": "#885AB1",
   "saturated-red": "#ED6E6E",
   "saturated-yellow": "#F9CF48",
+
+  /* Scoring colors for scored question visualizations */
+  "scoring-needs-improvement": "#fac849",
+  "scoring-satisfactory": "#00a080",
+  "scoring-exceptional": "#2196f3",
+  "scoring-cna": "#969696",
 };
 /* eslint-enable no-color-literals */
 
