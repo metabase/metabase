@@ -218,9 +218,3 @@ export type MetabotInfo = {
   created_at: string;
   updated_at: string;
 };
-
-/* Metabot v3 - Add-on Purchase Types */
-
-export interface PurchaseMetabotAddOnRequest {
-  terms_of_service: boolean;
-}
