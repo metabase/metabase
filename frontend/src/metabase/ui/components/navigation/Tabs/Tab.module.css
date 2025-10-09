@@ -37,7 +37,15 @@
 
   &[data-active="true"] {
     color: var(--mb-color-text-brand);
-    border-color: var(--mb-color-background-brand);
+    border-color: var(--mb-color-brand);
+  }
+
+  &[data-variant="pills"] {
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+
+    &[data-active="true"]:not(:hover) {
+      color: var(--mb-color-text-white);
+    }
   }
 
   &[data-variant="pills"] {

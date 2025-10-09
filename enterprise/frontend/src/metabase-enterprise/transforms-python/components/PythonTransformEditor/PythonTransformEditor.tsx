@@ -1,7 +1,7 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useState } from "react";
 
-import { Flex, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import { EditorHeader } from "metabase-enterprise/transforms/components/QueryEditor/EditorHeader";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type {
@@ -56,8 +56,7 @@ export function PythonTransformEditor({
 
   useRegisterMetabotTransformContext(transform, proposedSource ?? source);
 
-  const { isRunning, isDirty, cancel, run, executionResult } =
-    useTestPythonTransform(source);
+  const { isRunning, isDirty, cancel, run } = useTestPythonTransform(source);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -139,36 +138,38 @@ export function PythonTransformEditor({
         validationResult={validationResult}
         isQueryDirty={isSourceDirty}
       />
-      <Stack h="100%" w="100%">
-        <PythonDataPicker
-          database={saveSource["source-database"]}
-          tables={saveSource["source-tables"]}
-          onChange={handleDataChange}
-        />
-        <PythonEditorBody
+      <PythonDataPicker
+        database={saveSource["source-database"]}
+        tables={saveSource["source-tables"]}
+        onChange={handleDataChange}
+      />
+      <PythonEditorBody
+        isRunning={isRunning}
+        isRunnable={isRunnable}
+        isDirty={isDirty}
+        onRun={run}
+        onCancel={cancel}
+        source={source.body}
+        proposedSource={proposedSource?.body}
+        onAcceptProposed={handleAcceptProposed}
+        onRejectProposed={onRejectProposed}
+        onChange={handleScriptChange}
+        withDebugger={showDebugger}
+      />
+      {showDebugger && (
+        <PythonEditorResults
           isRunning={isRunning}
           isDirty={isDirty}
           onRun={run}
           onCancel={cancel}
           source={source.body}
+          proposedSource={proposedSource?.body}
           onChange={handleScriptChange}
           withDebugger={showDebugger}
-          />
-        {showDebugger && (
-          <PythonEditorResults
-            isRunning={isRunning}
-            isDirty={isDirty}
-            onRun={run}
-            onCancel={cancel}
-            source={source.body}
-            proposedSource={proposedSource?.body}
-            onChange={handleScriptChange}
-            withDebugger={showDebugger}
-            onAcceptProposed={handleAcceptProposed}
-            onRejectProposed={onRejectProposed}
-          />
-        )}
-      </Stack>
+          onAcceptProposed={handleAcceptProposed}
+          onRejectProposed={onRejectProposed}
+        />
+      )}
     </Stack>
   );
 }

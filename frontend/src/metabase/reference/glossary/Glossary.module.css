@@ -1,7 +1,3 @@
-.card {
-  /* Card styling handled by Mantine Card props */
-}
-
 .table {
   table-layout: fixed;
   background-color: var(--mb-color-bg-white);

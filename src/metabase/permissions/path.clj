@@ -38,6 +38,9 @@
   "Returns the permissions path for *full* access a application permission."
   [perm-type]
   (case perm-type
+    :transforms
+    "/application/transforms/"
+
     :setting
     "/application/setting/"
 

@@ -17,7 +17,7 @@
 
   &:hover {
     background-color: var(--mb-color-upsell-primary);
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-upsell-text-hover);
   }
 
   &.Medium {

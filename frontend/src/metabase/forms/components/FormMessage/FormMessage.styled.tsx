@@ -3,8 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 export const FormMessageStyled = styled.span<{
   visible?: boolean;
@@ -15,7 +14,8 @@ export const FormMessageStyled = styled.span<{
     hasSucceeded ? "var(--mb-color-success)" : color("error")};
   float: left;
   opacity: 0;
-  padding-bottom: ${({ noPadding }) => (noPadding ? "" : space(2))};
+  padding-bottom: ${({ noPadding }) =>
+    noPadding ? "" : "var(--mantine-spacing-md)"};
   transition: none;
   width: 100%;
 

@@ -5,8 +5,8 @@ import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import Button, { type ButtonProps } from "../Button";
 

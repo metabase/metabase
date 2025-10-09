@@ -36,7 +36,7 @@ export type SnippetFormValues = Pick<
 >;
 
 export interface SnippetFormOwnProps {
-  snippet?: Partial<SnippetFormValues>;
+  snippet?: Partial<NativeQuerySnippet>;
   isEditing: boolean;
   isDirty?: boolean;
   onSubmit: (snippet: SnippetFormValues) => void | Promise<void>;
@@ -77,6 +77,7 @@ function SnippetForm({
       initialValues={initialValues}
       validationSchema={SNIPPET_SCHEMA}
       onSubmit={onSubmit}
+      enableReinitialize
     >
       {({ dirty }) => (
         <Form disabled={!dirty && !isInitiallyDirty} className={S.SnippetForm}>
@@ -107,7 +108,7 @@ function SnippetForm({
           )}
           <Flex align="center" justify="space-between">
             <Flex align="center" justify="center" gap="sm">
-              {isEditing && (
+              {isEditing && !snippet?.archived && (
                 <Button
                   type="button"
                   icon="archive"

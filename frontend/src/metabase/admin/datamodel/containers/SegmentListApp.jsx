@@ -5,20 +5,20 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
-import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
 import CS from "metabase/css/core/index.css";
 import Segments from "metabase/entities/segments";
 import { connect, useDispatch } from "metabase/lib/redux";
-import { Box, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 
-function SegmentListAppInner (props) {
-  const { segments, tableSelector, setArchived } = props;
+function SegmentListAppInner({ onCollapse, ...props }) {
+  const { segments, setArchived } = props;
   const dispatch = useDispatch();
 
   return (
     <ItemsListSection
       sectionTitle={t`Segments`}
+      onCollapse={onCollapse}
       onAddNewItem={() => dispatch(push("/bench/segment/new"))}
       listItems={
         <Stack>
@@ -30,7 +30,9 @@ function SegmentListAppInner (props) {
             />
           ))}
           {segments.length === 0 && (
-            <div className={cx(CS.flex, CS.layoutCentered, CS.m4, CS.textMedium)}>
+            <div
+              className={cx(CS.flex, CS.layoutCentered, CS.m4, CS.textMedium)}
+            >
               {t`Create segments to add them to the Filter dropdown in the query builder`}
             </div>
           )}
@@ -38,12 +40,10 @@ function SegmentListAppInner (props) {
       }
     />
   );
-
 }
 
 const SegmentListApp = _.compose(
   Segments.loadList(),
-  FilteredToUrlTable("segments"),
   connect(null, { setArchived: Segments.actions.setArchived }),
 )(SegmentListAppInner);
 

@@ -108,16 +108,13 @@ function App({
     initializeIframeResizer();
   }, []);
 
-  const isAppBannerVisible = !isEmbeddingSetup;
-  const isStatusListingVisible = !isEmbeddingSetup;
-
   return (
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <KBarProvider>
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
-            {isAppBannerVisible && <AppBanner />}
+            <AppBanner />
             {isAppBarVisible && <AppBar />}
             <AppContentContainer isAdminApp={isAdminApp}>
               {isNavBarEnabled && <Navbar />}
@@ -129,7 +126,7 @@ function App({
                 </ContentViewportContext.Provider>
               </AppContent>
               <UndoListing />
-              {isStatusListingVisible && <StatusListing />}
+              <StatusListing />
               <NewModals />
               <PLUGIN_METABOT.Metabot hide={isAdminApp || isBenchApp} />
             </AppContentContainer>

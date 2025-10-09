@@ -6,7 +6,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import type { SelectionRange } from "metabase/query_builder/components/NativeQueryEditor/types";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
-import { Center, Flex, Loader, Modal, Stack } from "metabase/ui";
+import { Center, Loader, Modal, Stack } from "metabase/ui";
 import { useRegisterMetabotTransformContext } from "metabase-enterprise/transforms/hooks/use-register-transform-metabot-context";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -16,12 +16,12 @@ import type {
 } from "metabase-types/api";
 
 import { useQueryMetadata } from "../../hooks/use-query-metadata";
+import type { TransformEditorValue } from "../../hooks/use-transform-editor";
 
 import { EditorBody } from "./EditorBody";
 import { EditorHeader } from "./EditorHeader";
 import { EditorValidationCard } from "./EditorValidationCard";
 import S from "./QueryEditor.module.css";
-import { useQueryEditorContext } from "./QueryEditorContext";
 import { getValidationResult, useSelectedText } from "./utils";
 
 type QueryEditorProps = {
@@ -35,6 +35,7 @@ type QueryEditorProps = {
   onCancel: () => void;
   onRejectProposed?: () => void;
   onAcceptProposed?: (query: QueryTransformSource) => void;
+  transformEditor: TransformEditorValue;
 };
 
 export function QueryEditor({
@@ -47,6 +48,7 @@ export function QueryEditor({
   onCancel,
   onRejectProposed,
   onAcceptProposed,
+  transformEditor,
 }: QueryEditorProps) {
   const {
     question,
@@ -59,7 +61,7 @@ export function QueryEditor({
     isNative,
     runQuery,
     cancelQuery,
-  } = useQueryEditorContext();
+  } = transformEditor;
 
   const { isInitiallyLoaded } = useQueryMetadata(question);
   const [isPreviewQueryModalOpen, togglePreviewQueryModal] = useToggle();
@@ -69,6 +71,7 @@ export function QueryEditor({
     const query = proposedSource?.query ?? question.datasetQuery();
     return { type: "query" as const, query };
   }, [proposedSource, question]);
+
   useRegisterMetabotTransformContext(transform, source);
 
   const handleChange = async (newQuestion: Question) => {
@@ -140,37 +143,33 @@ export function QueryEditor({
           onSave={handleSave}
           onCancel={onCancel}
         />
-        <Flex h="100%" w="100%" mih="0">
-          <Stack flex="2 1 100%" pos="relative">
-            <EditorBody
-              question={question}
-              proposedQuestion={proposedQuestion}
-              isNative={isNative}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isResultDirty={isResultDirty}
-              isShowingDataReference={false}
-              isShowingSnippetSidebar={false}
-              onChange={handleChange}
-              onRunQuery={runQuery}
-              onCancelQuery={cancelQuery}
-              onRejectProposed={onRejectProposed}
-              onAcceptProposed={
-                proposedSource
-                  ? () => onAcceptProposed?.(proposedSource)
-                  : undefined
-              }
-              databases={databases?.data ?? []}
-              onToggleDataReference={() => null}
-              onToggleSnippetSidebar={() => null}
-              onOpenModal={handleOpenModal}
-              modalSnippet={modalSnippet}
-              onChangeModalSnippet={setModalSnippet}
-              onChangeNativeEditorSelection={setSelectionRange}
-              nativeEditorSelectedText={selectedText}
-            />
-          </Stack>
-        </Flex>
+        <EditorBody
+          question={question}
+          proposedQuestion={proposedQuestion}
+          isNative={isNative}
+          isRunnable={isRunnable}
+          isRunning={isRunning}
+          isResultDirty={isResultDirty}
+          isShowingDataReference={false}
+          isShowingSnippetSidebar={false}
+          onChange={handleChange}
+          onRunQuery={runQuery}
+          onCancelQuery={cancelQuery}
+          onRejectProposed={onRejectProposed}
+          onAcceptProposed={
+            proposedSource
+              ? () => onAcceptProposed?.(proposedSource)
+              : undefined
+          }
+          databases={databases?.data ?? []}
+          onToggleDataReference={() => null}
+          onToggleSnippetSidebar={() => null}
+          onOpenModal={handleOpenModal}
+          modalSnippet={modalSnippet}
+          onChangeModalSnippet={setModalSnippet}
+          onChangeNativeEditorSelection={setSelectionRange}
+          nativeEditorSelectedText={selectedText}
+        />
         <EditorValidationCard validationResult={validationResult} />
       </Stack>
       {isNative && (

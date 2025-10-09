@@ -3,9 +3,12 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
+   [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.permissions.core :as perms]
+   [metabase.search.core :as search.core]
    [metabase.search.ingestion :as search]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -19,10 +22,17 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
-;; Only superusers can access transforms
-(doto :model/Transform
-  (derive ::mi/read-policy.superuser)
-  (derive ::mi/write-policy.superuser))
+(defmethod mi/can-read? :model/Transform
+  ([_instance]
+   (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms))
+  ([_model _pk]
+   (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms)))
+
+(defmethod mi/can-write? :model/Transform
+  ([_instance]
+   (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms))
+  ([_model _pk]
+   (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* :transforms)))
 
 (t2/deftransforms :model/Transform
   {:source      mi/transform-transform-source
@@ -79,6 +89,7 @@
 
 (t2/define-before-delete :model/Transform [transform]
   (events/publish-event! :event/delete-transform {:id (:id transform)})
+  (search.core/delete! :model/Transform [(str (:id transform))])
   transform)
 
 (defn update-transform-tags!

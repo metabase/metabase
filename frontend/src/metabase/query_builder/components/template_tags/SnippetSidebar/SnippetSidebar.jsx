@@ -75,6 +75,7 @@ class SnippetSidebarInner extends React.Component {
       snippetCollection,
       snippetCollections,
       search,
+      SnippetRenderer = Row,
     } = this.props;
 
     const { showSearch, searchString, showArchived } = this.state;
@@ -82,6 +83,7 @@ class SnippetSidebarInner extends React.Component {
     if (showArchived) {
       return (
         <ArchivedSnippets
+          SnippetRenderer={SnippetRenderer}
           onBack={() => this.setState({ showArchived: false })}
         />
       );
@@ -215,16 +217,20 @@ class SnippetSidebarInner extends React.Component {
             </Flex>
 
             <Flex direction="column">
-              {displayedItems.map((item) => (
-                <Row
-                  key={`${item.model || "snippet"}-${item.id}`}
-                  item={item}
-                  type={item.model || "snippet"}
-                  setSidebarState={this.setState.bind(this)}
-                  canWrite={snippetCollection.can_write}
-                  {...this.props}
-                />
-              ))}
+              {displayedItems.map((item) => {
+                const Component =
+                  item.model === "snippet" ? SnippetRenderer : Row;
+                return (
+                  <Component
+                    key={`${item.model || "snippet"}-${item.id}`}
+                    item={item}
+                    type={item.model || "snippet"}
+                    setSidebarState={this.setState.bind(this)}
+                    canWrite={snippetCollection.can_write}
+                    {...this.props}
+                  />
+                );
+              })}
             </Flex>
           </>
         )}
@@ -252,8 +258,13 @@ export const SnippetSidebar = _.compose(
 )(SnippetSidebarInner);
 
 function ArchivedSnippetsInner(props) {
-  const { onBack, snippets, snippetCollections, archivedSnippetCollections } =
-    props;
+  const {
+    onBack,
+    snippets,
+    snippetCollections,
+    archivedSnippetCollections,
+    SnippetRenderer = Row,
+  } = props;
   const collectionsById = _.indexBy(
     snippetCollections.concat(archivedSnippetCollections),
     (c) => canonicalCollectionId(c.id),
@@ -273,7 +284,7 @@ function ArchivedSnippetsInner(props) {
         />
       ))}
       {snippets.map((snippet) => (
-        <Row
+        <SnippetRenderer
           key={`snippet-${snippet.id}`}
           item={snippet}
           type="snippet"

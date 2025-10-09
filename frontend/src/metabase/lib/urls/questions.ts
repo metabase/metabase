@@ -105,7 +105,7 @@ export function serializedQuestion(card: Card, opts = {}) {
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
-  mode?: "view" | "notebook" | "query";
+  mode?: "view" | "notebook" | "query" | "bench";
   creationType?: string;
   objectId?: number | string;
 };
@@ -124,6 +124,9 @@ export function newQuestion({
   const type = question.type();
 
   if (mode) {
+    if (mode === "bench") {
+      return url.replace(/^\/(question|model|metric)/, `/${mode}/${type}/new`);
+    }
     return url.replace(/^\/(question|model|metric)/, `/${type}\/${mode}`);
   }
 

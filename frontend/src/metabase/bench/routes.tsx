@@ -2,14 +2,16 @@ import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
-import SegmentApp, {
+import {
   CreateSegmentForm,
+  SegmentApp,
   UpdateSegmentForm,
 } from "metabase/admin/datamodel/containers/SegmentApp";
 import NotFoundFallbackPage from "metabase/common/components/NotFoundFallbackPage";
 import { Route } from "metabase/hoc/Title";
 import { DataModel } from "metabase/metadata/pages/DataModel";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { GlossaryContainer } from "metabase/reference/glossary/GlossaryContainer";
 import { IsAdmin } from "metabase/route-guards";
 
 import { BenchApp } from "./components/BenchApp";
@@ -17,6 +19,10 @@ import { EmptySailboat } from "./components/BenchLayout";
 import { OverviewPage } from "./components/OverviewPage";
 import { MetricEditor, MetricsLayout } from "./components/metrics/MetricsList";
 import { ModelEditor, ModelsLayout } from "./components/models/ModelsList";
+import {
+  SnippetEditor,
+  SnippetsLayout,
+} from "./components/snippets/SnippetsList";
 
 export const getBenchRoutes = () => (
   <Route path="/bench" component={IsAdmin}>
@@ -32,12 +38,20 @@ export const getBenchRoutes = () => (
 
       <Route path="model" component={ModelsLayout}>
         <IndexRoute component={EmptySailboat} />
+        <Route path="new/:type" component={ModelEditor} />
         <Route path=":slug" component={ModelEditor} />
       </Route>
       <Route path="metric" component={MetricsLayout}>
         <IndexRoute component={EmptySailboat} />
         <Route path=":slug" component={MetricEditor} />
       </Route>
+      <Route path="snippet" component={SnippetsLayout}>
+        <IndexRoute component={EmptySailboat} />
+        <Route path="new" component={SnippetEditor} />
+        <Route path=":id" component={SnippetEditor} />
+      </Route>
+      <Route path="glossary" component={GlossaryContainer} />
+      <Route path="dependencies" component={EmptySailboat} />
       <Route path="metadata">
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />

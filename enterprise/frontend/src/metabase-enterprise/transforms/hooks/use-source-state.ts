@@ -7,11 +7,15 @@ import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  DraftTransformSource,
+  Transform,
+  TransformSource,
+} from "metabase-types/api";
 
-interface UseSourceStateResult<SourceType> {
-  source: SourceType | TransformSource;
-  setSource: (source: SourceType) => void;
+interface UseSourceStateResult<DraftTransformSource> {
+  source: DraftTransformSource | TransformSource;
+  setSource: (source: DraftTransformSource) => void;
   suggestedTransform: MetabotSuggestedTransform | undefined;
   proposedSource: TransformSource | undefined;
   clearProposed: () => void;
@@ -19,13 +23,13 @@ interface UseSourceStateResult<SourceType> {
   isDirty: boolean;
 }
 
-export const useSourceState = <SourceType>(
+export const useSourceState = (
   transformId: Transform["id"] | undefined,
-  initialSource: SourceType,
-): UseSourceStateResult<SourceType> => {
+  initialSource: DraftTransformSource,
+): UseSourceStateResult<DraftTransformSource> => {
   const dispatch = useDispatch();
 
-  const [source, setSource] = useState<SourceType | TransformSource>(
+  const [source, setSource] = useState<DraftTransformSource | TransformSource>(
     initialSource,
   );
 
@@ -44,7 +48,7 @@ export const useSourceState = <SourceType>(
   }, [initialSource, source, proposedSource]);
 
   const handleSetSource = useCallback(
-    (source: SourceType) => {
+    (source: DraftTransformSource) => {
       dispatch(deactivateSuggestedTransform(suggestedTransform?.id));
       setSource(source);
     },

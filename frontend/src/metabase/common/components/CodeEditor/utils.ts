@@ -18,27 +18,30 @@ import type { CodeLanguage } from "./types";
 export function useExtensions({
   language,
   extensions,
-  originalValue,
+  value,
   proposedValue,
 }: {
   language?: CodeLanguage | Extension;
   extensions?: Extension[];
-  originalValue?: string;
+  value?: string;
   proposedValue?: string;
 }) {
   return useMemo(() => {
-    const hasProposed = !!originalValue && !!proposedValue;
+    const hasProposed =
+      value !== undefined &&
+      proposedValue !== undefined &&
+      value !== proposedValue;
 
     return _.compact([
       ...(extensions ?? []),
       language && getLanguageExtension(language),
       hasProposed &&
         unifiedMergeView({
-          original: originalValue,
+          original: value,
           mergeControls: false,
         }),
     ]);
-  }, [language, extensions, originalValue, proposedValue]);
+  }, [language, extensions, value, proposedValue]);
 }
 
 export function getLanguageExtension(language: CodeLanguage | Extension) {

@@ -1,0 +1,7 @@
+.modelsList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0 0 0.5rem;
+}

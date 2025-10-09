@@ -1,4 +1,7 @@
-.SqlParametersList {
-  /* Reset ResponsiveList margins */
-  margin: 0;
+.SqlParametersListContainer {
+  background: transparent;
+
+  .SqlParametersList {
+    margin: 0;
+  }
 }
