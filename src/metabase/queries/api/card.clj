@@ -526,7 +526,7 @@
     (query-perms/check-run-permissions-for-query query)
     ;; check that we have permissions for the collection we're trying to save this card to, if applicable.
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
-    (api/create-check :model/Card {:collection_id (actual-collection-id body)})
+    (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (try
       (lib/check-card-overwrite ::no-id query)
       (catch clojure.lang.ExceptionInfo e
