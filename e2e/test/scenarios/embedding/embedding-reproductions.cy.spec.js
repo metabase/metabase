@@ -967,11 +967,8 @@ describe("issue 40660", () => {
       });
 
       H.getIframeBody().within(() => {
-        // With larger font sizes (13px) for dashboard charts, scroll to bottom
-        // and ensure there's enough space for the badge to be visible
         cy.findByTestId("embed-frame").scrollTo("bottom");
 
-        // Scroll the badge into view to ensure it's visible with taller content
         cy.findByRole("link", { name: "Powered by Metabase" })
           .scrollIntoView()
           .should("be.visible");
