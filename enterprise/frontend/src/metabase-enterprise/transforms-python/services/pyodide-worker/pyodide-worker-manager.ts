@@ -99,8 +99,6 @@ export class PyodideWorkerManager {
       const handleMessage = ({ data }: MessageEvent<PyodideWorkerMessage>) => {
         unsubscribe();
 
-        console.error("Received message", data);
-
         switch (data.type) {
           case type:
             return resolve(data as Extract<PyodideWorkerMessage, { type: T }>);
