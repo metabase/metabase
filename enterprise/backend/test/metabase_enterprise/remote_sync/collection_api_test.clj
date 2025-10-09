@@ -54,12 +54,12 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [parent (mt/user-http-request :crowberto :post 200 "collection"
                                            {:name "Parent"
-                                            :type :remote-synced})
+                                            :type "remote-synced"})
               child (mt/user-http-request :crowberto :post 200 "collection"
                                           {:name "Child"
                                            :parent_id (:id parent)})]
-          (is (= :remote-synced (:type child)))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id child)))))))))
+          (is (= "remote-synced" (:type child)))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id child)))))))))
 
 (deftest update-collection-to-remote-synced-type-test
   (testing "PUT /api/collection/:id"
@@ -68,9 +68,9 @@
         (let [collection (mt/user-http-request :crowberto :post 200 "collection"
                                                {:name "Normal Collection"})
               updated (mt/user-http-request :crowberto :put 200 (str "collection/" (:id collection))
-                                            {:type :remote-synced})]
-          (is (= :remote-synced (:type updated)))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id collection)))))))))
+                                            {:type "remote-synced"})]
+          (is (= "remote-synced" (:type updated)))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection)))))))))
 
 (deftest update-collection-from-remote-synced-to-nil-in-development-test
   (testing "PUT /api/collection/:id"
@@ -78,7 +78,7 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [collection (mt/user-http-request :crowberto :post 200 "collection"
                                                {:name "Remote Synced Collection"
-                                                :type :remote-synced})
+                                                :type "remote-synced"})
               updated (mt/user-http-request :crowberto :put 200 (str "collection/" (:id collection))
                                             {:type nil})]
           (is (nil? (:type updated)))
@@ -91,7 +91,7 @@
         (mt/with-model-cleanup [:model/Collection]
           (let [collection (mt/user-http-request :crowberto :post 200 "collection"
                                                  {:name "Remote Synced Collection"
-                                                  :type :remote-synced})]
+                                                  :type "remote-synced"})]
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :crowberto :put 403 (str "collection/" (:id collection))
                                          {:type nil})))))))))
@@ -102,11 +102,11 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [collection (mt/user-http-request :crowberto :post 200 "collection"
                                                {:name "Remote Synced"
-                                                :type :remote-synced})
+                                                :type "remote-synced"})
               updated (mt/user-http-request :crowberto :put 200 (str "collection/" (:id collection))
                                             {:name "Updated Name"})]
-          (is (= :remote-synced (:type updated)))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id collection)))))))))
+          (is (= "remote-synced" (:type updated)))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection)))))))))
 
 (deftest update-collection-name-preserves-nil-type-test
   (testing "PUT /api/collection/:id"
@@ -137,12 +137,12 @@
                                                 :parent_id (:id child1)})]
           ;; Update parent to remote-synced
           (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
-                                {:type :remote-synced})
+                                {:type "remote-synced"})
           ;; Verify all descendants got the type
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id parent))))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id child1))))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id child2))))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id grandchild)))))))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id parent))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id child1))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id child2))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id grandchild)))))))))
 
 (deftest update-collection-type-to-nil-cascades-test
   (testing "PUT /api/collection/:id"
@@ -150,13 +150,13 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [parent (mt/user-http-request :crowberto :post 200 "collection"
                                            {:name "Parent"
-                                            :type :remote-synced})
+                                            :type "remote-synced"})
               child (mt/user-http-request :crowberto :post 200 "collection"
                                           {:name "Child"
                                            :parent_id (:id parent)})]
           ;; Verify both start as remote-synced
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id parent))))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id child))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id parent))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id child))))
           ;; Update parent to nil
           (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
                                 {:type nil})
@@ -174,9 +174,9 @@
                                                 {:name "Collection 2"})]
           ;; Update collection1 to remote-synced
           (mt/user-http-request :crowberto :put 200 (str "collection/" (:id collection1))
-                                {:type :remote-synced})
+                                {:type "remote-synced"})
           ;; Verify collection1 was updated
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id collection1))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id collection1))))
           ;; Verify collection2 was NOT affected
           (is (nil? (t2/select-one-fn :type :model/Collection :id (:id collection2)))))))))
 
@@ -186,16 +186,16 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [parent (mt/user-http-request :crowberto :post 200 "collection"
                                            {:name "Parent"
-                                            :type :remote-synced})
+                                            :type "remote-synced"})
               child (mt/user-http-request :crowberto :post 200 "collection"
                                           {:name "Child"
                                            :parent_id (:id parent)})]
           ;; Update parent with same type (no change)
           (mt/user-http-request :crowberto :put 200 (str "collection/" (:id parent))
-                                {:type :remote-synced})
+                                {:type "remote-synced"})
           ;; Verify both still have remote-synced type
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id parent))))
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id child)))))))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id parent))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id child)))))))))
 
 (deftest update-collection-type-cascades-through-multiple-levels-test
   (testing "PUT /api/collection/:id with type change through deep hierarchy"
@@ -220,15 +220,15 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [remote-parent (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name "Remote Parent"
-                                                   :type :remote-synced})
+                                                   :type "remote-synced"})
               regular-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                        {:name "Regular Collection"})]
           ;; Move regular-collection into remote-parent
           (let [response (mt/user-http-request :crowberto :put 200 (str "collection/" (:id regular-collection))
                                                {:parent_id (:id remote-parent)})]
             (is (= (:id remote-parent) (:parent_id response)))
-            (is (= :remote-synced (:type response)))
-            (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id regular-collection))))))))))
+            (is (= "remote-synced" (:type response)))
+            (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id regular-collection))))))))))
 
 (deftest api-move-collection-into-remote-synced-dependency-checking-failure-test
   (testing "PUT /api/collection/:id - move collection into remote-synced"
@@ -236,7 +236,7 @@
       (mt/with-model-cleanup [:model/Collection :model/Card]
         (let [remote-parent (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name "Remote Parent"
-                                                   :type :remote-synced})
+                                                   :type "remote-synced"})
               regular-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                        {:name "Regular Collection"})]
           ;; Create a card in the regular collection without document_id (remote-sync violation)
@@ -256,7 +256,7 @@
       (mt/with-model-cleanup [:model/Collection :model/Card]
         (let [remote-parent (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name "Remote Parent"
-                                                   :type :remote-synced})
+                                                   :type "remote-synced"})
               regular-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                        {:name "Regular Collection"})
               child-collection (mt/user-http-request :crowberto :post 200 "collection"
@@ -280,12 +280,12 @@
       (mt/with-model-cleanup [:model/Collection :model/Card]
         (let [remote-parent (mt/user-http-request :crowberto :post 200 "collection"
                                                   {:name "Remote Parent"
-                                                   :type :remote-synced})
+                                                   :type "remote-synced"})
               child-collection (mt/user-http-request :crowberto :post 200 "collection"
                                                      {:name "Child Collection"
                                                       :parent_id (:id remote-parent)})]
           ;; Child inherits remote-synced type
-          (is (= :remote-synced (t2/select-one-fn :type :model/Collection :id (:id child-collection))))
+          (is (= "remote-synced" (t2/select-one-fn :type :model/Collection :id (:id child-collection))))
 
           ;; Create a card in child without document_id
           (mt/with-temp [:model/Card _ {:collection_id (:id child-collection)

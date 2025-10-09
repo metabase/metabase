@@ -150,18 +150,18 @@
                                          remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Card"
-                                                  :model_id 1
-                                                  :status "updated"
-                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
-            (testing "But can force an import"
-              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
-                    completed-task (wait-for-task-completion task_id)]
-                (is (=? {:status "success" :task_id int?} resp))
-                (is (remote-sync.task/successful? completed-task))))))))))
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                             :model_id 1
+                                             :status "updated"
+                                             :status_changed_at (java.time.OffsetDateTime/now)})
+        (with-redefs [source/source-from-settings (constantly mock-main)]
+          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
+          (testing "But can force an import"
+            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
+                  completed-task (wait-for-task-completion task_id)]
+              (is (=? {:status "success" :task_id int?} resp))
+              (is (remote-sync.task/successful? completed-task)))))))))
 
 (deftest import-skips-when-version-unchanged-but-updates-branch-test
   (testing "POST /api/ee/remote-sync/import skips import when version matches but still updates branch setting"
