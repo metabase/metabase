@@ -45,7 +45,7 @@
   The transform execution system uses these dependencies to determine the correct order of execution
   and to detect circular dependencies.
 
-  Each dependency is represented as
+  Each dependency is represented as either:
   - `{:table <table-id>}`
      A dependency on a table that exists and has been synced.
   - `{:transform <transform-id>}`
