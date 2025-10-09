@@ -59,7 +59,7 @@
                                                                      :hidden       false
                                                                      :id           "name"
                                                                      :display_name "Name"
-                                                                     :inputType    :text
+                                                                     :inputType    :string
                                                                      :base_type    :type/Text
                                                                      :fieldType    :string
                                                                      :required     true

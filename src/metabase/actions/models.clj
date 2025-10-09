@@ -307,7 +307,7 @@
                                            :type/Time     :time
                                            :type/Temporal :date
                                            :type/Boolean  :boolean
-                                           :text)}))
+                                           :string)}))
                         [:model/Field :id :base_type :display_name :description]
                         :id [:in field-ids]))))
 
