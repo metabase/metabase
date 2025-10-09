@@ -77,6 +77,16 @@
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
 
+(mr/def :event/dashboard-public-link-created
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])
+
+(mr/def :event/dashboard-public-link-deleted
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])
+
 ;; user events
 
 (mr/def ::user
