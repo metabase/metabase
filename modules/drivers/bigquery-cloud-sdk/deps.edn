@@ -16,5 +16,5 @@
   org.apache.arrow/arrow-memory-netty    {:mvn/version "17.0.0"}
   org.apache.arrow/arrow-vector          {:mvn/version "17.0.0"}
   ;; matches those in athena
-  io.netty/netty-common                  {:mvn/version "4.1.118.Final"}
-  io.netty/netty-buffer                  {:mvn/version "4.1.118.Final"}}}
+  io.netty/netty-common                  {:mvn/version "4.1.124.Final"}
+  io.netty/netty-buffer                  {:mvn/version "4.1.124.Final"}}}
