@@ -56,6 +56,7 @@ import type {
   Bookmark,
   CacheableDashboard,
   CacheableModel,
+  CardId,
   CheckDependenciesResponse,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -795,11 +796,12 @@ export const PLUGIN_DATABASE_REPLICATION = {
 };
 
 export const PLUGIN_API = {
+  getCardUrl: (cardId: CardId) => `/api/card/${cardId}`,
   getRemappedCardParameterValueUrl: (
-    dashboardId: DashboardId,
+    cardId: CardId,
     parameterId: ParameterId,
   ) =>
-    `/api/card/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+    `/api/card/${cardId}/params/${encodeURIComponent(parameterId)}/remapping`,
   getRemappedDashboardParameterValueUrl: (
     dashboardId: DashboardId,
     parameterId: ParameterId,

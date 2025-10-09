@@ -1,10 +1,5 @@
 import _ from "underscore";
 
-import {
-  Api,
-  getCardQueryDefinition,
-  getCollectionQueryDefinition,
-} from "metabase/api";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -372,22 +367,11 @@ function setCardEndpoints({ base, encodedUuid, encodedToken }) {
   const prefix = `${base}/card/${encodedUuid ?? encodedToken}`;
 
   // RTK query
-  PLUGIN_API.getRemappedCardParameterValueUrl = (_dashboardId, parameterId) =>
+  PLUGIN_API.getRemappedCardParameterValueUrl = (_cardId, parameterId) =>
     `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
+  PLUGIN_API.getCardUrl = () => prefix;
 
   // legacy API
-  Api.injectEndpoints({
-    endpoints: (builder) => ({
-      getCard: builder.query({
-        ...getCardQueryDefinition,
-        query: ({ id, ...params }) => ({
-          url: prefix,
-          params,
-        }),
-      }),
-    }),
-    overrideExisting: true,
-  });
   CardApi.query = GET_with(`${prefix}/query`, [
     // Params below are not supported by `/api/embed/card/:cardId/query` endpoint
     "cardId",
@@ -418,20 +402,6 @@ function setDashboardEndpoints({ base, encodedUuid, encodedToken }) {
   ) => `${prefix}/params/${encodeURIComponent(parameterId)}/remapping`;
 
   // legacy API
-  Api.injectEndpoints({
-    endpoints: (builder) => ({
-      getCollection: builder.query({
-        ...getCollectionQueryDefinition,
-        query: ({ id, ...params }) => {
-          return {
-            url: prefix,
-            params,
-          };
-        },
-      }),
-    }),
-    overrideExisting: true,
-  });
   DashboardApi.parameterValues = GET_with(`${prefix}/params/:paramId/values`, [
     "dashId",
   ]);
