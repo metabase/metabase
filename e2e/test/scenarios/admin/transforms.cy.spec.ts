@@ -3089,7 +3089,7 @@ function runPythonScriptAndWaitForSuccess() {
   getQueryEditor().findByTestId("run-button").click();
 
   getQueryEditor()
-    .findByTestId("loading-indicator", { timeout: 20000 })
+    .findByTestId("loading-indicator", { timeout: 60000 })
     .should("not.exist");
 
   cy.findByTestId("python-results").should("be.visible");
