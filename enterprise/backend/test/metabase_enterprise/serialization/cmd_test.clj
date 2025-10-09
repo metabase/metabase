@@ -251,7 +251,7 @@
                              "count"         0
                              "success"       false
                              ;; t2/with-transactions re-wraps errors with data about toucan connections
-                             "error_message" #"(?s)Failed to read file for Collection DoesNotExist.*"}
+                             "error_message" "Failed to read file {:path \"Collection DoesNotExist\"}"}
                             (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))))))
 
 (deftest entity-id-dump&load-test

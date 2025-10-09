@@ -378,14 +378,7 @@ describe("scenarios > admin > tools > logs", () => {
   }
 });
 
-// Quarantine the whole spec because it is most likely causing the H2 timeouts and the chained failures!
-// NOTE: it will be quarantined on PRs, but will still run on `master`!
-
-// UDATE:
-// We need to skip this completely! CI on `master` is almost constantly red.
-// TODO:
-// Once the underlying problem with H2 is solved, replace `describe.skip` with `describePremium`.
-describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
+describe("admin > tools > erroring questions ", () => {
   const TOOLS_ERRORS_URL = "/admin/tools/errors";
   // The filter is required but doesn't have a default value set
   const brokenQuestionDetails = {
@@ -406,8 +399,8 @@ describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
   };
 
   function fixQuestion(name) {
-    cy.visit("/collection/root");
-    cy.findByText(name).click();
+    cy.findByTestId("visualization-root").findByText(name).click();
+
     cy.findByText("Open Editor").click();
 
     cy.icon("variable").click();
@@ -428,7 +421,7 @@ describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
       });
   }
 
-  describe("when feature enabled", { tags: "@skip" }, () => {
+  describe("when feature enabled", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
@@ -438,27 +431,18 @@ describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
     });
 
     describe("without broken questions", () => {
-      it(
-        'should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it',
-        { tags: "@skip" },
-        () => {
-          // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
-          cy.visit("/admin");
+      it('should render the "Tools" tab and navigate to the "Erroring Questions" by clicking on it', () => {
+        // The sidebar has been taken out, because it looks awkward when there's only one elem on it: put it back in when there's more than one
+        cy.visit("/admin");
 
-          cy.get("nav").contains("Tools").click();
+        cy.get("nav").contains("Tools").click();
 
-          cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
-          cy.findByRole("link", { name: "Erroring Questions" })
-            .should("have.attr", "href")
-            .and("eq", TOOLS_ERRORS_URL);
-        },
-      );
+        cy.findByRole("link", { name: /Erroring questions/ }).click();
+        cy.location("pathname").should("eq", TOOLS_ERRORS_URL);
 
-      it("should disable search input fields (metabase#18050)", () => {
-        cy.visit(TOOLS_ERRORS_URL);
+        cy.log("test no results state");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No results");
+        cy.findByTestId("visualization-root").findByText("No results");
         cy.button("Rerun Selected").should("be.disabled");
         cy.findByPlaceholderText("Error contents").should("be.disabled");
         cy.findByPlaceholderText("DB name").should("be.disabled");
@@ -485,8 +469,9 @@ describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
         cy.wait("@dataset");
 
         // The question is still there because we didn't fix it
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(brokenQuestionDetails.name);
+        cy.findByTestId("visualization-root").findByText(
+          brokenQuestionDetails.name,
+        );
         cy.button("Rerun Selected").should("be.disabled");
 
         cy.findByPlaceholderText("Error contents").should("not.be.disabled");
@@ -497,11 +482,10 @@ describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
 
         cy.wait("@dataset");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No results");
-      });
+        cy.findByTestId("visualization-root").findByText("No results");
 
-      it("should remove fixed question on a rerun", () => {
+        cy.findByPlaceholderText("Collection name").clear();
+
         fixQuestion(brokenQuestionDetails.name);
 
         cy.visit(TOOLS_ERRORS_URL);
@@ -512,8 +496,7 @@ describe("admin > tools > erroring questions ", { tags: "@skip" }, () => {
 
         cy.wait("@dataset");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText("No results");
+        cy.findByTestId("visualization-root").findByText("No results");
       });
     });
   });

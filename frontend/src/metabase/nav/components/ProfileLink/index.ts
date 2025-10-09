@@ -1,1 +1,1 @@
-export { default as ProfileLink } from "./ProfileLink";
+export { ProfileLink } from "./ProfileLink";
