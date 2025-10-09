@@ -11,7 +11,7 @@ const TEST_TABLE = "scoreboard_actions";
 const TEST_COLUMNS_TABLE = "many_data_types";
 const MODEL_NAME = "Test Action Model";
 
-["mysql"].forEach((dialect) => {
+["mysql", "postgres"].forEach((dialect) => {
   describe(
     `Write Actions on Dashboards (${dialect})`,
     { tags: ["@external", "@actions"] },
