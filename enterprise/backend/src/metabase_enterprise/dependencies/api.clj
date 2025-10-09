@@ -119,15 +119,22 @@
 (defn- entity-keys [entity-type]
   (case entity-type
     :table [:name :display_name :db_id :schema]
-    :card [:name :type :display :database_id]
+    :card [:name :type :display :database_id :view_count
+           :collection :collection_id :dashboard :dashboard_id]
     :snippet [:name]
     :transform [:name]
     []))
 
+(defn- format-subentity [entity]
+  (case (t2/model entity)
+    (:model/Collection :model/Dashboard) (select-keys entity [:id :name])
+    entity))
+
 (defn- entity-value [entity-type {:keys [id] :as entity} usages]
   {:id id
    :type entity-type
-   :data (select-keys entity (entity-keys entity-type))
+   :data (->> (select-keys entity (entity-keys entity-type))
+              (m/map-vals format-subentity))
    :dependents (usages [entity-type id])})
 
 #_(defn- expanded-entity-keys [entity-type]
@@ -178,9 +185,10 @@
         nodes-by-type (->> (group-by first nodes)
                            (m/map-vals #(map second %)))]
     (mapcat (fn [[entity-type entity-ids]]
-              (t2/select-fn-vec #(entity-value entity-type % usages)
-                                (entity-model entity-type)
-                                :id [:in entity-ids]))
+              (->> (cond-> (t2/select (entity-model entity-type)
+                                      :id [:in entity-ids])
+                     (= entity-type :card) (t2/hydrate :dashboard :collection))
+                   (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
 (api.macros/defendpoint :get "/graph"
