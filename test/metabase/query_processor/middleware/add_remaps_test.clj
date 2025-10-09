@@ -47,7 +47,14 @@
              (lib/query
               category-id-remap-metadata-provider
               (meta/table-metadata :venues))
-             [:stages 0])))))
+             [:stages 0])))
+    (testing "but ignore remaps to `:visibility-type :sensitive` columns"
+      (is (nil? (-> category-id-remap-metadata-provider
+                    (lib.tu/merged-mock-metadata-provider
+                     {:fields [{:id               (meta/id :categories :name)
+                                :visibility-type :sensitive}]})
+                    (lib/query (meta/table-metadata :venues))
+                    (#'qp.add-remaps/remap-column-infos [:stages 0])))))))
 
 (deftest ^:parallel add-fk-remaps-add-fields-test
   (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
