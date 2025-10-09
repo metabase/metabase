@@ -65,7 +65,7 @@ export function EmbeddingNav() {
         <EmbeddingNavItem
           path="/admin/embedding/security"
           label={t`Security`}
-          icon="lock"
+          icon="shield_outline"
         />
       </Stack>
     </AdminNavWrapper>
