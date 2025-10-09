@@ -1332,7 +1332,6 @@
    :uses #{analytics
            api
            appearance
-           collections
            driver
            events
            legacy-mbql

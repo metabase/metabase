@@ -2412,7 +2412,7 @@
                                                   :database_id (mt/id)
                                                   :dataset_query (mt/mbql-query venues)
                                                   :parameters [{:id "param1"
-                                                                :type "card"
+                                                                :type :category
                                                                 :values_source_type "card"
                                                                 :values_source_config {:card_id base-card-id}}]}]
       ;; Create a card with parameters, then update it to have the correct JSON format
@@ -2460,7 +2460,7 @@
                                               :database_id (mt/id)
                                               :dataset_query (mt/mbql-query venues)
                                               :parameters [{:id "param1"
-                                                            :type "card"
+                                                            :type :category
                                                             :values_source_type "card"
                                                             :values_source_config {:card_id base-card-id}}]}
                    :model/Card {dep3-id :id} {:name "Dependent with template tags"
