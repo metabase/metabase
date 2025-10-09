@@ -115,7 +115,9 @@
 
 (defn- execute-mbql-query
   [db-id query rff cancel-chan]
-  (binding [qp.pipeline/*canceled-chan* (a/go (a/<! cancel-chan))]
+  (binding [qp.pipeline/*canceled-chan* (if cancel-chan
+                                          (a/go (a/<! cancel-chan))
+                                          qp.pipeline/*canceled-chan*)]
     (qp/process-query {:type :query :database db-id :query query} rff)))
 
 (defn- throw-if-cancelled [cancel-chan]
