@@ -5,7 +5,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [potemkin :as p]))

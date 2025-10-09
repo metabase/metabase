@@ -230,7 +230,9 @@
 (deftest connection-pool-does-not-cache-audit-db
   (mt/test-drivers app-db-types
     (when config/ee-available?
-      (t2/delete! 'Database {:where [:= :is_audit true]})
+      ;; TODO (Cam 9/30/25) -- sort of evil to delete databases like this in a test, shouldn't we do this in a
+      ;; transaction or something?
+      (t2/delete! :model/Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
             audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
             _ (is (= :metabase-enterprise.audit-app.audit/installed status))

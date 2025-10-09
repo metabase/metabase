@@ -10,7 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -431,7 +431,7 @@
         (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
           (mt/with-db db
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)
+            (let [mp (lib-be/application-database-metadata-provider db-id)
                   [t1-id t2-id] (t2/select-fn-vec
                                  :id
                                  :model/Table

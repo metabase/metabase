@@ -39,7 +39,9 @@
         ;; ...but it isn't a candidate dimension because it is an id column...
         (is (false? ((#'interesting/fieldspec-matcher :type/*) id-field)))
         ;; ...unless you're looking explicitly for a primary key
-        (is (true? ((#'interesting/fieldspec-matcher :type/PK) id-field))))))
+        (is (true? ((#'interesting/fieldspec-matcher :type/PK) id-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-2
   (testing "The fieldspec-matcher should match fields by their fieldspec"
     (mt/dataset test-data
       (let [price-field (field :products :price)
@@ -49,20 +51,26 @@
         (is (false? (pred price-field)))
         (is (true? (pred latitude-field)))
         (is (true? ((#'interesting/fieldspec-matcher :type/CreationTimestamp) created-at-field)))
-        (is (true? ((#'interesting/fieldspec-matcher :type/*) created-at-field))))))
+        (is (true? ((#'interesting/fieldspec-matcher :type/*) created-at-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-3
   (testing "The name-regex-matcher should return fields with string/regex matches"
     (mt/dataset test-data
       (let [price-field (field :products :price)
             category-field (field :products :category)
             ice-pred (#'interesting/name-regex-matcher "ice")]
         (is (some? (ice-pred price-field)))
-        (is (nil? (ice-pred category-field))))))
+        (is (nil? (ice-pred category-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-4
   (testing "The max-cardinality-matcher should return fields with cardinality <= the specified cardinality"
     (mt/dataset test-data
       (let [category-field (field :products :category)]
         (is (false? ((#'interesting/max-cardinality-matcher 3) category-field)))
         (is (true? ((#'interesting/max-cardinality-matcher 4) category-field)))
-        (is (true? ((#'interesting/max-cardinality-matcher 100) category-field))))))
+        (is (true? ((#'interesting/max-cardinality-matcher 100) category-field)))))))
+
+(deftest ^:parallel field-matching-predicates-test-5
   (testing "Roll the above together and test filter-fields"
     (mt/dataset test-data
       (let [category-field (field :products :category)
