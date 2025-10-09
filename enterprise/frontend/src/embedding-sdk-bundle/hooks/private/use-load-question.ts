@@ -16,6 +16,7 @@ import type {
 } from "embedding-sdk-bundle/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
+import type { ParameterValuesMap } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
@@ -25,6 +26,7 @@ type LoadQuestionResult = Promise<
 export interface LoadQuestionHookResult {
   question?: Question;
   originalQuestion?: Question;
+  parameterValues?: ParameterValuesMap;
 
   queryResults?: any[];
 
@@ -39,6 +41,7 @@ export interface LoadQuestionHookResult {
     question: Question,
     options?: { run?: boolean },
   ): Promise<void>;
+  updateParameterValues(parameterValues: ParameterValuesMap): Promise<void>;
 
   /**
    * Replaces both the question and originalQuestion object directly.
@@ -64,7 +67,8 @@ export function useLoadQuestion({
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
-  const { question, originalQuestion, queryResults } = questionState;
+  const { question, originalQuestion, queryResults, parameterValues } =
+    questionState;
 
   const deferredRef = useRef<Deferred>();
 
@@ -126,6 +130,7 @@ export function useLoadQuestion({
         question: undefined,
         originalQuestion: undefined,
         queryResults: undefined,
+        parameterValues: undefined,
       });
 
       setIsQuestionLoading(false);
@@ -169,16 +174,47 @@ export function useLoadQuestion({
           nextQuestion,
           previousQuestion: question,
           originalQuestion,
+          nextParameterValues: parameterValues ?? {},
           cancelDeferred: deferred(),
           optimisticUpdateQuestion: (question) =>
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
+          shouldStartAdHocQuestion: true,
         }),
       );
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion],
+    [dispatch, question, originalQuestion, parameterValues],
+  );
+
+  const [updateParameterValuesState, updateParameterValues] = useAsyncFn(
+    async (nextParameterValues: ParameterValuesMap) => {
+      if (!question) {
+        return;
+      }
+
+      mergeQuestionState({
+        parameterValues: nextParameterValues,
+      });
+
+      const state = await dispatch(
+        updateQuestionSdk({
+          nextQuestion: question,
+          previousQuestion: question,
+          originalQuestion,
+          nextParameterValues,
+          cancelDeferred: deferred(),
+          optimisticUpdateQuestion: (question) =>
+            mergeQuestionState({ question }),
+          shouldRunQueryOnQuestionChange: true,
+          shouldStartAdHocQuestion: false,
+        }),
+      );
+
+      mergeQuestionState(state);
+    },
+    [dispatch, question, originalQuestion, parameterValues],
   );
 
   const [navigateToNewCardState, navigateToNewCard] = useAsyncFn(
@@ -205,6 +241,7 @@ export function useLoadQuestion({
   const isQueryRunning =
     runQuestionState.loading ||
     updateQuestionState.loading ||
+    updateParameterValuesState.loading ||
     navigateToNewCardState.loading;
 
   const replaceQuestion = (question: Question) =>
@@ -213,6 +250,7 @@ export function useLoadQuestion({
   return {
     question,
     originalQuestion,
+    parameterValues,
 
     queryResults,
 
@@ -223,6 +261,7 @@ export function useLoadQuestion({
     replaceQuestion,
     loadAndQueryQuestion,
     updateQuestion,
+    updateParameterValues,
     navigateToNewCard,
   };
 }

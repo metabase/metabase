@@ -141,6 +141,7 @@ type VisualizationOwnProps = {
   isDashboard?: boolean;
   isDocument?: boolean;
   isMobile?: boolean;
+  isRunning?: boolean;
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
@@ -262,7 +263,6 @@ class Visualization extends PureComponent<
     isEditing: false,
     isEmbeddingSdk: false,
     isFullscreen: false,
-    isNightMode: false,
     isPreviewing: false,
     isQueryBuilder: false,
     isSettings: false,
@@ -597,11 +597,11 @@ class Visualization extends PureComponent<
       isEmbeddingSdk,
       isFullscreen,
       isMobile,
-      isNightMode,
       isObjectDetail,
       isPreviewing,
       isRawTable,
       isQueryBuilder,
+      isRunning,
       isSettings,
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
@@ -611,6 +611,10 @@ class Visualization extends PureComponent<
       onEditSummary,
       queryBuilderMode,
       rawSeries = [],
+      isSelectable,
+      rowChecked,
+      onAllSelectClick,
+      onRowSelectClick,
       visualizerRawSeries,
       renderEmptyMessage,
       renderLoadingView = LoadingView,
@@ -795,7 +799,7 @@ class Visualization extends PureComponent<
             replacementContent
           ) : isDashboard && noResults ? (
             <NoResultsView isSmall={small} />
-          ) : error ? (
+          ) : error && !isRunning ? (
             <ErrorView
               error={errorMessageOverride ?? error}
               icon={errorIcon}
@@ -856,7 +860,6 @@ class Visualization extends PureComponent<
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
                     isVisualizerViz={isVisualizerViz}
-                    isNightMode={!!isNightMode}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
                     isRawTable={isRawTable}
@@ -906,6 +909,11 @@ class Visualization extends PureComponent<
                     onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                     titleMenuItems={hasHeader ? undefined : titleMenuItems}
                     tableFooterExtraButtons={tableFooterExtraButtons}
+                    // These props are only used by the table on the Erroring Questions admin page
+                    isSelectable={isSelectable}
+                    rowChecked={rowChecked}
+                    onAllSelectClick={onAllSelectClick}
+                    onRowSelectClick={onRowSelectClick}
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}

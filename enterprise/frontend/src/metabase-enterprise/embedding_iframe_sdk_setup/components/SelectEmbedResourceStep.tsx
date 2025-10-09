@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
@@ -8,13 +8,14 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers/Question
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
-import { trackEmbedWizardResourceSelected } from "../analytics";
+import { STEPS_WITHOUT_RESOURCE_SELECTION } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../types";
+import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
 import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
@@ -33,8 +34,8 @@ export const SelectEmbedResourceStep = () => {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
 
-  // Exploration does not allow selecting resources.
-  if (experience === "exploration") {
+  // If a step does not allow resource selection, hide it.
+  if (!hasResourceSelectionStep(experience)) {
     return null;
   }
 
@@ -44,11 +45,7 @@ export const SelectEmbedResourceStep = () => {
     .with("chart", () => recentQuestions)
     .exhaustive();
 
-  const selectedItemId = match(settings)
-    .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
-    .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
-    .with({ questionId: P.nonNullable }, (s) => s.questionId)
-    .otherwise(() => undefined);
+  const selectedItemId = getResourceIdFromSettings(settings);
 
   const updateEmbedSettings = (
     experience: SdkIframeEmbedSetupExperience,
@@ -62,13 +59,6 @@ export const SelectEmbedResourceStep = () => {
         settings.initialCollection === id)
     ) {
       return;
-    }
-
-    const numericResourceId = typeof id === "string" ? parseInt(id) : id;
-
-    // Only track the resource id if it is a valid numeric id.
-    if (!isNaN(numericResourceId)) {
-      trackEmbedWizardResourceSelected(numericResourceId, experience);
     }
 
     if (experience === "dashboard") {
@@ -85,6 +75,7 @@ export const SelectEmbedResourceStep = () => {
 
         // Clear parameters
         initialSqlParameters: {},
+        hiddenParameters: [],
       });
     } else if (experience === "browser") {
       updateSettings({
@@ -262,3 +253,13 @@ const COLLECTION_MODAL_OPTIONS = {
   showRootCollection: true,
   hasConfirmButtons: true,
 } as const;
+
+const hasResourceSelectionStep = (
+  experience: SdkIframeEmbedSetupExperience,
+): experience is Exclude<
+  SdkIframeEmbedSetupExperience,
+  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+> =>
+  !(
+    STEPS_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
+  ).includes(experience);

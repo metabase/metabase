@@ -425,4 +425,7 @@
   [query :- ::lib.schema/query]
   (-> query
       (lib.walk/walk-stages first-pass)
-      (lib.walk/walk-stages second-pass)))
+        ;; The second pass must go backwards, pushing implicitly joined fields downward until they are resolved.
+        ;; See #63245 and
+        ;; [[metabase.query-processor.middleware.add-implicit-joins-test/implicit-join-from-much-earlier-stage-test]].
+      (lib.walk/walk-stages second-pass {:reversed? true})))

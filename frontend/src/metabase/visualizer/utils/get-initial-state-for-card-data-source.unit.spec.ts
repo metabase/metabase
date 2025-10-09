@@ -18,6 +18,7 @@ describe("getInitialStateForCardDataSource", () => {
     card: createMockCard({
       display: "smartscalar",
       name: "ScalarMcSmartface",
+      description: null,
       visualization_settings: {
         "scalar.compact_primary_number": true,
       },
@@ -72,6 +73,7 @@ describe("getInitialStateForCardDataSource", () => {
     const card = createMockCard({
       display: "table",
       name: "TablyMcTableface",
+      description: null,
       visualization_settings: {},
     });
 
@@ -95,7 +97,6 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "TablyMcTableface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
     });
@@ -137,6 +138,7 @@ describe("getInitialStateForCardDataSource", () => {
     const card = createMockCard({
       display: "combo",
       name: "ComboMcComboface",
+      description: null,
       visualization_settings: {
         "graph.metrics": ["sum", "sum_2"],
         "graph.dimensions": ["CREATED_AT"],
@@ -170,7 +172,6 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "ComboMcComboface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2", "COLUMN_3"],
     });
@@ -217,7 +218,6 @@ describe("getInitialStateForCardDataSource", () => {
     });
 
     expect(state.settings).toEqual({
-      "card.title": "ScalarMcSmartface",
       "graph.dimensions": ["COLUMN_1"],
       "graph.metrics": ["COLUMN_2"],
       "scalar.compact_primary_number": true,
@@ -230,6 +230,7 @@ describe("getInitialStateForCardDataSource", () => {
       const card = createMockCard({
         name: `${vizType} card`,
         display: vizType,
+        description: null,
       });
       const initialState = getInitialStateForCardDataSource(card, dataset);
 
@@ -264,7 +265,6 @@ describe("getInitialStateForCardDataSource", () => {
           DIMENSION: ["$_card:1_name"],
         },
         settings: {
-          "card.title": card.name,
           "funnel.metric": "METRIC",
           "funnel.dimension": "DIMENSION",
         },

@@ -29,9 +29,9 @@ You could also use the dashboard's [Entity ID](../installation-and-operation/ser
 
 ### Enable interactive embedding
 
-In Metabase, click on the **gear** icon in the upper right and go to **Admin settings** > **Settings** > **Embedding**. Look for **Interactive Embedding** and click on the **Enabled** toggle.
+In Metabase, click on the **gear** icon in the upper right and go to **Admin > Embedding > Interactive Embedding** and toggle on **Enable interactive embedding**.
 
-Click on the **Configure** button under **Interactive Embedding**. Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
+Under **Authorized origins**, add the URL of the website or web app where you want to embed Metabase. If you're running your app locally, you can add localhost and specify the port number, e.g. `http://localhost:8080`.
 
 #### SameSite configuration
 
@@ -41,7 +41,7 @@ If you're embedding Metabase in a different domain, you may need to [set the ses
 
 #### Enable authentication with JWT
 
-While still in the Admin panel's **Settings** section, click on **Authentication**.
+While still in the **Interactive embedding** section, click on **Authentication** under **Related settings**.
 
 On the card that says **JWT**, click the **Setup** button (you may have to scroll down to view the JWT card).
 
@@ -169,7 +169,7 @@ In Metabase, click the **gear** icon and go to **Admin settings** > **People** >
 
 You'll map this string in the `groups` key to a Metabase group, so that when the person signs in via SSO, Metabase automatically assigns them to the appropriate Metabase group.
 
-In Metabase's admin section, go to **Settings** > **Authentication**. Scroll to the **JWT** card and click **Edit**.
+In Metabase's admin section, go to **Authentication > JWT** and click **Edit**.
 
 In the **Group schema** section, toggle on **Synchronize group memberships**. If the names of groups in the `groups` array match Metabase group names exactly (e.g. both are `"Customer Acme"`), then the groups will be mapped automatically.
 

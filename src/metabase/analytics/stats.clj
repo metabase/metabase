@@ -300,9 +300,10 @@
 (defn- collection-metrics
   "Get metrics on Collection usage."
   []
-  (let [collections (t2/select :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
-        cards       (t2/select [:model/Card :collection_id :card_schema] {:where (mi/exclude-internal-content-hsql :model/Card)})]
-    {:collections              (count collections)
+  (let [collections (t2/count :model/Collection {:where (mi/exclude-internal-content-hsql :model/Collection)})
+        cards       (t2/select [:model/Card :collection_id :card_schema] {:where
+                                                                          [:and (mi/exclude-internal-content-hsql :model/Card)]})]
+    {:collections              collections
      :cards_in_collections     (count (filter :collection_id cards))
      :cards_not_in_collections (count (remove :collection_id cards))
      :num_cards_per_collection (medium-histogram cards :collection_id)}))
@@ -886,7 +887,10 @@
     :enabled   (premium-features/enable-transforms?)}
    {:name      :transforms-python
     :available (premium-features/enable-python-transforms?)
-    :enabled   (premium-features/enable-python-transforms?)}])
+    :enabled   (premium-features/enable-python-transforms?)}
+   {:name      :dependencies
+    :available (premium-features/enable-dependencies?)
+    :enabled   (premium-features/enable-dependencies?)}])
 
 (defn- snowplow-features
   []

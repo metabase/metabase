@@ -1,14 +1,14 @@
 import cx from "classnames";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase-enterprise/embedding_iframe_sdk/constants";
 
-import { trackEmbedWizardExperienceSelected } from "../analytics";
 import {
   EMBED_FALLBACK_DASHBOARD_ID,
   EMBED_FALLBACK_QUESTION_ID,
@@ -16,7 +16,7 @@ import {
 } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupExperience } from "../types";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { EnableEmbeddedAnalyticsCard } from "./EnableEmbeddedAnalyticsCard";
 
@@ -30,12 +30,11 @@ export const SelectEmbedExperienceStep = () => {
   } = useSdkIframeEmbedSetupContext();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
+  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
 
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
   ) => {
-    trackEmbedWizardExperienceSelected(experience);
-
     const persistedSettings = _.pick(
       settings,
       ALLOWED_EMBED_SETTING_KEYS_MAP.base,
@@ -49,8 +48,7 @@ export const SelectEmbedExperienceStep = () => {
         "dashboard",
         () => recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       )
-      .with("exploration", () => 0) // resource id does not apply
-      .with("browser", () => 0) // resource id does not apply
+      .with(P.union("exploration", "browser", "metabot"), () => 0) // resource id does not apply
       .exhaustive();
 
     replaceSettings({
@@ -58,9 +56,14 @@ export const SelectEmbedExperienceStep = () => {
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
-      ...getDefaultSdkIframeEmbedSettings(experience, defaultResourceId),
+      ...getDefaultSdkIframeEmbedSettings({
+        experience,
+        resourceId: defaultResourceId,
+      }),
     });
   };
+
+  const experiences = getEmbedExperiences({ isMetabotAvailable });
 
   return (
     <>
@@ -85,7 +88,7 @@ export const SelectEmbedExperienceStep = () => {
           }
         >
           <Stack gap="md">
-            {getEmbedExperiences().map((experience) => (
+            {experiences.map((experience) => (
               <Radio
                 key={experience.value}
                 value={experience.value}

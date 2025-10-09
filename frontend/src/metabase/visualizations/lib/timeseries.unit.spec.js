@@ -15,9 +15,11 @@ describe("visualization.lib.timeseries", () => {
       "2016-W06",
       "2016-W06-5",
       "2016-043",
+      "2024-06-28 00:00:00",
+      19210413,
     ];
 
-    const NOT_DATES = ["100", "100 %", "scanner 005"];
+    const NOT_DATES = ["100", "100 %", "scanner 005", 99999999];
 
     it("should detect Date column as timeseries", () => {
       expect(dimensionIsTimeseries({ cols: [{ base_type: TYPE.Date }] })).toBe(
@@ -61,6 +63,24 @@ describe("visualization.lib.timeseries", () => {
           }),
         ).toBe(false);
       });
+    });
+
+    it("should detect integer values in YYYYMMDD format as timeseries", () => {
+      expect(
+        dimensionIsTimeseries({
+          cols: [{ base_type: TYPE.Integer }],
+          rows: [[19210413], [20210413]],
+        }),
+      ).toBe(true);
+    });
+
+    it("should not detect integer values that are not valid dates as timeseries", () => {
+      expect(
+        dimensionIsTimeseries({
+          cols: [{ base_type: TYPE.Integer }],
+          rows: [[99999999], [12345678]],
+        }),
+      ).toBe(false);
     });
   });
 });

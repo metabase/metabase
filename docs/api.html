@@ -205,6 +205,52 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
+      "metabase-enterprise.dependencies.api.card-body" : {
+        "type" : "object",
+        "properties" : {
+          "dataset_query" : {
+            "description" : "Value must be a map.",
+            "type" : "object",
+            "properties" : { }
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "result_metadata" : {
+            "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+          }
+        },
+        "required" : [ "id" ]
+      },
+      "metabase-enterprise.dependencies.api.transform-body" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "description" : "Value must be a map.",
+            "type" : "object",
+            "properties" : { }
+          },
+          "target" : {
+            "description" : "Value must be a map.",
+            "type" : "object",
+            "properties" : { }
+          }
+        },
+        "required" : [ "id" ]
+      },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "type" : "object",
         "properties" : {
@@ -319,7 +365,7 @@ redirect_from:
                 "models" : {
                   "type" : "array",
                   "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-table"
+                    "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
                   }
                 }
               },
@@ -357,43 +403,6 @@ redirect_from:
           }
         },
         "required" : [ "id", "type", "name" ]
-      },
-      "metabase-enterprise.metabot-v3.tools.api.basic-table" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "database_id" : {
-            "type" : "integer"
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "model", "table" ]
-          },
-          "fields" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
-          },
-          "database_schema" : {
-            "type" : "string"
-          },
-          "metrics" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
-            }
-          },
-          "description" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
       },
       "metabase-enterprise.metabot-v3.tools.api.bucket" : {
         "type" : "string",
@@ -917,49 +926,6 @@ redirect_from:
         },
         "required" : [ "id", "type", "name" ]
       },
-      "metabase-enterprise.metabot-v3.tools.api.full-table" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "integer"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "database_id" : {
-            "type" : "integer"
-          },
-          "display_name" : {
-            "type" : "string"
-          },
-          "queryable_foreign_key_tables" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-table"
-            }
-          },
-          "type" : {
-            "type" : "string",
-            "enum" : [ "model", "table" ]
-          },
-          "fields" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.columns"
-          },
-          "database_schema" : {
-            "type" : "string"
-          },
-          "metrics" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.basic-metric"
-            }
-          },
-          "description" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "id", "type", "name", "display_name", "database_id", "fields" ]
-      },
       "metabase-enterprise.metabot-v3.tools.api.generate-insights-arguments" : {
         "type" : "object",
         "properties" : {
@@ -1289,6 +1255,10 @@ redirect_from:
             "with_metrics" : {
               "default" : true,
               "type" : "boolean"
+            },
+            "with_related_tables" : {
+              "default" : true,
+              "type" : "boolean"
             }
           }
         }, {
@@ -1301,7 +1271,7 @@ redirect_from:
           "type" : "object",
           "properties" : {
             "structured_output" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-table"
+              "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
             }
           },
           "required" : [ "structured_output" ]
@@ -1850,6 +1820,9 @@ redirect_from:
           "type" : "object",
           "properties" : { }
         } ]
+      },
+      "metabase-enterprise.metabot-v3.tools.api.table-result" : {
+        "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.table-result"
       },
       "metabase-enterprise.metabot-v3.tools.api.temporal-extraction-filter" : {
         "allOf" : [ {
@@ -4428,8 +4401,8 @@ redirect_from:
         "optional" : true
       },
       "metabase.lib.schema.metadata.desired-column-alias" : {
-        "type" : "string",
-        "minLength" : 1
+        "description" : "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N\n  becomes the source column alias in stage N+1. The right-hand side (RHS) in\n\n    SELECT lhs AS rhs",
+        "type" : "string"
       },
       "metabase.lib.schema.metadata.fingerprint..fingerprint.global" : {
         "description" : "Fingerprint values that Fields of all types should have.",
@@ -4708,7 +4681,8 @@ redirect_from:
         "optional" : true
       },
       "metabase.lib.schema.metadata.source-column-alias" : {
-        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+        "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
+        "type" : "string"
       },
       "metabase.lib.schema.middleware-options.middleware-options" : {
         "description" : "Additional options that can be used to toggle middleware on or off.",
@@ -13324,6 +13298,104 @@ redirect_from:
         "tags" : [ "/api/ee/database-routing" ]
       }
     },
+    "/api/ee/dependencies/check_card" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_card",
+        "description" : "Check a proposed edit to a card, and return the card IDs for those cards this edit will break.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-body"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/check_snippet" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_snippet",
+        "description" : "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "content" : {
+                    "type" : "string"
+                  },
+                  "id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  },
+                  "name" : {
+                    "description" : "snippet names cannot include '}' or start with spaces"
+                  }
+                },
+                "required" : [ "id" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/check_transform" : {
+      "post" : {
+        "summary" : "POST /api/ee/dependencies/check_transform",
+        "description" : "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-body"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
     "/api/ee/document/" : {
       "get" : {
         "summary" : "GET /api/ee/document/",
@@ -14971,6 +15043,35 @@ redirect_from:
         "tags" : [ "/api/ee/metabot-v3/document" ]
       }
     },
+    "/api/ee/metabot-v3/feedback" : {
+      "post" : {
+        "summary" : "POST /api/ee/metabot-v3/feedback",
+        "description" : "Proxy Metabot feedback to Harbormaster, adding the premium embedding token.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/metabot-v3" ]
+      }
+    },
     "/api/ee/metabot-v3/metabot/" : {
       "get" : {
         "summary" : "GET /api/ee/metabot-v3/metabot/",
@@ -15821,6 +15922,16 @@ redirect_from:
                         },
                         "value" : {
                           "anyOf" : [ {
+                            "type" : "object",
+                            "additionalProperties" : {
+                              "anyOf" : [ {
+                                "type" : "string",
+                                "minLength" : 1
+                              }, {
+                                "type" : "boolean"
+                              } ]
+                            }
+                          }, {
                             "type" : "string",
                             "minLength" : 1
                           }, {
@@ -16176,7 +16287,18 @@ redirect_from:
           }
         }, {
           "in" : "query",
-          "name" : "transform_tag_ids",
+          "name" : "last_run_statuses",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "tag_ids",
           "required" : false,
           "schema" : {
             "type" : "array",
@@ -16498,7 +16620,38 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/ee/transform/",
         "description" : "Get a list of transforms.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "last_run_start_time",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "query",
+          "name" : "last_run_statuses",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string",
+              "enum" : [ "started", "succeeded", "failed", "timeout" ]
+            }
+          }
+        }, {
+          "in" : "query",
+          "name" : "tag_ids",
+          "required" : false,
+          "schema" : {
+            "type" : "array",
+            "items" : {
+              "description" : "value must be an integer greater or equal to than zero.",
+              "type" : "integer",
+              "minimum" : 0
+            }
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -16947,6 +17100,97 @@ redirect_from:
                 },
                 "required" : [ "source" ],
                 "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/transforms-python" ]
+      }
+    },
+    "/api/ee/transforms-python/test-run" : {
+      "post" : {
+        "summary" : "POST /api/ee/transforms-python/test-run",
+        "description" : "Evaluate an ad-hoc python transform on a sample of input data.\n  Intended for short runs for early feedback. Input/output/timeout limits apply.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:logs -> <string>, :error (optional) -> <map where {:message -> <function, or function>}>, :output (optional) -> <map where {:rows -> <anything>}>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "error" : {
+                      "type" : "object",
+                      "properties" : {
+                        "message" : {
+                          "anyOf" : [ { }, { } ]
+                        }
+                      },
+                      "required" : [ "message" ]
+                    },
+                    "logs" : {
+                      "type" : "string"
+                    },
+                    "output" : {
+                      "type" : "object",
+                      "properties" : {
+                        "rows" : { }
+                      },
+                      "required" : [ "rows" ]
+                    }
+                  },
+                  "required" : [ "logs" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "code" : {
+                    "type" : "string"
+                  },
+                  "output_row_limit" : {
+                    "allOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "number",
+                      "exclusiveMinimum" : 1
+                    }, {
+                      "type" : "number",
+                      "maximum" : 100
+                    } ]
+                  },
+                  "per_input_row_limit" : {
+                    "allOf" : [ {
+                      "type" : "integer"
+                    }, {
+                      "type" : "number",
+                      "exclusiveMinimum" : 1
+                    }, {
+                      "type" : "number",
+                      "maximum" : 100
+                    } ]
+                  },
+                  "source_tables" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "type" : "integer"
+                    }
+                  }
+                },
+                "required" : [ "code", "source_tables" ]
               }
             }
           }

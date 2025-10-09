@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.test :as mt]
+   [metabase.test.util :as test.util]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch)))
@@ -86,12 +87,43 @@
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
 
                   (let [db-id (mt/id)
-                        tables (t2/select :model/Table :db_id db-id :active true)
-                        new-table-pattern (re-pattern (str ".*" table-name "_" transforms-python.execute/temp-table-suffix-new "_.*"))
-                        old-table-pattern (re-pattern (str ".*" table-name "_" transforms-python.execute/temp-table-suffix-old "_.*"))]
-                    (is (not-any? #(or (re-matches new-table-pattern (:name %))
-                                       (re-matches old-table-pattern (:name %))) tables)
-                        (str "No temp tables (_" transforms-python.execute/temp-table-suffix-new "_ or _" transforms-python.execute/temp-table-suffix-old "_) should remain after successful Python transform"))
+                        tables (t2/select :model/Table :db_id db-id :active true)]
+                    (is (not-any? transforms.util/is-temp-transform-table? tables)
+                        "No temp tables should remain after successful Python transform")
 
                     (is (= [[1 "a"] [2 "b"] [3 "c"]] (transforms.tu/table-rows table-name))
                         "Table should contain the expected data after swap")))))))))))
+
+(deftest python-transform-timeout-status-test
+  (testing "Python transform execution sets correct timeout status when script times out"
+    (mt/test-drivers #{:postgres}
+      (mt/with-premium-features #{:transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [target {:type   "table"
+                                              :schema schema
+                                              :name   "timeout_test"}]
+              (test.util/with-temporary-setting-values [python-runner-timeout-seconds 5]
+                (let [long-running-code (str "import time\n"
+                                             "import pandas as pd\n"
+                                             "\n"
+                                             "def transform():\n"
+                                             "    time.sleep(10)  # Sleep longer than timeout\n"
+                                             "    return pd.DataFrame({'result': ['should_not_reach_here']})")
+                      transform-def {:name   "Python Transform Timeout Test"
+                                     :source {:type          "python"
+                                              :source-tables {}
+                                              :body          long-running-code}
+                                     :target (assoc target :database (mt/id))}]
+                  (mt/with-temp [:model/Transform transform transform-def]
+                    (let [{:keys [run_id]} (try
+                                             (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
+                                             (catch Exception _
+                                               ;; We expect this to fail due to timeout
+                                               {:run_id (t2/select-one-fn :id :model/TransformRun
+                                                                          :transform_id (:id transform)
+                                                                          {:order-by [[:start_time :desc]]})}))
+                          run-status (t2/select-one-fn :status :model/TransformRun :id run_id)]
+                      (testing "Transform run should have timeout status"
+                        (is (= :timeout run-status)
+                            "Transform run status should be :timeout when Python script times out")))))))))))))

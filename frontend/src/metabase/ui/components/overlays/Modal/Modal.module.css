@@ -9,16 +9,13 @@
 }
 
 .overlay {
-  background-color: color-mix(
-    in hsl,
-    var(--mb-color-bg-black),
-    transparent 40%
-  );
+  background-color: var(--mb-color-overlay);
   padding: 11px;
 }
 
 .content {
   background-color: var(--mb-color-background);
+  border: 1px solid var(--mb-color-border);
 }
 
 .header {

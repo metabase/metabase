@@ -428,6 +428,11 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Querying"
+   :api  #{metabase.premium-features.core}
+   :uses #{premium-features}}
+
   driver
   {:team "Drivers"
    :api  #{metabase.driver
@@ -555,6 +560,11 @@
    :uses #{api
            models
            util}}
+
+  graph
+  {:team "Querying"
+   :api  #{metabase.graph.core}
+   :uses #{util}}
 
   indexed-entities
   {:team "UX West"
@@ -725,6 +735,7 @@
            metabase.native-query-snippets.core}
    :uses #{api
            collections
+           events
            lib
            models
            permissions
@@ -1241,6 +1252,7 @@
            events
            lib
            models
+           premium-features
            query-processor
            settings
            task
@@ -1349,9 +1361,11 @@
   users
   {:team "UX West"
    :api  #{metabase.users.api
+           metabase.users.core
            metabase.users.init
            metabase.users.models.user
-           metabase.users.models.user-parameter-value}
+           metabase.users.models.user-parameter-value
+           metabase.users.schema}
    :uses #{analytics
            api
            appearance
@@ -1641,7 +1655,8 @@
   {:team "Workflows"
    :api  #{metabase-enterprise.comments.api
            metabase-enterprise.comments.init}
-   :uses #{api
+   :uses #{analytics
+           api
            channel
            events
            models
@@ -1714,6 +1729,29 @@
            util
            warehouse-schema
            warehouses}}
+
+  enterprise/dependencies
+  {:team "Querying"
+   :api  #{metabase-enterprise.dependencies.api
+           metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.init}
+   :uses #{analyze
+           api
+           app-db
+           collections
+           config
+           driver
+           events
+           graph
+           lib
+           lib-be
+           models
+           native-query-snippets
+           premium-features
+           queries
+           query-processor
+           task
+           util}}
 
   enterprise/documents
   {:team "UX West"
@@ -1818,6 +1856,7 @@
            metabase-enterprise.metabot-v3.tools.api}
    :uses #{api
            app-db
+           audit-app
            collections
            config
            driver
@@ -1833,6 +1872,7 @@
            search
            server
            settings
+           store-api
            sync
            system
            task
@@ -2030,6 +2070,7 @@
            app-db
            config
            driver
+           lib
            models
            query-processor
            settings

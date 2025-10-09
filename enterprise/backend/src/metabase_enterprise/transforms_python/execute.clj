@@ -6,28 +6,25 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.format :as u.format]
+   [metabase.util.i18n :as i18n]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.io Closeable File)
+   (java.io Closeable)
    (java.net SocketException)
+   (java.nio.file Files)
+   (java.nio.file.attribute FileAttribute)
    (java.time Duration)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:const temp-table-suffix-new
-  "Suffix used for temporary tables containing new data during swap operations."
-  "new")
-
-(def ^:const temp-table-suffix-old
-  "Suffix used for temporary tables containing old data during swap operations."
-  "old")
 
 (defn- empty-message-log
   "Returns a new message log.
@@ -41,7 +38,7 @@
   []
   (atom {:pre-python  []                                    ; log! outputs previous to the python execution, i.e table read progress
          :python      nil                                   ; events json structured logs from the /logs endpoint
-         :post-python []}))                                    ; log! outputs after the python execution, i.e. output reads, writes to target
+         :post-python []}))                                 ; log! outputs after the python execution, i.e. output reads, writes to target
 
 (defn- log!
   "Appends a string to the message log, the string is user facing and should be suitable for presentation as part of the `transform_run.message` field."
@@ -162,8 +159,11 @@
   "Transfer data using the rename-tables*! multimethod with atomicity guarantees.
    Creates new table, then atomically renames target->old and new->target, then drops old."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)
-        temp-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-old)]
+  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))
+        temp-table-name (u/poll {:thunk #(transforms.util/temp-table-name driver (namespace table-name))
+                                 :done? #(not= source-table-name %)
+                                 ;; Poll every 1ms to quickly generate a different timestamp-based table name
+                                 :interval-ms 1})]
     (log/info "Using rename-tables strategy with atomicity guarantees")
     (try
 
@@ -183,7 +183,7 @@
   "Transfer data using create + drop + rename to minimize time without data.
    Creates new table, drops old table, then renames new->target."
   [driver db-id table-name metadata data-source]
-  (let [source-table-name (transforms.util/temp-table-name driver table-name temp-table-suffix-new)]
+  (let [source-table-name (transforms.util/temp-table-name driver (namespace table-name))]
     (log/info "Using create-drop-rename strategy to minimize downtime")
     (try
 
@@ -243,13 +243,14 @@
   ;; TODO restructure things such that s3 can we swapped out for other transfer mechanisms
   (with-open [log-future-ref     (open-python-message-update-future! run-id message-log)
               shared-storage-ref (s3/open-shared-storage! (:source-tables source))]
-    (let [driver     (:engine db)
-          server-url (transforms-python.settings/python-runner-url)
-          _          (python-runner/copy-tables-to-s3! {:run-id         run-id
-                                                        :shared-storage @shared-storage-ref
-                                                        :table-name->id (:source-tables source)
-                                                        :cancel-chan    cancel-chan})
-          _          (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+    (let [driver          (:engine db)
+          server-url      (transforms-python.settings/python-runner-url)
+          _               (python-runner/copy-tables-to-s3! {:run-id         run-id
+                                                             :shared-storage @shared-storage-ref
+                                                             :table-name->id (:source-tables source)
+                                                             :cancel-chan    cancel-chan})
+          _               (start-cancellation-process! server-url run-id cancel-chan) ; inherits lifetime of cancel-chan
+
           {:keys [status body] :as response}
           (python-runner/execute-python-code-http-call!
            {:server-url     server-url
@@ -257,30 +258,32 @@
             :run-id         run-id
             :table-name->id (:source-tables source)
             :shared-storage @shared-storage-ref})
-          ;; TODO temporary to keep more code stable while refactoring
-          ;; no need to materialize these early (i.e output we can stream directly into a tmp file or db if small)
-          {:keys [output output-manifest events]} (python-runner/read-output-objects @shared-storage-ref)]
+
+          output-manifest (python-runner/read-output-manifest @shared-storage-ref)
+          events          (python-runner/read-events @shared-storage-ref)]
       (.close log-future-ref)                               ; early close to force any writes to flush
-      (when (seq events)
-        (replace-python-logs! message-log events))
+      (replace-python-logs! message-log events)
       (if (not= 200 status)
-        (throw (ex-info "Python runner call failed"
-                        {:status-code           400
-                         :api-status-code       status
-                         :body                  body
-                         :events                events
-                         :transform-run-message (message-log->transform-run-message message-log)}))
+        (do
+          (when (:timeout body)
+            (transforms/timeout-run! run-id))
+          (throw (ex-info "Python runner call failed"
+                          {:transform-message (i18n/tru "Python execution failure (exit code {0})" (:exit_code body "?"))
+                           :status-code       400
+                           :api-status-code   status
+                           :body              body
+                           :events            events})))
         (try
-          (let [temp-file (File/createTempFile "transform-output-" ".jsonl")]
+          (let [temp-path (Files/createTempFile "transform-output-" ".jsonl" (u/varargs FileAttribute))
+                temp-file (.toFile temp-path)]
             (when-not (seq (:fields output-manifest))
               (throw (ex-info "No fields in metadata"
                               {:metadata               output-manifest
                                :raw-body               body
-                               :events                 events
-                               :transform-run-message  (message-log->transform-run-message message-log)})))
+                               :events                 events})))
             (try
-              (with-open [writer (io/writer temp-file)]
-                (.write writer ^String output))
+              (with-open [in (python-runner/open-output @shared-storage-ref)]
+                (io/copy in temp-file))
               (let [file-size (.length temp-file)]
                 (transforms.instrumentation/with-stage-timing [run-id :file-to-dwh]
                   (transfer-file-to-db driver db transform output-manifest temp-file))
@@ -291,8 +294,18 @@
           (catch Exception e
             (log/error e "Failed to to create resulting table")
             (throw (ex-info "Failed to create the resulting table"
-                            {:transform-run-message (message-log->transform-run-message message-log)}
+                            {:transform-message (or (:transform-message (ex-data e))
+                                                    ;; TODO keeping messaging the same at this level
+                                                    ;;  should be more specific in underlying calls
+                                                    (i18n/tru "Failed to create the resulting table"))}
                             e))))))))
+
+(defn- exceptional-run-message [message-log ex]
+  (str/join "\n" (remove str/blank? [(message-log->transform-run-message message-log)
+                                     (or (:transform-message (ex-data ex))
+                                         (if (instance? InterruptedException ex)
+                                           (i18n/tru "Transform interrupted")
+                                           (i18n/tru "Something went wrong")))])))
 
 (defn execute-python-transform!
   "Execute a Python transform by calling the python runner.
@@ -306,7 +319,7 @@
           {driver :engine :as db} (t2/select-one :model/Database (:database target))
           {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
       (some-> start-promise (deliver [:started run-id]))
-      (log! message-log "Executing Python transform")
+      (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
       (let [start-ms          (u/start-timer)
             transform-details {:db-id          (:id db)
@@ -316,9 +329,10 @@
                                :output-table   (transforms.util/qualified-table-name driver target)}
             run-fn            (fn [cancel-chan]
                                 (run-python-transform! transform db run-id cancel-chan message-log)
-                                (log! message-log (format "Python execution finished successfully in %s" (Duration/ofMillis (u/since-ms start-ms))))
+                                (log! message-log (i18n/tru "Python execution finished successfully in {0}" (u.format/format-milliseconds (u/since-ms start-ms))))
                                 (save-log-to-transform-run-message! run-id message-log))
-            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn)]
+            ex-message-fn     #(exceptional-run-message message-log %)
+            result            (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn)]
         (transforms.instrumentation/with-stage-timing [run-id :table-sync]
           (transforms.util/sync-target! target db run-id))
         {:run_id run-id

@@ -9,6 +9,7 @@ import {
 import cx from "classnames";
 import { useEffect, useMemo, useState } from "react";
 
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { useListCommentsQuery } from "metabase-enterprise/api";
 import { getTargetChildCommentThreads } from "metabase-enterprise/comments/utils";
@@ -16,7 +17,6 @@ import { CommentsMenu } from "metabase-enterprise/documents/components/Editor/Co
 import {
   getChildTargetId,
   getCurrentDocument,
-  getHasUnsavedChanges,
   getHoveredChildTargetId,
 } from "metabase-enterprise/documents/selectors";
 import { getListCommentsQuery } from "metabase-enterprise/documents/utils/api";
@@ -65,7 +65,6 @@ export const HeadingNodeView = ({ node }: NodeViewProps) => {
     getListCommentsQuery(document),
   );
   const comments = commentsData?.comments;
-  const hasUnsavedChanges = useSelector(getHasUnsavedChanges);
   const [hovered, setHovered] = useState(false);
   const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
   const { _id, level } = node.attrs;
@@ -104,10 +103,9 @@ export const HeadingNodeView = ({ node }: NodeViewProps) => {
         />
       </NodeViewWrapper>
 
-      {document && rendered && (
+      {document && rendered && !isWithinIframe() && (
         <CommentsMenu
           active={isOpen}
-          disabled={hasUnsavedChanges}
           href={`/document/${document.id}/comments/${_id}`}
           ref={refs.setFloating}
           show={isOpen || hovered}

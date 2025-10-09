@@ -1,25 +1,22 @@
 (ns metabase-enterprise.transforms-python.python-runner
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
    [metabase.config.core :as config]
-   [metabase.driver :as driver]
-   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   ;; TODO check that querying team are ok with us accessing this directly, otherwise make another plan
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.query-processor.store :as qp.store]
+   [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentQueue)
-   (java.io BufferedWriter File OutputStream OutputStreamWriter)
+   (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
 (set! *warn-on-reflection* true)
@@ -38,46 +35,14 @@
 
 (defn- python-runner-request
   "Helper function for making HTTP requests to the python runner service."
-  [server-url method endpoint & [request-options]]
+  [server-url method endpoint request-options & extra-args]
   (let [url          (str server-url "/v1" endpoint)
         base-options {:content-type     :json
                       :accept           :json
                       :throw-exceptions false
                       :as               :json
                       :headers          (authorization-headers)}]
-    (http/request (merge base-options request-options {:method method, :url url}))))
-
-(defn- write-jsonl-to-stream! [^OutputStream os col-names reducible-rows]
-  (let [none? (volatile! true)
-        writer (-> os
-                   (OutputStreamWriter. StandardCharsets/UTF_8)
-                   (BufferedWriter.))]
-
-    (run! (fn [row]
-            (when @none? (vreset! none? false))
-            (let [row-map (zipmap col-names row)]
-              (json/encode-to row-map writer {})
-              (.newLine writer)))
-          reducible-rows)
-
-    ;; Workaround for LocalStack, which doesn't support zero byte files.
-    (when @none?
-      (.write writer " "))
-
-    (doto writer
-      (.flush)
-      (.close))))
-
-(defn- execute-mbql-query
-  [driver db-id query respond cancel-chan]
-  (driver/with-driver driver
-    (let [native (qp.compile/compile {:type :query, :database db-id :query query})
-          query  {:database db-id
-                  :type     :native
-                  :native   native}]
-      (qp.store/with-metadata-provider db-id
-        (binding [qp.pipeline/*canceled-chan* cancel-chan]
-          (driver/execute-reducible-query driver query {:canceled-chan cancel-chan} respond))))))
+    (apply http/request (merge base-options request-options {:method method, :url url}) extra-args)))
 
 (defn root-type
   "Supported type for roundtrip/insertion"
@@ -91,6 +56,77 @@
            :type/DateTimeWithTZ
            :type/Text
            :type/Boolean])))
+
+(defn- maybe-fixup-value [col v]
+  (cond
+    (nil? (root-type (:base_type col)))
+    ;; we're not a supported base type, so we just stringify it
+    (when v (json/encode v))
+
+    ;; the clickhouse driver returns bigdecimals for int64 values
+    (and (isa? (:base_type col) :type/Integer)
+         (or (instance? BigDecimal v)
+             (float? v)))
+    (bigint v)
+
+    :else
+    v))
+
+(defn- write-jsonl-row-to-os-rff
+  "Returns a rff that writes query results as JSONL to an OutputStream.
+
+  Only fields present in `fields-meta` are included in the output. Values are processed via
+  `maybe-fixup-value` before JSON encoding."
+  [^OutputStream os fields-meta {cols-meta :cols}]
+  (let [filtered-col-meta (m/index-by :name fields-meta)
+        col-names (map :name cols-meta)
+        none? (volatile! true)]
+    (fn
+      ([]
+       (-> os
+           (OutputStreamWriter. StandardCharsets/UTF_8)
+           (BufferedWriter.)))
+
+      ([^BufferedWriter writer]
+       ;; Workaround for LocalStack, which doesn't support zero byte files.
+       (when @none?
+         (.write writer " "))
+
+       (doto writer
+         (.flush)
+         (.close)))
+
+      ([^BufferedWriter writer row]
+       (let [row-map (->>
+                      (map vector col-names row)
+                      (filter (fn [[n _]]
+                                (contains? filtered-col-meta n)))
+                      (map (fn [[n v]]
+                             (maybe-fixup-value (filtered-col-meta n) v)))
+                      (zipmap (filter filtered-col-meta col-names)))]
+
+         (when @none? (vreset! none? false))
+         (json/encode-to row-map writer {})
+
+         (doto writer
+           (.newLine)))))))
+
+(defn- execute-mbql-query
+  [db-id query rff cancel-chan]
+  (binding [qp.pipeline/*canceled-chan* (a/go (a/<! cancel-chan))]
+    (qp/process-query {:type :query :database db-id :query query} rff)))
+
+(defn- throw-if-cancelled [cancel-chan]
+  (when (a/poll! cancel-chan)
+    (throw (ex-info "Run cancelled" {:error-type :cancelled}))))
+
+(defn- write-table-data-to-file! [{:keys [db-id table-id fields-meta temp-file cancel-chan limit]}]
+  (with-open [os (io/output-stream temp-file)]
+    (let [query (cond-> {:source-table table-id} limit (assoc :limit limit))
+          rff (fn [cols-meta] (write-jsonl-row-to-os-rff os fields-meta cols-meta))]
+      (execute-mbql-query db-id query rff cancel-chan)
+      (some-> cancel-chan throw-if-cancelled)
+      nil)))
 
 (defn restricted-insert-type
   "Type for insertion restricted to supported"
@@ -131,39 +167,6 @@
                             :field_id       (:id col-meta)})
                          cols-meta)})
 
-(defn- maybe-fixup-value [col v]
-  (cond
-    (nil? (root-type (:base_type col)))
-    ;; we're not a supported base type, so we just stringify it
-    (when v (json/encode v))
-
-    ;; the clickhouse driver returns bigdecimals for int64 values
-    (and (isa? (:base_type col) :type/Integer)
-         (or (instance? BigDecimal v)
-             (float? v)))
-    (bigint v)
-
-    :else
-    v))
-
-(defn- write-table-data-to-file! [{:keys [db-id driver table-id fields-meta temp-file cancel-chan]}]
-  (let [query    {:source-table table-id}]
-    (execute-mbql-query driver db-id query
-                        (fn [{cols-meta :cols} reducible-rows]
-                          (with-open [os (io/output-stream temp-file)]
-                            (let [filtered-col-meta (m/index-by :name fields-meta)
-                                  col-names         (map :name cols-meta)
-                                  filtered-rows     (eduction (map (fn [row]
-                                                                     (->>
-                                                                      (map vector col-names row)
-                                                                      (filter (fn [[n _]]
-                                                                                (contains? filtered-col-meta n)))
-                                                                      (map (fn [[n v]]
-                                                                             (maybe-fixup-value (filtered-col-meta n) v))))))
-                                                              reducible-rows)]
-                              (write-jsonl-to-stream! os (filter filtered-col-meta col-names) filtered-rows))))
-                        cancel-chan)))
-
 (defn get-logs
   "Return the logs of the current running python process"
   [run-id]
@@ -173,7 +176,7 @@
 (defn execute-python-code-http-call!
   "Calls the /execute endpoint of the python runner. Blocks until the run either succeeds or fails and returns
   the response from the server."
-  [{:keys [server-url code run-id table-name->id shared-storage]}]
+  [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
 
@@ -183,8 +186,8 @@
 
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
-                                  :timeout             (* 30 60) ;; 30 mins harcoded for now
-                                  :request_id          run-id
+                                  :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
+                                  :request_id          (or request-id run-id)
                                   :output_url          (:url output)
                                   :output_manifest_url (:url output-manifest)
                                   :events_url          (:url events)
@@ -203,17 +206,24 @@
                                    {:error string-if-error}))
                                string-if-error)))))
 
-;; temporary, we should not need to realize data/events files into memory longer term
-(defn read-output-objects
-  "Temporary function that strings/jsons stuff in S3 and returns it for compatibility."
+(defn read-events
+  "Returns a vector of event contents (or nil if the event file does not exist)"
   [{:keys [s3-client bucket-name objects]}]
-  (let [{:keys [output output-manifest events]} objects
-        output-content          (s3/read-to-string s3-client bucket-name (:path output) nil)
-        output-manifest-content (s3/read-to-string s3-client bucket-name (:path output-manifest) "{}")
-        events-content          (s3/read-to-string s3-client bucket-name (:path events))]
-    {:output          output-content
-     :output-manifest (json/decode+kw output-manifest-content)
-     :events          (mapv json/decode+kw (str/split-lines events-content))}))
+  ;; note we expect :events to be a small file, limits ought to be enforced by the runner
+  (when-some [in (s3/open-object s3-client bucket-name (:path (:events objects)))]
+    (with-open [in in
+                rdr (io/reader in)]
+      (mapv json/decode+kw (line-seq rdr)))))
+
+(defn read-output-manifest
+  "Return the output manifest map. Returns nil if it does not exist."
+  [{:keys [s3-client bucket-name objects]}]
+  (json/decode+kw (s3/read-to-string s3-client bucket-name (:path (:output-manifest objects)) "{}")))
+
+(defn open-output
+  "Return an InputStream with the output jsonl contents. Close with .close. Returns nil if the object does not exist."
+  ^InputStream [{:keys [s3-client bucket-name objects]}]
+  (s3/open-object s3-client bucket-name (:path (:output objects))))
 
 (defn cancel-python-code-http-call!
   "Calls the /cancel endpoint of the python runner. Returns immediately."
@@ -244,9 +254,10 @@
   [{:keys [run-id
            shared-storage
            table-name->id
-           cancel-chan]}]
+           cancel-chan
+           limit]}]
   ;; TODO there's scope for some parallelism here, in particular across different databases
-  (doseq [table-id (vals table-name->id)
+  (doseq [[table-name table-id] table-name->id
           :let [{:keys [s3-client bucket-name objects]} shared-storage
                 {data-path :path}                       (get objects [:table table-id :data])
                 {manifest-path :path}                   (get objects [:table table-id :manifest])]]
@@ -265,7 +276,8 @@
               :table-id    table-id
               :fields-meta fields-meta
               :temp-file   tmp-data-file
-              :cancel-chan cancel-chan}))
+              :cancel-chan cancel-chan
+              :limit       limit}))
 
           (with-open [writer (io/writer tmp-meta-file)]
             (json/encode-to manifest writer {}))
@@ -278,6 +290,13 @@
               (s3/upload-file s3-client bucket-name manifest-path tmp-meta-file))
 
             (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ data-size meta-size) nil)))
+        (catch InterruptedException ie (throw ie))
+        (catch Throwable t
+          (throw (ex-info "An error occurred while copying table data to S3"
+                          {:table-id table-id
+                           :transform-message (or (:transform-message (ex-data t))
+                                                  (i18n/tru "Failed to copy table contents to shared storage {0} ({1})" table-name table-id))}
+                          t)))
         (finally
           (safe-delete tmp-data-file)
           (safe-delete tmp-meta-file))))))

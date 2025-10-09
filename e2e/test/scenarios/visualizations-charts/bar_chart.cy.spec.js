@@ -330,7 +330,7 @@ describe("scenarios > visualizations > bar chart", () => {
   });
 
   it("supports gray series colors", () => {
-    const grayColor = "#F3F3F4";
+    const grayColor = "#F2F2F3";
 
     H.visitQuestionAdhoc({
       ...breakoutBarChart,
