@@ -648,10 +648,10 @@
                [:div
                 {:style "background-color: #F9FBFC; border: 1px solid #DCE1E4; border-radius: 8px; padding: 24px;"}
                 [:p
-                 {:style "margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: #4C5773; line-height: 1.4;"}
+                 {:style "margin-bottom: 4px; font-size: 14px; font-weight: 700; color: #4C5773; line-height: 1.4;"}
                  (trs "This chart exceeded the {0} size limit." filesize-limit)]
                 [:p
-                 {:style "margin: 0; font-size: 12px; font-weight: 400; color: #696E7B; line-height: 1.5;"}
+                 {:style "margin: 0; font-size: 12px; font-weight: 400; color: #696E7B;"}
                  (trs "You can make it smaller by adding filters, or summarizing the data.")]]]}))
 
 (mu/defmethod render :render-error :- ::RenderedPartCard
