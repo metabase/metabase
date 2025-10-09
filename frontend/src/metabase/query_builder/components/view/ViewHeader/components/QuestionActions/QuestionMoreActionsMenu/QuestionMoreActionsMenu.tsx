@@ -128,6 +128,13 @@ export const QuestionMoreActionsMenu = ({
         {t`Add to dashboard`}
       </Menu.Item>
     ),
+    (isAdmin || canManageSubscriptions) && !isModel && !isAnalytics && (
+      <QuestionAlertsMenuItem
+        key="alerts"
+        question={question}
+        onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
+      />
+    ),
     ...PLUGIN_MODERATION.useQuestionMenuItems(question, reload),
     hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
       <Menu.Item
@@ -172,13 +179,6 @@ export const QuestionMoreActionsMenu = ({
       >
         {t`Turn back to saved question`}
       </Menu.Item>
-    ),
-    (isAdmin || canManageSubscriptions) && !isModel && !isAnalytics && (
-      <QuestionAlertsMenuItem
-        key="alerts"
-        question={question}
-        onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
-      />
     ),
     enableSettingsSidebar && (
       <Menu.Item
