@@ -38,13 +38,6 @@ export const GetCodeStep = () => {
     trackEmbedWizardCodeCopied(
       settings.useExistingUserSession ? "user_session" : "sso",
     );
-
-    // Embedding Hub: track step completion
-    const settingKey: SettingKey = settings.useExistingUserSession
-      ? "embedding-hub-test-embed-snippet-created"
-      : "embedding-hub-production-embed-snippet-created";
-
-    updateInstanceSettings({ [settingKey]: true });
   };
 
   return (

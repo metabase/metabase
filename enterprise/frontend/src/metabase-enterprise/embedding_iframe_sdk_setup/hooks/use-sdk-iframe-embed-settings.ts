@@ -12,11 +12,12 @@ import type {
   SdkIframeEmbedSetupSettings,
 } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
+import { trackEmbedWizardOpened } from "../analytics";
 import {
-  trackEmbedWizardOpened,
-  trackEmbedWizardSettingsUpdated,
-} from "../analytics";
-import { getDefaultSdkIframeEmbedSettings } from "../utils/get-default-sdk-iframe-embed-setting";
+  getDefaultSdkIframeEmbedSettings,
+  getExperienceFromSettings,
+  getResourceIdFromSettings,
+} from "../utils/get-default-sdk-iframe-embed-setting";
 
 const getSettingsToPersist = (
   settings: Partial<SdkIframeEmbedSetupSettings>,
@@ -89,8 +90,6 @@ export const useSdkIframeEmbedSettings = ({
   const updateSettings = useCallback(
     (nextSettings: Partial<SdkIframeEmbedSetupSettings>) =>
       setRawSettings((prevSettings) => {
-        trackEmbedWizardSettingsUpdated(nextSettings);
-
         // Merging with a partial setting requires us to cast the type
         const mergedSettings = {
           ...(prevSettings ?? defaultSettings),
@@ -126,6 +125,10 @@ export const useSdkIframeEmbedSettings = ({
 
   return {
     settings,
+    defaultSettings: {
+      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
+      experience: getExperienceFromSettings(defaultSettings),
+    },
     isEmbedSettingsLoaded,
     replaceSettings,
     updateSettings,

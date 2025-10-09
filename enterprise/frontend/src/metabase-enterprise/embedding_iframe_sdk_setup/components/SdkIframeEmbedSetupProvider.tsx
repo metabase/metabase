@@ -14,6 +14,7 @@ import {
 } from "../hooks";
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
+import { getExperienceFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -43,12 +44,17 @@ export const SdkIframeEmbedSetupProvider = ({
     "select-embed-experience",
   );
 
-  const { settings, isEmbedSettingsLoaded, replaceSettings, updateSettings } =
-    useSdkIframeEmbedSettings({
-      recentDashboards,
-      isRecentsLoading,
-      modelCount,
-    });
+  const {
+    settings,
+    defaultSettings,
+    isEmbedSettingsLoaded,
+    replaceSettings,
+    updateSettings,
+  } = useSdkIframeEmbedSettings({
+    recentDashboards,
+    isRecentsLoading,
+    modelCount,
+  });
 
   // Which embed experience are we setting up?
   const experience = useMemo(
@@ -80,10 +86,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isLoading,
     isFetching,
     settings,
-    defaultSettings: {
-      resourceId: getResourceIdFromSettings(defaultSettings) ?? "",
-      experience: getExperienceFromSettings(defaultSettings),
-    },
+    defaultSettings,
     replaceSettings,
     updateSettings,
     recentDashboards,
