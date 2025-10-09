@@ -23,6 +23,13 @@
   [:map
    [:overwrite? :boolean]])
 
+(defn- transform-opts [{:keys [transform-type]}]
+  (case transform-type
+    :table {:overwrite? true}
+
+    ;; TODO: append vs merge, for now we're just append
+    :table-incremental {}))
+
 (defn run-mbql-transform!
   "Run `transform` and sync its target table.
 
@@ -42,7 +49,7 @@
                               :query (transforms.util/compile-source source)
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
-           opts {:overwrite? (= :table (:transform-type transform-details))}]
+           opts (transform-opts transform-details)]
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
                          {:driver driver, :database database})))
@@ -59,7 +66,7 @@
           (fn [_cancel-chan] (driver/run-transform! driver transform-details opts)))
          (transforms.instrumentation/with-stage-timing [run-id :table-sync]
            (transforms.util/sync-target! target database run-id)
-         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+           ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
            (events/publish-event! :event/transform-run-complete {:object transform-details}))))
      (catch Throwable t
        (log/error t "Error executing transform")
