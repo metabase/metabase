@@ -859,13 +859,11 @@ const MODEL_NAME = "Test Action Model";
             expect(row.date).to.include(newTime.slice(0, 10));
             expect(row.time).to.equal(newTime.slice(-8));
 
-            // metabase is smart and localizes these, so all of these are +8 hours
-            const newTimeAdjusted = newTime.replace("T01", "T09");
             // we need to use .include because the driver adds milliseconds to the timestamp
-            expect(row.datetime).to.include(newTimeAdjusted);
-            expect(row.timestamp).to.include(newTimeAdjusted);
-            expect(row.datetimeTZ).to.include(newTimeAdjusted);
-            expect(row.timestampTZ).to.include(newTimeAdjusted);
+            expect(row.datetime).to.include(newTime);
+            expect(row.timestamp).to.include(newTime);
+            expect(row.datetimeTZ).to.include(newTime);
+            expect(row.timestampTZ).to.include(newTime);
           });
         });
       });
