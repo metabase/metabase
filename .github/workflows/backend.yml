@@ -51,11 +51,13 @@ jobs:
         job:
           - name: Enterprise Tests
             edition: ee
+            test-group-name: ee
             build-static-viz: 'false'
             test-args: >-
               :only '"enterprise/backend/test"'
           - name: EE App DB Tests (Part 1)
             edition: ee
+            test-group-name: ee-app-db-1
             build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
@@ -63,6 +65,7 @@ jobs:
               :partition/index 0
           - name: EE App DB Tests (Part 2)
             edition: ee
+            test-group-name: ee-app-db-2
             build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
@@ -70,6 +73,7 @@ jobs:
               :partition/index 1
           - name: OSS App DB Tests (Part 1)
             edition: oss
+            test-group-name: oss-app-db-1
             build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
@@ -77,6 +81,7 @@ jobs:
               :partition/index 0
           - name: OSS App DB Tests (Part 2)
             edition: oss
+            test-group-name: oss-app-db-2
             build-static-viz: 'true'
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
@@ -157,7 +162,7 @@ jobs:
         if: always() && !success()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}
+          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.job-group-name }}
           path: logs/test-log.json
           retention-days: 1
 
