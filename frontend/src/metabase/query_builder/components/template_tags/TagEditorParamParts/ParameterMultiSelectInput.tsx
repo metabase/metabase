@@ -52,7 +52,7 @@ export function ParameterMultiSelectInput({
 
 function ParameterMultiSelectHelpInfo() {
   return (
-    <HoverCard closeDelay={100000}>
+    <HoverCard>
       <HoverCard.Target>
         <Icon
           c="text-secondary"
