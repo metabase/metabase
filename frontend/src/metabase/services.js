@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { Api, cardApi } from "metabase/api";
+import { Api } from "metabase/api";
 import {
   provideCardQueryMetadataTags,
   provideCardTags,
