@@ -15,6 +15,7 @@ module.exports = {
     "^Components/overlays/Tooltip",
     "^Components/Documents",
     "^Components/Feedback/Alert",
+    "^App/MetabotLogo",
   ].join("|"),
   configurations: {
     "chrome.laptop": {
