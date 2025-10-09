@@ -80,6 +80,18 @@
              (driver.common/values->base-type)
              (analyze/constant-fingerprinter driver-base-type)))))
 
+(defn- enrich-with-inferred-type
+  "Set :base_type and :effective_type to `base-type` in `col`.
+  Also set or update the :field_ref field to contain `base-type` in the field ref options."
+  [col base-type]
+  (cond-> (assoc col :base_type base-type, :effective_type base-type)
+    ;; if we have a field_ref for a named column, set the base_type options
+    (string? (get-in col [:field_ref 1]))
+    (update-in [:field_ref 2] assoc :base-type base-type)
+    ;; if there is no field_ref at all, add it
+    (nil? (:field_ref col))
+    (assoc :field_ref [:field (:name col) {:base-type base-type}])))
+
 (mu/defn- infer-base-type-xform :- ::qp.schema/rf
   "Add an xform to `rf` that will update the final results metadata with `base_type` and an updated `field_ref` based on
   the a sample of values in result rows. This is only needed for drivers that don't return base type in initial metadata
@@ -90,16 +102,17 @@
    rf
    [(base-type-inferer metadata)]
    (fn combine [result base-types]
-     (let [cols' (mapv (fn [col base-type]
-                         (assoc col
-                                :base_type      base-type
-                                :effective_type base-type
-                                :field_ref      [:field (:name col) {:base-type base-type}]))
-                       (:cols metadata)
-                       base-types)]
+     (let [result-data-cols (when (map? result)
+                              (-> result :data :cols))]
        (rf (cond-> result
-             (map? result)
-             (assoc-in [:data :cols] cols')))))))
+             (and (seq result-data-cols)
+                  ;; For pivot queries, when generating the row, column, or grand totals, the number of
+                  ;; result-data-cols can be greater than the number of base-types.  In these cases, the
+                  ;; result-data-cols already have the correct type, so no enrichment is necessary.
+                  ;; For native queries where this correction is needed, the number and position of the columns and
+                  ;; the base-types should match. (#64124)
+                  (= (count result-data-cols) (count base-types)))
+             (assoc-in [:data :cols] (mapv enrich-with-inferred-type result-data-cols base-types))))))))
 
 (mu/defn- add-column-info-with-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query
