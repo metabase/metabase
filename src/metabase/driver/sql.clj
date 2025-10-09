@@ -122,10 +122,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite? append?]}]
-  (let [queries (cond->> [(driver/compile-transform driver transform-details {:append? append?})]
+  [driver {:keys [conn-spec output-table] :as transform-details} {:keys [overwrite?]}]
+  (let [queries (cond->> [(driver/compile-transform driver transform-details)]
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
+
+(defmethod driver/run-transform! [:sql :table-incremental]
+  [driver {:keys [conn-spec] :as transform-details} _opts] ;; eventually will have on conflict stuff, if supported
+  (let [queries (driver/compile-insert driver transform-details)]
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."

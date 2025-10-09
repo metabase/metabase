@@ -866,11 +866,14 @@
     (sql.u/quote-name :bigquery-cloud-sdk :table table-str)))
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
-  [_driver {:keys [query output-table]} & {:keys [append?]}]
+  [_driver {:keys [query output-table]}]
   (let [table-str (get-table-str output-table)]
-    (if append?
-      [(format "INSERT INTO %s %s" table-str query)]
-      [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)])))
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+
+(defmethod driver/compile-insert :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  (let [table-str (get-table-str output-table)]
+    [(format "INSERT INTO %s %s" table-str query)]))
 
 (defmethod driver/compile-drop-table :bigquery-cloud-sdk
   [_driver table]

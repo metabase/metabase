@@ -127,28 +127,13 @@
           (is (or (re-find #"schema.*my_table" (first result))
                   (re-find #"my_table" (first result)))))))))
 
-(deftest compile-transform-append-test
-  (testing "compile-transform with append? option"
+(deftest compile-insert-test
+  (testing "compile-insert generates INSERT INTO statements"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "append? false generates CREATE TABLE AS"
-        (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
-                                                :output-table :my_table}
-                                               :append? false)]
-          (testing "returns a vector"
-            (is (vector? result)))
-          (testing "first element is SQL string"
-            (is (string? (first result))))
-          (testing "generates CREATE TABLE statement"
-            (is (or (re-find #"(?i)INTO\s+.*my_table.*FROM" (first result))
-                    (re-find #"(?i)CREATE\s+TABLE.*AS" (first result))
-                    (re-find #"(?i)CREATE\s+.*TABLE.*my_table" (first result)))))))
-
-      (testing "append? true generates INSERT INTO"
-        (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
-                                                :output-table :my_table}
-                                               :append? true)]
+      (testing "simple table name"
+        (let [result (driver/compile-insert driver/*driver*
+                                            {:query "SELECT * FROM products"
+                                             :output-table :my_table})]
           (testing "returns a vector"
             (is (vector? result)))
           (testing "first element is SQL string"
@@ -158,11 +143,10 @@
           (testing "includes SELECT statement"
             (is (re-find #"(?i)SELECT" (first result))))))
 
-      (testing "append? true with schema-qualified table"
-        (let [result (driver/compile-transform driver/*driver*
-                                               {:query "SELECT * FROM products"
-                                                :output-table :my_schema/my_table}
-                                               :append? true)]
+      (testing "schema-qualified table"
+        (let [result (driver/compile-insert driver/*driver*
+                                            {:query "SELECT * FROM products"
+                                             :output-table :my_schema/my_table})]
           (testing "returns a vector"
             (is (vector? result)))
           (testing "generates INSERT INTO statement"

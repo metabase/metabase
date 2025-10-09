@@ -1020,14 +1020,17 @@
       (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmethod driver/compile-transform :sqlserver
-  [driver {:keys [query output-table]} & {:keys [append?]}]
+  [driver {:keys [query output-table]}]
+  (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query query)
+        ^PlainSelect select-body (.getSelectBody parsed-query)]
+    (.setIntoTables select-body [(Table. table-name)])
+    [(str parsed-query)]))
+
+(defmethod driver/compile-insert :sqlserver
+  [driver {:keys [query output-table]}]
   (let [^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    (if append?
-      [(format "INSERT INTO %s %s" table-name query)]
-      (let [^Select parsed-query (macaw/parsed-query query)
-            ^PlainSelect select-body (.getSelectBody parsed-query)]
-        (.setIntoTables select-body [(Table. table-name)])
-        [(str parsed-query)]))))
+    [(format "INSERT INTO %s %s" table-name query)]))
 
 (defmethod driver/table-exists? :sqlserver
   [driver database {:keys [schema name] :as _table}]

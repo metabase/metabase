@@ -2078,12 +2078,15 @@
 ;;;; Transforms
 
 (defmethod driver/compile-transform :sql
-  [driver {:keys [query output-table]} & {:keys [append?]}]
+  [driver {:keys [query output-table]}]
   (format-honeysql driver
-                   (if append?
-                     {:insert-into [(keyword output-table) {:select :* :raw query}]}
-                     {:create-table-as [(keyword output-table)]
-                      :raw query})))
+                   {:create-table-as [(keyword output-table)]
+                    :raw query}))
+
+(defmethod driver/compile-insert :sql
+  [driver {:keys [query output-table]}]
+  (format-honeysql driver
+                   {:insert-into [(keyword output-table) {:select :* :raw query}]}))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]
