@@ -1,9 +1,18 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Icon, Popover, Radio, Stack, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Icon,
+  Popover,
+  Radio,
+  SegmentedControl,
+  type SegmentedControlItem,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
 
-import type { SortColumn, SortOptions } from "../../types";
+import type { SortColumn, SortDirection, SortOptions } from "../../types";
 
 type SortOptionsPickerProps = {
   sortOptions: SortOptions;
@@ -35,6 +44,21 @@ export function SortOptionsPicker({
   );
 }
 
+const SORT_DIRECTION_OPTIONS: SegmentedControlItem<SortDirection>[] = [
+  {
+    value: "asc",
+    get label() {
+      return <Icon name="arrow_up" />;
+    },
+  },
+  {
+    value: "desc",
+    get label() {
+      return <Icon name="arrow_down" />;
+    },
+  },
+];
+
 type SortOptionsPopoverProps = {
   sortOptions: SortOptions;
   onSortOptionsChange: (sortOptions: SortOptions) => void;
@@ -48,8 +72,15 @@ function SortOptionsPopover({
     onSortOptionsChange({ ...sortOptions, column: column as SortColumn });
   };
 
+  const handleDirectionChange = (direction: string) => {
+    onSortOptionsChange({
+      ...sortOptions,
+      direction: direction as SortDirection,
+    });
+  };
+
   return (
-    <Stack p="md" gap="lg">
+    <Stack w="15rem" p="md" gap="lg">
       <Radio.Group
         value={sortOptions.column}
         label={t`Sort by`}
@@ -61,6 +92,12 @@ function SortOptionsPopover({
           <Radio value="view_count" label={t`View count`} />
         </Stack>
       </Radio.Group>
+      <SegmentedControl
+        value={sortOptions.direction}
+        data={SORT_DIRECTION_OPTIONS}
+        fullWidth
+        onChange={handleDirectionChange}
+      />
     </Stack>
   );
 }
