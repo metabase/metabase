@@ -202,13 +202,11 @@ const BehaviorSection = () => {
         { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
         (settings) => (
           <Stack gap="md">
-            {!settings.isStatic && (
-              <Checkbox
-                label={t`Allow people to drill through on data points`}
-                checked={settings.drills}
-                onChange={(e) => updateSettings({ drills: e.target.checked })}
-              />
-            )}
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
 
             <Checkbox
               label={t`Allow downloads`}
