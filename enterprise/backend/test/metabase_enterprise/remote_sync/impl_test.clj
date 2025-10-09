@@ -91,6 +91,17 @@
         (is (= :error (:status result)))
         (is (re-find #"Remote sync source is not enabled" (:message result)))))))
 
+(deftest export!-with-no-remote-synced-collections-test
+  (testing "export! errors when there are no remote-synced collections"
+    (mt/with-temporary-setting-values [remote-sync-type :development]
+      (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+        ;; Create a regular collection (not remote-synced) to verify it's not included
+        (mt/with-temp [:model/Collection {_coll-id :id} {:name "Regular Collection" :type nil :location "/"}]
+          (let [mock-source (test-helpers/create-mock-source)
+                result (impl/export! mock-source task-id "Test commit")]
+            (is (= :error (:status result)))
+            (is (= "No remote-synced collections available to sync." (:message result)))))))))
+
 (deftest export!-successful-with-default-collections-test
   (testing "export! successful with default collections"
     (mt/with-temporary-setting-values [remote-sync-type :development]
