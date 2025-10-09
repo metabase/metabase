@@ -130,11 +130,6 @@ const SdkIframeEmbedView = ({
         dashboardId: P.nonNullable,
         drills: false,
       },
-      {
-        componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
-        isStatic: true,
-      },
       (settings) => (
         <StaticDashboard
           dashboardId={settings.dashboardId}
@@ -152,6 +147,12 @@ const SdkIframeEmbedView = ({
         dashboardId: P.nonNullable,
         isStatic: P.optional(false),
         drills: P.optional(true),
+      },
+      {
+        componentName: "metabase-dashboard",
+        dashboardId: P.nonNullable,
+        isStatic: true,
+        drills: true,
       },
       (settings) => (
         <InteractiveDashboard

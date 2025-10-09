@@ -164,6 +164,7 @@ const SdkIframeEmbedPreviewInner = () => {
               ? s.questionId
               : staticEmbeddingSignedToken,
             "with-title": s.withTitle,
+            drills: s.drills,
             "with-downloads": s.withDownloads,
             "target-collection": s.targetCollection,
             "entity-types": s.entityTypes
@@ -181,7 +182,6 @@ const SdkIframeEmbedPreviewInner = () => {
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
             ...(!isStaticEmbedding && {
-              drills: s.drills,
               "is-save-enabled": s.isSaveEnabled,
             }),
           }),
@@ -192,6 +192,7 @@ const SdkIframeEmbedPreviewInner = () => {
               ? s.dashboardId
               : staticEmbeddingSignedToken,
             "with-title": s.withTitle,
+            drills: s.drills,
             "with-downloads": s.withDownloads,
             "initial-parameters": s.initialParameters
               ? JSON.stringify(
@@ -201,9 +202,6 @@ const SdkIframeEmbedPreviewInner = () => {
             "hidden-parameters": s.hiddenParameters
               ? JSON.stringify(s.hiddenParameters)
               : undefined,
-            ...(!isStaticEmbedding && {
-              drills: s.drills,
-            }),
           }),
         )
         .with({ componentName: "metabase-browser" }, (s) =>

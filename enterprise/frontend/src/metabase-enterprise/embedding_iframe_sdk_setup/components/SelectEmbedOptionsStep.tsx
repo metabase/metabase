@@ -158,7 +158,7 @@ export const SelectEmbedOptionsStep = () => {
           {t`Behavior`}
         </Text>
         <Stack gap="md">
-          {!isStaticEmbedding && isQuestionOrDashboardEmbed && (
+          {isQuestionOrDashboardEmbed && (
             <Checkbox
               label={t`Allow people to drill through on data points`}
               checked={settings.drills}
