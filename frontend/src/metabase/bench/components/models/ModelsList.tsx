@@ -42,52 +42,29 @@ import type { BenchItemsListSorting } from "../ItemsListSection/types";
 
 import { CreateModelMenu } from "./CreateModelMenu";
 
-function buildNestedCollectionsAndModels(
+function getTreeItems(
   collections: Collection[],
   models: SearchResult[],
 ): ITreeNodeItem[] {
-  const collectionTree = buildCollectionTree(collections);
+  const collectionTree = buildCollectionTree(
+    collections,
+    (m) => m === "dataset",
+  );
 
-  function hasModelsInDescendants(collection: CollectionTreeItem): boolean {
+  function collectionToTreeNode(collection: CollectionTreeItem): ITreeNodeItem {
     const modelsInCollection = models.filter(
       (model) => model.collection.id === collection.id,
     );
 
-    if (modelsInCollection.length > 0) {
-      return true;
-    }
-
-    if (collection.children && collection.children.length > 0) {
-      return collection.children.some(hasModelsInDescendants);
-    }
-
-    return false;
-  }
-
-  function convertCollectionToTreeNode(
-    collection: CollectionTreeItem,
-  ): ITreeNodeItem | null {
-    if (!hasModelsInDescendants(collection)) {
-      return null;
-    }
-
-    const modelsInCollection = models.filter(
-      (model) => model.collection.id === collection.id,
-    );
-
-    const modelNodes: ITreeNodeItem[] = modelsInCollection.map((model) => {
-      return {
+    const modelNodes = modelsInCollection.map(
+      (model): ITreeNodeItem => ({
         id: model.id,
         name: model.name,
-        icon: getIcon({ type: "dataset", ...model }),
-      };
-    });
+        icon: getIcon(model),
+      }),
+    );
 
-    const childCollectionNodes = (collection.children || [])
-      .map(convertCollectionToTreeNode)
-      .filter(
-        (node: ITreeNodeItem | null): node is ITreeNodeItem => node !== null,
-      );
+    const childCollectionNodes = collection.children.map(collectionToTreeNode);
 
     return {
       id: `collection-${collection.id}`,
@@ -98,17 +75,13 @@ function buildNestedCollectionsAndModels(
   }
 
   return [
-    ...collectionTree
-      .map(convertCollectionToTreeNode)
-      .filter(
-        (node: ITreeNodeItem | null): node is ITreeNodeItem => node !== null,
-      ),
+    ...collectionTree.map(collectionToTreeNode),
     ...models
       .filter((m) => !m.collection.id)
       .map((m) => ({
         id: m.id,
         name: m.name,
-        icon: getIcon({ type: "dataset", ...m }),
+        icon: getIcon(m),
       })),
   ];
 }
@@ -131,9 +104,7 @@ function ModelsList({
   const isLoading = isLoadingModels || isLoadingCollections;
 
   const treeData = useMemo(() => {
-    return models && collections
-      ? buildNestedCollectionsAndModels(collections, models)
-      : [];
+    return models && collections ? getTreeItems(collections, models) : [];
   }, [collections, models]);
 
   const handleModelSelect = (item: ITreeNodeItem) => {
