@@ -90,12 +90,13 @@
   (let [col (lib.metadata/field metadata-providerable field-id)]
     (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
       (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
-        {:id                        remap-id
-         :name                      remap-name
-         :field-id                  (:id col)
-         :field-name                (:name col)
-         :human-readable-field-id   remap-field-id
-         :human-readable-field-name (:name remap-field)}))))
+        (when (not= (:visibility-type remap-field) :sensitive)
+          {:id                        remap-id
+           :name                      remap-name
+           :field-id                  (:id col)
+           :field-name                (:name col)
+           :human-readable-field-id   remap-field-id
+           :human-readable-field-name (:name remap-field)})))))
 
 (mr/def ::remap-info
   [:and
