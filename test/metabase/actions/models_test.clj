@@ -42,10 +42,28 @@
                                                     {:type         :text
                                                      :id           "name"
                                                      :display-name "Display Name"}]
-                           :visualization_settings {:fields {"id"   {:id     "id"
-                                                                     :hidden false}
-                                                             "name" {:id     "name"
-                                                                     :hidden false}}}}
+                           :visualization_settings {:fields {"id"   {:description  nil
+                                                                     :placeholder  "ID"
+                                                                     :title        "ID"
+                                                                     :hidden       false
+                                                                     :id           "id"
+                                                                     :display_name "ID"
+                                                                     :inputType    :number
+                                                                     :base_type    :type/BigInteger
+                                                                     :fieldType    :number
+                                                                     :required     true
+                                                                     :order        0}
+                                                             "name" {:description  nil
+                                                                     :placeholder  "Name"
+                                                                     :title        "Name"
+                                                                     :hidden       false
+                                                                     :id           "name"
+                                                                     :display_name "Name"
+                                                                     :inputType    :text
+                                                                     :base_type    :type/Text
+                                                                     :fieldType    :string
+                                                                     :required     true
+                                                                     :order        1}}}}
                           (action/select-action :id action-id)))))))))
 
 (deftest hydrate-implicit-action-test-1a
@@ -63,15 +81,15 @@
                                                                                                                 :hidden true}}}}]
             (let [field-settings (get-in (action/select-action :id action-id) [:visualization_settings :fields])]
               (testing "an existing entry should not update if there's a matching parameter"
-                (is (= {:id     "id"
-                        :hidden true}
-                       (get field-settings "id"))))
+                (is (=? {:id     "id"
+                         :hidden true}
+                        (get field-settings "id"))))
               (testing "an existing entry should be deleted if there's not a matching parameter"
                 (is (not (contains? field-settings "doesnt_exist"))))
               (testing "a entry with defaults should be created if there is a new matching parameter"
-                (is (= {:id "name"
-                        :hidden false}
-                       (get field-settings "name")))))))))))
+                (is (=? {:id "name"
+                         :hidden false}
+                        (get field-settings "name")))))))))))
 
 (deftest hydrate-implicit-action-test-2
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"

@@ -293,18 +293,20 @@
             :template-tags (extract-template-tags query inner-query existing-tags)))))
 
 ;;; TODO (Cam 7/16/25) -- this really doesn't seem to do what I'd expect, maybe we should rename it something like
-;;; `with-replaced-template-tags`
+;;; `with-replaced-template-tags`. It only replaces tags you specify rather then completely setting a new list
 (mu/defn with-template-tags :- ::lib.schema/query
   "Updates the native query's template tags."
-  [query :- ::lib.schema/query
-   tags  :- ::lib.schema.template-tag/template-tag-map]
-  (lib.util/update-query-stage
-   query 0
-   (fn [{existing-tags :template-tags :as stage}]
-     (assert-native-query stage)
-     (let [valid-tags (keys existing-tags)]
-       (assoc stage :template-tags
-              (merge existing-tags (select-keys tags valid-tags)))))))
+  [query        :- ::lib.schema/query
+   updated-tags :- ::lib.schema.template-tag/template-tag-map]
+  (letfn [(update-template-tags [existing-tags]
+            ;; the way we do this is really weird, but it's important that we use the order of the keys in
+            ;; `updated-tags` See
+            ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759975007383889?thread_ts=1759289751.539169&cid=C0645JP1W81
+            (into updated-tags (select-keys existing-tags (set/difference (set (keys existing-tags)) (set (keys updated-tags))))))
+          (update-stage [stage]
+            (assert-native-query stage)
+            (update stage :template-tags update-template-tags))]
+    (lib.util/update-query-stage query 0 update-stage)))
 
 (mu/defn raw-native-query :- some?
   "Returns the native query. This is a SQL string for SQL-based drivers; for other drivers like MongoDB it might be a
