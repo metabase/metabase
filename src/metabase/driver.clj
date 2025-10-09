@@ -1151,8 +1151,14 @@
   :hierarchy #'hierarchy)
 
 (defmulti compile-transform
-  "Compiles the sql for a transform statement, given an inner sql query and a destination."
-  {:added "0.57.0", :arglists '([driver {:keys [query output-table]} & {:keys [append?]}])}
+  "Compiles the sql for a transform statement (CREATE TABLE AS), given an inner sql query and a destination."
+  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-insert
+  "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given an inner sql query and a destination."
+  {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1179,7 +1185,7 @@
   {:added "0.57.0",
    :arglists '([driver
                 {:keys [transform-type conn-spec query output-table] :as _transform-details}
-                {:keys [overwrite? append?] :as _opts}])}
+                {:keys [overwrite?] :as _opts}])}
   (fn [driver transform-details _opts]
     [(dispatch-on-initialized-driver driver) (:transform-type transform-details)])
   :hierarchy #'hierarchy)
