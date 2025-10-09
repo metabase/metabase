@@ -45,4 +45,4 @@ echo "This might take a while"
 rm -rf "$DEST_DIR/pyodide"
 mkdir -p "$DEST_DIR"
 
-curl -Ls "$DOWNLOAD_URL" | tar xvf - -C "$DEST_DIR" ${REQUIRED_FILES[@]}
+curl -Ls "$DOWNLOAD_URL" | tar xvfj - -C "$DEST_DIR" ${REQUIRED_FILES[@]}
