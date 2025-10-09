@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { Api, cardApi } from "metabase/api";
+import { Api } from "metabase/api";
 import {
   provideCardQueryMetadataTags,
   provideCardTags,
@@ -402,7 +402,6 @@ function setCardEndpoints({ base, encodedToken }) {
           ),
       }),
       getCardQueryMetadata: builder.query({
-        ...cardApi.getCardQueryMetadata,
         query: () => ({
           url: `${prefix}/query_metadata`,
         }),
