@@ -36,8 +36,7 @@
 (mr/def ::transform-target
   [:map
    [:database {:optional true} :int]
-   [:type [:enum {:decode/normalize schema.common/normalize-keyword}
-           :table :table-incremental]]
+   [:type [:enum "table" "table-incremental"]]
    [:schema {:optional true} [:or ms/NonBlankString :nil]]
    [:name :string]
 

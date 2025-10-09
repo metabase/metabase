@@ -128,8 +128,11 @@
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
 (defmethod driver/run-transform! [:sql :table-incremental]
-  [driver {:keys [conn-spec] :as transform-details} _opts] ;; eventually will have on conflict stuff, if supported
-  (let [queries (driver/compile-insert driver transform-details)]
+  [driver {:keys [conn-spec db-id output-table] :as transform-details} _opts] ;; eventually will have on conflict stuff, if supported
+  (let [queries (if (driver/table-exists? driver db-id {:schema (namespace output-table)
+                                                        :name (name output-table)})
+                  (driver/compile-insert driver transform-details)
+                  (driver/compile-transform driver transform-details))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
