@@ -83,7 +83,10 @@
              (driver.common/values->base-type)
              (analyze/constant-fingerprinter driver-base-type)))))
 
-(defn- enrich-with-inferred-type [col base-type]
+(defn- enrich-with-inferred-type
+  "Set :base_type and :effective_type to `base-type` in `col`.
+  Also set or update the :field_ref field to contain `base-type` in the field ref options."
+  [col base-type]
   (cond-> (assoc col :base_type base-type, :effective_type base-type)
     ;; if we have a field_ref for a named column, set the base_type options
     (string? (get-in col [:field_ref 1]))
@@ -106,9 +109,9 @@
                               (-> result :data :cols))]
        (rf (cond-> result
              (and (seq result-data-cols)
-                  ;; For pivot queries, when generating the summary column, row, or field, the number of
+                  ;; For pivot queries, when generating the row, column, or grand totals, the number of
                   ;; result-data-cols can be greater than the number of base-types.  In these cases, the
-                  ;; result-data-cols already have the correct type, so no calculation is necessary.
+                  ;; result-data-cols already have the correct type, so no enrichment is necessary.
                   ;; For native queries where this correction is needed, the number and position of the columns and
                   ;; the base-types should match. (#64124)
                   (= (count result-data-cols) (count base-types)))
