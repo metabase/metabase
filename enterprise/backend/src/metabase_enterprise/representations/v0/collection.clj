@@ -71,7 +71,7 @@
 
 (defmethod import/yaml->toucan [:v0 :collection]
   [{collection-name :name
-    :keys [entity-id description collection] :as _representation}
+    :keys [description collection] :as _representation}
    _ref-index]
   (let [parent-id (when collection
                     (if (number? collection)
@@ -83,8 +83,7 @@
     (u/remove-nils
      {:name collection-name
       :description description
-      :location location
-      :entity_id entity-id})))
+      :location location})))
 
 (defn export
   "Export the collection, returning EDN suitable for yml"
@@ -97,20 +96,27 @@
        :children (children collection)}
       u/remove-nils))
 
+(defn- persist!
+  [new-collection]
+  (log/debug "Creating new collection" (:name new-collection))
+  (t2/insert-returning-instance! :model/Collection new-collection))
+
+(defn- archive-and-persist!
+  [existing-collection new-collection]
+  (let [collection-name (:name existing-collection)
+        archived-name (str collection-name " (archived)")]
+    (log/info "Renaming existing collection" collection-name "to" archived-name)
+    (t2/update! :model/Collection (:id existing-collection) {:name archived-name})
+    (persist! new-collection)))
+
 (defmethod import/persist! [:v0 :collection]
   [representation ref-index]
-  (let [collection-data (import/yaml->toucan representation ref-index)
-        entity-id (:entity_id collection-data)
-        existing (when entity-id
-                   (t2/select-one :model/Collection :entity_id entity-id))]
+  (let [new-collection (import/yaml->toucan representation ref-index)
+        collection-name (:name new-collection)
+        existing (t2/select-one :model/Collection :name collection-name :location "/")]
     (if existing
-      (do
-        (log/info "Updating existing collection" (:name collection-data) "with ref" (:ref representation))
-        (t2/update! :model/Collection (:id existing) (dissoc collection-data :entity_id))
-        (t2/select-one :model/Collection :id (:id existing)))
-      (do
-        (log/info "Creating new collection" (:name collection-data))
-        (t2/insert-returning-instance! :model/Collection collection-data)))))
+      (archive-and-persist! existing new-collection)
+      (persist! new-collection))))
 
 (defmethod export/export-entity :model/Collection [collection]
   (export collection))

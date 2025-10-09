@@ -161,24 +161,21 @@
   "Import a collection from a YAML string containing the full bundle.
    Creates collections first (ordered by parent-child), then other entities."
   [yaml-string]
-  (let [bundle (-> yaml-string
-                   rep-yaml/parse-string
-                   normalize-representation)
-        collection-name (:name bundle)
+  (let [bundle (-> yaml-string rep-yaml/parse-string normalize-representation)
+        collection-rep (dissoc bundle :children :databases)
+        collection-name (:name collection-rep)
+        ;; Select ONLY top-level collections with the name:
         existing-collections (t2/select :model/Collection :name collection-name :location "/")]
-    (when (> (count existing-collections) 1)
-      (throw (ex-info (str "Multiple collections found with name: " collection-name)
-                      {:collection-name collection-name
-                       :count (count existing-collections)})))
-    (when (= (count existing-collections) 1)
-      (let [existing (first existing-collections)
-            archived-name (str collection-name " (archived)")]
-        (log/info "Renaming existing collection" collection-name "to" archived-name)
-        (t2/update! :model/Collection (:id existing) {:name archived-name})))
-    (let [new-collection (t2/insert-returning-instance! :model/Collection
-                                                        {:name collection-name
-                                                         :description (:description bundle)
-                                                         :location "/"})
+    (cond (> (count existing-collections) 1)
+          (throw (ex-info (str "Multiple collections found with name: " collection-name)
+                          {:collection-name collection-name
+                           :count (count existing-collections)}))
+          (= (count existing-collections) 1)
+          (let [existing (first existing-collections)
+                archived-name (str collection-name " (archived)")]
+            (log/info "Renaming existing collection" collection-name "to" archived-name)
+            (t2/update! :model/Collection (:id existing) {:name archived-name})))
+    (let [new-collection (persist! collection-rep {})
           collection-id (:id new-collection)
           representations (flatten-collection-children bundle)
           normalized (map normalize-representation representations)
