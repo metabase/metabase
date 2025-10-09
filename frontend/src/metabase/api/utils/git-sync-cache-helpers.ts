@@ -123,3 +123,7 @@ export function invalidateGitSyncOnCollectionDelete(
     invalidateTags(dispatch);
   }
 }
+
+export function getGitSyncInvalidationTags() {
+  return PLUGIN_GIT_SYNC.GIT_SYNC_INVALIDATION_TAGS || [];
+}
