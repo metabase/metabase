@@ -6,7 +6,6 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -257,7 +256,7 @@
                           (simple-linear-regression xfn yfn :linear :linear)
                           (best-fit xfn yfn))))
            (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
-             (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+             (let [unit         (let [unit (some-> datetime :unit keyword)]
                                   (if (or (nil? unit)
                                           (= unit :default))
                                     (infer-unit x-previous x-current)

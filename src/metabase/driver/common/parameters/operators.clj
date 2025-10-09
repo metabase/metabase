@@ -69,6 +69,7 @@
   [param :- ::lib.schema.parameter/parameter]
   (let [{param-type :type, [a b :as param-value] :value, [_ field] :target, options :options} (#'qp.params.ops/normalize-param param)]
     (verify-type-and-arity field param-type param-value)
+    #_{:clj-kondo/ignore [:deprecated-var]}
     (let [field'  (mbql.u/wrap-field-id-if-needed field)
           opts-fn (operator-options-fn param-type)]
       (case (#'qp.params.ops/operator-arity param-type)

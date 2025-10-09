@@ -127,7 +127,6 @@
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
- mbql.u/dispatch-by-clause-name-or-class
  mbql.u/expression-with-name
  mbql.u/field-options
  mbql.u/is-clause?
@@ -145,6 +144,7 @@
  mdb/query-canceled-exception?
  mdb/spec
  metabase.driver-api.impl/cached
+ metabase.driver-api.impl/dispatch-by-clause-name-or-class
  mi/instance-of?
  nest-query/nest-expressions
  premium-features/is-hosted?

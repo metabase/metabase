@@ -484,7 +484,10 @@
 
   In some cases, dealing with the path isn't desirable, but we don't want to accidentally trigger normalization
   functions (such as accidentally normalizing the `:type` key in something other than the top-level of the query), so
-  by convention please pass `nil` to avoid accidentally triggering special path functions."
+  by convention please pass `nil` to avoid accidentally triggering special path functions.
+
+  DEPRECATED: Use [[metabase.lib.core/normalize]] to normalize things going forward."
+  {:deprecated "0.57.0"}
   ([x] (normalize-tokens x path->special-token-normalization-fn))
   ([x special-fns]
    (let [special-fn (when (and special-fns (fn? special-fns))

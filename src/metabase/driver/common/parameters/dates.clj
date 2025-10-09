@@ -212,6 +212,7 @@
   an absolute date *or datetime* string, and returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
    field       :- [:or ::lib.schema.id/field mbql.s/Field]]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   (or (#'qp.parameters.dates/execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter

@@ -613,20 +613,6 @@
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
 
-(t/deftest ^:parallel uniquify-names
-  (t/testing "can we generate unique names?"
-    (t/is (= ["count" "sum" "count_2" "count_3"]
-             (mbql.u/uniquify-names ["count" "sum" "count" "count"]))))
-
-  (t/testing "what if we try to trick it by using a name it would have generated?"
-    (t/is (= ["count" "count_2" "count_2_2"]
-             (mbql.u/uniquify-names ["count" "count" "count_2"]))))
-
-  (t/testing (str "for wacky DBMSes like SQL Server that return blank column names sometimes let's make sure we handle "
-                  "those without exploding")
-    (t/is (= ["" "_2"]
-             (mbql.u/uniquify-names ["" ""])))))
-
 (t/deftest ^:parallel unique-name-generator-test
   (t/testing "Can we get a simple unique name generator"
     (t/is (= ["count" "sum" "count_2" "count_2_2"]
@@ -881,3 +867,11 @@
   (t/testing "If this gets called incorrectly with a base type keyword then handle it gracefully"
     (t/is (= :type/Text
              (mbql.u/normalize-token "type/Text")))))
+
+(t/deftest ^:parallel wrap-field-id-if-needed-test
+  (doseq [[x expected] {10                                      [:field 10 nil]
+                        [:field 10 nil]                         [:field 10 nil]
+                        [:field "name" {:base-type :type/Text}] [:field "name" {:base-type :type/Text}]}]
+    (t/testing x
+      (t/is (= expected
+               (mbql.u/wrap-field-id-if-needed x))))))
