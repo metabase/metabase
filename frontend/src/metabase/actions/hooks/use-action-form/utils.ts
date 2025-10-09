@@ -58,14 +58,11 @@ export const formatSubmitValues = (
   return values;
 };
 
-const isNumericParameter = (param: Parameter): boolean =>
-  /integer|float/gi.test(param.type);
-
 const getFieldType = (param: Parameter): "number" | "string" => {
-  return isNumericParameter(param) ? "number" : "string";
+  return getParameterType(param) === "number" ? "number" : "string";
 };
 
-export const getInputType = (param: Parameter) => {
+export const getInputType = (param: Parameter): InputSettingType => {
   const type = getParameterType(param);
   switch (type) {
     case "string":
