@@ -18,7 +18,12 @@
       border-left: 1px solid var(--mb-color-border);
     }
 
-    .stackedOverflowButton {
+    /**
+      We already have disclaimer in the sidebar, so we don't
+      need to repeat it in the empty state.
+    */
+    .stackedOverflowButton,
+    .emptyStateDisclaimerText {
       display: none;
     }
   }
