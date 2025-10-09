@@ -73,9 +73,6 @@
                          (:uri request)
                          (when-some [qs (:query-string request)]
                            (str "?" qs)))
-                         frontend-dev-port
-                         (:uri request)
-                         (:query-string request))
         response (http/request {:method (:request-method request)
                                 :url proxied-url
                                 :headers (dissoc (:headers request) "host")
