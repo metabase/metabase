@@ -2649,20 +2649,15 @@
   [mp js-query]
   (when (gobject/equals js-query #js {})
     (throw (ex-info "Invalid query: query cannot be empty" {:query js-query})))
-  (let [cljs-query (->> js-query
-                        js->clj
-                        (lib.core/query mp))]
-    ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without attached
-    ;; metadata providers -- force them to have them. I can't work out why it is happening, so this is a temporary
-    ;; HACK to keep things moving.
-    ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
-    ;;
-    ;; Only update metadata provider if it's different, otherwise you can get a different object even if the assoc is
-    ;; a no-op.
-    (cond-> cljs-query
-      (and mp
-           (not= (:lib/metadata cljs-query) mp))
-      (assoc :lib/metadata mp))))
+  (-> js-query
+      js->clj
+      (->> (lib.core/query mp))
+      ;; TODO (Cam 10/7/25) -- no idea why but Alex P reported that this function is returning queries without attached
+      ;; metadata providers -- force them to have them. I can't work out why it is happening, so this is a temporary
+      ;; HACK to keep things moving.
+      ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759846641359159?thread_ts=1759289751.539169&cid=C0645JP1W81
+      (cond-> mp
+        (assoc :lib/metadata mp))))
 
 (defn ^:export from-js-query
   "Deserialize a query from a plain JS object. Works with either MBQL 4 or MBQL 5.
