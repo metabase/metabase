@@ -198,10 +198,11 @@ export function getMetabaseConfigSnippet({
   );
 
   const cleanedConfig = {
-    ..._.omit(config, ["useExistingUserSession"]),
+    ..._.omit(config, ["isStatic", "useExistingUserSession"]),
 
-    // Only include useExistingUserSession if it is true.
+    // Only include settings below when they are true.
     ...(config.useExistingUserSession ? { useExistingUserSession: true } : {}),
+    ...(isStaticEmbedding ? { isStatic: true } : {}),
 
     // Append these settings that can't be controlled by users.
     instanceUrl,
