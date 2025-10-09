@@ -234,8 +234,6 @@ export default class NativeQuery {
   setParameterIndex(id: string, newIndex: number) {
     // NOTE: currently all NativeQuery parameters are implicitly generated from
     // template tags, and the order is determined by the key order
-    // NOTE 2: currently cannot be ported to MBQL lib because maps with keys in
-    // different order are considered equal.
     const query = this._query();
     const tags = this.templateTags();
     const oldIndex = tags.findIndex((tag) => tag.id === id);

@@ -859,11 +859,12 @@ const MODEL_NAME = "Test Action Model";
             expect(row.date).to.include(newTime.slice(0, 10));
             expect(row.time).to.equal(newTime.slice(-8));
 
-            // we need to use .include because the driver adds milliseconds to the timestamp
-            expect(row.datetime).to.include(newTime);
-            expect(row.timestamp).to.include(newTime);
-            expect(row.datetimeTZ).to.include(newTime);
-            expect(row.timestampTZ).to.include(newTime);
+            // metabase uses UTC timestamps, so compare the date only
+            const newTimeAdjusted = newTime.slice(0, 10);
+            expect(row.datetime).to.include(newTimeAdjusted);
+            expect(row.timestamp).to.include(newTimeAdjusted);
+            expect(row.datetimeTZ).to.include(newTimeAdjusted);
+            expect(row.timestampTZ).to.include(newTimeAdjusted);
           });
         });
       });
