@@ -1,5 +1,7 @@
 (ns metabase.util.currency
-  "The list of currencies, and associated metadata, used by Metabase for number formatting.")
+  "The list of currencies, and associated metadata, used by Metabase for number formatting."
+  (:require
+   [metabase.util.malli :as mu]))
 
 (defn supports-symbol?
   "Currencies for which the Metabase frontend supports formatting with its symbol, rather than just
@@ -165,13 +167,13 @@
   "The currencies as a Clojure map."
   (into {} currency-list))
 
-(defn ^:export currency-symbol
+(mu/defn ^:export currency-symbol :- :string
   "Given a currency symbol, as a string or keyword, look it up in the currency
   map and return the symbol for it as a string."
-  [currency]
+  [currency :- :string]
   (some->> currency keyword currency-map :symbol))
 
-(def ^:export currency
+(mu/def ^:export currency :- [:map-of :keyword [:map [:symbol :string]]]
   "Returns the list of currencies supported by Metabase, with associated metadata.
   In Clojure, it is converted to a map for quick lookup of currency symbols during XLSX
   exports. In ClojureScript, it is kept as a 2D array to maintain the order of currencies."

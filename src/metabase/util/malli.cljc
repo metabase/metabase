@@ -19,7 +19,7 @@
 #?(:clj
    (p/import-vars
     [mu.fn fn instrument-ns?]
-    [mu.defn defn defn-]))
+    [mu.defn defn defn- def]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."

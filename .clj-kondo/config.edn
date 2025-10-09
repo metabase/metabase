@@ -480,6 +480,7 @@
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
   metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
+  metabase.util.malli.defn/def                                                          schema.core/def
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn
   metabase.util.malli.fn/fn                                                             schema.core/fn

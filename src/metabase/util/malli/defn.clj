@@ -133,6 +133,10 @@
          (when (seq props)
            (str "{" (str/join ", " props) "}")))
 
+       :map-of
+       (let [[_ left right] schema]
+         (str "Object.<" (schema->jsdoc left visited) "," (schema->jsdoc right visited) ">"))
+
        :vector
        (when-let [item-type (schema->jsdoc (second schema) visited)]
          (str item-type "[]"))
@@ -162,33 +166,33 @@
 
      :else nil)))
 
+(core/defn- *make-fn-jsdoc
+  "Schema is expected to be:
+
+  [:function [:=> [:cat :string] :string] [:=> [:cat :string :string] :string]]"
+  [fn-schema arglist]
+  (let [[[_cat & param-schemas] return-schema] (drop 2 fn-schema)
+
+        param-jsdoc  (->> (map (fn [param-name param-schema]
+                                 (when-let [jsdoc (schema->jsdoc param-schema)]
+                                   (str "@param {" jsdoc "} " param-name)))
+                               arglist param-schemas)
+                          (filterv identity))
+        return-jsdoc (when-let [jsdoc (schema->jsdoc return-schema)]
+                       (str "@return {" jsdoc "}"))]
+    (cond-> param-jsdoc
+      return-jsdoc (conj return-jsdoc))))
+
 (core/defn- make-jsdoc
   "Generate JSDoc for editors to consume"
   [parsed]
-  (try
-    (let [arities (-> parsed :values :arities)
-          args    (case (:key arities)
+  (let [arities   (-> parsed :values :arities)
+        args      (case (:key arities)
                     :single   (-> arities :value :values :args)
                     :multiple (-> arities :value :values :arities last :values :args))
-          arglist (:arglist (malli.destructure/parse args))
-
-          fn-schema                                  (mu.fn/fn-schema parsed {:target :target/metadata})
-          ;; this is [:= [:cat :param-schema :param-schema] :return-schema]
-          [_=> [_cat & param-schemas] return-schema] (cond-> fn-schema
-                                                       ;; [:function [:=> schema1 ret1] [:=> schema2 ret2] ...]
-                                                       (= :function (first fn-schema)) last)
-
-          param-jsdoc  (->> (map (fn [param-name param-schema]
-                                   (when-let [jsdoc (schema->jsdoc param-schema)]
-                                    (str "@param {" jsdoc "} " param-name)))
-                                arglist param-schemas)
-                           (filterv identity))
-          return-jsdoc (when-let [jsdoc (schema->jsdoc return-schema)]
-                         (str "@return {" jsdoc "}"))]
-      (cond-> param-jsdoc
-        return-jsdoc (conj return-jsdoc)))
-    (catch Exception _e
-      [])))
+        arglist   (:arglist (malli.destructure/parse args))
+        fn-schema (mu.fn/fn-schema parsed {:target :target/metadata})]
+    (u/ignore-exceptions (*make-fn-jsdoc fn-schema arglist))))
 
 (defmacro defn
   "Implementation of [[metabase.util.malli/defn]]. Like [[schema.core/defn]], but for Malli.
@@ -245,3 +249,32 @@
   `(defn
      ~(with-meta fn-name (assoc (meta fn-name) :private true))
      ~@fn-tail))
+
+(defmacro def
+  "Implementation of [[metabase.util.malli/def]]. Like [[schema.core/def]], but for Malli.
+
+  Example macroexpansion:
+
+    (mu/def x :- :int 42)
+
+    ;; =>
+
+    (def ^{:schema :int :jsdoc ...} x 42)"
+  [var-name _:- schema doc value]
+  (let [attr-map {:schema   schema
+                  :jsdoc    (when-let [jsdoc (u/ignore-exceptions (schema->jsdoc schema))]
+                              [(format "@type {%s}" jsdoc)])}
+        instrument?      (mu.fn/instrument-ns? *ns*)]
+    (if-not instrument?
+      `(def ~(vary-meta var-name merge attr-map)
+         ~doc
+         ~value)
+      `(def ~(vary-meta var-name merge attr-map)
+         ~(macros/case
+            :clj  `(if (mr/validate ~schema ~value)
+                     ~value
+                     (throw (ex-info "Invalid value for schema"
+                                     {:schema  ~schema
+                                      :value   ~value
+                                      :explain (mr/explain ~schema ~value)})))
+            :cljs value)))))
