@@ -20,7 +20,7 @@
 (deftest ^:parallel query-hash-test
   (testing "lib-be.hash/query-hash"
     (testing "should always hash something the same way, every time"
-      (is (= "85301213594dda83de5e4bb3103f66bde8c7d22472ba7b16029ff5ca176ba75d"
+      (is (= "171fc4cb48d83f4a32e0851ec301426a14c7554ea1b0c81976c7f7b55399c572"
              (query-hash-hex {:query {:source-table 1}})))
       (is (= (query-hash-hex {:query {:source-table 2}})
              (query-hash-hex {:query {:source-table 2}})))
