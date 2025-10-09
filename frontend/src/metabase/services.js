@@ -1,10 +1,18 @@
 import _ from "underscore";
 
-import { Api } from "metabase/api";
-import { provideCollectionTags } from "metabase/api/tags";
+import { Api, cardApi } from "metabase/api";
+import {
+  provideCardQueryMetadataTags,
+  provideCardTags,
+  provideCollectionTags,
+  provideDashboardQueryMetadataTags,
+} from "metabase/api/tags";
+import { handleQueryFulfilled } from "metabase/api/utils/lifecycle";
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -387,11 +395,23 @@ function setCardEndpoints({ base, encodedToken }) {
           url: prefix,
           params,
         }),
+        providesTags: (card) => (card ? provideCardTags(card) : []),
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QuestionSchema)),
+          ),
       }),
       getCardQueryMetadata: builder.query({
+        ...cardApi.getCardQueryMetadata,
         query: () => ({
           url: `${prefix}/query_metadata`,
         }),
+        providesTags: (metadata, _error, id) =>
+          metadata ? provideCardQueryMetadataTags(id, metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
       }),
     }),
     overrideExisting: true,
@@ -448,6 +468,12 @@ function setDashboardEndpoints({ base, encodedToken }) {
         query: () => ({
           url: `${prefix}/query_metadata`,
         }),
+        providesTags: (metadata) =>
+          metadata ? provideDashboardQueryMetadataTags(metadata) : [],
+        onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+          handleQueryFulfilled(queryFulfilled, (data) =>
+            dispatch(updateMetadata(data, QueryMetadataSchema)),
+          ),
       }),
     }),
     overrideExisting: true,
