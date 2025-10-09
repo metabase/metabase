@@ -162,7 +162,7 @@ jobs:
         if: always() && !success()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.job-group-name }}
+          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.test-group-name }}
           path: logs/test-log.json
           retention-days: 1
 
