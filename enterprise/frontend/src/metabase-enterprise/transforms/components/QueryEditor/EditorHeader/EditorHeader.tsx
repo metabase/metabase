@@ -32,7 +32,7 @@ export function EditorHeader({
   onIncrementalChange,
   watermarkField,
 }: EditorHeaderProps) {
-  const [localWatermarkField, setLocalWatermarkField] = useState(watermarkField || "");
+  const [localWatermarkField, setLocalWatermarkField] = useState(watermarkField || "id");
 
   // Block saving if incremental is enabled but no watermark field is set
   const hasWatermarkFieldIfNeeded = !isIncremental || localWatermarkField.trim() !== "";
