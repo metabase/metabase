@@ -48,7 +48,7 @@ function terminate() {
 }
 
 async function init() {
-  // // Import pyodide from local assets
+  // Import pyodide from local assets
   self.importScripts("/app/assets/pyodide/pyodide.js");
 
   // @ts-expect-error: loadPyodide is put in the global scope by pyodide.js
@@ -59,7 +59,7 @@ async function init() {
     packages: PACKAGES,
   });
 
-  // import the packages on initialization since that is slow
+  // Import the packages on initialization since that is slow
   await pyodide.runPythonAsync(
     PACKAGES.map((pkg) => `import ${pkg}`).join("\n"),
   );
