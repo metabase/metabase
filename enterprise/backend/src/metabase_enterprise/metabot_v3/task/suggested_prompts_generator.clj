@@ -10,7 +10,6 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.net ConnectException)
    (java.time Instant)
    (java.util Date)
    (org.quartz DisallowConcurrentExecution)))
@@ -33,7 +32,7 @@
             (metabot-v3.suggested-prompts/generate-sample-prompts metabot-id)
             (log/info "Suggested prompts generated successfully."))
           (log/info "Suggested prompts are present. Not generating."))))
-    (catch ConnectException e
+    (catch Exception e
       (log/errorf "Suggested prompts generation failed: %s" (.getMessage e)))))
 
 (task/defjob ^{DisallowConcurrentExecution true
