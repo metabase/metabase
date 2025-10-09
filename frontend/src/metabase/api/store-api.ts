@@ -10,7 +10,7 @@ export const storeApi = Api.injectEndpoints({
     listPlans: builder.query<MetabasePlansResponse, void>({
       query: () => ({
         method: "GET",
-        url: "/api/store-api/plan",
+        url: "/api/store-api/plans",
       }),
     }),
     listAddons: builder.query<MetabaseAddonsResponse, void>({
