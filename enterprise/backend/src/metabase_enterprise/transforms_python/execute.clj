@@ -220,7 +220,7 @@
 
 (defmulti ^:private transfer-file-to-db
   {:arglists '([driver db transform metadata temp-file])}
-  (fn [_ _ transform _ _] (:transform-type transform)))
+  (fn [_ _ transform _ _] (keyword (:transform-type transform))))
 
 (defmethod transfer-file-to-db :table-incremental
   [driver {db-id :id}
