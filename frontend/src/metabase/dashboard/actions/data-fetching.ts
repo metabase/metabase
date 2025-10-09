@@ -25,6 +25,7 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
@@ -678,12 +679,18 @@ export const fetchDashboard = createAsyncThunk(
             { token: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          entityCompatibleQuery(
-            { id: dashId, dashboard_load_id: dashboardLoadId },
-            dispatch,
-            dashboardApi.endpoints.getDashboardQueryMetadata,
-            { forceRefetch: false },
-          ),
+          // Drills for `embed` dashboard type are supported only in embedding SDK via anonymous embedding
+          // TODO: add feature check here
+          ...(isEmbeddingSdk()
+            ? [
+                entityCompatibleQuery(
+                  { id: dashId, dashboard_load_id: dashboardLoadId },
+                  dispatch,
+                  dashboardApi.endpoints.getDashboardQueryMetadata,
+                  { forceRefetch: false },
+                ),
+              ]
+            : []),
         ]);
         result = response;
         result = {
