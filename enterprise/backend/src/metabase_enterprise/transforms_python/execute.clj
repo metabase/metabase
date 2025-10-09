@@ -218,9 +218,28 @@
       (log/error e "Failed to transfer data using drop-create fallback strategy")
       (throw e))))
 
-(defn- transfer-file-to-db
+(defmulti ^:private transfer-file-to-db
+  {:arglists '([driver db transform metadata temp-file])}
+  (fn [_ _ transform _ _] (:transform-type transform)))
+
+(defmethod transfer-file-to-db :table-incremental
+  [driver {db-id :id}
+   {:keys [target] :as transform}
+   metadata temp-file]
+  (let [table-name (transforms.util/qualified-table-name driver target)
+        table-exists? (transforms.util/target-table-exists? transform)
+        data-source {:type :jsonl-file
+                     :file temp-file}]
+    (if (not table-exists?)
+      (do
+        (log/info "New table")
+        (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
+
+      (insert-data! driver db-id (table-schema table-name metadata) data-source))))
+
+(defmethod transfer-file-to-db :table
   [driver {db-id :id :as db}
-   {:keys [target append?] :as transform}
+   {:keys [target] :as transform}
    metadata temp-file]
   (let [table-name (transforms.util/qualified-table-name driver target)
         table-exists? (transforms.util/target-table-exists? transform)
@@ -231,9 +250,6 @@
       (do
         (log/info "New table")
         (create-table-and-insert-data! driver db-id (table-schema table-name metadata) data-source))
-
-      append?
-      (insert-data! driver db-id (table-schema table-name metadata) data-source)
 
       (driver.u/supports? driver :atomic-renames db)
       (transfer-with-rename-tables-strategy! driver db-id table-name metadata data-source)
