@@ -51,6 +51,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
@@ -59,37 +60,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Code for creation of instantiated affinities
-
-(defn find-field-ids
-  "A utility function for pulling field definitions from mbql queries and return their IDs.
-   Does something like this already exist in our utils? I was unable to find anything like it."
-  [m]
-  (let [fields (atom #{})]
-    (walk/prewalk
-     (fn [v]
-       (when (vector? v)
-         (let [[f id] v]
-           (when (and id (= :field f))
-             (swap! fields conj id))))
-       v)
-     m)
-    @fields))
-
-(defn semantic-groups
-  "From a :xrays/Metric, construct a mapping of semantic types of linked fields to
-   sets of fields that can satisfy that type. A linked field is one that is in the
-   source table for the metric contribute to the metric itself, is not a PK, and
-   has a semantic_type (we assume nil semantic_type fields are boring)."
-  [{:keys [table_id definition]}]
-  (let [field-ids            (find-field-ids definition)
-        potential-dimensions (t2/select :model/Field
-                                        :id [:not-in field-ids]
-                                        :table_id table_id
-                                        :semantic_type [:not-in [:type/PK]])]
-    (update-vals
-     (->> potential-dimensions
-          (group-by :semantic_type))
-     set)))
 
 (defmulti ->reference
   "Get a reference for a given model to be injected into a template (either MBQL, native query, or string)."
@@ -119,7 +89,7 @@
           (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
-(defmethod ->reference [:mbql :model/Field]
+(mu/defmethod ->reference [:mbql :model/Field] :- ::mbql.s/field
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
                    (cond
@@ -304,10 +274,11 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(defn- candidate-bindings
+(mu/defn- candidate-bindings
   "For every field in a given context determine all potential dimensions each field may map to.
   This will return a map of field id (or name) to collection of potential matching dimensions."
-  [context dimension-specs]
+  [context :- ::ads/context
+   dimension-specs]
   ;; TODO - Fix this so that the intermediate representations aren't so crazy.
   ;; all-bindings a map of binding dim identifier to binding def which contains
   ;; field matches which are all the same field except they are merged with the binding.
@@ -390,8 +361,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; TODO - Deduplicate from core
-(def ^:private ^{:arglists '([source])} source->db
-  (comp (partial t2/select-one :model/Database :id) (some-fn :db_id :database_id)))
+(mu/defn- source->db :- (ms/InstanceOf :model/Database)
+  [source :- (ms/InstanceOf #{:model/Table :model/Card})]
+  (t2/select-one :model/Database :id ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

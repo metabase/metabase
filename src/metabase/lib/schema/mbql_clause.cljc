@@ -23,6 +23,13 @@
 (def ^:private invalid-clause-schema
   [:fn {:error/message "not a known MBQL clause"} (constantly false)])
 
+(mu/defn- mbql-clause-tag :- [:maybe :keyword]
+  "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
+  [x]
+  (when (and (sequential? x)
+             ((some-fn keyword? string?) (first x)))
+    (keyword (first x))))
+
 (defn- clause-schema
   "Build the schema for `::clause`, a `:multi` schema that maps MBQL clause tag -> the schema
   in [[clause-schema-registry]]."
@@ -30,9 +37,12 @@
   (into [:multi
          {:dispatch common/mbql-clause-tag
           :error/fn (fn [{:keys [value]} _]
-                      (if-let [tag (common/mbql-clause-tag value)]
+                      (if-let [tag (mbql-clause-tag value)]
                         (str "Invalid " tag " clause: " (pr-str value))
-                        "not an MBQL clause"))}
+                        "not an MBQL clause"))
+          :decode/normalize (fn [x]
+                              (when-let [tag (mbql-clause-tag x)]
+                                (into [tag] (rest x))))}
          [::mc/default invalid-clause-schema]]
         (map (fn [tag]
                [tag [:ref (tag->registered-schema-name tag)]]))

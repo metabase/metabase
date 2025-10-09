@@ -75,7 +75,6 @@
   (let [db (t2/select-one :model/Database db-id)]
     (when-not (driver.u/supports? (:engine db) :database-routing db)
       (throw (ex-info "This database does not support DB routing" {:status-code 400})))
-
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*

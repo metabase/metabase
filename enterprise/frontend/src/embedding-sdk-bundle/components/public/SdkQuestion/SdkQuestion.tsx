@@ -76,8 +76,7 @@ export type DrillThroughQuestionProps = Omit<
  * @expand
  * @category InteractiveQuestion
  */
-export type SdkQuestionProps = SdkQuestionProviderProps &
-  SdkQuestionDefaultViewProps &
+export type SdkQuestionProps = SdkQuestionDefaultViewProps &
   Omit<SdkQuestionProviderProps, "componentPlugins"> & {
     plugins?: SdkQuestionProviderProps["componentPlugins"];
   };

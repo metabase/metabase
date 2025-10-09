@@ -4,6 +4,13 @@ title: API changelog
 
 # Breaking changes to the API interface
 
+## Metabase 0.57.0
+
+- MBQL queries (in Cards and elsewhere) are now serialized as MBQL 5 as opposed to MBQL 4 (aka legacy MBQL) in the
+  application database and in REST API responses. While we do not officially support editing or introspection of MBQL
+  via the REST API (please treat it as an opaque object), to support existing usages the `GET /api/card/:id` endpoint
+  can return the Card `dataset_query` as MBQL 4 if you include the query parameter `?legacy-mbql=true`.
+
 ## Metabase 0.55.0
 
 - `POST /api/card/from-csv` has been renamed to `POST /api/upload/csv`.

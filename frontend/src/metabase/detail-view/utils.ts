@@ -182,16 +182,13 @@ export function getTableQuery(table: Table | undefined): Lib.Query | undefined {
   const metadata = createMockMetadata({
     tables: [table],
   });
-
   const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+  if (tableMetadata == null) {
+    return undefined;
+  }
 
-  return Lib.fromLegacyQuery(table.db_id, metadataProvider, {
-    type: "query",
-    database: table.db_id,
-    query: {
-      "source-table": table.id,
-    },
-  });
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
 }
 
 export function filterByPk(

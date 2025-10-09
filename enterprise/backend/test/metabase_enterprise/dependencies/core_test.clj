@@ -27,8 +27,7 @@
         mp            (lib.tu/metadata-provider-with-card-from-query mp 102 query2)
 
         ;; A transform that depends on card1
-        tf1-query     (-> (lib/query mp card1)
-                          lib/->legacy-MBQL)
+        tf1-query     (lib/query mp card1)
         transform1    {:id     30
                        :name   "MBQL Transform"
                        :source {:query tf1-query}
@@ -139,8 +138,10 @@
            {transformed-card-id :id} :mbql-transform-consumer} (testbed)]
       (testing "a column that no longer exists will cause errors when referenced"
         (let [card'  (-> mbql-base
-                         (update-in [:dataset-query :query :expressions]
-                                    update-keys (constantly "Sales Taxes"))
+                         ;; ridiculous
+                         (update :dataset-query lib/update-query-stage -1
+                                 update-in [:expressions 0]
+                                 lib/update-options assoc :lib/expression-name "Sales Taxes")
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
           (is (=? {:card {downstream-card-id  [[:field {} "Tax Rate"]]
@@ -148,7 +149,6 @@
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
-
       (testing "changing something unrelated will cause no errors"
         (let [card' (-> mbql-base
                         (assoc-in [:dataset-query :query :filter]

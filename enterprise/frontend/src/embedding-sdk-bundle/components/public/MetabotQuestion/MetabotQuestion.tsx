@@ -1,6 +1,6 @@
 import { useElementSize } from "@mantine/hooks";
 import { useId, useMemo } from "react";
-import { match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -43,10 +43,18 @@ const MetabotQuestionInner = ({
 
   const derivedLayout = useMemo(() => {
     return match(layout)
-      .with("auto", () =>
-        containerWidth <= MAX_MOBILE_CONTAINER_WIDTH ? "stacked" : "sidebar",
-      )
-      .otherwise((layout) => layout);
+      .with(P.union("stacked", "sidebar"), (layout) => layout)
+      .otherwise((layout) => {
+        if (layout !== "auto") {
+          console.warn(
+            `Invalid layout for MetabotQuestion: ${layout}. Valid values are "stacked", "sidebar", or "auto"`,
+          );
+        }
+
+        return containerWidth <= MAX_MOBILE_CONTAINER_WIDTH
+          ? "stacked"
+          : "sidebar";
+      });
   }, [layout, containerWidth]);
 
   function renderQuestion() {

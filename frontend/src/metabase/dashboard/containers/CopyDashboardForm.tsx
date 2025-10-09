@@ -20,9 +20,9 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { Group, Icon, Tooltip } from "metabase/ui";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
-import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
@@ -103,9 +103,7 @@ function CopyDashboardForm({
     );
   }, [originalDashboard]);
 
-  const isShallowCopyDisabled = Boolean(
-    isLoading || error || hasDashboardQuestions,
-  );
+  const hideShallowCopy = Boolean(isLoading || error || hasDashboardQuestions);
 
   return (
     <FormProvider
@@ -136,15 +134,24 @@ function CopyDashboardForm({
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
         />
-        <FormCheckbox
-          name="is_shallow_copy"
-          label={
-            <DashboardCopyModalShallowCheckboxLabel
-              hasDashboardQuestions={hasDashboardQuestions}
-            />
-          }
-          disabled={isShallowCopyDisabled}
-        />
+
+        {!hideShallowCopy && (
+          <FormCheckbox
+            name="is_shallow_copy"
+            label={
+              <Group align="center" gap="xs">
+                {t`Only duplicate the dashboard`}
+
+                <Tooltip
+                  label={t`If you check this, the cards in the duplicated dashboard will reference the original questions.`}
+                >
+                  <Icon name="info" size={18} />
+                </Tooltip>
+              </Group>
+            }
+          />
+        )}
+
         <FormFooter>
           <FormErrorMessage inline />
           {!!onClose && (

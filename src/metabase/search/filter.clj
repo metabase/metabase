@@ -1,8 +1,8 @@
 (ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
@@ -54,7 +54,7 @@
 (defn- date-range-filter-clause
   [dt-col dt-val]
   (let [date-range (try
-                     (params.dates/date-string->range dt-val {:inclusive-end? false})
+                     (qp.parameters.dates/date-string->range dt-val {:inclusive-end? false})
                      (catch Exception _e
                        (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
         start      (some-> (:start date-range) u.date/parse)

@@ -273,6 +273,7 @@
    clojure.java.jdbc/with-db-connection               {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata                 {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
+   clojure.pprint/print-table                         {:message "Use metabase.util.log instead of printing directly to the console"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    compojure.core/context                             {:message "Use metabase.api.util.handlers/route-map-handler instead of compojure.core/context, it is much faster and supports OpenAPI spec generation"}
@@ -489,7 +490,6 @@
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
   metabase.util/with-timer-ms                                                           clojure.core/fn
-  metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
   metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
   metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
   monger.operators/defoperator                                                          clojure.core/def
@@ -573,8 +573,8 @@
    metabase.pulse.models.pulse-test/with-pulse-in-collection!                                                                hooks.common/with-four-bindings
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
    metabase.queries.api.card-test/with-card-param-values-fixtures                                                            hooks.common/let-one-with-optional-value
-   metabase.queries.api.card-test/with-temp-native-card!                                                                     hooks.common/with-two-bindings
-   metabase.queries.api.card-test/with-temp-native-card-with-params!                                                         hooks.common/with-two-bindings
+   metabase.queries.api.card-test/with-temp-native-card                                                                      hooks.common/with-two-bindings
+   metabase.queries.api.card-test/with-temp-native-card-with-params                                                          hooks.common/with-two-bindings
    metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
@@ -688,7 +688,6 @@
    metabase.test/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.users.models.user-test/with-groups!                                            macros.metabase.users.models.user-test/with-groups!
    metabase.util.namespaces/import-fn                                                      macros.metabase.util.namespaces/import-fn
-   metabase.xrays.domain-entities.malli/define-getters-and-setters                         macros.metabase.xrays.domain-entities.malli/define-getters-and-setters
    metabase.xrays.related-test/with-world                                                  macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment
