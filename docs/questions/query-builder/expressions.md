@@ -58,7 +58,7 @@ For example, you could create a new column that calculates the difference betwee
 
 To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
-## Conditional and Boolean logic operators
+## Conditional and Boolean logic operators {#conditional-operators}
 
 Comparison operators:
 
