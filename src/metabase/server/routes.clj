@@ -63,10 +63,11 @@
   ([_request respond _raise]
    (respond (health-handler))))
 
-(defonce ^:private frontend-dev-port
-  (or (env/env :mb-frontend-dev-port) 8080))
+(def ^:private frontend-dev-port
+  (or (env/env :mb-frontend-dev-port) "8080"))
 
 (defn ^:private proxy-dev-server [request]
+  "Proxy the rspack dev server, so all assets are served from the same origin."
   (let [proxied-url (str "http://localhost:"
                          frontend-dev-port
                          (:uri request)
