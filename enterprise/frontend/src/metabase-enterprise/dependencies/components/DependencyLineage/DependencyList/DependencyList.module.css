@@ -4,19 +4,3 @@
   padding: 0;
   width: 32rem;
 }
-
-.body {
-  overflow: auto;
-}
-
-.item {
-  &:not(:last-child) {
-    border-bottom: 1px solid var(--mb-color-border);
-  }
-}
-
-.itemLink {
-  &:hover {
-    color: var(--mb-color-brand);
-  }
-}
