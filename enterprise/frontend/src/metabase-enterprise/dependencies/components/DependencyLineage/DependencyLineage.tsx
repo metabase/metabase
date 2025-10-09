@@ -52,6 +52,7 @@ export function DependencyLineage({
       );
       setNodes(initialNodes);
       setEdges(initialEdges);
+      setSelection(undefined);
     }
   }, [graph, entry, setNodes, setEdges]);
 

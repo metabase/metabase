@@ -3,6 +3,7 @@ import { memo, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import {
   ActionIcon,
@@ -42,9 +43,11 @@ export function DependencyList({
   selection,
   onSelectionChange,
 }: DependencyListProps) {
-  const { data: nodes = [] } = useListNodeDependentsQuery(
-    getRequest(selection),
-  );
+  const {
+    data: nodes = [],
+    isFetching,
+    error,
+  } = useListNodeDependentsQuery(getRequest(selection));
   const [searchText, setSearchText] = useState("");
   const [debouncedSearchText] = useDebouncedValue(
     searchText,
@@ -63,7 +66,11 @@ export function DependencyList({
         onSelectionChange={onSelectionChange}
         onSearchTextChange={setSearchText}
       />
-      <ListBody nodes={matchingNodes} />
+      {isFetching || error != null ? (
+        <LoadingAndErrorWrapper loading={isFetching} error={error} />
+      ) : (
+        <ListBody nodes={matchingNodes} />
+      )}
     </Card>
   );
 }
