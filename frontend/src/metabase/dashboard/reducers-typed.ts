@@ -55,7 +55,6 @@ import {
   markCardAsSlow,
   reset,
   setDashboardAttributes,
-  setDisplayTheme,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
 } from "./actions";
@@ -107,10 +106,6 @@ export const autoApplyFilters = createReducer(
     });
   },
 );
-
-export const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, (builder) => {
-  builder.addCase(setDisplayTheme, (_state, { payload }) => payload || null);
-});
 
 export const slowCards = createReducer(
   INITIAL_DASHBOARD_STATE.slowCards,

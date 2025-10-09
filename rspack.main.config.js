@@ -22,6 +22,7 @@ const {
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
+const IMAGES_PATH = __dirname + "/resources/frontend_client/app/img";
 const DOCS_PATH = __dirname + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -217,6 +218,7 @@ const config = {
     alias: {
       "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
       assets: ASSETS_PATH,
+      img: IMAGES_PATH,
       fonts: FONTS_PATH,
       docs: DOCS_PATH,
       metabase: SRC_PATH,
