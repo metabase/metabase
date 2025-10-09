@@ -57,6 +57,7 @@
                         :model/Card       {}            {:name "Projected Revenue"              :collection_id col-id#}
                         :model/Card       {}            {:name "Employee Satisfaction"          :collection_id col-id#}
                         :model/Card       {}            {:name "Projected Satisfaction"         :collection_id col-id#}
+                        :model/Card       {}            {:name "Organization Reference"         :collection_id col-id#}
                         :model/Database   {db-id# :id}  {:name "Indexed Database"}
                         :model/Table      {}            {:name "Indexed Table", :db_id db-id#}]
            (search.engine/reindex! :search.engine/appdb {:in-place? true})
@@ -153,6 +154,9 @@
       (is (= #_2 3 (index-hits "projected")))
       (is (= 2 (index-hits "revenue")))
       (is (= #_1 2 (index-hits "projected revenue")))
+      (testing "Simple dictionary allows searching for unstemmed words #60649"
+        (is (= 1 (index-hits "organ")))
+        (is (= 1 (index-hits "organi"))))
       (testing "only sometimes do these occur sequentially in a phrase"
         (is (= 1 (index-hits "\"projected revenue\"")))))))
 
