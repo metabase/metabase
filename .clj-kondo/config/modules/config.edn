@@ -1820,16 +1820,6 @@
    :uses #{premium-features
            settings}}
 
-  enterprise/library
-  {:team "UX West"
-   :api  #{metabase-enterprise.library.api
-           metabase-enterprise.library.init
-           metabase-enterprise.library.settings}
-   :uses #{api
-           serialization
-           settings
-           util}}
-
   enterprise/llm
   {:team "Metabot"
    :api  #{metabase-enterprise.llm.api

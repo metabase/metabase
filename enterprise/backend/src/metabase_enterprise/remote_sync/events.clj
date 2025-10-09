@@ -44,7 +44,8 @@
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
       (or (and existing (not= "create" (:status existing)))
-          (and (= "create" (:status existing)) (= "removed" status)))
+          (and (= "create" (:status existing))
+               (contains? #{"removed" "delete"} status)))
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status
                    :status_changed_at (t/offset-date-time)})

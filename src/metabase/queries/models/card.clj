@@ -1239,7 +1239,7 @@
     (serdes/mbql-deps dataset_query)
     (serdes/visualization-settings-deps visualization_settings))))
 
-(defmethod serdes/descendants "Card" [_model-name id]
+(defmethod serdes/descendants "Card" [_model-name id _opts]
   (let [card               (t2/select-one :model/Card :id id)
         query              (not-empty (:dataset_query card))
         source-card        (some-> query lib/source-card-id)
