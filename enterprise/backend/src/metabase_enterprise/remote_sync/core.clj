@@ -20,5 +20,5 @@
   "Should the remote-synced collection be editable. Always true on OSS"
   :feature :none
   [collection]
-  (or (not (collections/remote-synced-collection? collection))
-      (= (settings/remote-sync-type) :development)))
+  (or (= (settings/remote-sync-type) :development)
+      (not (collections/remote-synced-collection? collection))))

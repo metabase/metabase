@@ -34,7 +34,7 @@
     (when-not timeline
       (throw (ex-info (tru "Timeline with id {0} not found" timeline_id)
                       {:status-code 404})))
-    (api/create-check :model/TimelineEvent {:collection_id (:collection_id timeline)})
+    (api/create-check :model/TimelineEvent {:timeline timeline})
     ;; todo: revision system
     (let [parsed   (if (nil? timestamp)
                      (throw (ex-info (tru "Timestamp cannot be null") {:status-code 400}))

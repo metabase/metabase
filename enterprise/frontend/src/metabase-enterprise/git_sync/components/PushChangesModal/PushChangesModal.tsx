@@ -29,9 +29,7 @@ import {
   type DirtyEntity,
   useExportChangesMutation,
   useGetChangedEntitiesQuery,
-} from "../api/git-sync";
-
-import S from "./PushChangesModal.module.css";
+} from "../../../api/git-sync";
 import {
   type CollectionPathSegment,
   buildCollectionMap,
@@ -39,7 +37,9 @@ import {
   getSyncStatusColor,
   getSyncStatusIcon,
   parseExportError,
-} from "./utils";
+} from "../../utils";
+
+import S from "./PushChangesModal.module.css";
 
 interface PushChangesModalProps {
   isOpen: boolean;

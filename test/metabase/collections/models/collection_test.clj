@@ -367,7 +367,7 @@
               (into #{}
                     (keep {c1 'c1, c2 'c2, c3 'c3, c4 'c4, (collection/trash-collection-id) 'trash, "root" 'root})
                     (collection/visible-collection-ids config)))]
-      (with-current-user-perms-for-collections! [c1 c2 c3 c4 (collection/trash-collection-id)]
+      (with-current-user-perms-for-collections! [c1 c2 c3 c4]
         (testing "Archived"
           (testing "Default"
             (is (= '#{root c1}

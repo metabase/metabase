@@ -150,18 +150,45 @@
                                          remote-sync-url "https://github.com/test/repo.git"
                                          remote-sync-token "test-token"
                                          remote-sync-branch "main"]
-        (mt/with-temp [:model/RemoteSyncObject _ {:model_type        "Card"
-                                                  :model_id          1
-                                                  :status            "updated"
-                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
-          (with-redefs [source/source-from-settings (constantly mock-main)]
-            (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
-                   (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
-            (testing "But can force an import"
-              (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
-                    completed-task (wait-for-task-completion task_id)]
-                (is (=? {:status "success" :task_id int?} resp))
-                (is (remote-sync.task/successful? completed-task))))))))))
+        (t2/insert! :model/RemoteSyncObject {:model_type "Card"
+                                             :model_id 1
+                                             :status "updated"
+                                             :status_changed_at (java.time.OffsetDateTime/now)})
+        (with-redefs [source/source-from-settings (constantly mock-main)]
+          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
+                 (mt/user-http-request :crowberto :post 400 "ee/remote-sync/import" {})))
+          (testing "But can force an import"
+            (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:force true})
+                  completed-task (wait-for-task-completion task_id)]
+              (is (=? {:status "success" :task_id int?} resp))
+              (is (remote-sync.task/successful? completed-task)))))))))
+
+(deftest import-skips-when-version-unchanged-but-updates-branch-test
+  (testing "POST /api/ee/remote-sync/import skips import when version matches but still updates branch setting"
+    (let [mock-main (test-helpers/create-mock-source)
+          initial-branch "main"
+          new-branch "feature"]
+      (mt/with-temporary-setting-values [remote-sync-enabled true
+                                         remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch initial-branch]
+        ;; First import to establish the version
+        (with-redefs [source/source-from-settings (constantly mock-main)]
+          (let [{:keys [task_id]} (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {})]
+            (wait-for-task-completion task_id))
+
+          ;; Verify initial branch is set
+          (is (= initial-branch (settings/remote-sync-branch)))
+
+          ;; Now try to import with same version but different branch
+          (let [response (mt/user-http-request :crowberto :post 200 "ee/remote-sync/import" {:branch new-branch})]
+            ;; Should skip the import (no task_id returned)
+            (is (nil? (:task_id response)))
+            (is (= "success" (:status response)))
+            (is (= "No changes since last import" (:message response)))
+
+            ;; But branch setting should be updated
+            (is (= new-branch (settings/remote-sync-branch)))))))))
 
 ;;; ------------------------------------------------- Export Endpoint -------------------------------------------------
 

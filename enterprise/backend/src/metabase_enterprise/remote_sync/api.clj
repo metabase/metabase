@@ -50,7 +50,9 @@
       (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten by the import. Force the import to discard these changes."
                       {:status-code 400})))
     (if (and (not force?) (= last-imported-version source-version))
-      (log/infof "Skipping import: source version %s matches last imported version" source-version)
+      (do (log/infof "Skipping import: source version %s matches last imported version" source-version)
+          (settings/remote-sync-branch! branch)
+          nil)
       (run-async! "import" branch (fn [task-id] (impl/import! ingestable-source task-id))))))
 
 (defn- async-export!
