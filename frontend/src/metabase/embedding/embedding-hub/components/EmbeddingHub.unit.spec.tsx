@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { push } from "react-router-redux";
 
 import {
+  setupDatabaseListEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -48,6 +50,15 @@ const setup = ({ isAdmin = true } = {}) => {
   );
 
   setupSearchEndpoints([]);
+  setupDatabaseListEndpoint([]);
+
+  // Additional query param variant for uploadable databases
+  fetchMock.get({
+    url: "path:/api/database",
+    query: { include_only_uploadable: true },
+    response: { data: [], total: 0 },
+  });
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {});
 
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
