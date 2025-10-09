@@ -238,9 +238,13 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
             id: Number(collectionId),
             type: "remote-synced",
           }).unwrap();
-        } catch (error) {
+        } catch (error: any) {
+          let message = t`Unable to sync collection`;
+          if (typeof error.data?.cause === "string") {
+            message += `: ${error.data?.cause}`;
+          }
           sendToast({
-            message: t`Failed to add collection to sync`,
+            message,
             icon: "warning",
           });
         }
@@ -256,9 +260,13 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
           id: Number(collectionId),
           type: null,
         }).unwrap();
-      } catch (error) {
+      } catch (error: any) {
+        let message = t`Unable to unsync collection`;
+        if (typeof error.data?.cause === "string") {
+          message += `: ${error.data?.cause}`;
+        }
         sendToast({
-          message: t`Failed to remove collection from sync`,
+          message,
           icon: "warning",
         });
       }
