@@ -48,7 +48,7 @@
   {:in  mi/json-in
    :out (comp (fn [viz-settings]
                 ;; the keys of :fields should be strings, not keywords
-                (m/update-existing viz-settings :fields update-keys name))
+                (m/update-existing viz-settings :fields update-keys u/qualified-name))
               mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/Action
@@ -259,6 +259,92 @@
                                               ::pk? (isa? (:semantic_type field) :type/PK)})))]]
             [(:id card) parameters]))))
 
+(defn- select-actions-implicit-params [action model-id->implicit-parameters]
+  (let [model-id     (:model_id action)
+        saved-params (m/index-by :id (:parameters action))
+        action-kind  (keyword (:kind action))]
+    (cond->> (get model-id->implicit-parameters model-id)
+      :always
+      (map (fn [param]
+             (let [saved-param  (saved-params (:id param))
+                   ;; we ignore the saved type, to allow schema changes (type changes) to be
+                   ;; reflected in the field presentation
+                   ;; this also fixes #39101 and avoids us making awkward changes to
+                   ;; :parameter transforms for QueryActions.
+                   saved-param' (dissoc saved-param :type)]
+               (merge param saved-param'))))
+
+      (= action-kind :row/delete)
+      (filter ::pk?)
+
+      (= action-kind :row/create)
+      (remove #(or (:is-auto-increment %)
+                   ;; non-required PKs like column with default is uuid_generate_v4()
+                   (and (::pk? %) (not (:required %)))))
+
+      (contains? #{:row/update :row/delete} action-kind)
+      (map (fn [param] (cond-> param (::pk? param) (assoc :required true)))))))
+
+(defn- implicit-parameters->viz-fields [implicit-parameters]
+  (let [field-ids (into #{}
+                        (comp cat
+                              (keep ::field-id))
+                        implicit-parameters)]
+    (when (seq field-ids)
+      (t2/select-pk->fn (fn [field]
+                          (merge
+                           (select-keys field [:base_type :display_name :description])
+                           {:title       (:display_name field)
+                            :placeholder (:display_name field)
+                            ;; these "illegal" camelCase keys are for viz
+                            ;; settings purposes, and that's what the FE uses.
+                            ;; See
+                            ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759981400217489?thread_ts=1759289751.539169&cid=C0645JP1W81
+                            :fieldType   (if (isa? (:base_type field) :type/Number) :number :string)
+                            :inputType   (condp #(isa? %2 %1) (:base_type field)
+                                           :type/Number   :number
+                                           :type/DateTime :datetime
+                                           :type/Time     :time
+                                           :type/Temporal :date
+                                           :type/Boolean  :boolean
+                                           :text)}))
+                        [:model/Field :id :base_type :display_name :description]
+                        :id [:in field-ids]))))
+
+(defn- enrich-viz-settings-fields [viz-fields implicit-params field-id->viz-field]
+  (let [param-ids          (map :id implicit-params)
+        param-id->order    (zipmap param-ids (range))
+        param-id->required (into {} (map (juxt :id :required)) implicit-params)
+        viz-fields         (->> (or viz-fields {})
+                                ;; remove entries that don't match params (in case of deleted
+                                ;; columns)
+                                (m/filter-keys (set param-ids)))
+        ;; add default entries for params that don't have an entry
+        viz-fields         (reduce (fn [acc param-id]
+                                     (if (contains? acc param-id)
+                                       acc
+                                       (assoc acc param-id {:id param-id, :hidden false})))
+                                   viz-fields
+                                   param-ids)
+        param-id->field-id (into {} (map (juxt :id ::field-id)) implicit-params)]
+    (update-vals viz-fields (fn [{param-id :id, :as viz-field}]
+                              (let [field-id (get param-id->field-id param-id)]
+                                (merge viz-field
+                                       (get field-id->viz-field field-id)
+                                       {:order    (get param-id->order param-id)
+                                        :required (get param-id->required param-id)}))))))
+
+(defn- enrich-action [action model-id->db-id model-id->implicit-parameters field-id->viz-field]
+  (case (:type action)
+    :implicit
+    (let [implicit-params (select-actions-implicit-params action model-id->implicit-parameters)]
+      (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
+        (seq implicit-params)
+        (-> (assoc :parameters implicit-params)
+            (update-in [:visualization_settings :fields] enrich-viz-settings-fields implicit-params field-id->viz-field))))
+    (:query :http)
+    action))
+
 (mu/defn select-actions :- [:maybe [:sequential ::actions.schema/action]]
   "Find actions with given options and generate implicit parameters for execution. Also adds the `:database_id` of the
    model for implicit actions.
@@ -276,55 +362,10 @@
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)
-                                        (implicit-action-parameters implicit-action-models))]
+                                        (implicit-action-parameters implicit-action-models))
+        field-id->viz-field           (implicit-parameters->viz-fields (vals model-id->implicit-parameters))]
     (for [action actions]
-      (case (:type action)
-        :implicit
-        (let [model-id        (:model_id action)
-              saved-params    (m/index-by :id (:parameters action))
-              action-kind     (keyword (:kind action))
-              implicit-params (cond->> (get model-id->implicit-parameters model-id)
-                                :always
-                                (map (fn [param]
-                                       (let [saved-param  (saved-params (:id param))
-                                             ;; we ignore the saved type, to allow schema changes (type changes) to be
-                                             ;; reflected in the field presentation
-                                             ;; this also fixes #39101 and avoids us making awkward changes to
-                                             ;; :parameter transforms for QueryActions.
-                                             saved-param' (dissoc saved-param :type)]
-                                         (merge param saved-param'))))
-
-                                (= action-kind :row/delete)
-                                (filter ::pk?)
-
-                                (= action-kind :row/create)
-                                (remove #(or (:is-auto-increment %)
-                                             ;; non-required PKs like column with default is uuid_generate_v4()
-                                             (and (::pk? %) (not (:required %)))))
-
-                                (contains? #{:row/update :row/delete} action-kind)
-                                (map (fn [param] (cond-> param (::pk? param) (assoc :required true))))
-
-                                :always
-                                (map #(dissoc % ::pk? ::field-id)))]
-          (cond-> (assoc action :database_id (model-id->db-id (:model_id action)))
-            (seq implicit-params)
-            (-> (assoc :parameters implicit-params)
-                (update-in [:visualization_settings :fields]
-                           (fn [fields]
-                             (let [param-ids (map :id implicit-params)
-                                   fields    (->> (or fields {})
-                                                  ;; remove entries that don't match params (in case of deleted columns)
-                                                  (m/filter-keys (set param-ids)))]
-                               ;; add default entries for params that don't have an entry
-                               (reduce (fn [acc param-id]
-                                         (if (contains? acc param-id)
-                                           acc
-                                           (assoc acc param-id {:id param-id, :hidden false})))
-                                       fields
-                                       param-ids)))))))
-        (:query :http)
-        action))))
+      (enrich-action action model-id->db-id model-id->implicit-parameters field-id->viz-field))))
 
 (mu/defn select-action :- [:maybe ::actions.schema/action]
   "Selects an Action and fills in the subtype data and implicit parameters.

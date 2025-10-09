@@ -42,10 +42,28 @@
                                                     {:type         :text
                                                      :id           "name"
                                                      :display-name "Display Name"}]
-                           :visualization_settings {:fields {"id"   {:id     "id"
-                                                                     :hidden false}
-                                                             "name" {:id     "name"
-                                                                     :hidden false}}}}
+                           :visualization_settings {:fields {"id"   {:description  nil
+                                                                     :placeholder  "ID"
+                                                                     :title        "ID"
+                                                                     :hidden       false
+                                                                     :id           "id"
+                                                                     :display_name "ID"
+                                                                     :inputType    :number
+                                                                     :base_type    :type/BigInteger
+                                                                     :fieldType    :number
+                                                                     :required     true
+                                                                     :order        0}
+                                                             "name" {:description  nil
+                                                                     :placeholder  "Name"
+                                                                     :title        "Name"
+                                                                     :hidden       false
+                                                                     :id           "name"
+                                                                     :display_name "Name"
+                                                                     :inputType    :text
+                                                                     :base_type    :type/Text
+                                                                     :fieldType    :string
+                                                                     :required     true
+                                                                     :order        1}}}}
                           (action/select-action :id action-id)))))))))
 
 (deftest hydrate-implicit-action-test-1a
