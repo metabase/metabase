@@ -104,7 +104,7 @@ const init = async () => {
         `metabase-sample-db-e2e-${process.pid}`,
       );
       fs.mkdirSync(tempSampleDBDir, { recursive: true });
-      process.env.MB_SAMPLE_DB_DIR = tempSampleDBDir;
+      process.env.MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR = tempSampleDBDir;
 
       printBold("⏳ Starting backend");
       await CypressBackend.start();

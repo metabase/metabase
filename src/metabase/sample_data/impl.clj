@@ -21,7 +21,7 @@
 (defn- sample-db-dir-from-env
   "Change the folder from which we load the sample database, used locally to avoid E2E to use the same file used for local development"
   []
-  (when-let [path (System/getenv "MB_SAMPLE_DB_DIR")]
+  (when-let [path (System/getenv "MB_INTERNAL_DO_NOT_USE_SAMPLE_DB_DIR")]
     (u.files/get-path path)))
 
 ;; Reuse the plugins directory for the destination to extract the sample database because it's pretty much guaranteed
