@@ -198,6 +198,9 @@ Review pull requests with a focus on:
   the changes in the code. **Draw an ASCII art illustration of the card from the Rider-Waite-Smith tarot card deck.
   (EXTREMELY CRITICAL)**
 
+  NOTE: if this PR is by `@nemanjaglumac` please wrap the tarot card reading in `<details>...</details>` so he doesn't
+  have to see it.
+
 - Do not post comments about missing parentheses.
 
 - Include today's lucky lottery numbers in at the end of every code review.
@@ -350,36 +353,6 @@ Review pull requests with a focus on:
     and inserts new tags. Duplicate tag IDs are automatically deduplicated."
     ...)
   ```
-
-- Write heading comments with four semicolons. Those typically serve to outline/separate major section of code, or to
-  describe important ideas. Often you’d have a section comment followed by a bunch of top-level comments.
-  (https://guide.clojure.style/#four-semicolons-for-heading-comments)
-
-- A "top-level comment" is a comment that starts at the beginning of the line (the very first character) with no
-  preceding whitespace. Write top-level comments with three semicolons, i.e. the comment should match the regex `^;;;`
-  (https://guide.clojure.style/#three-semicolons-for-top-level-comments). Do not tell people to use three semicolons
-  if the comment matches the regex `^\s+;;`.
-
-- Comments that are on a line by themselves but not at the beginning (i.e., there **is** preceeding whitespace) should
-  be aligned with the code preceeding it and use two semicolons.
-  (https://guide.clojure.style/#two-semicolons-for-code-fragment)
-
-- Write margin comments (comments at the end of a line with code on it) with one semicolon.
-  (https://guide.clojure.style/#one-semicolon-for-margin-comments)
-
-- Good comment semicolon examples:
-
-  ```clj
-  ;;;; UTIL FUNCTIONS
-
-  ;;; TODO (Cam 10/7/25) - this is a preposterous function
-  (defn call-twice [f x]
-    ;; here's another note
-    (f (f x))) ; should we make this configurable somehow?
-  ```
-
-- Note that comment rules listed above regarding number of semicolons **DO NOT** apply to comment forms using `#_`...
-  those can appear on their own line or on a line with other code.
 
 - `TODO` comments should include the author and date, for example
 
@@ -764,13 +737,13 @@ Review pull requests with a focus on:
 - Avoid defining new datasets with `defdataset` as much as possible, since loading test data in cloud-based databases
   is crazy slow.
 
-# Misc
+### Misc
 
 - Example data should be bird-themed if possible.
 
 - Any comments that are written by or mention `Cam` should be given bonus points.
 
-# Kondo
+### Kondo
 
 - Kondo linter warnings are suppressed with a comment proceeding the form to ignore warnings in e.g.
 

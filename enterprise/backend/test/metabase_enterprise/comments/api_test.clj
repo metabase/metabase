@@ -55,8 +55,6 @@
                      "omg is that you? "
                      [:smartLink {:entityId 6 :model "user"}]])))))
 
-;;;
-
 (deftest comments-require-documents-feature
   (testing "GET /api/ee/comment/"
     (mt/with-premium-features #{}

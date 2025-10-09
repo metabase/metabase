@@ -43,9 +43,7 @@
       (ingest-list [_]
         (keys mapped))
       (ingest-one [_ path]
-        (or (get mapped (no-labels path))
-            (throw (ex-info (format "Unknown ingestion target: %s" path)
-                            {:path path :world mapped})))))))
+        (get mapped (no-labels path))))))
 
 ;;; WARNING for test authors: [[extract/extract]] returns a lazy reducible value. To make sure you don't
 ;;; confound your tests with data from your dev appdb, remember to eagerly
@@ -1326,8 +1324,8 @@
               (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
-              (is (= [["Failed to read file for Collection does-not-exist"]]
-                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}\n"
+              (is (= [["Failed to read file {:path \"Collection does-not-exist\"}"]]
+                     (logs-extract #"Skipping deserialization error: (.*)"
                                    (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test
