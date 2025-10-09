@@ -2070,6 +2070,7 @@
            app-db
            config
            driver
+           lib
            models
            query-processor
            settings

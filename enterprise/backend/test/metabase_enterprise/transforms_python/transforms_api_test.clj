@@ -11,7 +11,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang IDeref IReduceInit)
+   (clojure.lang IDeref)
    (java.io Closeable)
    (java.time Duration Instant)))
 
@@ -342,26 +342,25 @@
             (when-not (deref wait-signal 5000 nil)
               (throw (ex-info "Expected delivery of wait signal within a reasonable amount of time" {}))))
 
-          (reducible-proxy [ready-signal
-                            wait-signal
-                            reducible-rows]
-            (reify IReduceInit
-              (reduce [_ f init]
-                (deliver ready-signal true)
-                (await-signal wait-signal)
-                (reduce f init reducible-rows))))
+          (rf-proxy [ready-signal
+                     wait-signal
+                     rf]
+            (fn
+              ([] (rf))
+              ([w] (rf w))
+              ([w e]
+               (deliver ready-signal true)
+               (await-signal wait-signal)
+               (rf w e))))
 
           (blocking-redefs [{:keys [block]} ready-signal wait-signal]
             (case block
               :read
-              (let [f-ref #'transforms-python.python-runner/execute-mbql-query
+              (let [f-ref #'transforms-python.python-runner/write-jsonl-row-to-os-rff
                     f     @f-ref]
                 {f-ref
-                 (fn [driver db-id query respond cancel-chan]
-                   (f driver db-id query
-                      (fn [metadata reducible-rows]
-                        (respond metadata (reducible-proxy ready-signal wait-signal reducible-rows)))
-                      cancel-chan))})
+                 (fn [os fields-meta col-meta]
+                   (rf-proxy ready-signal wait-signal (f os fields-meta col-meta)))})
               :write
               (let [f-ref #'transforms-python.execute/transfer-file-to-db
                     f     @f-ref]

@@ -60,6 +60,15 @@ const parameters = {
   },
 };
 
+const argTypes = {
+  theme: {
+    control: {
+      type: "inline-radio",
+    },
+    options: ["light", "dark"],
+  },
+};
+
 const globalStyles = css`
   ${defaultFontFiles({ baseUrl: "/" })}
 
@@ -73,13 +82,14 @@ const globalStyles = css`
 `;
 
 const decorators = [
-  (Story, { args = {} }) => {
+  (Story, { args = {}, globals }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
+
     return (
       <EmotionCacheProvider>
-        <ThemeProvider displayTheme={args.theme}>
+        <ThemeProvider displayTheme={args.theme ?? globals.theme}>
           <Global styles={globalStyles} />
           <CssVariables />
           <Story />
@@ -134,6 +144,11 @@ function CssVariables() {
 initialize({
   onUnhandledRequest: "bypass",
 });
-const preview = { parameters, decorators, loaders: [mswLoader] };
+const preview = {
+  parameters,
+  decorators,
+  loaders: [mswLoader],
+  argTypes,
+};
 
 export default preview;
