@@ -28,7 +28,7 @@
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [every? select-keys]]))
+   [metabase.util.performance :as perf :refer [every? select-keys]]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -267,14 +267,19 @@
 ;;
 ;; As of 0.42.0 `:expression` references can have an optional options map
 (mr/def ::expression.options
-  "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional."
-  [:merge
-   ::lib.schema.ref/expression.options
-   [:map
-    {:decode/normalize (fn [m]
-                         (when (map? m)
-                           (dissoc m :lib/uuid)))}
-    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+  "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional and
+  it cannot be empty."
+  [:and
+   [:merge
+    ::lib.schema.ref/expression.options
+    [:map
+     {:decode/normalize (fn [m]
+                          (when (map? m)
+                            (dissoc m :lib/uuid)))}
+     [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+   [:fn
+    {:decode/normalize perf/not-empty}
+    seq]])
 
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name ::lib.schema.common/non-blank-string
@@ -283,14 +288,19 @@
 (defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
 (mr/def ::FieldOptions
-  "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required."
-  [:merge
-   ::lib.schema.ref/field.options
-   [:map
-    {:decode/normalize (fn [m]
-                         (when (map? m)
-                           (dissoc m :lib/uuid)))}
-    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+  "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required and it cannot be empty."
+  [:maybe
+   [:and
+    [:merge
+     ::lib.schema.ref/field.options
+     [:map
+      {:decode/normalize (fn [m]
+                           (when (map? m)
+                             (dissoc m :lib/uuid)))}
+      [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]
+    [:fn
+     {:decode/normalize perf/not-empty}
+     seq]]])
 
 (mr/def ::require-base-type-for-field-name
   [:fn

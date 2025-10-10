@@ -17,7 +17,7 @@
 
 (comment metabase.types.core/keep-me)
 
-(defn- valid-temporal-unit-for-base-type?
+(defn valid-temporal-unit-for-base-type?
   "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
   will return truthy. Accepts either map of `field-options` or `base-type` and `temporal-unit` passed separately."
   ([{:keys [base-type temporal-unit] :as _field-options}]
@@ -100,7 +100,10 @@
    ;; If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for a
    ;; `:type/Time` column.
    [:fn
-    {:error/message "Invalid :temporal-unit for the specified :base-type."}
+    {:error/message    "Invalid :temporal-unit for the specified :base-type."
+     :decode/normalize (fn [m]
+                         (cond-> m
+                           (not (valid-temporal-unit-for-base-type? m)) (dissoc :temporal-unit)))}
     #'valid-temporal-unit-for-base-type?]])
 
 (mr/def ::field.literal.options

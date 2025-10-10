@@ -2,8 +2,6 @@
   (:refer-clojure :exclude [every? some mapv])
   (:require
    [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
-   [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.models.visualization-settings :as mb.viz]
@@ -176,7 +174,6 @@
          {:data initial-metadata})
 
         ([result]
-         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))

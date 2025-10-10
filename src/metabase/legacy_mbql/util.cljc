@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
