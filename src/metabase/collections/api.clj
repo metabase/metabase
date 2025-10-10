@@ -755,9 +755,9 @@
         ;; don't use contains as they all have the key, we care about a value present
         (:last_edit_user row) (assoc :last-edit-info (select-as row mapping))))))
 
-(defn- remove-unwanted-keys [row]
+(defn- remove-unwanted-keys [{:keys [model] :as row}]
   (cond-> (dissoc row :model_ranking :archived_directly :total_count)
-    (not= :model :collection) (dissoc :collection_type)))
+    (not= model :collection) (dissoc :collection_type)))
 
 (defn- model-name->toucan-model [model-name]
   (case (keyword model-name)

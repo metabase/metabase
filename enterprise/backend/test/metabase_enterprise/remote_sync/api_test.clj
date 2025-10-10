@@ -43,7 +43,9 @@
 
 (use-fixtures :each
   test-helpers/clean-remote-sync-state
-  (fn [f] (mt/with-premium-features #{:remote-sync} (f))))
+  (fn [f]
+    (mt/with-premium-features #{:remote-sync}
+      (f))))
 
 (defn- wait-for-task-completion [task-id]
   (when task-id
@@ -544,26 +546,26 @@
         (testing "production mode doesn't create the collection"
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                 {:remote-sync-enabled true
-                                 :remote-sync-type    :production
-                                 :remote-sync-branch  "main"
-                                 :remote-sync-url     "https://github.com/test/repo.git"
-                                 :remote-sync-token   "test-token"})
+                                 :remote-sync-type :production
+                                 :remote-sync-branch "main"
+                                 :remote-sync-url "https://github.com/test/repo.git"
+                                 :remote-sync-token "test-token"})
           (is (nil? (collection/remote-synced-collection))))
         (testing "dev mode mode does create the collection"
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                 {:remote-sync-enabled true
-                                 :remote-sync-type    :development
-                                 :remote-sync-branch  "main"
-                                 :remote-sync-url     "https://github.com/test/repo.git"
-                                 :remote-sync-token   "test-token"})
+                                 :remote-sync-type :development
+                                 :remote-sync-branch "main"
+                                 :remote-sync-url "https://github.com/test/repo.git"
+                                 :remote-sync-token "test-token"})
           (is (some? (collection/remote-synced-collection))))
         (testing "if the collection already exists, it doesn't create a second one"
           (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
                                 {:remote-sync-enabled true
-                                 :remote-sync-type    :development
-                                 :remote-sync-branch  "main"
-                                 :remote-sync-url     "https://github.com/test/repo2.git"
-                                 :remote-sync-token   "test-token"})
+                                 :remote-sync-type :development
+                                 :remote-sync-branch "main"
+                                 :remote-sync-url "https://github.com/test/repo2.git"
+                                 :remote-sync-token "test-token"})
           (is (= 1 (t2/count :model/Collection :type collection/remote-synced-collection-type :location "/"))))))))
 
 (deftest settings-cannot-change-with-dirty-data
@@ -579,10 +581,10 @@
           (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
                  (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                        {:remote-sync-enabled true
-                                        :remote-sync-type    :production
-                                        :remote-sync-branch  "main"
-                                        :remote-sync-url     "https://github.com/test/repo.git"
-                                        :remote-sync-token   "test-token"}))))))))
+                                        :remote-sync-type :production
+                                        :remote-sync-branch "main"
+                                        :remote-sync-url "https://github.com/test/repo.git"
+                                        :remote-sync-token "test-token"}))))))))
 
 (deftest create-branch
   (testing "POST /api/ee/remote-sync/create-branch creates a new branch")
