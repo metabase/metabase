@@ -12,12 +12,15 @@ export function RouterTablePicker(props: TreePath) {
   const dispatch = useDispatch();
   const [value, setValue] = useState(props);
   const location = useSelector(getLocation);
-  const isSegments = location.pathname?.startsWith("/bench/datamodel/segment");
-  const isModels = location.pathname?.startsWith("/bench/datamodel/model");
 
   const onChange = useCallback(
     (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
+
+      const isSegments = location.pathname?.startsWith(
+        "/bench/metadata/segment",
+      );
+      const isModels = location.pathname?.startsWith("/bench/metadata/model");
 
       // Update URL only when either opening a table or no table has been opened yet.
       // We want to keep user looking at a table when navigating databases/schemas.
@@ -34,7 +37,7 @@ export function RouterTablePicker(props: TreePath) {
         }
       }
     },
-    [dispatch, isModels, isSegments, props.tableId],
+    [dispatch, location.pathname, props.tableId],
   );
 
   useEffect(() => {

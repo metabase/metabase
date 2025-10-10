@@ -7,19 +7,21 @@ import _ from "underscore";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetTableQueryMetadataQuery,
+  useListCollectionsTreeQuery,
   useListDatabasesQuery,
   useUpdateCardMutation,
   useUpdateFieldMutation,
 } from "metabase/api";
-import { ModelListItem } from "metabase/bench/components/models/ModelListItem";
+import { getTreeItems } from "metabase/bench/components/models/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Tree } from "metabase/common/components/tree";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
+import { ModelTreeNode } from "metabase/metadata/pages/DataModel/components/models/ModelTreeNode";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, Title, rem } from "metabase/ui";
+import { Box, Flex, Stack, Text, Title, rem } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
-import type { UpdateFieldRequest } from "metabase-types/api";
 
 import S from "./DataModel.module.css";
 import {
@@ -33,7 +35,7 @@ import {
   TableSection,
 } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
-import type { RouteParams } from "./types";
+import type { FieldChangeParams, RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
@@ -50,7 +52,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
+  const isSegments = location.pathname.startsWith("/metadata/segment");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -64,7 +66,7 @@ export const DataModel = ({ children, location, params }: Props) => {
     ? fieldName == null
     : databaseId == null || tableId == null || fieldId == null;
   const {
-    data: table,
+    currentData: table,
     error,
     isLoading: isLoadingTables,
   } = useGetTableQueryMetadataQuery(
@@ -72,8 +74,15 @@ export const DataModel = ({ children, location, params }: Props) => {
       ? getTableMetadataQuery(getQuestionVirtualTableId(modelId))
       : getTableMetadataQuery(tableId),
   );
-  const { data: modelsData, isLoading: isLoadingDatabasesModels } =
-    useFetchModels();
+
+  // Models
+  const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
+    filter_items_in_personal_collection: undefined, // include all models
+  });
+  const { isLoading: isLoadingCollections, data: collections } =
+    useListCollectionsTreeQuery({ "exclude-archived": true });
+  const models = modelsData?.data;
+
   const [updateField] = useUpdateFieldMutation();
   const [updateCard] = useUpdateCardMutation();
   const fieldsByName = useMemo(() => {
@@ -88,17 +97,26 @@ export const DataModel = ({ children, location, params }: Props) => {
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
   const isLoading =
-    isLoadingTables || isLoadingDatabases || isLoadingDatabasesModels;
+    isLoadingTables ||
+    isLoadingDatabases ||
+    isLoadingModels ||
+    isLoadingCollections;
+
+  const modelsTreeData = useMemo(() => {
+    return models && collections ? getTreeItems(collections, models) : [];
+  }, [collections, models]);
+
+  const handleModelSelect = useCallback(() => {}, []);
 
   const handleTableFieldChange = useCallback(
-    (update: UpdateFieldRequest) => {
+    (update: FieldChangeParams) => {
       return updateField(update);
     },
     [updateField],
   );
 
   const handleModelColumnChange = useCallback(
-    (update: UpdateFieldRequest) => {
+    (update: FieldChangeParams) => {
       const metadata = table?.fields;
       const newMetadata = metadata?.map((column) => {
         return update.name === column.name ? { ...column, ...update } : column;
@@ -157,14 +175,15 @@ export const DataModel = ({ children, location, params }: Props) => {
 
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <Title p="xl" order={3} pt="sm">{t`Models`}</Title>
-          {modelsData?.data?.map((model) => (
-            <ModelListItem
-              key={model.id}
-              model={model}
-              href={`/bench/metadata/model/${model.id}`} // TODO: support relative URL hosting
-              isSelected={model.id === modelId}
-            />
-          ))}
+
+          <Tree
+            className={S.modelsTree}
+            data={modelsTreeData}
+            selectedId={modelId}
+            onSelect={handleModelSelect}
+            emptyState={<Text c="text-light">{t`No models found`}</Text>}
+            TreeNode={ModelTreeNode}
+          />
         </LoadingAndErrorWrapper>
       </Stack>
 
