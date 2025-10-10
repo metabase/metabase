@@ -173,7 +173,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       }
 
       const { id, name } = model;
-      const url = Urls.model({ id, name });
+      const url = Urls.model({ id, name, type: "model" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       trackModelClick(model.id);
@@ -206,7 +206,11 @@ function NameCell({ model }: { model?: ModelResult }) {
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <MaybeItemLink
-        to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
+        to={
+          model
+            ? Urls.model({ id: model.id, name: model.name, type: "model" })
+            : undefined
+        }
         style={{
           // To align the icons with "Name" in the <th>
           paddingInlineStart: "1.4rem",

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -45,13 +46,23 @@ const setup = ({
   setupSearchEndpoints(models.map((model) => createMockSearchResult(model)));
   setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
-  return renderWithProviders(<BrowseModels />, {
-    storeInitialState: {
-      setup: createMockSetupState({
-        locale: { name: "English", code: "en" },
-      }),
+  return renderWithProviders(
+    <>
+      <Route path="/" component={() => <BrowseModels />} />
+      <Route
+        path="/model/:slug"
+        component={() => <div data-testid="model-detail-page" />}
+      />
+    </>,
+    {
+      storeInitialState: {
+        setup: createMockSetupState({
+          locale: { name: "English", code: "en" },
+        }),
+      },
+      withRouter: true,
     },
-  });
+  );
 };
 
 const collectionAlpha = createMockCollection({ id: 99, name: "Alpha" });
@@ -473,5 +484,34 @@ describe("BrowseModels", () => {
       name: /Recents/,
     });
     expect(recentModelsGrid).not.toBeInTheDocument();
+  });
+
+  it("should render links that point directly to /model/{id}-{slug} (metabase#55166)", async () => {
+    const { history } = setup({ modelCount: 25 });
+    const recentModelsGrid = await screen.findByRole("grid", {
+      name: /Recents/,
+    });
+    expect(
+      within(recentModelsGrid).getByRole("link", { name: /Model 1/ }),
+    ).toHaveAttribute("href", "/model/1-model-1");
+    expect(
+      within(recentModelsGrid).getByRole("link", { name: /Model 2/ }),
+    ).toHaveAttribute("href", "/model/2-model-2");
+
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
+
+    expect(
+      within(modelsTable).getByRole("link", { name: /Model 20/ }),
+    ).toHaveAttribute("href", "/model/20-model-20");
+    expect(
+      within(modelsTable).getByRole("link", { name: /Model 21/ }),
+    ).toHaveAttribute("href", "/model/21-model-21");
+
+    expect(screen.queryByTestId("model-detail-page")).not.toBeInTheDocument();
+    await userEvent.click(within(recentModelsGrid).getByText("Model 1"));
+    expect(screen.getByTestId("model-detail-page")).toBeInTheDocument();
+    expect(history?.getCurrentLocation().pathname).toBe("/model/1-model-1");
   });
 });
