@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useAdminSetting } from "metabase/api/utils";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Tree } from "metabase/common/components/tree";
+import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
   SidebarHeading,
@@ -14,7 +14,7 @@ import {
 import type { CollectionTreeItem } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/MainNavbarView";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Flex, Group, Icon, ScrollArea, Text } from "metabase/ui";
+import { Box, Button, Flex, Group, Icon, Text } from "metabase/ui";
 import {
   useGetChangedEntitiesQuery,
   useImportFromBranchMutation,
@@ -24,10 +24,8 @@ import { useSyncStatus } from "../hooks/use-sync-status";
 
 import { BranchPicker } from "./BranchPicker";
 import { CollectionSyncStatusBadge } from "./CollectionSyncStatusBadge";
-import {
-  ChangesLists,
-  PushChangesModal,
-} from "./PushChangesModal/PushChangesModal";
+import { PushChangesModal } from "./PushChangesModal/PushChangesModal";
+import { UnsyncedWarningModal } from "./UnsyncedWarningModal";
 
 interface SyncedCollectionsSidebarSectionProps {
   syncedCollections: CollectionTreeItem[];
@@ -43,14 +41,18 @@ export const SyncedCollectionsSidebarSection = ({
   const hasSyncedCollections = syncedCollections.length > 0;
   const isAdmin = useSelector(getUserIsAdmin);
 
-  const { value: currentBranch } = useAdminSetting("remote-sync-branch");
+  const { value: currentBranch, updateSetting } =
+    useAdminSetting("remote-sync-branch");
   const [importFromBranch] = useImportFromBranchMutation();
-  const [showConfirm, { open: openConfirm, close: closeConfirm }] =
-    useDisclosure(false);
+  const [
+    showUnsyncedWarning,
+    { open: openWarningModal, close: closeWarningModal },
+  ] = useDisclosure(false);
   const [showPush, { open: openPush, close: closePush }] = useDisclosure(false);
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
+  const [sendToast] = useToast();
 
   const { data: dirtyData, refetch: refetchDirty } = useGetChangedEntitiesQuery(
     undefined,
@@ -62,21 +64,24 @@ export const SyncedCollectionsSidebarSection = ({
   const isDirty = !!(dirtyData?.dirty && dirtyData.dirty.length > 0);
 
   const changeBranch = useCallback(
-    async (branch: string | null) => {
+    async (branch: string | null, isNewBranch?: boolean) => {
       if (branch == null) {
         console.warn("Trying to switch to null branch");
         return;
       }
 
-      closeConfirm();
-      await importFromBranch({ branch });
+      if (!isNewBranch) {
+        await importFromBranch({ branch });
+      }
+
+      updateSetting({ key: "remote-sync-branch", value: branch });
       setNextBranch(null);
     },
-    [importFromBranch, closeConfirm, setNextBranch],
+    [importFromBranch, setNextBranch, updateSetting],
   );
 
   const handleBranchSelect = useCallback(
-    async (branch: string) => {
+    async (branch: string, isNewBranch?: boolean) => {
       try {
         if (branch === currentBranch) {
           return;
@@ -87,17 +92,22 @@ export const SyncedCollectionsSidebarSection = ({
         const freshDirtyData = await refetchDirty().unwrap();
         const isDirty = freshDirtyData.dirty.length > 0;
 
-        if (isDirty) {
-          openConfirm();
-          return;
+        if (isDirty && !isNewBranch) {
+          openWarningModal();
         } else {
-          changeBranch(branch);
+          await changeBranch(branch, isNewBranch);
         }
       } catch {
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Sorry, we were unable to switch branches.`,
+        });
+      } finally {
         setNextBranch(null);
       }
     },
-    [currentBranch, changeBranch, openConfirm, refetchDirty],
+    [currentBranch, changeBranch, openWarningModal, refetchDirty, sendToast],
   );
 
   const isSwitchingBranch = nextBranch != null;
@@ -165,23 +175,9 @@ export const SyncedCollectionsSidebarSection = ({
           </Box>
         </ErrorBoundary>
       </SidebarSection>
-      <ConfirmModal
-        opened={showConfirm}
-        onClose={closeConfirm}
-        title={t`Switch branches?`}
-        message={t`Switching branches will discard these unsynced changes:`}
-        confirmButtonText={t`Discard changes and switch`}
-        onConfirm={() => changeBranch(nextBranch)}
-      >
-        {showConfirm && (
-          <ScrollArea.Autosize mah="50dvh" offsetScrollbars type="hover">
-            <ChangesLists
-              collections={syncedCollections}
-              title={t`Unsynced changes`}
-            />
-          </ScrollArea.Autosize>
-        )}
-      </ConfirmModal>
+      {showUnsyncedWarning && (
+        <UnsyncedWarningModal onClose={closeWarningModal} />
+      )}
       {showPush && (
         <PushChangesModal
           isOpen={showPush}

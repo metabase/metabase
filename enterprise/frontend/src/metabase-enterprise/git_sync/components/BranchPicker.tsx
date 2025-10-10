@@ -104,18 +104,18 @@ export const BranchPicker = ({
       withinPortal
       width={280}
       position="bottom-start"
-      disabled={disabled || isLoading}
+      disabled={disabled || isLoading || isCreating}
     >
       <Combobox.Target>
         <Button
           p={0}
           size="compact-sm"
           variant="subtle"
-          disabled={disabled || isLoading}
+          disabled={disabled || isLoading || isCreating}
           onClick={() => combobox.toggleDropdown()}
           leftSection={<Icon name="git_branch" c="brand" size={14} />}
           rightSection={
-            isLoading ? (
+            isLoading || isCreating ? (
               <Loader size="xs" />
             ) : (
               <Icon
@@ -152,7 +152,7 @@ export const BranchPicker = ({
         <Divider />
 
         <ScrollArea.Autosize mah={320} type="hover">
-          {branchesLoading ? (
+          {branchesLoading || isCreating ? (
             <Flex justify="center" align="center" p="xl">
               <Loader size="sm" />
             </Flex>
