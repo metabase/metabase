@@ -33,7 +33,8 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
     () => Lib.aggregateByCount(query, stageIndex),
     [query, stageIndex],
   );
-  const { data, isFetching } = useGetAdhocQueryQuery(Lib.toJsQuery(countQuery));
+  const jsQuery = useMemo(() => Lib.toJsQuery(countQuery), [countQuery]);
+  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery);
   const count = data?.data?.rows?.[0]?.[0];
 
   const previewUrl = Urls.newQuestion({

@@ -46,13 +46,15 @@ export function TableDetailPage({ params }: Props) {
       : undefined;
   }, [rowId, table, tableQuery]);
 
+  const jsQuery = useMemo(() => {
+    return objectQuery ? Lib.toJsQuery(objectQuery) : skipToken;
+  }, [objectQuery]);
+
   const {
     data: dataset,
     error: queryError,
     isLoading: isQueryLoading,
-  } = useGetAdhocQueryQuery(
-    objectQuery ? Lib.toJsQuery(objectQuery) : skipToken,
-  );
+  } = useGetAdhocQueryQuery(jsQuery);
 
   const error = tableError ?? queryError;
   const isLoading = isTableLoading || isQueryLoading;

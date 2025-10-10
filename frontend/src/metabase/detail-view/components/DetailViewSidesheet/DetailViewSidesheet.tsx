@@ -86,13 +86,15 @@ export function DetailViewSidesheet({
   onNextClick,
   onPreviousClick,
 }: Props) {
-  const {
-    data: dataset,
-    error,
-    isLoading,
-  } = useGetAdhocQueryQuery(
-    query != null && rowFromProps == null ? Lib.toJsQuery(query) : skipToken,
-  );
+  const jsQuery = useMemo(() => {
+    if (query != null && rowFromProps == null) {
+      return Lib.toJsQuery(query);
+    }
+    return skipToken;
+  }, [query, rowFromProps]);
+
+  const { data: dataset, error, isLoading } = useGetAdhocQueryQuery(jsQuery);
+
   const { columns, row } = useMemo(
     () => extractData(dataset, columnsFromProp, columnSettings, rowFromProps),
     [dataset, columnsFromProp, columnSettings, rowFromProps],
