@@ -37,6 +37,7 @@ import {
 } from "metabase/ui";
 import {
   type GitSyncSettingsSet,
+  useGetChangedEntitiesQuery,
   useImportFromBranchMutation,
   useUpdateGitSyncSettingsMutation,
 } from "metabase-enterprise/api/git-sync";
@@ -56,6 +57,9 @@ export const GitSyncSettings = (): JSX.Element => {
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingDetails } = useGetAdminSettingsDetailsQuery();
   const [updateGitSyncSettings] = useUpdateGitSyncSettingsMutation();
+  const { data: dirtyData } = useGetChangedEntitiesQuery(undefined, {
+    refetchOnFocus: true,
+  });
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [importFromBranch, { isLoading: isImporting }] =
     useImportFromBranchMutation();
@@ -86,6 +90,7 @@ export const GitSyncSettings = (): JSX.Element => {
   );
 
   const isGitSyncEnabled = useSetting("remote-sync-enabled");
+  const isDirty = !!dirtyData?.dirty?.length;
 
   const handleDeactivate = useCallback(async () => {
     await updateSettings({
@@ -176,11 +181,20 @@ export const GitSyncSettings = (): JSX.Element => {
                         label={t`Development`}
                         description={t`In development mode, you can make changes to synced collections and pull and push from any git branch`}
                       />
-                      <Radio
-                        value="production"
-                        label={t`Production`}
-                        description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
-                      />
+                      <Tooltip
+                        disabled={!isDirty}
+                        label={t`You can't switch to production as you have unpublished changes.`}
+                        position="bottom-start"
+                      >
+                        <Box>
+                          <Radio
+                            description={t`In production mode, synced collections are read-only, and automatically sync with the specified branch`}
+                            disabled={isDirty}
+                            label={t`Production`}
+                            value="production"
+                          />
+                        </Box>
+                      </Tooltip>
                     </Stack>
                   </FormRadioGroup>
 
