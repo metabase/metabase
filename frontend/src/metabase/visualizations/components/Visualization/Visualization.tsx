@@ -52,6 +52,7 @@ import {
   type HoveredObject,
   type QueryClickActionsMode,
   type VisualizationDefinition,
+  type VisualizationGridSize,
   type VisualizationPassThroughProps,
   type Visualization as VisualizationType,
   isRegularClickAction,
@@ -127,10 +128,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
-  gridSize?: {
-    width: number;
-    height: number;
-  };
+  gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
   headerIcon?: IconProps;
