@@ -364,7 +364,6 @@
   add-parameters-for-template-tags
   engine
   extract-template-tags
-  fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
   native-extras
@@ -422,8 +421,7 @@
   replace-join]
  [metabase.lib.schema
   native-only-query?]
- [metabase.lib.schema.util
-  remove-lib-uuids]
+ [metabase.lib.schema.util]
  [lib.segment
   available-segments]
  [metabase.lib.serialize

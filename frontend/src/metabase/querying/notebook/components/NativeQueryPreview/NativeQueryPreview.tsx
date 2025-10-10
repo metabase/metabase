@@ -25,7 +25,7 @@ export function NativeQueryPreview({
   parameters?: UiParameter[];
 }) {
   const { data, error, isFetching } = useGetNativeDatasetQuery({
-    ...Lib.toJsQuery(query),
+    ...Lib.toLegacyQuery(query),
     parameters,
   });
 

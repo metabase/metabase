@@ -3,16 +3,11 @@ import _ from "underscore";
 
 import { copy } from "metabase/lib/utils";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 export function isNative(card) {
-  if (!card) {
-    return false;
-  }
-  const question = Question.create({ dataset_query: card.dataset_query });
-  return question.isNative();
+  return card?.dataset_query?.type === "native";
 }
 
 function cardVisualizationIsEquivalent(cardA, cardB) {

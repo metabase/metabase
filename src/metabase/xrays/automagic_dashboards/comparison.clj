@@ -5,6 +5,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -12,15 +13,14 @@
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.names :as names]
    [metabase.xrays.automagic-dashboards.populate :as populate]
-   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [metabase.xrays.related :as related]))
 
 (def ^:private ^{:arglists '([root])} comparison-name
   (comp capitalize-first (some-fn :comparison-name :full-name)))
 
-(mu/defn- dashboard->cards :- [:sequential ::ads/card]
-  [dashboard :- ::ads/dashboard]
+(defn- dashboard->cards
+  [dashboard]
   (->> dashboard
        :dashcards
        (map (fn [{:keys [size_y card col row series] :as dashcard}]
@@ -29,10 +29,7 @@
                      :series   series
                      :height   size_y
                      :position (+ (* row populate/grid-width) col))))
-       (sort-by :position)
-       (map (fn [dashcard]
-              (cond-> dashcard
-                (nil? (:dataset_query dashcard)) (dissoc :dataset_query))))))
+       (sort-by :position)))
 
 (defn- clone-card
   [card]
@@ -43,26 +40,19 @@
              :collection_id nil
              :id            (gensym))))
 
-(mu/defn- display-type :- [:maybe :keyword]
-  [card :- :map]
-  (keyword (:display card)))
+(def ^:private ^{:arglists '([card])} display-type
+  (comp qp.util/normalize-token :display))
 
-(mu/defn- add-filter-clauses :- ::ads/query
+(defn- add-filter-clauses
   "Add `new-filter-clauses` to a query. There is actually an `mbql.u/add-filter-clause` function we should be using
   instead, but that validates its input and output, and the queries that come in here aren't always valid (for
   example, missing `:database`). If we can, it would be nice to use that instead of reinventing the wheel here."
-  [query              :- ::ads/query
-   new-filter-clauses :- [:maybe [:sequential :any]]]
-  (magic.util/do-with-legacy-query
-   query
-   (fn [{{existing-filter-clause :filter} :query, :as query}]
-     (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
-           new-filter-clause (when (seq clauses)
-                               ;; existing usage, this namespace will be rewritten to use Lib soon.
-                               #_{:clj-kondo/ignore [:deprecated-var]}
-                               (mbql.normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
-       (cond-> query
-         (seq new-filter-clause) (magic.util/do-with-legacy-query assoc-in [:query :filter] new-filter-clause))))))
+  [{{existing-filter-clause :filter} :query, :as query}, new-filter-clauses]
+  (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
+        new-filter-clause (when (seq clauses)
+                            (mbql.normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
+    (cond-> query
+      (seq new-filter-clause) (assoc-in [:query :filter] new-filter-clause))))
 
 (defn- inject-filter
   "Inject filter clause into card."
@@ -71,21 +61,14 @@
       (update :dataset_query #(add-filter-clauses % [query-filter cell-query]))
       (update :series (partial map (partial inject-filter root)))))
 
-(mu/defn- multiseries?
-  [card :- [:map
-            [:dataset_query {:optional true} ::ads/query]]]
+(defn- multiseries?
+  [card]
   (or (-> card :series not-empty)
-      (some-> card
-              :dataset_query
-              not-empty
-              (magic.util/do-with-legacy-query
-               (fn [query]
-                 (or (-> query (get-in [:query :aggregation]) count (> 1))
-                     (-> query (get-in [:query :breakout]) count (> 1))))))))
+      (-> card (get-in [:dataset_query :query :aggregation]) count (> 1))
+      (-> card (get-in [:dataset_query :query :breakout]) count (> 1))))
 
-(mu/defn- overlay-comparison?
-  [card :- [:map
-            [:dataset_query {:optional true} ::ads/query]]]
+(defn- overlay-comparison?
+  [card]
   (and (-> card display-type (#{:bar :line}))
        (not (multiseries? card))))
 
@@ -96,7 +79,7 @@
           card-left                (->> card (inject-filter left) clone-card)
           card-right               (->> card (inject-filter right) clone-card)
           [color-left color-right] (->> [left right]
-                                        (map #(magic.util/do-with-legacy-query (:dataset_query %) get-in [:query :filter]))
+                                        (map #(get-in % [:dataset_query :query :filter]))
                                         populate/map-to-colors)]
       (if (overlay-comparison? card)
         (let [card   (-> card-left
@@ -105,7 +88,7 @@
               series (-> card-right
                          (update :name #(format "%s (%s)" % (comparison-name right)))
                          vector)]
-          (update dashboard :dashcards conj (merge (populate/dashcard-defaults)
+          (update dashboard :dashcards conj (merge (populate/card-defaults)
                                                    {:col                    0
                                                     :row                    row
                                                     :size_x                 populate/grid-width
@@ -125,7 +108,7 @@
                              (not (multiseries? card-right))
                              (assoc-in [:visualization_settings :graph.colors] [color-right]))]
           (-> dashboard
-              (update :dashcards conj (merge (populate/dashcard-defaults)
+              (update :dashcards conj (merge (populate/card-defaults)
                                              {:col                    0
                                               :row                    row
                                               :size_x                 width
@@ -134,7 +117,7 @@
                                               :card_id                (:id card-left)
                                               :series                 series-left
                                               :visualization_settings {}}))
-              (update :dashcards conj (merge (populate/dashcard-defaults)
+              (update :dashcards conj (merge (populate/card-defaults)
                                              {:col                    width
                                               :row                    row
                                               :size_x                 width
@@ -179,23 +162,21 @@
                                                 (/ populate/grid-width 2))]
     [dashboard (max height-left height-right)]))
 
-(mu/defn- series-labels
-  [card :- [:map
-            [:dataset_query {:optional true} ::ads/query]]]
+(defn- series-labels
+  [card]
   (get-in card [:visualization_settings :graph.series_labels]
           (map (comp capitalize-first names/metric-name)
-               (magic.util/do-with-legacy-query (:dataset_query card) get-in [:query :aggregation]))))
+               (get-in card [:dataset_query :query :aggregation]))))
 
-(mu/defn- unroll-multiseries
-  [card :- [:map
-            [:dataset_query {:optional true} ::ads/query]]]
+(defn- unroll-multiseries
+  [card]
   (if (and (multiseries? card)
            (-> card :display (= :line)))
     (for [[aggregation label] (map vector
-                                   (magic.util/do-with-legacy-query (:dataset_query card) get-in [:query :aggregation])
+                                   (get-in card [:dataset_query :query :aggregation])
                                    (series-labels card))]
       (-> card
-          (update :dataset_query magic.util/do-with-legacy-query assoc-in [:query :aggregation] [aggregation])
+          (assoc-in [:dataset_query :query :aggregation] [aggregation])
           (assoc :name label)
           (m/dissoc-in [:visualization_settings :graph.series_labels])))
     [card]))
@@ -277,11 +258,8 @@
                                 distinct
                                 (map #(automagic-analysis % {:source       (:source left)
                                                              :rules-prefix ["comparison"]})))]
-    (assert (or (let [left-source  (m/update-existing (:source left) :dataset_query magic.util/do-with-legacy-query identity)
-                      right-source (m/update-existing (:source right) :dataset_query magic.util/do-with-legacy-query identity)]
-                  (= left-source right-source))
-                (= (-> left :source :table_id)
-                   (-> right :source u/the-id))))
+    (assert (or (= (:source left) (:source right))
+                (= (-> left :source :table_id) (-> right :source u/the-id))))
     (->> (concat segment-dashboards [dashboard])
          (reduce (fn [dashboard-1 dashboard-2]
                    (if dashboard-1

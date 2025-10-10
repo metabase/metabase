@@ -1369,7 +1369,13 @@
   Map of template tag name -> template tag definition"
   [:and
    [:map-of ::lib.schema.common/non-blank-string TemplateTag]
-   [:ref ::lib.schema.template-tag/template-tag-map.validate-names]])
+   ;; make sure people don't try to pass in a `:name` that's different from the actual key in the map.
+   [:fn
+    {:error/message "keys in template tag map must match the :name of their values"}
+    (fn [m]
+      (every? (fn [[tag-name tag-definition]]
+                (core/= tag-name (:name tag-definition)))
+              m))]])
 
 (def ^:private NativeQuery:Common
   [:and
@@ -1378,8 +1384,7 @@
     ;; collection (table) this query should run against. Needed for MongoDB
     [:collection    {:optional true} [:maybe ::lib.schema.common/non-blank-string]]]
    (lib.schema.common/disallowed-keys
-    {:lib/type     "Legacy MBQL inner queries must not have :lib/type"
-     :type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
+    {:type         "An inner query must not include :type, this will cause us to mix it up with an outer query"
      :source-table ":source-table is only allowed in MBQL inner queries."
      :fields       ":fields is only allowed in MBQL inner queries."})])
 
@@ -1646,8 +1651,7 @@
     (fn [{:keys [breakout fields]}]
       (empty? (set/intersection (set breakout) (set fields))))]
    (lib.schema.common/disallowed-keys
-    {:lib/type "Legacy MBQL inner queries must not have :lib/type"
-     :type     "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
+    {:type "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
 
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
@@ -1703,8 +1707,7 @@
   [:and
    [:fn
     {:error/message "Query must specify at most one of `:native` or `:query`, but not both."}
-    (every-pred (some-fn :native :query)
-                (complement (every-pred :native :query)))]
+    (complement (every-pred :native :query))]
    [:fn
     {:error/message "Native queries must not specify `:query`; MBQL queries must not specify `:native`."}
     (fn [{native :native, mbql :query, query-type :type}]
@@ -1770,7 +1773,5 @@
    [:ref ::check-keys-for-query-type]
    [:ref ::check-query-does-not-have-source-metadata]
    (lib.schema.common/disallowed-keys
-    {:lib/type     "Legacy MBQL queries must not have :lib/type"
-     :source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
-     :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"
-     :stages       "Legacy MBQL queries cannot have :stages; use :query or :native instead"})])
+    {:source-table "An outer query must not include inner-query keys like :source-table; this might cause us to confuse it with an inner query"
+     :source-query "An outer query must not include inner-query keys like :source-query; this might cause us to confuse it with an inner query"})])

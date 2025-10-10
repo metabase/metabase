@@ -126,8 +126,7 @@
 
            {:name  "abc"
             :cards ["abc"]}
-           {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
-                     :channels "one or more map"}}
+           default-post-card-ref-validation-error
 
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
@@ -465,7 +464,7 @@
              default-put-card-ref-validation-error
 
              {:cards ["abc"]}
-             {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
+             default-put-card-ref-validation-error
 
              {:channels 123}
              {:errors {:channels "nullable one or more map"}}

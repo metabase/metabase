@@ -101,9 +101,8 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
-   ;; TODO (Cam 10/3/25) -- update this to use the Lib versions of these namespaces
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   [metabase.driver.common.parameters]
+   [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.files :as u.files]

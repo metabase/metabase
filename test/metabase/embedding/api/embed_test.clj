@@ -146,8 +146,7 @@
   {:description            nil
    :display                "table"
    :visualization_settings {}
-   :dataset_query          {:lib/type "mbql/query"
-                            :stages   [{:lib/type "mbql.stage/mbql"}]}
+   :dataset_query          {:type "query"}
    :parameters             []
    :param_fields           {}})
 
@@ -1510,8 +1509,7 @@
       (with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card {:dataset_query    (mt/native-query
                                                             {:query         "SELECT count(*) FROM orders WHERE quantity = {{qty_locked}}"
-                                                             :template-tags {"qty_locked" {:id           "0123"
-                                                                                           :name         "qty_locked"
+                                                             :template-tags {"qty_locked" {:name         "qty_locked"
                                                                                            :display-name "Quantity (Locked)"
                                                                                            :type         :number}}})
                                          :enable_embedding true

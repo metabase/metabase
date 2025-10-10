@@ -4,8 +4,6 @@
    [medley.core :as m]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.events.core :as events]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
@@ -19,59 +17,50 @@
 (doseq [trait [:metabase/model :hook/entity-id :hook/timestamped?]]
   (derive :model/Transform trait))
 
-(defn- transform-source-out [m]
-  (-> m
-      mi/json-out-without-keywordization
-      (update-keys keyword)
-      (m/update-existing :query lib-be/normalize-query)
-      (m/update-existing :type keyword)))
-
-(defn- transform-source-in [m]
-  (-> m
-      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
-      mi/json-in))
-
 (t2/deftransforms :model/Transform
-  {:source      {:out transform-source-out, :in transform-source-in}
+  {:source      mi/transform-transform-source
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
-(methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
+(mi/define-batched-hydration-method with-transform
+  :transform
   "Add transform to a TransformRun"
-  [_model _k runs]
+  [runs]
   (if-not (seq runs)
     runs
     (let [transform-ids (into #{} (map :transform_id) runs)
           id->transform (t2/select-pk->fn identity [:model/Transform :id :name] :id [:in transform-ids])]
-      (for [run runs] (assoc run :transform (get id->transform (:transform_id run)))))))
+      (for [run runs]
+        (assoc run :transform (get id->transform (:transform_id run)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :last_run]
+(mi/define-batched-hydration-method with-last-run
+  :last_run
   "Add last_run to a transform"
-  [_model _k transforms]
+  [transforms]
   (if-not (seq transforms)
     transforms
     (let [transform-ids (into #{} (map :id) transforms)
-          last-runs (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
-      (for [transform transforms] (assoc transform :last_run (get last-runs (:id transform)))))))
+          last-runs     (m/index-by :transform_id (transform-run/latest-runs transform-ids))]
+      (for [transform transforms]
+        (assoc transform :last_run (get last-runs (:id transform)))))))
 
-(methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
+(mi/define-batched-hydration-method transform-tag-ids
+  :transform_tag_ids
   "Add tag_ids to a transform, preserving the order defined by position"
-  [_model _k transforms]
+  [transforms]
   (if-not (seq transforms)
     transforms
-    (let [transform-ids (into #{} (map :id) transforms)
-          tag-associations (when (seq transform-ids)
-                             (t2/select
-                              [:model/TransformTransformTag :transform_id :tag_id :position]
-                              :transform_id
-                              [:in transform-ids]
-                              {:order-by [[:position :asc]]}))
-          transform-id->tag-ids (reduce
-                                 (fn [acc {:keys [transform_id tag_id]}]
-                                   (update acc transform_id (fnil conj []) tag_id))
-                                 {}
-                                 tag-associations)]
-      (for [transform transforms] (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
+    (let [transform-ids         (into #{} (map :id) transforms)
+          tag-associations      (when (seq transform-ids)
+                                  (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
+                                             :transform_id [:in transform-ids]
+                                             {:order-by [[:position :asc]]}))
+          transform-id->tag-ids (reduce (fn [acc {:keys [transform_id tag_id]}]
+                                          (update acc transform_id (fnil conj []) tag_id))
+                                        {}
+                                        tag-associations)]
+      (for [transform transforms]
+        (assoc transform :tag_ids (vec (get transform-id->tag-ids (:id transform) [])))))))
 
 (t2/define-after-insert :model/Transform [transform]
   (events/publish-event! :event/create-transform {:object transform})
@@ -86,8 +75,9 @@
   transform)
 
 (defn update-transform-tags!
-  "Update the tags associated with a transform using smart diff logic. Only modifies what has changed: deletes removed
-  tags, updates positions for moved tags, and inserts new tags. Duplicate tag IDs are automatically deduplicated."
+  "Update the tags associated with a transform using smart diff logic.
+   Only modifies what has changed: deletes removed tags, updates positions for moved tags,
+   and inserts new tags. Duplicate tag IDs are automatically deduplicated."
   [transform-id tag-ids]
   (when transform-id
     (t2/with-transaction [_conn]
@@ -160,8 +150,7 @@
    :skip [:dependency_analysis_version]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
-               :source {:export #(update % :query serdes/export-mbql)
-                        :import #(update % :query serdes/import-mbql)}
+               :source {:export serdes/export-mbql :import serdes/import-mbql}
                :target {:export serdes/export-mbql :import serdes/import-mbql}
                :tags (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 

@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+
 import { createMockMetadata } from "__support__/metadata";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery, {
@@ -216,32 +218,47 @@ describe("NativeQuery", () => {
       });
 
       it("requires a display name", () => {
-        q = q.setTemplateTag("foo", { name: "foo", type: "text" });
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "text",
+          }),
+        );
+
         expect(q.canRun()).toBe(false);
 
-        q = q.setTemplateTag("foo", {
-          name: "foo",
-          type: "text",
-          "display-name": "Foo",
-        });
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "text",
+            "display-name": "Foo",
+          }),
+        );
+
         expect(q.canRun()).toBe(true);
       });
 
       it("dimension type without a dimension", () => {
-        q = q.setTemplateTag("foo", {
-          type: "dimension",
-          "widget-type": "category",
-          "display-name": "bar",
-        });
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            type: "dimension",
+            "widget-type": "category",
+            "display-name": "bar",
+          }),
+        );
+
         expect(q.canRun()).toBe(false);
 
-        q = q.setTemplateTag("foo", {
-          name: "foo",
-          type: "dimension",
-          "widget-type": "category",
-          dimension: ["field", 123, null],
-          "display-name": "bar",
-        });
+        q = q.setDatasetQuery(
+          assocIn(q.datasetQuery(), ["native", "template-tags", "foo"], {
+            name: "foo",
+            type: "dimension",
+            "widget-type": "category",
+            dimension: ["field", 123, null],
+            "display-name": "bar",
+          }),
+        );
+
         expect(q.canRun()).toBe(true);
       });
     });

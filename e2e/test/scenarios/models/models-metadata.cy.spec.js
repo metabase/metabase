@@ -347,8 +347,7 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    // TODO (AlexP 10/09/25) -- fix and unskip this test
-    it.skip("should allow drills on FK columns", () => {
+    it("should allow drills on FK columns", () => {
       cy.get("@modelId").then((modelId) => {
         cy.visit(`/model/${modelId}`);
         cy.wait("@dataset");

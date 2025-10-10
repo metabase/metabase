@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
@@ -323,8 +322,7 @@
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
-(defn- remove-locked-parameters
-  [dashboard embedding-params]
+(defn- remove-locked-parameters [dashboard embedding-params]
   (let [params                    (:parameters dashboard)
         {params-to-remove :remove
          params-to-keep   :keep}  (classify-params-as-keep-or-remove params embedding-params)
@@ -352,7 +350,7 @@
         ;; TODO cleanup
         (update :param_fields update-vals (fn [fields] (into [] (filter #(not (field-ids-to-remove (:id %)))) fields))))))
 
-(mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
+(defn dashboard-for-unsigned-token
   "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
   the `public-dashboard` function that fetches the Dashboard."
   [unsigned-token & {:keys [embedding-params constraints]}]
@@ -362,7 +360,7 @@
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
-    (-> (apply api.public/public-dashboard :id dashboard-id constraints)
+    (-> (apply api.public/public-dashboard :id dashboard-id, constraints)
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)

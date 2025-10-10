@@ -14,9 +14,11 @@
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.audit-app.core :as audit]
+   [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor.parameters.dates :as params.dates]
-   [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
+   [metabase.search.config
+    :as search.config
+    :refer [SearchableModel SearchContext]]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
@@ -66,7 +68,7 @@
 (mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
-   search-native-query  :- [:maybe :boolean]]
+   search-native-query  :- [:maybe true?]]
   (when-let [query (:search-string search-context)]
     (into
      [:or]

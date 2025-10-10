@@ -162,11 +162,11 @@
           (let [response (mt/user-http-request :crowberto :get 200 "task/")]
             (is (= 3 (-> response :data count)))))
         (testing "Error is returned on explicit nil status"
-          (is (=? {:errors {:status "enum of :started, :unknown, :success, :failed"}}
-                  (mt/user-http-request :crowberto :get 400 "task/" :status nil))))
+          (is (= "enum of :started, :unknown, :success, :failed"
+                 (-> (mt/user-http-request :crowberto :get 400 "task/" :status nil) :errors :status first))))
         (testing "Error is returned for unexpected status values"
-          (is (=? {:errors {:status "enum of :started, :unknown, :success, :failed"}}
-                  (mt/user-http-request :crowberto :get 400 "task/" :status 1))))
+          (is (= "enum of :started, :unknown, :success, :failed"
+                 (-> (mt/user-http-request :crowberto :get 400 "task/" :status 1) :errors :status first))))
         (letfn [(task-test-filtering-response
                   [task]
                   (testing (format "Filtering for `%s` named task works correctly" task)

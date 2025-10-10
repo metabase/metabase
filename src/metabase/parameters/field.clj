@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
@@ -76,13 +75,12 @@
 
 (mu/defn search-values-from-field-id :- ms/FieldValuesResult
   "Search for values of a field given by `field-id` that contain `query`."
-  [field-id     :- ::lib.schema.id/field
-   query-string :- [:maybe :string]]
+  [field-id query]
   (let [field        (api/read-check (t2/select-one :model/Field :id field-id))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
                                   (t2/select-one :model/Field :id))
                          field)]
-    {:values          (search-values field search-field query-string)
+    {:values          (search-values field search-field query)
      ;; assume there are more if doing a search, otherwise there are no more values
-     :has_more_values (not (str/blank? query-string))
+     :has_more_values (not (str/blank? query))
      :field_id        field-id}))

@@ -37,10 +37,7 @@
 
 (mr/def ::field
   "Valid Field ID"
-  [:schema
-   {:decode/api (fn [id]
-                  (cond-> id (string? id) parse-long))}
-   pos-int?])
+  pos-int?)
 
 (mr/def ::card
   "Valid Card ID"

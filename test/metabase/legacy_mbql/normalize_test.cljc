@@ -1,5 +1,4 @@
 (ns metabase.legacy-mbql.normalize-test
-  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}}
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.set :as set]

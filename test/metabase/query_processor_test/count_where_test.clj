@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest ^:parallel basic-test

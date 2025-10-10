@@ -9,7 +9,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -125,7 +125,7 @@
                   :source       :native
                   :field_ref    [:field "a_2" {:base-type :type/*}]}]
                 (column-info
-                 (lib/query meta/metadata-provider {:type :native, :native {:query "SELECT 1;"}})
+                 (lib/query meta/metadata-provider {:type :native})
                  {:cols [{:name "a"} {:name "a"}]
                   :rows rows})))))))
 

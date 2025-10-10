@@ -177,7 +177,7 @@ class Question {
   _legacyNativeQuery = _.once((): NativeQuery | undefined => {
     const datasetQuery = this._card.dataset_query;
 
-    if (this.isNative()) {
+    if (NativeQuery.isDatasetQueryType(datasetQuery)) {
       return new NativeQuery(this, datasetQuery);
     }
 
@@ -211,18 +211,6 @@ class Question {
 
   setDatasetQuery(newDatasetQuery: DatasetQuery): Question {
     return this.setCard(assoc(this.card(), "dataset_query", newDatasetQuery));
-  }
-
-  isNative() {
-    if (
-      this.datasetQuery() == null ||
-      InternalQuery.isDatasetQueryType(this.datasetQuery())
-    ) {
-      return false;
-    }
-
-    const queryInfo = Lib.queryDisplayInfo(this.query());
-    return queryInfo.isNative;
   }
 
   /**
@@ -761,7 +749,7 @@ class Question {
       dashboard_id: card.dashboard_id,
       ...(includeEntityId ? { entity_id: card.entity_id } : {}),
       ...(includeDatasetQuery
-        ? { dataset_query: Lib.toJsQuery(this.query()) }
+        ? { dataset_query: Lib.toLegacyQuery(this.query()) }
         : {}),
       display: card.display,
       ...(_.isEmpty(card.parameters)
@@ -845,7 +833,8 @@ class Question {
       throw new Error("Internal query is not supported by MLv2");
     }
 
-    this.__mlv2Query ??= Lib.fromJsQuery(
+    this.__mlv2Query ??= Lib.fromLegacyQuery(
+      this.datasetQuery()?.database,
       this.metadataProvider(),
       this.datasetQuery(),
     );
@@ -869,7 +858,7 @@ class Question {
   }
 
   setQuery(query: Query): Question {
-    return this.setDatasetQuery(Lib.toJsQuery(query));
+    return this.setDatasetQuery(Lib.toLegacyQuery(query));
   }
 
   generateQueryDescription() {

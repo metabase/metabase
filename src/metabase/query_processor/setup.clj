@@ -3,7 +3,6 @@
    [clojure.core.async :as a]
    [clojure.core.async.impl.dispatch :as a.impl.dispatch]
    [clojure.set :as set]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -14,10 +13,9 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -28,7 +26,7 @@
       (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
                       {:query query, :type qp.error-type/invalid-query}))))
 
-(mu/defn- source-card-id-for-mbql5-query :- [:maybe ::lib.schema.id/card]
+(mu/defn- source-card-id-for-pmbql-query :- [:maybe ::lib.schema.id/card]
   [query :- ::qp.schema/any-query]
   (-> query :stages first :source-card))
 
@@ -89,7 +87,7 @@
   [query :- ::qp.schema/any-query]
   (case (query-type query)
     :mbql/query
-    (source-card-id-for-mbql5-query query)
+    (source-card-id-for-pmbql-query query)
 
     (:query :native)
     (source-card-id-for-legacy-query query)
@@ -151,17 +149,7 @@
   (fn [query]
     (cond
       driver/*driver*
-      (do
-        ;; dev mode: check that we're not doing something crazy like binding `driver/*driver*` to `:h2` and the
-        ;; running tests against the Audit App DB with a Postgres app DB. (This was a real test I had to fix.)
-        (when (or config/is-dev? config/is-test?)
-          (let [expected-driver (driver.u/database->driver (:database query))]
-            (when-not (= driver/*driver* expected-driver)
-              (log/warnf "driver/*driver* is bound to %s, but Database %d has engine %s. Query may not work as expected."
-                         driver/*driver*
-                         (:database query)
-                         expected-driver))))
-        (f query))
+      (f query)
 
       (= (query-type query) :internal)
       (f query)

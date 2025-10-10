@@ -91,7 +91,9 @@ export function DetailViewSidesheet({
     error,
     isLoading,
   } = useGetAdhocQueryQuery(
-    query != null && rowFromProps == null ? Lib.toJsQuery(query) : skipToken,
+    query != null && rowFromProps == null
+      ? Lib.toLegacyQuery(query)
+      : skipToken,
   );
   const { columns, row } = useMemo(
     () => extractData(dataset, columnsFromProp, columnSettings, rowFromProps),

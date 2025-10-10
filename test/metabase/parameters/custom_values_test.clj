@@ -5,8 +5,6 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
-(set! *warn-on-reflection* true)
-
 (use-fixtures :once (fixtures/initialize :db :row-lock))
 
 ;;; --------------------------------------------- source=card ----------------------------------------------
@@ -176,7 +174,7 @@
                   :has_more_values true}
                  (custom-values/values-from-card
                   card
-                  [:field "Categories__NAME" {:base-type :type/Text}]
+                  [:field "Categories__NAME" {:base_type :type/Text}]
                   {:stage-number 1}))))))))
 
 (deftest ^:parallel with-mbql-card-test-6-expressions
@@ -272,8 +270,8 @@
                 {:name                 "Card as source"
                  :slug                 "card"
                  :id                   "_CARD_"
-                 :type                 :category
-                 :values_source_type   :card
+                 :type                 "category"
+                 :values_source_type   "card"
                  :values_source_config {:card_id     (:id card)
                                         :value_field (mt/$ids $venues.name)}}
                 nil
@@ -292,8 +290,8 @@
                     {:name                 "Card as source"
                      :slug                 "card"
                      :id                   "_CARD_"
-                     :type                 :category
-                     :values_source_type   :card
+                     :type                 "category"
+                     :values_source_type   "card"
                      :values_source_config {:card_id     (:id card)
                                             :value_field (mt/$ids $venues.name)}}
                     nil
@@ -312,10 +310,10 @@
                     {:name                 "Card as source"
                      :slug                 "card"
                      :id                   "_CARD_"
-                     :type                 :category
-                     :values_source_type   :card
+                     :type                 "category"
+                     :values_source_type   "card"
                      :values_source_config {:card_id     (:id card)
-                                            :value_field [:field Integer/MAX_VALUE nil]}}
+                                            :value_field [:field 0 nil]}}
                     nil
                     (constantly mock-default-result))))))))))
 

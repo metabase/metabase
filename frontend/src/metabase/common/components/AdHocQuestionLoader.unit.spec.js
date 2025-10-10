@@ -1,7 +1,5 @@
 import { render } from "__support__/ui";
 import { delay } from "__support__/utils";
-import * as Lib from "metabase-lib";
-import { SAMPLE_METADATA, createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
@@ -22,9 +20,7 @@ describe("AdHocQuestionLoader", () => {
   });
 
   it("should load a question given a questionHash", async () => {
-    const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
-      createQuery(),
-    );
+    const q = Question.create({ databaseId: 1, tableId: 2 });
     const questionHash = ML_Urls.getUrl(q).match(/(#.*)/)[1];
 
     render(
@@ -41,11 +37,11 @@ describe("AdHocQuestionLoader", () => {
     // stuff happens asynchronously
     await delay(0);
 
+    expect(loadMetadataSpy.mock.calls[0][0]).toEqual(q.card());
+
     const calls = mockChild.mock.calls;
     const { question, loading, error } = calls[calls.length - 1][0];
-    expect(
-      Lib.areLegacyQueriesEqual(question.datasetQuery(), q.datasetQuery()),
-    ).toBe(true);
+    expect(question.card()).toEqual(q.card());
     expect(loading).toEqual(false);
     expect(error).toEqual(null);
   });

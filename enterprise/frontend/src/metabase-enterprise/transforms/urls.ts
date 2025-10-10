@@ -1,7 +1,7 @@
 import type {
   CardId,
   DatabaseId,
-  LegacyDatasetQuery,
+  DatasetQuery,
   TableId,
   TransformId,
   TransformJobId,
@@ -39,7 +39,7 @@ export function getTransformListUrl({
 }
 
 export function getNewTransformFromTypeUrl(
-  type: LegacyDatasetQuery["type"] | "python",
+  type: DatasetQuery["type"] | "python",
 ) {
   return `${ROOT_URL}/new/${type}`;
 }

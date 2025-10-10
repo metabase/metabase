@@ -119,9 +119,7 @@
                                           :dimensions         []}]}
               (-> (t2/hydrate dashboard :param_fields)
                   :param_fields
-                  mt/derecordize))))))
-
-(deftest hydrate-param-fields-for-dashboard-test-2
+                  mt/derecordize)))))
   (testing "should ignore invalid parameter mappings"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard    dashboard  {:parameters [{:id "p1" :type :number/=}
@@ -182,23 +180,26 @@
           (is (not (contains? param-fields "p7"))))))))
 
 (deftest ^:parallel card->template-tag-test
-  (let [card {:dataset_query (mt/native-query {:query         "SELECT *"
+  (let [card {:dataset_query (mt/native-query {:query "SELECT *"
                                                :template-tags {"id"   {:name         "id"
-                                                                       :display-name "ID"
+                                                                       :display_name "ID"
                                                                        :id           "11111111"
                                                                        :type         :dimension
-                                                                       :widget-type  :number
                                                                        :dimension    [:field (mt/id :venues :id) nil]}
                                                                "name" {:name         "name"
-                                                                       :display-name "Name"
+                                                                       :display_name "Name"
                                                                        :id           "aaaaaaaa"
                                                                        :type         :dimension
-                                                                       :widget-type  :number
                                                                        :dimension    [:field "name" {:base-type :type/Text}]}}})}]
+    (testing "card->template-tag-param-id->field-clauses"
+      (is (= {"11111111" #{[:field (mt/id :venues :id) nil]}
+              "aaaaaaaa" #{[:field "name" {:base-type :type/Text}]}}
+             (#'params/card->template-tag-param-id->field-clauses card))))
+
     (testing "card->template-tag-param-id->field-ids"
       (is (= {"11111111" #{(mt/id :venues :id)}
               "aaaaaaaa" #{}}
-             (#'params/card->template-tag-id->field-ids card))))
+             (#'params/card->template-tag-param-id->field-ids card))))
 
     (testing "card->template-tag-field-ids"
       (is (= #{(mt/id :venues :id)}
@@ -211,9 +212,7 @@
            (params/get-linked-field-ids
             [{:parameter_mappings
               [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
-               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}])))))
-
-(deftest ^:parallel get-linked-field-ids-test-2
+               {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}]))))
   (testing "get-linked-field-ids multiple fields to one param test"
     (is (= {"foo" #{256 10}
             "bar" #{267}}
@@ -222,9 +221,7 @@
               [{:parameter_id "foo" :target [:dimension [:field 256 nil]]}
                {:parameter_id "bar" :target [:dimension [:field 267 nil]]}]}
              {:parameter_mappings
-              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}])))))
-
-(deftest ^:parallel get-linked-field-ids-test-3
+              [{:parameter_id "foo" :target [:dimension [:field 10 nil]]}]}]))))
   (testing "get-linked-field-ids-test misc fields"
     (is (= {"1" #{1} "2" #{2} "3" #{3} "4" #{4} "5" #{5}}
            (params/get-linked-field-ids
@@ -234,9 +231,7 @@
                {:parameter_id "wow" :target [:dimension [:field "wow" {:base-type :type/Integer}]]}
                {:parameter_id "3" :target [:dimension [:field 3 {:source-field 1}]]}
                {:parameter_id "4" :target [:dimension [:field 4 {:binning {:strategy :num-bins, :num-bins 1}}]]}
-               {:parameter_id "5" :target [:dimension [:field 5 nil]]}]}])))))
-
-(deftest ^:parallel get-linked-field-ids-test-4
+               {:parameter_id "5" :target [:dimension [:field 5]]}]}]))))
   (testing "get-linked-field-ids-test no fields"
     (is (= {}
            (params/get-linked-field-ids
@@ -248,21 +243,25 @@
       (let [card {:dataset_query (mt/native-query {:query "SELECT *"
                                                    :template-tags
                                                    {"tag1" {:name         "tag1"
-                                                            :display-name "Tag 1"
+                                                            :display_name "Tag 1"
                                                             :id           "11111111"
                                                             :type         :dimension
-                                                            :widget-type  :number
                                                             :dimension    [:field (mt/id :orders :id) nil]}
                                                     "tag2" {:name         "tag2"
-                                                            :display-name "Tag 2"
+                                                            :display_name "Tag 2"
                                                             :id           "aaaaaaaa"
                                                             :type         :dimension
-                                                            :widget-type  :number
                                                             :dimension    [:field (mt/id :products :id) nil]}}})}]
+        (testing "card->template-tag-param-id->field-clauses"
+          (is (= {"11111111" #{[:field (mt/id :orders :id) nil]}
+                  "aaaaaaaa" #{[:field (mt/id :products :id) nil]}}
+                 (#'params/card->template-tag-param-id->field-clauses card))))
+
         (testing "card->template-tag-param-id->field-ids"
           (is (= {"11111111" #{(mt/id :orders :id)}
                   "aaaaaaaa" #{(mt/id :products :id)}}
-                 (#'params/card->template-tag-id->field-ids card))))
+                 (#'params/card->template-tag-param-id->field-ids card))))
+
         (testing "card->template-tag-field-ids"
           (is (= #{(mt/id :orders :id)
                    (mt/id :products :id)}

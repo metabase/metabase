@@ -11,11 +11,6 @@
    [metabase.util.yaml :as yaml]
    [metabase.xrays.domain-entities.specs :refer [MBQL]]))
 
-(mr/def ::query
-  "Schema for MBQL queries as handled by the X-Rays transforms code. (Currently, legacy queries; in the very near future
-  we can change this schema to MBQL 5 queries and then go fix all the functions that reference this schema.)"
-  ::mbql.s/Query)
-
 (def ^:private DecodableString
   [:string
    {:decode/transform-spec (fn [x]
@@ -138,6 +133,6 @@
 
 (def ^:private transforms-dir "transforms/")
 
-(def ^:dynamic *transform-specs*
-  "Delay for all transform specs, loaded from YAML and coerced to the [[TransformSpec]] schema."
+(def transform-specs
+  "List of registered dataset transforms."
   (delay (yaml/load-dir transforms-dir (comp coerce-to-transform-spec add-metadata-to-steps))))

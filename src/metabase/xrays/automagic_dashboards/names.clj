@@ -63,9 +63,9 @@
   [root     :- ::ads/root
    question :- [:map
                 [:dataset_query ::ads/query]]]
-  (let [aggregations (->> (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :aggregation])
+  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
                           (metric->description root))
-        dimensions   (->> (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :breakout])
+        dimensions   (->> (get-in question [:dataset_query :query :breakout])
                           (mapcat magic.util/collect-field-references)
                           (map (partial magic.util/->field root))
                           (map :display_name)
@@ -231,8 +231,7 @@
 (defn cell-title
   "Return a cell title given a root object and a cell query."
   [root cell-query]
-  (str/join " " [(if-let [aggregation (-> (get-in root [:entity :dataset_query])
-                                          (magic.util/do-with-legacy-query get-in [:query :aggregation]))]
+  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
                    (metric->description root aggregation)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

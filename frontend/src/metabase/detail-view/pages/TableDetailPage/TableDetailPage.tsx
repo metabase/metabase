@@ -51,7 +51,7 @@ export function TableDetailPage({ params }: Props) {
     error: queryError,
     isLoading: isQueryLoading,
   } = useGetAdhocQueryQuery(
-    objectQuery ? Lib.toJsQuery(objectQuery) : skipToken,
+    objectQuery ? Lib.toLegacyQuery(objectQuery) : skipToken,
   );
 
   const error = tableError ?? queryError;

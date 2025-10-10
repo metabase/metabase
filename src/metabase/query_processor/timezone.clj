@@ -6,11 +6,8 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms])
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util.log :as log])
   (:import
    (java.time ZonedDateTime)))
 
@@ -41,23 +38,15 @@
 ;;; |                                                Public Interface                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn report-timezone-id-if-supported
+(defn report-timezone-id-if-supported
   "Timezone ID for the report timezone, if the current driver and database supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
   (^String []
    (report-timezone-id-if-supported driver/*driver* (lib.metadata/database (qp.store/metadata-provider))))
 
-  (^String [driver   :- :keyword
-            database :- [:or
-                         ::lib.schema.metadata/database
-                         (ms/InstanceOf :model/Database)
-                         [:= ::db-from-store]]]
-   (when-let [database (if (= database ::db-from-store)
-                         (when (qp.store/initialized?)
-                           (lib.metadata/database (qp.store/metadata-provider)))
-                         database)]
-     (when (driver.u/supports? driver :set-timezone database)
-       (valid-timezone-id (report-timezone-id*))))))
+  (^String [driver database]
+   (when (driver.u/supports? driver :set-timezone database)
+     (valid-timezone-id (report-timezone-id*)))))
 
 (defn database-timezone-id
   "The timezone that the current database is in, as determined by the most recent sync."
@@ -68,8 +57,7 @@
    (valid-timezone-id
     (or *database-timezone-id-override*
         (let [database (if (= database ::db-from-store)
-                         (when (qp.store/initialized?)
-                           (lib.metadata/database (qp.store/metadata-provider)))
+                         (lib.metadata/database (qp.store/metadata-provider))
                          database)]
           (:timezone database))))))
 

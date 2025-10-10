@@ -26,7 +26,6 @@
   batch-fetch-dashboard-metadata
   batch-fetch-query-metadata]
  [metabase.queries.models.card
-  fully-parameterized?
   model-supports-implicit-actions?
   model?
   sole-dashboard-id
@@ -41,6 +40,9 @@
   average-execution-time-ms
   query->database-and-table-ids
   save-query-and-update-average-execution-time!])
+
+#_{:clj-kondo/ignore [:missing-docstring]}
+(p/import-def metabase.queries.models.card/lib-query card->lib-query)
 
 #_{:clj-kondo/ignore [:missing-docstring]}
 (p/import-def metabase.queries.models.card/populate-query-fields populate-card-query-fields)

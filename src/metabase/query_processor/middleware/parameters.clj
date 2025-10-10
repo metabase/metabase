@@ -73,16 +73,10 @@
   (reduce
    (fn [query parameter]
      (let [param-stage-number (parameter->stage-number query parameter)]
-       (if (>= param-stage-number (count (:stages query)))
-         (do
-           (log/errorf "Query does not have a stage %d, ignoring parameter %s"
-                       param-stage-number
-                       (pr-str parameter))
-           query)
-         (lib/update-query-stage query param-stage-number
-                                 update :parameters
-                                 (fn [parameters]
-                                   (conj (vec parameters) parameter))))))
+       (lib/update-query-stage query param-stage-number
+                               update :parameters
+                               (fn [parameters]
+                                 (conj (vec parameters) parameter)))))
    query
    parameters))
 

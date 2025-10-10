@@ -15,6 +15,7 @@ export const setLimit =
     }
     const query = question.query();
     const nextQuery = Lib.limit(query, -1, limit);
-    const nextQuestion = question.setQuery(nextQuery);
+    const nextLegacyQuery = Lib.toLegacyQuery(nextQuery);
+    const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
     dispatch(updateQuestion(nextQuestion, { run: true }));
   };

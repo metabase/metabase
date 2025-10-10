@@ -7,7 +7,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -16,7 +15,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
@@ -282,9 +281,9 @@
                                             {:dataset_query   (:dataset-query card-1)
                                              :type            :model
                                              :result_metadata (add-user-edits (:result-metadata card-1))})
-                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)
-                                                mp     (mt/metadata-provider)]
-                                            {:dataset_query (lib/query mp (lib.metadata/card mp (:id card-1)))
+                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)]
+                                            {:dataset_query   (-> (:dataset-query card-2)
+                                                                  (assoc-in [:query :source-table] (format "card__%d" (:id card-1))))
                                              :result_metadata (:result-metadata card-2)})]
           (doseq [[card-type card-id] {"model"                     (:id card-1)
                                        "card with model as source" (:id card-2)}]

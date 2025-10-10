@@ -13,7 +13,7 @@ export function getSegmentQuery(
     : undefined;
 
   return table && query && metadataProvider
-    ? Lib.fromJsQuery(metadataProvider, {
+    ? Lib.fromLegacyQuery(table.db_id, metadataProvider, {
         type: "query",
         database: table.db_id,
         query: query,

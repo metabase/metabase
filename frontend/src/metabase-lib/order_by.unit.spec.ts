@@ -129,7 +129,7 @@ describe("order by", () => {
       );
 
       const roundtripQuery = createQuery({
-        query: Lib.toJsQuery(nextQuery),
+        query: Lib.toLegacyQuery(nextQuery),
       });
       const roundtripQueryColumns = Lib.orderableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(

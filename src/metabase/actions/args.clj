@@ -1,7 +1,6 @@
-(ns ^:instrument/always metabase.actions.args
+(ns ^{:instrument/always true} metabase.actions.args
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -46,7 +45,7 @@
 ;;; Anything else required depends on the action type.
 
 (mr/def ::common
-  [:map [:database ::lib.schema.id/database]])
+  [:map [:database pos-int?]])
 
 (mr/def ::row [:map-of :string :any])
 
@@ -55,7 +54,7 @@
 ;;;    {:database <id>, :query {:source-table <id>}}
 
 (mr/def ::query
-  [:map [:source-table ::lib.schema.id/table]])
+  [:map [:source-table pos-int?]])
 
 (mr/def ::crud.row.common
   [:merge
@@ -166,6 +165,6 @@
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
   ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
-  {:database (or database (when table-id (t2/select-one-fn :db_id [:model/Table :db_id] table-id)))
+  {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})

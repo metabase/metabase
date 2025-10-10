@@ -9,7 +9,6 @@ import type {
   Card,
   ConcreteFieldReference,
   Join,
-  LegacyDatasetQuery,
   NativeDatasetQuery,
   StructuredDatasetQuery,
   TemplateTag,
@@ -59,7 +58,7 @@ import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
-type TestCard = Card<LegacyDatasetQuery> | UnsavedCard<LegacyDatasetQuery>;
+type TestCard = Card | UnsavedCard;
 
 type SetupOpts = {
   card: TestCard;

@@ -311,7 +311,6 @@
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
       :metabase.lib.field/binning       (parse-binning-info v)
-      :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
       v)))

@@ -78,11 +78,8 @@
   ([source key-fn]
    (cond (string? source) (cheshire/parse-string source key-fn)
          (instance? Reader source) (cheshire/parse-stream source key-fn)
-         (instance? InputStream source) (with-open [r (io/reader source)]
-                                          (cheshire/parse-stream r key-fn))
+         (instance? InputStream source) (cheshire/parse-stream (io/reader source) key-fn)
          (nil? source) nil
-         (bytes? source) (with-open [r (io/reader (java.io.ByteArrayInputStream. ^bytes source))]
-                           (cheshire/parse-stream r))
          :else (throw (ex-info (str "Unsupported source type: " (type source)) {})))))
 
 (defn decode+kw

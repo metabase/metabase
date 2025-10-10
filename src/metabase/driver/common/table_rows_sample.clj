@@ -1,23 +1,20 @@
 (ns metabase.driver.common.table-rows-sample
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.schema :as qp.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    ;; TODO -- for historical reasons this stuff uses the Toucan models instead of the QP Metadata Store and
    ;; `:metadata/*` models -- at some point we should fix this. [[driver/table-rows-sample]] is called by sync however
    ;; so we need to go in and update the sync code as well.
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]))
+   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]))
 
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
@@ -28,56 +25,45 @@
   "Number of rows to sample for tables with nested (e.g., JSON) columns."
   500)
 
-(mr/def ::table-rows-sample.options
+(def ^:private TableRowsSampleOptions
   "Schema for `table-rows-sample` options"
   [:maybe
    [:map
     [:truncation-size {:optional true} :int]
     [:limit           {:optional true} :int]
-    [:order-by        {:optional true} [:maybe [:sequential :some]]] ; something that can be passed to [[metabase.lib.core/order-by]]
+    [:order-by        {:optional true} [:ref ::mbql.s/OrderBys]]
     [:rff             {:optional true} fn?]]])
 
-(mu/defn- table-rows-sample-query :- ::lib.schema/query
+(defn- table-rows-sample-query
   "Returns the mbql query to query a table for sample rows"
-  [mp    :- ::lib.schema.metadata/metadata-provider
-   table :- ::lib.schema.metadata/table
-   cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts} :- ::table-rows-sample.options]
-  (let [database             (lib.metadata/database mp)
-        driver               (driver.u/database->driver database)
-        col->expression-name (if (and truncation-size (driver.u/supports? driver :expressions database))
-                               (into {}
-                                     (comp (filter (fn [field]
-                                                     ;; only do this for columns that are `:type/Text`, not for anything derived from
-                                                     ;; `:type/Text`
-                                                     (= ((some-fn :effective-type :base-type) field) :type/Text)))
-                                           (map (juxt identity (fn [_field]
-                                                                 (str (gensym "substring"))))))
-                                     cols)
-                               {})]
-    (-> (lib/query mp table)
-        (as-> $query (transduce
-                      (filter col->expression-name)
-                      (completing
-                       (fn [query col]
-                         (let [expression-name (get col->expression-name col)
-                               expression      (lib/substring col 1 truncation-size)]
-                           (lib/expression query expression-name expression))))
-                      $query
-                      cols))
-        (as-> $query (lib/with-fields $query (for [col cols]
-                                               (if-let [expression-name (get col->expression-name col)]
-                                                 (lib/expression-ref $query expression-name)
-                                                 col))))
-        (lib/limit limit)
-        (cond-> (seq order-by)
-          (as-> $query (reduce lib/order-by $query order-by)))
-        (assoc :middleware {:format-rows?           false
-                            :skip-results-metadata? true})
-        schema.metadata-queries/add-required-filters-if-needed)))
+  [table
+   fields
+   {:keys [truncation-size limit order-by] :or {limit max-sample-rows} :as _opts}]
+  (let [database           (t2/select-one :model/Database (:db_id table))
+        driver             (driver.u/database->driver database)
+        text-fields        (filter (comp #{:type/Text} (some-fn :effective_type :base_type)) fields)
+        field->expressions (when (and truncation-size (driver.u/supports? driver :expressions database))
+                             (into {} (for [field text-fields]
+                                        [field [(str (gensym "substring"))
+                                                [:substring [:field (u/the-id field) nil]
+                                                 1 truncation-size]]])))
+        expressions        (into {} (vals field->expressions))]
+    {:database   (:db_id table)
+     :type       :query
+     :query      (cond-> {:source-table (u/the-id table)
+                          :expressions  expressions
+                          :fields       (vec (for [field fields]
+                                               (if-let [[expression-name _] (get field->expressions field)]
+                                                 [:expression expression-name]
+                                                 [:field (u/the-id field) nil])))
+                          :limit        limit}
+                   order-by
+                   (assoc :order-by order-by)
 
-;;; TODO (Cam 9/30/25) -- at some point we should update this stuff to use Lib-style metadata instead of Toucan
-;;; instances
+                   true
+                   schema.metadata-queries/add-required-filters-if-needed)
+     :middleware {:format-rows?           false
+                  :skip-results-metadata? true}}))
 
 (mu/defn table-rows-sample
   "Run a basic MBQL query to fetch a sample of rows of `fields` belonging to a `table`.
@@ -91,19 +77,11 @@
     rff]
    (table-rows-sample table fields rff nil))
 
-  ([table  :- [:and
-               (ms/InstanceOf :model/Table)
-               [:map
-                [:id    ::lib.schema.id/table]
-                [:db_id ::lib.schema.id/database]]]
+  ([table  :- (ms/InstanceOf :model/Table)
     fields :- [:sequential (ms/InstanceOf :model/Field)]
-    rff    :- ::qp.schema/rff
-    opts   :- ::table-rows-sample.options]
-   (let [database-id (:db_id table)
-         mp          (lib-be/application-database-metadata-provider database-id)
-         table       (lib-be/instance->metadata table :metadata/table)
-         fields      (map #(lib-be/instance->metadata % :metadata/column) fields)
-         query       (table-rows-sample-query mp table fields opts)]
+    rff    :- fn?
+    opts   :- TableRowsSampleOptions]
+   (let [query (table-rows-sample-query table fields opts)]
      (qp/process-query query rff))))
 
 (defmethod driver/table-rows-sample :default

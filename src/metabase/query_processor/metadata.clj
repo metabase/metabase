@@ -14,7 +14,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -132,7 +132,7 @@
    (mapv
     (fn [col]
       (-> col
-          (lib-be/instance->metadata :metadata/column)
+          (lib.metadata.jvm/instance->metadata :metadata/column)
           (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 

@@ -215,13 +215,13 @@
                       {:replace-existing true})
         (log/info "Copying complete.")))))
 
-(def ^:private skip-checksum-flag
-  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload
-  the analytics data."
+(def ^:constant SKIP_CHECKSUM_FLAG
+  "If `last-analytics-checksum` is set to this value, we will skip calculating checksums entirely and *always* reload the
+  analytics data."
   -1)
 
 (defn- should-skip-checksum? [last-checksum]
-  (= skip-checksum-flag last-checksum))
+  (= SKIP_CHECKSUM_FLAG last-checksum))
 
 (defn analytics-checksum
   "Hashes the contents of all non-dir files in the `analytics-dir-resource`."
@@ -241,12 +241,11 @@
            (not= last-checksum current-checksum))))
 
 (defn- get-last-and-current-checksum
-  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums
-  entirely."
+  "Gets the previous and current checksum for the analytics directory, respecting the `-1` flag for skipping checksums entirely."
   []
   (let [last-checksum (audit/last-analytics-checksum)]
     (if (should-skip-checksum? last-checksum)
-      [skip-checksum-flag skip-checksum-flag]
+      [SKIP_CHECKSUM_FLAG SKIP_CHECKSUM_FLAG]
       [last-checksum (analytics-checksum)])))
 
 (defn- maybe-load-analytics-content!
@@ -285,7 +284,7 @@
                     ;; Tests need the sync to complete before they run
                     @sync-future))))))))))
 
-(defn- maybe-install-audit-db!
+(defn- maybe-install-audit-db
   []
   (let [audit-db (t2/select-one :model/Database :is_audit true)]
     (cond
@@ -311,7 +310,7 @@
   content if it is available."
   :feature :none
   []
-  (u/prog1 (maybe-install-audit-db!)
+  (u/prog1 (maybe-install-audit-db)
     (when-let [audit-db (t2/select-one :model/Database :is_audit true)]
       ;; prevent sync while loading
       ((sync-util/with-duplicate-ops-prevented

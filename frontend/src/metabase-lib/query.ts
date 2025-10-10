@@ -2,9 +2,8 @@ import * as ML from "cljs/metabase.lib.js";
 import type {
   CardId,
   CardType,
+  DatabaseId,
   DatasetQuery,
-  LegacyDatasetQuery,
-  OpaqueDatasetQuery,
   TableId,
 } from "metabase-types/api";
 
@@ -21,6 +20,14 @@ import type {
   TableMetadata,
 } from "./types";
 
+export function fromLegacyQuery(
+  databaseId: DatabaseId | null,
+  metadataProvider: MetadataProvider,
+  datasetQuery: DatasetQuery,
+): Query {
+  return ML.query(databaseId, metadataProvider, datasetQuery);
+}
+
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
  Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
@@ -32,7 +39,7 @@ export function queryFromTableOrCardMetadata(
   return ML.query(metadataProvider, tableOrCardMetadata);
 }
 
-export function toLegacyQuery(query: Query): LegacyDatasetQuery {
+export function toLegacyQuery(query: Query): DatasetQuery {
   return ML.legacy_query(query);
 }
 
@@ -128,15 +135,4 @@ export function previewQuery(
   clauseIndex: number | null,
 ): Query | null {
   return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
-}
-
-export function fromJsQuery(
-  metadataProvider: MetadataProvider,
-  jsQuery: OpaqueDatasetQuery | DatasetQuery,
-): Query {
-  return ML.from_js_query(metadataProvider, jsQuery);
-}
-
-export function toJsQuery(query: Query): OpaqueDatasetQuery {
-  return ML.to_js_query(query);
 }

@@ -1,3 +1,4 @@
+import { updateIn } from "icepick";
 import slugg from "slugg";
 import { t } from "ttag";
 import _ from "underscore";
@@ -91,6 +92,10 @@ export default class NativeQuery {
   ) {
     this._question = question;
     this._datasetQuery = datasetQuery;
+  }
+
+  static isDatasetQueryType(datasetQuery: DatasetQuery) {
+    return datasetQuery?.type === NATIVE_QUERY_TEMPLATE.type;
   }
 
   private _query(): Lib.Query {
@@ -234,17 +239,23 @@ export default class NativeQuery {
   setParameterIndex(id: string, newIndex: number) {
     // NOTE: currently all NativeQuery parameters are implicitly generated from
     // template tags, and the order is determined by the key order
-    const query = this._query();
-    const tags = this.templateTags();
-    const oldIndex = tags.findIndex((tag) => tag.id === id);
+    // NOTE 2: currently cannot be ported to MBQL lib because maps with keys in
+    // different order are considered equal.
+    return new NativeQuery(
+      this._question,
+      updateIn(
+        this._datasetQuery,
+        ["native", "template-tags"],
+        (templateTags: TemplateTags) => {
+          const entries = Array.from(Object.entries(templateTags));
 
-    const newTags = [...tags];
-    newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
-    const newTagsMap = Object.fromEntries(
-      newTags.map((tag) => [tag.name, tag]),
+          const oldIndex = _.findIndex(entries, (entry) => entry[1].id === id);
+
+          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
+          return _.object(entries);
+        },
+      ),
     );
-
-    return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }
 
   lineCount(): number {

@@ -1,6 +1,6 @@
 (ns metabase.parameters.shared-test
   (:require
-   [clojure.test :refer [deftest is are testing]]
+   [clojure.test :as t]
    [metabase.parameters.shared :as params]))
 
 (defn- tag-names
@@ -9,9 +9,9 @@
     #?(:clj result
        :cljs (set (js->clj result)))))
 
-(deftest ^:parallel parse-tag-names-test
-  (testing "Tag names are correctly parsed from text card contents"
-    (are [text tags] (= tags (tag-names text))
+(t/deftest ^:parallel parse-tag-names-test
+  (t/testing "Tag names are correctly parsed from text card contents"
+    (t/are [text tags] (= tags (tag-names text))
       ;; Valid tags
       "{{foo}}"           #{"foo"}
       "{{ foo }}"         #{"foo"}
@@ -38,12 +38,9 @@
       "{{*foo*}}"         #{}
       "{{&()'}}"          #{})))
 
-(defn- substitute-tags [text tag->param & args]
-  (apply params/substitute-tags text (update-vals tag->param #(assoc % :id "_DATE_")) args))
-
-(deftest ^:parallel substitute-tags-test
-  (testing "Tags are correctly substituted into card text, and formatted appropriately based on their type"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+(t/deftest ^:parallel substitute-tags-test
+  (t/testing "Tags are correctly substituted into card text, and formatted appropriately based on their type"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :string/= :value "bar"}}
       "bar"
@@ -117,11 +114,10 @@
 
       "{{foo}}"
       {"foo" {:type :date/relative :value "thismonth"}}
-      "This month")))
+      "This month"))
 
-(deftest ^:parallel substitute-tags-test-2
-  (testing "Special characters (with semantic meaning in Markdown) are escaped in formatted values"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+  (t/testing "Special characters (with semantic meaning in Markdown) are escaped in formatted values"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :string/= :value "*bar*"}}
       "\\*bar\\*"
@@ -133,11 +129,10 @@
       ;; Characters in the original text are not escaped
       "_*{{foo}}*_"
       {"foo" {:type :string/= :value "*bar*"}}
-      "_*\\*bar\\**_")))
+      "_*\\*bar\\**_"))
 
-(deftest ^:parallel substitute-tags-test-3
-  (testing "Special characters (with semantic meaning in Markdown) are not escaped in formatted values when escape-markdown is set to true"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param "en" false))
+  (t/testing "Special characters (with semantic meaning in Markdown) are not escaped in formatted values when escape-markdown is set to true"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "en" false))
       "{{foo}}"
       {"foo" {:type :string/= :value "*bar*"}}
       "*bar*"
@@ -149,11 +144,10 @@
         ;; Characters in the original text are not escaped
       "_*{{foo}}*_"
       {"foo" {:type :string/= :value "*bar*"}}
-      "_**bar**_")))
+      "_**bar**_"))
 
-(deftest ^:parallel substitute-tags-test-4
-  (testing "No substitution is done when no parameter is provided, or the parameter is invalid"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+  (t/testing "No substitution is done when no parameter is provided, or the parameter is invalid"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       ;; Nil input
       nil
       {}
@@ -179,15 +173,14 @@
       {"foo" {:type :string/=}}
       "{{foo}}"
 
-      ;; Parameter with no type: stringify the value with no additional formatting (i.e., treat this as a 'text' type
-      ;; parameter)
+      ;; Parameter with no type: stringify the value with no additional formatting
       "{{foo}}"
       {"foo" {:value "today"}}
       "today")))
 
-(deftest ^:parallel substitute-tags-date-filters
-  (testing "Basic date values are formatted correctly"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+(t/deftest ^:parallel substitute-tags-date-filters
+  (t/testing "Basic date values are formatted correctly"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :date/single :value "2022-07-09"}}
       "July 9\\, 2022"
@@ -218,11 +211,10 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "2022-07-06~2022-07-09"}}
-      "July 6\\, 2022 \\- July 9\\, 2022")))
+      "July 6\\, 2022 \\- July 9\\, 2022"))
 
-(deftest ^:parallel substitute-tags-date-filters-2
-  (testing "Exclude options are formatted correctly"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+  (t/testing "Exclude options are formatted correctly"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :date/all-options :value "exclude-months-Jul"}}
       "Exclude July"
@@ -273,11 +265,10 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "exclude-quarters-2-1-4"}}
-      "Exclude 3 selections")))
+      "Exclude 3 selections"))
 
-(deftest ^:parallel substitute-tags-date-filters-3
-  (testing "Relative date values are formatted correctly"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+  (t/testing "Relative date values are formatted correctly"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "{{foo}}"
       {"foo" {:type :date/all-options :value "thisday"}}
       "Today"
@@ -308,11 +299,10 @@
 
       "{{foo}}"
       {"foo" {:type :date/all-options :value "next5years"}}
-      "Next 5 years")))
+      "Next 5 years"))
 
-(deftest ^:parallel substitute-tags-date-filters-4
-  (testing "Date values are formatted using the locale passed in as an argument"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param "es" true))
+  (t/testing "Date values are formatted using the locale passed in as an argument"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param "es" true))
       "{{foo}}"
       {"foo" {:type :date/single :value "2022-07-09"}}
       "julio 9\\, 2022"
@@ -325,9 +315,9 @@
       {"foo" {:type :date/month-year :value "2019-08"}}
       "agosto\\, 2019")))
 
-(deftest ^:parallel substitute-tags-optional-blocks-test
-  (testing "Optional blocks are removed when necessary"
-    (are [text tag->param expected] (= expected (substitute-tags text tag->param))
+(t/deftest ^:parallel substitute-tags-optional-blocks-test
+  (t/testing "Optional blocks are removed when necessary"
+    (t/are [text tag->param expected] (= expected (params/substitute-tags text tag->param))
       "[[{{foo}}]]"
       {}
       ""
@@ -376,17 +366,7 @@
       {"foo" {:type :string/= :value "[[bar]]"}}
       "\\[\\[bar\\]\\]")))
 
-#?(:cljs
-   (deftest ^:parallel substitute-tags-js-test
-     (is (= "Variable: 15"
-            (params/substitute-tags "Variable: {{variable}}"
-                                    ;; the `:name` here is technically wrong, since it should match with the one that
-                                    ;; serves as the map key; but this code doesn't currently care.
-                                    #js {:variable #js {:id "e7f8ca", :name "foo bar", :slug "foo_bar", :type "text", :value 15}}
-                                    nil
-                                    false)))))
-
-(deftest ^:parallel value-string-test
+(t/deftest ^:parallel value-string-test
   (let [parameters [{:name "State",
                      :slug "state",
                      :id "63e719d0",
@@ -405,24 +385,24 @@
                      :id "acd0dfab",
                      :type "string/contains",
                      :sectionId "string"}]]
-    (testing "If a filter has multiple values, they are concatenated into a comma-separated string"
-      (is (= "CA, NY, and NJ"
-             (params/value-string (first parameters) "en"))))
+    (t/testing "If a filter has multiple values, they are concatenated into a comma-separated string"
+      (t/is (= "CA, NY, and NJ"
+               (params/value-string (first parameters) "en"))))
 
-    (testing "If a filter has a single default value, it is formatted appropriately"
-      (is (= "Q1, 2021"
-             (params/value-string (second parameters) "en"))))))
+    (t/testing "If a filter has a single default value, it is formatted appropriately"
+      (t/is (= "Q1, 2021"
+               (params/value-string (second parameters) "en"))))))
 
-(deftest param-val-or-default-test
+(t/deftest param-val-or-default-test
   (let [param-val-or-default #'params/param-val-or-default]
-    (testing "When the parameter’s :value key is missing, fallback to the :default key"
-      (is (= "my default value"
-             (param-val-or-default {:default "my default value"}))))
-    (testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
-      (is (nil? (param-val-or-default {:value nil :default "my default value"}))))))
+    (t/testing "When the parameter’s :value key is missing, fallback to the :default key"
+      (t/is (= "my default value"
+               (param-val-or-default {:default "my default value"}))))
+    (t/testing "When the parameter’s :value is explicitly nil (i.e. for no-op filters), do not fallback to the :default key"
+      (t/is (nil? (param-val-or-default {:value nil :default "my default value"}))))))
 
-(deftest ^:parallel value-string-contains-test
-  (testing "string/contains parameters are correctly formatted"
+(t/deftest ^:parallel value-string-contains-test
+  (t/testing "string/contains parameters are correctly formatted"
     (let [format-param (fn [default] (params/value-string {:name "State",
                                                            :slug "state",
                                                            :id "63e719d0",
@@ -430,9 +410,9 @@
                                                            :type "string/contains",
                                                            :sectionId "location"}
                                                           "en"))]
-      (is (= "contains CA"
-             (format-param ["CA"])))
-      (is (= "contains CA or NY"
-             (format-param ["CA" "NY"])))
-      (is (= "contains CA, NY, or NJ"
-             (format-param ["CA" "NY" "NJ"]))))))
+      (t/is (= "contains CA"
+               (format-param ["CA"])))
+      (t/is (= "contains CA or NY"
+               (format-param ["CA" "NY"])))
+      (t/is (= "contains CA, NY, or NJ"
+               (format-param ["CA" "NY" "NJ"]))))))

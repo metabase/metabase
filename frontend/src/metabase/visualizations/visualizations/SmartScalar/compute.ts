@@ -17,12 +17,11 @@ import {
   formatPreviousPeriodOptionName,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { ClickObject } from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
+  DatasetQuery,
   DateTimeAbsoluteUnit,
-  LegacyDatasetQuery,
   RowValue,
   RowValues,
   Series,
@@ -53,7 +52,7 @@ interface DateUnitSettings {
   dateColumn: DatasetColumn;
   dateColumnSettings: ColumnSettings;
   dateUnit?: DateTimeAbsoluteUnit;
-  queryType: LegacyDatasetQuery["type"];
+  queryType: DatasetQuery["type"];
 }
 
 interface MetricData {
@@ -230,7 +229,9 @@ function getCurrentMetricData({
 }): MetricData {
   const [
     {
-      card,
+      card: {
+        dataset_query: { type: queryType },
+      },
       data: { rows, cols },
     },
   ] = series;
@@ -277,12 +278,11 @@ function getCurrentMetricData({
   dateColumnWithUnit.unit ??= dateUnit;
   const dateColumnSettings = settings?.column?.(dateColumnWithUnit) ?? {};
 
-  const question = new Question(card);
   const dateUnitSettings: DateUnitSettings = {
     dateColumn: dateColumnWithUnit,
     dateColumnSettings,
     dateUnit,
-    queryType: question.isNative() ? "native" : "query",
+    queryType,
   };
 
   const formatOptions = {

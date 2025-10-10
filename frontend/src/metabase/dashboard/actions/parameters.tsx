@@ -409,7 +409,7 @@ export const setParameterMapping = createThunkAction(
   (
     parameterId: ParameterId,
     dashcardId: DashCardId,
-    cardId: CardId | null,
+    cardId: CardId,
     target: ParameterTarget | null,
   ) => {
     return (dispatch, getState) => {

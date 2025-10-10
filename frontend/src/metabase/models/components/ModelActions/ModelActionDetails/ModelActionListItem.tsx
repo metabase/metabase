@@ -7,8 +7,6 @@ import Link from "metabase/common/components/Link";
 import ModalWithTrigger from "metabase/common/components/ModalWithTrigger";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
 
 import {
@@ -38,8 +36,7 @@ interface ModalProps {
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
-  const question = Question.create({ dataset_query: action.dataset_query });
-  if (!question.isNative()) {
+  if (!action.dataset_query?.native?.query) {
     return (
       <CodeBlock>
         <Icon name="warning" size={16} tooltip={t`No query found`} />
@@ -47,10 +44,7 @@ function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
     );
   }
 
-  const query = question.query();
-  const queryText = Lib.rawNativeQuery(query);
-
-  return <CodeBlock>{queryText}</CodeBlock>;
+  return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
 }
 
 function ImplicitActionCardContent() {

@@ -8,7 +8,6 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
-   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -32,7 +31,7 @@
     {:case-sensitive false}))
 
 (mu/defn- param->fields
-  [param :- ::parameters.schema/parameter]
+  [param :- ::lib.schema.parameter/parameter]
   (let [op      (param-type->op (:type param))
         options (or (:options param) (param-type->default-options (:type param)))]
     (for [field-id (params/dashboard-param->field-ids param)]
@@ -40,7 +39,7 @@
        :op       op
        :options  options})))
 
-(mu/defn ^:private chain-filter-constraints :- ::chain-filter/constraints
+(mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
   [dashboard                   :- :map
    constraint-param-key->value :- [:map-of string? any?]]
   (vec (for [[param-key value] constraint-param-key->value
@@ -56,8 +55,8 @@
   (let [dashboard       (t2/hydrate dashboard :resolved-params)
         param           (get-in dashboard [:resolved-params param-key])
         results         (for [{:keys [target] {:keys [card]} :dashcard} (:mappings param)
-                              :let [[_dimension field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
-                                                                     (mbql.u/check-clause :dimension))]
+                              :let [[_ field-ref opts] (->> (mbql.normalize/normalize-tokens target :ignore-path)
+                                                            (mbql.u/check-clause :dimension))]
                               :when field-ref]
                           (custom-values/values-from-card card field-ref opts))]
     (when-some [values (seq (distinct (mapcat :values results)))]
@@ -103,7 +102,6 @@
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                            {:param       (get (:resolved-params dashboard) param-key)
-                            :param-key   param-key
                             :status-code 400})))
        (try
          (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].

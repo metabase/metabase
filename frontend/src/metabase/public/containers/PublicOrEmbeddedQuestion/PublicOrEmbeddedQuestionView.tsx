@@ -19,6 +19,7 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
   Dataset,
+  DatasetQuery,
   ParameterId,
   ParameterValuesMap,
   RawSeries,
@@ -27,7 +28,7 @@ import type {
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
-  card: Card | null;
+  card: Card<DatasetQuery> | null;
   metadata: Metadata;
   result: Dataset | null;
   uuid: string;
@@ -40,7 +41,7 @@ export interface PublicOrEmbeddedQuestionViewProps {
   hide_parameters: string | null;
   theme: DisplayTheme | undefined;
   titled: boolean;
-  setCard: Dispatch<SetStateAction<Card | null>>;
+  setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
   downloadsEnabled: EmbedResourceDownloadOptions;
 }
 

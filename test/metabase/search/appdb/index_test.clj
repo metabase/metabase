@@ -5,8 +5,6 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.indexed-entities.models.model-index :as model-index]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
    [metabase.search.engine :as search.engine]
@@ -174,7 +172,7 @@
   (ingest! model [:= :this.name entity-name])
   (fetch-one model :name entity-name))
 
-(def ^:parallel default-index-entity
+(def default-index-entity
   {:model               nil
    :model_id            nil
    :name                nil
@@ -466,10 +464,9 @@
                        :collection_id coll-id})]
                     (fetch "indexed-entity" :name (:name miv)))))
           (testing "Changing values syncs the index"
-            (t2/update! :model/Card (:id model) (update model :dataset_query (fn [query]
-                                                                               (let [products-id (lib.metadata/field query (mt/id :products :id))]
-                                                                                 (-> query
-                                                                                     (lib/filter (lib/!= products-id (:model_pk miv))))))))
+            (t2/update! :model/Card (:id model) (assoc-in model
+                                                          [:dataset_query :query :filter]
+                                                          [:!= (mt/$ids :products $id) (:model_pk miv)]))
             (model-index/add-values! model-index)
             (let [miv2 (t2/select-one :model/ModelIndexValue :model_index_id (:id model-index))]
               (is (=? [(index-entity

@@ -15,7 +15,6 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
-import Question from "metabase-lib/v1/Question";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
@@ -50,10 +49,7 @@ const isSankeyNodeEvent = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,
 ): event is EChartsSeriesMouseEvent<SankeyNode> => event.dataType === "node";
 
-const isNativeQuery = (card: Card) => {
-  const question = new Question(card);
-  return question.isNative();
-};
+const isNativeQuery = (card: Card) => card.dataset_query?.type === "native";
 
 export const createSankeyClickData = (
   event: EChartsSeriesMouseEvent<SankeyLink | SankeyNode>,

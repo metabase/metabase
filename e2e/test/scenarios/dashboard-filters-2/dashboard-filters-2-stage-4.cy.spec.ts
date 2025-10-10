@@ -282,8 +282,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData(4);
+          QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply1stStageExplicitJoinFilter();
+          QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(953);
@@ -299,9 +300,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData(4);
+          QSHelpers.waitForEmbeddedDashboardData();
           QSHelpers.apply1stStageExplicitJoinFilter();
-          QSHelpers.waitForEmbeddedDashboardData(2);
+          QSHelpers.waitForEmbeddedDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(953);
@@ -442,9 +443,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData(4);
+          QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageCustomColumnFilter();
-          QSHelpers.waitForPublicDashboardData(2);
+          QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(31);
@@ -460,9 +461,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData(4);
+          QSHelpers.waitForEmbeddedDashboardData();
           QSHelpers.apply2ndStageCustomColumnFilter();
-          QSHelpers.waitForEmbeddedDashboardData(2);
+          QSHelpers.waitForEmbeddedDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(31);
@@ -511,9 +512,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData(4);
+          QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageAggregationFilter();
-          QSHelpers.waitForPublicDashboardData(2);
+          QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(6);
@@ -535,9 +536,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData(4);
+          QSHelpers.waitForEmbeddedDashboardData();
           QSHelpers.apply2ndStageAggregationFilter();
-          QSHelpers.waitForEmbeddedDashboardData(2);
+          QSHelpers.waitForEmbeddedDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(6);
@@ -592,9 +593,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           QSHelpers.getDashboardId().then((dashboardId) =>
             H.visitPublicDashboard(dashboardId),
           );
-          QSHelpers.waitForPublicDashboardData(4);
+          QSHelpers.waitForPublicDashboardData();
           QSHelpers.apply2ndStageBreakoutFilter();
-          QSHelpers.waitForPublicDashboardData(2);
+          QSHelpers.waitForPublicDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(1077);
@@ -616,9 +617,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
               params: {},
             });
           });
-          QSHelpers.waitForEmbeddedDashboardData(4);
+          QSHelpers.waitForEmbeddedDashboardData();
           QSHelpers.apply2ndStageBreakoutFilter();
-          QSHelpers.waitForEmbeddedDashboardData(2);
+          QSHelpers.waitForEmbeddedDashboardData();
 
           H.getDashboardCard(0).within(() => {
             H.assertTableRowsCount(1077);

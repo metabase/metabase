@@ -149,8 +149,9 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
@@ -235,37 +236,29 @@
      :url                        (format "%sfield/%s" public-endpoint (:id field))
      :dashboard-templates-prefix ["field"]}))
 
-(mu/defn- source-card-id [card-or-question :- [:map
-                                               [:dataset_query ::ads/query]]]
-  (magic.util/do-with-mbql5-query (:dataset_query card-or-question) lib/source-card-id))
+(defn- source-card-id [card-or-question]
+  (binding [lib.schema/*HACK-disable-join-alias-in-field-ref-validation* true]
+    (some-> card-or-question :dataset_query not-empty lib-be/normalize-query lib/source-card-id)))
 
-(mu/defn- nested-query?
+(defn- nested-query?
   "Is this card or question derived from another model or question?"
-  [card-or-question :- [:map
-                        [:dataset_query ::ads/query]]]
+  [card-or-question]
   (some? (source-card-id card-or-question)))
 
-(mu/defn- native-query?
+(def ^:private ^{:arglists '([card-or-question])} native-query?
   "Is this card or question native (SQL)?"
-  [{query :dataset_query, :as _card-or-question} :- [:map
-                                                     [:dataset_query ::ads/query]]]
-  (magic.util/do-with-legacy-query query #(= (:type %) :native)))
+  (comp some? #{:native} qp.util/normalize-token #(get-in % [:dataset_query :type])))
 
-(mu/defn- source-question :- [:maybe (ms/InstanceOf :model/Card)]
-  [card-or-question :- [:map
-                        [:dataset_query ::ads/query]]]
+(defn- source-question
+  [card-or-question]
   (when-let [source-card-id (source-card-id card-or-question)]
     (t2/select-one :model/Card :id source-card-id)))
 
-(mu/defn- table-like?
-  [card-or-question :- [:map
-                        [:dataset_query ::ads/query]]]
-  (magic.util/do-with-legacy-query
-   (:dataset_query card-or-question)
-   (fn [query]
-     (and
-      (nil? (get-in query [:query :aggregation]))
-      (nil? (get-in query [:query :breakout]))))))
+(defn- table-like?
+  [card-or-question]
+  (and
+   (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
+   (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -277,9 +270,8 @@
   (or (:table_id card-or-question)
       (:table-id card-or-question)))
 
-(mu/defn- source
-  [card :- [:map
-            [:dataset_query ::ads/query]]]
+(defn- source
+  [card]
   (cond
     ;; This is a model
     (= (:type card) :model) (assoc card :entity_type :entity/GenericTable)
@@ -293,16 +285,11 @@
 
 (mu/defmethod ->root :model/Card :- ::ads/root
   [card]
-  (let [card   (update card
-                       :dataset_query
-                       ;; temporary until we rework X-rays to use Lib/MBQL 5
-                       #_{:clj-kondo/ignore [:discouraged-var]}
-                       lib/->legacy-MBQL)
-        source (source card)]
+  (let [source (source card)]
     {:entity                     card
      :source                     source
      :database                   (:database_id card)
-     :query-filter               (magic.util/do-with-legacy-query (:dataset_query card) get-in [:query :filter])
+     :query-filter               (get-in card [:dataset_query :query :filter])
      :full-name                  (tru "\"{0}\"" (:name card))
      :short-name                 (names/source-name {:source source})
      :url                        (format "%s%s/%s" public-endpoint (name (:type source :question)) (u/the-id card))
@@ -313,14 +300,12 @@
 (mu/defmethod ->root :model/Query :- ::ads/root
   [query :- [:map
              [:database-id ::lib.schema.id/database]]]
-  ;; use of [[lib/->legacy-MBQL]] here is temporary until we update X-Rays to use Lib
-  (let [query  (update query :dataset_query #_{:clj-kondo/ignore [:discouraged-var]} lib/->legacy-MBQL)
-        source (source query)
+  (let [source (source query)
         root   {:database (:database-id query), :source source}]
     {:entity                     query
      :source                     source
      :database                   (:database-id query)
-     :query-filter               (magic.util/do-with-legacy-query (:dataset_query query) get-in [:query :filter])
+     :query-filter               (get-in query [:dataset_query :query :filter])
      :full-name                  (cond
                                    (native-query? query) (tru "Native query")
                                    (table-like? query)   (-> source ->root :full-name)
@@ -481,7 +466,7 @@
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))
 
-(mu/defn- generate-base-dashboard :- ::ads/dashboard-template
+(mu/defn- generate-base-dashboard
   "Produce the \"base\" dashboard from the base context for an item and a dashboard template.
   This includes dashcards and global filters, but does not include related items and is not yet populated.
   Repeated calls of this might be generated (e.g. the main dashboard and related) then combined once using
@@ -756,10 +741,8 @@
   (automagic-dashboard (merge (->root metric) opts)))
 
 (mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf :xrays/Metric)]]
-  [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]]
-  (map (mu/fn [aggregation-clause :- ::mbql.s/Aggregation]
+  [root question]
+  (map (fn [aggregation-clause]
          (if (-> aggregation-clause
                  first
                  qp.util/normalize-token
@@ -771,13 +754,11 @@
                                                       :source-table table-id}
                                          :name       (names/metric->description root aggregation-clause)
                                          :table_id   table-id}))))
-       (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :aggregation])))
+       (get-in question [:dataset_query :query :aggregation])))
 
 (mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf :model/Field)]]
-  [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]]
-  (for [breakout     (magic.util/do-with-legacy-query (:dataset_query question) get-in [:query :breakout])
+  [root question]
+  (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (magic.util/collect-field-references breakout))
         :let         [field (magic.util/->field root field-clause)]
         :when        (and field
@@ -785,9 +766,8 @@
     field))
 
 (mu/defn- decompose-question
-  [root     :- ::ads/root
-   question :- [:map
-                [:dataset_query ::ads/query]]
+  [root :- ::ads/root
+   question
    opts]
   (letfn [(analyze [x]
             (try
@@ -808,16 +788,14 @@
 
 (defn- preserve-entity-element
   "Ensure that elements of an original dataset query are preserved in dashcard queries."
-  [dashboard
-   entity
-   entity-element]
-  (if-let [element-value (magic.util/do-with-legacy-query (:dataset_query entity) get-in [:query entity-element])]
+  [dashboard entity entity-element]
+  (if-let [element-value (get-in entity [:dataset_query :query entity-element])]
     (letfn [(splice-element [dashcard]
-              (m/update-existing-in dashcard [:card :dataset_query]
-                                    magic.util/do-with-legacy-query
-                                    update-in [:query entity-element]
-                                    (fnil into (empty element-value))
-                                    element-value))]
+              (cond-> dashcard
+                (get-in dashcard [:card :dataset_query :query])
+                (update-in [:card :dataset_query :query entity-element]
+                           (fnil into (empty element-value))
+                           element-value)))]
       (update dashboard :dashcards (partial map splice-element)))
     dashboard))
 
@@ -863,9 +841,7 @@
 (defmethod automagic-analysis :model/Query
   [query {:keys [cell-query] :as opts}]
   (let [root       (->root query)
-        cell-query (when cell-query
-                     #_{:clj-kondo/ignore [:deprecated-var]}
-                     (mbql.normalize/normalize-fragment [:query :filter] cell-query))
+        cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
         cell-url   (format "%sadhoc/%s/cell/%s" public-endpoint

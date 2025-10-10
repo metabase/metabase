@@ -2,9 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.middleware.add-timezone-info
+    :as add-timezone-info]
    [metabase.test :as mt]))
 
 (driver/register! ::timezone-driver, :abstract? true)
@@ -29,7 +28,6 @@
     (testing driver
       (mt/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
-          (qp.store/with-metadata-provider meta/metadata-provider
-            (mt/with-database-timezone-id nil
-              (is (= expected
-                     (add-timezone-info {}))))))))))
+          (mt/with-database-timezone-id nil
+            (is (= expected
+                   (add-timezone-info {})))))))))

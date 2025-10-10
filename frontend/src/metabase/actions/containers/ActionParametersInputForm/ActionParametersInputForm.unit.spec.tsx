@@ -18,13 +18,13 @@ import ActionParametersInputModal from "./ActionParametersInputModal";
 const parameter1 = createMockActionParameter({
   id: "parameter_1",
   name: "Parameter 1",
-  type: "string/=",
+  type: "type/Text",
 });
 
 const parameter2 = createMockActionParameter({
   id: "parameter_2",
   name: "Parameter 2",
-  type: "string/=",
+  type: "type/Text",
 });
 
 const mockAction = createMockQueryAction({
@@ -122,12 +122,12 @@ describe("Actions > ActionParametersInputForm", () => {
         createMockActionParameter({
           id: "parameter_1",
           "display-name": "Parameter 1",
-          type: "string/=",
+          type: "type/Text",
         }),
         createMockActionParameter({
           id: "parameter_2",
           "display-name": "Parameter 2",
-          type: "number/=",
+          type: "type/Integer",
         }),
       ],
     });

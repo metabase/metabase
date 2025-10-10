@@ -99,6 +99,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     parameterIndex: number,
   ) => {
     const newQuery = query.setParameterIndex(parameterId, parameterIndex);
+
     dispatch(updateQuestion(question.setDatasetQuery(newQuery.datasetQuery())));
   };
 

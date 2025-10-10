@@ -7,7 +7,7 @@
    [metabase.util.malli :as mu]
    [metabase.xrays.automagic-dashboards.populate :as populate]
    [metabase.xrays.transforms.materialize :as tf.materialize]
-   [metabase.xrays.transforms.specs :refer [*transform-specs*]]
+   [metabase.xrays.transforms.specs :refer [transform-specs]]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
@@ -15,9 +15,9 @@
 (def ^:private ^:const ^Long total-width 18)
 (def ^:private ^:const ^Long height 4)
 
-(mu/defn- cards->section
+(defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
-  [group :- :string cards]
+  [group cards]
   (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                             :group         group
@@ -62,12 +62,10 @@
 (defn dashboard
   "Create a (transient) dashboard for transform named `transform-name`."
   [transform-name]
-  (let [transform-spec              (or (m/find-first (comp #{transform-name} :name) @*transform-specs*)
-                                        (throw (ex-info (format "Failed to find transform with name %s" (pr-str transform-name))
-                                                        {:status-code 404})))
+  (let [transform-spec              (m/find-first (comp #{transform-name} :name) @transform-specs)
         {steps false provides true} (->> transform-name
                                          tf.materialize/get-collection
-                                         (t2/select :model/Card :collection_id)
+                                         (t2/select 'Card :collection_id)
                                          (group-by (comp some?
                                                          (-> transform-spec :provides set)
                                                          :name)))

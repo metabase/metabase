@@ -181,8 +181,7 @@
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]
-      (throw (Exception. (format "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`? (In: %s)"
-                                 (pr-str *file*)))))
+      (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
     str))
 
 (defmacro tru-clj

@@ -2,20 +2,17 @@
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require
    [clojure.test :refer :all]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [metabase.xrays.automagic-dashboards.schema :as ads]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.schema :as ms]))
 
-(defmacro with-rollback-only-transaction
+(defmacro with-dashboard-cleanup!
   "Execute body and cleanup all dashboard elements created."
   [& body]
-  `(do
-     ;; make sure test data is initialized outside of the rollback-only transaction
-     (mt/id)
-     (t2/with-transaction [_conn# nil {:rollback-only true}]
-       ~@body)))
+  `(mt/with-model-cleanup [:model/Card :model/Dashboard :model/Collection :model/DashboardCard]
+     ~@body))
 
 (defn- collect-urls
   [dashboard]
@@ -27,21 +24,19 @@
 
 (defn- test-urls-are-valid
   [dashboard]
-  (doseq [url (collect-urls dashboard)
-          :let [url (format "automagic-dashboards/%s" (subs url 16))]]
-    (testing (format "\nendpoint = GET /api/%s" url)
+  (doseq [url (collect-urls dashboard)]
+    (testing (format "\nURL = %s" (pr-str url))
       (is (malli= [:map
                    [:name        ms/NonBlankString]
                    [:description ms/NonBlankString]]
-                  (mt/user-http-request :crowberto :get 200 url))))))
+                  (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/%s" (subs url 16))))))))
 
 (defn- test-card-is-valid [{query :dataset_query, :as card}]
   (testing "Card should be valid"
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
-        (is (map? query))
-        (is (malli= ::ads/query
-                    query))))))
+        (is (malli= mbql.s/Query
+                    (mbql.normalize/normalize query)))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?

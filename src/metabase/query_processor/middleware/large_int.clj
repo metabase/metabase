@@ -2,7 +2,7 @@
   "Middleware for handling conversion of integers to strings for proper display of large numbers"
   (:refer-clojure :exclude [mapv])
   (:require
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (clojure.lang BigInt)

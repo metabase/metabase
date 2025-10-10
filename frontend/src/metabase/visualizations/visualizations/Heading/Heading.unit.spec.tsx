@@ -93,7 +93,7 @@ describe("Text", () => {
     });
 
     it("should replace mapped variables with parameter values", () => {
-      const variableName = "foo_bar";
+      const variableName = "variable";
       const text = `Variable: {{${variableName}}}`;
 
       const parameterValue = 15;
@@ -322,7 +322,7 @@ function mapParameterToVariable({
 }) {
   const parameter: Parameter = {
     id: "e7f8ca",
-    name: "foo_bar",
+    name: "foo bar",
     slug: "foo_bar",
     type: "text",
     value: parameterValue,

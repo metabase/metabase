@@ -3,7 +3,6 @@ import { msgid, ngettext, t } from "ttag";
 
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
-import Question from "metabase-lib/v1/Question";
 
 export function getClickBehaviorDescription(dashcard) {
   const noBehaviorMessage = hasActionsMenu(dashcard)
@@ -41,15 +40,9 @@ export function getClickBehaviorDescription(dashcard) {
 }
 
 export function hasActionsMenu(dashcard) {
-  if (!dashcard.card.dataset_query) {
-    return false;
-  }
   // This seems to work, but it isn't the right logic.
   // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
-  const question = Question.create({
-    dataset_query: dashcard.card.dataset_query,
-  });
-  return !question.isNative();
+  return dashcard.card.dataset_query?.type === "query";
 }
 
 export function isTableDisplay(dashcard) {

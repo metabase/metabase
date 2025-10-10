@@ -135,7 +135,7 @@ export function getAutoWiredMappingsForDashcards(
 export function getParameterMappings<DC extends DashboardCard>(
   dashcard: DC,
   parameter_id: ParameterId,
-  card_id: CardId | null,
+  card_id: CardId,
   target: ParameterTarget | null,
 ): NonNullable<DC["parameter_mappings"]> {
   const isVirtual = isVirtualDashCard(dashcard);

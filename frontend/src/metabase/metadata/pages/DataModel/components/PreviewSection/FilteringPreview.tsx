@@ -30,16 +30,12 @@ const FilteringPreviewBase = ({ databaseId, field, fieldId, table }: Props) => {
     [databaseId, table],
   );
   const column = useMemo(
-    () => query && getPreviewColumn(query, fieldId),
+    () => getPreviewColumn(query, fieldId),
     [fieldId, query],
   );
 
   if (isFieldHidden(field)) {
     return <HiddenFieldEmptyStateBlock />;
-  }
-
-  if (query == null || column == null) {
-    return null;
   }
 
   return (
@@ -54,10 +50,7 @@ const FilteringPreviewBase = ({ databaseId, field, fieldId, table }: Props) => {
   );
 };
 
-function getPreviewQuery(
-  table: Table,
-  databaseId: number,
-): Lib.Query | undefined {
+function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
   const metadata = createMockMetadata({
     tables: table
       ? [
@@ -71,11 +64,14 @@ function getPreviewQuery(
       : [],
   });
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
-  if (tableMetadata == null) {
-    return undefined;
-  }
-  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
+
+  return Lib.fromLegacyQuery(databaseId, metadataProvider, {
+    type: "query",
+    database: databaseId,
+    query: {
+      "source-table": table.id,
+    },
+  });
 }
 
 function getPreviewColumn(

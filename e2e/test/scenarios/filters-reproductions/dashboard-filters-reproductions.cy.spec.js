@@ -1419,7 +1419,7 @@ describe("issues 15279 and 24500", () => {
     name: "",
     slug: "",
     id: "af72ce9c",
-    type: "string/=",
+    type: "foo",
     sectionId: "bar",
   };
 
@@ -3260,7 +3260,7 @@ describe("44047", () => {
           parameter_id: parameterDetails.id,
           target: [
             "dimension",
-            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+            ["field", REVIEWS.RATING, { type: "type/Integer" }],
           ],
         },
       ],
@@ -3275,10 +3275,7 @@ describe("44047", () => {
         {
           card_id: card.id,
           parameter_id: parameterDetails.id,
-          target: [
-            "dimension",
-            ["field", "RATING", { "base-type": "type/Integer" }],
-          ],
+          target: ["dimension", ["field", "RATING", { type: "type/Integer" }]],
         },
       ],
     };

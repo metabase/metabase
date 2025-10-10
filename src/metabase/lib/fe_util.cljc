@@ -3,9 +3,11 @@
   (:require
    [inflections.core :as inflections]
    [medley.core :as m]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.filter :as lib.filter]
@@ -865,7 +867,7 @@
                    (query-dependents-foreign-keys metadata-providerable card-columns))
                  (when (and (= (:type card) :metric) definition)
                    (query-dependents metadata-providerable
-                                     definition)))))
+                                     (-> definition mbql.normalize/normalize lib.convert/->pMBQL))))))
      (when-let [table-id (:source-table base-stage)]
        (cons {:type :table, :id table-id}
              (query-dependents-foreign-keys metadata-providerable

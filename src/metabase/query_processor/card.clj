@@ -9,9 +9,9 @@
    ;; legacy usages -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
    ;; Lib soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.core :as lib]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -19,7 +19,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
-   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -27,7 +26,6 @@
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.util :as qp.util]
@@ -76,13 +74,18 @@
             (assoc-in [:target 2 :stage-number] -1)))
         parameters))
 
-(mu/defn- last-stage-number
-  [query :- ::lib.schema/query]
-  (dec (count (:stages query))))
+(defn- last-stage-number
+  [outer-query]
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (mbql.u/legacy-last-stage-number (:query outer-query)))
 
-(mu/defn- add-stage-to-temporal-unit-parameters :- ::lib.schema.parameter/parameters
+(defn- nest-query
+  [query]
+  (assoc query :query {:source-query (:query query)}))
+
+(defn- add-stage-to-temporal-unit-parameters
   "Points temporal-unit parameters to the penultimate stage unless the stage is specified."
-  [parameters :- ::lib.schema.parameter/parameters]
+  [parameters]
   (mapv (fn [{param-type :type, :keys [target], :as parameter}]
           (cond-> parameter
             (and (= param-type :temporal-unit)
@@ -91,51 +94,41 @@
             (assoc-in [:target 2 :stage-number] -2)))
         parameters))
 
-(mu/defn query-for-card :- [:maybe ::lib.schema/query]
+(defn query-for-card
   "Generate a query for a saved Card"
   [{dataset-query :dataset_query
     card-type     :type
-    :as           card} :- [:map
-                            [:dataset_query [:or
-                                             [:= {:description "empty map"} {}]
-                                             ::lib.schema/query]]]
-   parameters  :- [:maybe [:sequential :map]]
-   constraints :- [:maybe :map]
-   middleware  :- [:maybe :map]
-   & [ids]]
-  (when (seq dataset-query)
-    (let [stage-numbers           (explict-stage-references parameters)
-          explicit-stage-numbers? (boolean (seq stage-numbers))
-          parameters              (cond-> parameters
-                                    ;; models are not transparent (questions and metrics are)
-                                    (and explicit-stage-numbers? (= card-type :model))
-                                    point-parameters-to-last-stage)
-          ;; The FE might have "added" a stage so that a question with breakouts
-          ;; at the last stage can be filtered on the summary results. We know
-          ;; this happened if we get a reference to one above the last stage.
-          filter-stage-added?     (and explicit-stage-numbers?
-                                       (= (inc (last-stage-number dataset-query))
-                                          (apply max stage-numbers)))
-          query                   (cond-> dataset-query
-                                    (and explicit-stage-numbers?
-                                         (or
-                                          ;; stage-number 0 means filtering the results of models and metrics
-                                          (not= card-type :question)
-                                          ;; the FE assumed an extra stage, so we add it
-                                          filter-stage-added?))
-                                    lib/append-stage)
-          query                   (-> query
-                                      ;; don't want default constraints overridding anything that's already there
-                                      (m/dissoc-in [:middleware :add-default-userland-constraints?])
-                                      (m/assoc-some :constraints (not-empty constraints)
-                                                    :parameters  (not-empty (cond-> parameters
-                                                                              filter-stage-added? add-stage-to-temporal-unit-parameters))
-                                                    :middleware  (not-empty middleware)))
-          cs                      (-> (cache-strategy card (:dashboard-id ids))
-                                      (enrich-strategy query))]
-      (-> query
-          (assoc :cache-strategy cs)
-          (->> (lib/normalize ::lib.schema/query))))))
+    :as           card} parameters constraints middleware & [ids]]
+  (let [stage-numbers (explict-stage-references parameters)
+        explicit-stage-numbers? (boolean (seq stage-numbers))
+        parameters (cond-> parameters
+                     ;; models are not transparent (questions and metrics are)
+                     (and explicit-stage-numbers? (= card-type :model))
+                     point-parameters-to-last-stage)
+        ;; The FE might have "added" a stage so that a question with breakouts
+        ;; at the last stage can be filtered on the summary results. We know
+        ;; this happened if we get a reference to one above the last stage.
+        filter-stage-added? (and explicit-stage-numbers?
+                                 (= (inc (last-stage-number dataset-query))
+                                    (apply max stage-numbers)))
+        query (cond-> dataset-query
+                (and explicit-stage-numbers?
+                     (or
+                      ;; stage-number 0 means filtering the results of models and metrics
+                      (not= card-type :question)
+                      ;; the FE assumed an extra stage, so we add it
+                      filter-stage-added?))
+                nest-query)
+        query (-> query
+                  ;; don't want default constraints overridding anything that's already there
+                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                  (assoc :constraints constraints
+                         :parameters  (cond-> parameters
+                                        filter-stage-added? add-stage-to-temporal-unit-parameters)
+                         :middleware  middleware))
+        cs    (-> (cache-strategy card (:dashboard-id ids))
+                  (enrich-strategy query))]
+    (assoc query :cache-strategy cs)))
 
 (def ^:dynamic *allow-arbitrary-mbql-parameters*
   "In 0.41.0+ you can no longer add arbitrary `:parameters` to a query for a saved question -- only parameters for
@@ -149,7 +142,7 @@
   here."
   false)
 
-(mu/defn- card-template-tag-parameters
+(defn- card-template-tag-parameters
   "Template tag parameters that have been specified for the query for Card with `card-id`, if any, returned as a map in
   the format
 
@@ -161,11 +154,12 @@
   Parameter type in this case is something like `:string` or `:number` or `:date/month-year`; parameters passed in as
   parameters to the API request must be allowed for this type (i.e. `:string/=` is allowed for a `:string` parameter,
   but `:number/=` is not)."
-  [card-id :- ::lib.schema.id/card]
+  [card-id]
   (let [query (api/check-404 (t2/select-one-fn :dataset_query :model/Card :id card-id))]
     (into
      {}
-     (keep (fn [[param-name {widget-type :widget-type, tag-type :type}]]
+     (comp
+      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
@@ -177,7 +171,8 @@
                (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
                    (= tag-type :temporal-unit))
                [param-name tag-type])))
-     (lib/all-template-tags-map query))))
+      (filter some?))
+     (get-in query [:native :template-tags]))))
 
 (defn- allowed-parameter-type-for-template-tag-widget-type? [parameter-type widget-type]
   (when-let [allowed-template-tag-types (get-in lib.schema.parameter/types [parameter-type :allowed-for])]
@@ -255,7 +250,7 @@
     (qp.streaming/streaming-response [rff export-format (qp.streaming/safe-filename-prefix (:card-name info))]
       (qp (update query :info merge info) rff))))
 
-(mu/defn combined-parameters-and-template-tags
+(defn combined-parameters-and-template-tags
   "Enrich `card.parameters` to include parameters from template-tags.
 
   On native queries parameters exists in 2 forms:
@@ -266,7 +261,7 @@
   However, since card.parameters is a recently added feature, there may be instances where a template-tag
   is not present in the parameters.
   This function ensures that all template-tags are converted to parameters and added to card.parameters."
-  [{:keys [parameters] :as card} :- ::queries.schema/card]
+  [{:keys [parameters] :as card}]
   (let [template-tag-parameters     (queries/card-template-tag-parameters card)
         id->template-tags-parameter (m/index-by :id template-tag-parameters)
         id->parameter               (m/index-by :id parameters)]
@@ -300,8 +295,8 @@
   `StreamingResponse`.
 
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
-  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for
-  all valid options."
+  Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
+  options."
   [card-id :- ::lib.schema.id/card
    export-format
    & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
@@ -310,7 +305,7 @@
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
              make-run    process-query-for-card-default-run-fn}}]
-  {:pre [(pos-int? card-id) (u/maybe? sequential? parameters)]}
+  {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [card       (api/read-check (t2/select-one [:model/Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display
                                                    :cache_invalidated_at :entity_id :created_at :card_schema
@@ -342,7 +337,7 @@
                      (and (= (:type card) :model) (seq (:result_metadata card)))
                      (assoc :metadata/model-metadata (:result_metadata card)))]
     (when (seq parameters)
-      (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
+      (validate-card-parameters card-id (mbql.normalize/normalize-fragment [:parameters] parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]

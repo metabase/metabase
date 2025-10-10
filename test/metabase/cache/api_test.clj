@@ -35,8 +35,7 @@
   (mt/with-model-cleanup [:model/CacheConfig]
     (mt/with-premium-features #{}
       (testing "But no advanced strategies can be used"
-        (is (=? {:specific-errors {:strategy {:type ["should be either :nocache or :ttl, received: :schedule" string?]}}
-                 :errors          {:strategy {:type "enum of :nocache, :ttl"}}}
+        (is (=? {:errors {:strategy string?}}
                 (mt/user-http-request :crowberto :put 400 "cache/"
                                       {:model    "root"
                                        :model_id 0

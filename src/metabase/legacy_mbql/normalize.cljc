@@ -31,7 +31,6 @@
   (:refer-clojure :exclude [mapv every? some select-keys])
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -1072,13 +1071,12 @@
 (declare remove-empty-clauses path->special-remove-empty-clauses-fn)
 
 (defn- remove-empty-clauses-in-map [m special-fns]
-  (when (map? m)
-    (not-empty (reduce-kv (fn [m k v]
-                            (let [v' (remove-empty-clauses v (get special-fns k))]
-                              (cond (nil? v')         (dissoc m k)
-                                    (identical? v v') m
-                                    :else             (assoc m k v'))))
-                          m m))))
+  (not-empty (reduce-kv (fn [m k v]
+                          (let [v' (remove-empty-clauses v (get special-fns k))]
+                            (cond (nil? v') (dissoc m k)
+                                  (identical? v v') m
+                                  :else (assoc m k v'))))
+                        m m)))
 
 (defn- remove-empty-clauses-in-sequence* [xs special-fns]
   (let [special-fns (::sequence special-fns)
@@ -1113,12 +1111,11 @@
     (remove-empty-clauses source-query (:query path->special-remove-empty-clauses-fn))))
 
 (defn- remove-empty-clauses-in-parameter [parameter]
-  (when (map? parameter)
-    (merge
-     ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
-     ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
-     (select-keys parameter [:value])
-     (remove-empty-clauses-in-map parameter (-> path->special-remove-empty-clauses-fn :parameters ::sequence)))))
+  (merge
+   ;; don't remove `value: nil` from a parameter, the FE code (`haveParametersChanged`) is extremely dumb and will
+   ;; consider the parameter to have changed and thus the query to be 'dirty' if we do this.
+   (select-keys parameter [:value])
+   (remove-empty-clauses-in-map parameter (-> path->special-remove-empty-clauses-fn :parameters ::sequence))))
 
 (def ^:private path->special-remove-empty-clauses-fn
   {:native       identity
@@ -1145,10 +1142,7 @@
          (sequential? x)  (remove-empty-clauses-in-sequence x special-fns)
          :else            x))
      (catch #?(:clj Throwable :cljs js/Error) e
-       (throw (ex-info (let [msg (ex-message e)]
-                         (if (str/starts-with? msg "Error removing empty clauses")
-                           msg
-                           (str "Error removing empty clauses from form: " msg)))
+       (throw (ex-info "Error removing empty clauses from form."
                        {:form x}
                        e))))))
 
@@ -1160,8 +1154,6 @@
   "Normalize the tokens in a Metabase query (i.e., make them all `lisp-case` keywords), rewrite deprecated clauses as
   up-to-date MBQL 2000, and remove empty clauses."
   [query]
-  (when (:lib/type query)
-    (throw (ex-info "Legacy MBQL normalization code cannot normalize MBQL >= 5" {:query query})))
   (try
     (-> query
         normalize-tokens
@@ -1185,12 +1177,9 @@
   where this fragment would normally live in a full query.
 
     (normalize-fragment [:query :filter] [\"=\" 100 200])
-    ;;-> [:= [:field-id 100] 200]
-
-  DEPRECATED -- this is notoriously unreliable, convert to MBQL 5 and use [[metabase.lib.normalize]] instead."
-  {:deprecated "0.57.0"}
+    ;;-> [:= [:field-id 100] 200]"
   [path :- [:maybe [:sequential :keyword]]
    x]
-  (if (empty? path)
+  (if-not (seq path)
     (normalize x)
     (get (normalize-fragment (butlast path) {(last path) x}) (last path))))

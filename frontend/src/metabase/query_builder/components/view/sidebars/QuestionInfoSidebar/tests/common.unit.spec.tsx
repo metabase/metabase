@@ -267,7 +267,7 @@ describe("QuestionInfoSidebar", () => {
       const query = getJoinedQuery();
       const card = createMockCard({
         type: "model",
-        dataset_query: Lib.toJsQuery(query),
+        dataset_query: Lib.toLegacyQuery(query),
       });
       await setup({ card });
       await userEvent.click(screen.getByRole("tab", { name: "Relationships" }));

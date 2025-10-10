@@ -62,7 +62,6 @@
            lib-be
            model-persistence
            models
-           parameters
            permissions
            public-sharing
            queries
@@ -318,7 +317,7 @@
            app-db
            classloader
            config
-
+           legacy-mbql
            models
            query-processor
            search
@@ -336,8 +335,10 @@
            app-db
            audit-app
            config
+           driver
            eid-translation
            events
+           legacy-mbql
            lib-be
            models
            notification
@@ -365,8 +366,10 @@
 
   content-translation
   {:team "UX West"
-   :api  #{metabase.content-translation.models}
-   :uses #{premium-features
+   :api  #{metabase.content-translation.api
+           metabase.content-translation.models}
+   :uses #{api
+           premium-features
            util}}
 
   content-verification
@@ -390,8 +393,7 @@
            metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
-           metabase.dashboards.models.dashboard-tab
-           metabase.dashboards.schema}
+           metabase.dashboards.models.dashboard-tab}
    :uses #{actions
            analytics
            api
@@ -426,12 +428,20 @@
    :api  #{metabase.database-routing.core}
    :uses #{premium-features}}
 
+  dependencies
+  {:team "Querying"
+   :api  #{metabase.premium-features.core}
+   :uses #{premium-features}}
+
   driver
   {:team "Drivers"
    :api  #{metabase.driver
            metabase.driver.common
            metabase.driver.common.parameters
+           metabase.driver.common.parameters.dates
+           metabase.driver.common.parameters.operators
            metabase.driver.common.parameters.parse
+           metabase.driver.common.parameters.values
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -445,34 +455,22 @@
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
            metabase.driver.sql.query-processor
+           metabase.driver.sql.query-processor.deprecated
            metabase.driver.sql.util
            metabase.driver.sync
            metabase.driver.util}
-   :uses #{app-db
-           appearance
-           auth-provider
-           classloader
-           config
-           driver-api
-           events
-           legacy-mbql
-           lib
-           lib-be
-           premium-features
-           query-processor
-           settings
-           system
-           util
-           warehouse-schema
-           warehouses}}
+   :uses #{driver-api
+           util}}
 
   driver-api
   {:team "Drivers"
-   :api  #{metabase.driver-api.core}
+   :api  #{metabase.driver-api.core
+           metabase.driver-api.init}
    :uses #{actions
            api
            app-db
            appearance
+           auth-provider
            classloader
            config
            connection-pool
@@ -491,7 +489,8 @@
            system
            upload
            util
-           warehouse-schema}}
+           warehouse-schema
+           warehouses}}
 
   eid-translation
   {:team "UX West"
@@ -513,7 +512,7 @@
    :uses #{analytics
            api
            config
-           dashboards
+           driver
            eid-translation
            events
            models
@@ -542,6 +541,7 @@
    :uses #{appearance
            models
            query-processor
+           system
            types
            util}}
 
@@ -591,6 +591,7 @@
   legacy-mbql
   {:team "Querying"
    :api  #{metabase.legacy-mbql.normalize
+           metabase.legacy-mbql.predicates
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
    :uses #{lib
@@ -618,6 +619,7 @@
            metabase.lib.metadata.result-metadata
            metabase.lib.normalize
            metabase.lib.options
+           metabase.lib.parse
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
@@ -655,7 +657,8 @@
   lib-be
   {:team "Querying"
    :api  #{metabase.lib-be.core
-           metabase.lib-be.init}
+           metabase.lib-be.init
+           metabase.lib-be.metadata.jvm}
    :uses #{lib
            models
            settings
@@ -722,6 +725,7 @@
            classloader
            legacy-mbql
            lib
+           lib-be
            settings
            util}}
 
@@ -772,7 +776,6 @@
   parameters
   {:team "Querying"
    :api  #{metabase.parameters.chain-filter
-           metabase.parameters.core
            metabase.parameters.custom-values
            metabase.parameters.dashboard
            metabase.parameters.field
@@ -783,11 +786,13 @@
    :uses #{api
            app-db
            classloader
+           driver
            legacy-mbql
            lib
            lib-be
            models
            query-processor
+           types
            util
            warehouse-schema
            warehouses}}
@@ -865,6 +870,7 @@
            dashboards
            events
            lib
+           lib-be
            models
            parameters
            queries
@@ -887,7 +893,6 @@
            config
            driver
            events
-           lib
            models
            notification
            permissions
@@ -899,6 +904,19 @@
            util
            enterprise/advanced-permissions
            enterprise/sandbox}}
+
+  python-runner
+  {:team "Workflows"
+   :api  #{metabase.python-runner.api
+           metabase.python-runner.core
+           metabase.python-runner.init}
+   :uses #{api
+           driver
+           models
+           query-processor
+           request
+           util
+           enterprise/transforms}}
 
   queries
   {:team "Querying"
@@ -967,10 +985,10 @@
            metabase.query-processor.middleware.annotate
            metabase.query-processor.middleware.cache-backend.db
            metabase.query-processor.middleware.constraints
+           metabase.query-processor.middleware.fetch-source-query-legacy
            metabase.query-processor.middleware.limit
            metabase.query-processor.middleware.permissions
            metabase.query-processor.middleware.wrap-value-literals
-           metabase.query-processor.parameters.dates
            metabase.query-processor.parameters.operators
            metabase.query-processor.pipeline
            metabase.query-processor.pivot
@@ -999,7 +1017,6 @@
            batch-processing
            cache
            config
-           dashboards
            driver
            events
            formatter
@@ -1014,9 +1031,11 @@
            premium-features
            queries
            query-permissions
+           request
            server
            settings
            system
+           types
            users
            util}}
 
@@ -1076,14 +1095,12 @@
            audit-app
            collections
            config
+           driver
            events
-           lib
-           lib-be
            models
            permissions
            premium-features
            queries
-           query-processor
            request
            settings
            startup
@@ -1126,7 +1143,6 @@
            core
            driver
            embedding
-           lib-be
            premium-features
            query-processor
            request
@@ -1182,8 +1198,10 @@
            api
            app-db
            appearance
+           channel
            config
            events
+           permissions
            request
            session
            settings
@@ -1289,9 +1307,6 @@
            metabase.tiles.init}
    :uses #{api
            legacy-mbql
-           lib
-           lib-be
-           parameters
            query-processor
            settings
            util}}
@@ -1497,6 +1512,7 @@
   enterprise/action-v2
   {:team "Workflows"
    :api  #{metabase-enterprise.action-v2.api
+           metabase-enterprise.action-v2.core
            metabase-enterprise.action-v2.init}
    :uses #{actions
            api
@@ -1531,6 +1547,7 @@
            metabase-enterprise.advanced-permissions.common
            metabase-enterprise.advanced-permissions.models.permissions.group-manager}
    :uses #{api
+           legacy-mbql
            lib
            permissions
            premium-features
@@ -1561,6 +1578,7 @@
    :api  #{metabase-enterprise.ai-sql-generation.api}
    :uses #{api
            driver
+           models
            util
            enterprise/metabot-v3}}
 
@@ -1615,11 +1633,6 @@
    :uses #{api
            premium-features util}}
 
-  enterprise/bookmarks
-  {:team "UX West"
-   :api  #{}
-   :uses #{}}
-
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
@@ -1653,7 +1666,8 @@
 
   enterprise/content-translation
   {:team "UX West"
-   :api  #{metabase-enterprise.content-translation.routes}
+   :api  #{metabase-enterprise.content-translation.dictionary
+           metabase-enterprise.content-translation.routes}
    :uses #{api
            content-translation
            embedding
@@ -1679,11 +1693,20 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-editing
+  {:team "Workflows"
+   :api  #{metabase-enterprise.data-editing.api}
+   :uses #{actions
+           api
+           models
+           util}}
+
   enterprise/database-replication
   {:team "Cloud"
    :api  #{metabase-enterprise.database-replication.api
            metabase-enterprise.database-replication.init}
-   :uses #{api
+   :uses #{analytics
+           api
            driver
            premium-features
            settings
@@ -1710,10 +1733,11 @@
   enterprise/dependencies
   {:team "Querying"
    :api  #{metabase-enterprise.dependencies.api
-           #_metabase-enterprise.dependencies.core
+           metabase-enterprise.dependencies.core
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
            config
            driver
@@ -1726,7 +1750,6 @@
            premium-features
            queries
            query-processor
-           settings
            task
            util}}
 
@@ -1742,11 +1765,13 @@
            collections
            events
            models
+           permissions
            premium-features
            queries
            query-permissions
            revisions
            search
+           users
            util
            view-log}}
 
@@ -1768,6 +1793,7 @@
            audit-app
            embedding
            premium-features
+           util
            enterprise/sso}}
 
   enterprise/gsheets
@@ -1879,12 +1905,14 @@
    :uses #{api
            app-db
            audit-app
+           classloader
            driver
            legacy-mbql
            lib
            models
            permissions
            premium-features
+           query-permissions
            query-processor
            request
            users
@@ -1947,13 +1975,18 @@
            app-db
            appearance
            collections
+           config
+           legacy-mbql
+           lib
            logger
            models
            plugins
            premium-features
            search
+           settings
            setup
-           util}}
+           util
+           warehouse-schema}}
 
   enterprise/snippet-collections
   {:team "Querying"
@@ -1981,6 +2014,7 @@
            settings
            sso
            system
+           users
            util
            enterprise/scim}}
 
@@ -2008,11 +2042,13 @@
    :uses #{analytics
            api
            app-db
+           config
            driver
            events
            lib
            lib-be
            models
+           permissions
            premium-features
            query-processor
            request
@@ -2020,6 +2056,7 @@
            sync
            task
            task-history
+           upload
            util
            enterprise/transforms-python}}
 
@@ -2027,11 +2064,14 @@
   {:team "Querying"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.execute
-           metabase-enterprise.transforms-python.init}
+           metabase-enterprise.transforms-python.init
+           metabase-enterprise.transforms-python.settings}
    :uses #{api
            app-db
            config
            driver
+           lib
+           models
            query-processor
            settings
            util

@@ -1,4 +1,4 @@
-import { assoc } from "icepick";
+import { assoc, assocIn } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -10,7 +10,6 @@ import {
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import registerVisualizations from "metabase/visualizations/register";
-import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
   createMockCard,
@@ -104,7 +103,9 @@ describe("getQuestion", () => {
 
     const question = getQuestion(getBaseState({ card }));
 
-    expect(Lib.sourceTableOrCardId(question.query())).toBe("card__1");
+    expect(question.card()).toEqual(
+      assocIn(card, ["dataset_query", "query", "source-table"], "card__1"),
+    );
   });
 
   it("should return real dataset when dataset is open in 'dataset' QB mode", () => {

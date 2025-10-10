@@ -98,7 +98,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: Parameter[];
+  parameters?: unknown[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;

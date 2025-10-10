@@ -5,6 +5,7 @@ import { QuestionInfoSidebar } from "metabase/query_builder/components/view/side
 import { QuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
 import { SummarizeSidebar } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar";
 import TimelineSidebar from "metabase/query_builder/components/view/sidebars/TimelineSidebar";
+import * as Lib from "metabase-lib";
 
 export const StructuredQueryRightSidebar = ({
   deselectTimelineEvents,
@@ -59,7 +60,8 @@ export const StructuredQueryRightSidebar = ({
         <SummarizeSidebar
           query={question.query()}
           onQueryChange={(nextQuery) => {
-            const nextQuestion = question.setQuery(nextQuery);
+            const datesetQuery = Lib.toLegacyQuery(nextQuery);
+            const nextQuestion = question.setDatasetQuery(datesetQuery);
             updateQuestion(nextQuestion.setDefaultDisplay(), {
               run: true,
             });

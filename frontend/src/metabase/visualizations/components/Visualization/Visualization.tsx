@@ -69,6 +69,7 @@ import type {
   CardId,
   Dashboard,
   DashboardCard,
+  DatasetQuery,
   RawSeries,
   Series,
   SingleSeries,
@@ -151,7 +152,7 @@ type VisualizationOwnProps = {
   rawSeries?: (
     | SingleSeries
     | {
-        card: Card;
+        card: Card<DatasetQuery>;
       }
   )[];
   visualizerRawSeries?: RawSeries;
@@ -225,9 +226,8 @@ const isLoading = (series: Series | null) => {
 const deriveStateFromProps = (props: VisualizationProps) => {
   const rawSeriesArray = props.rawSeries || [];
   const firstCard = rawSeriesArray[0]?.card;
-  const firstQuestion = firstCard != null ? new Question(firstCard) : undefined;
-  const isNativeView =
-    props.queryBuilderMode === "view" && firstQuestion?.isNative();
+  const isNative = firstCard?.dataset_query?.type === "native";
+  const isNativeView = isNative && props.queryBuilderMode === "view";
 
   const transformed = props.rawSeries
     ? getVisualizationTransformed(

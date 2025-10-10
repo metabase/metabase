@@ -10,7 +10,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]))
 
@@ -59,21 +59,20 @@
                       [:> $id 50]
                       [:< $price 5]]})))))
 
-(defn- parse-with-timezone [datetime-str ^String timezone-id]
+(defn- parse-with-timezone! [datetime-str ^String timezone-id]
   (driver/with-driver ::tz-driver
-    (binding [qp.timezone/*report-timezone-id-override* timezone-id]
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (is (= (qp.timezone/results-timezone-id)
-               timezone-id)
-            "Make sure `results-timezone-id` is returning the bound value")
-        (-> (#'qp.wrap-value-literals/add-type-info datetime-str {:unit :day})
-            (nth 2))))))
+    (mt/with-report-timezone-id! timezone-id
+      (is (= (qp.timezone/results-timezone-id)
+             timezone-id)
+          "Make sure `results-timezone-id` is returning the bound value")
+      (-> (#'qp.wrap-value-literals/add-type-info datetime-str {:unit :day})
+          (nth 2)))))
 
-(deftest ^:parallel parse-datetime-literal-strings-test
+(deftest parse-datetime-literal-strings-test
   (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
     (is (= expected
-           (parse-with-timezone "2018-10-01" timezone))
+           (parse-with-timezone! "2018-10-01" timezone))
         (format "datetime literal string '2018-10-01' parsed with the %s timezone should be %s" timezone expected))))
 
 (deftest ^:parallel wrap-datetime-literal-strings-test

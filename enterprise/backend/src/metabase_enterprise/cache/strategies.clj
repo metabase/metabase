@@ -15,12 +15,10 @@
 
 ;; Data shape
 
-;;; This is basically the same schema as `:metabase.cache.api/cache-strategy.ee` except it adds optional
-;;; `:invalidated-at` keys
 (mr/def ::cache-strategy
   "Schema for a caching strategy used internally"
   [:and
-   :metabase.cache.api/cache-strategy.base.ee
+   :metabase.cache.api/cache-strategy.base
    [:multi {:dispatch :type}
     [:nocache  :metabase.cache.api/cache-strategy.nocache]
     [:ttl      [:merge
@@ -41,8 +39,7 @@
 (defenterprise-schema cache-strategy :- [:maybe ::cache-strategy]
   "Returns the granular cache strategy for a card."
   :feature :cache-granular-controls
-  [card         :- :metabase.queries.schema/card
-   dashboard-id :- [:maybe :metabase.lib.schema.id/dashboard]]
+  [card dashboard-id]
   (let [qs   (for [[i model model-id] [[1 "question"   (:id card)]
                                        [2 "dashboard"  dashboard-id]
                                        [3 "database"   (:database_id card)]

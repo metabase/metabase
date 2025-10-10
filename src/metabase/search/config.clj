@@ -2,11 +2,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
    [metabase.search.settings :as search.settings]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
@@ -281,7 +280,7 @@
 
 (defmethod column->string [:card :dataset_query]
   [value _ _]
-  (or (when-let [query (not-empty ((lib-be/transform-query :out) value))]
-        (when (lib/native-only-query? query)
-          (lib/raw-native-query query)))
-      ""))
+  (let [query (json/decode+kw value)]
+    (if (= "native" (:type query))
+      (-> query :native :query)
+      "")))

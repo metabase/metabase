@@ -43,9 +43,7 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -179,13 +177,13 @@
 
 (declare id)
 
-(mu/defn native-query :- ::mbql.s/Query
+(mu/defn native-query
   "Like `mbql-query`, but for native queries."
-  [inner-native-query :- :map]
-  #_{:clj-kondo/ignore [:deprecated-var]}
+  [inner-native-query :- [:map
+                          [:query some?]]]
   {:database (id)
    :type     :native
-   :native   (mbql.normalize/normalize-fragment [:native] inner-native-query)})
+   :native   inner-native-query})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
@@ -236,7 +234,7 @@
 (defn metadata-provider
   "Get a metadata-provider for the current database."
   []
-  (lib-be/application-database-metadata-provider (id)))
+  (lib.metadata.jvm/application-database-metadata-provider (id)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the

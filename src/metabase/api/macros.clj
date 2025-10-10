@@ -23,7 +23,6 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
-   [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
@@ -352,26 +351,16 @@
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
-(defn- invalid-params-errors [{:keys [schema], :as explanation}]
-  (reduce
-   (fn [m {:keys [path in], :as _explanation}]
-     (let [error-path (remove integer? in)]
-       ;; if there is already an error here keep the existing one, this is usually something like an `[:and x y]`
-       ;; where `x` has already failed so it's preferable to return the error for that than the `y` one, which
-       ;; probably won't make any sense (for some weird reason Malli `:and` schemas don't short-circut)
-       (if (get-in m error-path)
-         m
-         (let [nice-path     (loop [path (vec path)]
-                               (if (integer? (last path))
-                                 (recur (pop path))
-                                 path))
-               nested-schema (loop [path nice-path]
-                               (when (seq path)
-                                 (or (malli.util/get-in schema path)
-                                     (recur (pop path)))))]
-           (assoc-in m error-path (umd/describe nested-schema))))))
-   {}
-   (:errors explanation)))
+(defn- invalid-params-errors [schema explanation specific-errors]
+  (or (when (and (map? specific-errors)
+                 (= (mc/type schema) :map))
+        (into {}
+              (let [specific-error-keys (set (keys specific-errors))]
+                (keep (fn [child]
+                        (when (contains? specific-error-keys (first child))
+                          [(first child) (umd/describe (last child))]))))
+              (mc/children schema)))
+      (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -387,7 +376,7 @@
                                              :body  "body"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors explanation)]
+                            errors          (invalid-params-errors schema explanation specific-errors)]
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
                                              :schema      (mc/form schema)
@@ -736,12 +725,7 @@
   motivation behind it.
 
   REPL Tip: use [[call-core-fn]] to call the core-fn directly."
-  {:added "0.53.0", :arglists '([method
-                                 route
-                                 docstring?
-                                 metadata?
-                                 [route-params? query-params? body-params? request? respond? raise?]
-                                 & body])}
+  {:added "0.53.0"}
   [& args]
   (let [parsed (parse-args args)]
     `(let [core-fn#  (endpoint-core-fn ~parsed)
