@@ -131,20 +131,13 @@ export function handleEntities(
   entityType,
   reducer = (state = {}, action) => state,
 ) {
-  // This function gets called with cached data. We should ignore exactly the
-  // same payload to not invalidate redux selectors
-  const seenEntities = new WeakSet();
-
   return (state, action) => {
     if (state === undefined) {
       state = {};
     }
     const entities = getIn(action, ["payload", "entities", entityType]);
     if (actionPattern.test(action.type) && entities) {
-      if (!seenEntities.has(entities)) {
-        state = mergeEntities(state, entities);
-        seenEntities.add(entities);
-      }
+      state = mergeEntities(state, entities);
     }
     return reducer(state, action);
   };
@@ -319,27 +312,9 @@ function withCachedData(
       };
 }
 
-export function weakMapMemoize(fn) {
-  const cache = new WeakMap();
-  return (arg) => {
-    const cachedResult = cache.get(arg);
-    if (cachedResult != null) {
-      return cachedResult;
-    }
-
-    const newResult = fn(arg);
-    cache.set(arg, newResult);
-    return newResult;
-  };
-}
-
 export function withNormalize(schema) {
-  // This thunk gets called with cached API data. It's important to return the
-  // same result for the same data to not process the same data thousands of times
-  const normalizeCached = weakMapMemoize((data) => normalize(data, schema));
-
   return (thunkCreator) =>
     (...args) =>
     async (dispatch, getState) =>
-      normalizeCached(await thunkCreator(...args)(dispatch, getState), schema);
+      normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }

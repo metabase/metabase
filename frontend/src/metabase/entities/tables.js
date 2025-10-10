@@ -161,7 +161,6 @@ const Tables = createEntity({
     // data is not properly cached & invalidated this way, prefer fetchMetadata instead
     // used only to support legacy entity framework loader HoCs
     fetchMetadataDeprecated: compose(
-      withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [
@@ -170,6 +169,7 @@ const Tables = createEntity({
         ],
         (entityQuery) => Tables.getQueryKey(entityQuery),
       ),
+      withAction(FETCH_METADATA),
       withNormalize(TableSchema),
     )(
       ({ id, ...params }, options = {}) =>
@@ -205,12 +205,12 @@ const Tables = createEntity({
     ),
 
     fetchForeignKeys: compose(
-      withAction(FETCH_TABLE_FOREIGN_KEYS),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchForeignKeys"],
         (entityQuery) => Tables.getQueryKey(entityQuery),
       ),
+      withAction(FETCH_TABLE_FOREIGN_KEYS),
       withNormalize(TableSchema),
     )(({ id }) => async (dispatch, getState) => {
       const fks = await entityCompatibleQuery(

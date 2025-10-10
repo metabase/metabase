@@ -97,7 +97,6 @@ const Fields = createEntity({
 
   objectActions: {
     fetchFieldValues: compose(
-      withAction(FETCH_FIELD_VALUES),
       withCachedDataAndRequestState(
         ({ id, table_id }) => {
           const uniqueId = getUniqueFieldId({ id, table_id });
@@ -111,6 +110,7 @@ const Fields = createEntity({
           return Fields.getQueryKey({ id: field.id });
         },
       ),
+      withAction(FETCH_FIELD_VALUES),
       withNormalize(FieldSchema),
     )((field) => async (dispatch) => {
       const { field_id, ...data } = await entityCompatibleQuery(
