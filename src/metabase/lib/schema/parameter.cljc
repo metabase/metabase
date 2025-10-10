@@ -248,19 +248,22 @@
    [:target  ::dimension.target]
    [:options [:? [:maybe ::dimension.options]]]])
 
+(mr/def ::template-tag.tag-name
+  [:multi {:dispatch map?}
+   [true  [:map
+           [:id ::lib.schema.common/non-blank-string]]]
+   [false [:schema
+           {:decode/normalize (fn [x]
+                                (cond-> x
+                                  (keyword? x) u/qualified-name))}
+           ::lib.schema.common/non-blank-string]]])
+
 (mr/def ::template-tag
   "This is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
   in [[metabase.lib.schema.template-tag]]."
   [:tuple
    #_tag      [:= {:decode/normalize lib.schema.common/normalize-keyword} :template-tag]
-   #_tag-name [:multi {:dispatch map?}
-               [true  [:map
-                       [:id ::lib.schema.common/non-blank-string]]]
-               [false [:schema
-                       {:decode/normalize (fn [x]
-                                            (cond-> x
-                                              (keyword? x) u/qualified-name))}
-                       ::lib.schema.common/non-blank-string]]]])
+   #_tag-name ::template-tag.tag-name])
 
 (mr/def ::variable.target
   [:multi {:dispatch      lib.schema.common/mbql-clause-tag
@@ -285,7 +288,11 @@
   [:multi {:dispatch (fn [x]
                        (if (pos-int? x)
                          :field
-                         (lib.schema.common/mbql-clause-tag x)))
+                         (let [tag (lib.schema.common/mbql-clause-tag x)]
+                           ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
+                           (case tag
+                             (:field-id :field-literal :fk->) :field
+                             tag))))
            :error/fn (fn [{:keys [value]} _]
                        (str "Invalid parameter :target, must be either :field, :dimension, :variable, or :text-tag; got: "
                             (pr-str value)))
@@ -300,11 +307,7 @@
    [:dimension     [:ref ::dimension]]
    [:variable      [:ref ::variable]]
    [:text-tag      [:ref ::text-tag]]
-   [:field         [:ref ::target.legacy-field-ref]]
-   ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
-   [:field-id      [:ref ::target.legacy-field-ref]]
-   [:field-literal [:ref ::target.legacy-field-ref]]
-   [:fk->          [:ref ::target.legacy-field-ref]]])
+   [:field         [:ref ::target.legacy-field-ref]]])
 
 (defn- normalize-parameter
   [param]

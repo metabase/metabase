@@ -8,7 +8,6 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -22,6 +21,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -62,23 +62,27 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
+(mr/def ::values-from-card-query.options
+  [:map
+   [:query-string {:optional true} [:maybe ms/NonBlankString]]])
+
 (mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
   [{query :dataset_query, :keys [id], :as _card} :- [:and
                                                      :metabase.queries.schema/card
                                                      [:map
                                                       [:id ::lib.schema.id/card]]]
-   legacy-field-ref                              :- ::mbql.s/field-or-expression-ref
-   {:keys [query-string] :as _opts}]
+   field-ref                        :- [:or :mbql.clause/field :mbql.clause/expression]
+   {:keys [query-string] :as _opts} :- [:maybe ::values-from-card-query.options]]
   (when (seq query)
     ;; start a new query using this Card as a starting point
     (let [query (lib/query query (lib.metadata/card query id))]
       (when-let [visible-columns (or (not-empty (lib/visible-columns query))
                                      (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
                                                 id))]
-        (when-let [value-column (or (lib/find-column-for-legacy-ref query legacy-field-ref visible-columns)
-                                    (log/warnf "Cannot get values from Card %d: failed to find column for legacy ref %s\nFound: %s"
+        (when-let [value-column (or (lib/metadata query field-ref)
+                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
                                                id
-                                               (pr-str legacy-field-ref)
+                                               (pr-str field-ref)
                                                (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
           (let [textual?     (lib.types.isa/string? value-column)
                 nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
@@ -112,10 +116,10 @@
   ([card value-field]
    (values-from-card card value-field nil))
 
-  ([card             :- :metabase.queries.schema/card
-    legacy-field-ref :- ::mbql.s/field-or-expression-ref
-    opts             :- [:maybe :map]]
-   (let [mbql-query   (values-from-card-query card legacy-field-ref opts)
+  ([card      :- :metabase.queries.schema/card
+    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
+    opts      :- [:maybe ::values-from-card-query.options]]
+   (let [mbql-query   (values-from-card-query card field-ref opts)
          result       (some-> mbql-query qp/process-query)
          values       (get-in result [:data :rows])]
      {:values         values

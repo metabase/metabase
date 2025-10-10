@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [ref])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.malli :as mu]))
 
@@ -24,3 +25,31 @@
   create a new UUID every time this is called."
   [x :- some?]
   (ref-method x))
+
+(mu/defn field-ref-id :- [:maybe ::lib.schema.id/field]
+  "If a `:field` ref uses a Field ID, return that ID."
+  [[_tag id-or-name _opts, :as _field-ref] :- ::lib.schema.ref/field]
+  (when (pos-int? id-or-name)
+    id-or-name))
+
+(mu/defn field-ref-name :- [:maybe :string]
+  "If a `:field` ref uses a Field name, return that name."
+  [[_tag id-or-name _opts, :as _field-ref] :- ::lib.schema.ref/field]
+  (when (string? id-or-name)
+    id-or-name))
+
+(mu/defn field-ref-opts :- [:maybe ::lib.schema.ref/field.options]
+  "Return the options map for a `:field` ref."
+  [[_tag _id-or-name opts, :as _field-ref] :- ::lib.schema.ref/field]
+  opts)
+
+(mu/defn expression-ref-name :- [:maybe :string]
+  "Return the expression name from an `:expression` ref."
+  [[_tag id-or-name _opts, :as _expression-ref] :- ::lib.schema.ref/expression]
+  (when (string? id-or-name)
+    id-or-name))
+
+(mu/defn expression-ref-opts :- [:maybe ::lib.schema.ref/expression.options]
+  "Return the options map from an `:expression` ref."
+  [[_tag _id-or-name opts, :as _expression-ref] :- ::lib.schema.ref/expression]
+  opts)

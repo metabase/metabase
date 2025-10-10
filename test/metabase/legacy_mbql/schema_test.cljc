@@ -4,7 +4,9 @@
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.humanize :as mu.humanize]
    [metabase.util.malli.registry :as mr]))
 
@@ -250,3 +252,37 @@
                 [:datetime "" {:mode :iso}]
                 [:datetime 10 {:mode :unix-seconds}]]]
     (is (mr/validate mbql.s/datetime expr))))
+
+(deftest ^:parallel normalize-source-metadata-test
+  (testing "normalize-source-metadata"
+    (testing "should convert legacy field_refs to modern `:field` clauses"
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+             (lib/normalize ::mbql.s/legacy-column-metadata
+              {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
+    (testing "should correctly keywordize Field options"
+      (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
+             (lib/normalize ::mbql.s/legacy-column-metadata
+                            {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))
+
+(deftest ^:parallel do-not-normalize-fingerprints-test
+  (let [col {:fingerprint {:global {:distinct-count 200, :nil% 0}
+                           :type   {:type/DateTime {:earliest "2016-04-26T19:29:55.147Z"
+                                                    :latest   "2019-04-15T13:34:19.931Z"}}}}]
+    (is (= col
+           (lib/normalize ::mbql.s/legacy-column-metadata col)))))
+
+(deftest ^:parallel normalize-evil-source-metadata-test
+  (testing "Fix really messed up fingerprints with lower-cased type names (only in prod) (#63397)"
+    (mu/disable-enforcement
+      (is (= {:fingerprint
+              {:global {:distinct-count 418, :nil% 0.0},
+               :type
+               {:type/Text
+                {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}
+             (lib/normalize
+              ::mbql.s/legacy-column-metadata
+              {:fingerprint
+               {:global {:distinct-count 418, :nil% 0.0},
+                :type
+                {:type/text
+                 {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :percent-state 0.0, :average-length 13.26388888888889}}}}))))))

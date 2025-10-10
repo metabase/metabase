@@ -41,6 +41,7 @@
    [metabase.lib.options]
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
+   [metabase.lib.parameters]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -95,6 +96,7 @@
          lib.normalize/keep-me
          metabase.lib.options/keep-me
          lib.order-by/keep-me
+         metabase.lib.parameters/keep-me
          lib.parse/keep-me
          lib.query/keep-me
          lib.ref/keep-me
@@ -282,8 +284,6 @@
   filter-clause
   filter-operator
   filter-parts
-  find-filter-for-legacy-filter
-  find-filterable-column-for-legacy-ref
   and
   or
   not
@@ -391,10 +391,23 @@
   order-bys
   orderable-columns]
  [lib.normalize
-  normalize]
+  normalize
+  ->normalized-stage-metadata]
  [metabase.lib.page
   current-page
   with-page]
+ [metabase.lib.parameters
+  parameter-target-dimension-options
+  parameter-target-expression-name
+  parameter-target-expression-options
+  parameter-target-expression-ref
+  parameter-target-field-id
+  parameter-target-field-name
+  parameter-target-field-options
+  parameter-target-field-ref
+  parameter-target-is-dimension?
+  parameter-target-template-tag-name
+  update-parameter-target-dimension-options]
  [lib.parse
   parse]
  [lib.query
@@ -413,6 +426,9 @@
   with-wrapped-native-query
   wrap-native-query-with-mbql]
  [lib.ref
+  field-ref-id
+  field-ref-name
+  field-ref-opts
   ref]
  [lib.remove-replace
   remove-clause

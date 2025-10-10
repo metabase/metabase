@@ -10,7 +10,6 @@
    [metabase.legacy-mbql.schema.helpers :as helpers :refer [is-clause?]]
    [metabase.legacy-mbql.schema.macros :refer [defclause one-of]]
    [metabase.lib.schema.actions :as lib.schema.actions]
-   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.constraints :as lib.schema.constraints]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
@@ -23,6 +22,7 @@
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.middleware-options :as lib.schema.middleware-options]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -266,9 +266,19 @@
 ;;    [:+ [:field 1 nil] [:field 2 nil]]
 ;;
 ;; As of 0.42.0 `:expression` references can have an optional options map
+(mr/def ::expression.options
+  "Options for a legacy `:expression` ref in MBQL 4 are the same as in MBQL 5, except that `:lib/uuid` is optional."
+  [:merge
+   ::lib.schema.ref/expression.options
+   [:map
+    {:decode/normalize (fn [m]
+                         (when (map? m)
+                           (dissoc m :lib/uuid)))}
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
+
 (defclause ^{:requires-features #{:expressions}} expression
   expression-name ::lib.schema.common/non-blank-string
-  options         (optional :map))
+  options         (optional ::expression.options))
 
 (defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
@@ -288,88 +298,15 @@
      (contains? units temporal-unit)
      true)))
 
-(mr/def ::validate-temporal-unit
-  ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
-  ;; specific error messages
-  [:fn
-   {:error/message "Invalid :temporal-unit for the specified :base-type."}
-   valid-temporal-unit-for-base-type?])
-
-(mr/def ::no-binning-options-at-top-level
-  (lib.schema.common/disallowed-keys
-   {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}))
-
-;;; TODO (Cam 9/12/25) -- aren't these basically the same as MBQL 5, except Lib UUID isn't required? Maybe we should
-;;; unify these schemas.
 (mr/def ::FieldOptions
-  [:and
+  "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required."
+  [:merge
+   ::lib.schema.ref/field.options
    [:map
-    {:error/message "field options"}
-    [:base-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-
-    ;; Following option conveys temporal unit that was set on a ref in previous stages. For details refer to
-    ;; [:metabase.lib.schema.ref/field.options] schema.
-    [:inherited-temporal-unit {:optional true} [:maybe ::DateTimeUnit]]
-
-    [:source-field
-     {:optional true
-      :description
-      "Replaces `fk->`.
-
-  `:source-field` is used to refer to a FieldOrExpression from a different Table you would like IMPLICITLY JOINED to
-     the source table.
-
-  If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
-  `:source-field` should be for information purposes only."} ::lib.schema.id/field]
-
-    [:source-field-name
-     {:optional true :description "The name or desired alias of the field used for an implicit join."}
-     ::lib.schema.common/non-blank-string]
-
-    [:source-field-join-alias
-     {:optional true :description "The join alias of the source field used for an implicit join."}
-     ::lib.schema.common/non-blank-string]
-
-    [:temporal-unit
-     {:optional true
-      :description
-      "`:temporal-unit` is used to specify DATE BUCKETING for a FieldOrExpression that represents a moment in time of
-  some sort.
-
-  There is no requirement that all `:type/Temporal` derived FieldOrExpressions specify a `:temporal-unit`, but for
-  legacy reasons `:field` clauses that refer to `:type/DateTime` FieldOrExpressions will be automatically \"bucketed\"
-  in the `:breakout` and `:filter` clauses, but nowhere else. Auto-bucketing only applies to `:filter` clauses when
-  values for comparison are `yyyy-MM-dd` date strings. See the `auto-bucket-datetimes` middleware for more details.
-  `:field` clauses elsewhere will not be automatically bucketed, so drivers still need to make sure they do any
-  special datetime handling for plain `:field` clauses when their FieldOrExpression derives from `:type/DateTime`."}
-     [:maybe ::DateTimeUnit]]
-
-    [:join-alias
-     {:optional true
-      :description
-      "Replaces `joined-field`.
-
-  `:join-alias` is used to refer to a FieldOrExpression from a different Table/nested query that you are EXPLICITLY
-  JOINING against."}
-     [:maybe ::lib.schema.join/alias]]
-
-    [:binning
-     {:optional true
-      :description
-      "Replaces `binning-strategy`.
-
-  Using binning requires the driver to support the `:binning` feature."}
-     [:maybe [:ref ::lib.schema.binning/binning]]]]
-
-   ;; additional validation
-   [:ref
-    {:description "If `:base-type` is specified, the `:temporal-unit` must make sense, e.g. no bucketing by `:year`for
-  a `:type/Time` column."}
-    ::validate-temporal-unit]
-
-   [:ref
-    {:description "You cannot use `:binning` keys like `:strategy` in the top level."}
-    ::no-binning-options-at-top-level]])
+    {:decode/normalize (fn [m]
+                         (when (map? m)
+                           (dissoc m :lib/uuid)))}
+    [:lib/uuid {:optional true} ::lib.schema.common/uuid]]])
 
 (mr/def ::require-base-type-for-field-name
   [:fn

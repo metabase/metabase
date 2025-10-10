@@ -6,10 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.cache.core :as cache]
-   ;; legacy usages -- don't use Legacy MBQL utils in QP code going forward, prefer Lib. This will be updated to use
-   ;; Lib soon
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -55,12 +51,11 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
-(defn- explict-stage-references
+(mu/defn- explict-stage-references :- [:set :int]
   [parameters]
   (into #{}
         (keep (fn [{:keys [target]}]
-                (when (mbql.u/is-clause? :dimension target)
-                  (get-in target [2 :stage-number]))))
+                (:stage-number (lib/parameter-target-dimension-options target))))
         parameters))
 
 (defn- point-parameters-to-last-stage
@@ -71,9 +66,8 @@
   [parameters]
   (mapv (fn [{:keys [target], :as parameter}]
           (cond-> parameter
-            (and (mbql.u/is-clause? :dimension target)
-                 (some? (get-in target [2 :stage-number])))
-            (assoc-in [:target 2 :stage-number] -1)))
+            (:stage-number (lib/parameter-target-dimension-options target))
+            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -1)))
         parameters))
 
 (mu/defn- last-stage-number
@@ -86,9 +80,9 @@
   (mapv (fn [{param-type :type, :keys [target], :as parameter}]
           (cond-> parameter
             (and (= param-type :temporal-unit)
-                 (mbql.u/is-clause? :dimension target)
-                 (nil? (get-in target [2 :stage-number])))
-            (assoc-in [:target 2 :stage-number] -2)))
+                 (lib/parameter-target-is-dimension? target)
+                 (nil? (:stage-number (lib/parameter-target-dimension-options target))))
+            (update :target lib/update-parameter-target-dimension-options assoc :stage-number -2)))
         parameters))
 
 (mu/defn query-for-card :- [:maybe ::lib.schema/query]

@@ -59,8 +59,7 @@
    [clojure.string :as str]
    [goog.object :as gobject]
    [medley.core :as m]
-   [metabase.legacy-mbql.js :as mbql.js]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib.core]
@@ -635,8 +634,22 @@
    (lib.core/normalize (js->clj source-clause :keywordize-keys true))
    (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
 
+(defn- -unwrap
+  "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.
+  These clauses `extend Array` so `Array.isArray(x)` is true, but they're treated as opaque by `js->clj`.
+  This recurses over the whole query, unwrapping these values to their `.raw()` form."
+  [x]
+  (cond
+    ;; (object? x) only matches for things that are plain objects. eg. `(object? (js/Date.))` is false.
+    ;; This matches anything that descends from `Object`, like `Join` clause, and has a `.raw()` method.
+    (and (instance? js/Object x)
+         (fn? (.-raw x)))        (-> x (.raw) js->clj -unwrap)
+    (map? x)                     (update-vals x -unwrap)
+    (sequential? x)              (mapv -unwrap x)
+    :else                        x))
+
 (defn- unwrap [a-query]
-  (let [a-query (mbql.js/unwrap a-query)]
+  (let [a-query (-unwrap a-query)]
     (cond-> a-query
       (map? a-query) (:dataset_query a-query))))
 
@@ -964,10 +977,6 @@
   > **Code health:** Healthy"
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
-
-;; TODO: find-filter-for-legacy-filter is dead code and should be removed.
-
-;; TODO: find-filterable-column-for-legacy-ref is dead code and should be removed.
 
 ;; # Expressions
 ;; Custom expressions are parsed from a string by a TS library, which returns legacy MBQL clauses. That may get ported
@@ -1473,6 +1482,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
+      #_{:clj-kondo/ignore [:deprecated-var]}
       mbql.normalize/normalize-field-ref
       lib.convert/->pMBQL
       (->> (lib.normalize/normalize ::lib.schema.ref/ref))))

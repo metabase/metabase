@@ -1,6 +1,7 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
    [metabase.util.log :as log]

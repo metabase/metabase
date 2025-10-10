@@ -62,7 +62,8 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; legacy usages -- do not use in new code
+   #_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
@@ -1113,6 +1114,8 @@
 (defn- mbql-id->fully-qualified-name
   [mbql]
   (-> mbql
+      ;; legacy usages -- do not use in new code
+      #_{:clj-kondo/ignore [:deprecated-var]}
       mbql.normalize/normalize-tokens
       (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent

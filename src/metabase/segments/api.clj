@@ -4,7 +4,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
+   #_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [metabase.util.log :as log]

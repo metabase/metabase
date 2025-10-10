@@ -13,7 +13,7 @@
    ;; Lib only soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.schema :as mbql.s]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace :deprecated-namespace]}
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -239,7 +239,7 @@
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
-  (let [expression-definition        (mbql.u/expression-with-name query expression-name)
+  (let [expression-definition        #_{:clj-kondo/ignore [:deprecated-var]} (mbql.u/expression-with-name query expression-name)
         base-type                    (infer-expression-type query expression-definition)
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
@@ -281,7 +281,8 @@
     ;; In fact, we don't mark all Fields, only the ones we deem coercible. Marking all would make a bunch of tests
     ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
     (_ :guard coercible-field-ref?)
-    (recur (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
+    (recur #_{:clj-kondo/ignore [:deprecated-var]}
+           (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
 
     [:field id-or-name (opts :guard :join-alias)]
     (let [{::add/keys [desired-alias]} (lib.util.match/match-one (:source-query query)

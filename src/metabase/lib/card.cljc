@@ -290,6 +290,4 @@
   (let [mp                                                            (lib.metadata/->metadata-provider metadata-providerable)
         {card-query :dataset-query, result-metadata :result-metadata} card]
     (cond-> (lib.query/query mp card-query)
-      result-metadata (lib.util/update-query-stage -1 (fn [stage]
-                                                        (->> (assoc stage :lib/stage-metadata (lib.util/->stage-metadata result-metadata))
-                                                             (lib.normalize/normalize ::lib.schema/stage)))))))
+      result-metadata (lib.util/update-query-stage -1 assoc :lib/stage-metadata (lib.normalize/->normalized-stage-metadata result-metadata)))))

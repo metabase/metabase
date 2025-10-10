@@ -594,7 +594,6 @@
            metabase.legacy-mbql.schema
            metabase.legacy-mbql.util}
    :uses #{lib
-           models
            types
            util}}
 
@@ -709,8 +708,7 @@
 
   models
   {:team "DevEx"
-   :api  #{metabase.models.dispatch
-           metabase.models.humanization
+   :api  #{metabase.models.humanization
            metabase.models.init
            metabase.models.interface
            metabase.models.resolution
