@@ -3,8 +3,9 @@ import { t } from "ttag";
 
 import { EmptyState } from "./EmptyState";
 import { Results } from "./Results";
+import { useExpandedState, useTableLoader } from "./hooks";
 import type { ChangeOptions, TreePath } from "./types";
-import { flatten, useExpandedState, useTableLoader } from "./utils";
+import { flatten } from "./utils";
 
 interface Props {
   path: TreePath;
