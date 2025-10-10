@@ -10,9 +10,9 @@
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.schema.helpers :as schema.helpers]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -20,7 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]
-   [metabase.util.performance :refer [some mapv every?]]
+   [metabase.util.performance :refer [every? mapv some]]
    [metabase.util.time :as u.time]))
 
 (shared.ns/import-fns
@@ -683,7 +683,7 @@
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))
   (if (or (not base-type)
-          (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
+          (lib.schema.ref/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
     (do
       (log/warnf "%s is not a valid temporal unit for %s; not adding to clause %s" unit base-type (pr-str clause))

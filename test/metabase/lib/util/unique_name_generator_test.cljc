@@ -114,38 +114,38 @@
 (deftest ^:parallel unique-name-generator-with-options-test
   (testing "Can we get a simple unique name generator"
     (is (= ["count" "sum" "count_2" "count_2_2"]
-             (map (lib.util.unique-name-generator/unique-name-generator-with-options) ["count" "sum" "count" "count_2"])))))
+           (map (lib.util.unique-name-generator/unique-name-generator-with-options) ["count" "sum" "count" "count_2"])))))
 
 (deftest ^:parallel unique-name-generator-with-options-test-2
   (testing "Can we get an idempotent unique name generator"
     (is (= ["count" "sum" "count" "count_2"]
-             (map (lib.util.unique-name-generator/unique-name-generator-with-options) [:x :y :x :z] ["count" "sum" "count" "count_2"])))))
+           (map (lib.util.unique-name-generator/unique-name-generator-with-options) [:x :y :x :z] ["count" "sum" "count" "count_2"])))))
 
 (deftest ^:parallel unique-name-generator-with-options-test-3
   (testing "Can the same object have multiple aliases"
     (is (= ["count" "sum" "count" "count_2"]
-             (map (lib.util.unique-name-generator/unique-name-generator-with-options) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
+           (map (lib.util.unique-name-generator/unique-name-generator-with-options) [:x :y :x :x] ["count" "sum" "count" "count_2"])))))
 
 (deftest ^:parallel unique-name-generator-with-options-idempotence-test
   (testing "idempotence (2-arity calls to generated function) (#40994)"
     (let [unique-name (lib.util.unique-name-generator/unique-name-generator-with-options)]
       (is (= ["A" "B" "A" "A_2" "A_2"]
-               [(unique-name :x "A")
-                (unique-name :x "B")
-                (unique-name :x "A")
-                (unique-name :y "A")
-                (unique-name :y "A")])))))
+             [(unique-name :x "A")
+              (unique-name :x "B")
+              (unique-name :x "A")
+              (unique-name :y "A")
+              (unique-name :y "A")])))))
 
 (deftest ^:parallel unique-name-generator-options-test
   (testing "options"
     (testing :name-key-fn
       (let [f (lib.util.unique-name-generator/unique-name-generator-with-options :name-key-fn #_{:clj-kondo/ignore [:discouraged-var]} str/lower-case)]
         (is (= ["x" "X_2" "X_3"]
-                 (map f ["x" "X" "X"])))))))
+               (map f ["x" "X" "X"])))))))
 
 (deftest ^:parallel unique-name-generator-options-test-2
   (testing "options"
     (testing :unique-alias-fn
       (let [f (lib.util.unique-name-generator/unique-name-generator-with-options :unique-alias-fn (fn [x y] (str y "~~" x)))]
         (is (= ["x" "2~~x"]
-                 (map f ["x" "x"])))))))
+               (map f ["x" "x"])))))))

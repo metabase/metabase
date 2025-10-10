@@ -24,7 +24,7 @@
    [metabase.api.response :as api.response]
    [metabase.api.routes.common :as api.routes.common]
    ;; TODO (Cam 10/10/25) -- update MetaBot to use Lib + MBQL 5
-   #_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.request.core :as request]
    [metabase.util :as u]

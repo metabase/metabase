@@ -282,22 +282,6 @@
 
 (defmethod options-style-method :expression [_tag] ::options-style.last-unless-empty)
 
-(defn valid-temporal-unit-for-base-type?
-  "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
-  will return truthy. Accepts either map of `field-options` or `base-type` and `temporal-unit` passed separately."
-  ([{:keys [base-type temporal-unit] :as _field-options}]
-   (valid-temporal-unit-for-base-type? base-type temporal-unit))
-
-  ([base-type temporal-unit]
-   (if-let [units (when (core/and temporal-unit base-type)
-                    (condp #(isa? %2 %1) base-type
-                      :type/Date     date-bucketing-units
-                      :type/Time     time-bucketing-units
-                      :type/DateTime datetime-bucketing-units
-                      nil))]
-     (contains? units temporal-unit)
-     true)))
-
 (mr/def ::FieldOptions
   "Options for an MBQL 4 `:field` ref are the same as MBQL 5, except that `:lib/uuid` is not required."
   [:merge

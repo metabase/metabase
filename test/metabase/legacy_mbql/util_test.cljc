@@ -612,8 +612,6 @@
       (t/is (= expected
                (apply mbql.u/aggregation-at-index query-with-some-nesting input))))))
 
-
-
 ;;; --------------------------------------------- query->max-rows-limit ----------------------------------------------
 
 #_{:clj-kondo/ignore [:deprecated-var]}

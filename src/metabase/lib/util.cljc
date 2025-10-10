@@ -1,4 +1,5 @@
-(ns metabase.lib.util (:refer-clojure :exclude [format every? mapv select-keys update-keys some])
+(ns metabase.lib.util
+  (:refer-clojure :exclude [format every? mapv select-keys update-keys some])
   (:require
    #?@(:clj
        ([potemkin :as p])

@@ -258,7 +258,7 @@
     (testing "should convert legacy field_refs to modern `:field` clauses"
       (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
              (lib/normalize ::mbql.s/legacy-column-metadata
-              {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
+                            {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
     (testing "should correctly keywordize Field options"
       (is (= {:field_ref [:field 1 {:temporal-unit :month}]}
              (lib/normalize ::mbql.s/legacy-column-metadata

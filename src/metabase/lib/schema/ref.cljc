@@ -24,7 +24,9 @@
    (valid-temporal-unit-for-base-type? base-type temporal-unit))
 
   ([base-type temporal-unit]
-   (if-let [units (when (and temporal-unit base-type)
+   (if-let [units (when (and temporal-unit
+                             (not= temporal-unit :default)
+                             base-type)
                     (condp #(isa? %2 %1) base-type
                       :type/Date     temporal-bucketing/date-bucketing-units
                       :type/Time     temporal-bucketing/time-bucketing-units

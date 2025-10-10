@@ -282,7 +282,7 @@
     ;; fail, but it might still make sense. For example, #48721 would have been avoided by unconditional marking.
     (_ :guard coercible-field-ref?)
     (recur #_{:clj-kondo/ignore [:deprecated-var]}
-           (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
+     (mbql.u/update-field-options &match assoc :qp/ignore-coercion true))
 
     [:field id-or-name (opts :guard :join-alias)]
     (let [{::add/keys [desired-alias]} (lib.util.match/match-one (:source-query query)
