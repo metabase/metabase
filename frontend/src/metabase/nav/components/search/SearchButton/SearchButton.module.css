@@ -34,7 +34,8 @@
   transition: color 350ms ease;
   border-radius: 2px;
   height: 1rem;
-  width: 1rem;
+  padding-inline: 4px;
+  min-width: 1rem;
   font-weight: 400;
   font-size: 12px;
   line-height: 1rem;
