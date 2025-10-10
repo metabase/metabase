@@ -128,18 +128,31 @@ export function MainNavbarView({
     examplesCollection,
     syncedCollections,
   ] = useMemo(() => {
+    const synced = collections.filter(isSyncedCollection);
+
+    const normalCollections = collections.filter((c) => {
+      const isNormalCollection =
+        !isRootTrashCollection(c) && !isExamplesCollection(c);
+      return isNormalCollection && !isSyncedCollection(c);
+    });
+
+    if (!showSyncGroup && synced.length > 0 && normalCollections.length > 0) {
+      const [root, ...rest] = normalCollections;
+      const reordered = [root, ...synced, ...rest];
+
+      return [
+        reordered,
+        collections.find(isRootTrashCollection),
+        collections.find(isExamplesCollection),
+        synced,
+      ];
+    }
+
     return [
-      collections.filter((c) => {
-        const isNormalCollection =
-          !isRootTrashCollection(c) && !isExamplesCollection(c);
-        if (!showSyncGroup) {
-          return isNormalCollection;
-        }
-        return isNormalCollection && !isSyncedCollection(c);
-      }),
+      normalCollections,
       collections.find(isRootTrashCollection),
       collections.find(isExamplesCollection),
-      collections.filter(isSyncedCollection),
+      synced,
     ];
   }, [collections, showSyncGroup]);
 
