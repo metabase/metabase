@@ -2,6 +2,8 @@ import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -234,5 +236,84 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       cy.findByRole("link", { name: "Orders Model" }).should("be.visible");
       cy.findAllByRole("link").should("have.length", MODEL_COUNT + TABLE_COUNT);
     });
+  });
+
+  it("can create a question in a collection passing an entity id as a target collection id (metabase#64584)", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion
+          questionId="new"
+          targetCollection={FIRST_COLLECTION_ENTITY_ID}
+        />
+      </Flex>,
+    );
+
+    assertSdkNotebookEditorUsable();
+
+    getSdkRoot().within(() => {
+      // Should be able to save to a new question right away
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("My Orders");
+    });
+
+    modal().button("Save").click();
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("My Orders");
+      expect(response?.body?.dashboard_id).to.equal(null);
+      expect(response?.body?.collection_id).to.equal(FIRST_COLLECTION_ID);
+    });
+
+    // The question title's header should be updated.
+    getSdkRoot().contains("My Orders");
+  });
+
+  it("can create a question in a collection passing the `personal` as the target collection id", () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+    cy.intercept("POST", "/api/card").as("createCard");
+
+    mountSdkContent(
+      <Flex p="xl">
+        <InteractiveQuestion questionId="new" targetCollection="personal" />
+      </Flex>,
+    );
+
+    assertSdkNotebookEditorUsable();
+
+    getSdkRoot().within(() => {
+      // Should be able to save to a new question right away
+      cy.findByRole("button", { name: "Save" }).click();
+    });
+
+    modal().within(() => {
+      cy.findByPlaceholderText("What is the name of your question?")
+        .clear()
+        .type("My Orders");
+    });
+
+    modal().button("Save").click();
+
+    cy.wait("@createCard").then(({ response }) => {
+      expect(response?.statusCode).to.equal(200);
+      expect(response?.body.name).to.equal("My Orders");
+      expect(response?.body?.dashboard_id).to.equal(null);
+      expect(response?.body?.collection_id).to.equal(
+        ADMIN_PERSONAL_COLLECTION_ID,
+      );
+    });
+
+    // The question title's header should be updated.
+    getSdkRoot().contains("My Orders");
   });
 });
