@@ -45,8 +45,6 @@ import type { EnterpriseSettings, SettingDefinition } from "metabase-types/api";
 
 import { GIT_SYNC_SCHEMA } from "../constants";
 
-import { CollectionSyncManager } from "./CollectionSyncManager/CollectionSyncManager";
-
 const URL_KEY = "remote-sync-url";
 const TOKEN_KEY = "remote-sync-token";
 const TYPE_KEY = "remote-sync-type";
@@ -119,8 +117,6 @@ export const GitSyncSettings = (): JSX.Element => {
       );
     }
   }, [importFromBranch, settingValues, dispatch]);
-
-  const syncMode = settingValues?.[TYPE_KEY];
 
   return (
     <SettingsPageWrapper>
@@ -250,15 +246,6 @@ export const GitSyncSettings = (): JSX.Element => {
           </FormProvider>
         </Box>
       </SettingsSection>
-
-      {isGitSyncEnabled && syncMode != null ? (
-        <SettingsSection
-          title={t`Synced collection`}
-          description={t`Collection synced with your Git repository`}
-        >
-          <CollectionSyncManager mode={syncMode} />
-        </SettingsSection>
-      ) : null}
 
       <ConfirmModal
         opened={isDeactivateModalOpen}
