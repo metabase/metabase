@@ -1,3 +1,19 @@
+import fs from "fs";
+import path from "path";
+
+import { booleanify } from "./cypress-runner-utils";
+
+const cypressEnvPath = path.join(__dirname, "../../cypress.env.json");
+if (fs.existsSync(cypressEnvPath)) {
+  Object.entries(
+    booleanify(JSON.parse(fs.readFileSync(cypressEnvPath, "utf8"))),
+  ).forEach(([key, value]) => {
+    if (!process.env[key]) {
+      process.env[key] = String(value);
+    }
+  });
+}
+
 const cypress = require("cypress");
 
 const { BACKEND_PORT } = require("./constants/backend-port");
