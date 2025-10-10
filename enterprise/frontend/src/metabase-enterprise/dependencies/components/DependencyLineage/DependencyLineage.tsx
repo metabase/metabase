@@ -83,6 +83,7 @@ export function DependencyLineage({
           <Panel className={S.dependencyPanel} position="top-right">
             <DependencyList
               selection={selection}
+              onEntryChange={onEntryChange}
               onSelectionChange={setSelection}
             />
           </Panel>

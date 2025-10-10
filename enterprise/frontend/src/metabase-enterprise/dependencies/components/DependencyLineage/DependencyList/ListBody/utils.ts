@@ -4,22 +4,21 @@ import { msgid, ngettext } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import type { DependencyNode } from "metabase-types/api";
 
-import { getNodeIcon, getNodeLabel, getNodeLink } from "../../utils";
+import { getNodeIcon, getNodeLabel } from "../../utils";
 
-import type { LinkInfo } from "./types";
+import type { SubtitleInfo, TitleInfo } from "./types";
 
-export function getNodeTitleInfo(node: DependencyNode): LinkInfo {
+export function getNodeTitleInfo(node: DependencyNode): TitleInfo {
   return {
     label: getNodeLabel(node),
     icon: getNodeIcon(node),
-    link: getNodeLink(node),
   };
 }
 
 export function getNodeSubtitleInfo(
   node: DependencyNode,
-): LinkInfo | undefined {
-  return match<DependencyNode, LinkInfo | undefined>(node)
+): SubtitleInfo | undefined {
+  return match<DependencyNode, SubtitleInfo | undefined>(node)
     .with({ type: "card", data: { dashboard: P.nonNullable } }, (node) => ({
       label: node.data.dashboard.name,
       icon: "dashboard",

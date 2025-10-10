@@ -6,6 +6,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
 
@@ -23,11 +24,13 @@ import {
 
 type DependencyListProps = {
   selection: GraphSelection;
+  onEntryChange: (entry: DependencyEntry) => void;
   onSelectionChange: (selection?: GraphSelection) => void;
 };
 
 export function DependencyList({
   selection,
+  onEntryChange,
   onSelectionChange,
 }: DependencyListProps) {
   const {
@@ -77,7 +80,7 @@ export function DependencyList({
           {t`Didn't find any results`}
         </Box>
       ) : (
-        <ListBody nodes={visibleNodes} />
+        <ListBody nodes={visibleNodes} onEntryChange={onEntryChange} />
       )}
     </Card>
   );

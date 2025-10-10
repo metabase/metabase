@@ -1,7 +1,12 @@
 import type { IconName } from "metabase/ui";
 
-export type LinkInfo = {
+export type TitleInfo = {
   label: string;
   icon: IconName;
-  link?: string;
+};
+
+export type SubtitleInfo = {
+  label: string;
+  icon: IconName;
+  link: string;
 };
