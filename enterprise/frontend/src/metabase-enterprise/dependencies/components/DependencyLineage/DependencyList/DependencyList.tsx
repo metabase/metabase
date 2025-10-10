@@ -41,8 +41,8 @@ export function DependencyList({
     getDefaultSortOptions(selection.groupType),
   );
   const visibleNodes = useMemo(
-    () => getVisibleNodes(nodes, { searchQuery, sortOptions }),
-    [nodes, searchQuery, sortOptions],
+    () => getVisibleNodes(nodes, { searchQuery, filterOptions, sortOptions }),
+    [nodes, searchQuery, filterOptions, sortOptions],
   );
 
   useLayoutEffect(() => {

@@ -1,4 +1,4 @@
-import type { DependencyNode } from "metabase-types/api";
+import type { CardDependencyNode, DependencyNode } from "metabase-types/api";
 
 export type FilterOption =
   | "verified"
@@ -17,10 +17,11 @@ export type SortOptions = {
 
 export type SearchOptions = {
   searchQuery: string;
+  filterOptions: FilterOption[];
   sortOptions: SortOptions;
 };
 
-export type NodeFilter = (node: DependencyNode) => boolean;
+export type NodeFilter = (node: CardDependencyNode) => boolean;
 
 export type NodeComparator = (
   node1: DependencyNode,

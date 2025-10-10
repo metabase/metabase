@@ -39,6 +39,7 @@ export type CardDependencyNodeData = Pick<
   | "collection"
   | "dashboard_id"
   | "dashboard"
+  | "moderation_reviews"
 > & {
   view_count?: number;
 };

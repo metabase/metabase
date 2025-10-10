@@ -16,7 +16,9 @@ import {
 } from "../utils";
 
 import type {
+  FilterOption,
   NodeComparator,
+  NodeFilter,
   SearchOptions,
   SortColumn,
   SortOptions,
@@ -60,6 +62,38 @@ function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
   return getNodeLabel(node).toLowerCase().includes(searchQuery);
 }
 
+const FILTERS: Record<FilterOption, NodeFilter> = {
+  verified: ({ data }) => {
+    const lastReview = data.moderation_reviews?.find(
+      (review) => review.most_recent,
+    );
+    return lastReview != null && lastReview.status === "verified";
+  },
+  "in-dashboard": ({ data }) => {
+    const dashboard = data.dashboard;
+    return dashboard != null;
+  },
+  "in-official-collection": ({ data }) => {
+    const collection = data.collection;
+    return collection != null && collection.authority_level === "official";
+  },
+  "not-in-personal-collection": ({ data }) => {
+    const collection = data.collection;
+    return collection != null && !collection.is_personal;
+  },
+};
+
+function isMatchingFilters(
+  node: DependencyNode,
+  filterOptions: FilterOption[],
+) {
+  if (node.type !== "card" || filterOptions.length === 0) {
+    return true;
+  }
+
+  return filterOptions.some((option) => FILTERS[option](node));
+}
+
 const COMPARATORS: Record<SortColumn, NodeComparator> = {
   name: (node1, node2) => {
     const label1 = getNodeLabel(node1);
@@ -93,8 +127,10 @@ export function getVisibleNodes(
   options: SearchOptions,
 ) {
   const searchQuery = options.searchQuery.trim().toLowerCase();
-  const visibleNodes = nodes.filter((node) =>
-    isMatchingSearchQuery(node, searchQuery),
+  const visibleNodes = nodes.filter(
+    (node) =>
+      isMatchingSearchQuery(node, searchQuery) &&
+      isMatchingFilters(node, options.filterOptions),
   );
   visibleNodes.sort((node1, node2) =>
     compareNodes(node1, node2, options.sortOptions),
