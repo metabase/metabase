@@ -1968,8 +1968,8 @@ databaseChangeLog:
 
   - changeSet:
       id: v57.2025-10-09T00:00:00
-      author: assistant
-      comment: Add public_uuid and made_public_by_id columns to document table for public sharing
+      author: jeff-bruemmer
+      comment: Add public_uuid column to document table for public sharing
       changes:
         - addColumn:
             tableName: document
@@ -1980,6 +1980,15 @@ databaseChangeLog:
                   remarks: UUID for publicly-accessible version of this document
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:01
+      author: jeff-bruemmer
+      comment: Add made_public_by_id column to document table for public sharing
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
               - column:
                   name: made_public_by_id
                   type: int
@@ -1988,8 +1997,8 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v57.2025-10-09T00:00:01
-      author: assistant
+      id: v57.2025-10-09T00:00:02
+      author: jeff-bruemmer
       comment: Add index on document.public_uuid
       changes:
         - createIndex:
@@ -2001,8 +2010,8 @@ databaseChangeLog:
                   name: public_uuid
 
   - changeSet:
-      id: v57.2025-10-09T00:00:02
-      author: assistant
+      id: v57.2025-10-09T00:00:03
+      author: jeff-bruemmer
       comment: Add foreign key constraint for document.made_public_by_id
       changes:
         - addForeignKeyConstraint:
