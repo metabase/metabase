@@ -775,7 +775,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 130;
+        const expectedWidth = 138;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -965,8 +965,7 @@ describe("issue 31628", () => {
   describe("display: scalar", () => {
     const descendantsSelector = [
       "[data-testid='scalar-container']",
-      "[data-testid='scalar-title']",
-      "[data-testid='scalar-description']",
+      "[data-testid='legend-caption']",
     ].join(",");
 
     VIEWPORTS.forEach(({ width, height, openSidebar }) => {
