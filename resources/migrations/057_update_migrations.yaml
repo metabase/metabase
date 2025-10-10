@@ -2045,6 +2045,24 @@ databaseChangeLog:
             constraintName: fk_document_made_public_by_id
             onDelete: CASCADE
 
+  - changeSet:
+      id: v57.2025-10-09T00:00:04
+      author: jeff-bruemmer
+      comment: Add index on document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_made_public_by_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_made_public_by_id
+            columns:
+              - column:
+                  name: made_public_by_id
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
