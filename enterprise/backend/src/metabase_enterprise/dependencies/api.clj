@@ -120,14 +120,16 @@
   (case entity-type
     :table [:name :display_name :db_id :schema]
     :card [:name :type :display :database_id :view_count
-           :collection :collection_id :dashboard :dashboard_id]
+           :collection :collection_id :dashboard :dashboard_id
+           :moderation_reviews]
     :snippet [:name]
     :transform [:name]
     []))
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
-    (:model/Collection :model/Dashboard) (select-keys entity [:id :name])
+    :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
+    :model/Dashboard (select-keys entity [:id :name])
     entity))
 
 (defn- entity-value [entity-type {:keys [id] :as entity} usages]
@@ -187,7 +189,8 @@
     (mapcat (fn [[entity-type entity-ids]]
               (->> (cond-> (t2/select (entity-model entity-type)
                                       :id [:in entity-ids])
-                     (= entity-type :card) (t2/hydrate :dashboard :collection))
+                     (= entity-type :card) (-> (t2/hydrate :dashboard :collection :moderation_reviews)
+                                               (->> (map collection.root/hydrate-root-collection))))
                    (mapv #(entity-value entity-type % usages))))
             nodes-by-type)))
 
