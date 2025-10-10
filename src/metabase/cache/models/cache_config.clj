@@ -10,6 +10,7 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 10/3/25) -- change these to keywords and let API coercion convert them for us automatically
 (def CachingModel "Caching is configurable for those models" [:enum "root" "database" "dashboard" "question"])
 
 (doto :model/CacheConfig

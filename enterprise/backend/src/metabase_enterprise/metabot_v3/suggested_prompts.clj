@@ -4,7 +4,7 @@
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
    [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [toucan2.core :as t2]))
 
 (defn- column-input
@@ -35,7 +35,7 @@
   "Generate suggested propmpts for instance of Metabot."
   [metabot-id & {:as opts}]
   (let [opts (merge default-opts opts)]
-    (lib.metadata.jvm/with-metadata-provider-cache
+    (lib-be/with-metadata-provider-cache
       (let [{metrics :metric models :model} (->> (metabot-v3.tools.u/get-metrics-and-models metabot-id opts)
                                                  (sort-by :view_count >)
                                                  (group-by :type))

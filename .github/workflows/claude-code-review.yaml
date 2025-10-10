@@ -2,23 +2,55 @@ name: "Claude Code Review"
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-claude-code-review
   cancel-in-progress: true
 
+env:
+  EXCLUDED_PR_AUTHORS: '["kamilmielnik", "romeovs"]'
+
 jobs:
   review:
+    if: github.event.pull_request.draft == false && !contains(fromJSON(env.EXCLUDED_PR_AUTHORS), github.event.pull_request.user.login) }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-      id-token: write
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # Make sure the value of GITHUB_TOKEN will not be persisted in repo's config
+          persist-credentials: false
+
+      # Apparently comments on specific lines and top-level comments about the PR as a whole are TWO TOTALLY DIFFERENT
+      # TYPES OF THINGS. So we have to fetch and delete separately.
+      - name: Delete old Claude PR review comments
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          # Get old comment IDs from the bot
+          old_line_comment_ids=$(gh api "/repos/$REPO/pulls/$PR_NUMBER/comments" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
+          echo "Deleting line comments: $old_line_comment_ids"
+          # Delete each comment
+          for id in $old_line_comment_ids; do
+            gh api -X DELETE "/repos/$REPO/pulls/comments/$id"
+            echo "Deleted line comment $id"
+          done
+          # Get old top-level comment IDs (technically "issue" comments on the PR?)
+          old_top_level_comment_ids=$(gh api "/repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[] | select(.user.login=="metabase-bot[bot]") | .id')
+          echo "Deleting top-level comments: $old_top_level_comment_ids"
+          # Delete each comment
+          for id in $old_top_level_comment_ids; do
+            gh api -X DELETE "/repos/$REPO/issues/comments/$id"
+            echo "Deleted top-level comment $id"
+          done
 
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
@@ -26,6 +58,8 @@ jobs:
         with:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          permission-contents: read       # Required for reading repository files and PR diffs
+          permission-pull-requests: write # Required for creating inline comments and PR comments
 
       - name: Fetch Community Clojure Style Guide
         run: >-

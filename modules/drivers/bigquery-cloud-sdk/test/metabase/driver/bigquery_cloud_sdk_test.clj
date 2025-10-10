@@ -12,7 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]

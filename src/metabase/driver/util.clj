@@ -1,7 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:refer-clojure :exclude [mapv])
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
@@ -11,19 +10,20 @@
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv]]
-   [metabase.util.snake-hating-map :refer [snake-hating-map?]])
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :as perf :refer [mapv]])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -219,18 +219,38 @@
    (-> supports?*
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver feature database]]
-                    [driver feature (mdb/unique-identifier) (:id database)
-                     (if (snake-hating-map? database)
-                       (:updated-at database)
-                       (:updated_at database))])))))
+                    [driver feature (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
-(defn supports?
-  "A defensive wrapper around [[database-supports?]]. It adds logging, caching, and error handling to avoid crashing the app
-   if this method takes a long time to execute or throws an exception. This is useful because `supports?` is used in so many
-   critical places in the app, and we don't want a single driver to crash the app if it throws an exception, or delay the user
-   if it takes a long time to execute."
-  [driver feature database]
-  (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
+;;; this can get called in post-select which doesn't always have ID
+(mu/defn- ensure-lib-database :- [:map
+                                  [:lib/type [:= :metadata/database]]]
+  [database :- [:or
+                [:map
+                 [:lib/type [:= :metadata/database]]]
+                (ms/InstanceOf :model/Database)]]
+  (if-not (:lib/type database)
+    (lib-be/instance->metadata database :metadata/database)
+    database))
+
+(mu/defn supports?
+  "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to
+  avoid crashing the app if this method takes a long time to execute or throws an exception. This is useful because
+  `supports?` is used in so many critical places in the app, and we don't want a single driver to crash the app if it
+  throws an exception, or delay the user if it takes a long time to execute.
+
+  TODO -- this is only supposed to be called with a Lib-style Database metadata; if this is called with a Toucan
+  instance that is incorrect. I don't have the time to fix every single incorrect usage, so we'll just log an error
+  and move on for now."
+  [driver   :- :keyword
+   feature  :- :keyword
+   database :- [:maybe
+                [:or
+                 ;; this can get called with an incomplete object in post-select
+                 [:map
+                  [:lib/type [:= :metadata/database]]]
+                 (ms/InstanceOf :model/Database)]]]
+  (let [database (some-> database ensure-lib-database)
+        f        (if *memoize-supports?* memoized-supports?* supports?*)]
     (f driver feature database)))
 
 (def ^:private skip-internal-features
@@ -247,21 +267,24 @@
    (-> features*
        (vary-meta assoc ::memoize/args-fn
                   (fn [[driver database]]
-                    [driver (mdb/unique-identifier) (:id database)
-                     (if (snake-hating-map? database)
-                       (:updated-at database)
-                       (:updated_at database))])))))
+                    [driver (mdb/unique-identifier) (:id database) (:updated-at database)])))))
 
-(defn features
+(mu/defn features
   "Return a set of all features supported by `driver` with respect to `database`."
-  [driver database]
-  (let [f (if *memoize-supports?* memoized-features* features*)]
+  [driver   :- :keyword
+   database :- [:or
+                ;; this can get called in post-select which doesn't always have ID
+                [:map
+                 [:lib/type [:= :metadata/database]]]
+                (ms/InstanceOf :model/Database)]]
+  (let [database (ensure-lib-database database)
+        f (if *memoize-supports?* memoized-features* features*)]
     (f driver database)))
 
-(defn- supported-in-environment?
+(mu/defn- supported-in-environment?
   "Returns true if a driver is supported in the the current metabase environment. As implemented this just disallows the
   sqlite driver on hosted metabase because hosted metabase does not support uploading a SQLite file for use."
-  [driver]
+  [driver :- :keyword]
   (or (not (premium-features/is-hosted?))
       (not= :sqlite (keyword driver))))
 

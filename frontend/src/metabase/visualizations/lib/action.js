@@ -8,6 +8,11 @@ export function performAction(
   action,
   { dispatch, onChangeCardAndRun, onUpdateQuestion },
 ) {
+  if (action.onClick) {
+    action.onClick();
+    return true;
+  }
+
   let didPerform = false;
   if (action.action) {
     const reduxAction = action.action();

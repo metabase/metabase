@@ -2133,6 +2133,7 @@ describe("scenarios > question > custom column > aggregation", () => {
           {
             type: "question",
             dataset_query: {
+              type: "query",
               database: SAMPLE_DB_ID,
               query: {
                 "source-table": `card__${res.body.id}`,

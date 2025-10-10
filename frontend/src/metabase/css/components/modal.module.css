@@ -9,6 +9,7 @@
   box-shadow: 0 0 6px var(--mb-color-shadow);
   max-height: 90%;
   overflow-y: auto;
+  border: 1px solid var(--mb-color-border);
 }
 
 /* On IE11, single flex item with `margin: auto` gets shifted to flex end

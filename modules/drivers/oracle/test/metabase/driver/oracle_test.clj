@@ -22,7 +22,7 @@
    [metabase.query-processor-test.order-by-test :as qp-test.order-by-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]

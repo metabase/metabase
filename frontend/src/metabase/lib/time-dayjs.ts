@@ -2,6 +2,7 @@ import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
 import { t } from "ttag";
 
+import MetabaseSettings from "metabase/lib/settings";
 import type { DatetimeUnit } from "metabase-types/api/query";
 
 const DAYLIGHT_SAVINGS_CHANGE_TOLERANCE: Record<string, number> = {
@@ -149,4 +150,16 @@ export function parseTime(value: Dayjs | string) {
   }
 
   return dayjs.utc(value);
+}
+
+function getTimeStyleFromSettings() {
+  const customFormattingSettings = MetabaseSettings.get("custom-formatting");
+  return customFormattingSettings?.["type/Temporal"]?.time_style;
+}
+
+const TIME_FORMAT_24_HOUR = "HH:mm";
+
+export function has24HourModeSetting() {
+  const timeStyle = getTimeStyleFromSettings();
+  return timeStyle === TIME_FORMAT_24_HOUR;
 }

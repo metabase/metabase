@@ -9,7 +9,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.dataset-definitions :as defs]

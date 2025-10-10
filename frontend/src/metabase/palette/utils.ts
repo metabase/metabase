@@ -11,6 +11,7 @@ import type { PaletteActionImpl } from "./types";
 
 export const processResults = (
   results: (string | PaletteActionImpl)[],
+  searchTerm: string,
 ): (string | PaletteActionImpl)[] => {
   const groupedResults = _.groupBy(
     results.filter((r): r is PaletteActionImpl => !(typeof r === "string")),
@@ -18,20 +19,16 @@ export const processResults = (
   );
 
   const actions = processSection(t`Actions`, groupedResults["basic"]);
-  const metabotActions = processSection(t`Metabot`, groupedResults["metabot"]);
-  const search = processSection(t`Search results`, groupedResults["search"]);
-  const recent = processSection(t`Recent items`, groupedResults["recent"]);
+  const search = processSection(t`Results`, groupedResults["search"]);
+  const recent = processSection(t`Recents`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
   const docs = processSection(t`Documentation`, groupedResults["docs"]);
 
-  return [
-    ...metabotActions,
-    ...recent,
-    ...actions.slice(0, 6),
-    ...admin,
-    ...search,
-    ...docs,
-  ];
+  if (searchTerm.trim().length === 0) {
+    return [...recent];
+  }
+
+  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
 };
 
 export const processSection = (
@@ -84,11 +81,10 @@ export const findClosestActionIndex = (
 
 export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = (
   items,
-) => items.filter((item) => item.model !== "collection").slice(0, 5);
+) => items.filter((item) => item.model !== "collection").slice(0, 10);
 
 export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
-  isActive: boolean,
 ): { name: IconName; color: string } => {
   const icon = {
     name: item.icon as IconName,
@@ -96,14 +92,6 @@ export const getCommandPaletteIcon = (
       ? color(item.extra.iconColor)
       : "var(--mb-color-brand)",
   };
-
-  if (isActive) {
-    icon.color = "var(--mb-color-text-white)";
-  }
-
-  if (isActive && (item.icon === "folder" || item.icon === "collection")) {
-    icon.name = "folder_filled";
-  }
 
   return icon;
 };

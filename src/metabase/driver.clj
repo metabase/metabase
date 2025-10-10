@@ -22,6 +22,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv]]
    [potemkin :as p]))
 
@@ -785,7 +786,7 @@
   Note that it's the same set of `driver-features` with respect to
   both database-supports? and [[supports?]])
 
-  Database is guaranteed to be a Database instance.
+  Database is guaranteed to be a `:metabase.lib.schema.metadata/database` instance.
 
   Most drivers can always return true or always return false for a given feature
   (e.g., :left-join is not supported by any version of Mongo DB).
@@ -1194,24 +1195,53 @@
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
 
+(mr/def ::native-query-deps.table-dep
+  [:map
+   {:closed true}
+   [:schema {:optional true} :string]
+   [:table  [:or
+             ;; not really clear how a driver would be able to work out the ID of a Table
+             ;; but [[metabase-enterprise.dependencies.native-validation-test/basic-deps-test]] says they can.
+             :metabase.lib.schema.id/table
+             :string]]])
+
+(mr/def ::native-query-deps.transform-dep
+  [:map
+   {:closed true}
+   [:transform :metabase.lib.schema.id/transform]])
+
+(mr/def ::native-query-deps
+  [:set [:or
+         ::native-query-deps.table-dep
+         ::native-query-deps.transform-dep]])
+
 (defmulti native-query-deps
   "Gets the table dependencies of a given sql string (or equivalent).
 
-  Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver query] [driver query metadata-provider transforms])}
+  Drivers that support any of the `:transforms/...` features must implement this method.
+
+  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use [[metabase.driver-api.core/raw-native-query]]
+  to get the raw native query as needed.
+
+  The return value should match the `:metabase.driver/native-query-deps` schema."
+  {:added "0.57.0" :arglists '([driver query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually
-  going to the database)."
-  {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
+  going to the database).
+
+  `native-query` is a `:metabase.lib.schema/native-only-query`."
+  {:added "0.57.0" :arglists '([driver native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmulti validate-native-query-fields
-  "Validates a native query and returns a list of all 'bad' field references."
-  {:added "0.57.0" :arglists '([driver metadata-provider native-query])}
+  "Validates a native query and returns a list of all 'bad' field references.
+
+  `native-query` is a Lib `:metabase.lib.schema/native-only-query`."
+  {:added "0.57.0" :arglists '([driver native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

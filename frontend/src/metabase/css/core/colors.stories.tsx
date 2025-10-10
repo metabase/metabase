@@ -22,6 +22,7 @@ const COLOR_NAMES = [
   "--mb-color-bg-light",
   "--mb-color-bg-white",
   "--mb-color-bg-error",
+  "--mb-color-background-error",
   "--mb-color-bg-night",
   "--mb-color-shadow",
   "--mb-color-border",

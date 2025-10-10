@@ -364,6 +364,10 @@
    (prometheus/counter :metabase-notification/send-error
                        {:description "Number of errors when sending notifications."
                         :labels [:payload-type]})
+   (prometheus/counter :metabase-notification/temp-storage
+                       {:description "Number and type of temporary storage uses"
+                        ;; memory, disk, above-threshold, truncated, not-limited
+                        :labels [:storage]})
    (prometheus/histogram :metabase-notification/wait-duration-ms
                          {:description "Duration in milliseconds that notifications wait in the processing queue before being picked up for delivery."
                           :labels [:payload-type]

@@ -219,10 +219,6 @@ const getLastRunDatasetQuery = createSelector(
   [getLastRunCard],
   (card) => card && card.dataset_query,
 );
-export const getNextRunDatasetQuery = createSelector(
-  [getCard],
-  (card) => card && card.dataset_query,
-);
 
 const getLastRunParameters = createSelector(
   [getFirstQueryResult],
@@ -879,22 +875,25 @@ export function getOffsetForQueryAndPosition(queryText, { row, column }) {
 }
 
 export const getNativeEditorCursorOffset = createSelector(
-  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
-  (selectedRange, query) => {
-    if (selectedRange == null || query == null || query.native == null) {
+  [getNativeEditorSelectedRange, getQuestionWithoutComposing],
+  (selectedRange, question) => {
+    if (selectedRange == null || question == null || !question.isNative()) {
       return null;
     }
-    return getOffsetForQueryAndPosition(query.native.query, selectedRange.end);
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
+    return getOffsetForQueryAndPosition(queryText, selectedRange.end);
   },
 );
 
 export const getNativeEditorSelectedText = createSelector(
-  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
-  (selectedRange, query) => {
-    if (selectedRange == null || query == null || query.native == null) {
+  [getNativeEditorSelectedRange, getQuestionWithoutComposing],
+  (selectedRange, question) => {
+    if (selectedRange == null || question == null || !question.isNative()) {
       return null;
     }
-    const queryText = query.native.query;
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
     const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
     const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
     return queryText.slice(start, end);
@@ -902,17 +901,18 @@ export const getNativeEditorSelectedText = createSelector(
 );
 
 export const getAllNativeEditorSelectedText = createSelector(
-  [getNativeEditorSelectedRanges, getNextRunDatasetQuery],
-  (selectedRanges, query) => {
+  [getNativeEditorSelectedRanges, getQuestionWithoutComposing],
+  (selectedRanges, question) => {
     if (
       selectedRanges == null ||
       selectedRanges.length === 0 ||
-      query == null ||
-      query.native == null
+      question == null ||
+      !question.isNative()
     ) {
       return null;
     }
-    const queryText = query.native.query;
+    const query = question.query();
+    const queryText = Lib.rawNativeQuery(query);
     const selectedText = selectedRanges.map((range) =>
       queryText.slice(
         getOffsetForQueryAndPosition(queryText, range.start),

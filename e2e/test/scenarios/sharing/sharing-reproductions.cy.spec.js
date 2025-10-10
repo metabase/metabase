@@ -929,7 +929,8 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    H.openSharingMenu("Edit alerts");
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Edit alerts").click();
     H.modal().findByText("Check daily at 9:00 AM").should("be.visible").click();
 
     H.modal().within(() => {

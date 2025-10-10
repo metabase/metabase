@@ -175,11 +175,11 @@
     (testing "site locale"
       (testing "invalid format"
         (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"eng-USA\""]}}
-                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.>")}}
+                 :errors          {:prefs {:site_locale "nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."}}}
                 (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
       (testing "non-existent locale"
         (is (=? {:specific-errors {:prefs {:site_locale ["valid locale, received: \"en-EN\""]}}
-                 :errors {:prefs #(str/includes? % ":site_locale (optional) -> <nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.>")}}
+                 :errors          {:prefs {:site_locale "nullable String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'."}}}
                 (setup! assoc-in [:prefs :site_locale] "en-EN")))))))
 
 (deftest setup-validation-test-4
@@ -194,17 +194,17 @@
           (is (:id (setup! 200 assoc-in [:user :last_name] nil)))))
       (testing "email"
         (testing "missing"
-          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+          (is (=? {:errors          {:user {:email "value must be a valid email address."}}
                    :specific-errors {:user {:email ["missing required key, received: nil"]}}}
                   (setup! m/dissoc-in [:user :email]))))
         (testing "invalid"
-          (is (=? {:errors          {:user #(str/includes? % ":email -> <value must be a valid email address.>")}
+          (is (=? {:errors          {:user {:email "value must be a valid email address."}}
                    :specific-errors {:user {:email ["valid email address, received: \"anything\""]}}}
                   (setup! assoc-in [:user :email] "anything")))))
       (testing "password"
         (testing "missing"
           (is (=? {:specific-errors {:user {:password ["missing required key, received: nil"]}}
-                   :errors          {:user #(str/includes? % ":password -> <password is too common.>")}}
+                   :errors          {:user {:password "password is too common."}}}
                   (setup! m/dissoc-in [:user :password]))))
         (testing "invalid"
           (is (=? {:specific-errors {:user {:password ["valid password that is not too common, received: \"anything\""]}}}

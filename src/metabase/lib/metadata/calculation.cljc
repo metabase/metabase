@@ -648,6 +648,7 @@
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
                         (not (false? (:active remapped)))
+                        (not= (:visibility-type remapped) :sensitive)
                         (not (existing-ids (:id remapped))))]
         (merge
          remapped
