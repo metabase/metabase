@@ -1,59 +1,49 @@
 (ns metabase-enterprise.dependencies.calculation
   (:require
    [metabase-enterprise.dependencies.native-validation :as deps.native]
-   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
+   [metabase-enterprise.dependencies.schema :as deps.schema]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.queries.schema :as queries.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli :as mu]))
 
-(defn- upstream-deps:mbql-query [legacy-query]
-  (lib.util/source-tables-and-cards [legacy-query]))
+(mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
+  [query :- ::lib.schema/query]
+  {:card  (or (lib/all-source-card-ids query)  #{})
+   :table (or (lib/all-source-table-ids query) #{})})
 
-(defn- upstream-deps:native-query [metadata-provider query]
-  (let [engine (:engine (lib.metadata/database metadata-provider))
-        deps   (deps.native/native-query-deps engine metadata-provider query)]
-    ;; The deps are in #{{:table 7} ...} form and need conversion to ::upstream-deps form.
+(mu/defn- upstream-deps:native-query :- ::deps.schema/upstream-deps
+  [query :- ::lib.schema/native-only-query]
+  (let [driver (:engine (lib.metadata/database query))
+        deps   (deps.native/native-query-deps driver query)]
+    ;; The deps are in #{{:table 7} ...} form and need conversion to ::deps.schema/upstream-deps form.
     (u/group-by ffirst (comp second first) conj #{} deps)))
 
-(mr/def ::upstream-deps
-  [:map
-   [:card      {:optional true} [:set ::lib.schema.id/card]]
-   [:table     {:optional true} [:set ::lib.schema.id/table]]
-   [:snippet   {:optional true} [:set ::lib.schema.id/snippet]]
-   [:transform {:optional true} [:set ::lib.schema.id/transform]]])
+(mu/defn- upstream-deps:query :- ::deps.schema/upstream-deps
+  [query :- ::lib.schema/query]
+  (if (lib/native-only-query? query)
+    (upstream-deps:native-query query)
+    (upstream-deps:mbql-query query)))
 
-(defn- upstream-deps:query [metadata-provider legacy-query]
-  (case (:type legacy-query)
-    (:query  "query")  (upstream-deps:mbql-query legacy-query)
-    (:native "native") (upstream-deps:native-query metadata-provider legacy-query)
-    (throw (ex-info "Unhandled kind of query" {:query legacy-query}))))
-
-(mu/defn upstream-deps:card :- ::upstream-deps
+(mu/defn upstream-deps:card :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Card`, return its upstream dependencies as a map from the kind to a set of IDs."
-  ([card] (upstream-deps:card (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card))
-                              card))
-  ([metadata-provider                      :- ::lib.schema.metadata/metadata-provider
-    {query :dataset_query :as _toucan-card}]
-   (upstream-deps:query metadata-provider query)))
+  [{query :dataset_query :as _toucan-card} :- ::queries.schema/card]
+  (upstream-deps:query query))
 
-(mu/defn upstream-deps:transform :- ::upstream-deps
+(mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
-  ([transform] (upstream-deps:transform nil transform))
-  ([metadata-provider :- [:maybe ::lib.schema.metadata/metadata-provider]
-    {{:keys [query type]} :source :as transform}]
-   (if (#{"query" :query} type)
-     (upstream-deps:query (or metadata-provider
-                              (lib-be.metadata.jvm/application-database-metadata-provider (:database query)))
-                          query)
-     (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) type)
-         {}))))
+  [{{:keys [query], source-type :type} :source :as transform} :- [:map
+                                                                  [:source [:map
+                                                                            [:query ::lib.schema/query]]]]]
+  (if (= (keyword source-type) :query)
+    (upstream-deps:query query)
+    (do (log/warnf "Don't know how to analyze the deps of Transform %d with source type '%s'" (:id transform) source-type)
+        {})))
 
-(mu/defn upstream-deps:snippet :- ::upstream-deps
+(mu/defn upstream-deps:snippet :- ::deps.schema/upstream-deps
   "Given a native query snippet, return its upstream dependencies in the usual `{entity-type #{1 2 3}}` format."
   [{:keys [template_tags] :as _snippet}]
   (let [type->id-key {:card :card-id, :snippet :snippet-id}

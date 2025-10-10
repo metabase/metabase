@@ -108,7 +108,7 @@
   [:and
    ;; vector = MBQL clause, anything else = not an MBQL clause
    [:multi
-    {:dispatch vector?}
+    {:dispatch sequential?}
     [true  [:ref :metabase.lib.schema.mbql-clause/clause]]
     [false [:ref :metabase.lib.schema.literal/literal]]]
    [:fn

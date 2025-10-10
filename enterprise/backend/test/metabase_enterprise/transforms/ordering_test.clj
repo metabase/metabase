@@ -153,7 +153,7 @@
                   t3 #{t1 t2}}
                  (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
 
-(deftest basic-dependencies-test
+(deftest ^:parallel basic-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                             {:database (mt/id),
                                              :type "query",
@@ -161,7 +161,7 @@
     (is (= #{{:table (mt/id :orders)}}
            (transform-deps-for-db (t2/select-one :model/Transform :id t1))))))
 
-(deftest joined-dependencies-test
+(deftest ^:parallel joined-dependencies-test
   (mt/with-temp [:model/Transform {t1 :id} (make-transform
                                             {:database (mt/id),
                                              :type "query",

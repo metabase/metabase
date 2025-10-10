@@ -91,7 +91,6 @@
        ;; Workaround for LocalStack, which doesn't support zero byte files.
        (when @none?
          (.write writer " "))
-
        (doto writer
          (.flush)
          (.close)))
@@ -104,10 +103,8 @@
                       (map (fn [[n v]]
                              (maybe-fixup-value (filtered-col-meta n) v)))
                       (zipmap (filter filtered-col-meta col-names)))]
-
          (when @none? (vreset! none? false))
          (json/encode-to row-map writer {})
-
          (doto writer
            (.newLine)))))))
 
@@ -179,11 +176,9 @@
   [{:keys [server-url code request-id run-id table-name->id shared-storage timeout-secs]}]
   (let [{:keys [objects]} shared-storage
         {:keys [output output-manifest events]} objects
-
         url-for-path             (fn [path] (:url (get objects path)))
         table-name->url          (update-vals table-name->id #(url-for-path [:table % :data]))
         table-name->manifest-url (update-vals table-name->id #(url-for-path [:table % :manifest]))
-
         payload                  {:code                code
                                   :library             (t2/select-fn->fn :path :source :model/PythonLibrary)
                                   :timeout             (or timeout-secs (transforms-python.settings/python-runner-timeout-seconds))
@@ -193,7 +188,6 @@
                                   :events_url          (:url events)
                                   :table_mapping       table-name->url
                                   :manifest_mapping    table-name->manifest-url}
-
         response                 (transforms.instrumentation/with-python-api-timing [run-id]
                                    (python-runner-request server-url :post "/execute" {:body (json/encode payload)}))]
     ;; when a 500 is returned we observe a string in the body (despite the python returning json)
@@ -268,7 +262,6 @@
               driver      (t2/select-one-fn :engine :model/Database db-id)
               fields-meta (fields-metadata driver table-id)
               manifest    (generate-manifest table-id fields-meta)]
-
           (transforms.instrumentation/with-stage-timing [run-id :dwh-to-file]
             (write-table-data-to-file!
              {:db-id       db-id
@@ -278,17 +271,14 @@
               :temp-file   tmp-data-file
               :cancel-chan cancel-chan
               :limit       limit}))
-
           (with-open [writer (io/writer tmp-meta-file)]
             (json/encode-to manifest writer {}))
           (let [data-size (.length tmp-data-file)
                 meta-size (.length tmp-meta-file)]
             (transforms.instrumentation/record-data-transfer! run-id :dwh-to-file data-size nil)
-
             (transforms.instrumentation/with-stage-timing [run-id :file-to-s3]
               (s3/upload-file s3-client bucket-name data-path tmp-data-file)
               (s3/upload-file s3-client bucket-name manifest-path tmp-meta-file))
-
             (transforms.instrumentation/record-data-transfer! run-id :file-to-s3 (+ data-size meta-size) nil)))
         (catch InterruptedException ie (throw ie))
         (catch Throwable t

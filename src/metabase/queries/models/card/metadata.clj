@@ -5,7 +5,7 @@
    [metabase.analyze.core :as analyze]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.core :as lib]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -81,10 +81,9 @@ saved later when it is ready."
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
   Handles both (legacy) MBQL and pMBQL queries."
+  {:deprecated "0.57.0"}
   [dataset-query]
-  (if (= (lib/normalized-query-type dataset-query) :mbql/query)
-    (lib/normalize dataset-query)
-    (mbql.normalize/normalize dataset-query)))
+  (lib-be/normalize-query dataset-query))
 
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
@@ -105,8 +104,8 @@ saved later when it is ready."
     (cond
       (or
        ;; query didn't change, preserve existing metadata
-       (and (= (normalize-dataset-query original-query)
-               (normalize-dataset-query query))
+       (and (= (lib-be/normalize-query original-query)
+               (lib-be/normalize-query query))
             valid-metadata?)
        ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
        (and (nil? query)

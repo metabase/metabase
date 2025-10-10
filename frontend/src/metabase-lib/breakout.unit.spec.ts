@@ -39,7 +39,7 @@ describe("breakout", () => {
       });
 
       const roundtripQuery = createQuery({
-        query: Lib.toLegacyQuery(nextQuery),
+        query: Lib.toJsQuery(nextQuery),
       });
       const roundtripQueryColumns = Lib.breakoutableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(

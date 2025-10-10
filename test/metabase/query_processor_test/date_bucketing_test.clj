@@ -31,7 +31,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]

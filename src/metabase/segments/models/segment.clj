@@ -8,7 +8,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
@@ -50,7 +50,8 @@
   "Segment `definition`s are just the inner MBQL query."
   [definition]
   (when (seq definition)
-    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
+    ;; TODO (Cam 10/1/25) -- update segments to persist MBQL 5
+    (u/prog1 #_{:clj-kondo/ignore [:deprecated-var]} (mbql.normalize/normalize-fragment [:query] definition)
       (validate-segment-definition <>))))
 
 (def ^:private transform-segment-definition
@@ -110,9 +111,9 @@
 (mu/defn- warmed-metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id :- ::lib.schema.id/database
    segments    :- [:maybe [:sequential (ms/InstanceOf :model/Segment)]]]
-  (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
+  (let [metadata-provider (doto (lib-be/application-database-metadata-provider database-id)
                             (lib.metadata.protocols/store-metadatas!
-                             (map #(lib.metadata.jvm/instance->metadata % :metadata/segment)
+                             (map #(lib-be/instance->metadata % :metadata/segment)
                                   segments)))
         ;; existing usage, do not use going forward
         field-ids         #_{:clj-kondo/ignore [:deprecated-var]} (mbql.u/referenced-field-ids (map :definition segments))
