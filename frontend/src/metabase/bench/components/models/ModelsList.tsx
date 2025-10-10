@@ -6,15 +6,12 @@ import { t } from "ttag";
 
 import { searchApi, useListCollectionsTreeQuery } from "metabase/api";
 import { TAG_TYPE_MAPPING, listTag } from "metabase/api/tags";
+import { getTreeItems } from "metabase/bench/components/models/utils";
 import { getIcon } from "metabase/browse/models/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Tree } from "metabase/common/components/tree/Tree";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import {
-  type CollectionTreeItem,
-  buildCollectionTree,
-} from "metabase/entities/collections/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux/hooks";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { getQuestion } from "metabase/query_builder/selectors";
@@ -28,11 +25,7 @@ import {
   Text,
 } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type {
-  Collection,
-  RecentCollectionItem,
-  SearchResult,
-} from "metabase-types/api";
+import type { RecentCollectionItem } from "metabase-types/api";
 
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
@@ -41,50 +34,6 @@ import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
 import type { BenchItemsListSorting } from "../ItemsListSection/types";
 
 import { CreateModelMenu } from "./CreateModelMenu";
-
-function getTreeItems(
-  collections: Collection[],
-  models: SearchResult[],
-): ITreeNodeItem[] {
-  const collectionTree = buildCollectionTree(
-    collections,
-    (m) => m === "dataset",
-  );
-
-  function collectionToTreeNode(collection: CollectionTreeItem): ITreeNodeItem {
-    const modelsInCollection = models.filter(
-      (model) => model.collection.id === collection.id,
-    );
-
-    const modelNodes = modelsInCollection.map(
-      (model): ITreeNodeItem => ({
-        id: model.id,
-        name: model.name,
-        icon: getIcon(model),
-      }),
-    );
-
-    const childCollectionNodes = collection.children.map(collectionToTreeNode);
-
-    return {
-      id: `collection-${collection.id}`,
-      name: collection.name,
-      icon: collection.icon || "folder",
-      children: [...childCollectionNodes, ...modelNodes],
-    };
-  }
-
-  return [
-    ...collectionTree.map(collectionToTreeNode),
-    ...models
-      .filter((m) => !m.collection.id)
-      .map((m) => ({
-        id: m.id,
-        name: m.name,
-        icon: getIcon(m),
-      })),
-  ];
-}
 
 function ModelsList({
   activeId,

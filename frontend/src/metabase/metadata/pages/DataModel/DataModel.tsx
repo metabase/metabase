@@ -1,18 +1,27 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
 import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
 import {
   useGetTableQueryMetadataQuery,
+  useListCollectionsTreeQuery,
   useListDatabasesQuery,
+  useUpdateCardMutation,
+  useUpdateFieldMutation,
 } from "metabase/api";
+import { getTreeItems } from "metabase/bench/components/models/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { Tree } from "metabase/common/components/tree";
+import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
+import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
+import { ModelTreeNode } from "metabase/metadata/pages/DataModel/components/models/ModelTreeNode";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, rem } from "metabase/ui";
+import { Box, Flex, Stack, Text, Title, rem } from "metabase/ui";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
 
 import S from "./DataModel.module.css";
 import {
@@ -22,12 +31,11 @@ import {
   PreviewSection,
   type PreviewType,
   RouterTablePicker,
-  SegmentsLink,
   SyncOptionsModal,
   TableSection,
 } from "./components";
 import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
-import type { RouteParams } from "./types";
+import type { FieldChangeParams, RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
@@ -37,13 +45,14 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId, modelId, fieldName } =
+    parseRouteParams(params);
   const { data: databasesData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery({ include_editable_data_model: true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
-  const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
+  const isSegments = location.pathname.startsWith("/metadata/segment");
   const [isPreviewOpen, { close: closePreview, toggle: togglePreview }] =
     useDisclosure();
   const [isSyncModalOpen, { close: closeSyncModal, open: openSyncModal }] =
@@ -52,21 +61,74 @@ export const DataModel = ({ children, location, params }: Props) => {
     isFieldValuesModalOpen,
     { close: closeFieldValuesModal, open: openFieldValuesModal },
   ] = useDisclosure();
-  const isEmptyStateShown =
-    databaseId == null || tableId == null || fieldId == null;
+  const isModelMode = modelId != null;
+  const isEmptyStateShown = isModelMode
+    ? fieldName == null
+    : databaseId == null || tableId == null || fieldId == null;
   const {
-    data: table,
+    currentData: table,
     error,
     isLoading: isLoadingTables,
-  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
+  } = useGetTableQueryMetadataQuery(
+    isModelMode
+      ? getTableMetadataQuery(getQuestionVirtualTableId(modelId))
+      : getTableMetadataQuery(tableId),
+  );
+
+  // Models
+  const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
+    filter_items_in_personal_collection: undefined, // include all models
+  });
+  const { isLoading: isLoadingCollections, data: collections } =
+    useListCollectionsTreeQuery({ "exclude-archived": true });
+  const models = modelsData?.data;
+
+  const [updateField] = useUpdateFieldMutation();
+  const [updateCard] = useUpdateCardMutation();
   const fieldsByName = useMemo(() => {
     return _.indexBy(table?.fields ?? [], (field) => field.name);
   }, [table]);
-  const field = table?.fields?.find((field) => field.id === fieldId);
+  const field = table?.fields?.find(
+    isModelMode
+      ? (field) => field.name === fieldName
+      : (field) => field.id === fieldId,
+  );
   const parentName = field?.nfc_path?.[0] ?? "";
   const parentField = fieldsByName[parentName];
   const [previewType, setPreviewType] = useState<PreviewType>("table");
-  const isLoading = isLoadingTables || isLoadingDatabases;
+  const isLoading =
+    isLoadingTables ||
+    isLoadingDatabases ||
+    isLoadingModels ||
+    isLoadingCollections;
+
+  const modelsTreeData = useMemo(() => {
+    return models && collections ? getTreeItems(collections, models) : [];
+  }, [collections, models]);
+
+  const handleModelSelect = useCallback(() => {}, []);
+
+  const handleTableFieldChange = useCallback(
+    (update: FieldChangeParams) => {
+      return updateField(update);
+    },
+    [updateField],
+  );
+
+  const handleModelColumnChange = useCallback(
+    (update: FieldChangeParams) => {
+      const metadata = table?.fields;
+      const newMetadata = metadata?.map((column) => {
+        return update.name === column.name ? { ...column, ...update } : column;
+      });
+
+      return updateCard({
+        id: modelId,
+        result_metadata: newMetadata,
+      });
+    },
+    [modelId, table?.fields, updateCard],
+  );
 
   useWindowEvent(
     "keydown",
@@ -104,11 +166,25 @@ export const DataModel = ({ children, location, params }: Props) => {
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
       >
+        <Title p="xl" pb={0} order={3}>{t`Tables`}</Title>
         <RouterTablePicker
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={tableId}
         />
+
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          <Title p="xl" order={3} pt="sm">{t`Models`}</Title>
+
+          <Tree
+            className={S.modelsTree}
+            data={modelsTreeData}
+            selectedId={modelId}
+            onSelect={handleModelSelect}
+            emptyState={<Text c="text-light">{t`No models found`}</Text>}
+            TreeNode={ModelTreeNode}
+          />
+        </LoadingAndErrorWrapper>
       </Stack>
 
       {isSegments && children}
@@ -139,7 +215,7 @@ export const DataModel = ({ children, location, params }: Props) => {
               miw={COLUMN_CONFIG.table.min}
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && (
+                {table && !isModelMode && (
                   <TableSection
                     /**
                      * Make sure internal component state is reset when changing tables.
@@ -149,6 +225,34 @@ export const DataModel = ({ children, location, params }: Props) => {
                     params={params}
                     table={table}
                     onSyncOptionsClick={openSyncModal}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </Stack>
+          )}
+
+          {isModelMode && modelId && (
+            <Stack
+              className={S.column}
+              flex={COLUMN_CONFIG.table.flex}
+              h="100%"
+              justify={error ? "center" : undefined}
+              maw={COLUMN_CONFIG.table.max}
+              miw={COLUMN_CONFIG.table.min}
+            >
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {table && (
+                  <ModelColumnsSection
+                    /**
+                     * Make sure internal component state is reset when changing tables.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={table.id}
+                    modelId={modelId}
+                    fieldName={fieldName}
+                    table={table}
+                    onSyncOptionsClick={openSyncModal}
+                    onFieldChange={handleModelColumnChange}
                   />
                 )}
               </LoadingAndErrorWrapper>
@@ -170,17 +274,23 @@ export const DataModel = ({ children, location, params }: Props) => {
                 {field && table && (
                   <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
                     <FieldSection
+                      mode={isModelMode ? "model" : "table"}
                       databaseId={databaseId}
                       field={field}
                       /**
                        * Make sure internal component state is reset when changing fields.
                        * This is to avoid state mix-up with optimistic updates.
                        */
-                      key={getRawTableFieldId(field)}
+                      key={isModelMode ? fieldName : getRawTableFieldId(field)}
                       parent={parentField}
                       table={table}
                       onFieldValuesClick={openFieldValuesModal}
                       onPreviewClick={togglePreview}
+                      onFieldChange={
+                        isModelMode
+                          ? handleModelColumnChange
+                          : handleTableFieldChange
+                      }
                     />
                   </Box>
                 )}

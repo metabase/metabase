@@ -1,10 +1,12 @@
+import cx from "classnames";
 import { forwardRef } from "react";
 import { isObject } from "underscore";
 
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
 import { Icon } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
+
+import S from "./ItemsListTreeNode.module.css";
 
 export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
   function ItemsListTreeNode(
@@ -50,13 +52,17 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
         tabIndex={0}
         onClick={onClick}
         {...props}
+        className={cx(S.treeNode, props.className, props.classNames?.root)}
         depth={depth}
         isSelected={isSelected}
         aria-expanded={isExpanded}
         onKeyDown={handleKeyDown}
         ref={ref}
       >
-        <TreeNode.ExpandToggleButton hidden={!hasChildren}>
+        <TreeNode.ExpandToggleButton
+          hidden={!hasChildren}
+          className={props.classNames?.expandToggleButton}
+        >
           <TreeNode.ExpandToggleIcon
             isExpanded={isExpanded}
             name="chevronright"
@@ -65,16 +71,16 @@ export const ItemsListTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
         </TreeNode.ExpandToggleButton>
 
         {icon && (
-          <TreeNode.IconContainer transparent={false}>
+          <TreeNode.IconContainer
+            className={props.classNames?.iconContainer}
+            transparent={false}
+          >
             <Icon {...iconProps} />
           </TreeNode.IconContainer>
         )}
         <TreeNode.NameContainer
           data-testid="tree-item-name"
-          style={{
-            color: isSelected ? color("text-white") : color("text-dark"),
-            fontWeight: "normal",
-          }}
+          className={S.nameContainer}
         >
           {name}
         </TreeNode.NameContainer>
