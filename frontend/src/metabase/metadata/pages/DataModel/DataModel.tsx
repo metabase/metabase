@@ -162,12 +162,13 @@ export const DataModel = ({ children, location, params }: Props) => {
         className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
         gap={0}
-        h="100%"
+        mih="100%"
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
       >
         <Title p="xl" pb={0} order={3}>{t`Tables`}</Title>
         <RouterTablePicker
+          className={S.tablePicker}
           databaseId={databaseId}
           schemaName={schemaName}
           tableId={tableId}

@@ -8,9 +8,18 @@ import { TablePicker } from "./TablePicker";
 import type { ChangeOptions, TreePath } from "./types";
 import { getUrl } from "./utils";
 
-export function RouterTablePicker(props: TreePath) {
+export function RouterTablePicker({
+  databaseId,
+  schemaName,
+  tableId,
+  className,
+}: TreePath & { className?: string }) {
   const dispatch = useDispatch();
-  const [value, setValue] = useState(props);
+  const [value, setValue] = useState({
+    databaseId,
+    schemaName,
+    tableId,
+  });
   const location = useSelector(getLocation);
 
   const onChange = useCallback(
@@ -24,7 +33,7 @@ export function RouterTablePicker(props: TreePath) {
 
       // Update URL only when either opening a table or no table has been opened yet.
       // We want to keep user looking at a table when navigating databases/schemas.
-      const canUpdateUrl = value.tableId != null || props.tableId == null;
+      const canUpdateUrl = value.tableId != null || tableId == null;
 
       if (canUpdateUrl) {
         if (options?.isAutomatic) {
@@ -37,14 +46,18 @@ export function RouterTablePicker(props: TreePath) {
         }
       }
     },
-    [dispatch, location.pathname, props.tableId],
+    [dispatch, location.pathname, tableId],
   );
 
   useEffect(() => {
-    setValue(props);
-  }, [props]);
+    setValue({
+      databaseId,
+      schemaName,
+      tableId,
+    });
+  }, [databaseId, schemaName, tableId]);
 
-  return <TablePicker path={value} onChange={onChange} />;
+  return <TablePicker path={value} className={className} onChange={onChange} />;
 }
 
 export function UncontrolledTablePicker({

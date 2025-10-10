@@ -12,16 +12,18 @@ import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 export function TablePicker({
   path,
+  className,
   onChange,
 }: {
   path: TreePath;
+  className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack data-testid="table-picker" mih={rem(200)}>
+    <Stack data-testid="table-picker" mih={rem(200)} className={className}>
       <Box p="xl" pb={0}>
         <Input
           leftSection={<Icon name="search" />}
