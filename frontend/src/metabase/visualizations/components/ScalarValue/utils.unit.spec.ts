@@ -60,7 +60,7 @@ describe("findSize", () => {
       max: 5,
     });
 
-    expect(size).toEqual("4.6rem");
+    expect(size).toEqual("4.875rem");
   });
 
   it("returns the min size if text cannot fit into the target width", () => {
@@ -109,7 +109,7 @@ describe("findSize", () => {
       max: 5,
     });
 
-    expect(size).toEqual("4.6rem");
+    expect(size).toEqual("4.875rem");
   });
 
   it("returns the min size if text cannot fit into the target height", () => {
