@@ -252,7 +252,8 @@ export const CardEmbedComponent = memo(
     const isBeingDragged = editor.view.draggingNode === node;
 
     const displayName = name || card?.name;
-    const isNativeQuestion = card?.dataset_query?.type === "native";
+    const question = card != null ? new Question(card) : undefined;
+    const isNativeQuestion = question?.isNative();
 
     useEffect(() => {
       if (isEditingTitle && titleInputRef.current) {
