@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -85,12 +85,9 @@ function useDataSample({
   tableId,
 }: Props) {
   const metadata = useSelector(getMetadata);
-  const query = getPreviewQuery(
-    metadata,
-    databaseId,
-    tableId,
-    fieldId,
-    pkFields,
+  const query = useMemo(
+    () => getPreviewQuery(metadata, databaseId, tableId, fieldId, pkFields),
+    [metadata, databaseId, tableId, fieldId, pkFields],
   );
 
   const { data, refetch, ...rest } = useGetAdhocQueryQuery(
