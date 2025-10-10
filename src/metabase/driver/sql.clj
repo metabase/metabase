@@ -193,7 +193,7 @@
 ;;; |                                              Dependencies                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti ^:private resolve-field
+(defmulti resolve-field
   "Resolves a field reference to one or more actual database fields.
 
   This uses a supplied metadata provider instead of hitting the db directly.  'Field reference' refers to the field
