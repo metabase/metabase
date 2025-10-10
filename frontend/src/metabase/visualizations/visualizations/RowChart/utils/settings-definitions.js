@@ -275,6 +275,17 @@ export const ROW_CHART_SETTINGS = {
       vizSettings["stackable.stack_type"] === "normalized",
     default: false,
   },
+  "graph.row_chart.group_remaining_values": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Group overflow rows into "Other"`;
+    },
+    widget: "toggle",
+    inline: true,
+    default: true,
+  },
   "graph.label_value_formatting": {
     get section() {
       return t`Display`;

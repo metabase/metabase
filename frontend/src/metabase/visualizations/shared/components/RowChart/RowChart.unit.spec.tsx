@@ -205,6 +205,44 @@ describe("RowChart", () => {
     });
   });
 
+  describe("overflow handling", () => {
+    const overflowData: TestDatum[] = Array.from({ length: 5 }, (_, index) => ({
+      y: `row-${index}`,
+      x: 10 * (index + 1),
+      x1: 15 * (index + 1),
+    }));
+
+    it("should skip trimming when grouping overflow rows is disabled", () => {
+      const trimData = jest.fn((rows: TestDatum[]) => rows.slice(0, 2));
+
+      const { bars } = setup({
+        data: overflowData,
+        series: [series1],
+        height: 80,
+        trimData,
+        shouldGroupRemainingValues: false,
+      });
+
+      expect(trimData).not.toHaveBeenCalled();
+      expect(bars).toHaveLength(overflowData.length);
+    });
+
+    it("should trim rows when grouping overflow rows is enabled", () => {
+      const trimData = jest.fn((rows: TestDatum[]) => rows.slice(0, 2));
+
+      const { bars } = setup({
+        data: overflowData,
+        series: [series1],
+        height: 80,
+        trimData,
+        shouldGroupRemainingValues: true,
+      });
+
+      expect(trimData).toHaveBeenCalledWith(overflowData, expect.any(Number));
+      expect(bars).toHaveLength(2);
+    });
+  });
+
   describe("data labels", () => {
     it("should not render data labels when not specified", () => {
       const { dataLabels } = setup();
