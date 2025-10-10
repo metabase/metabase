@@ -1,6 +1,10 @@
 import _ from "underscore";
 
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import {
+  convertLinkColumnToClickBehavior,
+  removeInternalClickBehaviors,
+} from "metabase/embedding-sdk/lib/links";
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -48,47 +52,10 @@ export function getComputedSettings(
   }
 
   if (isEmbeddingSdk()) {
-    // In modular embedding (react sdk and embed-js) we disable internal click behaviors
-    // but we want to keep external links (EMB-878) and clicking on the cell should fallback to
-    // drills if available (EMB-879)
-    if (
-      computedSettings.click_behavior &&
-      computedSettings.click_behavior.type === "link" &&
-      computedSettings.click_behavior.linkType !== "url"
-    ) {
-      computedSettings.click_behavior = undefined;
-    }
-
-    // EMB-890: map urls to click behavior to support `mapQuestionClickActions`
-    const isLinkColumn =
-      computedSettings.view_as === "link" ||
-      (computedSettings.column?.semantic_type === "type/URL" &&
-        computedSettings.view_as === "auto");
-
-    // Map links to click behaviors
-    if (isLinkColumn) {
-      const linkURL = computedSettings.link_url;
-      const linkText = computedSettings.link_text;
-      const colName = computedSettings.column?.name;
-
-      computedSettings.view_as = undefined;
-      computedSettings.link_url = undefined;
-      computedSettings.link_text = undefined;
-      return {
-        ...computedSettings,
-        view_as: undefined,
-        link_url: undefined,
-        link_text: undefined,
-        click_behavior: {
-          type: "link",
-          linkType: "url",
-          linkTextTemplate:
-            linkText == null && colName ? `{{${colName}}}` : linkText,
-          linkTemplate: linkURL == null && colName ? `{{${colName}}}` : linkURL,
-        },
-        column_settings: {},
-      };
-    }
+    return _.compose(
+      removeInternalClickBehaviors,
+      convertLinkColumnToClickBehavior,
+    )(computedSettings);
   }
 
   return computedSettings;
