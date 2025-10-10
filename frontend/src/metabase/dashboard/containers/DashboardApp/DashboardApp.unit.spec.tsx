@@ -23,7 +23,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
+import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { checkNotNull } from "metabase/lib/types";
 import type { Dashboard } from "metabase-types/api";
@@ -144,7 +144,7 @@ describe("DashboardApp", () => {
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
-      expect(mockEvent.returnValue).toEqual(BEFORE_UNLOAD_UNSAVED_MESSAGE);
+      expect(mockEvent.returnValue).toEqual(getBeforeUnloadUnsavedMessage());
     });
 
     it("should not have a beforeunload event when the dashboard is unedited", async function () {

@@ -13,7 +13,7 @@ import type { UserInfo } from "metabase-types/store";
 
 import { UserFieldGroup } from "./UserForm.styled";
 
-const USER_SCHEMA = Yup.object({
+const getUserSchema = () => Yup.object({
   first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   last_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
   email: Yup.string().default("").required(Errors.required).email(Errors.email),
@@ -28,7 +28,6 @@ const USER_SCHEMA = Yup.object({
   password_confirm: Yup.string()
     .default("")
     .required(Errors.required)
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     .oneOf([Yup.ref("password")], t`passwords do not match`),
 });
 
@@ -50,7 +49,7 @@ export const UserForm = ({ user, isHosted, onSubmit }: UserFormProps) => {
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={USER_SCHEMA}
+      validationSchema={getUserSchema()}
       validationContext={validationContext}
       onSubmit={onSubmit}
     >

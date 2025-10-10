@@ -33,10 +33,8 @@ const Documents = createEntity({
   path: "/api/ee/document",
   schema: DocumentSchema,
 
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  displayNameOne: t`document`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  displayNameMany: t`documents`,
+  displayNameOne: "document",
+  displayNameMany: "documents",
 
   rtk: {
     getUseGetQuery: () => ({

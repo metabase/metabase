@@ -33,10 +33,8 @@ const Dashboards = createEntity({
   nameOne: "dashboard",
   path: "/api/dashboard",
 
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  displayNameOne: t`dashboard`,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  displayNameMany: t`dashboards`,
+  displayNameOne: "dashboard",
+  displayNameMany: "dashboards",
 
   rtk: {
     getUseGetQuery: () => ({

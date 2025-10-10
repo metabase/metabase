@@ -1,4 +1,4 @@
-import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+import { getAllOperatorNames } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   OPERATOR_FORMATTER_FACTORIES,
   canCompareSubstrings,
@@ -20,7 +20,7 @@ describe("compileFormatter", () => {
     // This test is to remind anyone adding/removing operator support, that the
     // same should be done to `OPERATOR_FORMATTER_FACTORIES`.
     const supportedOperators = Object.keys(OPERATOR_FORMATTER_FACTORIES).sort();
-    const definedOperators = Object.keys(ALL_OPERATOR_NAMES).sort();
+    const definedOperators = Object.keys(getAllOperatorNames()).sort();
 
     expect(supportedOperators).toEqual(definedOperators);
   });

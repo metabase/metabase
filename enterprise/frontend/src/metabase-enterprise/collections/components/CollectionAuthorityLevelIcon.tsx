@@ -4,7 +4,7 @@ import type { CollectionAuthorityLevelIcon as CollectionAuthorityLevelIconCompon
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
-import { AUTHORITY_LEVELS } from "../constants";
+import { getAuthorityLevels } from "../constants";
 import { isRegularCollection } from "../utils";
 
 export const CollectionAuthorityLevelIcon: CollectionAuthorityLevelIconComponent =
@@ -12,7 +12,7 @@ export const CollectionAuthorityLevelIcon: CollectionAuthorityLevelIconComponent
     if (isRegularCollection(collection)) {
       return null;
     }
-    const level = AUTHORITY_LEVELS[String(collection.authority_level)];
+    const level = getAuthorityLevels()[String(collection.authority_level)];
     const levelColor = level.color ? color(level.color) : undefined;
     const iconColor = archived ? color("text-light") : levelColor;
     return (
