@@ -2,11 +2,14 @@
   (:require
    [clojure.test :refer :all]
    [diehard.core :as dh]
+   [metabase-enterprise.remote-sync.api :as api]
+   [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.collections.models.collection :as collection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -531,3 +534,51 @@
     (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
                                          {:remote-sync-url "invalid-url"})]
       (is (= "Unable to connect to git repository with the provided settings" (:error response))))))
+
+(deftest settings-creates-sync-collection
+  (testing "PUT /api/ee/remote-sync/settings creates remote sync collection if none exists"
+    (with-redefs [settings/check-git-settings (constantly nil)
+                  api/async-import! (constantly nil)]
+      (mt/with-empty-h2-app-db!
+        (testing "production mode doesn't create the collection"
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-enabled true
+                                 :remote-sync-type    :production
+                                 :remote-sync-branch  "main"
+                                 :remote-sync-url     "https://github.com/test/repo.git"
+                                 :remote-sync-token   "test-token"})
+          (is (nil? (collection/remote-synced-collection))))
+        (testing "dev mode mode does create the collection"
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-enabled true
+                                 :remote-sync-type    :development
+                                 :remote-sync-branch  "main"
+                                 :remote-sync-url     "https://github.com/test/repo.git"
+                                 :remote-sync-token   "test-token"})
+          (is (some? (collection/remote-synced-collection))))
+        (testing "if the collection already exists, it doesn't create a second one"
+          (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                {:remote-sync-enabled true
+                                 :remote-sync-type    :development
+                                 :remote-sync-branch  "main"
+                                 :remote-sync-url     "https://github.com/test/repo2.git"
+                                 :remote-sync-token   "test-token"})
+          (is (= 1 (t2/count :model/Collection :type collection/remote-synced-collection-type :location "/"))))))))
+
+(deftest settings-cannot-change-with-dirty-data
+  (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
+    (with-redefs [remote-sync.object/dirty-global? (constantly true)
+                  settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
+      (mt/with-temporary-setting-values [remote-sync-enabled true
+                                         remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-type :development]
+        (testing "cannot change to production mode"
+          (is (= "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
+                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                       {:remote-sync-enabled true
+                                        :remote-sync-type    :production
+                                        :remote-sync-branch  "main"
+                                        :remote-sync-url     "https://github.com/test/repo.git"
+                                        :remote-sync-token   "test-token"}))))))))

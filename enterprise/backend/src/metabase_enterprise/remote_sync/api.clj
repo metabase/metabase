@@ -160,61 +160,56 @@
        [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [original-sync-type (settings/remote-sync-type)]
-    (when (and
-           (= :production remote-sync-type)
-           (= :development original-sync-type)
-           (remote-sync.object/dirty-global?))
-      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
-                      {:status-code 400})))
-    (try
-      (settings/check-and-update-remote-settings! settings)
-      (catch Exception e
-        (throw (ex-info "Invalid git settings"
-                        {:error       (.getMessage e)
-                         :status-code 400} e))))
-    (when (and (= :development (settings/remote-sync-type))
-               (true? (settings/remote-sync-enabled))
-               (nil? (collection/remote-synced-collection)))
-      (collection/create-remote-synced-collection!))
-    (if (and (settings/remote-sync-enabled)
-             (= :production (settings/remote-sync-type)))
-      {:success true
-       :task_id (async-import! (settings/remote-sync-branch) true)}
-      {:success true})))
-
-(api.macros/defendpoint :get "/branches"
-  "Get list of branches from the configured git source.
+  (when (and (remote-sync.object/dirty-global?) (= :production remote-sync-type))
+    (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
+                    {:status-code 400})))
+  (try
+    (settings/check-and-update-remote-settings! settings)
+    (catch Exception e
+      (throw (ex-info "Invalid git settings"
+                      {:error       (.getMessage e)
+                       :status-code 400} e))))
+  (when (and (= :development (settings/remote-sync-type))
+             (true? (settings/remote-sync-enabled))
+             (nil? (collection/remote-synced-collection)))
+    (collection/create-remote-synced-collection!))
+  (if (and (settings/remote-sync-enabled)
+           (= :production (settings/remote-sync-type)))
+    {:success true
+     :task_id (async-import! (settings/remote-sync-branch) true)}
+    {:success true}))
+`(api.macros/defendpoint :get "/branches"
+   "Get list of branches from the configured git source.
 
   Returns a JSON object with branch names under the :items key.
 
   Requires superuser permissions."
-  []
-  (api/check-superuser)
-  (if-let [source (source/source-from-settings)]
-    (try
-      (let [branch-list (source.p/branches source)]
-        {:items branch-list})
-      (catch Exception e
-        (log/errorf e "Failed to get branches from git source: %s" (.getMessage e))
-        (let [error-msg (cond
-                          (instance? java.net.UnknownHostException e)
-                          "Network error: Unable to reach git repository host"
+   []
+   (api/check-superuser)
+   (if-let [source (source/source-from-settings)]
+     (try
+       (let [branch-list (source.p/branches source)]
+         {:items branch-list})
+       (catch Exception e
+         (log/errorf e "Failed to get branches from git source: %s" (.getMessage e))
+         (let [error-msg (cond
+                           (instance? java.net.UnknownHostException e)
+                           "Network error: Unable to reach git repository host"
 
-                          (str/includes? (.getMessage e) "Authentication failed")
-                          "Authentication failed: Please check your git credentials"
+                           (str/includes? (.getMessage e) "Authentication failed")
+                           "Authentication failed: Please check your git credentials"
 
-                          (str/includes? (.getMessage e) "Repository not found")
-                          "Repository not found: Please check the repository URL"
+                           (str/includes? (.getMessage e) "Repository not found")
+                           "Repository not found: Please check the repository URL"
 
-                          :else
-                          (format "Failed to get branches from git source: %s" (.getMessage e)))]
-          {:status 400
-           :body {:status "error"
-                  :message error-msg}})))
-    {:status 400
-     :body {:status "error"
-            :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
+                           :else
+                           (format "Failed to get branches from git source: %s" (.getMessage e)))]
+           {:status 400
+            :body {:status "error"
+                   :message error-msg}})))
+     {:status 400
+      :body {:status "error"
+             :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
 
 (api.macros/defendpoint :post "/branches"
   "Create a new branch from an existing branch.
