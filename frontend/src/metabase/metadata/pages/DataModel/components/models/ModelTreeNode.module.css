@@ -1,0 +1,30 @@
+.modelsTreeItem:not([data-css-specificity-hack="🪗"]) {
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+}
+
+.modelsTreeItemExpandContainer:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-text-light);
+  opacity: 0.35;
+}
+
+.modelsTreeItemIconContainer:not([data-css-specificity-hack="🪗"]) {
+  opacity: 0.5;
+}
+
+.modelsTreeItemActive:not([data-css-specificity-hack="🪗"]) {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-brand-light);
+
+  .modelsTreeItemIconContainer {
+    opacity: 1;
+  }
+
+  &:hover {
+    background-color: var(--mb-color-brand-light);
+  }
+}

@@ -69,7 +69,10 @@ export const getBenchRoutes = () => (
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
             component={DataModel}
           />
+          <Route path="model/:modelId" component={DataModel} />
+          <Route path="model/:modelId/field/:fieldName" component={DataModel} />
           <Route component={DataModel}>
+            {/*TODO: Do we need segements here ?*/}
             <Route path="segment/:id" component={SegmentApp} />
             <Route
               path="segment/:id/revisions"

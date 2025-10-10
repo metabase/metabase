@@ -90,6 +90,15 @@ export function Results({
     }
   }, [selectedIndex]);
 
+  useEffect(
+    function cleanSelectionOnPathChange() {
+      if (!path.databaseId && !path.schemaName && !path.tableId) {
+        setActiveTableId(undefined);
+      }
+    },
+    [path.databaseId, path.schemaName, path.tableId],
+  );
+
   return (
     <Box ref={ref} px="xl" pb="lg" className={S.results}>
       <Box style={{ height: virtual.getTotalSize() }}>

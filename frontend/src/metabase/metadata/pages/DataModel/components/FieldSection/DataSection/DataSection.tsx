@@ -1,9 +1,12 @@
 import { type ChangeEvent, memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateFieldMutation } from "metabase/api";
 import { CoercionStrategyPicker } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import type {
+  FieldChangeParams,
+  MetadataEditMode,
+} from "metabase/metadata/pages/DataModel/types";
 import {
   canCoerceFieldType,
   getFieldRawName,
@@ -21,17 +24,19 @@ import SubInputFollowIllustration from "./illustrations/sub-input-follow.svg?com
 import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 interface Props {
+  mode: MetadataEditMode;
   field: Field;
+  onFieldChange: (update: FieldChangeParams) => Promise<{ error?: string }>;
 }
 
-const DataSectionBase = ({ field }: Props) => {
-  const id = getRawTableFieldId(field);
+const DataSectionBase = ({ mode, field, onFieldChange }: Props) => {
+  const fieldIdentity =
+    mode === "table" ? { id: getRawTableFieldId(field) } : { name: field.name };
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );
   const [autoFocusCoercionPicker, setAutoFocusCoercionPicker] = useState(false);
   const [isCoercionPickerOpen, setIsCoercionPickerOpen] = useState(false);
-  const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
 
@@ -41,8 +46,8 @@ const DataSectionBase = ({ field }: Props) => {
   }, [field.coercion_strategy]);
 
   const disableCasting = async () => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       coercion_strategy: null,
     });
 
@@ -52,8 +57,8 @@ const DataSectionBase = ({ field }: Props) => {
       sendSuccessToast(
         t`Casting disabled for ${field.display_name}`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             coercion_strategy: field.coercion_strategy,
           });
           sendUndoToast(error);
@@ -76,8 +81,8 @@ const DataSectionBase = ({ field }: Props) => {
   const handleCoercionStrategyChange = async (
     coercionStrategy: string | null,
   ) => {
-    const { error } = await updateField({
-      id,
+    const { error } = await onFieldChange({
+      ...fieldIdentity,
       coercion_strategy: coercionStrategy,
     });
 
@@ -95,8 +100,8 @@ const DataSectionBase = ({ field }: Props) => {
           ? t`Casting enabled for ${field.display_name}`
           : t`Casting updated for ${field.display_name}`,
         async () => {
-          const { error } = await updateField({
-            id,
+          const { error } = await onFieldChange({
+            ...fieldIdentity,
             coercion_strategy: field.coercion_strategy,
           });
           sendUndoToast(error);
@@ -114,7 +119,7 @@ const DataSectionBase = ({ field }: Props) => {
       <Stack gap={0}>
         <LabeledValue label={t`Data type`}>{field.database_type}</LabeledValue>
 
-        {canCoerceFieldType(field) && (
+        {canCoerceFieldType(field) && mode === "table" && (
           <>
             <Flex gap="xs" ml={rem(12)} wrap="nowrap">
               {isCasting ? (
