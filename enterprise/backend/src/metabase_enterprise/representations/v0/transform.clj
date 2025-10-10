@@ -171,7 +171,7 @@
 ;; EXPORT
 
 (defmethod export/export-entity :model/Transform [transform]
-  (let [query (patch-refs-for-export (-> transform :source :query))]
+  (let [query (v0-mbql/patch-refs-for-export (-> transform :source :query))]
     (cond-> {:name (:name transform)
              :type :transform
              :version :v0
