@@ -13,7 +13,8 @@
   {:target     :npm-module
    :output-dir "target/cljs_release/"
    :dev        {:output-dir "target/cljs_dev/"
-                :compiler-options {:reader-features #{:cljs-dev}}}
+                :compiler-options {:reader-features #{:cljs-dev}}
+                :build-hooks [(metabase.util.shadow-build-hook/hook)]}
    :compiler-options {:reader-features #{:cljs-release}
                       :source-map      true}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
