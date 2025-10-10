@@ -172,12 +172,11 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
     }),
     createBranch: builder.mutation<void, { name: string; baseBranch?: string }>(
       {
-        query: ({ name, baseBranch }) => ({
+        query: ({ name }) => ({
           method: "POST",
-          url: `/api/ee/remote-sync/branches`,
+          url: `/api/ee/remote-sync/create-branch`,
           body: {
             name,
-            base_branch: baseBranch || "main",
           },
         }),
         invalidatesTags: () => [tag("remote-sync-branches")],

@@ -80,7 +80,6 @@ export const BranchPicker = ({
     try {
       await createBranch({
         name: branchName,
-        baseBranch: baseBranch || value,
       }).unwrap();
 
       onChange(branchName, true);

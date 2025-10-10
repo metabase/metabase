@@ -7,6 +7,7 @@
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
    [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.source :as source]
+   [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.collections.models.collection :as collection]
@@ -582,3 +583,45 @@
                                         :remote-sync-branch  "main"
                                         :remote-sync-url     "https://github.com/test/repo.git"
                                         :remote-sync-token   "test-token"}))))))))
+
+(deftest create-branch
+  (testing "POST /api/ee/remote-sync/create-branch creates a new branch")
+  (let [mock-source (test-helpers/create-mock-source)]
+    (mt/with-temporary-setting-values [remote-sync-enabled true
+                                       remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "main"
+                                       remote-sync-type :development]
+      (with-redefs [source/source-from-settings (constantly mock-source)]
+        (is (= {:status "success"
+                :message "Branch 'feature-branch' created from 'main'"}
+               (mt/user-http-request :crowberto :post 200 "ee/remote-sync/create-branch"
+                                     {:name "feature-branch"})))
+        (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
+               (set (source.p/branches mock-source))))
+        (is (= "feature-branch" (settings/remote-sync-branch)))))))
+
+(deftest stash
+  (testing "POST /api/ee/remote-sync/stash")
+  (let [mock-source (test-helpers/create-mock-source)
+        export-calls (atom 0)]
+    (mt/with-temporary-setting-values [remote-sync-enabled true
+                                       remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "main"
+                                       remote-sync-type :development]
+      (mt/with-temp [:model/RemoteSyncObject _ {:model_type        "Card"
+                                                :model_id          1
+                                                :status            "updated"
+                                                :status_changed_at (java.time.OffsetDateTime/now)}]
+        (with-redefs [source/source-from-settings (constantly mock-source)
+                      api/async-export! (fn [_ _] (swap! export-calls inc))]
+          (is (=? {:status  "success"
+                   :message "Stashing to feature-branch"}
+                  (mt/user-http-request :crowberto :post 200 "ee/remote-sync/stash"
+                                        {:new_branch "feature-branch"
+                                         :message "Stash message"})))
+          (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
+                 (set (source.p/branches mock-source))))
+          (is (= "feature-branch" (settings/remote-sync-branch)))
+          (is (= 1 @export-calls)))))))

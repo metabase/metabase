@@ -155,10 +155,10 @@ width: fixed
 "
             name entity-id collection-id entity-id (str/replace (u/lower-case-en name) #"\s+" "_") dashcards-yaml)))
 
-(defrecord MockSource [source-id base-url branch fail-mode files-atom]
+(defrecord MockSource [source-id base-url branch fail-mode files-atom branches-atom]
   source.p/Source
-  (create-branch [_this _branch _base]
-    nil)
+  (create-branch [_this branch _base]
+    (swap! branches-atom conj [branch (str branch "-ref")]))
 
   (branches [_this]
     (case fail-mode
@@ -166,7 +166,7 @@ width: fixed
       :auth-error (throw (Exception. "Authentication failed"))
       :repo-not-found (throw (Exception. "Repository not found"))
       ;; Default success case
-      {"main" "main-ref" "develop" "develop-ref"}))
+      @branches-atom))
 
   (list-files [_this]
     (case fail-mode
@@ -221,8 +221,9 @@ width: fixed
                                   "collections/test-dev-collectionxx-_/cards/test-dev-card.yaml"
                                   (generate-card-yaml "test-dev-cardxxxxxxxx" "Dev Card" "test-dev-collectionxx")}}
 
-        files-atom (atom (or initial-files default-files))]
-    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom)))
+        files-atom (atom (or initial-files default-files))
+        branches-atom (atom #{["main" "main-ref"] ["develop" "develop-ref"]})]
+    (->MockSource "test-source" "https://test.example.com" branch fail-mode files-atom branches-atom)))
 
 (defn create-mock-source-ingestable
   "Calls source.p/->ingestable with a mock source"

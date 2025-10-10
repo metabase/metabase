@@ -212,27 +212,55 @@
      :body {:status "error"
             :message "Git source not configured. Please configure MB_GIT_SOURCE_REPO_URL environment variable."}}))
 
-(api.macros/defendpoint :post "/branches"
-  "Create a new branch from an existing branch.
+(api.macros/defendpoint :post "/create-branch"
+  "Create a new branch from the current remote-sync branch and switches the current remote-sync branch to it.
   Requires superuser permissions."
   [_route
    _query
-   {:keys [name base_branch]} :- [:map
-                                  [:name ms/NonBlankString]
-                                  [:base_branch {:optional true} ms/NonBlankString]]]
+   {:keys [name]} :- [:map [:name ms/NonBlankString]]]
   (api/check-superuser)
-  (if-let [source (source/source-from-settings)]
+  (let [base-branch (settings/remote-sync-branch)
+        source (source/source-from-settings)]
+    (when-not source
+      (throw (ex-info "Git source not configured"
+                      {:status-code 400})))
+    (when-not base-branch
+      (throw (ex-info "Remote sync branch not configured"
+                      {:status-code 400})))
     (try
-      (source.p/create-branch source name (or base_branch "main"))
+      (source.p/create-branch source name base-branch)
       (settings/remote-sync-branch! name)
-      {:status "success"
-       :message (format "Branch '%s' created from '%s'" name (or base_branch "main"))}
+      {:status  "success"
+       :message (format "Branch '%s' created from '%s'" name base-branch)}
       (catch Exception e
-        (log/errorf e "Failed to create branch '%s': %s" name (.getMessage e))
         (throw (ex-info (format "Failed to create branch: %s" (.getMessage e))
-                        {:status-code 400}))))
-    (throw (ex-info "Git source not configured"
-                    {:status-code 400}))))
+                        {:status-code 400} #p e))))))
+
+(api.macros/defendpoint :post "/stash"
+  "Stashes changes to a new branch, and changes the current branch to it.
+  Requires superuser permissions."
+  [_route
+   _query
+   {:keys [new_branch message]} :- [:map
+                                    [:new_branch ms/NonBlankString]
+                                    [:message ms/NonBlankString]]]
+  (api/check-superuser)
+  (when (not= (settings/remote-sync-type) :development)
+    (throw (ex-info "Stash is only allowed when remote-sync-type is set to 'development'" {:status-code 400})))
+  (let [source (source/source-from-settings)]
+    (when (nil? source)
+      (throw (ex-info "Git source not configured"
+                      {:status-code 400})))
+    (try
+      (source.p/create-branch source new_branch (settings/remote-sync-branch))
+      (settings/remote-sync-branch! new_branch)
+      {:status  "success"
+       :message (str "Stashing to " new_branch)
+       :task_id (async-export! new_branch message)}
+      (catch Exception e
+        (.printStackTrace e)
+        (throw (ex-info (format "Failed to stash changes to branch: %s" (.getMessage e))
+                        {:status-code 400}))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/remote-sync` routes."
