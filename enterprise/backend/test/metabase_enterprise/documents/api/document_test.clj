@@ -2100,8 +2100,7 @@
   (testing "GET /api/public/document/:uuid should only return safe fields"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Document document (merge {:name "Public Test Document"
-                                                      :document (text->prose-mirror-ast "Public test content")
-                                                      :description "A test description"}
+                                                      :document (text->prose-mirror-ast "Public test content")}
                                                      (shared-document))]
         (let [result (mt/client :get 200 (str "public/document/" (:public_uuid document)))]
           (testing "Should include safe fields"
@@ -2159,7 +2158,7 @@
         (let [uuid (:public_uuid document)]
           (testing "Document is accessible when not archived"
             (is (= 200
-                   (:status (mt/client :get (str "public/document/" uuid))))))
+                   (:status (mt/client-full-response :get (str "public/document/" uuid))))))
           (testing "Document is not accessible after archiving"
             (t2/update! :model/Document (:id document) {:archived true})
             (is (= "Not found."

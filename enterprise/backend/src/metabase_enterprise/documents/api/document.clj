@@ -249,8 +249,7 @@
                              [:document-id ms/PositiveInt]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
-  (api/check-404 (t2/select-one :model/Document :id document-id))
-  (api/check-not-archived (api/read-check :model/Document document-id))
+  (api/check-exists? :model/Document :id document-id, :archived false)
   {:uuid (or (t2/select-one-fn :public_uuid :model/Document :id document-id)
              (u/prog1 (str (random-uuid))
                (t2/update! :model/Document document-id

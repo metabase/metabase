@@ -88,7 +88,8 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
 
   useEffect(() => {
     if (document) {
-      document.title = document.name;
+      // Set the page title for the browser tab
+      window.document.title = document.name;
     }
   }, [document]);
 
