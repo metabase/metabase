@@ -4,10 +4,12 @@ import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 
+import { useSearch } from "../hooks";
+import type { TreePath } from "../types";
+import { flatten } from "../utils";
+
 import { EmptyState } from "./EmptyState";
 import { Results } from "./Results";
-import type { TreePath } from "./types";
-import { flatten, useSearch } from "./utils";
 
 interface Props {
   query: string;

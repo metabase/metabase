@@ -1,6 +1,6 @@
 import { Box, Flex, Icon, Stack } from "metabase/ui";
 
-import S from "./TablePicker.module.css";
+import S from "./EmptyState.module.css";
 
 interface Props {
   title: string;

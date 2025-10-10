@@ -3,9 +3,10 @@ import { t } from "ttag";
 
 import { Box, Icon, Input, Stack, rem } from "metabase/ui";
 
+import type { ChangeOptions, TreePath } from "../types";
+
 import { Search } from "./Search";
 import { Tree } from "./Tree";
-import type { ChangeOptions, TreePath } from "./types";
 
 interface Props {
   path: TreePath;

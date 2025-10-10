@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { useExpandedState, useTableLoader } from "../hooks";
+import type { ChangeOptions, TreePath } from "../types";
+import { flatten } from "../utils";
+
 import { EmptyState } from "./EmptyState";
 import { Results } from "./Results";
-import { useExpandedState, useTableLoader } from "./hooks";
-import type { ChangeOptions, TreePath } from "./types";
-import { flatten } from "./utils";
 
 interface Props {
   path: TreePath;
