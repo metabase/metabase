@@ -128,7 +128,7 @@
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [dashboard-data {:name                name
                           :description         description
                           :parameters          (or parameters [])
@@ -1128,7 +1128,7 @@
   [{:keys [id param-key]}      :- [:map
                                    [:id ms/PositiveInt]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
       ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
       (binding [qp.perms/*param-values-query* true]
@@ -1147,7 +1147,7 @@
                                     [:id    ms/PositiveInt]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
-  (lib.metadata.jvm/with-metadata-provider-cache
+  (lib-be/with-metadata-provider-cache
     (let [dashboard (api/read-check :model/Dashboard id)]
       ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
       (binding [qp.perms/*param-values-query* true
