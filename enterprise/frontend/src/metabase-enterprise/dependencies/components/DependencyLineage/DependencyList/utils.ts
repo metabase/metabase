@@ -98,7 +98,7 @@ function isMatchingFilters(
     return true;
   }
 
-  return filterOptions.some((option) => FILTERS[option](node));
+  return filterOptions.every((option) => FILTERS[option](node));
 }
 
 const COMPARATORS: Record<SortColumn, NodeComparator> = {
