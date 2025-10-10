@@ -1,0 +1,7 @@
+.treeNode {
+  color: var(--mb-color-text-dark);
+}
+
+.nameContainer {
+  font-weight: normal;
+}

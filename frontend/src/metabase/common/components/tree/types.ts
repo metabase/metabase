@@ -17,6 +17,12 @@ export interface TreeNodeProps {
   isSelected: boolean;
   onSelect?: () => void;
   onToggleExpand: () => void;
+  className?: string;
+  classNames: {
+    root?: string;
+    expandToggleButton?: string;
+    iconContainer?: string;
+  };
 }
 
 export type TreeNodeComponent = React.ComponentType<
