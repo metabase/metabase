@@ -182,7 +182,7 @@ export function canPreviewItem(item: CollectionItem, collection?: Collection) {
 
 export function canMoveItem(item: CollectionItem, collection?: Collection) {
   return (
-    collection?.can_write &&
+    (collection?.can_write || isRootTrashCollection(collection)) &&
     !isReadOnlyCollection(item) &&
     item.setCollection != null &&
     !(isItemCollection(item) && isRootPersonalCollection(item))
