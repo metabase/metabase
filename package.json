@@ -478,7 +478,7 @@
     "test-cypress": "tsx ./e2e/runner/run_cypress_local.ts",
     "test-debug": "yarn build:cljs && node --inspect-brk node_modules/.bin/jest --runInBand --detectOpenHandles",
     "test-timezones": "yarn && ./frontend/test/__runner__/run_timezone_tests",
-    "test-timezones-unit": "yarn build:cljs && jest --silent --maxWorkers=4 --config jest.tz.unit.conf.json",
+    "test-timezones-unit": "yarn build:cljs && jest --silent --maxWorkers=4 --config jest.tz.unit.conf.js",
     "test-unit": "yarn build:cljs && jest --maxWorkers=4",
     "test-unit-keep-cljs": "jest --maxWorkers=4",
     "test-unit-watch": "yarn test-unit --watch",

@@ -281,7 +281,7 @@
    split-text))
 
 (def ^:private optional-block-regex
-  #"\[\[.+\]\]")
+  #"\[\[.+?\]\]")
 
 (def ^:private non-optional-block-regex
   #"\[\[(.+?)\]\]")
