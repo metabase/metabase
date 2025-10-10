@@ -56,6 +56,7 @@ export function ListHeader({
             />
             {hasFilterPicker && (
               <FilterOptionsPicker
+                groupType={selection.groupType}
                 filterOptions={filterOptions}
                 onFilterOptionsChange={onFilterOptionsChange}
               />
