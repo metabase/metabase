@@ -24,14 +24,14 @@ import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
 
-const USER_FACING_ENTITY_NAMES: UserFacingEntityName[] = [
+const USER_FACING_ENTITY_NAMES = [
   "collection",
   "dashboard",
   "question",
   "model",
-];
+] as const;
 
-type UserFacingEntityName = "collection" | "dashboard" | "question" | "model";
+type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 
 export type CollectionBrowserListColumns =
   | "type"
@@ -98,7 +98,7 @@ export const CollectionBrowserInner = ({
   collectionId = "personal",
   onClick,
   pageSize = COLLECTION_PAGE_SIZE,
-  visibleEntityTypes = USER_FACING_ENTITY_NAMES,
+  visibleEntityTypes = [...USER_FACING_ENTITY_NAMES],
   EmptyContentComponent = null,
   visibleColumns = COLLECTION_BROWSER_LIST_COLUMNS,
   className,
