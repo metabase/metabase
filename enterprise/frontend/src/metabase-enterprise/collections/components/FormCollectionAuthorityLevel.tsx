@@ -6,26 +6,30 @@ import FormField from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Center, Icon, SegmentedControl } from "metabase/ui";
 
-import { OFFICIAL_COLLECTION, REGULAR_COLLECTION } from "../constants";
+import { getOfficialCollection, getRegularCollection } from "../constants";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;
   title?: string;
 }
 
-const OPTIONS = [
-  {
-    label: REGULAR_COLLECTION.name,
-    value: REGULAR_COLLECTION.type,
-    icon: REGULAR_COLLECTION.icon,
-  },
-  {
-    label: OFFICIAL_COLLECTION.name,
-    value: OFFICIAL_COLLECTION.type,
-    icon: OFFICIAL_COLLECTION.icon,
-    selectedColor: OFFICIAL_COLLECTION.color,
-  },
-];
+const getOptions = () => {
+  const regularCollection = getRegularCollection();
+  const officialCollection = getOfficialCollection();
+  return [
+    {
+      label: regularCollection.name,
+      value: regularCollection.type,
+      icon: regularCollection.icon,
+    },
+    {
+      label: officialCollection.name,
+      value: officialCollection.type,
+      icon: officialCollection.icon,
+      selectedColor: officialCollection.color,
+    },
+  ];
+};
 
 export function FormCollectionAuthorityLevel({
   className,
@@ -52,7 +56,7 @@ export function FormCollectionAuthorityLevel({
       <SegmentedControl
         value={String(value)}
         onChange={handleChange}
-        data={OPTIONS.map((option) => ({
+        data={getOptions().map((option) => ({
           value: String(option.value),
           label: (
             <Center style={{ gap: 10 }} c={option.selectedColor}>

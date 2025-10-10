@@ -214,3 +214,83 @@
           (let [card (card/create-card! (basic-orders) user)]
             (is (= deps.graph/current-dependency-analysis-version
                    (t2/select-one-fn :dependency_analysis_version :model/Card :id (:id card))))))))))
+
+(deftest ^:sequential transform-delete-cleans-up-dependencies-test
+  (testing "Deleting a transform removes both upstream and downstream dependencies"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Transform transform {:source {:type "query" :query (mt/mbql-query products)}}
+                     :model/Card card {:dataset_query (mt/mbql-query orders)}]
+        ;; Manually create dependencies in both directions
+        (t2/insert! :model/Dependency {:from_entity_type :transform
+                                       :from_entity_id   (:id transform)
+                                       :to_entity_type   :table
+                                       :to_entity_id     (mt/id :products)})
+        (t2/insert! :model/Dependency {:from_entity_type :card
+                                       :from_entity_id   (:id card)
+                                       :to_entity_type   :transform
+                                       :to_entity_id     (:id transform)})
+
+        (testing "Dependencies exist before deletion"
+          (is (t2/exists? :model/Dependency :from_entity_type :transform :from_entity_id (:id transform))
+              "Upstream dependency should exist")
+          (is (t2/exists? :model/Dependency :to_entity_type :transform :to_entity_id (:id transform))
+              "Downstream dependency should exist"))
+
+        ;; Delete the transform
+        (t2/delete! :model/Transform :id (:id transform))
+
+        (testing "Both upstream and downstream dependencies are removed after deletion"
+          (is (not (t2/exists? :model/Dependency :from_entity_type :transform :from_entity_id (:id transform)))
+              "Upstream dependency should be deleted")
+          (is (not (t2/exists? :model/Dependency :to_entity_type :transform :to_entity_id (:id transform)))
+              "Downstream dependency should be deleted"))))))
+
+(deftest ^:sequential card-delete-cleans-up-dependencies-test
+  (testing "Deleting a card removes both upstream and downstream dependencies"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/User user {:email "test@example.com"}]
+        (let [card1 (card/create-card! (basic-orders) user)
+              card2 (card/create-card! (wrap-card card1) user)]
+          (testing "Dependencies exist before deletion"
+            (is (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id (:id card1))
+                "Upstream dependency should exist")
+            (is (t2/exists? :model/Dependency :to_entity_type :card :to_entity_id (:id card1))
+                "Downstream dependency should exist"))
+
+          ;; Delete card1
+          (t2/delete! :model/Card :id (:id card1))
+
+          (testing "Both upstream and downstream dependencies are removed after deletion"
+            (is (not (t2/exists? :model/Dependency :from_entity_type :card :from_entity_id (:id card1)))
+                "Upstream dependency should be deleted")
+            (is (not (t2/exists? :model/Dependency :to_entity_type :card :to_entity_id (:id card1)))
+                "Downstream dependency should be deleted")))))))
+
+(deftest ^:sequential snippet-delete-cleans-up-dependencies-test
+  (testing "Deleting a snippet removes both upstream and downstream dependencies"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
+        ;; Manually create dependencies in both directions
+        (t2/insert! :model/Dependency {:from_entity_type :snippet
+                                       :from_entity_id   (:id snippet)
+                                       :to_entity_type   :table
+                                       :to_entity_id     1})
+        (t2/insert! :model/Dependency {:from_entity_type :card
+                                       :from_entity_id   1
+                                       :to_entity_type   :snippet
+                                       :to_entity_id     (:id snippet)})
+
+        (testing "Dependencies exist before deletion"
+          (is (t2/exists? :model/Dependency :from_entity_type :snippet :from_entity_id (:id snippet))
+              "Upstream dependency should exist")
+          (is (t2/exists? :model/Dependency :to_entity_type :snippet :to_entity_id (:id snippet))
+              "Downstream dependency should exist"))
+
+        ;; Delete the snippet
+        (t2/delete! :model/NativeQuerySnippet :id (:id snippet))
+
+        (testing "Both upstream and downstream dependencies are removed after deletion"
+          (is (not (t2/exists? :model/Dependency :from_entity_type :snippet :from_entity_id (:id snippet)))
+              "Upstream dependency should be deleted")
+          (is (not (t2/exists? :model/Dependency :to_entity_type :snippet :to_entity_id (:id snippet)))
+              "Downstream dependency should be deleted"))))))

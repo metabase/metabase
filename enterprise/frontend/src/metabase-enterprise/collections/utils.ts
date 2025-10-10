@@ -10,10 +10,10 @@ import type {
 } from "metabase-types/api";
 
 import {
-  COLLECTION_TYPES,
-  INSTANCE_ANALYTICS_COLLECTION,
-  OFFICIAL_COLLECTION,
-  REGULAR_COLLECTION,
+  getCollectionTypes,
+  getInstanceAnalyticsCollection,
+  getOfficialCollection,
+  getRegularCollection,
 } from "./constants";
 
 export function isRegularCollection({
@@ -22,7 +22,7 @@ export function isRegularCollection({
 }: Bookmark | Partial<Collection>) {
   // Root, personal collections don't have `authority_level`
   return (
-    (!authority_level || authority_level === REGULAR_COLLECTION.type) &&
+    (!authority_level || authority_level === getRegularCollection().type) &&
     type !== "instance-analytics"
   );
 }
@@ -34,7 +34,7 @@ export function getCollectionType({
   | CollectionAuthorityLevelConfig
   | CollectionInstanceAnaltyicsConfig {
   return (
-    COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
+    getCollectionTypes()?.[String(type || authority_level)] ?? getRegularCollection()
   );
 }
 
@@ -49,7 +49,7 @@ export function isInstanceAnalyticsCollection(
 export const getIcon = (item: ObjectWithModel): IconData => {
   if (getCollectionType({ type: item.type }).type === "instance-analytics") {
     return {
-      name: INSTANCE_ANALYTICS_COLLECTION.icon,
+      name: getInstanceAnalyticsCollection().icon,
     };
   }
 
@@ -59,8 +59,8 @@ export const getIcon = (item: ObjectWithModel): IconData => {
       item.collection_authority_level === "official")
   ) {
     return {
-      name: OFFICIAL_COLLECTION.icon,
-      color: OFFICIAL_COLLECTION.color,
+      name: getOfficialCollection().icon,
+      color: getOfficialCollection().color,
     };
   }
 

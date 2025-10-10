@@ -13,10 +13,10 @@ import { CollectionAuthorityLevelIcon } from "./components/CollectionAuthorityLe
 import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstanceAnalyticsIcon";
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
-  AUTHORITY_LEVELS,
+  getAuthorityLevels,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
-  OFFICIAL_COLLECTION,
-  REGULAR_COLLECTION,
+  getOfficialCollection,
+  getRegularCollection,
 } from "./constants";
 import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 import {
@@ -29,9 +29,9 @@ import {
 if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.isRegularCollection = isRegularCollection;
 
-  PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
+  PLUGIN_COLLECTIONS.REGULAR_COLLECTION = getRegularCollection();
 
-  PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
+  PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = getAuthorityLevels();
 
   PLUGIN_COLLECTIONS.getIcon = getIcon;
 

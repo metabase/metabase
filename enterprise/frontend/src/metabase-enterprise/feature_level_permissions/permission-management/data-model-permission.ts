@@ -24,35 +24,35 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
-export const DATA_MODEL_PERMISSION_OPTIONS = {
+export const getDataModelPermissionOptions = () => ({
   none: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`No`,
     value: DataPermissionValue.NONE,
     icon: "close",
     iconColor: "danger",
   },
   edit: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Yes`,
     value: DataPermissionValue.ALL,
     icon: "check",
     iconColor: "success",
   },
   controlled: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     label: t`Granular`,
     value: DataPermissionValue.CONTROLLED,
     icon: "permissions_limited",
     iconColor: "warning",
   },
-};
+});
 
-const DATA_MODEL_PERMISSIONS_DESC = [
-  DATA_MODEL_PERMISSION_OPTIONS.edit.value,
-  DATA_MODEL_PERMISSION_OPTIONS.controlled.value,
-  DATA_MODEL_PERMISSION_OPTIONS.none.value,
-];
+const getDataModelPermissionsDesc = () => {
+  const options = getDataModelPermissionOptions();
+  return [
+    options.edit.value,
+    options.controlled.value,
+    options.none.value,
+  ];
+};
 
 const getPermissionValue = (
   permissions: GroupsPermissions,
@@ -115,7 +115,7 @@ export const buildDataModelPermission = (
     permissionSubject,
     defaultGroup,
     groupId,
-    DATA_MODEL_PERMISSIONS_DESC,
+    getDataModelPermissionsDesc(),
   );
 
   const confirmations = (newValue: DataPermissionValue) => [
@@ -125,7 +125,7 @@ export const buildDataModelPermission = (
       permissionSubject,
       defaultGroup,
       groupId,
-      DATA_MODEL_PERMISSIONS_DESC,
+      getDataModelPermissionsDesc(),
     ),
   ];
 

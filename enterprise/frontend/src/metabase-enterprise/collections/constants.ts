@@ -6,48 +6,50 @@ import type {
   CollectionInstanceAnaltyicsConfig,
 } from "metabase-types/api";
 
-export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
+export const getRegularCollection = (): CollectionAuthorityLevelConfig => ({
   type: null,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Regular`,
   icon: "folder",
-};
+});
 
-export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
+export const getOfficialCollection = (): CollectionAuthorityLevelConfig => ({
   type: "official",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Official`,
   icon: "official_collection",
   color: "saturated-yellow",
   tooltips: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     default: t`Official collection`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     belonging: t`Belongs to an Official collection`,
   },
+});
+
+export const getInstanceAnalyticsCollection = (): CollectionInstanceAnaltyicsConfig => ({
+  type: "instance-analytics",
+  name: t`Instance Analytics`,
+  icon: "audit",
+});
+
+export const getAuthorityLevels = (): Record<string, CollectionAuthorityLevelConfig> => {
+  const officialCollection = getOfficialCollection();
+  const regularCollection = getRegularCollection();
+  return {
+    [String(officialCollection.type)]: officialCollection,
+    [String(regularCollection.type)]: regularCollection,
+  };
 };
 
-export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
-  {
-    type: "instance-analytics",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    name: t`Instance Analytics`,
-    icon: "audit",
-  };
-
-export const AUTHORITY_LEVELS: Record<string, CollectionAuthorityLevelConfig> =
-  {
-    [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
-    [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
-  };
-
-export const COLLECTION_TYPES: Record<
+export const getCollectionTypes = (): Record<
   string,
   CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig
-> = {
-  [String(OFFICIAL_COLLECTION.type)]: OFFICIAL_COLLECTION,
-  [String(REGULAR_COLLECTION.type)]: REGULAR_COLLECTION,
-  [String(INSTANCE_ANALYTICS_COLLECTION.type)]: INSTANCE_ANALYTICS_COLLECTION,
+> => {
+  const officialCollection = getOfficialCollection();
+  const regularCollection = getRegularCollection();
+  const instanceAnalyticsCollection = getInstanceAnalyticsCollection();
+  return {
+    [String(officialCollection.type)]: officialCollection,
+    [String(regularCollection.type)]: regularCollection,
+    [String(instanceAnalyticsCollection.type)]: instanceAnalyticsCollection,
+  };
 };
 
 export const CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =

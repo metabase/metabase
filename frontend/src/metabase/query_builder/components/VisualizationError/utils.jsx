@@ -17,7 +17,7 @@ export function adjustPositions(error, origSql) {
     adjustmentLength += multiLineEndPos + 2; // 2 for */ in itself
   }
 
-  const chompedSql = origSql.substr(adjustmentLength);
+  const chompedSql = origSql.slice(adjustmentLength);
   // there also seem to be cases where remarks don't get in...
   const commentPos = chompedSql.search("--");
   const newLinePos = chompedSql.search("\n");
@@ -29,7 +29,7 @@ export function adjustPositions(error, origSql) {
   }
 
   return error.replace(/Position: (\d+)/, function (_, p1) {
-    return "Position: " + (parseInt(p1) - adjustmentLength);
+    return "Position: " + (parseInt(p1, 10) - adjustmentLength);
   });
 }
 
