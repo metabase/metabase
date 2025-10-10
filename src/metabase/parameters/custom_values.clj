@@ -72,7 +72,7 @@
   The `:query` key contains card's query with stages -1..n+1 removed, where n is the stage containing the column.
   The `:value-column` key contains the column."
   [card* value-field-ref]
-  (let [mp (lib-be.metadata.jvm/application-database-metadata-provider (:database_id card*))
+  (let [mp (lib-be/application-database-metadata-provider (:database_id card*))
         card (lib.metadata/card mp (:id card*))
         full-query (lib/card->underlying-query mp card)
         drop-clauses #(lib/update-query-stage % -1 dissoc :aggregation :breakout)]
