@@ -2,12 +2,12 @@ import { t } from "ttag";
 
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { IconName } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import type { DirtyEntity } from "../api/git-sync";
 
 export type CollectionPathSegment = {
-  id: number | string | null;
+  id: CollectionId;
   name: string;
 };
 
@@ -18,7 +18,7 @@ type ErrorData = {
   conflict?: boolean;
 };
 
-type ExportError = {
+export type ExportError = {
   data?: ErrorData;
   message?: string;
 };

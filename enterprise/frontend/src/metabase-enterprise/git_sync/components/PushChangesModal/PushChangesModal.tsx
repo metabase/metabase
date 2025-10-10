@@ -32,6 +32,7 @@ import {
 } from "../../../api/git-sync";
 import {
   type CollectionPathSegment,
+  type ExportError,
   buildCollectionMap,
   getCollectionPathSegments,
   getSyncStatusColor,
@@ -159,7 +160,7 @@ const AllChangesView = ({
   const groupedData = useMemo(() => {
     const byCollection = _.groupBy(entities, (e) => e.collection_id || 0);
 
-    const result = Object.entries(byCollection)
+    return Object.entries(byCollection)
       .map(([collectionId, items]) => {
         const collectionEntity = items.find(
           (item) =>
@@ -193,8 +194,6 @@ const AllChangesView = ({
           .join(" / ")
           .localeCompare(b.pathSegments.map((s) => s.name).join(" / ")),
       );
-
-    return result;
   }, [entities, collectionMap]);
 
   return (
@@ -350,7 +349,7 @@ export const PushChangesModal = ({
   ] = useExportChangesMutation();
 
   const { errorMessage, hasConflict } = useMemo(
-    () => parseExportError(exportError),
+    () => parseExportError(exportError as ExportError),
     [exportError],
   );
 

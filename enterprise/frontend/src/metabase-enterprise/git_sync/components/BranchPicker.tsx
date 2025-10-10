@@ -121,7 +121,6 @@ export const BranchPicker = ({
               <Icon
                 name="chevrondown"
                 size={12}
-                color="var(--mb-base-color-blue-30)"
                 style={{
                   transform: combobox.dropdownOpened
                     ? "rotate(180deg)"

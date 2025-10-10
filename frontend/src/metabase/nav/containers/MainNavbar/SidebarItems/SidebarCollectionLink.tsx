@@ -4,7 +4,10 @@ import { usePrevious } from "react-use";
 
 import CollectionDropTarget from "metabase/common/components/dnd/CollectionDropTarget";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import type { TreeNodeProps } from "metabase/common/components/tree/types";
+import type {
+  ITreeNodeItem,
+  TreeNodeProps,
+} from "metabase/common/components/tree/types";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -109,7 +112,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
             <SidebarIcon {...icon} isSelected={isSelected} />
           </TreeNode.IconContainer>
           <NameContainer>{collection.name}</NameContainer>
-          {rightSection?.(collection)}
+          {rightSection?.(collection as unknown as ITreeNodeItem)}
         </FullWidthLink>
       </CollectionNodeRoot>
     );
