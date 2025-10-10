@@ -5,6 +5,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.config :as config]
    [metabase.events.core :as events]
    [metabase.timeline.models.timeline :as timeline]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -41,7 +42,8 @@
             (when-not icon
               {:icon timeline-event/default-icon}))]
     (u/prog1 (first (t2/insert-returning-instances! :model/Timeline tl))
-      (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))
+      (when config/ee-available?
+        (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
@@ -105,7 +107,8 @@
     (when (and (some? archived) (not= current-archived archived))
       (t2/update! :model/TimelineEvent {:timeline_id id} {:archived archived}))
     (u/prog1 (t2/hydrate (t2/select-one :model/Timeline :id id) :creator [:collection :can_write] :is_remote_synced)
-      (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
+      (when config/ee-available?
+        (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."
@@ -113,7 +116,8 @@
                     [:id ms/PositiveInt]]]
   (let [timeline (api/write-check :model/Timeline id)]
     (t2/delete! :model/Timeline :id id)
-    (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*}))
+    (when config/ee-available?
+      (events/publish-event! :event/timeline-delete {:object timeline :user-id api/*current-user-id*})))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/collection/root"

@@ -1314,6 +1314,7 @@
    :uses #{analytics
            api
            collections
+           config
            events
            models
            util}}

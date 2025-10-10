@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.config :as config]
    [metabase.events.core :as events]
    [metabase.timeline.models.timeline-event :as timeline-event]
    [metabase.util :as u]
@@ -51,7 +52,10 @@
                                 (boolean source)      (assoc :source source)
                                 (boolean question_id) (assoc :question_id question_id)))
       (u/prog1 (first (t2/insert-returning-instances! :model/TimelineEvent tl-event))
-        (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*})))))
+        ;; We need to check if ee-code relying on these events are present otherwise this call will throw
+        ;; because the event is not defined.
+        (when config/ee-available?
+          (events/publish-event! :event/timeline-create {:object <> :user-id api/*current-user-id*}))))))
 
 (api.macros/defendpoint :get "/:id"
   "Fetch the [[TimelineEvent]] with `id`."
@@ -84,7 +88,8 @@
                                     :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
                                     :non-nil #{:name}))
     (u/prog1 (t2/select-one :model/TimelineEvent :id id)
-      (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*}))))
+      (when config/ee-available?
+        (events/publish-event! :event/timeline-update {:object (t2/select-one :model/Timeline :id (:timeline_id <>)) :user-id api/*current-user-id*})))))
 
 (api.macros/defendpoint :delete "/:id"
   "Delete a [[TimelineEvent]]."
@@ -93,5 +98,6 @@
   (api/write-check :model/TimelineEvent id)
   (let [timeline-event (api/write-check :model/TimelineEvent id)]
     (t2/delete! :model/TimelineEvent :id id)
-    (events/publish-event! :event/timeline-delete {:object (t2/select-one :model/Timeline :id (:timeline_id timeline-event)) :user-id api/*current-user-id*}))
+    (when config/ee-available?
+      (events/publish-event! :event/timeline-delete {:object (t2/select-one :model/Timeline :id (:timeline_id timeline-event)) :user-id api/*current-user-id*})))
   api/generic-204-no-content)
