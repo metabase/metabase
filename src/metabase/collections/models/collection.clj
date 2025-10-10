@@ -122,6 +122,20 @@
       ;; If :type field exists, compare directly
       (= type remote-synced-collection-type))))
 
+(defn remote-synced-collection
+  "Get the remote-synced collection, if it exists."
+  []
+  (t2/select-one :model/Collection :type remote-synced-collection-type :location "/"))
+
+(defn create-remote-synced-collection!
+  "Create the remote-synced-collection"
+  []
+  (when-not (nil? (remote-synced-collection))
+    (throw (ex-info "Remote-synced collection already exists" {})))
+  (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                    :type     remote-synced-collection-type
+                                                    :location "/"}))
+
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
 (methodical/defmethod t2/model-for-automagic-hydration [#_model :default #_k :collection]

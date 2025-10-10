@@ -14,6 +14,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.collections.models.collection :as collection]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]))
@@ -151,7 +152,7 @@
   "Update Git Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings
+   {:keys [remote-sync-type] :as settings}
    :- [:map
        [:remote-sync-enabled {:optional true} [:maybe :boolean]]
        [:remote-sync-url {:optional true} [:maybe :string]]
@@ -159,17 +160,28 @@
        [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
        [:remote-sync-branch {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (try
-    (settings/check-and-update-remote-settings! settings)
+  (let [original-sync-type (settings/remote-sync-type)]
+    (when (and
+           (= :production remote-sync-type)
+           (= :development original-sync-type)
+           (remote-sync.object/dirty-global?))
+      (throw (ex-info "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode."
+                      {:status-code 400})))
+    (try
+      (settings/check-and-update-remote-settings! settings)
+      (catch Exception e
+        (throw (ex-info "Invalid git settings"
+                        {:error       (.getMessage e)
+                         :status-code 400} e))))
+    (when (and (= :development (settings/remote-sync-type))
+               (true? (settings/remote-sync-enabled))
+               (nil? (collection/remote-synced-collection)))
+      (collection/create-remote-synced-collection!))
     (if (and (settings/remote-sync-enabled)
              (= :production (settings/remote-sync-type)))
       {:success true
        :task_id (async-import! (settings/remote-sync-branch) true)}
-      {:success true})
-    (catch Exception e
-      (throw (ex-info "Invalid git settings"
-                      {:error           (.getMessage e)
-                       :status-code 400} e)))))
+      {:success true})))
 
 (api.macros/defendpoint :get "/branches"
   "Get list of branches from the configured git source.
