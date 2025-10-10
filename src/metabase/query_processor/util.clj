@@ -97,7 +97,7 @@
   [params :- [:or :nil [:sequential :any]]]
   (map #(if (sequential? (:value %)) (update % :value (partial sort-by str)) %) params))
 
-(mu/defn- select-keys-for-hashing
+(mu/defn select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"

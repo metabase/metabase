@@ -213,3 +213,28 @@
         lon-field        (json/decode+kw lonField)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+
+;;; ----------------------------------------------- Ad-hoc queries ------------------------------------------------
+
+(api.macros/defendpoint :post "/dataset/:token"
+  "Fetch the results of running the ad-hoc query `auery` that should represent a subset of the query of the Card
+  encoded in the JSON Web Token `token` signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params
+   query :- [:map
+             [:database {:optional true} [:maybe :int]]]]
+  (let [unsigned-token (check-and-unsign token)
+        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+    (api.embed.common/process-query-for-card-with-params
+     :export-format    :api
+     :card-id          card-id
+     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+     :constraints      {:max-results max-results}
+     :subset-query     query)))

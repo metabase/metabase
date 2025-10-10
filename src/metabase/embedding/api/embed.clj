@@ -81,9 +81,8 @@
 (defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
-  [unsigned-token export-format query-params & {:keys [constraints qp]
-                                                :or   {constraints (qp.constraints/default-query-constraints)
-                                                       qp          qp.card/process-query-for-card-default-qp}
+  [unsigned-token export-format query-params & {:keys [constraints]
+                                                :or   {constraints (qp.constraints/default-query-constraints)}
                                                 :as   options}]
   (let [card-id (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/check-embedding-enabled-for-card card-id)
@@ -92,10 +91,11 @@
      :card-id           card-id
      :token-params      (embedding.jwt/get-in-unsigned-token-or-throw unsigned-token [:params])
      :embedding-params  (t2/select-one-fn :embedding_params :model/Card :id card-id)
-     :query-params      (api.embed.common/parse-query-params (dissoc query-params :format_rows :pivot_results))
-     :qp                qp
      :constraints       constraints
-     :options           options)))
+     :options           (cond-> options
+                          query-params
+                          (assoc :query-params (api.embed.common/parse-query-params
+                                                (dissoc query-params :format_rows :pivot_results)))))))
 
 (api.macros/defendpoint :get "/card/:token/query"
   "Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
@@ -384,3 +384,20 @@
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+
+;;; ----------------------------------------------- Ad-hoc queries ------------------------------------------------
+
+(api.macros/defendpoint :post "/dataset/:token"
+  "Fetch the results of running the ad-hoc query `auery` that should represent a subset of the query of the Card
+  encoded in the JSON Web Token `token` signed with the `embedding-secret-key`.
+
+   Token should have the following format:
+
+     {:resource {:question <card-id>}
+      :params   <parameters>}"
+  [{:keys [token]} :- [:map
+                       [:token string?]]
+   _query-params
+   query :- [:map
+             [:database {:optional true} [:maybe :int]]]]
+  (run-query-for-unsigned-token-async (unsign-and-translate-ids token) :api nil {:subset-query query}))
