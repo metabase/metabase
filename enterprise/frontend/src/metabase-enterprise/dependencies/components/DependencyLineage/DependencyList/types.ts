@@ -1,12 +1,10 @@
-import type { CardDependencyNode, DependencyNode } from "metabase-types/api";
+import type { DependencyNode } from "metabase-types/api";
 
-export type FilterOption =
-  | "verified"
-  | "in-dashboard"
-  | "in-official-collection"
-  | "not-in-personal-collection";
+import type { FILTER_OPTIONS, SORT_COLUMNS } from "./constants";
 
-export type SortColumn = "name" | "location" | "view-count";
+export type FilterOption = (typeof FILTER_OPTIONS)[number];
+
+export type SortColumn = (typeof SORT_COLUMNS)[number];
 
 export type SortDirection = "asc" | "desc";
 
@@ -21,7 +19,7 @@ export type SearchOptions = {
   sortOptions: SortOptions;
 };
 
-export type NodeFilter = (node: CardDependencyNode) => boolean;
+export type NodeFilter = (node: DependencyNode) => boolean;
 
 export type NodeComparator = (
   node1: DependencyNode,

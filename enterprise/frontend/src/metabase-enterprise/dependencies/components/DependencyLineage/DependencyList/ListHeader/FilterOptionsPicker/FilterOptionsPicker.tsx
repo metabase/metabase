@@ -10,17 +10,21 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import type { DependencyGroupType } from "metabase-types/api";
 
 import type { FilterOption } from "../../types";
+import { canFilterByOption } from "../../utils";
 
 import { getFilterItems } from "./utils";
 
 type FilterOptionsPickerProps = {
+  groupType: DependencyGroupType;
   filterOptions: FilterOption[];
   onFilterOptionsChange: (filterOptions: FilterOption[]) => void;
 };
 
 export function FilterOptionsPicker({
+  groupType,
   filterOptions,
   onFilterOptionsChange,
 }: FilterOptionsPickerProps) {
@@ -37,6 +41,7 @@ export function FilterOptionsPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <FilterOptionsPopover
+          groupType={groupType}
           filterOptions={filterOptions}
           onFilterOptionsChange={onFilterOptionsChange}
         />
@@ -46,15 +51,19 @@ export function FilterOptionsPicker({
 }
 
 type FilterOptionsPopoverProps = {
+  groupType: DependencyGroupType;
   filterOptions: FilterOption[];
   onFilterOptionsChange: (filterOptions: FilterOption[]) => void;
 };
 
 function FilterOptionsPopover({
+  groupType,
   filterOptions,
   onFilterOptionsChange,
 }: FilterOptionsPopoverProps) {
-  const filterItems = getFilterItems();
+  const filterItems = getFilterItems().filter((item) =>
+    canFilterByOption(groupType, item.value),
+  );
 
   const handleFilterOptionsChange = (filterOptions: string[]) => {
     onFilterOptionsChange(filterOptions as FilterOption[]);

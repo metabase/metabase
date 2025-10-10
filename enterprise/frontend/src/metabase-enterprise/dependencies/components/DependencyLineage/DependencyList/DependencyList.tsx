@@ -13,7 +13,7 @@ import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
 import type { FilterOption } from "./types";
 import {
-  canFilter,
+  canFilterByOption,
   canSortByColumn,
   getDefaultSortOptions,
   getListRequest,
@@ -46,14 +46,16 @@ export function DependencyList({
   );
 
   useLayoutEffect(() => {
-    if (!canFilter(selection.groupType)) {
+    const groupType = selection.groupType;
+
+    if (filterOptions.some((option) => !canFilterByOption(groupType, option))) {
       setFilterOptions([]);
     }
 
-    if (!canSortByColumn(selection.groupType, sortOptions.column)) {
-      setSortOptions(getDefaultSortOptions(selection.groupType));
+    if (!canSortByColumn(groupType, sortOptions.column)) {
+      setSortOptions(getDefaultSortOptions(groupType));
     }
-  }, [selection.groupType, sortOptions]);
+  }, [selection.groupType, filterOptions, sortOptions]);
 
   return (
     <Card className={S.root} shadow="none" withBorder>

@@ -13,8 +13,10 @@ import {
   getNodeLabel,
   getNodeLocationLabel,
   getNodeViewCount,
+  isCardType,
 } from "../utils";
 
+import { FILTER_OPTIONS } from "./constants";
 import type {
   FilterOption,
   NodeComparator,
@@ -35,59 +37,64 @@ export function getListRequest(
   };
 }
 
-export function canFilter(groupType: DependencyGroupType) {
-  return getCardType(groupType) != null;
-}
-
-export function canSortByColumn(
-  groupType: DependencyGroupType,
-  column: SortColumn,
-) {
-  return match(column)
-    .with("name", () => true)
-    .with("location", () => getCardType(groupType) != null)
-    .with("view-count", () => getCardType(groupType) != null)
-    .exhaustive();
-}
-
-export function getDefaultSortOptions(type: DependencyGroupType): SortOptions {
-  if (canSortByColumn(type, "view-count")) {
-    return { column: "view-count", direction: "desc" };
-  } else {
-    return { column: "name", direction: "asc" };
-  }
-}
-
 function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
   return getNodeLabel(node).toLowerCase().includes(searchQuery);
 }
 
 const FILTERS: Record<FilterOption, NodeFilter> = {
-  verified: ({ data }) => {
-    const lastReview = data.moderation_reviews?.find(
-      (review) => review.most_recent,
-    );
-    return lastReview != null && lastReview.status === "verified";
+  verified: (node) => {
+    if (node.type === "card") {
+      const lastReview = node.data.moderation_reviews?.find(
+        (review) => review.most_recent,
+      );
+      return lastReview != null && lastReview.status === "verified";
+    }
+    return false;
   },
-  "in-dashboard": ({ data }) => {
-    const dashboard = data.dashboard;
-    return dashboard != null;
+  "in-dashboard": (node) => {
+    if (node.type === "card") {
+      const dashboard = node.data.dashboard;
+      return dashboard != null;
+    }
+    return false;
   },
-  "in-official-collection": ({ data }) => {
-    const collection = data.collection;
-    return collection != null && collection.authority_level === "official";
+  "in-official-collection": (node) => {
+    if (node.type === "card") {
+      const collection = node.data.collection;
+      return collection != null && collection.authority_level === "official";
+    }
+    return false;
   },
-  "not-in-personal-collection": ({ data }) => {
-    const collection = data.collection;
-    return collection != null && !collection.is_personal;
+  "not-in-personal-collection": (node) => {
+    if (node.type === "card") {
+      const collection = node.data.collection;
+      return collection != null && !collection.is_personal;
+    }
+    return false;
   },
 };
+
+export function canFilterByOption(
+  groupType: DependencyGroupType,
+  option: FilterOption,
+) {
+  return match(option)
+    .with("verified", () => isCardType(groupType))
+    .with("in-dashboard", () => isCardType(groupType))
+    .with("in-official-collection", () => isCardType(groupType))
+    .with("not-in-personal-collection", () => isCardType(groupType))
+    .exhaustive();
+}
+
+export function canFilter(groupType: DependencyGroupType) {
+  return FILTER_OPTIONS.some((option) => canFilterByOption(groupType, option));
+}
 
 function isMatchingFilters(
   node: DependencyNode,
   filterOptions: FilterOption[],
 ) {
-  if (node.type !== "card" || filterOptions.length === 0) {
+  if (filterOptions.length === 0) {
     return true;
   }
 
@@ -111,6 +118,25 @@ const COMPARATORS: Record<SortColumn, NodeComparator> = {
     return count1 - count2;
   },
 };
+
+export function canSortByColumn(
+  groupType: DependencyGroupType,
+  column: SortColumn,
+) {
+  return match(column)
+    .with("name", () => true)
+    .with("location", () => isCardType(groupType))
+    .with("view-count", () => isCardType(groupType))
+    .exhaustive();
+}
+
+export function getDefaultSortOptions(type: DependencyGroupType): SortOptions {
+  if (canSortByColumn(type, "view-count")) {
+    return { column: "view-count", direction: "desc" };
+  } else {
+    return { column: "name", direction: "asc" };
+  }
+}
 
 function compareNodes(
   node1: DependencyNode,
