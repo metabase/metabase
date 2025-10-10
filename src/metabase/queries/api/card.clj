@@ -515,10 +515,10 @@
   [_route-params
    _query-params
    {card-type :type, :as card} :- CardCreateSchema]
-  (let [[_ _ :as has-cid?] (find card :collection_id)
+  (let [[_ collection-id :as has-cid?] (find card :collection_id)
         card (-> card
                  (update :dataset_query lib-be/normalize-query)
-                 (cond-> has-cid?
+                 (cond-> (and has-cid? (some? collection-id))
                    (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
