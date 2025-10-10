@@ -37,7 +37,7 @@ export function DependencyList({
   const [sortOptions, setSortOptions] = useState(() =>
     getDefaultSortOptions(selection.groupType),
   );
-  const matchingNodes = useMemo(
+  const visibleNodes = useMemo(
     () => getVisibleNodes(nodes, { searchQuery, sortOptions }),
     [nodes, searchQuery, sortOptions],
   );
@@ -61,7 +61,7 @@ export function DependencyList({
       {isFetching || error != null ? (
         <LoadingAndErrorWrapper loading={isFetching} error={error} />
       ) : (
-        <ListBody nodes={matchingNodes} />
+        <ListBody nodes={visibleNodes} />
       )}
     </Card>
   );
