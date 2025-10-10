@@ -2180,4 +2180,4 @@
           (testing "Active document should be in the list"
             (is (contains? public-doc-ids (:id active-doc))))
           (testing "Archived document should not be in the list"
-            (is (= 1 (count public-docs))))))))))
+            (is (= 1 (count public-docs)))))))))
