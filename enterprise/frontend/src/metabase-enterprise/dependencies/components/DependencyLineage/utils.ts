@@ -53,7 +53,6 @@ function getEdges(edges: DependencyEdge[]): Edge[] {
       data: edge,
       source: sourceId,
       target: targetId,
-      focusable: false,
       selectable: false,
       deletable: false,
     };

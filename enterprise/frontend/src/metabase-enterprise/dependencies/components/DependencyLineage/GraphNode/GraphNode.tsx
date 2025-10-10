@@ -53,8 +53,12 @@ export const GraphNode = memo(function ItemNode({
           </>
         )}
       </Stack>
-      {sources.length > 0 && <Handle type="source" position={Position.Left} />}
-      {targets.length > 0 && <Handle type="target" position={Position.Right} />}
+      {sources.length > 0 && (
+        <Handle type="source" position={Position.Left} isConnectable={false} />
+      )}
+      {targets.length > 0 && (
+        <Handle type="target" position={Position.Right} isConnectable={false} />
+      )}
     </>
   );
 });
