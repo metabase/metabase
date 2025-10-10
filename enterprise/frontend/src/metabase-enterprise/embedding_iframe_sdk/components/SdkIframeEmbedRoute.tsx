@@ -112,98 +112,131 @@ const SdkIframeEmbedView = ({
     );
   }
 
-  return match(settings)
-    .with(
-      {
-        componentName: "metabase-browser",
-      },
-      (settings) => (
-        // re-mount breadcrumbs when initial collection changes
-        <SdkBreadcrumbsProvider key={settings.initialCollection}>
-          <MetabaseBrowser settings={settings} />
-        </SdkBreadcrumbsProvider>
-      ),
-    )
-    .with(
-      {
-        componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
-        drills: false,
-      },
-      (settings) => (
-        <StaticDashboard
-          dashboardId={settings.dashboardId}
-          withTitle={settings.withTitle}
-          withDownloads={settings.withDownloads}
-          initialParameters={settings.initialParameters}
-          hiddenParameters={settings.hiddenParameters}
-          key={rerenderKey}
-        />
-      ),
-    )
-    .with(
-      {
-        componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
-        isStatic: P.optional(false),
-        drills: P.optional(true),
-      },
-      {
-        componentName: "metabase-dashboard",
-        dashboardId: P.nonNullable,
-        isStatic: true,
-        drills: true,
-      },
-      (settings) => (
-        <InteractiveDashboard
-          dashboardId={settings.dashboardId}
-          withTitle={settings.withTitle}
-          withDownloads={settings.withDownloads}
-          initialParameters={settings.initialParameters}
-          hiddenParameters={settings.hiddenParameters}
-          drillThroughQuestionHeight="100%"
-          drillThroughQuestionProps={{ isSaveEnabled: false }}
-          key={rerenderKey}
-        />
-      ),
-    )
-    .with(
-      {
-        componentName: "metabase-question",
-        questionId: P.nonNullable,
-      },
-      (settings) => {
-        const commonProps = {
-          questionId: settings.questionId,
-          withDownloads: settings.withDownloads,
-          height: "100%",
-          initialSqlParameters: settings.initialSqlParameters,
-          hiddenParameters: settings.hiddenParameters,
-          title: settings.withTitle ?? true, // defaulting title to true even if in the sdk it defaults to false for static
-        };
-
-        // note: to create a new question we need to render InteractiveQuestion
-        if (settings.drills === false && settings.questionId !== "new") {
-          // note: this disable drills but also removes the top toolbar
-          return <StaticQuestion {...commonProps} key={rerenderKey} />;
-        }
-
-        return (
-          <SdkQuestion
-            {...commonProps}
-            isSaveEnabled={settings.isSaveEnabled ?? false}
+  return (
+    match(settings)
+      .with(
+        {
+          componentName: "metabase-browser",
+        },
+        (settings) => (
+          // re-mount breadcrumbs when initial collection changes
+          <SdkBreadcrumbsProvider key={settings.initialCollection}>
+            <MetabaseBrowser settings={settings} />
+          </SdkBreadcrumbsProvider>
+        ),
+      )
+      .with(
+        // Embedding based on a dashboardId (non-anonymous) with disabled drills
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: false,
+        },
+        // Embedding based on a token (anonymous) with default/disabled drills
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: P.optional(false),
+        },
+        (settings) => (
+          <StaticDashboard
+            dashboardId={settings.dashboardId ?? null}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
             key={rerenderKey}
+          />
+        ),
+      )
+      .with(
+        // Embedding based on a questionId (non-anonymous) with default/enabled drills
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: P.optional(true),
+        },
+        // Embedding based on a token (anonymous) with enabled drills
+        {
+          componentName: "metabase-dashboard",
+          dashboardId: P.nonNullable,
+          drills: true,
+        },
+        (settings) => (
+          <InteractiveDashboard
+            dashboardId={settings.dashboardId ?? null}
+            withTitle={settings.withTitle}
+            withDownloads={settings.withDownloads}
+            initialParameters={settings.initialParameters}
+            hiddenParameters={settings.hiddenParameters}
+            drillThroughQuestionHeight="100%"
+            drillThroughQuestionProps={{ isSaveEnabled: false }}
+            key={rerenderKey}
+          />
+        ),
+      )
+      .with(
+        // Embedding based on a questionId (non-anonymous) with disabled drills
+        {
+          componentName: "metabase-question",
+          questionId: P.nonNullable,
+          drills: false,
+        },
+        // Embedding based on a token (anonymous) with default/disabled drills
+        {
+          componentName: "metabase-question",
+          questionId: P.nonNullable,
+          drills: P.optional(false),
+        },
+        (settings) => (
+          <StaticQuestion
+            key={rerenderKey}
+            questionId={settings.questionId ?? null}
+            withDownloads={settings.withDownloads}
+            height="100%"
+            initialSqlParameters={settings.initialSqlParameters}
+            hiddenParameters={settings.hiddenParameters}
+            title={settings.withTitle ?? true}
+          />
+        ),
+      )
+      // Anonymous embedding for question
+      .with(
+        // Embedding based on a questionId (non-anonymous) with default/enabled drills
+        {
+          componentName: "metabase-question",
+          questionId: P.nonNullable,
+          drills: P.optional(true),
+        },
+        // Embedding based on a token (anonymous) with enabled drills
+        {
+          componentName: "metabase-question",
+          questionId: P.nonNullable,
+          drills: true,
+        },
+        (settings) => (
+          <SdkQuestion
+            key={rerenderKey}
+            questionId={settings.questionId ?? null}
+            withDownloads={settings.withDownloads}
+            height="100%"
+            initialSqlParameters={settings.initialSqlParameters}
+            hiddenParameters={settings.hiddenParameters}
+            title={settings.withTitle ?? true}
+            isSaveEnabled={settings.isSaveEnabled ?? false}
             targetCollection={settings.targetCollection}
             entityTypes={settings.entityTypes}
           />
-        );
-      },
-    )
-    .with(
-      {
-        componentName: "metabase-metabot",
-      },
-      (settings) => <MetabotQuestion layout={settings.layout} height="100%" />,
-    )
-    .otherwise(() => null);
+        ),
+      )
+      .with(
+        {
+          componentName: "metabase-metabot",
+        },
+        (settings) => (
+          <MetabotQuestion layout={settings.layout} height="100%" />
+        ),
+      )
+      .otherwise(() => null)
+  );
 };
