@@ -229,7 +229,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     getNextObjectDetailButton().should("not.exist");
   });
 
-  it.skip("handles opening a filtered out record", () => {
+  it("handles opening a filtered out record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     const FILTERED_OUT_ID = 1;
 
@@ -242,7 +242,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
   });
 
-  it.skip("can view details of an out-of-range record", () => {
+  it("can view details of an out-of-range record", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     // since we only fetch 2000 rows, this ID is out of range
     // and has to be fetched separately
