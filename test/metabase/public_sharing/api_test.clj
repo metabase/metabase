@@ -765,12 +765,12 @@
                 (testing "Can fetch card data from public document"
                   (is (= 200
                          (:status (client/client :get (str "public/document/" uuid "/card/" card-id))))))
-                
+
                 (testing "Cannot fetch card not embedded in document"
                   (mt/with-temp [:model/Card other-card {:dataset_query (mt/mbql-query venues)}]
                     (is (= "Not found."
                            (client/client :get 404 (str "public/document/" uuid "/card/" (:id other-card)))))))
-                
+
                 (testing "Cannot fetch when card is archived"
                   (t2/update! :model/Card card-id {:archived true})
                   (is (= "Not found."
