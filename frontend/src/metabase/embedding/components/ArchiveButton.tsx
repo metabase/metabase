@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
 import { canArchiveItem } from "metabase/collections/utils";
-import { Button, Icon, Menu, Tooltip } from "metabase/ui";
+import { ActionIcon, Icon, Menu } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import S from "./ArchiveButton.module.css";
@@ -27,34 +27,30 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
     return null;
   }
 
-  const buttonLabel = t`Move to trash`;
-
   return (
-    <Menu opened={dropdownOpened} onClose={() => dropdownActions.close()}>
-      <Tooltip
-        label={buttonLabel}
-        opened={dropdownOpened ? false : undefined}
-        withArrow
-      >
-        <Menu.Target>
-          <Button
-            aria-label={buttonLabel}
-            leftSection={<Icon name="trash" className={S.archiveIcon} />}
-            variant="inverse"
-            py="sm"
-            px="md"
-            onClick={dropdownActions.toggle}
-          />
-        </Menu.Target>
-      </Tooltip>
+    <Menu
+      opened={dropdownOpened}
+      onClose={() => dropdownActions.close()}
+      position="bottom-end"
+    >
+      <Menu.Target>
+        <ActionIcon
+          aria-label={c(
+            "button that opens a actions dropdown e.g. Delete this row",
+          ).t`Actions`}
+          variant="subtle"
+          onClick={dropdownActions.open}
+        >
+          <Icon name="ellipsis" className={S.archiveIcon} />
+        </ActionIcon>
+      </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item>
-          <Button
-            variant="filled"
-            color="danger"
-            fullWidth
-            onClick={handleArchive}
-          >{t`Move to trash`}</Button>
+        <Menu.Item
+          leftSection={<Icon name="trash" aria-hidden />}
+          onClick={handleArchive}
+          className={S.archiveMenuItem}
+        >
+          {t`Delete`}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>

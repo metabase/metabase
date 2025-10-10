@@ -81,13 +81,10 @@ describe("scenarios > embedding-sdk > collection browser", () => {
         cy.findByText("Orders in a dashboard").should("exist");
 
         cy.log("delete the dashboard");
-        cy.findByText(dashboardName)
-          .closest("tr")
-          .button("Move to trash")
-          .click();
+        cy.findByText(dashboardName).closest("tr").button("Actions").click();
       });
 
-      H.popover().button("Move to trash").click();
+      H.popover().findByRole("menuitem", { name: "Delete" }).click();
 
       cy.log("the deleted dashboard should be gone");
       getSdkRoot().findByText(dashboardName).should("not.exist");

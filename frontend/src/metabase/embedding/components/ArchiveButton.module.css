@@ -5,3 +5,12 @@
 :where(button):hover .archiveIcon {
   color: var(--mb-color-text-secondary);
 }
+
+.archiveMenuItem {
+  color: var(--mb-color-danger);
+
+  &:hover:not([data-css-specificity-hack]) {
+    color: var(--mb-color-danger);
+    background-color: var(--mb-color-bg-error);
+  }
+}
