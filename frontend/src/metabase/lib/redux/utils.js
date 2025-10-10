@@ -12,7 +12,7 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 
-import { UPDATE_ENTITIES_ACTION } from "./metadata";
+import { UPDATE_METADATA_ACTION } from "./metadata";
 
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
@@ -137,7 +137,7 @@ export function handleEntities(
       state = {};
     }
     const entities = getIn(action, ["payload", "entities", entityType]);
-    if (action.type === UPDATE_ENTITIES_ACTION && entities) {
+    if (action.type === UPDATE_METADATA_ACTION && entities) {
       state = mergeEntities(state, entities);
     }
     return reducer(state, action);
