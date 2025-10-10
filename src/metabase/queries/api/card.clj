@@ -515,7 +515,11 @@
   [_route-params
    _query-params
    {card-type :type, :as card} :- CardCreateSchema]
-  (let [card  (update card :dataset_query lib-be/normalize-query)
+  (let [[_ _ :as has-cid?] (find card :collection_id)
+        card (-> card
+                 (update :dataset_query lib-be/normalize-query)
+                 (cond-> has-cid?
+                   (update :collection_id #(eid-translation/->id-or-404 :collection %))))
         query (:dataset_query card)]
     (check-if-card-can-be-saved query card-type)
     ;; check that we have permissions to run the query that we're trying to save
