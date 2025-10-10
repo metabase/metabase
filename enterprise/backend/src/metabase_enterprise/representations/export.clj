@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.representations.v0.common :as v0-common]
-   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections.api :as coll.api]
    [metabase.util.log :as log]
