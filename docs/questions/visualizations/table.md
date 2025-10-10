@@ -265,7 +265,7 @@ Lets you change the unit of currency from whatever the system default is.
 
 ### Currency label style
 
-Allows you to choose how to display the currency label. For example, for Canadian dollars:
+Choose how to display the currency label. For example, for Canadian dollars:
 
 - **Symbol**: `CA$` 
 - **Local symbol**: `$`

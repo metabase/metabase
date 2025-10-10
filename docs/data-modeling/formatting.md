@@ -128,7 +128,7 @@ Lets you choose to display the number as a plain number, a percent, in scientifi
 
 ### Currency label style
 
-For fields with Style set to "Currency", you can choose how to display the currency label. For example, for Canadian dollars:
+For fields with Style set to "Currency", choose how to display the currency label. For example, for Canadian dollars:
 
 - **Symbol**: `CA$` 
 - **Local symbol**: `$`
