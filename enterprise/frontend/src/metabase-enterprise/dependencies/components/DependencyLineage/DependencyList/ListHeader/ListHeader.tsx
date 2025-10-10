@@ -4,6 +4,7 @@ import { ActionIcon, Group, Icon, Stack, TextInput, Title } from "metabase/ui";
 
 import type { GraphSelection } from "../../types";
 import type { FilterOption, SortOptions } from "../types";
+import { canFilter } from "../utils";
 
 import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import { SortOptionsPicker } from "./SortOptionsPicker";
@@ -30,6 +31,8 @@ export function ListHeader({
   onFilterOptionsChange,
   onSortOptionsChange,
 }: ListHeaderProps) {
+  const hasFilterPicker = canFilter(selection.groupType);
+
   return (
     <Stack pl="lg" pt="lg" pr="lg" gap="md">
       <Group wrap="nowrap">
@@ -51,13 +54,15 @@ export function ListHeader({
               sortOptions={sortOptions}
               onSortOptionsChange={onSortOptionsChange}
             />
-            <FilterOptionsPicker
-              filterOptions={filterOptions}
-              onFilterOptionsChange={onFilterOptionsChange}
-            />
+            {hasFilterPicker && (
+              <FilterOptionsPicker
+                filterOptions={filterOptions}
+                onFilterOptionsChange={onFilterOptionsChange}
+              />
+            )}
           </Group>
         }
-        rightSectionWidth="4.25rem"
+        rightSectionWidth={hasFilterPicker ? "4.25rem" : undefined}
         onChange={(event) => onSearchTextChange(event.target.value)}
       />
     </Stack>

@@ -28,6 +28,10 @@ export function getListRequest(
   };
 }
 
+export function canFilter(groupType: DependencyGroupType) {
+  return getCardType(groupType) != null;
+}
+
 export function canSortByColumn(
   groupType: DependencyGroupType,
   column: SortColumn,

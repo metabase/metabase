@@ -13,6 +13,7 @@ import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
 import type { FilterOption } from "./types";
 import {
+  canFilter,
   canSortByColumn,
   getDefaultSortOptions,
   getListRequest,
@@ -45,6 +46,10 @@ export function DependencyList({
   );
 
   useLayoutEffect(() => {
+    if (!canFilter(selection.groupType)) {
+      setFilterOptions([]);
+    }
+
     if (!canSortByColumn(selection.groupType, sortOptions.column)) {
       setSortOptions(getDefaultSortOptions(selection.groupType));
     }
