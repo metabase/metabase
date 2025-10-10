@@ -117,10 +117,39 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid pivot-cols: specified breakout at index 3, but we only have 3 breakouts"
-         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true)))))
-  ;; TODO -- we should require these columns to be distinct as well (I think?)
-  ;; TODO -- require all numbers to be positive
-  ;; TODO -- can you specify something in both pivot-rows and pivot-cols?
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 2 3] true true))))
+  (testing "Should throw an Exception if you pass in negative pivot-rows indexes"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: breakout index -1 must be non-negative"
+         (#'qp.pivot/breakout-combinations 3 [0 1 -1] [] true true))))
+  (testing "Should throw an Exception if you pass in negative pivot-cols indexes"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: breakout index -2 must be non-negative"
+         (#'qp.pivot/breakout-combinations 3 [] [0 1 -2] true true))))
+  (testing "Should throw an Exception if pivot-rows contains duplicate indexes"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-rows: contains duplicate breakout indexes"
+         (#'qp.pivot/breakout-combinations 3 [0 1 1] [] true true))))
+  (testing "Should throw an Exception if pivot-cols contains duplicate indexes"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot-cols: contains duplicate breakout indexes"
+         (#'qp.pivot/breakout-combinations 3 [] [0 2 2] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols overlap"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot configuration: breakout indexes \[1\] cannot be specified in both pivot-rows and pivot-cols"
+         (#'qp.pivot/breakout-combinations 3 [0 1] [1 2] true true))))
+  (testing "Should throw an Exception if pivot-rows and pivot-cols have multiple overlapping indexes"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Invalid pivot configuration: breakout indexes \[(0 1|1 0)\] cannot be specified in both pivot-rows and pivot-cols"
+         (#'qp.pivot/breakout-combinations 4 [0 1 2] [0 1 3] true true))))
+  (testing "Should work correctly with valid, non-overlapping pivot-rows and pivot-cols"
+    (is (seq (#'qp.pivot/breakout-combinations 4 [0 1] [2 3] true true)))))
 
 (defn- test-query []
   (mt/dataset test-data
