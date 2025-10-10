@@ -52,15 +52,46 @@ import type { RawSeries, RecentCollectionItem } from "metabase-types/api";
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
+import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
+import { useItemsListQuery } from "../ItemsListSection/useItemsListQuery";
 
-function MetricsList({ activeId, onCollapse }: { activeId: number | null; onCollapse: () => void }) {
+function MetricsList({
+  activeId,
+  onCollapse,
+  location,
+}: {
+  activeId: number | null;
+  onCollapse: () => void;
+  location: Location;
+}) {
   const dispatch = useDispatch();
   const { isLoading, data } = useFetchMetrics();
   const metrics = data?.data;
 
+  const listSettingsProps = useItemsListQuery({
+    location,
+    settings: [
+      {
+        name: "display",
+        options: [
+          {
+            label: t`By collection`,
+            value: "collection",
+          },
+          {
+            label: t`Alphabetical`,
+            value: "alphabetical",
+          },
+        ],
+      },
+    ],
+    defaults: { display: "collection" },
+  });
+
   return (
     <ItemsListSection
-      sectionTitle="Metrics"
+      sectionTitle={t`Metrics`}
+      settings={<ItemsListSettings {...listSettingsProps} />}
       onCollapse={onCollapse}
       onAddNewItem={() => {
         const url = newQuestion({
@@ -124,12 +155,17 @@ function MetricListItem({
 export const MetricsLayout = ({
   children,
   params,
+  location,
 }: {
   children: React.ReactNode;
   params: { slug: string };
+  location: Location;
 }) => {
   return (
-    <BenchLayout nav={<MetricsList activeId={+params.slug} />} name="model">
+    <BenchLayout
+      nav={<MetricsList activeId={+params.slug} location={location} />}
+      name="model"
+    >
       {children}
     </BenchLayout>
   );
