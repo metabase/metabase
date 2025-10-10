@@ -41,7 +41,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
           variant="subtle"
           onClick={dropdownActions.open}
         >
-          <Icon name="ellipsis" className={S.archiveIcon} />
+          <Icon name="ellipsis" />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>

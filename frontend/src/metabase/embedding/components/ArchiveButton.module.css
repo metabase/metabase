@@ -1,11 +1,3 @@
-.archiveIcon {
-  color: var(--mb-color-text-tertiary);
-}
-
-:where(button):hover .archiveIcon {
-  color: var(--mb-color-text-secondary);
-}
-
 .archiveMenuItem {
   color: var(--mb-color-danger);
 
