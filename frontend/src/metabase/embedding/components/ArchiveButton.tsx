@@ -18,6 +18,11 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
   const canArchive = collection ? canArchiveItem(item, collection) : false;
   const [dropdownOpened, dropdownActions] = useDisclosure();
 
+  const handleArchive = () => {
+    item.setArchived?.(true);
+    dropdownActions.close();
+  };
+
   if (!canArchive) {
     return null;
   }
@@ -45,6 +50,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
             variant="filled"
             color="danger"
             fullWidth
+            onClick={handleArchive}
           >{t`Move to trash`}</Button>
         </Menu.Item>
       </Menu.Dropdown>
