@@ -5,7 +5,6 @@ import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { renderLinkTextForClick } from "metabase/lib/formatting/link";
 import { parseNumber } from "metabase/lib/number";
@@ -42,26 +41,6 @@ const MARKDOWN_RENDERERS = {
 
 export function formatValue(value: unknown, _options: OptionsType = {}) {
   let { prefix, suffix, ...options } = _options;
-
-  // SDK: Inject click_behavior for raw URL values
-  if (
-    isEmbeddingSdk() &&
-    !options.click_behavior &&
-    typeof value === "string" &&
-    (value.startsWith("http://") ||
-      value.startsWith("https://") ||
-      value.startsWith("mailto:"))
-  ) {
-    options = {
-      ...options,
-      click_behavior: {
-        type: "link",
-        linkType: "url",
-        linkTemplate: value,
-      },
-    };
-  }
-
   // avoid rendering <ExternalLink> if we have click_behavior set
   if (
     options.click_behavior &&
