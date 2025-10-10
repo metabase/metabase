@@ -32,7 +32,7 @@
 (defn check-transform-dependencies
   "Check a proposed edit to a SQL transform, and return transforms that will break in a format
   suitable for Metabot. Takes a map with :id and :source keys."
-  [base-provider {:keys [id source]}]
+  [{:keys [id source]}]
   (try
     (let [result (if (= (keyword (:type source)) :query)
                    (let [database-id   (-> source :query :database)
