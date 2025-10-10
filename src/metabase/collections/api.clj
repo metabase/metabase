@@ -14,11 +14,9 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -499,52 +497,9 @@
   [_ collection options]
   (card-query :question collection options))
 
-(defn- fully-parameterized-text?
-  "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
-  described by `template-tags` (usually the template tags of a native query).
-
-  The rules to consider a piece of text fully parameterized is as follows:
-
-  1. All parameters not in an optional block are field-filters or snippets or have a default value.
-  2. All required parameters have a default value.
-
-  The first rule is absolutely necessary, as queries violating it cannot be executed without
-  externally supplied parameter values. The second rule is more controversial, as field-filters
-  outside of optional blocks ([[ ... ]]) don't prevent the query from being executed without
-  external parameter values (neither do parameters in optional blocks). The rule has been added
-  nonetheless, because marking a parameter as required is something the user does intentionally
-  and queries that are technically executable without parameters can be unacceptably slow
-  without the necessary constraints. (Marking parameters in optional blocks as required doesn't
-  seem to be useful any way, but if the user said it is required, we honor this flag.)"
-  [text template-tags]
-  (try
-    (let [obligatory-params (into #{}
-                                  (comp (filter params/Param?)
-                                        (map :k))
-                                  (params.parse/parse text))]
-      (and (every? #(or (#{:dimension :snippet :card} (:type %))
-                        (:default %))
-                   (map template-tags obligatory-params))
-           (every? #(or (not (:required %))
-                        (:default %))
-                   (vals template-tags))))
-    (catch clojure.lang.ExceptionInfo _
-      ;; An exception might be thrown during parameter parsing if the syntax is invalid. In this case we return
-      ;; true so that we still can try to generate a preview for the query and display an error.
-      false)))
-
-(defn fully-parameterized-query?
-  "Given a Card, returns `true` if its query is fully parameterized."
-  [row]
-;; TODO TB handle pMBQL native queries
-  (let [native-query (-> row :dataset_query :native)]
-    (if-let [template-tags (:template-tags native-query)]
-      (fully-parameterized-text? (:query native-query) template-tags)
-      true)))
-
 (defn- post-process-card-row [row]
   (-> (t2/instance :model/Card row)
-      (update :dataset_query (:out mi/transform-metabase-query))
+      (update :dataset_query (:out lib-be/transform-query))
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
@@ -552,7 +507,7 @@
 (defn- post-process-card-row-after-hydrate [row]
   (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
-      (assoc :fully_parameterized (fully-parameterized-query? row))))
+      (assoc :fully_parameterized (queries/fully-parameterized? row))))
 
 (defn- post-process-card-like
   [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
@@ -562,12 +517,11 @@
                            :dashboard_count
                            [:dashboard :moderation_status]]
                     include-can-run-adhoc-query (conj :can_run_adhoc_query))]
-    (lib.metadata.jvm/with-metadata-provider-cache
-      (as-> (map post-process-card-row rows) $
-        (apply t2/hydrate $ hydration)
-        (cond-> $
-          hydrate-based-on-upload upload/model-hydrate-based-on-upload)
-        (map post-process-card-row-after-hydrate $)))))
+    (as-> (map post-process-card-row rows) $
+      (apply t2/hydrate $ hydration)
+      (cond-> $
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+      (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
   [_ options _ rows]

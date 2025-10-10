@@ -2,10 +2,6 @@
   align-items: center;
 }
 
-.root {
-  background-color: color-mix(in srgb, var(--alert-color), white 90%);
-}
-
 .title {
   color: var(--mb-color-text-dark);
   line-height: 1rem;

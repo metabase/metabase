@@ -106,7 +106,7 @@ describe("issue 21984", () => {
 
     H.commandPaletteButton().click();
     H.commandPalette().within(() => {
-      cy.findByText("Recent items").should("not.exist");
+      cy.findByText("Recents").should("not.exist");
     });
   });
 });

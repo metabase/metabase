@@ -59,11 +59,19 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   shadow: ["shadow"],
   positive: ["success"],
   negative: ["danger"],
-  "text-white": ["text-white"],
+  "text-white": ["text-white", "white"],
   error: ["error"],
   "background-error": ["bg-error"],
   "text-hover": ["text-hover"],
 };
+
+/**
+ * These colors must never be changed.
+ * For example, the blue Metabase brand color.
+ **/
+export const SDK_UNCHANGEABLE_COLORS: (ColorName | SemanticColorKey)[] = [
+  "metabase-brand",
+];
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof NonNullable<MetabaseComponentTheme["tooltip"]>,

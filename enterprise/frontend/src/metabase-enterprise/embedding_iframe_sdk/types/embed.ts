@@ -185,6 +185,7 @@ export type SdkIframeEmbedElementSettings = SdkIframeEmbedBaseSettings &
     | QuestionEmbedOptions
     | (Omit<ExplorationEmbedOptions, "questionId"> & { questionId: "new" })
     | BrowserEmbedOptions
+    | MetabotEmbedOptions
   );
 
 export type SdkIframeEmbedEvent = { type: "ready" };
@@ -197,4 +198,5 @@ export type SdkIframeEmbedSettingKey =
   | keyof DashboardEmbedOptions
   | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
-  | keyof BrowserEmbedOptions;
+  | keyof BrowserEmbedOptions
+  | keyof MetabotEmbedOptions;

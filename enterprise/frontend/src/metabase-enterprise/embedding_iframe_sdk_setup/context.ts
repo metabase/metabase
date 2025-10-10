@@ -44,7 +44,7 @@ export interface SdkIframeEmbedSetupContextType {
 
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
-  parameterValuesById: EmbeddingParametersValues;
+  parametersValuesById: EmbeddingParametersValues;
 
   isEmbedSettingsLoaded: boolean;
 }

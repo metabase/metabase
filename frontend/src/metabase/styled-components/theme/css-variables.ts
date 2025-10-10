@@ -7,6 +7,7 @@ import { getDynamicCssVariables } from "metabase/embedding-sdk/theme/dynamic-css
 import {
   SDK_TO_MAIN_APP_COLORS_MAPPING,
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
+  SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import { colorConfig } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
@@ -80,6 +81,9 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     ${Object.entries(SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING).flatMap(
       ([, colorName]) => createSdkColorVars(colorName),
     )}
+
+    /* Colors that cannot be changed. */
+    ${SDK_UNCHANGEABLE_COLORS.map((colorName) => createSdkColorVars(colorName))}
   `;
 }
 

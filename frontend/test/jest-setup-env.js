@@ -1,19 +1,30 @@
 import "@testing-library/jest-dom";
 import fetchMock from "fetch-mock";
 
+// Fail tests on any unmocked fetch requests
+// errors in fetchMock.catch don't fail the test immediately, so we need to
+// collect them and fail the test in afterEach
+let unmockedRouteErrors = [];
+
 beforeEach(() => {
+  unmockedRouteErrors = [];
   fetchMock.mockGlobal();
+  fetchMock.catch((callLog) => {
+    const { url, options } = callLog;
+    const errorMessage = `Unmocked ${options.method} request to: ${url}`;
+    unmockedRouteErrors.push(errorMessage);
+    throw new Error(errorMessage);
+  });
 });
 
 afterEach(() => {
   fetchMock.removeRoutes();
   fetchMock.callHistory.clear();
-  fetchMock.catch((url, request) => {
-    const errorMessage = `Caught unmocked ${request.method} request to: ${url}`;
 
-    Promise.reject(errorMessage);
-
-    // consider all not mocked requests are broken
-    return 500;
-  });
+  // Fail the test if there were any unmocked routes
+  if (unmockedRouteErrors.length > 0) {
+    const errors = unmockedRouteErrors.join("\n");
+    unmockedRouteErrors = [];
+    throw new Error(`Test completed with unmocked routes:\n${errors}`);
+  }
 });

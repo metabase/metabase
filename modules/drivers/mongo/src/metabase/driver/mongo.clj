@@ -514,8 +514,9 @@
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
   (driver-api/with-metadata-provider (:db_id table)
-    (let [mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
-                      :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
+    (let [id-column  (driver-api/field (driver-api/metadata-provider) (get-id-field-id table))
+          mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
+                      :order-by [(driver-api/order-by-clause id-column :desc)]}]
       (table-rows-sample/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
 (defn- encode-mongo

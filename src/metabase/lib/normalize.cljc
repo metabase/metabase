@@ -35,7 +35,7 @@
     (or (-> x lib-type lib-type->schema)
         :map)
 
-    (and (vector? x)
+    (and (sequential? x)
          ((some-fn simple-keyword? string?) (first x)))
     (lib.schema.mbql-clause/tag->registered-schema-name (first x))
 

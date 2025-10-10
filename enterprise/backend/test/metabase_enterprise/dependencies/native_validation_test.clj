@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.dependencies.native-validation :as deps.native-validation]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -13,10 +14,8 @@
   ([mp query]
    (fake-query mp query {}))
   ([mp query template-tags]
-   {:database (:id (lib.metadata/database mp))
-    :type     :native
-    :native   {:query query
-               :template-tags template-tags}}))
+   (-> (lib/native-query mp query)
+       (lib/with-template-tags template-tags))))
 
 (defn- sample-mbql-query []
   (let [mp (mt/metadata-provider)
@@ -38,42 +37,48 @@
 (defn- validates?
   [mp driver card-id expected]
   (is (=? expected
-          (->> (lib.metadata/card mp card-id)
-               :dataset-query
-               (deps.native-validation/validate-native-query driver mp)))))
+          (-> (lib.metadata/card mp card-id)
+              :dataset-query
+              (assoc :lib/metadata mp)
+              (->> (deps.native-validation/validate-native-query driver))))))
 
 (deftest ^:parallel basic-deps-test
   (let [mp     (deps.tu/default-metadata-provider)
         driver (:engine (lib.metadata/database mp))]
-    (is (= #{{:table (meta/id :products)}}
+    (is (= #{{:table (meta/id :products)}} ; how is a driver supposed to work out the ID of the table??
            (->> (lib.metadata/card mp 4)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}
              {:snippet 1}}
            (->> (lib.metadata/card mp 6)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:card 1}
              {:snippet 1}
              {:snippet 2}}
            (->> (lib.metadata/card mp 7)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))
     (is (= #{{:table (meta/id :products)}
              {:table (meta/id :orders)}
              {:card 1}
              {:card 2}}
            (->> (lib.metadata/card mp 9)
                 :dataset-query
-                (deps.native-validation/native-query-deps driver mp))))))
+                (lib-be/normalize-query mp)
+                (deps.native-validation/native-query-deps driver))))))
 
 (deftest ^:parallel cross-driver-deps-test
   (testing "native-query-deps handles valid queries in current driver"
@@ -87,16 +92,16 @@
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (testing "complete nonsense query"
-        (is (= [{:error :bad-sql}]
+        (is (= [{:error :metabase.driver.sql/bad-sql}]
                (deps.native-validation/validate-native-query
-                driver mp
+                driver
                 (fake-query mp "this is not a query")))))
       (testing "bad table wildcard"
         (is (= [{:type :invalid-table-wildcard,
                  :table "products",
                  :metabase.driver.sql/bad-reference true}]
                (deps.native-validation/validate-native-query
-                driver mp
+                driver
                 (fake-query mp "select products.* from orders")))))
       (testing "bad col reference"
         (is (= [{:column "BAD",
@@ -105,7 +110,7 @@
                  :source-columns [[{:type :all-columns, :table {:table "PRODUCTS"}}]],
                  :metabase.driver.sql/bad-reference true}]
                (deps.native-validation/validate-native-query
-                driver mp
+                driver
                 (fake-query mp "select bad from products"))))))))
 
 (deftest ^:parallel cross-driver-validation-test
@@ -121,7 +126,6 @@
 
       (testing "Valid query - selecting existing columns from subquery"
         (validates? mp driver 10 empty?))
-
       (testing "Invalid query - selecting non-existent column from subquery"
         (validates? mp driver 11 [{:column "CATEGORY",
                                    :alias nil,
@@ -133,7 +137,6 @@
                                    :type :single-column,
                                    :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}]))
-
       (testing "Nested subqueries"
         (validates? mp driver 13 empty?)
         (validates? mp driver 14 [{:column "CATEGORY",
@@ -141,7 +144,6 @@
                                    :type :single-column,
                                    :source-columns [[]],
                                    :metabase.driver.sql/bad-reference true}]))
-
       (testing "SELECT * from subquery expands to subquery columns"
         (validates? mp driver 15 empty?)
         (validates? mp driver 16 empty?)
@@ -155,10 +157,8 @@
   (testing "Validation of queries after card references have been expanded"
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
-
       (testing "Card reference expanded to subquery - valid columns"
         (validates? mp driver 18 empty?))
-
       (testing "Card reference expanded to subquery - invalid column"
         (validates? mp driver 19
                     [{:column "DESCRIPTION",
@@ -166,10 +166,8 @@
                       :type :single-column,
                       :source-columns [[]],
                       :metabase.driver.sql/bad-reference true}]))
-
       (testing "Card reference with alias - valid column"
         (validates? mp driver 20 empty?))
-
       (testing "Card reference with alias - invalid column"
         (validates? mp driver 21
                     [{:column "PASSWORD",
@@ -177,10 +175,8 @@
                       :type :single-column,
                       :source-columns [[]],
                       :metabase.driver.sql/bad-reference true}]))
-
       (testing "Wildcard selection from card reference"
         (validates? mp driver 22 empty?))
-
       (testing "Invalid column from aliased card"
         (validates? mp driver 23
                     [{:column "LATITUDE",
@@ -193,7 +189,7 @@
   (is (=? expected
           (->> query
                (fake-query mp)
-               (deps.native-validation/native-result-metadata driver mp)))))
+               (deps.native-validation/native-result-metadata driver)))))
 
 (defn- add-desired-column-alias [fields]
   (map #(assoc % :lib/desired-column-alias (:name %)) fields))

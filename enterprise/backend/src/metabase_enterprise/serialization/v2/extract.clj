@@ -37,11 +37,6 @@
     (not (:no-transforms opts))
     (conj "Transform" "TransformTag" "TransformJob")))
 
-(defn targets-of-type
-  "Returns target seq filtered on given model name"
-  [targets model-name]
-  (filter #(= (first %) model-name) targets))
-
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
   [model-name ids]

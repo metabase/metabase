@@ -800,7 +800,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 33;
+        const expectedWidth = 47;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -1077,7 +1077,7 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
-          cy.contains("• vs. previous month: 527").should("exist");
+          cy.contains("vs. previous month: 527").should("exist");
         });
 
         cy.log(
@@ -1085,7 +1085,7 @@ describe("issue 31628", () => {
         );
         previousValue()
           .should("contain", "35%")
-          .and("not.contain", "• vs. previous month: 527");
+          .and("not.contain", "vs. previous month: 527");
 
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
@@ -1098,7 +1098,7 @@ describe("issue 31628", () => {
         previousValue()
           .should("contain", "35%")
           .and("not.contain", "34.72%")
-          .and("not.contain", "• vs. previous month: 527");
+          .and("not.contain", "vs. previous month: 527");
 
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
@@ -1158,7 +1158,7 @@ describe("issue 31628", () => {
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "34.72%")
-          .and("contain", "• vs. previous month: 527");
+          .and("contain", "vs. previous month: 527");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
@@ -1213,7 +1213,7 @@ describe("issue 31628", () => {
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "34.72%")
-          .and("contain", "• vs. previous month: 527");
+          .and("contain", "vs. previous month: 527");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );

@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
@@ -7,20 +8,132 @@ import { Card, Checkbox, Divider, Stack, Text } from "metabase/ui";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { ColorCustomizationSection } from "./ColorCustomizationSection";
+import { MetabotLayoutSetting } from "./MetabotLayoutSetting";
 import { ParameterSettings } from "./ParameterSettings";
 
 export const SelectEmbedOptionsStep = () => {
-  const { experience, settings, updateSettings } =
-    useSdkIframeEmbedSetupContext();
+  return (
+    <Stack gap="md">
+      <BehaviorSection />
+      <ParametersSection />
+      <AppearanceSection />
+    </Stack>
+  );
+};
+
+const BehaviorSection = () => {
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+
+  const behaviorSection = useMemo(() => {
+    return match(settings)
+      .with({ template: "exploration" }, (settings) => (
+        <Checkbox
+          label={t`Allow people to save new questions`}
+          checked={settings.isSaveEnabled}
+          onChange={(e) => updateSettings({ isSaveEnabled: e.target.checked })}
+        />
+      ))
+      .with(
+        { componentName: "metabase-question", questionId: P.nonNullable },
+        (settings) => (
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
+
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
+
+            <Checkbox
+              label={t`Allow people to save new questions`}
+              checked={settings.isSaveEnabled}
+              onChange={(e) =>
+                updateSettings({ isSaveEnabled: e.target.checked })
+              }
+            />
+          </Stack>
+        ),
+      )
+      .with(
+        { componentName: "metabase-dashboard", dashboardId: P.nonNullable },
+        (settings) => (
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow people to drill through on data points`}
+              checked={settings.drills}
+              onChange={(e) => updateSettings({ drills: e.target.checked })}
+            />
+
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
+          </Stack>
+        ),
+      )
+      .with({ componentName: "metabase-browser" }, (settings) => (
+        <Checkbox
+          label={t`Allow editing dashboards and questions`}
+          checked={!settings.readOnly}
+          onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
+        />
+      ))
+      .otherwise(() => null);
+  }, [settings, updateSettings]);
+
+  if (behaviorSection === null) {
+    return null;
+  }
+
+  return (
+    <Card p="md">
+      <Text size="lg" fw="bold" mb="md">
+        {t`Behavior`}
+      </Text>
+
+      {behaviorSection}
+    </Card>
+  );
+};
+
+const ParametersSection = () => {
+  const { experience } = useSdkIframeEmbedSetupContext();
+
+  if (experience !== "dashboard" && experience !== "chart") {
+    return null;
+  }
+
+  return (
+    <Card p="md">
+      <Text size="lg" fw="bold" mb="xs">
+        {t`Parameters`}
+      </Text>
+
+      <Text size="sm" c="text-medium" mb="lg">
+        {experience === "dashboard"
+          ? t`Set default values and control visibility`
+          : t`Set default values`}
+      </Text>
+
+      <ParameterSettings />
+    </Card>
+  );
+};
+
+const AppearanceSection = () => {
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const { theme } = settings;
-
-  const isQuestionOrDashboardEmbed =
-    (experience === "dashboard" && settings.dashboardId) ||
-    (experience === "chart" && settings.questionId);
-
-  const isBrowserComponent = settings.componentName === "metabase-browser";
-  const isQuestionComponent = settings.componentName === "metabase-question";
 
   const updateColors = useCallback(
     (nextColors: Partial<MetabaseColors>) => {
@@ -31,88 +144,38 @@ export const SelectEmbedOptionsStep = () => {
     [theme, updateSettings],
   );
 
-  const isDashboardOrQuestion = settings.dashboardId || settings.questionId;
+  const appearanceSection = match(settings)
+    .with({ template: "exploration" }, () => null)
+    .with({ componentName: "metabase-metabot" }, () => <MetabotLayoutSetting />)
+    .with(
+      { componentName: P.union("metabase-question", "metabase-dashboard") },
+      (settings) => {
+        const label = match(settings.componentName)
+          .with("metabase-dashboard", () => t`Show dashboard title`)
+          .with("metabase-question", () => t`Show chart title`)
+          .exhaustive();
+
+        return (
+          <Checkbox
+            label={label}
+            checked={settings.withTitle}
+            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+          />
+        );
+      },
+    )
+    .otherwise(() => null);
 
   return (
-    <Stack gap="md">
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="md">
-          {t`Behavior`}
-        </Text>
-        <Stack gap="md">
-          {isQuestionOrDashboardEmbed && (
-            <Checkbox
-              label={t`Allow people to drill through on data points`}
-              checked={settings.drills}
-              onChange={(e) => updateSettings({ drills: e.target.checked })}
-            />
-          )}
+    <Card p="md">
+      <ColorCustomizationSection
+        theme={theme}
+        onColorChange={updateColors}
+        onColorReset={() => updateSettings({ theme: undefined })}
+      />
 
-          {isDashboardOrQuestion && (
-            <Checkbox
-              label={t`Allow downloads`}
-              checked={settings.withDownloads}
-              onChange={(e) =>
-                updateSettings({ withDownloads: e.target.checked })
-              }
-            />
-          )}
-
-          {isQuestionComponent && (
-            <Checkbox
-              label={t`Allow people to save new questions`}
-              checked={settings.isSaveEnabled}
-              onChange={(e) =>
-                updateSettings({ isSaveEnabled: e.target.checked })
-              }
-            />
-          )}
-
-          {isBrowserComponent && (
-            <Checkbox
-              label={t`Allow editing dashboards and questions`}
-              checked={!settings.readOnly}
-              onChange={(e) => updateSettings({ readOnly: !e.target.checked })}
-            />
-          )}
-        </Stack>
-      </Card>
-
-      {isQuestionOrDashboardEmbed && (
-        <Card p="md">
-          <Text size="lg" fw="bold" mb="xs">
-            {t`Parameters`}
-          </Text>
-
-          <Text size="sm" c="text-medium" mb="lg">
-            {experience === "dashboard"
-              ? t`Set default values and control visibility`
-              : t`Set default values for parameters`}
-          </Text>
-
-          <ParameterSettings />
-        </Card>
-      )}
-
-      <Card p="md">
-        <ColorCustomizationSection
-          theme={theme}
-          onColorChange={updateColors}
-          onColorReset={() => updateSettings({ theme: undefined })}
-        />
-
-        {isQuestionOrDashboardEmbed && (
-          <>
-            <Divider mt="lg" mb="md" />
-
-            <Checkbox
-              label={t`Show ${experience} title`}
-              checked={settings.withTitle}
-              onChange={(e) => updateSettings({ withTitle: e.target.checked })}
-            />
-          </>
-        )}
-      </Card>
-    </Stack>
+      {appearanceSection && <Divider mt="lg" mb="md" />}
+      {appearanceSection}
+    </Card>
   );
 };
