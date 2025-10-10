@@ -2062,6 +2062,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: made_public_by_id
+      rollback:
+        - empty
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
