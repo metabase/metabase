@@ -23,7 +23,7 @@ export type Document = {
   creator_id: UserId;
   public_uuid?: string | null;
   made_public_by_id?: UserId | null;
-  cards?: Record<number, Card>; // Populated for public documents
+  cards?: Record<number, Card>; // Map of card ID -> card metadata, hydrated for public documents
 };
 
 export type GetDocumentRequest = { id: DocumentId };

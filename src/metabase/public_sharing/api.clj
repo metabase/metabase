@@ -200,20 +200,20 @@
 ;;; ----------------------------------------------- Public Documents -------------------------------------------------
 
 (defn- remove-document-non-public-columns
-  "Remove everything from public `document` that shouldn't be visible to the general public."
+  "Strip out internal fields that shouldn't be exposed publicly, like collection_id or permissions info."
   [document]
   (select-keys document [:id :name :document :created_at :updated_at :cards]))
 
 (defn public-document
-  "Return a public Document matching key-value `conditions`, removing all columns that should not be visible to the
-  general public. Throws a 404 if the Document doesn't exist."
+  "Fetch a public Document and strip out sensitive fields. We also hydrate the Cards embedded in the document so the
+  frontend doesn't need to make separate authenticated requests for each card — just like public Dashboards do."
   [& conditions]
   (let [document (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
                                        :archived false, conditions))
-        ;; Get all card IDs embedded in the document
+        ;; Extract card IDs from the document's ProseMirror content so we can hydrate them
         card-ids (when (= "application/json+vnd.prose-mirror" (:content_type document))
                    ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document))
-        ;; Fetch and sanitize the cards
+        ;; Hydrate the cards so the frontend has all the metadata it needs upfront
         cards (when (seq card-ids)
                 (let [cards (t2/select :model/Card :id [:in card-ids] :archived false)]
                   (zipmap (map :id cards)
@@ -234,8 +234,8 @@
     (events/publish-event! :event/document-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
 (api.macros/defendpoint :get "/document/:uuid/card/:card-id"
-  "Fetch the results for a Card embedded in a publicly-accessible Document. Does not require auth credentials. Public
-   sharing must be enabled."
+  "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
+  be enabled."
   [{:keys [uuid card-id]} :- [:map
                               [:uuid    ms/UUIDString]
                               [:card-id ms/PositiveInt]]
@@ -246,10 +246,9 @@
   (let [document (api/check-404 (t2/select-one :model/Document :public_uuid uuid :archived false))
         card-ids (when (= "application/json+vnd.prose-mirror" (:content_type document))
                    (set ((requiring-resolve 'metabase-enterprise.documents.prose-mirror/card-ids) document)))]
-    ;; Verify the card is actually embedded in this document
+    ;; Make sure this card is actually in the document — we don't want people using this endpoint to query arbitrary cards
     (api/check-404 (contains? card-ids card-id))
-    ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
-    ;; current user perms; if this Document is public you're by definition allowed to run it without a perms check anyway
+    ;; Run the query as admin since public documents are available to everyone anyway
     (u/prog1 (process-query-for-card-with-id
               card-id
               :api

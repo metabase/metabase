@@ -39,7 +39,8 @@ export function usePublicDocumentCardData({
   const { publicDocumentCards } = usePublicDocumentContext();
   const metadata = useSelector(getMetadata);
 
-  // Use card from document context if available
+  // Get the card metadata from the document response — we hydrate all cards upfront so the frontend
+  // doesn't have to make authenticated requests to fetch them individually
   const card = publicDocumentCards?.[cardId];
 
   const {

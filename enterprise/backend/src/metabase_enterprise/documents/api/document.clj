@@ -243,9 +243,8 @@
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api.macros/defendpoint :post "/:document-id/public_link"
-  "Generate publicly-accessible links for this Document. Returns UUID to be used in public links. (If this
-  Document has already been shared, it will return the existing public link rather than creating a new one.) Public
-  sharing must be enabled."
+  "Generate a public link for this Document. If it's already public, we'll return the existing link instead of making
+  a new one. Public sharing must be enabled."
   [{:keys [document-id]} :- [:map
                               [:document-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -259,7 +258,7 @@
                             :made_public_by_id api/*current-user-id*})))})
 
 (api.macros/defendpoint :delete "/:document-id/public_link"
-  "Delete the publicly-accessible link to this Document."
+  "Remove the public link for this Document."
   [{:keys [document-id]} :- [:map
                               [:document-id ms/PositiveInt]]]
   (api/check-superuser)
@@ -271,8 +270,7 @@
   api/generic-204-no-content)
 
 (api.macros/defendpoint :get "/public"
-  "Fetch a list of Documents with public UUIDs. These documents are publicly-accessible *if* public sharing is
-  enabled."
+  "List all Documents that have public links. They're only actually accessible if public sharing is enabled."
   []
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
