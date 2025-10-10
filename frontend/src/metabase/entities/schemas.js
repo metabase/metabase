@@ -32,7 +32,6 @@ import {
 export default createEntity({
   name: "schemas",
   schema: SchemaSchema,
-  useRtkQueryActions: true,
 
   rtk: {
     getUseGetQuery: () => ({

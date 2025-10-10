@@ -54,7 +54,6 @@ const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
-  useRtkQueryActions: true,
 
   rtk: {
     getUseGetQuery: (fetchType) => {

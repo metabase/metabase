@@ -12,8 +12,6 @@ const Snippets = createEntity({
   name: "snippets",
   nameOne: "snippet",
   path: "/api/native-query-snippet",
-  useRtkQueryActions: true,
-
   createSelectors: ({ getObject, getFetched }) => ({
     getFetched: (state, props) =>
       getFetched(state, props) || getObject(state, props),

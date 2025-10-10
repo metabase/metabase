@@ -30,7 +30,6 @@ const Databases = createEntity({
   name: "databases",
   path: "/api/database",
   schema: DatabaseSchema,
-  useRtkQueryActions: true,
 
   nameOne: "database",
   nameMany: "databases",

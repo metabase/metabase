@@ -518,11 +518,7 @@ export function createEntity(def) {
   entity.reducers = {};
 
   entity.reducers[entity.name] = handleEntities(
-    // rely on `updateMetadata` action dispatched from RTK query to avoid
-    // extra updates
-    def.useRtkQueryActions
-      ? /^metabase\/entities\/UPDATE/
-      : /^metabase\/entities\//,
+    /^metabase\/entities\//,
     entity.name,
     def.reducer,
   );

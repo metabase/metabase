@@ -63,7 +63,6 @@ const Tables = createEntity({
   nameOne: "table",
   path: "/api/table",
   schema: TableSchema,
-  useRtkQueryActions: true,
 
   rtk: {
     getUseGetQuery: (fetchType) => {
