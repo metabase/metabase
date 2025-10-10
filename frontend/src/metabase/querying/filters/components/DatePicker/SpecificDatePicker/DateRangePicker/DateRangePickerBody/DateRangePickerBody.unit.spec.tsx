@@ -54,7 +54,7 @@ describe("DateRangePickerBody", () => {
   });
 
   describe("text input synchronization with calendar navigation", () => {
-    it("should navigate calendar with start date input", async () => {
+    it("should navigate calendar with start date input (metabase#64602)", async () => {
       setup({
         value: [new Date(2020, 0, 5), new Date(2020, 1, 20)], // Jan 5 - Feb 20
       });
@@ -69,7 +69,7 @@ describe("DateRangePickerBody", () => {
       expect(screen.queryByText("January 2020")).not.toBeInTheDocument();
     });
 
-    it("should navigate calendar with end date input", async () => {
+    it("should navigate calendar with end date input (metabase#64602)", async () => {
       setup({
         value: [new Date(2020, 0, 5), new Date(2020, 1, 20)], // Jan 5 - Feb 20
       });
