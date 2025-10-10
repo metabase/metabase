@@ -161,7 +161,7 @@
 
 (defmethod serdes/make-spec "Document"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position]
+  {:copy [:archived :archived_directly :content_type :entity_id :name :collection_position :public_uuid]
    :skip [:view_count :last_viewed_at]
    :transform {:created_at (serdes/date)
                :updated_at (serdes/date)
@@ -175,12 +175,7 @@
                                          public-uuid
                                          ::serdes/skip))
                              :import identity}
-               :made_public_by_id {:export (fn [made-public-by-id]
-                                             (if (and made-public-by-id
-                                                      (not (public-sharing/remove-public-uuid-if-public-sharing-is-disabled {:public_uuid "dummy"})))
-                                               made-public-by-id
-                                               ::serdes/skip))
-                                   :import (serdes/fk :model/User)}}})
+               :made_public_by_id (serdes/fk :model/User)}})
 
 (defn- document-deps
   [{:keys [content_type] :as document}]

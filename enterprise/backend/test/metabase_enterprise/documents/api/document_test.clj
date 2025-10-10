@@ -2122,8 +2122,8 @@
         (mt/with-temp [:model/Document document (merge {:name "Test Document"
                                                         :document (text->prose-mirror-ast "Test content")}
                                                        (shared-document))]
-          (is (= "An error occurred."
-                 (mt/client :get 400 (str "public/document/" (:public_uuid document))))))))
+          (is (= "API endpoint does not exist."
+                 (mt/client :get 404 (str "public/document/" (:public_uuid document))))))))
 
     (testing "Should get a 404 if the Document doesn't exist"
       (mt/with-temporary-setting-values [enable-public-sharing true]
