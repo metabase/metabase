@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { cleanup } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 beforeEach(() => {
@@ -6,6 +7,8 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  // Cleanup React components FIRST to trigger any unmount effects
+  cleanup();
   // Wait for any pending fetch requests to complete
   await fetchMock.callHistory.flush();
 
