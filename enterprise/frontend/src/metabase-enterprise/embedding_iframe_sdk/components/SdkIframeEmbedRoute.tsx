@@ -182,7 +182,6 @@ const SdkIframeEmbedView = ({
       {
         componentName: "metabase-question",
         questionId: P.nonNullable,
-        drills: P.optional(true),
       },
       (settings) => (
         <SdkQuestion
