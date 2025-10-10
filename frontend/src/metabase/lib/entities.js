@@ -80,6 +80,7 @@ import {
   combineReducers,
   compose,
   handleEntities,
+  weakMapMemoize,
   withAction,
   withCachedDataAndRequestState,
   withRequestState,
@@ -167,21 +168,21 @@ export function createEntity(def) {
   };
 
   // normalize helpers
-  entity.normalize = (object, schema = entity.schema) => ({
+  entity.normalize = weakMapMemoize((object) => ({
     // include raw `object` (and alias under nameOne) for convenience
     object,
     [entity.nameOne]: object,
     // include standard normalizr properties, `result` and `entities`
-    ...normalize(object, schema),
-  });
+    ...normalize(object, entity.schema),
+  }));
 
-  entity.normalizeList = (list, schema = entity.schema) => ({
+  entity.normalizeList = weakMapMemoize((list) => ({
     // include raw `list` (and alias under nameMany) for convenience
     list,
     [entity.nameMany]: list,
     // include standard normalizr properties, `result` and `entities`
-    ...normalize(list, [schema]),
-  });
+    ...normalize(list, [entity.schema]),
+  }));
 
   // thunk decorators:
 
