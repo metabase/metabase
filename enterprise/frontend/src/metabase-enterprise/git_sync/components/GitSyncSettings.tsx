@@ -33,6 +33,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import {
   type GitSyncSettingsSet,
@@ -197,12 +198,17 @@ export const GitSyncSettings = (): JSX.Element => {
                           />
                         </Box>
                         {isGitSyncEnabled && (
-                          <Button
-                            variant="outline"
-                            onClick={handlePullChanges}
-                            disabled={isImporting}
-                            loading={isImporting}
-                          >{t`Pull changes`}</Button>
+                          <Tooltip
+                            label={t`Save settings before pulling changes`}
+                            disabled={!dirty}
+                          >
+                            <Button
+                              variant="outline"
+                              onClick={handlePullChanges}
+                              disabled={isImporting || dirty}
+                              loading={isImporting}
+                            >{t`Pull changes`}</Button>
+                          </Tooltip>
                         )}
                       </Flex>
                       <FormSwitch

@@ -211,32 +211,52 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
 
   const isProcessing = isUpdating || isCreating;
 
+  if (!syncedCollection && mode !== "development") {
+    return (
+      <Stack gap="md" w="100%">
+        <Flex direction="column" align="center" gap="md" py="xl" w="100%">
+          <Icon name="folder" size={48} c="text-light" />
+          <Box ta="center">
+            <Text c="text-primary" mb="xs">
+              {t`No collection synced yet`}
+            </Text>
+            <Text c="text-secondary" size="sm">
+              {t`Collections synced from Git will appear here`}
+            </Text>
+          </Box>
+        </Flex>
+      </Stack>
+    );
+  }
+
+  const isDisabled = mode !== "development" || isProcessing;
+
   return (
-    <Stack gap="md">
-      {mode === "development" ? (
-        <Flex gap="sm" align="center">
-          <Combobox
-            store={combobox}
-            withinPortal
-            position="bottom-start"
-            middlewares={{ flip: true, shift: true }}
-            disabled={isProcessing}
-          >
-            <Combobox.Target>
-              <Button
-                variant="default"
-                c="text-primary"
-                disabled={isProcessing}
-                onClick={() => combobox.toggleDropdown()}
-                fullWidth
-                leftSection={
-                  isProcessing ? (
-                    <Loader size="xs" />
-                  ) : (
-                    <Icon name="folder" size={16} />
-                  )
-                }
-                rightSection={
+    <Stack gap="md" w="100%">
+      <Flex gap="sm" align="center">
+        <Combobox
+          store={combobox}
+          withinPortal
+          position="bottom-start"
+          middlewares={{ flip: true, shift: true }}
+          disabled={isDisabled}
+        >
+          <Combobox.Target>
+            <Button
+              variant="default"
+              c="text-primary"
+              disabled={isDisabled}
+              onClick={() => combobox.toggleDropdown()}
+              fullWidth
+              leftSection={
+                isProcessing ? (
+                  <Loader size="xs" />
+                ) : (
+                  <Icon name="folder" size={16} />
+                )
+              }
+              rightSection={
+                mode === "development" ? (
                   <Icon
                     name="chevrondown"
                     size={12}
@@ -248,163 +268,135 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
                       transition: "transform 200ms ease",
                     }}
                   />
-                }
-                styles={{
-                  label: { flex: 1, textAlign: "left" },
-                }}
-              >
-                <Text
-                  c={syncedCollection ? "text-primary" : "text-secondary"}
-                  truncate
-                >
-                  {syncedCollection?.name || t`Select a collection to sync`}
-                </Text>
-              </Button>
-            </Combobox.Target>
-
-            <Combobox.Dropdown p={0}>
-              <Box p="sm">
-                <TextInput
-                  placeholder={t`Find or create a collection...`}
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.currentTarget.value)}
-                  leftSection={<Icon name="search" size={16} />}
-                  data-autofocus
-                />
-              </Box>
-
-              <Divider />
-
-              <ScrollArea.Autosize mah={320} type="hover">
-                {filteredCollections.length === 0 && !showCreateOption ? (
-                  <Box p="md">
-                    <Text size="sm" c="text-light" ta="center">
-                      {searchValue
-                        ? t`No matching collections`
-                        : t`No collections available`}
-                    </Text>
-                  </Box>
-                ) : (
-                  <>
-                    {filteredCollections.length > 0 && (
-                      <>
-                        <Combobox.Options>
-                          {filteredCollections.map((collection) => (
-                            <Combobox.Option
-                              key={collection.id}
-                              value={String(collection.id)}
-                              onClick={() =>
-                                handleSelectCollection(String(collection.id))
-                              }
-                              py="sm"
-                            >
-                              <Group
-                                justify="space-between"
-                                wrap="nowrap"
-                                w="100%"
-                              >
-                                <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
-                                  <Icon
-                                    className={S.CollectionSelectFolderIcon}
-                                    name="folder"
-                                    size={16}
-                                  />
-                                  <Text
-                                    className={S.CollectionSelectText}
-                                    truncate
-                                  >
-                                    {collection.name}
-                                  </Text>
-                                </Group>
-                                <ActionIcon
-                                  size="sm"
-                                  variant="subtle"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(
-                                      Urls.collection(collection),
-                                      "_blank",
-                                    );
-                                  }}
-                                >
-                                  <Icon
-                                    className={S.CollectionSelectOpenIcon}
-                                    name="external"
-                                    size={14}
-                                  />
-                                </ActionIcon>
-                              </Group>
-                            </Combobox.Option>
-                          ))}
-                        </Combobox.Options>
-                        {showCreateOption && <Divider />}
-                      </>
-                    )}
-
-                    {showCreateOption && (
-                      <Box p="sm">
-                        <Combobox.Option
-                          py="sm"
-                          value={`${CREATE_OPTION_PREFIX}${searchValue.trim()}`}
-                          onClick={() =>
-                            handleSelectCollection(
-                              `${CREATE_OPTION_PREFIX}${searchValue.trim()}`,
-                            )
-                          }
-                        >
-                          <Group gap="xs" wrap="nowrap">
-                            <Icon name="add" size={16} />
-                            <Text>{t`Create collection "${searchValue.trim()}"`}</Text>
-                          </Group>
-                        </Combobox.Option>
-                      </Box>
-                    )}
-                  </>
-                )}
-              </ScrollArea.Autosize>
-            </Combobox.Dropdown>
-          </Combobox>
-
-          {syncedCollection && (
-            <Button
-              style={{ flexShrink: 0 }}
-              variant="outline"
-              onClick={handleClearCollection}
-              disabled={isProcessing}
-            >
-              {t`Unsync collection`}
-            </Button>
-          )}
-        </Flex>
-      ) : (
-        <Box maw="100%" w={400}>
-          {syncedCollection ? (
-            <TextInput
-              value={syncedCollection.name}
-              disabled
-              readOnly
-              leftSection={<Icon name="folder" size={16} />}
+                ) : null
+              }
               styles={{
-                input: {
-                  cursor: "not-allowed",
-                },
+                label: { flex: 1, textAlign: "left" },
               }}
-            />
-          ) : (
-            <Flex direction="column" align="center" gap="md" py="xl">
-              <Icon name="folder" size={48} c="text-light" />
-              <Box ta="center">
-                <Text c="text-primary" fw={500} mb="xs">
-                  {t`No collection synced yet`}
-                </Text>
-                <Text c="text-secondary" size="sm">
-                  {t`Collections synced from Git will appear here`}
-                </Text>
-              </Box>
-            </Flex>
-          )}
-        </Box>
-      )}
+            >
+              <Text
+                c={syncedCollection ? "text-primary" : "text-secondary"}
+                truncate
+              >
+                {syncedCollection?.name || t`Select a collection to sync`}
+              </Text>
+            </Button>
+          </Combobox.Target>
+
+          <Combobox.Dropdown p={0}>
+            <Box p="sm">
+              <TextInput
+                placeholder={t`Find or create a collection...`}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.currentTarget.value)}
+                leftSection={<Icon name="search" size={16} />}
+                data-autofocus
+              />
+            </Box>
+
+            <Divider />
+
+            <ScrollArea.Autosize mah={320} type="hover">
+              {filteredCollections.length === 0 && !showCreateOption ? (
+                <Box p="md">
+                  <Text size="sm" c="text-light" ta="center">
+                    {searchValue
+                      ? t`No matching collections`
+                      : t`No collections available`}
+                  </Text>
+                </Box>
+              ) : (
+                <>
+                  {filteredCollections.length > 0 && (
+                    <>
+                      <Combobox.Options>
+                        {filteredCollections.map((collection) => (
+                          <Combobox.Option
+                            key={collection.id}
+                            value={String(collection.id)}
+                            onClick={() =>
+                              handleSelectCollection(String(collection.id))
+                            }
+                            py="sm"
+                          >
+                            <Group
+                              justify="space-between"
+                              wrap="nowrap"
+                              w="100%"
+                            >
+                              <Group gap="xs" wrap="nowrap" flex={1} miw={0}>
+                                <Icon
+                                  className={S.CollectionSelectFolderIcon}
+                                  name="folder"
+                                  size={16}
+                                />
+                                <Text
+                                  className={S.CollectionSelectText}
+                                  truncate
+                                >
+                                  {collection.name}
+                                </Text>
+                              </Group>
+                              <ActionIcon
+                                size="sm"
+                                variant="subtle"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(
+                                    Urls.collection(collection),
+                                    "_blank",
+                                  );
+                                }}
+                              >
+                                <Icon
+                                  className={S.CollectionSelectOpenIcon}
+                                  name="external"
+                                  size={14}
+                                />
+                              </ActionIcon>
+                            </Group>
+                          </Combobox.Option>
+                        ))}
+                      </Combobox.Options>
+                      {showCreateOption && <Divider />}
+                    </>
+                  )}
+
+                  {showCreateOption && (
+                    <Box p="sm">
+                      <Combobox.Option
+                        py="sm"
+                        value={`${CREATE_OPTION_PREFIX}${searchValue.trim()}`}
+                        onClick={() =>
+                          handleSelectCollection(
+                            `${CREATE_OPTION_PREFIX}${searchValue.trim()}`,
+                          )
+                        }
+                      >
+                        <Group gap="xs" wrap="nowrap">
+                          <Icon name="add" size={16} />
+                          <Text>{t`Create collection "${searchValue.trim()}"`}</Text>
+                        </Group>
+                      </Combobox.Option>
+                    </Box>
+                  )}
+                </>
+              )}
+            </ScrollArea.Autosize>
+          </Combobox.Dropdown>
+        </Combobox>
+
+        {syncedCollection && mode === "development" && (
+          <Button
+            style={{ flexShrink: 0 }}
+            variant="outline"
+            onClick={handleClearCollection}
+            disabled={isProcessing}
+          >
+            {t`Unsync collection`}
+          </Button>
+        )}
+      </Flex>
     </Stack>
   );
 };

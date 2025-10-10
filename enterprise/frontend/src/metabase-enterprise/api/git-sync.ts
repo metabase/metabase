@@ -159,7 +159,7 @@ export const gitSyncApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           tag("session-properties"),
           tag("remote-sync-current-task"),
-          tag("collection"),
+          listTag("collection"),
           tag("collection-tree"),
         ]),
     }),
