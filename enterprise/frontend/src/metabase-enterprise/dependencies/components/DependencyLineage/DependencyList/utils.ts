@@ -35,13 +35,13 @@ export function canSortByColumn(
   return match(column)
     .with("name", () => true)
     .with("location", () => getCardType(groupType) != null)
-    .with("view_count", () => getCardType(groupType) != null)
+    .with("view-count", () => getCardType(groupType) != null)
     .exhaustive();
 }
 
 export function getDefaultSortOptions(type: DependencyGroupType): SortOptions {
-  if (canSortByColumn(type, "view_count")) {
-    return { column: "view_count", direction: "desc" };
+  if (canSortByColumn(type, "view-count")) {
+    return { column: "view-count", direction: "desc" };
   } else {
     return { column: "name", direction: "asc" };
   }
@@ -67,7 +67,7 @@ function compareNodesByColumn(
       const label2 = getNodeLocationLabel(node2) ?? "";
       return label1.localeCompare(label2);
     })
-    .with("view_count", () => {
+    .with("view-count", () => {
       const count1 = getNodeViewCount(node1) ?? 0;
       const count2 = getNodeViewCount(node2) ?? 0;
       return count1 - count2;

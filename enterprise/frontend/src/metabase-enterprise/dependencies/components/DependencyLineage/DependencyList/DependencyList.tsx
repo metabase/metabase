@@ -11,6 +11,7 @@ import type { GraphSelection } from "../types";
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
+import type { FilterOption } from "./types";
 import {
   canSortByColumn,
   getDefaultSortOptions,
@@ -34,6 +35,7 @@ export function DependencyList({
   } = useListNodeDependentsQuery(getListRequest(selection));
   const [searchText, setSearchText] = useState("");
   const [searchQuery] = useDebouncedValue(searchText, SEARCH_DEBOUNCE_DURATION);
+  const [filterOptions, setFilterOptions] = useState<FilterOption[]>([]);
   const [sortOptions, setSortOptions] = useState(() =>
     getDefaultSortOptions(selection.groupType),
   );
@@ -53,9 +55,11 @@ export function DependencyList({
       <ListHeader
         selection={selection}
         searchText={searchText}
+        filterOptions={filterOptions}
         sortOptions={sortOptions}
         onSelectionChange={onSelectionChange}
         onSearchTextChange={setSearchText}
+        onFilterOptionsChange={setFilterOptions}
         onSortOptionsChange={setSortOptions}
       />
       {isFetching || error != null ? (

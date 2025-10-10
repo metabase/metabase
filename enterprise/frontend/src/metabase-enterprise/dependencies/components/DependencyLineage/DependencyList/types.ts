@@ -1,4 +1,14 @@
-export type SortColumn = "name" | "location" | "view_count";
+export type FilterOption =
+  | "verified"
+  | "not-verified"
+  | "location-collection"
+  | "location-dashboard"
+  | "collection-official"
+  | "collection-not-official"
+  | "collection-personal"
+  | "collection-not-personal";
+
+export type SortColumn = "name" | "location" | "view-count";
 
 export type SortDirection = "asc" | "desc";
 

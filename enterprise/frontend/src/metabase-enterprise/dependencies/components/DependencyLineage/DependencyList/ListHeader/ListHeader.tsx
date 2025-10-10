@@ -3,26 +3,31 @@ import { t } from "ttag";
 import { ActionIcon, Group, Icon, Stack, TextInput, Title } from "metabase/ui";
 
 import type { GraphSelection } from "../../types";
-import type { SortOptions } from "../types";
+import type { FilterOption, SortOptions } from "../types";
 
+import { FilterOptionsPicker } from "./FilterOptionsPicker";
 import { SortOptionsPicker } from "./SortOptionsPicker";
 import { getHeaderLabel } from "./utils";
 
 type ListHeaderProps = {
   selection: GraphSelection;
   searchText: string;
+  filterOptions: FilterOption[];
   sortOptions: SortOptions;
   onSelectionChange: (selection?: GraphSelection) => void;
   onSearchTextChange: (searchText: string) => void;
+  onFilterOptionsChange: (filterOptions: FilterOption[]) => void;
   onSortOptionsChange: (sortOptions: SortOptions) => void;
 };
 
 export function ListHeader({
   selection,
   searchText,
+  filterOptions,
   sortOptions,
   onSelectionChange,
   onSearchTextChange,
+  onFilterOptionsChange,
   onSortOptionsChange,
 }: ListHeaderProps) {
   return (
@@ -40,11 +45,17 @@ export function ListHeader({
         placeholder={t`Search`}
         leftSection={<Icon name="search" />}
         rightSection={
-          <SortOptionsPicker
-            groupType={selection.groupType}
-            sortOptions={sortOptions}
-            onSortOptionsChange={onSortOptionsChange}
-          />
+          <Group>
+            <SortOptionsPicker
+              groupType={selection.groupType}
+              sortOptions={sortOptions}
+              onSortOptionsChange={onSortOptionsChange}
+            />
+            <FilterOptionsPicker
+              filterOptions={filterOptions}
+              onFilterOptionsChange={onFilterOptionsChange}
+            />
+          </Group>
         }
         onChange={(event) => onSearchTextChange(event.target.value)}
       />
