@@ -5,16 +5,16 @@ import _ from "underscore";
 import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
-  DatasetQuery,
   Field,
-  FieldFilter,
   FieldId,
-  FieldReference,
   RawSeries,
   TableId,
 } from "metabase-types/api";
@@ -84,13 +84,20 @@ function useDataSample({
   pkFields,
   tableId,
 }: Props) {
-  const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId, pkFields);
+  const metadata = useSelector(getMetadata);
+  const query = getPreviewQuery(
+    metadata,
+    databaseId,
+    tableId,
+    fieldId,
+    pkFields,
+  );
 
   const { data, refetch, ...rest } = useGetAdhocQueryQuery(
-    isFieldHidden(field)
+    query == null || isFieldHidden(field)
       ? skipToken
       : {
-          ...datasetQuery,
+          ...Lib.toJsQuery(query),
           ignore_error: true,
           _refetchDeps: field,
         },
@@ -113,14 +120,14 @@ function useDataSample({
     return { ...base, isError: true, error: getDataErrorMessage(data) };
   }
 
-  if (!data?.data || data.data.cols.length === 0) {
+  if (query == null || !data?.data || data.data.cols.length === 0) {
     return base;
   }
 
   const rawSeries: RawSeries = [
     {
       card: createMockCard({
-        dataset_query: datasetQuery,
+        dataset_query: Lib.toJsQuery(query),
         display: "table",
         visualization_settings: {},
       }),
@@ -135,30 +142,34 @@ function useDataSample({
 }
 
 function getPreviewQuery(
+  metadata: Metadata,
   databaseId: DatabaseId,
   tableId: TableId,
   fieldId: FieldId,
   pkFields: Field[],
-): DatasetQuery {
-  const fieldRef: FieldReference = ["field", fieldId, null];
-  const pkFieldRefs: FieldReference[] = pkFields.map((pkField) => {
-    return ["field", getRawTableFieldId(pkField), null];
-  });
-  const filter: FieldFilter = ["not-null", fieldRef];
+): Lib.Query | undefined {
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  const field = Lib.fieldMetadata(metadataProvider, fieldId);
+  if (table == null || field == null) {
+    return;
+  }
 
-  return {
-    type: "query",
-    database: databaseId,
-    query: {
-      "source-table": tableId,
-      filter,
-      fields: [fieldRef],
-      // fetch more rows to increase probability of getting at least 5 unique values
-      limit: 50,
-      // order by PKs when possible to prevent SQL returning non-deterministically ordered values
-      "order-by": pkFieldRefs.map((pkFieldRef) => ["asc", pkFieldRef]),
-    },
-  };
+  const tableQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+  const stageIndex = 0;
+  const fieldQuery = Lib.withFields(tableQuery, stageIndex, [field]);
+  const filterQuery = Lib.filter(
+    fieldQuery,
+    stageIndex,
+    Lib.defaultFilterClause({ operator: "not-null", column: field }),
+  );
+  // order by PKs when possible to prevent SQL returning non-deterministically ordered values
+  const orderByQuery = pkFields.reduce((query: Lib.Query, { id }: Field) => {
+    const pkField = Lib.fieldMetadata(metadataProvider, Number(id));
+    return pkField ? Lib.orderBy(query, stageIndex, pkField, "asc") : query;
+  }, filterQuery);
+  // fetch more rows to increase probability of getting at least 5 unique values
+  return Lib.limit(orderByQuery, stageIndex, 50);
 }
 
 export const TablePreview = memo(TablePreviewBase);

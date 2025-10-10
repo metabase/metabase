@@ -102,25 +102,27 @@ const ObjectDetailPreviewBase = ({
   );
 };
 
-function getSampleQuery(
+function getDataSampleQuery(
   metadata: Metadata,
   databaseId: DatabaseId,
   tableId: TableId,
   fieldId: FieldId,
 ) {
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, tableId);
-  const fieldMetadata = Lib.fieldMetadata(metadataProvider, fieldId);
-  if (tableMetadata == null || fieldMetadata == null) {
+  const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  const field = Lib.fieldMetadata(metadataProvider, fieldId);
+  if (table == null || field == null) {
     return;
   }
 
+  const tableQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+  const stageIndex = 0;
   return Lib.filter(
-    Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata),
-    0,
+    tableQuery,
+    stageIndex,
     Lib.defaultFilterClause({
       operator: "not-null",
-      column: fieldMetadata,
+      column: field,
     }),
   );
 }
@@ -128,7 +130,7 @@ function getSampleQuery(
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const metadata = useSelector(getMetadata);
   const query = useMemo(
-    () => getSampleQuery(metadata, databaseId, tableId, fieldId),
+    () => getDataSampleQuery(metadata, databaseId, tableId, fieldId),
     [metadata, databaseId, tableId, fieldId],
   );
 
