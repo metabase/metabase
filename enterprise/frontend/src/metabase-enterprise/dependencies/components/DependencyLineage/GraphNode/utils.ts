@@ -6,6 +6,10 @@ import type { DependencyNode } from "metabase-types/api";
 import type { DependentGroup } from "./types";
 
 export function getDependentGroups(node: DependencyNode): DependentGroup[] {
+  if (node.type === "transform") {
+    return [];
+  }
+
   const {
     question = 0,
     model = 0,
