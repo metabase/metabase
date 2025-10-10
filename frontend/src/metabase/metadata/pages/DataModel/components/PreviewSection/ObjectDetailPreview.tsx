@@ -1,21 +1,22 @@
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
+import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { DetailsGroup, Header } from "metabase/detail-view/components";
 import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
+import { useSelector } from "metabase/lib/redux";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
+import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
   DatasetColumn,
-  DatasetQuery,
   Field,
-  FieldFilter,
   FieldId,
-  FieldReference,
   RawSeries,
   RowValues,
   TableId,
@@ -101,25 +102,45 @@ const ObjectDetailPreviewBase = ({
   );
 };
 
+function getSampleQuery(
+  metadata: Metadata,
+  databaseId: DatabaseId,
+  tableId: TableId,
+  fieldId: FieldId,
+) {
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, tableId);
+  const fieldMetadata = Lib.fieldMetadata(metadataProvider, fieldId);
+  if (tableMetadata == null || fieldMetadata == null) {
+    return;
+  }
+
+  return Lib.filter(
+    Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata),
+    0,
+    Lib.defaultFilterClause({
+      operator: "not-null",
+      column: fieldMetadata,
+    }),
+  );
+}
+
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
-  const reference: FieldReference = ["field", fieldId, null];
-  const filter: FieldFilter = ["not-null", reference];
+  const metadata = useSelector(getMetadata);
+  const query = useMemo(
+    () => getSampleQuery(metadata, databaseId, tableId, fieldId),
+    [metadata, databaseId, tableId, fieldId],
+  );
 
-  const datasetQuery: DatasetQuery = {
-    type: "query" as const,
-    database: databaseId,
-    query: {
-      "source-table": tableId,
-      filter,
-      limit: 1,
-    },
-  };
-
-  const { data, ...rest } = useGetAdhocQueryQuery({
-    ...datasetQuery,
-    ignore_error: true,
-    _refetchDeps: field,
-  });
+  const { data, ...rest } = useGetAdhocQueryQuery(
+    query
+      ? {
+          ...Lib.toJsQuery(query),
+          ignore_error: true,
+          _refetchDeps: field,
+        }
+      : skipToken,
+  );
 
   const base = {
     ...rest,
@@ -144,14 +165,14 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     };
   }
 
-  if (!data?.data) {
+  if (data?.data == null || query == null) {
     return base;
   }
 
   const rawSeries: RawSeries = [
     {
       card: createMockCard({
-        dataset_query: datasetQuery,
+        dataset_query: Lib.toJsQuery(query),
         display: "object",
         visualization_settings: {},
       }),
