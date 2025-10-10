@@ -28,7 +28,7 @@ export const CHART_STYLE = {
   },
   seriesLabels: {
     weight: 700,
-    size: 12,
+    size: 13,
     offset: 4,
     stackedPadding: 2,
   },
@@ -49,7 +49,7 @@ export const CHART_STYLE = {
   goalLine: {
     label: {
       margin: 4,
-      size: 14,
+      size: 13,
       weight: 400,
     },
   },

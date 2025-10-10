@@ -3,3 +3,9 @@
   --illustration-secondary: var(--mb-color-brand-lighter);
   --illustration-background: var(--mb-color-bg-light);
 }
+
+.MetabotLogoGray {
+  --illustration-primary: var(--mb-color-bg-night);
+  --illustration-secondary: var(--mb-color-bg-medium);
+  --illustration-background: var(--mb-color-bg-light);
+}

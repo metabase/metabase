@@ -3,7 +3,6 @@
   (:refer-clojure :exclude [select-keys])
   (:require
    [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -11,18 +10,21 @@
    ;; Lib only soon
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [select-keys]]))
+   [metabase.util.performance :refer [select-keys]]
+   [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
+
+(comment metabase.lib-be.core/keep-me)
+
+(p/import-vars
+ [metabase.lib-be.core
+  query-hash])
 
 ;; TODO - I think most of the functions in this namespace that we don't remove could be moved
 ;; to [[metabase.legacy-mbql.util]]
@@ -65,8 +67,6 @@
   [_ query]
   (default-query->remark query))
 
-;;; ------------------------------------------------- Normalization --------------------------------------------------
-
 ;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
 (mu/defn ^:deprecated normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -76,83 +76,6 @@
       u/lower-case-en
       (str/replace #"_" "-")
       keyword))
-
-;;; ---------------------------------------------------- Hashing -----------------------------------------------------
-
-(defn- walk-query-sort-maps
-  "We don't want two queries to have different hashes because their map keys are in different orders, now do we? Convert
-  all the maps to sorted maps so queries are serialized to JSON in an identical order."
-  [x]
-  (perf/postwalk
-   (fn [x]
-     (if (and (map? x)
-              (not (sorted? x)))
-       (into (sorted-map) x)
-       x))
-   x))
-
-(mu/defn- sort-parameter-values
-  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence. Parameter values can
-  be of mixed types, as bigintegers are passed as strings to avoid precision loss."
-  [params :- [:or :nil [:sequential :any]]]
-  (map #(if (sequential? (:value %)) (update % :value (partial sort-by str)) %) params))
-
-(mu/defn- select-keys-for-hashing
-  "Return `query` with only the keys relevant to hashing kept.
-  (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
-  producing different hashes.)"
-  [query :- [:maybe :map]]
-  (let [{:keys [constraints parameters], :as query} (select-keys query [:database
-                                                                        :lib/type
-                                                                        :stages
-                                                                        :parameters
-                                                                        :constraints
-                                                                        :destination-database/id
-                                                                        :impersonation/role])]
-    (-> query
-        (cond-> (empty? constraints) (dissoc :constraints))
-        (update :parameters sort-parameter-values)
-        (cond-> (empty? parameters) (dissoc :parameters))
-        lib.schema.util/indexed-order-bys
-        lib.schema.util/remove-lib-uuids
-        walk-query-sort-maps)))
-
-(defn- ->metadata-provider [legacy-query]
-  (if (qp.store/initialized?)
-    (qp.store/metadata-provider)
-    (lib.metadata.jvm/application-database-metadata-provider (:database legacy-query))))
-
-(mu/defn query-hash :- bytes?
-  "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
-  ^bytes [query :- [:maybe :map]]
-  ;; convert to pMBQL first if this is a legacy query.
-  (let [query (try
-                ;; Expression type check supression is necessary because coerced fields in `query` may not have
-                ;; `:effective-type` populated. That's the case during call to this function in
-                ;; `process-userland-query-middleware` that occurs before normalization.
-                ;; TODO: This is an unfortunate leak of lib internals but I can't see a clean way to fix it.
-                (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-                  (case (:type query)
-                    ;; TODO (Cam 8/20/25) -- [[lib/query]] is supposed to call [[mbql.normalize/normalize]] on legacy
-                    ;; queries automatically anyway but it seems like some tests break if I change this... investigate
-                    ("query" "native") (lib/query (->metadata-provider query) (mbql.normalize/normalize query))
-                    (:query :native)   (lib/query (->metadata-provider query) query)
-                    query))
-                (catch Throwable e
-                  (throw (ex-info "Error hashing query. Is this a valid query?"
-                                  {:query query}
-                                  e))))]
-    (buddy-hash/sha3-256 (json/encode (select-keys-for-hashing query)))))
-
-;;; ------------------------------------------- Metadata Combination Utils --------------------------------------------
-
-(defn field-ref->key
-  "A standard and repeatable way to address a column. Names can collide and sometimes are not unique. Field refs should
-  be stable, except we have to exclude the last part as extra information can be tucked in there. Names can be
-  non-unique at times, numeric ids are not guaranteed."
-  {:deprecated "0.57.0"}
-  [[tyype identifier]]
-  [tyype identifier])
 
 (def ^:private ^{:deprecated "0.57.0"} field-options-for-identification
   "Set of FieldOptions that only mattered for identification purposes." ;; base-type is required for field that use name instead of id

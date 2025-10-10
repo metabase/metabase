@@ -198,7 +198,7 @@ export function ObjectDetailView({
       const pkField = passedData.cols[pkIndex];
       const query = question?.query();
       const datasetQuery = query
-        ? Lib.toLegacyQuery(filterByPk(query, pkField, zoomedRowID))
+        ? Lib.toJsQuery(filterByPk(query, pkField, zoomedRowID))
         : undefined;
 
       MetabaseApi.dataset(datasetQuery)

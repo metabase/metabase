@@ -182,6 +182,999 @@ redirect_from:
           } ]
         } ]
       },
+      "mbql.clause.!=" : { },
+      "mbql.clause.*" : { },
+      "mbql.clause.+" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.arithmetic.plus-minus-temporal-interval-schema"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.arithmetic.plus-minus-numeric-schema"
+        } ]
+      },
+      "mbql.clause.-" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.arithmetic.plus-minus-temporal-interval-schema"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.arithmetic.plus-minus-numeric-schema"
+        }, {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.arithmetic.plus-minus-numeric-schema"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.arithmetic.temporal-difference-schema"
+          } ]
+        } ]
+      },
+      "mbql.clause./" : { },
+      "mbql.clause.<" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "<"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.<=" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "<="
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.=" : { },
+      "mbql.clause.>" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : ">"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.>=" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : ">="
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.abs" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "abs"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.absolute-datetime" : { },
+      "mbql.clause.aggregation" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "aggregation"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.ref.aggregation-options"
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "mbql.clause.and" : { },
+      "mbql.clause.asc" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "asc"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.avg" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "avg"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.between" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "between"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.case" : { },
+      "mbql.clause.ceil" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "ceil"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.coalesce" : { },
+      "mbql.clause.concat" : { },
+      "mbql.clause.contains" : { },
+      "mbql.clause.convert-timezone" : { },
+      "mbql.clause.count" : { },
+      "mbql.clause.count-where" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "count-where"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
+      },
+      "mbql.clause.cum-count" : { },
+      "mbql.clause.cum-sum" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "cum-sum"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.date" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "date"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+          } ]
+        } ]
+      },
+      "mbql.clause.datetime" : { },
+      "mbql.clause.datetime-add" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "datetime-add"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "mbql.clause.datetime-diff" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "datetime-diff"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal.datetime-diff-unit"
+        } ]
+      },
+      "mbql.clause.datetime-subtract" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "datetime-subtract"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "mbql.clause.day-name" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "day-name"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.integer"
+        } ]
+      },
+      "mbql.clause.desc" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "desc"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.distinct" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "distinct"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.aggregation..distinct.arg"
+        } ]
+      },
+      "mbql.clause.distinct-where" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "distinct-where"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.aggregation..distinct.arg"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
+      },
+      "mbql.clause.does-not-contain" : { },
+      "mbql.clause.domain" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "domain"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.during" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "during"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.literal..string.date"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.literal..string.datetime"
+          } ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "mbql.clause.ends-with" : { },
+      "mbql.clause.exp" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "exp"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.expression" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "expression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.ref..expression.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+        } ]
+      },
+      "mbql.clause.field" : {
+        "allOf" : [ {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "field"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.options"
+          }, {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+            }, {
+              "type" : "string"
+            } ]
+          } ]
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.id"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.literal"
+          } ]
+        } ]
+      },
+      "mbql.clause.float" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "float"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.floor" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "floor"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.get-day" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-day"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.get-day-of-week" : { },
+      "mbql.clause.get-hour" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-hour"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.get-minute" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-minute"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.get-month" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-month"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.get-quarter" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-quarter"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.get-second" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-second"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.get-week" : { },
+      "mbql.clause.get-year" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "get-year"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        } ]
+      },
+      "mbql.clause.host" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "host"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.if" : { },
+      "mbql.clause.in" : { },
+      "mbql.clause.inside" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "inside"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.integer" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "anyOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+          } ]
+        } ]
+      },
+      "mbql.clause.interval" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "interval"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "mbql.clause.is-empty" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "is-empty"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+        } ]
+      },
+      "mbql.clause.is-null" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "is-null"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+        } ]
+      },
+      "mbql.clause.length" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "length"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.log" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "log"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.lower" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "lower"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.ltrim" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "ltrim"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.max" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "max"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.median" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "median"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.metric" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "metric"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+        } ]
+      },
+      "mbql.clause.min" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "min"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
+        } ]
+      },
+      "mbql.clause.month-name" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "month-name"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.integer"
+        } ]
+      },
+      "mbql.clause.not" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "not"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
+      },
+      "mbql.clause.not-empty" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "not-empty"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+        } ]
+      },
+      "mbql.clause.not-in" : { },
+      "mbql.clause.not-null" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "not-null"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+        } ]
+      },
+      "mbql.clause.now" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "now"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        } ]
+      },
+      "mbql.clause.offset" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "offset"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.window..offset.n"
+        } ]
+      },
+      "mbql.clause.or" : { },
+      "mbql.clause.path" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "path"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.percentile" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "percentile"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.aggregation..percentile.percentile"
+        } ]
+      },
+      "mbql.clause.power" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "power"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.quarter-name" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "quarter-name"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.integer"
+        } ]
+      },
+      "mbql.clause.regex-match-first" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "regex-match-first"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.relative-datetime" : { },
+      "mbql.clause.relative-time-interval" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "relative-time-interval"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        }, {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "mbql.clause.replace" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "replace"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "type" : "string"
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "mbql.clause.round" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "round"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.rtrim" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "rtrim"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.segment" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "segment"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
+        } ]
+      },
+      "mbql.clause.share" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "share"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
+      },
+      "mbql.clause.split-part" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "split-part"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "type" : "string",
+          "minLength" : 1
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.positive-integer-or-numeric-expression"
+        } ]
+      },
+      "mbql.clause.sqrt" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "sqrt"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.starts-with" : { },
+      "mbql.clause.stddev" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "stddev"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.subdomain" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "subdomain"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.substring" : { },
+      "mbql.clause.sum" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "sum"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
+      "mbql.clause.sum-where" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "sum-where"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        } ]
+      },
+      "mbql.clause.temporal-extract" : { },
+      "mbql.clause.text" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "text"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+        } ]
+      },
+      "mbql.clause.time" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "time"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        }, {
+          "anyOf" : [ {
+            "const" : "default"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.time.interval"
+          } ]
+        } ]
+      },
+      "mbql.clause.time-interval" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "time-interval"
+        }, {
+          "default" : { },
+          "allOf" : [ {
+            "description" : "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options.",
+            "type" : "object",
+            "properties" : {
+              "lib/uuid" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+              },
+              "base-type" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "effective-type" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "semantic-type" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "database-type" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "name" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "display-name" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+                }, {
+                  "type" : "null"
+                } ]
+              },
+              "include-current" : {
+                "type" : "boolean"
+              }
+            },
+            "required" : [ "lib/uuid" ]
+          }, { } ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.temporal"
+        }, {
+          "oneOf" : [ {
+            "type" : "string",
+            "enum" : [ "current", "last", "next" ]
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.expression.integer"
+          } ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "mbql.clause.today" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "today"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        } ]
+      },
+      "mbql.clause.trim" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "trim"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.upper" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "upper"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.string"
+        } ]
+      },
+      "mbql.clause.value" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "value"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal..value.options"
+        }, { } ]
+      },
+      "mbql.clause.var" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "var"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+        } ]
+      },
       "metabase-enterprise.action-v2.api.api-action-expression" : {
         "description" : "A more relaxed version of ::action-expression that can still have opaque identifiers inside inside.",
         "type" : "object",
@@ -206,26 +1199,28 @@ redirect_from:
         } ]
       },
       "metabase-enterprise.dependencies.api.card-body" : {
+        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "type" : "object",
         "properties" : {
           "dataset_query" : {
-            "description" : "Value must be a map.",
-            "type" : "object",
-            "properties" : { }
+            "$ref" : "#/components/schemas/metabase.queries.schema.query"
           },
           "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "parameter_mappings" : {
+            "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+          },
+          "parameters" : {
+            "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
           },
           "result_metadata" : {
             "$ref" : "#/components/schemas/metabase.analyze.query-results.ResultsMetadata"
           },
           "type" : {
-            "$ref" : "#/components/schemas/metabase.queries.schema.card-type"
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
           }
-        },
-        "required" : [ "id" ]
+        }
       },
       "metabase-enterprise.dependencies.api.transform-body" : {
         "type" : "object",
@@ -239,9 +1234,15 @@ redirect_from:
             "type" : "string"
           },
           "source" : {
-            "description" : "Value must be a map.",
             "type" : "object",
-            "properties" : { }
+            "properties" : {
+              "query" : {
+                "$ref" : "#/components/schemas/metabase.queries.schema.query"
+              },
+              "type" : {
+                "type" : "string"
+              }
+            }
           },
           "target" : {
             "description" : "Value must be a map.",
@@ -1997,6 +2998,231 @@ redirect_from:
         },
         "required" : [ "type", "name" ]
       },
+      "metabase.actions.schema..action.for-insert" : {
+        "description" : "Schema for inserting a new Action (REST API or internally).",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "archived" : {
+              "type" : "boolean"
+            },
+            "description" : {
+              "type" : "string"
+            },
+            "model_id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "parameter_mappings" : {
+              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+            },
+            "parameters" : {
+              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "visualization_settings" : {
+              "type" : "object"
+            }
+          },
+          "required" : [ "name", "type", "model_id" ]
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.actions.schema.http-action"
+          }, {
+            "$ref" : "#/components/schemas/metabase.actions.schema.implicit-action"
+          }, {
+            "$ref" : "#/components/schemas/metabase.actions.schema.query-action"
+          }, {
+            "type" : "object",
+            "properties" : { }
+          } ]
+        } ]
+      },
+      "metabase.actions.schema..action.for-update" : {
+        "description" : "Schema for updating an Action (REST API or internally).",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "type" : "object"
+            },
+            "parameter_mappings" : {
+              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "model_id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            },
+            "parameters" : {
+              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
+            },
+            "description" : {
+              "type" : "string"
+            }
+          }
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.actions.schema.http-action"
+          }, {
+            "$ref" : "#/components/schemas/metabase.actions.schema.implicit-action"
+          }, {
+            "$ref" : "#/components/schemas/metabase.actions.schema.query-action"
+          }, {
+            "type" : "object",
+            "properties" : { }
+          } ]
+        } ]
+      },
+      "metabase.actions.schema..http-action.json-query" : {
+        "description" : "must be a valid json-query, something like '.item.title'",
+        "type" : "string"
+      },
+      "metabase.actions.schema..http-action.template" : {
+        "type" : "object",
+        "properties" : {
+          "body" : {
+            "type" : "string"
+          },
+          "headers" : {
+            "type" : "string"
+          },
+          "method" : {
+            "type" : "string",
+            "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+          },
+          "parameters" : {
+            "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "method", "url" ],
+        "additionalProperties" : false
+      },
+      "metabase.actions.schema..implicit-action.kind" : {
+        "description" : "Unsupported implicit action kind",
+        "type" : "string",
+        "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
+      },
+      "metabase.actions.schema.action" : {
+        "description" : "An Action as it should appear when we `SELECT` it from the app DB.",
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "type" : "object"
+            },
+            "parameter_mappings" : {
+              "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            },
+            "made_public_by_id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "updated_at" : { },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "created_at" : { },
+            "public_uuid" : {
+              "description" : "value must be a valid UUID.",
+              "type" : "string",
+              "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+            },
+            "model_id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            },
+            "parameters" : {
+              "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
+            },
+            "creator_id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            },
+            "description" : {
+              "type" : "string"
+            }
+          },
+          "required" : [ "id" ]
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.actions.schema.http-action"
+          }, {
+            "$ref" : "#/components/schemas/metabase.actions.schema.implicit-action"
+          }, {
+            "$ref" : "#/components/schemas/metabase.actions.schema.query-action"
+          }, {
+            "type" : "object",
+            "properties" : { }
+          } ]
+        } ]
+      },
+      "metabase.actions.schema.http-action" : {
+        "type" : "object",
+        "properties" : {
+          "error_handle" : {
+            "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
+          },
+          "response_handle" : {
+            "$ref" : "#/components/schemas/metabase.actions.schema..http-action.json-query"
+          },
+          "template" : {
+            "$ref" : "#/components/schemas/metabase.actions.schema..http-action.template"
+          }
+        }
+      },
+      "metabase.actions.schema.id" : {
+        "description" : "Valid Action ID",
+        "type" : "integer",
+        "minimum" : 1
+      },
+      "metabase.actions.schema.implicit-action" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
+          }
+        }
+      },
+      "metabase.actions.schema.query-action" : {
+        "type" : "object",
+        "properties" : {
+          "database_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "dataset_query" : {
+            "$ref" : "#/components/schemas/metabase.queries.schema.query"
+          }
+        }
+      },
+      "metabase.actions.schema.type" : {
+        "description" : "Unsupported action type",
+        "type" : "string",
+        "enum" : [ "http", "implicit", "query" ]
+      },
       "metabase.actions.types..scope.raw" : {
         "anyOf" : [ {
           "type" : "object",
@@ -2108,7 +3334,7 @@ redirect_from:
         "minLength" : 7,
         "maxLength" : 7
       },
-      "metabase.cache.api..cache-strategy.base" : {
+      "metabase.cache.api..cache-strategy.base.ee" : {
         "type" : "object",
         "properties" : {
           "type" : {
@@ -2118,10 +3344,20 @@ redirect_from:
         },
         "required" : [ "type" ]
       },
+      "metabase.cache.api..cache-strategy.base.oss" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string",
+            "enum" : [ "nocache", "ttl" ]
+          }
+        },
+        "required" : [ "type" ]
+      },
       "metabase.cache.api..cache-strategy.ee" : {
         "description" : "Schema for a caching strategy in EE when we have an premium token with `:cache-granular-controls`.",
         "allOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.base"
+          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.base.ee"
         }, {
           "oneOf" : [ {
             "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
@@ -2184,7 +3420,7 @@ redirect_from:
       "metabase.cache.api..cache-strategy.oss" : {
         "description" : "Schema for a caching strategy (OSS)",
         "allOf" : [ {
-          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.base"
+          "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.base.oss"
         }, {
           "oneOf" : [ {
             "$ref" : "#/components/schemas/metabase.cache.api..cache-strategy.nocache"
@@ -2754,66 +3990,70 @@ redirect_from:
         "minItems" : 1
       },
       "metabase.legacy-mbql.schema.MBQLQuery" : {
-        "type" : "object",
-        "properties" : {
-          "breakout" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "breakout" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field-or-expression-ref"
+              },
+              "minItems" : 1
             },
-            "minItems" : 1
-          },
-          "source-metadata" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+            "source-metadata" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
+              },
+              "description" : "Info about the columns of the source query. Added in automatically by middleware. This metadata is\n  primarily used to let power things like binning when used with Field Literals instead of normal Fields."
             },
-            "description" : "Info about the columns of the source query. Added in automatically by middleware. This metadata is\n  primarily used to let power things like binning when used with Field Literals instead of normal Fields."
-          },
-          "source-query" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
-          },
-          "limit" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
-          },
-          "filter" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
-          },
-          "joins" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Joins"
-          },
-          "aggregation" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
+            "source-query" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.SourceQuery"
             },
-            "minItems" : 1
-          },
-          "fields" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
-          },
-          "source-table" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-            }, {
-              "description" : "`card__<id>` string Table ID",
-              "type" : "string",
-              "pattern" : "^card__[1-9]\\d*$"
-            } ]
-          },
-          "order-by" : {
-            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBys"
-          },
-          "page" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.page"
-          },
-          "expressions" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
+            "limit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            },
+            "filter" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Filter"
+            },
+            "joins" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Joins"
+            },
+            "aggregation" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
+              },
+              "minItems" : 1
+            },
+            "fields" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Fields"
+            },
+            "source-table" : {
+              "anyOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+              }, {
+                "description" : "`card__<id>` string Table ID",
+                "type" : "string",
+                "pattern" : "^card__[1-9]\\d*$"
+              } ]
+            },
+            "order-by" : {
+              "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.OrderBys"
+            },
+            "page" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.page"
+            },
+            "expressions" : {
+              "type" : "object",
+              "additionalProperties" : {
+                "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.FieldOrExpressionDef"
+              }
             }
           }
-        }
+        }, {
+          "allOf" : [ ]
+        } ]
       },
       "metabase.legacy-mbql.schema.NativeSourceQuery" : {
         "allOf" : [ {
@@ -3245,10 +4485,14 @@ redirect_from:
       },
       "metabase.legacy-mbql.schema.TemplateTagMap" : {
         "description" : "Schema for the `:template-tags` map passed in as part of a native query.\n\n  Map of template tag name -> template tag definition",
-        "type" : "object",
-        "additionalProperties" : {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag"
-        }
+        "allOf" : [ {
+          "type" : "object",
+          "additionalProperties" : {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.TemplateTag"
+          }
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..template-tag-map.validate-names"
+        } ]
       },
       "metabase.legacy-mbql.schema.TemporalExtractUnit" : {
         "description" : "Valid units to extract from a temporal.",
@@ -3834,9 +5078,149 @@ redirect_from:
         "description" : "schema for a valid legacy MBQL :tag clause",
         "allOf" : [ ]
       },
+      "metabase.lib.metadata.protocols.metadata-provider" : {
+        "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
+      },
+      "metabase.lib.schema..stage.additional" : {
+        "oneOf" : [ { }, { } ]
+      },
+      "metabase.lib.schema..stage.common" : {
+        "type" : "object",
+        "properties" : {
+          "lib/stage-metadata" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
+          },
+          "parameters" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
+          }
+        }
+      },
+      "metabase.lib.schema..stage.initial" : {
+        "oneOf" : [ {
+          "type" : "object",
+          "properties" : { }
+        }, { } ]
+      },
+      "metabase.lib.schema..stage.mbql" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "source-card" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            },
+            "lib/type" : {
+              "const" : "mbql.stage/mbql"
+            },
+            "lib/stage-metadata" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
+            },
+            "breakout" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.breakouts"
+            },
+            "filters" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.filters"
+            },
+            "limit" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.int-greater-than-or-equal-to-zero"
+            },
+            "joins" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.joins"
+            },
+            "aggregation" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.aggregation.aggregations"
+            },
+            "fields" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.fields"
+            },
+            "source-table" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+            },
+            "order-by" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.order-by.order-bys"
+            },
+            "page" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.page"
+            },
+            "parameters" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
+            },
+            "expressions" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.expression.expressions"
+            }
+          },
+          "required" : [ "lib/type" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema..stage.valid-refs"
+        }, {
+          "allOf" : [ ]
+        } ]
+      },
+      "metabase.lib.schema..stage.native" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "collection" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "lib/stage-metadata" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.stage"
+            },
+            "lib/type" : {
+              "const" : "mbql.stage/native"
+            },
+            "native" : { },
+            "parameters" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
+            },
+            "params" : {
+              "type" : "array",
+              "items" : {
+                "anyOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+                }, { } ]
+              }
+            },
+            "query-permissions/referenced-card-ids" : {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              },
+              "uniqueItems" : true
+            },
+            "template-tags" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag-map"
+            }
+          },
+          "required" : [ "lib/type" ]
+        }, {
+          "allOf" : [ ]
+        } ]
+      },
+      "metabase.lib.schema..stage.type" : {
+        "type" : "string",
+        "enum" : [ "mbql.stage/native", "mbql.stage/mbql" ]
+      },
+      "metabase.lib.schema..stage.valid-refs" : { },
+      "metabase.lib.schema..stages.valid-refs" : { },
       "metabase.lib.schema.actions.row" : {
         "type" : "object",
         "additionalProperties" : { }
+      },
+      "metabase.lib.schema.aggregation..distinct.arg" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+      },
+      "metabase.lib.schema.aggregation..percentile.percentile" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.expression.number"
+      },
+      "metabase.lib.schema.aggregation.aggregation" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+      },
+      "metabase.lib.schema.aggregation.aggregations" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.aggregation.aggregation"
+        },
+        "minItems" : 1
       },
       "metabase.lib.schema.binning.bin-width" : {
         "description" : "Bin width (size of each bin).",
@@ -3895,6 +5279,20 @@ redirect_from:
         "type" : "string",
         "enum" : [ "bin-width", "default", "num-bins" ]
       },
+      "metabase.lib.schema.breakout" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.ref.ref"
+      },
+      "metabase.lib.schema.breakouts" : {
+        "allOf" : [ {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.breakout"
+          },
+          "minItems" : 1
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
+        } ]
+      },
       "metabase.lib.schema.common.base-type" : {
         "type" : "string"
       },
@@ -3903,6 +5301,7 @@ redirect_from:
         "type" : "integer",
         "minimum" : 0
       },
+      "metabase.lib.schema.common.kebab-cased-map" : { },
       "metabase.lib.schema.common.non-blank-string" : {
         "type" : "string",
         "minLength" : 1
@@ -3959,6 +5358,137 @@ redirect_from:
           }
         }
       },
+      "metabase.lib.schema.expression..expression.definition" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.expression.expression"
+      },
+      "metabase.lib.schema.expression.arithmetic..args.numbers" : { },
+      "metabase.lib.schema.expression.arithmetic.plus-minus-numeric-schema" : { },
+      "metabase.lib.schema.expression.arithmetic.plus-minus-temporal-interval-schema" : {
+        "allOf" : [ ]
+      },
+      "metabase.lib.schema.expression.arithmetic.temporal-difference-schema" : { },
+      "metabase.lib.schema.expression.boolean" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ]
+      },
+      "metabase.lib.schema.expression.equality-comparable" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ],
+        "optional" : true
+      },
+      "metabase.lib.schema.expression.expression" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ],
+        "optional" : true
+      },
+      "metabase.lib.schema.expression.expressions" : {
+        "description" : "The `:expressions` definition map as found as a top-level key in an MBQL stage.",
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression..expression.definition"
+        },
+        "minItems" : 1
+      },
+      "metabase.lib.schema.expression.integer" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ]
+      },
+      "metabase.lib.schema.expression.number" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ]
+      },
+      "metabase.lib.schema.expression.orderable" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ]
+      },
+      "metabase.lib.schema.expression.positive-integer-or-numeric-expression" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.expression.integer"
+      },
+      "metabase.lib.schema.expression.string" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ]
+      },
+      "metabase.lib.schema.expression.temporal" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
+        } ]
+      },
+      "metabase.lib.schema.expression.temporal..absolute-datetime.base-type" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+      },
+      "metabase.lib.schema.expression.temporal..absolute-datetime.options" : {
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          }
+        },
+        "required" : [ "lib/uuid" ]
+      },
+      "metabase.lib.schema.expression.temporal..relative-datetime.amount" : {
+        "oneOf" : [ {
+          "const" : "current"
+        }, {
+          "type" : "integer"
+        } ]
+      },
+      "metabase.lib.schema.expression.temporal..relative-datetime.unit" : {
+        "anyOf" : [ {
+          "const" : "default"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing..unit.date-time.interval"
+        } ]
+      },
+      "metabase.lib.schema.expression.temporal..temporal-extract.unit" : {
+        "type" : "string",
+        "enum" : [ "year-of-era", "quarter-of-year", "month-of-year", "week-of-year-iso", "week-of-year-us", "week-of-year-instance", "day-of-month", "day-of-week", "day-of-week-iso", "hour-of-day", "minute-of-hour", "second-of-minute" ]
+      },
+      "metabase.lib.schema.expression.temporal.datetime-diff-unit" : {
+        "type" : "string",
+        "enum" : [ "day", "week", "month", "quarter", "year", "second", "minute", "hour" ]
+      },
       "metabase.lib.schema.expression.temporal.timezone-id" : {
         "allOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -3971,8 +5501,48 @@ redirect_from:
           } ]
         } ]
       },
+      "metabase.lib.schema.expression.temporal.week-mode" : {
+        "type" : "string",
+        "enum" : [ "iso", "us", "instance" ]
+      },
       "metabase.lib.schema.expression.window..offset.n" : {
         "type" : "integer"
+      },
+      "metabase.lib.schema.fields" : {
+        "allOf" : [ {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.ref.ref"
+          },
+          "minItems" : 1
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
+        } ]
+      },
+      "metabase.lib.schema.filter.string-filter-options" : {
+        "description" : "String filter operator options. Only set for `:contains`, `:does-not-contain`, `:starts-with`, `:ends-with`\n  operators.",
+        "type" : "object",
+        "properties" : {
+          "case-sensitive" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "metabase.lib.schema.filter.time-interval-options" : {
+        "description" : "Options for `:time-interval` operator. Note that `:relative-time-interval` does not support these options.",
+        "type" : "object",
+        "properties" : {
+          "include-current" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "metabase.lib.schema.filters" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+        },
+        "minItems" : 1
       },
       "metabase.lib.schema.id.action" : {
         "description" : "Valid Action ID",
@@ -3986,6 +5556,11 @@ redirect_from:
       },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
+        "type" : "integer",
+        "minimum" : 1
+      },
+      "metabase.lib.schema.id.dashcard" : {
+        "description" : "Valid DashboardCard ID",
         "type" : "integer",
         "minimum" : 1
       },
@@ -4095,6 +5670,79 @@ redirect_from:
         "description" : "The name used to alias the joined table or query. This is usually generated automatically and generally looks like\n  `table__via__field`. You can specify this yourself if you need to reference a joined field with a `:join-alias` in\n  the options.",
         "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
       },
+      "metabase.lib.schema.join.condition" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.expression.boolean"
+      },
+      "metabase.lib.schema.join.conditions" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.join.condition"
+        },
+        "minItems" : 1
+      },
+      "metabase.lib.schema.join.fields" : {
+        "description" : "The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either\n  `:none`, `:all`, or a sequence of Field clauses.\n\n  * `:none`: no Fields from the joined table or nested query are included (unless indirectly included by breakouts or\n     other clauses). This is the default, and what is used for automatically-generated joins.\n\n  * `:all`: will include all of the Fields from the joined table or query\n\n  * a sequence of Field clauses: include only the Fields specified. Only `:field` clauses are allowed here! References\n    to expressions or aggregations in the thing we're joining should use column literal (string column name) `:field`\n    references. This should be non-empty and all elements should be distinct (ignoring `:lib/uuid`).",
+        "oneOf" : [ {
+          "type" : "string",
+          "enum" : [ "all", "none" ]
+        }, {
+          "allOf" : [ {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/mbql.clause.field"
+            },
+            "minItems" : 1
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
+          } ]
+        } ]
+      },
+      "metabase.lib.schema.join.join" : {
+        "allOf" : [ {
+          "default" : { },
+          "type" : "object",
+          "properties" : {
+            "alias" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+            },
+            "conditions" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.conditions"
+            },
+            "fields" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.fields"
+            },
+            "lib/type" : {
+              "default" : "mbql/join",
+              "const" : "mbql/join"
+            },
+            "stages" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.stages"
+            },
+            "strategy" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.join.strategy"
+            }
+          },
+          "required" : [ "lib/type", "stages", "conditions", "alias" ]
+        }, {
+          "allOf" : [ ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.join.validate-field-aliases-match-join-alias"
+        } ]
+      },
+      "metabase.lib.schema.join.joins" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.lib.schema.join.join"
+        },
+        "minItems" : 1
+      },
+      "metabase.lib.schema.join.strategy" : {
+        "description" : "Valid values for the optional `:strategy` key in a join. Note that these are only valid if the current Database\n  supports that specific join type; these match 1:1 with the Database `:features`, e.g. a Database that supports left\n  joins will support the `:left-join` feature.\n\n  When `:strategy` is not specified, `:left-join` is the default strategy.",
+        "default" : "left-join",
+        "type" : "string",
+        "enum" : [ "left-join", "right-join", "inner-join", "full-join" ]
+      },
+      "metabase.lib.schema.join.validate-field-aliases-match-join-alias" : { },
       "metabase.lib.schema.literal..string.date" : {
         "type" : "string",
         "pattern" : "^\\d{4}-\\d{2}-\\d{2}$"
@@ -4117,9 +5765,48 @@ redirect_from:
           "pattern" : "^\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,6})?)?(?:Z|(?:[+-]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,6})?)?))$"
         } ]
       },
+      "metabase.lib.schema.literal..string.year" : {
+        "type" : "string",
+        "pattern" : "^\\d{4}$"
+      },
+      "metabase.lib.schema.literal..string.year-month" : {
+        "type" : "string",
+        "pattern" : "^\\d{4}-\\d{2}$"
+      },
       "metabase.lib.schema.literal..string.zone-offset" : {
         "type" : "string",
         "pattern" : "(?:Z|(?:[+-]\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d{1,6})?)?))"
+      },
+      "metabase.lib.schema.literal..value.options" : {
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "type" : "string"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          },
+          "unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          }
+        },
+        "required" : [ "lib/uuid", "effective-type" ]
       },
       "metabase.lib.schema.literal.date" : {
         "anyOf" : [ { }, {
@@ -4131,11 +5818,273 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.lib.schema.literal..string.datetime"
         }, { }, { }, { } ]
       },
+      "metabase.lib.schema.literal.integer" : {
+        "anyOf" : [ {
+          "type" : "integer"
+        }, { } ]
+      },
+      "metabase.lib.schema.literal.jvm.big-decimal" : { },
+      "metabase.lib.schema.literal.jvm.float" : { },
+      "metabase.lib.schema.literal.literal" : {
+        "anyOf" : [ {
+          "type" : "null"
+        }, {
+          "type" : "boolean"
+        }, {
+          "type" : "string"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.non-integer-real"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.temporal"
+        } ]
+      },
+      "metabase.lib.schema.literal.non-integer-real" : {
+        "anyOf" : [ {
+          "type" : "number"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.jvm.float"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.jvm.big-decimal"
+        } ]
+      },
+      "metabase.lib.schema.literal.temporal" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.date"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.time"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.literal.datetime"
+        } ]
+      },
       "metabase.lib.schema.literal.time" : {
         "description" : "time literal",
         "anyOf" : [ {
           "$ref" : "#/components/schemas/metabase.lib.schema.literal..string.time"
         }, { }, { } ]
+      },
+      "metabase.lib.schema.mbql-clause.clause" : {
+        "oneOf" : [ { }, {
+          "$ref" : "#/components/schemas/mbql.clause.!="
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.*"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.+"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.-"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.~1"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.<"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.<="
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.="
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.>"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.>="
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.abs"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.absolute-datetime"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.aggregation"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.and"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.asc"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.avg"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.between"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.case"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.ceil"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.concat"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.contains"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.convert-timezone"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.count"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.count-where"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.cum-count"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.cum-sum"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.date"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.datetime"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.datetime-add"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.datetime-diff"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.datetime-subtract"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.day-name"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.desc"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.distinct"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.distinct-where"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.does-not-contain"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.domain"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.during"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.ends-with"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.exp"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.expression"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.field"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.float"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.floor"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-day"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-day-of-week"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-hour"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-minute"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-month"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-quarter"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-second"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-week"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.get-year"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.host"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.if"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.in"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.inside"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.integer"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.interval"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.is-empty"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.is-null"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.length"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.log"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.lower"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.ltrim"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.max"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.median"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.metric"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.min"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.month-name"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.not"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.not-empty"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.not-in"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.not-null"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.now"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.offset"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.or"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.path"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.percentile"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.power"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.quarter-name"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.regex-match-first"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.relative-datetime"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.relative-time-interval"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.replace"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.round"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.rtrim"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.segment"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.share"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.split-part"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.sqrt"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.starts-with"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.stddev"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.subdomain"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.substring"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.sum"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.sum-where"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.temporal-extract"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.text"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.time"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.time-interval"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.today"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.trim"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.upper"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.value"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.var"
+        } ]
+      },
+      "metabase.lib.schema.metadata..card.type" : {
+        "description" : "All acceptable card types.\n\n  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean\n  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column\n  to differentiate between all types. So we've added a new `type` column for this purpose.\n\n  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it\n  gradually.",
+        "type" : "string",
+        "enum" : [ "question", "metric", "model" ]
       },
       "metabase.lib.schema.metadata..column.has-field-values" : {
         "type" : "string",
@@ -4390,7 +6339,7 @@ redirect_from:
           },
           "required" : [ "lib/type", "name", "base-type" ]
         }, {
-          "$ref" : "#/components/schemas/metabase.lib.schema.metadata.kebab-cased-map"
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source"
         } ]
@@ -4516,7 +6465,6 @@ redirect_from:
         "description" : "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1.",
         "type" : "number"
       },
-      "metabase.lib.schema.metadata.kebab-cased-map" : { },
       "metabase.lib.schema.metadata.lib-or-legacy-column" : {
         "description" : "Schema for the maps in card `:result-metadata` and similar. These can be either\n  `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP\n  metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code.",
         "oneOf" : [ {
@@ -4667,13 +6615,17 @@ redirect_from:
             },
             "required" : [ "lib/type", "name", "base-type" ]
           }, {
-            "$ref" : "#/components/schemas/metabase.lib.schema.metadata.kebab-cased-map"
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
           }, {
             "$ref" : "#/components/schemas/metabase.lib.schema.metadata..column.validate-for-source"
           } ]
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.legacy-column-metadata"
         } ]
+      },
+      "metabase.lib.schema.metadata.metadata-provider" : {
+        "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol.",
+        "$ref" : "#/components/schemas/metabase.lib.metadata.protocols.metadata-provider"
       },
       "metabase.lib.schema.metadata.original-name" : {
         "type" : "string",
@@ -4683,6 +6635,23 @@ redirect_from:
       "metabase.lib.schema.metadata.source-column-alias" : {
         "description" : "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The\n  left-hand side (LHS) of\n\n    SELECT lhs AS rhs",
         "type" : "string"
+      },
+      "metabase.lib.schema.metadata.stage" : {
+        "description" : "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query\n  like\n\n    {:database 1\n     :lib/type :mbql/query\n     :stages   [{:lib/type :mbql.stage/mbql\n                 :native   \"SELECT id, name FROM VENUES;\"}]}\n\n  might have stage metadata like\n\n    {:columns [{:name \"id\", :base-type :type/Integer}\n               {:name \"name\", :base-type :type/Text}]}\n\n  associated with the query's lone stage.\n\n  At some point in the near future we will hopefully attach this metadata directly to each stage in a query, so a\n  multi-stage query will have `:lib/stage-metadata` for each stage. The main goal is to facilitate things like\n  returning lists of visible or filterable columns for a given stage of a query. This is TBD, see #28717 for a WIP\n  implementation of this idea.\n\n  This is the same format as the results metadata returned with QP results in `data.results_metadata`. The `:columns`\n  portion of this (`data.results_metadata.columns`) is also saved as `Card.result_metadata` for Saved Questions.\n\n  Note that queries currently actually come back with both `data.results_metadata` AND `data.cols`; it looks like the\n  Frontend actually *merges* these together -- see `applyMetadataDiff` in\n  `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in\n  `results_metadata` into `cols` going forward so things don't need to be manually merged in the future.",
+        "type" : "object",
+        "properties" : {
+          "columns" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.column"
+            }
+          },
+          "lib/type" : {
+            "default" : "metadata/results",
+            "const" : "metadata/results"
+          }
+        },
+        "required" : [ "lib/type", "columns" ]
       },
       "metabase.lib.schema.middleware-options.middleware-options" : {
         "description" : "Additional options that can be used to toggle middleware on or off.",
@@ -4718,6 +6687,24 @@ redirect_from:
           }
         }
       },
+      "metabase.lib.schema.order-by.order-by" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/mbql.clause.asc"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.desc"
+        } ]
+      },
+      "metabase.lib.schema.order-by.order-bys" : {
+        "allOf" : [ {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.order-by.order-by"
+          },
+          "minItems" : 1
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.util.distinct-mbql-clauses"
+        } ]
+      },
       "metabase.lib.schema.page" : {
         "description" : "`page` = page num, starting with 1. `items` = number of items per page.\n  e.g.\n\n    {:page 1, :items 10} = items 1-10\n    {:page 2, :items 10} = items 11-20",
         "type" : "object",
@@ -4750,6 +6737,7 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
       },
+      "metabase.lib.schema.parameter..parameter.value" : { },
       "metabase.lib.schema.parameter..target.legacy-expression-ref" : {
         "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.expression"
       },
@@ -4769,28 +6757,34 @@ redirect_from:
       },
       "metabase.lib.schema.parameter.parameter" : {
         "description" : "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as\n  part of the `:parameters` list in a query.",
-        "type" : "object",
-        "properties" : {
-          "default" : { },
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "default" : { },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "required" : { },
+            "slug" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "target" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.target"
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.type"
+            },
+            "value" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter..parameter.value"
+            }
           },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "required" : { },
-          "slug" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
-          },
-          "target" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.target"
-          },
-          "type" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.type"
-          },
-          "value" : { }
-        },
-        "required" : [ "type" ]
+          "required" : [ "type" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.kebab-cased-map"
+        } ]
       },
       "metabase.lib.schema.parameter.parameters" : {
         "description" : "Schema for a list of `:parameters` as passed in to a query.",
@@ -4804,6 +6798,14 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.dimension"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter.variable"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter.text-tag"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         }, {
           "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
         } ]
@@ -4827,8 +6829,18 @@ redirect_from:
           } ]
         } ]
       },
+      "metabase.lib.schema.parameter.text-tag" : {
+        "description" : "A :text-tag parameter :target applies to parameterized text cards in viz settings",
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "text-tag"
+        }, {
+          "type" : "string"
+        } ]
+      },
       "metabase.lib.schema.parameter.type" : {
         "description" : "Valid parameter :type",
+        "default" : "text",
         "type" : "string",
         "enum" : [ "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
@@ -4844,6 +6856,248 @@ redirect_from:
         "type" : "string",
         "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
       },
+      "metabase.lib.schema.query" : {
+        "allOf" : [ {
+          "description" : "Valid MBQL 5 query.",
+          "type" : "object",
+          "properties" : {
+            "lib/metadata" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.metadata.metadata-provider"
+            },
+            "update-row" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
+            },
+            "lib/type" : {
+              "default" : "mbql/query",
+              "const" : "mbql/query"
+            },
+            "settings" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.settings.settings"
+            },
+            "constraints" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.constraints.constraints"
+            },
+            "info" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.info.info"
+            },
+            "middleware" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.middleware-options.middleware-options"
+            },
+            "database" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.saved-questions-virtual-database"
+              }, {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+              } ]
+            },
+            "stages" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.stages"
+            },
+            "parameters" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
+            },
+            "create-row" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
+            }
+          },
+          "required" : [ "lib/type", "stages" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
+        }, {
+          "allOf" : [ ]
+        } ]
+      },
+      "metabase.lib.schema.ref..expression.options" : {
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          }
+        },
+        "required" : [ "lib/uuid" ]
+      },
+      "metabase.lib.schema.ref..field.id" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "field"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+        } ]
+      },
+      "metabase.lib.schema.ref..field.literal" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "field"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.ref..field.literal.options"
+        }, {
+          "type" : "string"
+        } ]
+      },
+      "metabase.lib.schema.ref..field.literal.options" : {
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "inherited-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "metabase.lib.field/original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "base-type" : {
+            "type" : "string"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "metabase.lib.field/original-effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "source-field" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+          },
+          "lib/original-binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          }
+        },
+        "required" : [ "lib/uuid", "base-type" ]
+      },
+      "metabase.lib.schema.ref..field.options" : {
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "inherited-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "metabase.lib.field/original-temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "metabase.lib.field/original-effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "source-field" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "join-alias" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.join.alias"
+          },
+          "lib/original-binning" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.binning.binning"
+          },
+          "temporal-unit" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          }
+        },
+        "required" : [ "lib/uuid" ]
+      },
+      "metabase.lib.schema.ref.aggregation-options" : {
+        "default" : { },
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "database-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "display-name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "lib/source-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "lib/uuid" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.uuid"
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "semantic-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.semantic-or-relation-type"
+          }
+        },
+        "required" : [ "lib/uuid" ]
+      },
+      "metabase.lib.schema.ref.ref" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.mbql-clause.clause"
+      },
       "metabase.lib.schema.settings.settings" : {
         "description" : "Options that tweak the behavior of the query processor.",
         "type" : "object",
@@ -4854,9 +7108,117 @@ redirect_from:
           }
         }
       },
+      "metabase.lib.schema.stage" : {
+        "default" : {
+          "lib/type" : "mbql.stage/mbql"
+        },
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "lib/type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema..stage.type"
+            }
+          },
+          "required" : [ "lib/type" ]
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema..stage.native"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema..stage.mbql"
+          } ]
+        }, {
+          "allOf" : [ ]
+        } ]
+      },
+      "metabase.lib.schema.stages" : {
+        "allOf" : [ {
+          "default" : [ ],
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.stage"
+          },
+          "minItems" : 1
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema..stages.valid-refs"
+        } ]
+      },
+      "metabase.lib.schema.template-tag..field-filter.options" : {
+        "type" : "object",
+        "properties" : { }
+      },
       "metabase.lib.schema.template-tag..raw-value.type" : {
         "type" : "string",
         "enum" : [ "date", "number", "boolean", "text" ]
+      },
+      "metabase.lib.schema.template-tag..template-tag-map.validate-names" : { },
+      "metabase.lib.schema.template-tag..value.common" : {
+        "type" : "object",
+        "properties" : {
+          "default" : { },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+          },
+          "required" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "name", "display-name" ]
+      },
+      "metabase.lib.schema.template-tag.common" : {
+        "type" : "object",
+        "properties" : {
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+          }
+        },
+        "required" : [ "name", "display-name" ]
+      },
+      "metabase.lib.schema.template-tag.disallow-dimension" : { },
+      "metabase.lib.schema.template-tag.field-filter" : {
+        "type" : "object",
+        "properties" : {
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+          },
+          "required" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "const" : "dimension"
+          },
+          "alias" : {
+            "type" : "string"
+          },
+          "options" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..field-filter.options"
+          },
+          "dimension" : {
+            "$ref" : "#/components/schemas/mbql.clause.field"
+          },
+          "default" : { },
+          "widget-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.widget-type"
+          }
+        },
+        "required" : [ "name", "display-name", "type", "widget-type" ]
       },
       "metabase.lib.schema.template-tag.id" : {
         "oneOf" : [ {
@@ -4866,10 +7228,179 @@ redirect_from:
           "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
         } ]
       },
+      "metabase.lib.schema.template-tag.name" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+      },
+      "metabase.lib.schema.template-tag.raw-value" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "default" : { },
+            "display-name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "required" : {
+              "type" : "boolean"
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..raw-value.type"
+            }
+          },
+          "required" : [ "name", "display-name", "type" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
+        } ]
+      },
+      "metabase.lib.schema.template-tag.snippet" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "database" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            },
+            "display-name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "snippet-id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
+            },
+            "snippet-name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "type" : {
+              "const" : "snippet"
+            }
+          },
+          "required" : [ "name", "display-name", "type", "snippet-name" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
+        } ]
+      },
+      "metabase.lib.schema.template-tag.source-query" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "card-id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            },
+            "display-name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+            },
+            "name" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+            },
+            "type" : {
+              "const" : "card"
+            }
+          },
+          "required" : [ "name", "display-name", "type", "card-id" ]
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.disallow-dimension"
+        } ]
+      },
+      "metabase.lib.schema.template-tag.template-tag" : {
+        "allOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.type"
+            }
+          },
+          "required" : [ "type" ]
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.temporal-unit"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.field-filter"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.snippet"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.source-query"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.raw-value"
+          } ]
+        } ]
+      },
+      "metabase.lib.schema.template-tag.template-tag-map" : {
+        "allOf" : [ {
+          "type" : "object",
+          "additionalProperties" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.template-tag"
+          }
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.template-tag..template-tag-map.validate-names"
+        } ]
+      },
+      "metabase.lib.schema.template-tag.temporal-unit" : {
+        "type" : "object",
+        "properties" : {
+          "alias" : {
+            "type" : "string"
+          },
+          "dimension" : {
+            "$ref" : "#/components/schemas/mbql.clause.field"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.id"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.template-tag.name"
+          },
+          "type" : {
+            "const" : "temporal-unit"
+          }
+        },
+        "required" : [ "name", "display-name", "type" ]
+      },
+      "metabase.lib.schema.template-tag.type" : {
+        "description" : "Schema for valid values of template tag `:type`.",
+        "type" : "string",
+        "enum" : [ "snippet", "card", "dimension", "number", "text", "date", "boolean", "temporal-unit" ]
+      },
+      "metabase.lib.schema.template-tag.widget-type" : {
+        "type" : "string",
+        "enum" : [ "none", "number", "text", "date", "boolean", "date/single", "id", "category", "location/city", "location/state", "location/zip_code", "location/country", "date/range", "date/month-year", "date/quarter-year", "date/relative", "date/all-options", "temporal-unit", "number/!=", "number/<=", "number/=", "number/>=", "number/between", "string/!=", "string/=", "string/contains", "string/does-not-contain", "string/ends-with", "string/starts-with", "boolean/=" ]
+      },
+      "metabase.lib.schema.temporal-bucketing..unit.date" : {
+        "type" : "string",
+        "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "month", "month-of-year", "quarter", "quarter-of-year", "week", "week-of-year", "year", "year-of-era" ]
+      },
+      "metabase.lib.schema.temporal-bucketing..unit.date-time" : {
+        "type" : "string",
+        "enum" : [ "millisecond", "second", "minute", "hour", "day", "week", "month", "quarter", "year", "second-of-minute", "minute-of-hour", "hour-of-day", "day-of-week", "day-of-month", "day-of-year", "week-of-year", "month-of-year", "quarter-of-year", "year-of-era" ]
+      },
+      "metabase.lib.schema.temporal-bucketing..unit.date-time.interval" : {
+        "type" : "string",
+        "enum" : [ "day", "hour", "millisecond", "minute", "month", "quarter", "second", "week", "year" ]
+      },
+      "metabase.lib.schema.temporal-bucketing..unit.time.interval" : {
+        "type" : "string",
+        "enum" : [ "hour", "millisecond", "minute", "second" ]
+      },
       "metabase.lib.schema.temporal-bucketing.unit" : {
         "type" : "string",
         "enum" : [ "day", "day-of-month", "day-of-week", "day-of-year", "default", "hour", "hour-of-day", "millisecond", "minute", "minute-of-hour", "month", "month-of-year", "quarter", "quarter-of-year", "second", "second-of-minute", "week", "week-of-year", "year", "year-of-era" ]
       },
+      "metabase.lib.schema.util.distinct-mbql-clauses" : { },
+      "metabase.lib.schema.util.unique-uuids" : { },
       "metabase.logger.api.log-level" : {
         "type" : "string",
         "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ]
@@ -5479,18 +8010,37 @@ redirect_from:
           "required" : [ "type", "cron_schedule" ]
         } ]
       },
-      "metabase.parameters.schema.keyword-or-non-blank-string" : {
-        "type" : "string",
-        "minLength" : 1
-      },
-      "metabase.parameters.schema.legacy-field-or-expression-reference" : {
-        "description" : "Schema for a valid legacy `:field` or `:expression` reference (possibly not yet normalized)."
+      "metabase.parameters.schema.legacy-ref" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-expression-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.parameter..target.legacy-field-ref"
+        } ]
       },
       "metabase.parameters.schema.parameter" : {
         "description" : "parameter must be a map with :id and :type keys",
         "type" : "object",
         "properties" : {
-          "mappings" : { },
+          "filteringParameters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
+            }
+          },
+          "mappings" : {
+            "anyOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
+              }
+            }, {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
+              },
+              "uniqueItems" : true
+            } ]
+          },
           "sectionId" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
           },
@@ -5498,7 +8048,7 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.parameters.schema.values-source-config"
           },
           "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
           },
           "name" : {
             "type" : "string"
@@ -5506,8 +8056,11 @@ redirect_from:
           "slug" : {
             "type" : "string"
           },
+          "values_query_type" : {
+            "$ref" : "#/components/schemas/metabase.parameters.schema.values-query-type"
+          },
           "type" : {
-            "$ref" : "#/components/schemas/metabase.parameters.schema.keyword-or-non-blank-string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.type"
           },
           "temporal_units" : {
             "type" : "array",
@@ -5515,8 +8068,11 @@ redirect_from:
               "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
             }
           },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.target"
+          },
           "values_source_type" : {
-            "enum" : [ "static-list", "card", null ]
+            "$ref" : "#/components/schemas/metabase.parameters.schema.values-source-type"
           },
           "default" : { }
         },
@@ -5529,12 +8085,34 @@ redirect_from:
           "card_id" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
           },
-          "parameter_id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          "dashcard" : {
+            "type" : "object",
+            "properties" : { }
           },
-          "target" : { }
+          "parameter_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.target"
+          }
         },
         "required" : [ "parameter_id", "target" ]
+      },
+      "metabase.parameters.schema.parameter-mappings" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
+        }
+      },
+      "metabase.parameters.schema.parameters" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
+        }
+      },
+      "metabase.parameters.schema.values-query-type" : {
+        "type" : "string",
+        "enum" : [ "none", "list", "search" ]
       },
       "metabase.parameters.schema.values-source-config" : {
         "description" : "Schema for valid source_options within a Parameter",
@@ -5544,17 +8122,101 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
           },
           "label_field" : {
-            "$ref" : "#/components/schemas/metabase.parameters.schema.legacy-field-or-expression-reference"
+            "$ref" : "#/components/schemas/metabase.parameters.schema.legacy-ref"
           },
           "value_field" : {
-            "$ref" : "#/components/schemas/metabase.parameters.schema.legacy-field-or-expression-reference"
+            "$ref" : "#/components/schemas/metabase.parameters.schema.legacy-ref"
           },
           "values" : { }
         }
       },
-      "metabase.queries.schema.card-type" : {
+      "metabase.parameters.schema.values-source-type" : {
         "type" : "string",
-        "enum" : [ "question", "metric", "model" ]
+        "enum" : [ "static-list", "card" ]
+      },
+      "metabase.queries.schema.card" : {
+        "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
+        "type" : "object",
+        "properties" : {
+          "dataset_query" : {
+            "$ref" : "#/components/schemas/metabase.queries.schema.query"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          },
+          "parameter_mappings" : {
+            "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+          },
+          "parameters" : {
+            "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
+          },
+          "type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
+          }
+        }
+      },
+      "metabase.queries.schema.card-type" : {
+        "$ref" : "#/components/schemas/metabase.lib.schema.metadata..card.type"
+      },
+      "metabase.queries.schema.empty-map" : {
+        "description" : "An empty map, allowed for Card.dataset_query for historic purposes.",
+        "const" : { }
+      },
+      "metabase.queries.schema.query" : {
+        "description" : "Schema for Card.dataset_query. Cards are for some wacko reason allowed to be saved with empty queries (`{}`), but not\n  `NULL` ones, because the column is non-null. This sorta seems like an oversight but fixing all the tests that save\n  Cards with empty queries is too much to attempt at this point. So a Card either has an empty query or a valid MBQL 5\n  query.",
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase.queries.schema.empty-map"
+        }, {
+          "allOf" : [ {
+            "description" : "Valid MBQL 5 query.",
+            "type" : "object",
+            "properties" : {
+              "lib/metadata" : {
+                "description" : "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
+              },
+              "update-row" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
+              },
+              "lib/type" : {
+                "default" : "mbql/query",
+                "const" : "mbql/query"
+              },
+              "settings" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.settings.settings"
+              },
+              "constraints" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.constraints.constraints"
+              },
+              "info" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.info.info"
+              },
+              "middleware" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.middleware-options.middleware-options"
+              },
+              "database" : {
+                "oneOf" : [ {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.saved-questions-virtual-database"
+                }, {
+                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                } ]
+              },
+              "stages" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.stages"
+              },
+              "parameters" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.parameter.parameters"
+              },
+              "create-row" : {
+                "$ref" : "#/components/schemas/metabase.lib.schema.actions.row"
+              }
+            },
+            "required" : [ "lib/type", "lib/metadata", "stages" ]
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.util.unique-uuids"
+          }, {
+            "allOf" : [ ]
+          } ]
+        } ]
       },
       "metabase.query-processor.schema.export-format" : {
         "description" : "Schema for valid export formats for downloading query results.",
@@ -5572,6 +8234,18 @@ redirect_from:
             "$ref" : "#/components/schemas/metabase.util.cron.ScheduleMap"
           }
         }
+      },
+      "metabase.tiles.api.legacy-ref" : {
+        "description" : "Form-encoded JSON-encoded legacy MBQL :field ref.",
+        "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.field"
+      },
+      "metabase.tiles.api.parameters" : {
+        "description" : "Form-encoded JSON-encoded array of parameter maps.",
+        "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
+      },
+      "metabase.tiles.api.query" : {
+        "description" : "Form-encoded JSON-encoded MBQL query.",
+        "$ref" : "#/components/schemas/metabase.lib.schema.query"
       },
       "metabase.timeline.api.timeline.Timeline" : {
         "type" : "object",
@@ -5681,6 +8355,14 @@ redirect_from:
           "required" : [ "enabled" ]
         }
       },
+      "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
+        "description" : "form-encoded base-64-encoded JSON"
+      },
+      "metabase.xrays.api.automagic-dashboards.entity-id-or-query" : {
+        "description" : "One of these:\n\n  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)\n\n  * a form-encoded base-64-encoded JSON-encoded MBQL query\n\n  * The name of a transform\n\n  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded\n  string.)",
+        "type" : "string",
+        "minLength" : 1
+      },
       "metabot.reaction.redirect" : {
         "type" : "object",
         "properties" : {
@@ -5705,14 +8387,22 @@ redirect_from:
           "name" : "model-id",
           "required" : false,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          }
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "sequence of An Action as it should appear when we `SELECT` it from the app DB.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.actions.schema.action"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -5729,7 +8419,14 @@ redirect_from:
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "An Action as it should appear when we `SELECT` it from the app DB.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema.action"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -5742,94 +8439,7 @@ redirect_from:
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "visualization_settings" : {
-                    "type" : "object"
-                  },
-                  "response_handle" : {
-                    "allOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "description" : "must be a valid json-query, something like '.item.title'"
-                    } ]
-                  },
-                  "dataset_query" : {
-                    "type" : "object"
-                  },
-                  "parameter_mappings" : {
-                    "type" : "object"
-                  },
-                  "name" : {
-                    "type" : "string"
-                  },
-                  "database_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "kind" : {
-                    "description" : "Unsupported implicit action kind",
-                    "type" : "string",
-                    "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
-                  },
-                  "type" : {
-                    "description" : "Unsupported action type",
-                    "type" : "string",
-                    "enum" : [ "http", "query", "implicit" ]
-                  },
-                  "template" : {
-                    "type" : "object",
-                    "properties" : {
-                      "body" : {
-                        "type" : "string"
-                      },
-                      "headers" : {
-                        "type" : "string"
-                      },
-                      "method" : {
-                        "type" : "string",
-                        "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
-                      },
-                      "parameter_mappings" : {
-                        "type" : "object"
-                      },
-                      "parameters" : {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "object"
-                        }
-                      },
-                      "url" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "method", "url" ],
-                    "additionalProperties" : false
-                  },
-                  "error_handle" : {
-                    "allOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "description" : "must be a valid json-query, something like '.item.title'"
-                    } ]
-                  },
-                  "model_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object"
-                    }
-                  },
-                  "description" : {
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "name", "model_id" ]
+                "$ref" : "#/components/schemas/metabase.actions.schema..action.for-insert"
               }
             }
           }
@@ -5844,7 +8454,17 @@ redirect_from:
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "sequence of An Action as it should appear when we `SELECT` it from the app DB.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.actions.schema.action"
+                  }
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -5872,7 +8492,14 @@ redirect_from:
         } ],
         "responses" : {
           "2XX" : {
-            "description" : "Successful response"
+            "description" : "An Action as it should appear when we `SELECT` it from the app DB.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema.action"
+                }
+              }
+            }
           },
           "4XX" : {
             "description" : "Client error response"
@@ -5955,10 +8582,8 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.actions.schema.id"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -5975,100 +8600,7 @@ redirect_from:
           "content" : {
             "application/json" : {
               "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "visualization_settings" : {
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "response_handle" : {
-                    "allOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "description" : "must be a valid json-query, something like '.item.title'"
-                    } ]
-                  },
-                  "dataset_query" : {
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "parameter_mappings" : {
-                    "type" : "object",
-                    "properties" : { }
-                  },
-                  "name" : {
-                    "type" : "string"
-                  },
-                  "archived" : {
-                    "type" : "boolean"
-                  },
-                  "database_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "kind" : {
-                    "description" : "Unsupported implicit action kind",
-                    "type" : "string",
-                    "enum" : [ "row/create", "row/update", "row/delete", "bulk/create", "bulk/update", "bulk/delete" ]
-                  },
-                  "type" : {
-                    "description" : "Unsupported action type",
-                    "type" : "string",
-                    "enum" : [ "http", "query", "implicit" ]
-                  },
-                  "template" : {
-                    "type" : "object",
-                    "properties" : {
-                      "body" : {
-                        "type" : "string"
-                      },
-                      "headers" : {
-                        "type" : "string"
-                      },
-                      "method" : {
-                        "type" : "string",
-                        "enum" : [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
-                      },
-                      "parameter_mappings" : {
-                        "type" : "object"
-                      },
-                      "parameters" : {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "object"
-                        }
-                      },
-                      "url" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "method", "url" ],
-                    "additionalProperties" : false
-                  },
-                  "error_handle" : {
-                    "allOf" : [ {
-                      "type" : "string"
-                    }, {
-                      "description" : "must be a valid json-query, something like '.item.title'"
-                    } ]
-                  },
-                  "model_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "type" : "integer",
-                    "minimum" : 1
-                  },
-                  "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : { }
-                    }
-                  },
-                  "description" : {
-                    "type" : "string"
-                  }
-                }
+                "$ref" : "#/components/schemas/metabase.actions.schema..action.for-update"
               }
             }
           }
@@ -6085,10 +8617,8 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.actions.schema.id"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -6129,10 +8659,8 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.actions.schema.id"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -6155,10 +8683,8 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.actions.schema.id"
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -6686,7 +9212,14 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
+          }
+        }, {
+          "in" : "path",
+          "name" : "entity-id-or-query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "query",
@@ -6725,22 +9258,22 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
           "name" : "cell-query",
           "required" : true,
-          "schema" : { },
-          "description" : "form-encoded base-64-encoded JSON"
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -6780,31 +9313,38 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
           "name" : "cell-query",
           "required" : true,
-          "schema" : { },
-          "description" : "form-encoded base-64-encoded JSON"
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+          }
         }, {
           "in" : "path",
           "name" : "comparison-entity",
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "segment", "adhoc", "table" ]
+            "enum" : [ "adhoc", "segment", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "path",
+          "name" : "comparison-entity-id-or-query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -6844,15 +9384,14 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
@@ -6869,8 +9408,9 @@ redirect_from:
           "in" : "path",
           "name" : "cell-query",
           "required" : true,
-          "schema" : { },
-          "description" : "form-encoded base-64-encoded JSON"
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -6910,15 +9450,14 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
@@ -6935,17 +9474,25 @@ redirect_from:
           "in" : "path",
           "name" : "cell-query",
           "required" : true,
-          "schema" : { },
-          "description" : "form-encoded base-64-encoded JSON"
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.base-64-encoded-json"
+          }
         }, {
           "in" : "path",
           "name" : "comparison-entity",
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "segment", "adhoc", "table" ]
+            "enum" : [ "adhoc", "segment", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "path",
+          "name" : "comparison-entity-id-or-query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -6984,8 +9531,7 @@ redirect_from:
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
@@ -6993,7 +9539,7 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
@@ -7001,9 +9547,16 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "segment", "adhoc", "table" ]
+            "enum" : [ "adhoc", "segment", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "path",
+          "name" : "comparison-entity-id-or-query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -7043,7 +9596,14 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
+          }
+        }, {
+          "in" : "path",
+          "name" : "entity-id-or-query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         } ],
         "responses" : {
@@ -7070,15 +9630,14 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
@@ -7130,15 +9689,14 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "adhoc", "transform", "table", "question", "field", "segment", "model" ]
+            "enum" : [ "adhoc", "field", "model", "question", "segment", "table", "transform" ]
           }
         }, {
           "in" : "path",
           "name" : "entity-id-or-query",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
           }
         }, {
           "in" : "path",
@@ -7157,9 +9715,16 @@ redirect_from:
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "segment", "adhoc", "table" ]
+            "enum" : [ "adhoc", "segment", "table" ]
           },
           "description" : "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""
+        }, {
+          "in" : "path",
+          "name" : "comparison-entity-id-or-query",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/metabase.xrays.api.automagic-dashboards.entity-id-or-query"
+          }
         }, {
           "in" : "query",
           "name" : "show",
@@ -7640,10 +10205,7 @@ redirect_from:
                     "properties" : { }
                   },
                   "parameter_mappings" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mapping"
-                    }
+                    "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
                   },
                   "name" : {
                     "type" : "string",
@@ -7675,10 +10237,7 @@ redirect_from:
                     "minLength" : 1
                   },
                   "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
-                    }
+                    "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                   },
                   "description" : {
                     "type" : "string",
@@ -7840,8 +10399,7 @@ redirect_from:
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
           }
         }, {
           "in" : "path",
@@ -7884,8 +10442,7 @@ redirect_from:
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
           }
         } ],
         "responses" : {
@@ -8079,7 +10636,7 @@ redirect_from:
     "/api/card/{id}" : {
       "get" : {
         "summary" : "GET /api/card/{id}",
-        "description" : "Get `Card` with ID.",
+        "description" : "Get `Card` with ID.\n\n  As of v57, returns the MBQL query (`dataset_query`) as MBQL 5; to return the query as MBQL 4 (aka legacy MBQL)\n  instead, you can specify `?legacy-mbql=true`.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -8109,6 +10666,14 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "collection" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "legacy-mbql",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
           }
         } ],
         "responses" : {
@@ -8182,6 +10747,9 @@ redirect_from:
                     "type" : "object",
                     "properties" : { }
                   },
+                  "parameter_mappings" : {
+                    "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
@@ -8223,10 +10791,7 @@ redirect_from:
                     "minLength" : 1
                   },
                   "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
-                    }
+                    "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                   },
                   "description" : {
                     "type" : "string"
@@ -8335,16 +10900,14 @@ redirect_from:
           "name" : "id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          }
         }, {
           "in" : "path",
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.lib.schema.parameter.id"
           }
         }, {
           "in" : "query",
@@ -9632,10 +12195,7 @@ redirect_from:
                     "minLength" : 1
                   },
                   "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
-                    }
+                    "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                   }
                 },
                 "required" : [ "name" ]
@@ -9676,9 +12236,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
             }
           }
         }, {
@@ -9688,9 +12246,7 @@ redirect_from:
           "schema" : {
             "type" : "array",
             "items" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
             }
           }
         } ],
@@ -10396,10 +12952,7 @@ redirect_from:
                     "type" : "string"
                   },
                   "parameters" : {
-                    "type" : "array",
-                    "items" : {
-                      "$ref" : "#/components/schemas/metabase.parameters.schema.parameter"
-                    }
+                    "$ref" : "#/components/schemas/metabase.parameters.schema.parameters"
                   },
                   "dashcards" : {
                     "description" : "value must be seq of maps in which ids are unique",
@@ -10423,18 +12976,7 @@ redirect_from:
                           }
                         },
                         "parameter_mappings" : {
-                          "type" : "array",
-                          "items" : {
-                            "type" : "object",
-                            "properties" : {
-                              "parameter_id" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              },
-                              "target" : { }
-                            },
-                            "required" : [ "parameter_id", "target" ]
-                          }
+                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
                         },
                         "row" : {
                           "description" : "value must be an integer greater or equal to than zero.",
@@ -10525,18 +13067,7 @@ redirect_from:
                           }
                         },
                         "parameter_mappings" : {
-                          "type" : "array",
-                          "items" : {
-                            "type" : "object",
-                            "properties" : {
-                              "parameter_id" : {
-                                "type" : "string",
-                                "minLength" : 1
-                              },
-                              "target" : { }
-                            },
-                            "required" : [ "parameter_id", "target" ]
-                          }
+                          "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
                         },
                         "row" : {
                           "description" : "value must be an integer greater or equal to than zero.",
@@ -24620,10 +27151,8 @@ redirect_from:
           "name" : "card-id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          }
         }, {
           "in" : "path",
           "name" : "zoom",
@@ -24653,22 +27182,21 @@ redirect_from:
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.tiles.api.parameters"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -24694,28 +27222,22 @@ redirect_from:
           "name" : "dashboard-id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+          }
         }, {
           "in" : "path",
           "name" : "dashcard-id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.dashcard"
+          }
         }, {
           "in" : "path",
           "name" : "card-id",
           "required" : true,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+          }
         }, {
           "in" : "path",
           "name" : "zoom",
@@ -24745,22 +27267,21 @@ redirect_from:
           "name" : "parameters",
           "required" : false,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.tiles.api.parameters"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {
@@ -24810,22 +27331,21 @@ redirect_from:
           "name" : "query",
           "required" : true,
           "schema" : {
-            "type" : "string"
-          },
-          "description" : "value must be a valid JSON string."
+            "$ref" : "#/components/schemas/metabase.tiles.api.query"
+          }
         }, {
           "in" : "query",
           "name" : "latField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         }, {
           "in" : "query",
           "name" : "lonField",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase.tiles.api.legacy-ref"
           }
         } ],
         "responses" : {

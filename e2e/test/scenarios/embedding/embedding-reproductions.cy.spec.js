@@ -969,9 +969,9 @@ describe("issue 40660", () => {
       H.getIframeBody().within(() => {
         cy.findByTestId("embed-frame").scrollTo("bottom");
 
-        cy.findByRole("link", { name: "Powered by Metabase" }).should(
-          "be.visible",
-        );
+        cy.findByRole("link", { name: "Powered by Metabase" })
+          .scrollIntoView()
+          .should("be.visible");
       });
     },
   );

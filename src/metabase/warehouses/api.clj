@@ -16,6 +16,8 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -93,10 +95,11 @@
              :write
              :none))))
 
-(defn- card-database-supports-nested-queries? [{{database-id :database, :as database} :dataset_query, :as _card}]
+(defn- card-database-supports-nested-queries? [{{database-id :database, :as query} :dataset_query, :as _card}]
   (when database-id
     (when-let [driver (driver.u/database->driver database-id)]
-      (driver.u/supports? driver :nested-queries database))))
+      (when-let [database (some-> query not-empty lib.metadata/database)]
+        (driver.u/supports? driver :nested-queries database)))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -113,17 +116,18 @@
    would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
    supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
    trickier if the source query uses `SELECT *`)."
-  [{result-metadata :result_metadata, dataset-query :dataset_query}]
-  (and (= (:type dataset-query) :native)
+  [{result-metadata :result_metadata, query :dataset_query, :as _card}]
+  (and (lib/native-only-query? query)
        (some (partial re-find #"_2$")
              (map (comp name :name) result-metadata))))
 
-(defn- card-uses-unnestable-aggregation?
+(mu/defn- card-uses-unnestable-aggregation?
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
   with those aggregations as source queries. This function determines whether `card` is using one of those queries so
   we can filter it out in Clojure-land."
-  [{{{aggregations :aggregation} :query} :dataset_query}]
-  (lib.util.match/match aggregations #{:cum-count :cum-sum}))
+  [{query :dataset_query, :as _card} :- [:map
+                                         [:dataset_query ::queries.schema/query]]]
+  (lib.util.match/match (lib/aggregations query) #{:cum-count :cum-sum}))
 
 (defn card-can-be-used-as-source-query?
   "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"

@@ -58,14 +58,15 @@
   (testing (str "make sure we call the appropriate post-select methods on `:object` when a revision comes out of the "
                 "DB. This is especially important for things like Cards where we need to make sure query is "
                 "normalized")
-    (is (= {:model "Card", :object {:card_schema   queries/starting-card-schema-version
-                                    :dataset_query {:database (mt/id)
-                                                    :type     :query
-                                                    :query    {:source-table (mt/id :venues)}}}}
-           (mt/derecordize
-            (mi/do-after-select :model/Revision {:model "Card", :object {:dataset_query {:database (mt/id)
-                                                                                         :type     "query"
-                                                                                         :query    {:source-table (mt/id :venues)}}}}))))))
+    (is (=? {:model  "Card"
+             :object {:card_schema   queries/starting-card-schema-version
+                      :dataset_query {:database (mt/id)
+                                      :lib/type :mbql/query
+                                      :stages   [{:source-table (mt/id :venues)}]}}}
+            (mt/derecordize
+             (mi/do-after-select :model/Revision {:model "Card", :object {:dataset_query {:database (mt/id)
+                                                                                          :type     "query"
+                                                                                          :query    {:source-table (mt/id :venues)}}}}))))))
 
 ;;; # Default diff-* implementations
 

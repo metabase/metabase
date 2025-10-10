@@ -321,16 +321,16 @@
                    :model/Comment  {comment-id :id} {:target_id doc-id}]
       (testing "Comments are not shown if in iframe"
         (is (=? {:comments [{:id comment-id}]}
-                (mt/user-http-request :rasta :get 200 (str "ee/comment/")
+                (mt/user-http-request :rasta :get 200 "ee/comment/"
                                       :target_type "document"
                                       :target_id doc-id)))
         (is (=? {:comments []
                  :disabled true}
-                (mt/user-http-request :rasta :get 200 (str "ee/comment/")
+                (mt/user-http-request :rasta :get 200 "ee/comment/"
                                       {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}}
                                       :target_type "document"
                                       :target_id doc-id))))
       (testing "Users mentions are not available either"
         (is (= "Not found."
-               (mt/user-http-request :rasta :get 404 (str "ee/comment/mentions")
+               (mt/user-http-request :rasta :get 404 "ee/comment/mentions"
                                      {:request-options {:headers {"x-metabase-client" @#'sdk/embedding-iframe-client}}})))))))

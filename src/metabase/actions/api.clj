@@ -3,62 +3,30 @@
   (:require
    [metabase.actions.actions :as actions]
    [metabase.actions.execution :as actions.execution]
-   [metabase.actions.http-action :as actions.http-action]
    [metabase.actions.models :as actions.models]
+   [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-;;; TODO -- by convention these should either have class-like names e.g. `JSONQuery` and `SupportedActionType` or we
-;;; should use [[metabase.util.malli.registry/def]] and register them and make them namespaced keywords
-(def ^:private JSONQuery
-  [:and
-   string?
-   (mu/with-api-error-message
-    [:fn #(actions.http-action/apply-json-query {} %)]
-    (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
-
-(def ^:private SupportedActionType
-  (mu/with-api-error-message
-   ;; TODO -- make this a keyword and let coercion convert it automatically
-   [:enum "http" "query" "implicit"]
-   (deferred-tru "Unsupported action type")))
-
-(def ^:private ImplicitActionKind
-  (mu/with-api-error-message
-   (into [:enum]
-         (for [ns ["row" "bulk"]
-               action ["create" "update" "delete"]]
-           (str ns "/" action)))
-   (deferred-tru "Unsupported implicit action kind")))
-
-(def ^:private HTTPActionTemplate
-  [:map {:closed true}
-   [:method                              [:enum "GET" "POST" "PUT" "DELETE" "PATCH"]]
-   [:url                                 [string? {:min 1}]]
-   [:body               {:optional true} [:maybe string?]]
-   [:headers            {:optional true} [:maybe string?]]
-   [:parameters         {:optional true} [:maybe [:sequential map?]]]
-   [:parameter_mappings {:optional true} [:maybe map?]]])
-
-(api.macros/defendpoint :get "/"
+(api.macros/defendpoint :get "/" :- [:sequential ::actions.schema/action]
   "Returns actions that can be used for QueryActions. By default lists all viewable actions. Pass optional
   `?model-id=<model-id>` to limit to actions on a particular model."
   [_route-params
    {:keys [model-id]} :- [:map
-                          [:model-id {:optional true} [:maybe ms/PositiveInt]]]]
+                          [:model-id {:optional true} [:maybe ::lib.schema.id/card]]]]
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (actions.models/select-actions models
@@ -77,14 +45,14 @@
                                             (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
-(api.macros/defendpoint :get "/public"
+(api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
   []
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
-(api.macros/defendpoint :get "/:action-id"
+(api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]]
@@ -104,33 +72,20 @@
   (t2/delete! :model/Action :id action-id)
   api/generic-204-no-content)
 
-(api.macros/defendpoint :post "/"
+(api.macros/defendpoint :post "/" :- ::actions.schema/action
   "Create a new action."
   [_route-params
    _query-params
    {:keys [model_id parameters database_id]
     action-type :type
-    :as action} :- [:map
-                    [:name                   :string]
-                    [:model_id               ms/PositiveInt]
-                    [:type                   {:optional true} [:maybe SupportedActionType]]
-                    [:description            {:optional true} [:maybe :string]]
-                    [:parameters             {:optional true} [:maybe [:sequential map?]]]
-                    [:parameter_mappings     {:optional true} [:maybe map?]]
-                    [:visualization_settings {:optional true} [:maybe map?]]
-                    [:kind                   {:optional true} [:maybe ImplicitActionKind]]
-                    [:database_id            {:optional true} [:maybe ms/PositiveInt]]
-                    [:dataset_query          {:optional true} [:maybe map?]]
-                    [:template               {:optional true} [:maybe HTTPActionTemplate]]
-                    [:response_handle        {:optional true} [:maybe JSONQuery]]
-                    [:error_handle           {:optional true} [:maybe JSONQuery]]]]
+    :as action} :- ::actions.schema/action.for-insert]
   (when (and (nil? database_id)
-             (= "query" action-type))
+             (= action-type :query))
     (throw (ex-info (tru "Must provide a database_id for query actions")
                     {:type        action-type
                      :status-code 400})))
   (let [model (api/write-check :model/Card model_id)]
-    (when (and (= "implicit" action-type)
+    (when (and (= action-type :implicit)
                (not (queries/model-supports-implicit-actions? model)))
       (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                       {:status-code 400})))
@@ -152,23 +107,9 @@
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::actions.schema/id]]
    _query-params
-   action :- [:map
-              [:archived               {:optional true} [:maybe :boolean]]
-              [:database_id            {:optional true} [:maybe ms/PositiveInt]]
-              [:dataset_query          {:optional true} [:maybe :map]]
-              [:description            {:optional true} [:maybe :string]]
-              [:error_handle           {:optional true} [:maybe JSONQuery]]
-              [:kind                   {:optional true} [:maybe ImplicitActionKind]]
-              [:model_id               {:optional true} [:maybe ms/PositiveInt]]
-              [:name                   {:optional true} [:maybe :string]]
-              [:parameter_mappings     {:optional true} [:maybe :map]]
-              [:parameters             {:optional true} [:maybe [:sequential :map]]]
-              [:response_handle        {:optional true} [:maybe JSONQuery]]
-              [:template               {:optional true} [:maybe HTTPActionTemplate]]
-              [:type                   {:optional true} [:maybe SupportedActionType]]
-              [:visualization_settings {:optional true} [:maybe :map]]]]
+   action :- ::actions.schema/action.for-update]
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]
     (actions.models/update! (assoc action :id id) existing-action))
@@ -185,7 +126,7 @@
   Action has already been shared, it will return the existing public link rather than creating a new one.) Public
   sharing must be enabled."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::actions.schema/id]]]
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (let [action (api/read-check :model/Action id :archived false)]
@@ -199,7 +140,7 @@
 (api.macros/defendpoint :delete "/:id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::actions.schema/id]]]
   ;; check the /application/setting permission, not superuser because removing a public link is possible from /admin/settings
   (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
@@ -224,7 +165,7 @@
 
    `parameters` should be the mapped dashboard parameters with values."
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
+                    [:id ::actions.schema/id]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]

@@ -48,6 +48,7 @@ import { computeNumericDataInterval } from "metabase/visualizations/lib/numeric"
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
@@ -529,6 +530,7 @@ export function getYAxisModel(
   columnByDataKey: Record<DataKey, DatasetColumn>,
   stackType: StackType,
   formattingOptions?: OptionsType,
+  gridSize?: VisualizationGridSize,
 ): YAxisModel | null {
   if (seriesKeys.length === 0) {
     return null;
@@ -568,7 +570,9 @@ export function getYAxisModel(
     splitNumber:
       settings["graph.y_axis.split_number"] > 0
         ? settings["graph.y_axis.split_number"]
-        : undefined,
+        : gridSize?.height && gridSize.height <= 5
+          ? 2 // Use fewer ticks for small dashboard charts
+          : 5, // Default to 5 ticks for consistent behavior between single and multiple series
   };
 }
 
@@ -581,6 +585,7 @@ export function getYAxesModels(
   isAutoSplitSupported: boolean,
   stackModels: StackModel[],
   isCompactFormatting: boolean,
+  gridSize?: VisualizationGridSize,
 ) {
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
@@ -626,6 +631,7 @@ export function getYAxesModels(
       columnByDataKey,
       settings["stackable.stack_type"] ?? null,
       { compact: isCompactFormatting },
+      gridSize,
     ),
     rightAxisModel: getYAxisModel(
       rightAxisSeriesKeys,
@@ -638,6 +644,7 @@ export function getYAxesModels(
         ? null
         : (settings["stackable.stack_type"] ?? null),
       { compact: isCompactFormatting },
+      gridSize,
     ),
   };
 }

@@ -3,11 +3,9 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -1142,31 +1140,6 @@
                                         assoc :name "b"))
                                 assoc :name "xixix")))))))
 
-(deftest ^:parallel blank-queries-test
-  (testing "minimal legacy"
-    (testing "native queries"
-      (let [query {:type :native}]
-        (testing "pass the legacy schema"
-          (is (mr/validate ::mbql.s/Query query)))
-        (testing "pass the pMBQL schema after conversion"
-          (is (nil? (->> query
-                         lib.convert/->pMBQL
-                         (mr/explain ::lib.schema/query)))))
-        (testing "round trip to pMBQL and back with small changes"
-          (is (= query
-                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))
-    (testing "MBQL queries"
-      (let [query {:type :query}]
-        (testing "pass the legacy schema"
-          (is (mr/validate ::mbql.s/Query query)))
-        (testing "pass the pMBQL schema after conversion"
-          (is (nil? (->> query
-                         lib.convert/->pMBQL
-                         (mr/explain ::lib.schema/query)))))
-        (testing "round trip to pMBQL and back with small changes"
-          (is (= query
-                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))
-
 (deftest ^:parallel round-trip-expression-literal-test
   (are [literal] (test-round-trip {:database 1
                                    :type     :query
@@ -1651,3 +1624,13 @@
            {:stage-number 0, :lib/uuid string?}
            [:field {:base-type :type/BigInteger, :lib/uuid string?} 49]]
           (lib.convert/->pMBQL [:dimension [:field 49 {:base-type :type/BigInteger}] {:stage-number 0}]))))
+
+(deftest ^:parallel ->legacy-MBQL-idempotence-test
+  (let [query {:database 1493
+               :type     :query
+               :query    {:aggregation  [[:count]]
+                          :breakout     [[:field 76313 {:source-field 76299}]]
+                          :source-table 11759
+                          :expressions  {"TestColumn" [:+ 1 1]}}}]
+    (is (= query
+           (lib.convert/->legacy-MBQL query)))))

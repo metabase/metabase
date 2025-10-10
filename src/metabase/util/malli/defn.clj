@@ -86,6 +86,7 @@
 
   Known issue: does not currently generate automatic type hints the way [[schema.core/defn]] does, nor does it attempt
   to preserve them if you specify them manually. We can fix this in the future."
+  {:style/indent [:defn]}
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
         cosmetic-name    (gensym (munge (str fn-name)))

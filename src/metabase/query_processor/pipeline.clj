@@ -1,6 +1,7 @@
 (ns metabase.query-processor.pipeline
   (:require
    [clojure.core.async :as a]
+   [metabase.analytics.core :as analytics]
    [metabase.driver :as driver]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :as i18n]
@@ -79,6 +80,8 @@
                                                        (fn wrapper
                                                          ([] (rf))
                                                          ([acc]
+                                                          (analytics/inc! :metabase-query-processor/query
+                                                                          {:driver driver/*driver* :status "success"})
                                                           (some-> *canceled-chan* a/close!)
                                                           (rf acc))
                                                          ([acc row]
