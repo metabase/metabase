@@ -31,7 +31,7 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
       >
         <Menu.Target>
           <Button
-            leftSection={<Icon name="archive" className={S.archiveIcon} />}
+            leftSection={<Icon name="trash" className={S.archiveIcon} />}
             variant="inverse"
             py="sm"
             px="md"
