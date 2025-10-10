@@ -32,7 +32,9 @@
 (methodical/defmethod events/publish-event! ::card-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))))
+    ;; Delete both upstream and downstream dependencies
+    (t2/delete! :model/Dependency :from_entity_type :card :from_entity_id (:id object))
+    (t2/delete! :model/Dependency :to_entity_type :card :to_entity_id (:id object))))
 
 ;; ### Snippets
 (derive ::snippet-deps :metabase/event)
@@ -54,7 +56,9 @@
 (methodical/defmethod events/publish-event! ::snippet-delete
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))))
+    ;; Delete both upstream and downstream dependencies
+    (t2/delete! :model/Dependency :from_entity_type :snippet :from_entity_id (:id object))
+    (t2/delete! :model/Dependency :to_entity_type :snippet :to_entity_id (:id object))))
 
 ;; ### Transforms
 (derive ::transform-deps :metabase/event)
@@ -101,8 +105,10 @@
 (methodical/defmethod events/publish-event! ::transform-delete
   [_ {:keys [id]}]
   (when (premium-features/has-feature? :dependencies)
-    ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
-    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)))
+    ;; Delete both upstream dependencies (where this transform depends on others)
+    ;; and downstream dependencies (where others depend on this transform)
+    (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)
+    (t2/delete! :model/Dependency :to_entity_type :transform :to_entity_id id)))
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
 ;; (And if the target has changed, the old table's dep on the transform is dropped.)
