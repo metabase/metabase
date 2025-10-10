@@ -7,6 +7,7 @@ export * from "./bookmark";
 export * from "./bug-report";
 export * from "./card";
 export * from "./channel";
+export * from "./cloud-add-ons";
 export * from "./cloud-migration";
 export * from "./collection";
 export * from "./dashboard";

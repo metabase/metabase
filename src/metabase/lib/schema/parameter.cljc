@@ -26,6 +26,7 @@
        ([flatland.ordered.map :as ordered-map]))
    [malli.core :as mc]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (defn- variadic-opts-first
@@ -145,8 +146,15 @@
 
 (mr/def ::type
   "Valid parameter :type"
-  (into [:enum {:error/message    "valid parameter type"
-                :decode/normalize lib.schema.common/normalize-keyword}]
+  (into [:enum {:default          :text
+                :error/message    "valid parameter type"
+                :decode/normalize (fn [param-type]
+                                    ;; a lot of broken code in Actions was setting param types to invalid things like
+                                    ;; `:type/Text`... fix it
+                                    (when-let [param-type (lib.schema.common/normalize-keyword param-type)]
+                                      (if (= (namespace param-type) "type")
+                                        (keyword (u/lower-case-en (name param-type)))
+                                        param-type)))}]
         (keys types)))
 
 (mr/def ::widget-type
@@ -183,7 +191,9 @@
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
 (defn- normalize-legacy-ref [legacy-ref]
-  ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref))
+  (if (pos-int? legacy-ref)
+    [:field legacy-ref nil]
+    ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref)))
 
 (mr/def ::target.legacy-field-ref
   [:ref
@@ -246,7 +256,11 @@
    #_tag-name [:multi {:dispatch map?}
                [true  [:map
                        [:id ::lib.schema.common/non-blank-string]]]
-               [false ::lib.schema.common/non-blank-string]]])
+               [false [:schema
+                       {:decode/normalize (fn [x]
+                                            (cond-> x
+                                              (keyword? x) u/qualified-name))}
+                       ::lib.schema.common/non-blank-string]]]])
 
 (mr/def ::variable.target
   [:multi {:dispatch      lib.schema.common/mbql-clause-tag
@@ -261,17 +275,36 @@
    #_tag    [:= {:decode/normalize lib.schema.common/normalize-keyword} :variable]
    #_target [:ref ::variable.target]])
 
+(mr/def ::text-tag
+  "A :text-tag parameter :target applies to parameterized text cards in viz settings"
+  [:tuple
+   [:= {:decode/normalize lib.schema.common/normalize-keyword} :text-tag]
+   :string])
+
 (mr/def ::target
-  [:multi {:dispatch lib.schema.common/mbql-clause-tag
+  [:multi {:dispatch (fn [x]
+                       (if (pos-int? x)
+                         :field
+                         (lib.schema.common/mbql-clause-tag x)))
            :error/fn (fn [{:keys [value]} _]
-                       (str "Invalid parameter :target, must be either :field, :dimension, or :variable; got: "
-                            (pr-str value)))}
+                       (str "Invalid parameter :target, must be either :field, :dimension, :variable, or :text-tag; got: "
+                            (pr-str value)))
+           ;; you're not allowed to have a `:template-tag` here unless it's wrapped in `:variable` or `:dimension`...
+           ;; not sure which one is supposed to be correct TBH
+           :decode/normalize (fn [x]
+                               (if (= (lib.schema.common/mbql-clause-tag x) :template-tag)
+                                 [:variable x]
+                                 x))}
    ;; TODO (Cam 9/12/25) -- the old legacy MBQL schema also said `:expression` refs where allowed here, but I don't
    ;; know if we actually did allow that in practice.
-   [:dimension    [:ref ::dimension]]
-   [:variable     [:ref ::variable]]
+   [:dimension     [:ref ::dimension]]
+   [:variable      [:ref ::variable]]
+   [:text-tag      [:ref ::text-tag]]
+   [:field         [:ref ::target.legacy-field-ref]]
    ;; MBQL 3 refs like `:field-id` should get normalized to `:field`
-   [::mc/default  [:ref ::target.legacy-field-ref]]])
+   [:field-id      [:ref ::target.legacy-field-ref]]
+   [:field-literal [:ref ::target.legacy-field-ref]]
+   [:fk->          [:ref ::target.legacy-field-ref]]])
 
 (defn- normalize-parameter
   [param]
@@ -286,14 +319,29 @@
         param))))
 
 (mr/def ::id
-  [:ref ::lib.schema.common/non-blank-string])
+  [:schema
+   {:api/regex lib.schema.common/url-encoded-string-regex}
+   [:ref ::lib.schema.common/non-blank-string]])
+
+(defn- sort-parameter-values
+  "Return the sequence of parameter maps, but with any :value keys sorted if they are a sequence. Parameter values can
+  be of mixed types, as bigintegers are passed as strings to avoid precision loss."
+  [param-value]
+  (if (sequential? param-value)
+    (vec (sort-by str param-value))
+    param-value))
+
+(mr/def ::parameter.value
+  [:schema
+   {:encode/for-hashing #'sort-parameter-values}
+   :any])
 
 (mr/def ::parameter
   "Schema for the *value* of a parameter (e.g. a Dashboard parameter or a native query template tag) as passed in as
   part of the `:parameters` list in a query."
   [:and
    [:map
-    {:decode/normalize normalize-parameter}
+    {:decode/normalize #'normalize-parameter}
     [:type [:ref ::type]]
     ;; TODO -- these definitely SHOULD NOT be optional but a ton of tests aren't passing them in like they should be.
     ;; At some point we need to go fix those tests and then make these keys required
@@ -301,7 +349,7 @@
     [:target   {:optional true} [:ref ::target]]
     ;; not specified if the param has no value. TODO - make this stricter; type of `:value` should be validated based
     ;; on the [[ParameterType]]
-    [:value    {:optional true} :any]
+    [:value    {:optional true} [:ref ::parameter.value]]
     ;; the name of the parameter we're trying to set -- this is actually required now I think, or at least needs to get
     ;; merged in appropriately
     [:name     {:optional true} ::lib.schema.common/non-blank-string]
@@ -310,9 +358,15 @@
     [:slug     {:optional true} ::lib.schema.common/non-blank-string]
     [:default  {:optional true} :any]
     [:required {:optional true} :any]]
+   ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])
 
+(defn- encode-parameters-for-hashing [parameters]
+  (vec (sort-by (some-fn :id (constantly "")) parameters)))
+
 (mr/def ::parameters
   "Schema for a list of `:parameters` as passed in to a query."
-  [:sequential [:ref ::parameter]])
+  [:sequential
+   {:encode/for-hashing #'encode-parameters-for-hashing}
+   [:ref ::parameter]])

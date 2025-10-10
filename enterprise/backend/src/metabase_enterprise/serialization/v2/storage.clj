@@ -47,7 +47,8 @@
   [stream root-dir]
   (let [settings (atom [])
         report   (atom {:seen [] :errors []})
-        opts     (merge {:root-dir root-dir} (serdes/storage-base-context))]
+        opts     (-> (serdes/storage-base-context)
+                     (assoc :root-dir root-dir))]
     (doseq [entity stream]
       (cond
         (instance? Exception entity)

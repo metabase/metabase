@@ -5,7 +5,8 @@
    [clojure.string :as str]
    [metabase.premium-features.core :refer [defenterprise-schema]]
    [metabase.sso.common :as sso.common]
-   [metabase.users.models.user :as user]
+   [metabase.users.core :as users.core]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -127,6 +128,18 @@
 
 ;;; --------------------------------------------- fetch-or-create-user! ----------------------------------------------
 
+(mu/defn create-new-ldap-auth-user!
+  "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
+  will receive an email right away."
+  [{:keys [email] :as new-user} :- users.schema/NewUser]
+  (when-not (u/email? email)
+    (throw (ex-info "Invalid email supplied by LDAP server" {})))
+  (users.core/insert-new-user!
+   (-> new-user
+       ;; We should not store LDAP passwords
+       (dissoc :password)
+       (assoc :sso_source "ldap"))))
+
 (mu/defn ldap-groups->mb-group-ids :- [:set ms/PositiveInt]
   "Translate a set of a user's group DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups              :- [:maybe [:sequential ms/NonBlankString]]
@@ -150,6 +163,7 @@
   metabase-enterprise.sso.integrations.ldap
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
+
   (let [user     (t2/select-one [:model/User :id :last_login :first_name :last_name :is_active]
                                 :%lower.email (u/lower-case-en email))
         new-user (if user
@@ -163,9 +177,9 @@
                          (t2/update! :model/User (:id user) user-changes)
                          (t2/select-one [:model/User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                        user))
-                   (-> (user/create-new-ldap-auth-user! {:first_name first-name
-                                                         :last_name  last-name
-                                                         :email      email})
+                   (-> (create-new-ldap-auth-user! {:first_name first-name
+                                                    :last_name  last-name
+                                                    :email      email})
                        (assoc :is_active true)))]
     (u/prog1 new-user
       (when sync-groups?

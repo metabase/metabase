@@ -87,6 +87,18 @@ export interface MetabaseColors {
 
   /** Color used to indicate dangerous actions and negative values/trends */
   negative?: string;
+
+  /** Color used for white text */
+  "text-white"?: string;
+
+  /** Color used for error icons and borders. Defaults to red. */
+  error?: string;
+
+  /** Color used for error backgrounds. Defaults to light red. */
+  "background-error"?: string;
+
+  /** Color used for some button text on hover */
+  "text-hover"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

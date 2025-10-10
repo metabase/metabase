@@ -50,7 +50,7 @@ describe("getDerivedDefaultColorsForEmbedFlow", () => {
     };
 
     const { colors } = getDerivedDefaultColorsForEmbedFlow(theme);
-    expect(colors?.["text-primary"]).toBe("#4C5773");
+    expect(colors?.["text-primary"]).toBe("hsla(204, 66%, 8%, 0.84)");
   });
 
   it("should not override existing colors", () => {

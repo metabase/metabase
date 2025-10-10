@@ -389,6 +389,46 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
+  describe("<metabase-metabot>", () => {
+    it("should load the embedded Metabot component", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("metabot chat should be interactive");
+        cy.findByText("Ask questions to AI.").should("be.visible");
+        cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
+        cy.findByText(
+          "Metabot is currently offline. Please try again later.",
+        ).should("be.visible");
+
+        cy.log(
+          "uses sidebar layout by default when no layout attribute is provided",
+        );
+        cy.findByTestId("metabot-question-container").should(
+          "have.attr",
+          "data-layout",
+          "sidebar",
+        );
+      });
+    });
+
+    it("should apply the data-layout attribute when layout is set to stacked", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot layout="stacked" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("metabot-question-container")
+        .should("have.attr", "data-layout", "stacked");
+    });
+  });
+
   describe("common checks", () => {
     describe("should be permissive with json attributes", () => {
       // NOTE: pay attention if you use initialFilters for these tests, as when the filters are not parsed correctly

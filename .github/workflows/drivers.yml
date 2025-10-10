@@ -160,7 +160,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-clickhouse-ee:
     if: ${{ !inputs.skip }}
@@ -230,7 +230,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-druid-ee:
     needs: determine-driver-skips
@@ -418,7 +418,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mysql-mariadb:
     if: ${{ !inputs.skip }}
@@ -540,7 +540,7 @@ jobs:
         uses: ./.github/actions/cleanup-python-runner
         with:
           upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-          logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+          logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo:
     needs: determine-driver-skips
@@ -609,7 +609,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
@@ -880,7 +880,7 @@ jobs:
         uses: ./.github/actions/cleanup-python-runner
         with:
           upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-          logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+          logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
@@ -1018,7 +1018,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-snowflake-ee:
     if: ${{ !inputs.skip }}
@@ -1085,7 +1085,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
@@ -1221,7 +1221,7 @@ jobs:
       uses: ./.github/actions/cleanup-python-runner
       with:
         upload-logs: ${{ steps.test-driver.outcome == 'failure' }}
-        logs-artifact-suffix: ${{ github.job }} ${{ matrix.job.name }}
+        logs-artifact-suffix: ${{ matrix.job.name }} ${{ matrix.version.name }}
 
   # TODO(dpsutton, 2025-08-20): Re-enable starburst when we figure out why it randomly dies in CI
   # be-tests-starburst-ee:

@@ -37,7 +37,10 @@
 
 (mr/def ::field
   "Valid Field ID"
-  pos-int?)
+  [:schema
+   {:decode/api (fn [id]
+                  (cond-> id (string? id) parse-long))}
+   pos-int?])
 
 (mr/def ::card
   "Valid Card ID"
@@ -78,6 +81,9 @@
 (mr/def ::native-query-snippet
   "Valid Native Query Snippet ID"
   pos-int?)
+
+(mr/def ::transform
+  [:schema {:doc/title "Valid Transform ID"} pos-int?])
 
 (mr/def ::collection
   "Valid Collection ID"

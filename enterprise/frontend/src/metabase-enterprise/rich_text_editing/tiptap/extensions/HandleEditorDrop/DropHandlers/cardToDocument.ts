@@ -127,7 +127,7 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
       view.dispatch(tr);
       return true;
     }
-  } else {
+  } else if (originalPos !== null) {
     // Handle general case: cardEmbed being moved within document or from resizeNode
     // Always ensure cardEmbed is wrapped in resizeNode when dropped in document
     const tr = view.state.tr;
@@ -141,23 +141,32 @@ export const handleCardDropOnDocument = (payload: DroppedCardEmbedNodeData) => {
       [cardEmbedNode],
     );
 
+    const nodeToRemove = originalParent || cardEmbedNode;
+
     // Remove the original node from its position
-    if (originalPos !== null) {
-      // Find the actual node to remove (could be the cardEmbed itself or its resizeNode wrapper)
-      view.state.doc.descendants((node, pos) => {
-        if (
-          node === originalParent ||
-          extractCardEmbed(node) === cardEmbedNode
-        ) {
-          // Remove the node (whether it's a standalone cardEmbed or wrapped in resizeNode)
-          tr.delete(pos, pos + node.nodeSize);
-          return false;
-        }
-      });
+    // Find the actual node to remove (could be the cardEmbed itself or its resizeNode wrapper)
+    let removalHandled = false;
+    let removePos: number | null = null;
+
+    view.state.doc.descendants((node, pos) => {
+      if (node === nodeToRemove && !removalHandled) {
+        // Remove the node (whether it's a standalone cardEmbed or wrapped in resizeNode)
+        tr.delete(pos, pos + node.nodeSize);
+        removalHandled = true;
+        removePos = pos;
+        return false;
+      }
+    });
+
+    let adjustedInsertPos = dropPos;
+    if (removalHandled && removePos !== null && removePos < dropPos) {
+      // If we removed something before the replace position, adjust it
+      const removedSize = nodeToRemove.nodeSize;
+      adjustedInsertPos = dropPos - removedSize;
     }
 
     // Insert wrapped node at drop position
-    tr.insert(dropPos, wrappedNode);
+    tr.insert(adjustedInsertPos, wrappedNode);
 
     view.dispatch(tr);
     return true;

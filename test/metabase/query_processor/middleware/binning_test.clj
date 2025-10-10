@@ -16,7 +16,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.binning :as binning]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 
 (deftest ^:parallel filter->field-map-test

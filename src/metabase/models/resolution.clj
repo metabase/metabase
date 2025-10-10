@@ -38,6 +38,7 @@
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
+    :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase-enterprise.documents.models.document
     :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark

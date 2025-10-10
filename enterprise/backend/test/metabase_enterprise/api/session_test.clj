@@ -99,5 +99,6 @@
             :database_routing               true
             :cloud_custom_smtp              true
             :etl_connections                false
-            :etl_connections_pg             false}
+            :etl_connections_pg             false
+            :dependencies                   false}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

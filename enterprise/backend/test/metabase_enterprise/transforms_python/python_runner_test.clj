@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -494,3 +495,18 @@
 
        ;; cleanup
         (driver/drop-table! driver db-id qualified-table-name)))))
+
+(deftest python-runner-timeout-test
+  (testing "Python script execution respects timeout setting"
+    (mt/with-premium-features #{:transforms-python}
+      (tu/with-temporary-setting-values [python-runner-timeout-seconds 5]
+        (let [long-running-code (str "import time\n"
+                                     "import pandas as pd\n"
+                                     "\n"
+                                     "def transform():\n"
+                                     "    time.sleep(10)  # Sleep longer than timeout\n"
+                                     "    return pd.DataFrame({'result': ['should_not_reach_here']})")
+              result            (execute! {:code long-running-code})]
+          (testing "Script should timeout after 5 seconds"
+            (is (contains? result :error))
+            (is (str/includes? (:error result) "timeout"))))))))

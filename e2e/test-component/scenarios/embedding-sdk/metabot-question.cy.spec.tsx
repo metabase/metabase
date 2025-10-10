@@ -171,4 +171,124 @@ describe("scenarios > embedding-sdk > metabot-question", () => {
       });
     });
   });
+
+  it("should show suggestion buttons when no messages exist", () => {
+    setup(metabotResponse);
+    mockSuggestedPrompts();
+
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      // Verify suggestion buttons are visible
+      cy.findAllByTestId("metabot-suggestion-button", { timeout: 10_000 })
+        .should("have.length", 3)
+        .should("be.visible");
+
+      // Verify suggestion texts are shown in order
+      cy.findAllByTestId("metabot-suggestion-button")
+        .eq(0)
+        .should("contain.text", "Show me total sales by product");
+
+      cy.findAllByTestId("metabot-suggestion-button")
+        .eq(1)
+        .should("contain.text", "What are the top performing products?");
+
+      cy.findAllByTestId("metabot-suggestion-button")
+        .eq(2)
+        .should("contain.text", "How many orders were placed last month?");
+
+      // Clicking on a suggestion should remove the suggestion buttons and add the user's message
+      cy.findByText("Show me total sales by product").click();
+      cy.findAllByTestId("metabot-suggestion-button").should("not.exist");
+      cy.findAllByTestId("metabot-chat-message").should("have.length", 2);
+
+      cy.findAllByTestId("metabot-chat-message")
+        .first()
+        .should("contain.text", "Show me total sales by product");
+    });
+  });
+
+  it("should switch to stacked layout on small viewport", () => {
+    setup(metabotResponse);
+    mountSdkContent(<MetabotQuestion />);
+
+    getSdkRoot().within(() => {
+      // On desktop, use the sidebar layout
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+
+      // On mobile, use the stacked layout
+      cy.viewport(400, 600);
+      cy.findByTestId("metabot-overflow-button").should("be.visible");
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "stacked",
+      );
+
+      // On desktop, use the sidebar layout
+      cy.viewport(1200, 800);
+      cy.findByTestId("metabot-overflow-button").should("not.be.visible");
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+    });
+  });
+
+  it("should fallback to sidebar layout when invalid layout prop is provided and show a warning", () => {
+    setup(metabotResponse);
+
+    cy.window().then((win) => {
+      cy.spy(win.console, "warn").as("consoleWarn");
+    });
+
+    mountSdkContent(<MetabotQuestion layout="foobar" />);
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("metabot-question-container").should(
+        "have.attr",
+        "data-layout",
+        "sidebar",
+      );
+    });
+
+    cy.get("@consoleWarn").should(
+      "have.been.calledWith",
+      'Invalid layout for MetabotQuestion: foobar. Valid values are "stacked", "sidebar", or "auto"',
+    );
+  });
 });
+
+const mockSuggestedPrompts = () => {
+  cy.intercept(
+    "GET",
+    "/api/ee/metabot-v3/metabot/2/prompt-suggestions?limit=3&sample=true",
+    {
+      statusCode: 200,
+      body: {
+        prompts: [
+          {
+            id: 1,
+            prompt: "Show me total sales by product",
+          },
+          {
+            id: 2,
+            prompt: "What are the top performing products?",
+          },
+          {
+            id: 3,
+            prompt: "How many orders were placed last month?",
+          },
+        ],
+        limit: 3,
+        offset: 0,
+        total: 3,
+      },
+    },
+  ).as("suggestedPrompts");
+};

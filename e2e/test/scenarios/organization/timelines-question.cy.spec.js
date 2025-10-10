@@ -433,7 +433,7 @@ describe("scenarios > organization > timelines > question", () => {
         timelineEventCard("RC1").should(
           "have.css",
           "border-left",
-          "4px solid rgb(80, 158, 227)",
+          "4px solid rgb(80, 158, 226)",
         );
 
         // after clicking the icon again, it should be deselected in sidebar

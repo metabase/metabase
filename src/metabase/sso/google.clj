@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.sso.settings :as sso.settings]
    [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -54,7 +55,7 @@
 
 (mu/defn google-auth-create-new-user!
   "Create a new Google Auth user."
-  [{:keys [email] :as new-user} :- user/NewUser]
+  [{:keys [email] :as new-user} :- users.schema/NewUser]
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
   ;; log in without Google Auth; this lets us keep the NOT NULL constraints on password / salt without having to make

@@ -14,6 +14,7 @@ module.exports = {
     "^Components/Buttons/Button Compact size, custom color",
     "^Components/overlays/Tooltip",
     "^Components/Documents",
+    "^Components/Feedback/Alert",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

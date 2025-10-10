@@ -37,7 +37,6 @@ function getRowToggleStyle({ theme }: { theme: MantineTheme }) {
 interface PivotTableCellProps {
   isBold?: boolean;
   isEmphasized?: boolean;
-  isNightMode?: boolean;
   isBorderedHeader?: boolean;
   hasTopBorder?: boolean;
   isTransparent?: boolean;
@@ -46,17 +45,17 @@ interface PivotTableCellProps {
 const getCellBackgroundColor = ({
   theme,
   isEmphasized,
-  isNightMode,
   isTransparent,
 }: Partial<PivotTableCellProps> & { theme: MantineTheme }) => {
   const backgroundColor = theme.other.table.cell.backgroundColor;
+  const isDarkMode = theme.other.colorScheme === "dark";
 
   if (isTransparent) {
     return "transparent";
   }
 
   if (isEmphasized) {
-    if (isNightMode) {
+    if (isDarkMode) {
       return color("bg-black");
     }
 
@@ -67,7 +66,7 @@ const getCellBackgroundColor = ({
     return alpha("border", 0.25);
   }
 
-  if (isNightMode) {
+  if (isDarkMode) {
     return alpha("bg-black", 0.1);
   }
 
@@ -88,11 +87,8 @@ const getCellHoverBackground = (
   return adjustBrightness(backgroundColor, 0.15, 0.1);
 };
 
-const getColor = ({
-  theme,
-  isNightMode,
-}: PivotTableCellProps & { theme: MantineTheme }) => {
-  if (isNightMode) {
+const getColor = ({ theme }: PivotTableCellProps & { theme: MantineTheme }) => {
+  if (theme.other.colorScheme === "dark") {
     return color("text-white");
   }
 
@@ -140,9 +136,7 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   }
 `;
 
-interface PivotTableTopLeftCellsContainerProps {
-  isNightMode?: boolean;
-}
+interface PivotTableTopLeftCellsContainerProps {}
 
 export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
   display: flex;
@@ -152,14 +146,12 @@ export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCells
   background-color: ${(props) =>
     getCellBackgroundColor({
       isEmphasized: true,
-      isNightMode: props.isNightMode,
       theme: props.theme,
     })};
 `;
 
 interface PivotTableRootProps {
   isDashboard?: boolean;
-  isNightMode?: boolean;
   shouldOverflow?: boolean;
   shouldHideScrollbars?: boolean;
 }

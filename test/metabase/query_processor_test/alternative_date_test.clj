@@ -169,16 +169,16 @@
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
         (let [query (mt/native-query
-                      (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
-                             (mt/$ids sightings
-                               {:template-tags {"timestamp" {:name         "timestamp"
-                                                             :display-name "Sighting Timestamp"
-                                                             :type         :dimension
-                                                             :dimension    $timestamp
-                                                             :widget-type  :date/range}}
-                                :parameters    [{:type   :date/range
-                                                 :target [:dimension [:template-tag "timestamp"]]
-                                                 :value  "2014-02-01~2015-02-29"}]})))]
+                     (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
+                            (mt/$ids sightings
+                              {:template-tags {"timestamp" {:name         "timestamp"
+                                                            :display-name "Sighting Timestamp"
+                                                            :type         :dimension
+                                                            :dimension    $timestamp
+                                                            :widget-type  :date/range}}
+                               :parameters    [{:type   :date/range
+                                                :target [:dimension [:template-tag "timestamp"]]
+                                                :value  "2014-02-01~2015-02-29"}]})))]
           (testing (format "\nquery = %s" (u/pprint-to-str query))
             (is (= [[41]]
                    (mt/formatted-rows

@@ -44,6 +44,7 @@ export const SdkSaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
       originalQuestion={originalQuestion ?? null}
       onCreate={onCreate}
       onSave={onSave}
+      onCancel={onCancel}
       multiStep={false}
       targetCollection={targetCollection ?? undefined}
     >

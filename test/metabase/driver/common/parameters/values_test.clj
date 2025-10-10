@@ -4,8 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.metadata :as lib.metadata]
@@ -17,7 +17,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -489,11 +489,11 @@
                                                                              {:order-by [[:asc $id]] :limit 2})}
                          :model/Card       card-2 {:collection_id (u/the-id collection)
                                                    :dataset_query (mt/native-query
-                                                                    {:query         "SELECT * FROM {{card}}"
-                                                                     :template-tags {"card" {:name         "card"
-                                                                                             :display-name "card"
-                                                                                             :type         :card
-                                                                                             :card-id      card-1-id}}})}]
+                                                                   {:query         "SELECT * FROM {{card}}"
+                                                                    :template-tags {"card" {:name         "card"
+                                                                                            :display-name "card"
+                                                                                            :type         :card
+                                                                                            :card-id      card-1-id}}})}]
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (binding [qp.perms/*card-id* (u/the-id card-2)]
@@ -842,11 +842,11 @@
                                               :dataset_query (mt/mbql-query venues {:limit 2})}
                  :model/Card {card-2-id :id} {:collection_id nil
                                               :dataset_query (mt/native-query
-                                                               {:query         "SELECT * FROM {{card}}"
-                                                                :template-tags {"card" {:name         "card"
-                                                                                        :display-name "card"
-                                                                                        :type         :card
-                                                                                        :card-id      card-1-id}}})}]
+                                                              {:query         "SELECT * FROM {{card}}"
+                                                               :template-tags {"card" {:name         "card"
+                                                                                       :display-name "card"
+                                                                                       :type         :card
+                                                                                       :card-id      card-1-id}}})}]
     ;; even tho Card 2 references Card 1, we don't want to include it in the set of referenced Card IDs, since you
     ;; should only need permissions for Card 2 to be able to run the query (see #15131)
     (testing (format "Card 1 ID = %d, Card 2 ID = %d" card-1-id card-2-id)

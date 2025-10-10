@@ -9,6 +9,7 @@ const propsSchema: Yup.SchemaOf<StaticQuestionProps> = Yup.object({
   className: Yup.mixed().optional(),
   height: Yup.mixed().optional(),
   initialSqlParameters: Yup.mixed().optional(),
+  hiddenParameters: Yup.mixed().optional(),
   questionId: Yup.mixed().required(),
   style: Yup.mixed().optional(),
   title: Yup.mixed().optional(),

@@ -4,7 +4,6 @@ import {
   canonicalCollectionId,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { color } from "metabase/lib/colors";
 import {
   createEntity,
   entityCompatibleQuery,
@@ -12,6 +11,7 @@ import {
 } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { DocumentSchema } from "metabase/schema";
+import { color } from "metabase/ui/utils/colors";
 import { documentApi, useGetDocumentQuery } from "metabase-enterprise/api";
 import type {
   Collection,
@@ -127,7 +127,7 @@ const Documents = createEntity({
     getName: (document: Document) => document && document.name,
     getUrl: (document: Document) => document && Urls.document(document),
     getIcon: () => ({ name: "document" }),
-    getColor: () => color("document"),
+    getColor: () => color("brand"),
   },
 });
 

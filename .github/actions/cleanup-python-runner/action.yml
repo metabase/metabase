@@ -25,7 +25,7 @@ runs:
       shell: bash
 
     - name: Upload python-runner logs
-      if: inputs.upload-logs == 'true' && inputs.logs-artifact-name != ''
+      if: ${{inputs.upload-logs == 'true' && inputs.logs-artifact-suffix != ''}}
       uses: actions/upload-artifact@v4
       with:
         name: python-runner-logs-${{inputs.logs-artifact-suffix}}

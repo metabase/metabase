@@ -1,4 +1,7 @@
-import type { NativeQuerySnippet } from "metabase-types/api";
+import type {
+  NativeQuerySnippet,
+  UpdateSnippetRequest,
+} from "metabase-types/api";
 
 import { createMockEntityId } from "./entity-id";
 import { createMockUser } from "./user";
@@ -22,3 +25,12 @@ export const createMockNativeQuerySnippet = ({
   updated_at: new Date().toISOString(),
   ...opts,
 });
+
+export function createMockUpdateSnippetRequest(
+  opts?: Partial<UpdateSnippetRequest>,
+): UpdateSnippetRequest {
+  return {
+    id: 1,
+    ...opts,
+  };
+}

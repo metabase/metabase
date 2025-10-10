@@ -2,7 +2,8 @@
 import styled from "@emotion/styled";
 
 import { Tree } from "metabase/common/components/tree";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const FilterableTreeRoot = styled.div`
   display: flex;
@@ -36,6 +37,6 @@ export const AdminTreeNode = styled(Tree.Node)`
 
   &:hover {
     background-color: ${(props) =>
-      props.isSelected ? color("filter") : lighten(color("filter"), 0.6)};
+      props.isSelected ? color("filter") : lighten("filter", 0.6)};
   }
 `;

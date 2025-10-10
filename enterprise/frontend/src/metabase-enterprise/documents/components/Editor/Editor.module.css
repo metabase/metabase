@@ -178,7 +178,8 @@
   outline: none;
 }
 
-.editorContent :global(p.is-empty:first-child:before) {
+.editorContent :global(.is-empty:first-child:before),
+.editorContent :global(.node-paragraph.is-empty:first-child:before) {
   color: var(--mb-color-text-light);
   content: attr(data-placeholder);
   float: left;

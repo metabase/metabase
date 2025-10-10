@@ -34,11 +34,7 @@ export type DashboardActionButton = {
     props: HeaderButtonProps &
       Pick<
         DashboardContextReturned,
-        | "downloadsEnabled"
-        | "isFullscreen"
-        | "onFullscreenChange"
-        | "onNightModeChange"
-        | "hasNightModeToggle"
+        "downloadsEnabled" | "isFullscreen" | "onFullscreenChange"
       >,
   ) => boolean;
 };

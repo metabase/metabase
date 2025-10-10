@@ -110,8 +110,8 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     #_[:native (mt/native-query
-                                                 (qp.compile/compile
-                                                  (mt/mbql-query products)))]]]
+                                                (qp.compile/compile
+                                                 (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
                                               :database_id   (mt/id)

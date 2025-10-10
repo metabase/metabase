@@ -14,3 +14,4 @@ export * from "./Title";
 export * from "./Visualization";
 export * from "./VisualizationButton";
 export * from "./QuestionSettings";
+export * from "./SqlParametersList";

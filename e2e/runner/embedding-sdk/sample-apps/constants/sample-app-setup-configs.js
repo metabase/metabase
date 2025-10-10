@@ -23,8 +23,8 @@ if (!BASE_ENV.PREMIUM_EMBEDDING_TOKEN) {
 }
 
 const BASE_SETUP_CONFIG = {
-  "docker-up-command": "yarn docker:up",
-  "docker-down-command": "yarn docker:down",
+  "docker-up-command": "yarn docker:local-dist:up",
+  "docker-down-command": "yarn docker:rm",
   "docker-env-example-path": ".env.docker.example",
   "docker-env-path": ".env.docker",
   defaultBranch: BRANCH_NAME,

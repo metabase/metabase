@@ -175,6 +175,11 @@ export const CSVPanelEmptyState = ({
       contactAdminReason: ContactReason;
       upsell?: never;
     }) => {
+  const text = (
+    <Text component="span" td="underline">{c(
+      "in the sentence 'To work with CSVs, enable file uploads in your database.'",
+    ).t`your database`}</Text>
+  );
   const ctaSubtitle = c("{0} refers to the string 'your database'")
     .jt`To work with CSVs, enable file uploads in ${(
     <Tooltip
@@ -184,7 +189,7 @@ export const CSVPanelEmptyState = ({
       label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
       key="database-tooltip"
     >
-      <Text component="span" td="underline">{t`your database`}</Text>
+      {text}
     </Tooltip>
   )}.`;
 

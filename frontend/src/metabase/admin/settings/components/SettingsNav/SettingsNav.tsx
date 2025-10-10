@@ -8,7 +8,7 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
@@ -24,6 +24,7 @@ export function SettingsNav() {
   const hasJwt = useHasTokenFeature("sso_jwt");
   const hasScim = useHasTokenFeature("scim");
   const hasPythonTransforms = useHasTokenFeature("transforms-python");
+  const isHosted = useSetting("is-hosted?");
 
   return (
     <AdminNavWrapper>
@@ -88,7 +89,8 @@ export function SettingsNav() {
       </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
-      {hasPythonTransforms && (
+      {/* Python Runner settings are managed by Metabase Cloud for hosted instances */}
+      {hasPythonTransforms && !isHosted && (
         <SettingsNavItem
           path="python-runner"
           label={t`Python Runner`}

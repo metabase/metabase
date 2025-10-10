@@ -2,6 +2,7 @@
   (:require
    [macaw.util :as u]
    [metabase.actions.types :as types]
+   [metabase.lib.core :as lib]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -29,9 +30,7 @@
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
     (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id)
-          source-table (-> card :dataset_query :query :source-table)
-          table-id     (when (pos-int? source-table)
-                         source-table)]
+          table-id     (lib/source-table-id (:dataset_query card))]
       (merge {:table-id      table-id
               :collection-id (:collection_id card missing-id)
               :database-id   (:database_id card missing-id)}

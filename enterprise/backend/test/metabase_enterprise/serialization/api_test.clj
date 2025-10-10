@@ -239,7 +239,7 @@
                                                     {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                     {:file ba})]
                       (testing "We get our data items back"
-                        (is (= #{"Collection" "Dashboard" "Card" "Database" "TransformTag" "TransformJob"}
+                        (is (= #{"Collection" "Dashboard" "Card" "TransformTag" "TransformJob"}
                                (log-types (line-seq (io/reader (io/input-stream res)))))))
                       (testing "And they hit the db"
                         (is (= (:name dash) (t2/select-one-fn :name :model/Dashboard :entity_id (:entity_id dash))))
@@ -272,16 +272,7 @@
                                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                         {:file ba}))
                             log (slurp (io/input-stream res))]
-                        (testing "3 header lines, then cards+database+collection, then the error"
-                          (is (re-find #"Failed to read file for Collection DoesNotExist" log))
-                          (is (re-find #"Cannot find file" log)) ;; underlying error
-                          (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
-                                  :error      :metabase-enterprise.serialization.v2.load/not-found,
-                                  :model      "Collection",
-                                  :path       [{:id "DoesNotExist", :model "Collection"}],
-                                  :local-id   nil
-                                  :table      :collection}
-                                 (extract-and-sanitize-exception-map log))))
+                        (is (re-find #"Failed to read file \{:path \"Collection DoesNotExist\"}" log))
                         (testing "Snowplow event about error was sent"
                           (is (=? {"success"       false
                                    "event"         "serialization"
@@ -290,7 +281,7 @@
                                    "duration_ms"   int?
                                    "count"         0
                                    "error_count"   0
-                                   "error_message" #"(?s)Failed to read file for Collection DoesNotExist.*"}
+                                   "error_message" "Failed to read file {:path \"Collection DoesNotExist\"}"}
                                   (-> (snowplow-test/pop-event-data-and-user-id!) last :data))))))
 
                     (testing "Skipping errors /api/ee/serialization/import"
@@ -300,9 +291,9 @@
                                                       :continue_on_error true)
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then card+database+coll, error, then dashboard+coll"
-                          (is (= #{"Dashboard" "Card" "Database" "Collection" "TransformTag" "TransformJob"}
+                          (is (= #{"Dashboard" "Card" "Collection" "TransformTag" "TransformJob"}
                                  (log-types (str/split-lines log))))
-                          (is (re-find #"Failed to read file for Collection DoesNotExist" log)))
+                          (is (re-find #"Failed to read file \{:path \"Collection DoesNotExist\"}" log)))
                         (testing "Snowplow event about error was sent"
                           (is (=? {"success"     true
                                    "event"       "serialization"

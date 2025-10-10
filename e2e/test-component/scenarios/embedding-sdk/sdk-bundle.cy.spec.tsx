@@ -15,8 +15,6 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { deleteConflictingCljsGlobals } from "metabase/embedding-sdk/test/delete-conflicting-cljs-globals";
 
-const { H } = cy;
-
 const sdkBundleCleanup = () => {
   getSdkBundleScriptElement()?.remove();
   delete window.METABASE_EMBEDDING_SDK_BUNDLE;
@@ -354,53 +352,6 @@ describe(
           "be.calledWithMatch",
           "this property is required by the component",
         );
-      });
-    });
-
-    describe("Error handling", { retries: 3 }, () => {
-      beforeEach(() => {
-        H.clearBrowserCache();
-
-        sdkBundleCleanup();
-
-        cy.intercept("GET", "**/app/embedding-sdk.js", {
-          statusCode: 404,
-        });
-      });
-
-      describe("when the SDK bundle can't be loaded", () => {
-        it("should show an error", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              waitForUser: false,
-            },
-          );
-
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Error loading the Embedded Analytics SDK",
-          );
-        });
-
-        it("should show a custom error", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              sdkProviderProps: {
-                errorComponent: ({ message }: { message: string }) => (
-                  <div>Custom error: {message}</div>
-                ),
-              },
-              waitForUser: false,
-            },
-          );
-
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Custom error: Error loading the Embedded Analytics SDK",
-          );
-        });
       });
     });
   },

@@ -129,10 +129,10 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");
 
-      cy.location("search").should(
-        "eq",
-        "?id=926&created_at=&state=KS&product_id=10",
-      );
+      cy.location("search")
+        .should("include", "product_id=10")
+        .and("include", "created_at=")
+        .and("include", "id=926&state=KS");
     });
 
     it("should handle required parameters", () => {

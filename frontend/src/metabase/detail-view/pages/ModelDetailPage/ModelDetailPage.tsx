@@ -59,7 +59,7 @@ export function ModelDetailPage({ params }: Props) {
     error: queryError,
     isLoading: isQueryLoading,
   } = useGetAdhocQueryQuery(
-    objectQuery ? Lib.toLegacyQuery(objectQuery) : skipToken,
+    objectQuery ? Lib.toJsQuery(objectQuery) : skipToken,
   );
 
   const error = metadataError ?? queryError ?? cardError;

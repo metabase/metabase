@@ -13,7 +13,7 @@ import {
   createMockNativeQuerySnippet,
 } from "metabase-types/api/mocks";
 
-import SnippetFormModal from "./SnippetFormModal";
+import { SnippetFormModal } from "./SnippetFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
   id: "root",
@@ -22,15 +22,15 @@ const TOP_SNIPPETS_FOLDER = {
 };
 
 type SetupOpts = {
-  snippet?: Partial<NativeQuerySnippet>;
-  onClose?: null | (() => void);
+  snippet?:
+    | NativeQuerySnippet
+    | (Omit<Partial<NativeQuerySnippet>, "id"> & { id?: undefined });
   withDefaultFoldersList?: boolean;
 };
 
 async function setup({
   snippet = {},
   withDefaultFoldersList = true,
-  onClose = jest.fn(),
 }: SetupOpts = {}) {
   fetchMock.get({
     url: "path:/api/collection/root",
@@ -63,8 +63,16 @@ async function setup({
     );
   }
 
+  const onCreate = jest.fn();
+  const onUpdate = jest.fn();
+  const onClose = jest.fn();
   renderWithProviders(
-    <SnippetFormModal snippet={snippet} onClose={onClose || undefined} />,
+    <SnippetFormModal
+      snippet={snippet}
+      onCreate={onCreate}
+      onUpdate={onUpdate}
+      onClose={onClose}
+    />,
   );
 
   await waitForLoaderToBeRemoved();
@@ -157,13 +165,6 @@ describe("SnippetFormModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       });
-    });
-
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setup({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
     });
 
     it("calls onClose when cancel button is clicked", async () => {
@@ -260,13 +261,6 @@ describe("SnippetFormModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
       });
-    });
-
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setupEditing({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
     });
 
     it("calls onClose when cancel button is clicked", async () => {

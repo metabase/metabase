@@ -1,10 +1,16 @@
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 
+import {
+  trackEmbedWizardExperienceCompleted,
+  trackEmbedWizardOptionsCompleted,
+  trackEmbedWizardResourceSelectionCompleted,
+} from "../analytics";
 import { EMBED_STEPS } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
-  const { experience, currentStep, setCurrentStep } =
+  const { experience, currentStep, setCurrentStep, settings, defaultSettings } =
     useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
@@ -18,6 +24,23 @@ export function useSdkIframeEmbedNavigation() {
     );
 
     const nextStep = availableSteps[currentIndex + 1];
+
+    match(currentStep)
+      .with("select-embed-experience", () => {
+        trackEmbedWizardExperienceCompleted(
+          experience,
+          defaultSettings.experience,
+        );
+      })
+      .with("select-embed-resource", () => {
+        trackEmbedWizardResourceSelectionCompleted(
+          settings,
+          defaultSettings.resourceId,
+        );
+      })
+      .with("select-embed-options", () => {
+        trackEmbedWizardOptionsCompleted(settings, experience);
+      });
 
     if (nextStep) {
       setCurrentStep(nextStep.id);

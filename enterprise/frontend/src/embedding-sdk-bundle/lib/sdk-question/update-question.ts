@@ -9,6 +9,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type { ParameterValuesMap } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 
 import { runQuestionQuerySdk } from "./run-question-query";
@@ -17,7 +18,20 @@ interface UpdateQuestionParams {
   previousQuestion: Question;
   nextQuestion: Question;
   originalQuestion?: Question;
-  shouldStartAdHocQuestion?: boolean;
+  nextParameterValues: ParameterValuesMap;
+
+  /**
+   * When the question change is due to a drill thru action, it must be set to `true`
+   * It includes everything that calls the `dataset` endpoint that accepts the `query` in payload:
+   * - drills when clicking in a visualization
+   * - filters
+   * - breakouts
+   *
+   * For cases when the update change must call the `query` endpoint, it must be set to `false`:
+   * - sql parameters change
+   **/
+  shouldStartAdHocQuestion: boolean;
+
   queryResults?: any[];
   cancelDeferred?: Deferred;
 
@@ -35,7 +49,8 @@ export const updateQuestionSdk =
       previousQuestion,
       nextQuestion,
       originalQuestion,
-      shouldStartAdHocQuestion = true,
+      nextParameterValues,
+      shouldStartAdHocQuestion,
       cancelDeferred,
       queryResults,
       optimisticUpdateQuestion: onQuestionChange,
@@ -96,7 +111,11 @@ export const updateQuestionSdk =
     }
 
     const metadata = getMetadata(getState());
-    nextQuestion = new Question(nextQuestion.card(), metadata);
+    nextQuestion = new Question(
+      nextQuestion.card(),
+      metadata,
+      nextParameterValues,
+    );
 
     // In most cases, we only update the question when the query change.
     // We don't usually run the query right away unless specified.

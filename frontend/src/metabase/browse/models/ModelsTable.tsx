@@ -167,7 +167,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
 
       // do not trigger click when selecting text
       const selection = document.getSelection();
-      if (selection?.type === "Range") {
+      if (selection?.type === "Range" && selection?.toString().length > 0) {
         event.stopPropagation();
         return;
       }

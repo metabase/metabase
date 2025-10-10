@@ -262,7 +262,7 @@
 (defn- by-desired-alias
   [columns desired-alias]
   (let [columns (into []
-                      (lib.field.util/add-source-and-desired-aliases-xform meta/metadata-provider)
+                      (lib.field.util/add-source-and-desired-aliases-xform (lib/query meta/metadata-provider (meta/table-metadata :venues)))
                       columns)]
     (m/find-first (comp #{desired-alias} :lib/desired-column-alias) columns)))
 

@@ -500,11 +500,6 @@
   [query :- :map]
   (:lib/type (query-stage query 0)))
 
-(mu/defn first-stage-is-native? :- :boolean
-  "Whether the first stage of the query is a native query stage."
-  [query :- :map]
-  (= (first-stage-type query) :mbql.stage/native))
-
 (mu/defn- unique-alias :- :string
   [original :- :string
    suffix   :- :string]
@@ -731,17 +726,3 @@
     (:query :native) :mbql-version/legacy
     ;; otherwise, this is not a valid MBQL query.
     nil))
-
-(defn collect-source-tables
-  "Return sequence of source tables from `query`.
-
-  DEPRECATED: This operates on legacy MBQL, so it's really out of place here in Lib.
-  Use [[metabase.lib.walk.util/all-source-table-ids]] going forward."
-  {:deprecated "0.57.0"}
-  [legacy-query]
-  #_{:clj-kondo/ignore [:deprecated-var]}
-  (let [from-joins (mapcat collect-source-tables (:joins legacy-query))]
-    (if-let [source-query (:source-query legacy-query)]
-      (concat (collect-source-tables source-query) from-joins)
-      (cond->> from-joins
-        (:source-table legacy-query) (cons (:source-table legacy-query))))))

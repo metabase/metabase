@@ -1,0 +1,5 @@
+.MetabotLogo {
+  --illustration-primary: var(--mb-color-brand);
+  --illustration-secondary: var(--mb-color-brand-lighter);
+  --illustration-background: var(--mb-color-bg-light);
+}

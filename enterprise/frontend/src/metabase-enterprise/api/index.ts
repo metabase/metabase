@@ -5,6 +5,7 @@ export * from "./billing-info";
 export * from "./comment";
 export * from "./content-translation";
 export * from "./db-routing";
+export * from "./dependencies";
 export * from "./document";
 export * from "./gdrive";
 export * from "./metabot";

@@ -276,7 +276,7 @@
                (mt/rows
                 (qp/process-query
                  (mt/native-query
-                   {:query "-- foo
+                  {:query "-- foo
                             /* comment */
                             select 1;"}))))))))
 
@@ -287,7 +287,7 @@
              (mt/rows
               (qp/process-query
                (mt/native-query
-                 {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
+                {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
 
 (deftest ^:parallel casted-params-test
   (mt/test-driver :clickhouse

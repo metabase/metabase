@@ -14,11 +14,10 @@
    (arg-name nil arg))
   ([idx arg]
    ;; TODO: support `:maybe` as an optional argument?
-   (if-let [name (:arg/name (mc/properties arg))]
-     name
-     (cond-> "arg"
-       ;; Don't zero index generated argument names
-       idx (str (inc idx))))))
+   (or (:name (mc/properties arg))
+       (cond-> "arg"
+         ;; Don't zero index generated argument names
+         idx (str (inc idx))))))
 
 (defn- seq-arg-name
   [arg]

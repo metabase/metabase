@@ -32,7 +32,7 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.models.secret :as secret]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -628,13 +628,13 @@
                (mt/rows
                 (qp/process-query
                  (assoc (mt/native-query
-                          {:query         "SELECT * FROM users WHERE {{user}}"
-                           :template-tags {:user
-                                           {:name         "user"
-                                            :display_name "User ID"
-                                            :type         "dimension"
-                                            :widget-type  "number"
-                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                         {:query         "SELECT * FROM users WHERE {{user}}"
+                          :template-tags {:user
+                                          {:name         "user"
+                                           :display_name "User ID"
+                                           :type         "dimension"
+                                           :widget-type  "number"
+                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -645,13 +645,13 @@
                (mt/rows
                 (qp/process-query
                  (assoc (mt/native-query
-                          {:query         "SELECT * FROM users WHERE {{user}}"
-                           :template-tags {:user
-                                           {:name         "user"
-                                            :display_name "User ID"
-                                            :type         "dimension"
-                                            :widget-type  :number
-                                            :dimension    [:field (mt/id :users :user_id) nil]}}})
+                         {:query         "SELECT * FROM users WHERE {{user}}"
+                          :template-tags {:user
+                                          {:name         "user"
+                                           :display_name "User ID"
+                                           :type         "dimension"
+                                           :widget-type  :number
+                                           :dimension    [:field (mt/id :users :user_id) nil]}}})
                         :parameters
                         [{:type   "text"
                           :target ["dimension" ["template-tag" "user"]]
@@ -1354,10 +1354,10 @@
                                   (-> {:query         (str "SELECT * FROM json_table "
                                                            "WHERE json_val::jsonb ? 'a' "
                                                            "AND json_val::jsonb ->> 'a' = {{val}}")
-                                       :template-tags {:val
+                                       :template-tags {"val"
                                                        {:name         "val"
-                                                        :display_name "Val"
-                                                        :type         "text"}}}
+                                                        :display-name "Val"
+                                                        :type         :text}}}
                                       mt/native-query
                                       (assoc :parameters
                                              [{:type   "number/="

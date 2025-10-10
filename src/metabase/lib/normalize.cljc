@@ -35,7 +35,7 @@
     (or (-> x lib-type lib-type->schema)
         :map)
 
-    (and (vector? x)
+    (and (sequential? x)
          ((some-fn simple-keyword? string?) (first x)))
     (lib.schema.mbql-clause/tag->registered-schema-name (first x))
 
@@ -46,9 +46,9 @@
   "If normalization errors somewhere, just log the error and return the partially-normalized result. Easier to debug
   this way."
   [error]
-  (log/warnf "Error normalizing MBQL 5: %s\n%s"
-             (pr-str (me/humanize (:explain error)))
-             (u/pprint-to-str (dissoc error :explain)))
+  (log/debugf "Error normalizing MBQL 5: %s\n%s"
+              (pr-str (me/humanize (:explain error)))
+              (u/pprint-to-str (dissoc error :explain)))
   (:value error))
 
 (def ^:private ^:dynamic *error-fn*

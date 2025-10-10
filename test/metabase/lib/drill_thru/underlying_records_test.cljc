@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.underlying :as lib.underlying]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -696,3 +697,38 @@
                              [:field {:temporal-unit :year} "CREATED_AT"]
                              "2023-01-01T00:00:00Z"]]}]
             (:stages (lib/drill-thru query drill))))))
+
+(deftest ^:parallel remove-original-binning-test
+  (testing "We should remove :lib/original-binning from display info as well"
+    (let [query     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count))
+                        (lib/breakout (-> (meta/field-metadata :orders :total)
+                                          (lib/with-binning {:strategy :num-bins, :num-bins 100})))
+                        (as-> $query (lib/filter $query (lib/>= (meta/field-metadata :orders :total) 90))))
+          cols      (lib/returned-columns query)
+          count-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})
+          total-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Total: 100 bins"})
+          context   {:column     count-col
+                     :column-ref (lib/ref count-col)
+                     :value      37
+                     :row        [{:column total-col, :column-ref (lib/ref total-col), :value 90}
+                                  {:column count-col, :column-ref (lib/ref count-col), :value 37}]
+                     :dimensions [{:column total-col, :column-ref (lib/ref total-col), :value 90}]}
+          drill     (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                  (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (let [query' (lib/drill-thru query drill)]
+        (is (=? [{:source-table (meta/id :orders)
+                  :filters      [[:>= {}
+                                  [:field {} (meta/id :orders :total)]
+                                  90]
+                                 [:<
+                                  {}
+                                  [:field {} (meta/id :orders :total)]
+                                  92.0]]}]
+                (:stages query')))
+        (is (= ["Total is greater than or equal to 90"
+                #?(:clj  "Total is less than 92.0"
+                   :cljs "Total is less than 92")]
+               (map #(:long-display-name (lib/display-info query' %))
+                    (lib/filters query'))))))))

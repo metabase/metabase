@@ -87,7 +87,7 @@
        (map (fn [card]
               (-> card
                   (assoc :model (if (queries/model? card) "dataset" "card"))
-                  (assoc :fully_parameterized (api.collection/fully-parameterized-query? card))
+                  (assoc :fully_parameterized (queries/fully-parameterized? card))
                   (dissoc :dataset_query))))))
 
 (defn- annotate-dashboard-with-collection-info

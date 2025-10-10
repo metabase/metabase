@@ -1,3 +1,4 @@
+import Color from "color";
 import _ from "underscore";
 
 import { ACCENT_COUNT, color } from "./palette";
@@ -12,8 +13,8 @@ export const getAccentColors = (
     gray = true,
   }: AccentColorOptions = {},
   palette?: ColorPalette,
-): ColorName[] => {
-  const ranges: ColorName[][] = [];
+): string[] => {
+  const ranges: string[][] = [];
   main && ranges.push(getMainAccentColors(palette, gray));
   light && ranges.push(getLightAccentColors(palette, gray));
   dark && ranges.push(getDarkAccentColors(palette, gray));
@@ -36,16 +37,19 @@ const getBaseAccentsNames = (withGray = false) => {
 export const getMainAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-): ColorName[] => {
-  return getBaseAccentsNames(withGray).map((accent) => color(accent, palette));
+): string[] => {
+  // Ensure that colors are defined in hex, not HSLA
+  return getBaseAccentsNames(withGray).map((accent) =>
+    Color(color(accent, palette)).hex(),
+  );
 };
 
 export const getLightAccentColors = (
   palette?: ColorPalette,
   withGray = false,
-): ColorName[] => {
+): string[] => {
   return getBaseAccentsNames(withGray).map((accent) =>
-    color(`${accent}-light` as ColorName, palette),
+    Color(color(`${accent}-light` as ColorName, palette)).hex(),
   );
 };
 
@@ -54,7 +58,7 @@ export const getDarkAccentColors = (
   withGray = false,
 ) => {
   return getBaseAccentsNames(withGray).map((accent) =>
-    color(`${accent}-dark` as ColorName, palette),
+    Color(color(`${accent}-dark` as ColorName, palette)).hex(),
   );
 };
 

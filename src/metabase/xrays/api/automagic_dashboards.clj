@@ -1,19 +1,24 @@
 (ns metabase.xrays.api.automagic-dashboards
   (:require
    [buddy.core.codecs :as codecs]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
    [metabase.xrays.automagic-dashboards.comparison :as automagic-dashboards.comparison]
    [metabase.xrays.automagic-dashboards.core :as automagic-dashboards.core]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as automagic-dashboards.dashboard-templates]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.transforms.dashboard :as transforms.dashboard]
    [metabase.xrays.transforms.materialize :as transforms.materialize]
    [ring.util.codec :as codec]
@@ -49,11 +54,17 @@
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp json/decode+kw codecs/bytes->str codec/base64-decode))
 
-(def ^:private Base64EncodedJSON
+(mr/def ::base-64-encoded-json
+  "form-encoded base-64-encoded JSON"
   [:fn
-   {:description "form-encoded base-64-encoded JSON"
-    :error/fn    (fn [_ _]
-                   (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
+   ;; TODO (Cam 10/7/25) -- you would expect `=` to get form-encoded here but apparently the FE is having trouble
+   ;; doing it... allow it for now I guess.
+   ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759892123044939?thread_ts=1759289751.539169&cid=C0645JP1W81
+   ;;
+   ;; TODO (Cam 10/7/25) -- not clear whether we expect `-` and `_` as per RFC 4648 here or if we expect form-encoded
+   ;; `+` and `/`... accept either for now I guess
+   {:api/regex #"(?:[A-Za-z0-9\-_]|(?:%2B)|(?:%2F))+(?:(?:%3D)|=){0,2}"
+    :error/fn  (fn [_ _] (i18n/tru "value couldn''t be parsed as base64 encoded JSON"))}
    decode-base64-json])
 
 (api.macros/defendpoint :get "/database/:id/candidates"
@@ -110,12 +121,16 @@
   [_entity-type card-id-str]
   (api/read-check (t2/select-one :model/Card :id (ensure-int card-id-str))))
 
-(mu/defn adhoc-query-instance :- (ms/InstanceOf :model/Query)
+(mu/defn adhoc-query-instance :- [:and
+                                  (ms/InstanceOf :model/Query)
+                                  [:map
+                                   [:dataset_query ::ads/query]]]
   "Wrap query map into a Query object (mostly to facilitate type dispatch)."
   [query :- :map]
-  (mi/instance :model/Query
-               (merge (queries/query->database-and-table-ids query)
-                      {:dataset_query (mi/maybe-normalize-query :out query)})))
+  (let [query (lib-be/normalize-query query)]
+    (mi/instance :model/Query
+                 (merge (queries/query->database-and-table-ids query)
+                        {:dataset_query query}))))
 
 (defmethod ->entity :adhoc
   [_entity-type encoded-query]
@@ -131,28 +146,48 @@
   transform-name)
 
 (def ^:private entities
-  (map name (keys (methods ->entity))))
+  (sort (keys (methods ->entity))))
 
 (def ^:private Entity
-  (into [:enum {:api/regex (u.regex/re-or entities)
-                :error/fn  (fn [_ _]
-                             (i18n/tru "Invalid entity type"))}]
+  (into [:enum {:api/regex (u.regex/re-or (map name entities))
+                :error/fn  (fn [_ _] (i18n/tru "Invalid entity type"))}]
         entities))
 
+(mr/def ::entity-id-or-query
+  "One of these:
+
+  * A non-empty string with an Entity ID (including `card__<id>`-encoded Card IDs)
+
+  * a form-encoded base-64-encoded JSON-encoded MBQL query
+
+  * The name of a transform
+
+  (Effectively since the names of transforms are unconstrained this parameter is allowed to be any form-encoded
+  string.)"
+  ;; TODO (Cam 10/7/25) -- you would expect `=` to get form-encoded here but apparently the FE is having trouble doing
+  ;; it... allow it for now I guess.
+  ;; https://metaboat.slack.com/archives/C0645JP1W81/p1759892123044939?thread_ts=1759289751.539169&cid=C0645JP1W81
+  [:string
+   {:min       1
+    :api/regex #"(?:[A-Za-z0-9\-._~=]|%[0-9A-Fa-f]{2})+"}])
+
 (def ^:private ComparisonEntity
-  (mu/with-api-error-message
-   [:enum "segment" "adhoc" "table"]
-   (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
+  (let [entity-types [:adhoc :segment :table]]
+    (mu/with-api-error-message
+     (into [:enum
+            {:api/regex (u.regex/re-or (map name entity-types))}]
+           entity-types)
+     (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\""))))
 
 (defn- coerce-show
   "Show is either nil, \"all\", or a number. If it's a string it needs to be converted into a keyword."
   [show]
   (cond-> show (= "all" show) keyword))
 
-(defn get-automagic-dashboard
+(mu/defn get-automagic-dashboard
   "Return an automagic dashboard for entity `entity` with id `id`."
-  [entity entity-id-or-query show]
-  (if (= entity "transform")
+  [entity :- Entity entity-id-or-query show]
+  (if (= entity :transform)
     (transforms.dashboard/dashboard (->entity entity entity-id-or-query))
     (-> (->entity entity entity-id-or-query)
         (automagic-dashboards.core/automagic-analysis {:show (coerce-show show)}))))
@@ -160,17 +195,35 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
-                                           [:entity Entity]]
+                                           [:entity             Entity]
+                                           [:entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} [:maybe [:or [:= "all"] nat-int?]]]]]
   (get-automagic-dashboard entity entity-id-or-query show))
 
+(defn- dashboard-metadata [dashboard]
+  (letfn [(normalize-card [card]
+            (-> card
+                (m/update-existing :dataset_query lib-be/normalize-query)
+                (dissoc :id)))
+          (normalize-series [series]
+            (map normalize-card series))
+          (normalize-dashcard [{:keys [card], :as dashcard}]
+            (-> dashcard
+                (u/assoc-dissoc :card (some-> card not-empty normalize-card))
+                (m/update-existing :series normalize-series)))
+          (normalize-dashcards [dashcards]
+            (mapv normalize-dashcard dashcards))
+          (normalize-dashboard [dashboard]
+            (update dashboard :dashcards normalize-dashcards))]
+    (queries/batch-fetch-dashboard-metadata [(normalize-dashboard dashboard)])))
+
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/query_metadata"
   "Return all metadata for an automagic dashboard for entity `entity` with id `id`."
   [{:keys [entity entity-id-or-query]} :- [:map
-                                           [:entity Entity]]]
-  (queries/batch-fetch-dashboard-metadata
-   [(get-automagic-dashboard entity entity-id-or-query nil)]))
+                                           [:entity             Entity]
+                                           [:entity-id-or-query ::entity-id-or-query]]]
+  (dashboard-metadata (get-automagic-dashboard entity entity-id-or-query nil)))
 
 (defn linked-entities
   "Identify the pk field of the model with `pk_ref`, and then find any fks that have that pk as a target."
@@ -180,7 +233,7 @@
      (fn [{:keys [table_id id]}]
        {:linked-table-id table_id
         :linked-field-id id})
-     (t2/select 'Field :fk_target_field_id field-id))))
+     (t2/select :model/Field :fk_target_field_id field-id))))
 
 (defn- add-source-model-link
   "Insert a source model link card into the sequence of passed in cards."
@@ -283,7 +336,7 @@
   "Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query prefix dashboard-template]} :- [:map
                                                                      [:entity             Entity]
-                                                                     [:entity-id-or-query ms/NonBlankString]
+                                                                     [:entity-id-or-query ::entity-id-or-query]
                                                                      [:prefix             Prefix]
                                                                      [:dashboard-template DashboardTemplate]]
    {:keys [show]} :- [:map
@@ -297,8 +350,8 @@
   `cell-query`."
   [{:keys [entity entity-id-or-query cell-query]} :- [:map
                                                       [:entity             Entity]
-                                                      [:entity-id-or-query ms/NonBlankString]
-                                                      [:cell-query         Base64EncodedJSON]]
+                                                      [:entity-id-or-query ::entity-id-or-query]
+                                                      [:cell-query         ::base-64-encoded-json]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
@@ -310,10 +363,10 @@
   dashboard-template `dashboard-template`."
   [{:keys [entity entity-id-or-query cell-query prefix dashboard-template]} :- [:map
                                                                                 [:entity             Entity]
-                                                                                [:entity-id-or-query ms/NonBlankString]
+                                                                                [:entity-id-or-query ::entity-id-or-query]
                                                                                 [:prefix             Prefix]
                                                                                 [:dashboard-template DashboardTemplate]
-                                                                                [:cell-query         Base64EncodedJSON]]
+                                                                                [:cell-query         ::base-64-encoded-json]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (-> (->entity entity entity-id-or-query)
@@ -324,11 +377,14 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` compared with entity `comparison-entity`
   with id `comparison-entity-id-or-query.`"
-  [{:keys [entity entity-id-or-query comparison-entity
+  [{:keys [entity
+           entity-id-or-query
+           comparison-entity
            comparison-entity-id-or-query]} :- [:map
-                                               [:entity-id-or-query ms/NonBlankString]
-                                               [:entity             Entity]
-                                               [:comparison-entity  ComparisonEntity]]
+                                               [:entity-id-or-query            ::entity-id-or-query]
+                                               [:entity                        Entity]
+                                               [:comparison-entity             ComparisonEntity]
+                                               [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
@@ -341,13 +397,18 @@
 (api.macros/defendpoint :get "/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template/compare/:comparison-entity/:comparison-entity-id-or-query"
   "Return an automagic comparison dashboard for entity `entity` with id `id` using dashboard-template
   `dashboard-template`; compared with entity `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query prefix dashboard-template
-           comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                 [:entity             Entity]
-                                                                 [:entity-id-or-query ms/NonBlankString]
-                                                                 [:prefix             Prefix]
-                                                                 [:dashboard-template DashboardTemplate]
-                                                                 [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity
+           entity-id-or-query
+           prefix
+           dashboard-template
+           comparison-entity
+           comparison-entity-id-or-query]} :- [:map
+                                               [:entity                        Entity]
+                                               [:entity-id-or-query            ::entity-id-or-query]
+                                               [:prefix                        Prefix]
+                                               [:dashboard-template            DashboardTemplate]
+                                               [:comparison-entity             ComparisonEntity]
+                                               [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
@@ -362,12 +423,16 @@
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query`; compared with entity `comparison-entity` with id
    `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query cell-query
-           comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                 [:entity             Entity]
-                                                                 [:entity-id-or-query ms/NonBlankString]
-                                                                 [:cell-query         Base64EncodedJSON]
-                                                                 [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity
+           entity-id-or-query
+           cell-query
+           comparison-entity
+           comparison-entity-id-or-query]} :- [:map
+                                               [:entity                        Entity]
+                                               [:entity-id-or-query            ::entity-id-or-query]
+                                               [:cell-query                    ::base-64-encoded-json]
+                                               [:comparison-entity             ComparisonEntity]
+                                               [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)
@@ -381,14 +446,20 @@
   "Return an automagic comparison dashboard for cell in automagic dashboard for entity `entity`
    with id `id` defined by query `cell-query` using dashboard-template `dashboard-template`; compared with entity
    `comparison-entity` with id `comparison-entity-id-or-query.`."
-  [{:keys [entity entity-id-or-query cell-query prefix dashboard-template
-           comparison-entity comparison-entity-id-or-query]} :- [:map
-                                                                 [:entity             Entity]
-                                                                 [:entity-id-or-query ms/NonBlankString]
-                                                                 [:prefix             Prefix]
-                                                                 [:dashboard-template DashboardTemplate]
-                                                                 [:cell-query         Base64EncodedJSON]
-                                                                 [:comparison-entity  ComparisonEntity]]
+  [{:keys [entity
+           entity-id-or-query
+           cell-query
+           prefix
+           dashboard-template
+           comparison-entity
+           comparison-entity-id-or-query]} :- [:map
+                                               [:entity                        Entity]
+                                               [:entity-id-or-query            ::entity-id-or-query]
+                                               [:prefix                        Prefix]
+                                               [:dashboard-template            DashboardTemplate]
+                                               [:cell-query                    ::base-64-encoded-json]
+                                               [:comparison-entity             ComparisonEntity]
+                                               [:comparison-entity-id-or-query ::entity-id-or-query]]
    {:keys [show]} :- [:map
                       [:show {:optional true} Show]]]
   (let [left      (->entity entity entity-id-or-query)

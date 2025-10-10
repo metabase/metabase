@@ -52,6 +52,7 @@
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?
+  enable-dependencies?
   enable-documents?
   enable-email-allow-list?
   enable-email-restrict-recipients?

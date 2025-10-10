@@ -509,17 +509,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     H.goToTab("Tab 1");
-    // This is a bug. publicFirstTabQuery should not be called again
-    cy.get("@publicFirstTabQuerySpy").should("have.been.calledTwice");
+    cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@publicFirstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(10); // 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(9); // 8 (previously) + 1 (secondQuestion)
-      });
-    });
   });
 
   it("should only fetch cards on the current tab of an embedded dashboard", () => {
@@ -604,17 +595,8 @@ describe("scenarios > dashboard > tabs", () => {
     });
 
     H.goToTab("Tab 1");
-    // This is a bug. firstTabQuery should not be called again
-    cy.get("@firstTabQuerySpy").should("have.been.calledTwice");
+    cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
-    cy.wait("@firstTabQuery").then((r) => {
-      firstQuestion().then((r) => {
-        expect(r.view_count).to.equal(6); // 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
-      });
-      secondQuestion().then((r) => {
-        expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
-      });
-    });
   });
 
   it("should apply filter and show loading spinner when changing tabs (#33767)", () => {

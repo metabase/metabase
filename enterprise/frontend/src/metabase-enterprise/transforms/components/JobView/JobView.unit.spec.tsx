@@ -1,3 +1,7 @@
+import {
+  setupListTransformJobTransformsEndpoint,
+  setupListTransformTagsEndpoint,
+} from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockTransformJob } from "metabase-types/api/mocks";
 
@@ -13,6 +17,11 @@ function setup({ job = createMockTransformJob() }: SetupOpts) {
   const onDescriptionChange = jest.fn();
   const onScheduleChange = jest.fn();
   const onTagListChange = jest.fn();
+
+  setupListTransformTagsEndpoint([]);
+  if (job.id) {
+    setupListTransformJobTransformsEndpoint(job.id, []);
+  }
 
   renderWithProviders(
     <JobView

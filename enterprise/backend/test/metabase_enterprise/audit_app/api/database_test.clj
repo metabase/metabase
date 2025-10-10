@@ -7,7 +7,7 @@
 
 (deftest audit-db-unmodifiable-test
   (mt/with-premium-features #{:audit-app}
-    (audit-test/with-audit-db-restoration
+    (audit-test/with-audit-db-restoration!
       (testing "Neither admin nor regular users can modify the audit database"
         (doseq [[verb path] [[:post "persist/database/%d/unpersist"]
                              [:put "database/%d"]
