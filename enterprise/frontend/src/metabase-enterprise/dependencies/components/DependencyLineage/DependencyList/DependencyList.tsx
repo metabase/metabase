@@ -12,6 +12,7 @@ import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
 import {
+  canSortByColumn,
   getDefaultSortOptions,
   getListRequest,
   getVisibleNodes,
@@ -34,7 +35,7 @@ export function DependencyList({
   const [searchText, setSearchText] = useState("");
   const [searchQuery] = useDebouncedValue(searchText, SEARCH_DEBOUNCE_DURATION);
   const [sortOptions, setSortOptions] = useState(() =>
-    getDefaultSortOptions(selection.node.type),
+    getDefaultSortOptions(selection.groupType),
   );
   const matchingNodes = useMemo(
     () => getVisibleNodes(nodes, { searchQuery, sortOptions }),
@@ -42,8 +43,10 @@ export function DependencyList({
   );
 
   useLayoutEffect(() => {
-    setSortOptions(getDefaultSortOptions(selection.node.type));
-  }, [selection.node.type]);
+    if (!canSortByColumn(selection.groupType, sortOptions.column)) {
+      setSortOptions(getDefaultSortOptions(selection.groupType));
+    }
+  }, [selection.groupType, sortOptions]);
 
   return (
     <Card className={S.root} shadow="none" withBorder>

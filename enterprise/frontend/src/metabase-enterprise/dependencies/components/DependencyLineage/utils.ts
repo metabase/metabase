@@ -6,9 +6,11 @@ import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
 import visualizations from "metabase/visualizations";
 import type {
+  CardType,
   DependencyEdge,
   DependencyEntry,
   DependencyGraph,
+  DependencyGroupType,
   DependencyId,
   DependencyNode,
   DependencyType,
@@ -154,5 +156,31 @@ export function getNodeLocationLabel(node: DependencyNode): string | undefined {
 export function getNodeViewCount(node: DependencyNode): number | undefined {
   if (node.type === "card") {
     return node.data.view_count;
+  }
+}
+
+export function getCardType(
+  groupType: DependencyGroupType,
+): CardType | undefined {
+  switch (groupType) {
+    case "question":
+    case "model":
+    case "metric":
+      return groupType;
+    default:
+      return undefined;
+  }
+}
+
+export function getDependencyType(
+  groupType: DependencyGroupType,
+): DependencyType {
+  switch (groupType) {
+    case "question":
+    case "model":
+    case "metric":
+      return "card";
+    default:
+      return groupType;
   }
 }

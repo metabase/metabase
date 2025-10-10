@@ -69,7 +69,7 @@ function DependencyGroupButton({ node, group }: DependencyGroupButtonProps) {
   const isSelected =
     node.id === selection?.node.id &&
     node.type === selection?.node.type &&
-    group.type === selection.type;
+    group.type === selection.groupType;
 
   return (
     <Pill
@@ -78,7 +78,7 @@ function DependencyGroupButton({ node, group }: DependencyGroupButtonProps) {
       c={isSelected ? "white" : "text-primary"}
       bg={isSelected ? "brand" : "bg-medium"}
       fw="normal"
-      onClick={() => setSelection({ node, type: group.type })}
+      onClick={() => setSelection({ node, groupType: group.type })}
     >
       {getDependentGroupLabel(group)}
     </Pill>

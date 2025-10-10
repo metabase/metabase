@@ -41,6 +41,7 @@ export function ListHeader({
         leftSection={<Icon name="search" />}
         rightSection={
           <SortOptionsPicker
+            groupType={selection.groupType}
             sortOptions={sortOptions}
             onSortOptionsChange={onSortOptionsChange}
           />

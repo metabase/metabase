@@ -11,15 +11,19 @@ import {
   Stack,
   Tooltip,
 } from "metabase/ui";
+import type { DependencyGroupType } from "metabase-types/api";
 
 import type { SortColumn, SortDirection, SortOptions } from "../../types";
+import { canSortByColumn } from "../../utils";
 
 type SortOptionsPickerProps = {
+  groupType: DependencyGroupType;
   sortOptions: SortOptions;
   onSortOptionsChange: (sortOptions: SortOptions) => void;
 };
 
 export function SortOptionsPicker({
+  groupType,
   sortOptions,
   onSortOptionsChange,
 }: SortOptionsPickerProps) {
@@ -36,6 +40,7 @@ export function SortOptionsPicker({
       </Popover.Target>
       <Popover.Dropdown>
         <SortOptionsPopover
+          groupType={groupType}
           sortOptions={sortOptions}
           onSortOptionsChange={onSortOptionsChange}
         />
@@ -43,6 +48,27 @@ export function SortOptionsPicker({
     </Popover>
   );
 }
+
+const SORT_COLUMN_OPTIONS: SegmentedControlItem<SortColumn>[] = [
+  {
+    value: "view_count",
+    get label() {
+      return t`View count`;
+    },
+  },
+  {
+    value: "name",
+    get label() {
+      return t`Name`;
+    },
+  },
+  {
+    value: "location",
+    get label() {
+      return t`Location`;
+    },
+  },
+];
 
 const SORT_DIRECTION_OPTIONS: SegmentedControlItem<SortDirection>[] = [
   {
@@ -60,14 +86,20 @@ const SORT_DIRECTION_OPTIONS: SegmentedControlItem<SortDirection>[] = [
 ];
 
 type SortOptionsPopoverProps = {
+  groupType: DependencyGroupType;
   sortOptions: SortOptions;
   onSortOptionsChange: (sortOptions: SortOptions) => void;
 };
 
 function SortOptionsPopover({
+  groupType,
   sortOptions,
   onSortOptionsChange,
 }: SortOptionsPopoverProps) {
+  const columnOptions = SORT_COLUMN_OPTIONS.filter((option) =>
+    canSortByColumn(groupType, option.value),
+  );
+
   const handleColumnChange = (column: string) => {
     onSortOptionsChange({ ...sortOptions, column: column as SortColumn });
   };
@@ -87,9 +119,13 @@ function SortOptionsPopover({
         onChange={handleColumnChange}
       >
         <Stack mt="sm" gap="md">
-          <Radio value="name" label={t`Name`} />
-          <Radio value="location" label={t`Location`} />
-          <Radio value="view_count" label={t`View count`} />
+          {columnOptions.map((option) => (
+            <Radio
+              key={option.value}
+              value={option.value}
+              label={option.label}
+            />
+          ))}
         </Stack>
       </Radio.Group>
       <SegmentedControl

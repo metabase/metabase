@@ -1,13 +1,19 @@
-import { P, match } from "ts-pattern";
+import { match } from "ts-pattern";
 
 import type {
+  DependencyGroupType,
   DependencyNode,
-  DependencyType,
   ListNodeDependentsRequest,
 } from "metabase-types/api";
 
 import type { GraphSelection } from "../types";
-import { getNodeLabel, getNodeLocationLabel, getNodeViewCount } from "../utils";
+import {
+  getCardType,
+  getDependencyType,
+  getNodeLabel,
+  getNodeLocationLabel,
+  getNodeViewCount,
+} from "../utils";
 
 import type { SearchOptions, SortColumn, SortOptions } from "./types";
 
@@ -17,17 +23,24 @@ export function getListRequest(
   return {
     id: selection.node.id,
     type: selection.node.type,
-    dependent_type: match(selection.type)
-      .with(P.union("question", "model", "metric"), () => "card" as const)
-      .otherwise((type) => type),
-    dependent_card_type: match(selection.type)
-      .with(P.union("question", "model", "metric"), (type) => type)
-      .otherwise(() => undefined),
+    dependent_type: getDependencyType(selection.groupType),
+    dependent_card_type: getCardType(selection.groupType),
   };
 }
 
-export function getDefaultSortOptions(type: DependencyType): SortOptions {
-  if (type === "card") {
+export function canSortByColumn(
+  groupType: DependencyGroupType,
+  column: SortColumn,
+) {
+  return match(column)
+    .with("name", () => true)
+    .with("location", () => getCardType(groupType) != null)
+    .with("view_count", () => getCardType(groupType) != null)
+    .exhaustive();
+}
+
+export function getDefaultSortOptions(type: DependencyGroupType): SortOptions {
+  if (canSortByColumn(type, "view_count")) {
     return { column: "view_count", direction: "desc" };
   } else {
     return { column: "name", direction: "asc" };
@@ -43,18 +56,23 @@ function compareNodesByColumn(
   node2: DependencyNode,
   column: SortColumn,
 ) {
-  switch (column) {
-    case "name":
-      return getNodeLabel(node1).localeCompare(getNodeLabel(node2));
-    case "location":
-      return (getNodeLocationLabel(node1) ?? "").localeCompare(
-        getNodeLocationLabel(node2) ?? "",
-      );
-    case "view_count":
-      return (getNodeViewCount(node1) ?? 0) - (getNodeViewCount(node2) ?? 0);
-    default:
-      return 0;
-  }
+  return match(column)
+    .with("name", () => {
+      const label1 = getNodeLabel(node1);
+      const label2 = getNodeLabel(node2);
+      return label1.localeCompare(label2);
+    })
+    .with("location", () => {
+      const label1 = getNodeLocationLabel(node1) ?? "";
+      const label2 = getNodeLocationLabel(node2) ?? "";
+      return label1.localeCompare(label2);
+    })
+    .with("view_count", () => {
+      const count1 = getNodeViewCount(node1) ?? 0;
+      const count2 = getNodeViewCount(node2) ?? 0;
+      return count1 - count2;
+    })
+    .exhaustive();
 }
 
 function compareNodes(

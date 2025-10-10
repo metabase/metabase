@@ -13,7 +13,7 @@ export type GraphData = {
 
 export type GraphSelection = {
   node: DependencyNode;
-  type: DependencyGroupType;
+  groupType: DependencyGroupType;
 };
 
 export type GraphContextType = {
