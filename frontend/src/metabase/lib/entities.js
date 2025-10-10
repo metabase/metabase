@@ -517,11 +517,7 @@ export function createEntity(def) {
 
   entity.reducers = {};
 
-  entity.reducers[entity.name] = handleEntities(
-    "metabase/entities/UPDATE",
-    entity.name,
-    def.reducer,
-  );
+  entity.reducers[entity.name] = handleEntities(entity.name, def.reducer);
 
   entity.reducers[entity.name + "_list"] = (
     state = {},
