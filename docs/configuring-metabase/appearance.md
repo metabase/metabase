@@ -28,6 +28,10 @@ Appearance settings are split across different tabs:
 - [Branding](#branding)
 - [Conceal Metabase](#conceal-metabase)
 
+## Dark mode
+
+People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Dark mode is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
+
 ## Branding
 
 In the Branding tab, you can configure your Metabase to match your brand visuals and voice.
