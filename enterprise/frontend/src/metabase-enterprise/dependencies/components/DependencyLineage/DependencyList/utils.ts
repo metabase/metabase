@@ -18,10 +18,10 @@ import {
 
 import { FILTER_OPTIONS } from "./constants";
 import type {
+  FilterCallback,
   FilterOption,
-  NodeComparator,
-  NodeFilter,
   SearchOptions,
+  SortCallback,
   SortColumn,
   SortOptions,
 } from "./types";
@@ -41,7 +41,7 @@ function isMatchingSearchQuery(node: DependencyNode, searchQuery: string) {
   return getNodeLabel(node).toLowerCase().includes(searchQuery);
 }
 
-const FILTERS: Record<FilterOption, NodeFilter> = {
+const FILTERS: Record<FilterOption, FilterCallback> = {
   verified: (node) => {
     if (node.type === "card") {
       const lastReview = node.data.moderation_reviews?.find(
@@ -101,7 +101,7 @@ function isMatchingFilters(
   return filterOptions.every((option) => FILTERS[option](node));
 }
 
-const COMPARATORS: Record<SortColumn, NodeComparator> = {
+const COMPARATORS: Record<SortColumn, SortCallback> = {
   name: (node1, node2) => {
     const label1 = getNodeLabel(node1);
     const label2 = getNodeLabel(node2);

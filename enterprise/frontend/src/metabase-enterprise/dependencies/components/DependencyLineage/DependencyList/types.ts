@@ -19,9 +19,9 @@ export type SearchOptions = {
   sortOptions: SortOptions;
 };
 
-export type NodeFilter = (node: DependencyNode) => boolean;
+export type FilterCallback = (node: DependencyNode) => boolean;
 
-export type NodeComparator = (
+export type SortCallback = (
   node1: DependencyNode,
   node2: DependencyNode,
 ) => number;
