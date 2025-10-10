@@ -164,10 +164,9 @@
       ;; MBQL query - check if it's a ref or embedded map
       mbql_query
       (let [resolved-mbql (-> (resolve-source-table mbql_query ref-index)
-                              (resolve-fields ref-index))]
-        {:type     :query
-         :database database-id
-         :query    resolved-mbql})
+                              (resolve-fields ref-index)
+                              (u/remove-nils))]
+        resolved-mbql)
 
       ;; sanity check
       :else

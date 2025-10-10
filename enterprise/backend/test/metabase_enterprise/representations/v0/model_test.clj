@@ -37,13 +37,13 @@
 ;; TODO: replace old stale tests
 
 ;; TODO: Need to load sample database first
-#_(deftest can-import
-    (doseq [filename ["test_resources/representations/v0/product-performance.model.yml"
-                      "test_resources/representations/v0/collection-8/sales-data-enriched.model.yml"
-                      "test_resources/representations/v0/collection-8/sales-data.model.yml"]]
-      (testing (str "Importing: " filename)
-        (let [rep (yaml/from-file filename)]
-          (is (rep/persist! rep))))))
+(deftest can-import
+  (doseq [filename ["test_resources/representations/v0/product-performance.model.yml"
+                    "test_resources/representations/v0/collection-8/sales-data-enriched.model.yml"
+                    "test_resources/representations/v0/collection-8/sales-data.model.yml"]]
+    (testing (str "Importing: " filename)
+      (let [rep (yaml/from-file filename)]
+        (is (rep/persist! (rep/normalize-representation rep)))))))
 
 #_(deftest export-import-roundtrip-test
     (testing "Testing export then import roundtrip for models"
