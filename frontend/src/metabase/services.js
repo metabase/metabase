@@ -199,6 +199,7 @@ export const PublicApi = {
     `${publicBase}/dashboard/:dashboardId/dashcard/:dashcardId/execute`,
   ),
   document: GET(`${publicBase}/document/:uuid`),
+  documentCardQuery: GET(`${publicBase}/document/:uuid/card/:cardId`),
 };
 
 export const EmbedApi = {

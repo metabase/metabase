@@ -7,9 +7,26 @@
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.util :as tu]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+(deftest public-sharing-test
+  (testing "test that a Document's :public_uuid comes back if public sharing is enabled..."
+    (tu/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+        (is (=? u/uuid-regex
+                (:public_uuid document)))))))
+
+(deftest public-sharing-test-2
+  (testing "test that a Document's :public_uuid comes back if public sharing is enabled..."
+    (testing "...but if public sharing is *disabled* it should come back as `nil`"
+      (tu/with-temporary-setting-values [enable-public-sharing false]
+        (mt/with-temp [:model/Document document {:public_uuid (str (random-uuid))}]
+          (is (= nil
+                 (:public_uuid document))))))))
 
 (deftest sync-document-cards-collection-matching-cards-test
   (testing "should only update cards with matching document_id"

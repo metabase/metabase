@@ -681,6 +681,101 @@
                        :parameters}
                      (set (keys public-action))))))))))))
 
+;;; ---------------------------------------- GET /api/public/document/:uuid ------------------------------------------
+
+(defn- text->prose-mirror-ast
+  "Convert plain text to a ProseMirror AST structure for testing."
+  [text]
+  {:type "doc"
+   :content [{:type "paragraph"
+              :content [{:type "text"
+                         :text text}]}]})
+
+(defn do-with-temp-public-document [m f]
+  (let [m (merge {:name "Test Public Document"
+                  :document (text->prose-mirror-ast "Test content")}
+                 (shared-obj)
+                 m)]
+    (mt/with-premium-features #{:documents}
+      (mt/with-temp [:model/Document document m]
+        (f (assoc document :public_uuid (:public_uuid m)))))))
+
+(defmacro with-temp-public-document {:style/indent 1} [[binding & [document]] & body]
+  `(do-with-temp-public-document
+     ~(or document {})
+     (fn [~binding] ~@body)))
+
+(deftest get-public-document-errors-test
+  (testing "GET /api/public/document/:uuid"
+    (testing "Shouldn't be able to fetch a public Document if public sharing is disabled"
+      (mt/with-temporary-setting-values [enable-public-sharing false]
+        (with-temp-public-document [{uuid :public_uuid}]
+          (is (= "An error occurred."
+                 (client/client :get 400 (str "public/document/" uuid)))))))
+
+    (testing "Should get a 404 if the Document doesn't exist"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (is (= "Not found."
+               (client/client :get 404 (str "public/document/" (random-uuid)))))))))
+
+(deftest get-public-document-test
+  (testing "GET /api/public/document/:uuid"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-document [document]
+        (let [result (client/client :get 200 (str "public/document/" (:public_uuid document)))]
+          (testing "Should return the document with safe fields"
+            (is (partial= {:name "Test Public Document"
+                           :document (text->prose-mirror-ast "Test content")
+                           :id (:id document)}
+                          result))
+            (is (contains? result :created_at))
+            (is (contains? result :updated_at)))
+          (testing "Should not include sensitive fields"
+            (is (not (contains? result :public_uuid)))
+            (is (not (contains? result :made_public_by_id)))
+            (is (not (contains? result :collection_id)))))))))
+
+(deftest public-document-archived-test
+  (testing "GET /api/public/document/:uuid should not work for archived documents"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-document [document]
+        (let [uuid (:public_uuid document)]
+          (testing "Document is accessible when not archived"
+            (is (= 200
+                   (:status (client/client :get (str "public/document/" uuid))))))
+          (testing "Document is not accessible after archiving"
+            (t2/update! :model/Document (:id document) {:archived true})
+            (is (= "Not found."
+                   (client/client :get 404 (str "public/document/" uuid))))))))))
+
+;;; --------------------------------- GET /api/public/document/:uuid/card/:card-id -----------------------------------
+
+(deftest public-document-card-query-test
+  (testing "GET /api/public/document/:uuid/card/:card-id"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-premium-features #{:documents}
+        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
+          (let [card-id (:id card)
+                document-content {:type "doc"
+                                  :content [{:type "cardEmbed"
+                                             :attrs {:id card-id}}]}]
+            (with-temp-public-document [document {:document document-content
+                                                   :content_type "application/json+vnd.prose-mirror"}]
+              (let [uuid (:public_uuid document)]
+                (testing "Can fetch card data from public document"
+                  (is (= 200
+                         (:status (client/client :get (str "public/document/" uuid "/card/" card-id))))))
+                
+                (testing "Cannot fetch card not embedded in document"
+                  (mt/with-temp [:model/Card other-card {:dataset_query (mt/mbql-query venues)}]
+                    (is (= "Not found."
+                           (client/client :get 404 (str "public/document/" uuid "/card/" (:id other-card)))))))
+                
+                (testing "Cannot fetch when card is archived"
+                  (t2/update! :model/Card card-id {:archived true})
+                  (is (= "Not found."
+                         (client/client :get 404 (str "public/document/" uuid "/card/" card-id)))))))))))))
+
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
 (defn dashcard-url

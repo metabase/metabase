@@ -11,6 +11,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
+import { PublicDocumentProvider } from "metabase-enterprise/public/contexts/PublicDocumentContext";
 import {
   CardEmbed,
   DROP_ZONE_COLOR,
@@ -103,10 +104,18 @@ export const PublicDocument = ({ params }: PublicDocumentProps) => {
       }}
     >
       {document && editor && (
-        <Box maw={900} mx="auto" p="xl" w="100%">
-          <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
-          <EditorContent editor={editor} />
-        </Box>
+        <PublicDocumentProvider
+          value={{
+            publicDocumentUuid: uuid,
+            publicDocument: document,
+            publicDocumentCards: document.cards,
+          }}
+        >
+          <Box maw={900} mx="auto" p="xl" w="100%">
+            <h1 style={{ marginBottom: "1rem" }}>{document.name}</h1>
+            <EditorContent editor={editor} />
+          </Box>
+        </PublicDocumentProvider>
       )}
     </LoadingAndErrorWrapper>
   );
