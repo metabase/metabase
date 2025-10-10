@@ -167,22 +167,20 @@ export function createEntity(def) {
   };
 
   // normalize helpers
-  // they get called with cached data, so we need to memoize them to avoid
-  // creating new objects
-  entity.normalize = (object) => ({
+  entity.normalize = (object, schema = entity.schema) => ({
     // include raw `object` (and alias under nameOne) for convenience
     object,
     [entity.nameOne]: object,
     // include standard normalizr properties, `result` and `entities`
-    ...normalize(object, entity.schema),
+    ...normalize(object, schema),
   });
 
-  entity.normalizeList = (list) => ({
+  entity.normalizeList = (list, schema = entity.schema) => ({
     // include raw `list` (and alias under nameMany) for convenience
     list,
     [entity.nameMany]: list,
     // include standard normalizr properties, `result` and `entities`
-    ...normalize(list, [entity.schema]),
+    ...normalize(list, [schema]),
   });
 
   // thunk decorators:
@@ -204,12 +202,12 @@ export function createEntity(def) {
   // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   entity.objectActions = {
     fetch: compose(
+      withAction(FETCH_ACTION),
       withCachedDataAndRequestState(
         ({ id }) => [...getObjectStatePath(id)],
         ({ id }) => [...getObjectStatePath(id), "fetch"],
         (entityQuery) => getQueryKey(entityQuery),
       ),
-      withAction(FETCH_ACTION),
       withEntityActionDecorators("fetch"),
     )(
       (entityQuery, options = {}) =>
@@ -307,12 +305,12 @@ export function createEntity(def) {
   // ACTION CREATORS
   entity.actions = {
     fetchList: compose(
+      withAction(FETCH_LIST_ACTION),
       withCachedDataAndRequestState(
         (entityQuery) => [...getListStatePath(entityQuery)],
         (entityQuery) => [...getListStatePath(entityQuery), "fetch"],
         (entityQuery) => entity.getQueryKey(entityQuery),
       ),
-      withAction(FETCH_LIST_ACTION),
     )((entityQuery = null) => async (dispatch, getState) => {
       const fetched = await entity.api.list(
         entityQuery || EMPTY_ENTITY_QUERY,
@@ -520,7 +518,7 @@ export function createEntity(def) {
   entity.reducers = {};
 
   entity.reducers[entity.name] = handleEntities(
-    /^metabase\/entities\//,
+    "metabase/entities/UPDATE",
     entity.name,
     def.reducer,
   );

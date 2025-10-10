@@ -127,7 +127,7 @@ export function mergeEntities(entities, newEntities) {
 // helper for working with normalizr
 // reducer that merges payload.entities
 export function handleEntities(
-  actionPattern,
+  actionType,
   entityType,
   reducer = (state = {}, action) => state,
 ) {
@@ -136,7 +136,7 @@ export function handleEntities(
       state = {};
     }
     const entities = getIn(action, ["payload", "entities", entityType]);
-    if (actionPattern.test(action.type) && entities) {
+    if (action.type === actionType && entities) {
       state = mergeEntities(state, entities);
     }
     return reducer(state, action);
