@@ -1,21 +1,25 @@
 import { useState } from "react";
+import { Panel, PanelGroup } from "react-resizable-panels";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import { ResizeHandle } from "metabase/bench/components/BenchApp";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
-import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
-import { Stack } from "metabase/ui";
+import { Box, Card, Tabs } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { useSourceState } from "metabase-enterprise/transforms/hooks/use-source-state";
+import {
+  type TransformEditorValue,
+  useTransformEditor,
+} from "metabase-enterprise/transforms/hooks/use-transform-editor";
 import type { Transform, TransformId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../../constants";
+import { TransformQueryPage } from "../TransformQueryPage";
 
 import { DependenciesSection } from "./DependenciesSection";
-import { HeaderSection } from "./HeaderSection";
-import { ManageSection } from "./ManageSection";
-import { NameSection } from "./NameSection";
+import { QueryPreview } from "./QueryPreview";
 import { RunSection } from "./RunSection";
 import { TargetSection } from "./TargetSection";
 import {
@@ -42,6 +46,7 @@ export function TransformPage({ params }: TransformPageProps) {
   const {
     data: transform,
     isLoading,
+    isFetching,
     error,
   } = useGetTransformQuery(transformId ?? skipToken, {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
@@ -51,13 +56,7 @@ export function TransformPage({ params }: TransformPageProps) {
     setIsPolling(isPollingNeeded(transform));
   }
 
-  useRegisterMetabotContextProvider(async () => {
-    return transform
-      ? { user_is_viewing: [{ type: "transform", ...transform }] }
-      : {};
-  }, [transform]);
-
-  if (isLoading || error != null) {
+  if (isLoading || isFetching || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
@@ -65,18 +64,87 @@ export function TransformPage({ params }: TransformPageProps) {
     return <LoadingAndErrorWrapper error={t`Not found.`} />;
   }
 
+  return <TransformPageInner transform={transform} />;
+}
+
+const TransformPageInner = ({ transform }: { transform: Transform }) => {
+  const { setSource, proposedSource, acceptProposed, clearProposed } =
+    useSourceState(transform.id, transform.source);
+
+  const transformEditor = useTransformEditor(transform.source, proposedSource);
+
   return (
-    <Stack gap="3.5rem" data-testid="transform-page">
-      <Stack gap="lg">
-        <HeaderSection transform={transform} />
-        <NameSection transform={transform} />
-      </Stack>
-      <RunSection transform={transform} />
-      <PLUGIN_TRANSFORMS_PYTHON.SourceSection transform={transform} />
-      <TargetSection transform={transform} />
-      <ManageSection transform={transform} />
-      <DependenciesSection transform={transform} />
-    </Stack>
+    <PanelGroup
+      autoSaveId="transforms-editor-panel-layout"
+      direction="vertical"
+      style={{ height: "100%", width: "100%" }}
+    >
+      <Panel>
+        <TransformQueryPage
+          transform={transform}
+          setSource={setSource}
+          proposedSource={proposedSource}
+          acceptProposed={acceptProposed}
+          clearProposed={clearProposed}
+          transformEditor={transformEditor}
+        />
+      </Panel>
+      <ResizeHandle direction="vertical" />
+      <Panel minSize={5} style={{ backgroundColor: "transparent" }}>
+        <TransformDrawer
+          transform={transform}
+          transformEditor={transformEditor}
+        />
+      </Panel>
+    </PanelGroup>
+  );
+};
+
+export function TransformDrawer({
+  transform,
+  transformEditor,
+}: {
+  transform: Transform;
+  transformEditor: TransformEditorValue;
+}) {
+  const isNew = !transform.id;
+
+  return (
+    <Card withBorder mx="sm" h="100%">
+      <Tabs defaultValue="preview" variant="pills">
+        <Tabs.List>
+          <Tabs.Tab name={t`Preview`} value="preview">{t`Preview`}</Tabs.Tab>
+          {!isNew && (
+            <>
+              <Tabs.Tab name={t`Run`} value="run">{t`Run`}</Tabs.Tab>
+              <Tabs.Tab name={t`Target`} value="target">{t`Target`}</Tabs.Tab>
+              <Tabs.Tab
+                name={t`Dependencies`}
+                value="dependencies"
+              >{t`Dependencies`}</Tabs.Tab>
+            </>
+          )}
+        </Tabs.List>
+        <Box p="md">
+          <Tabs.Panel value="preview">
+            <QueryPreview transformEditor={transformEditor} />
+          </Tabs.Panel>
+          {!isNew && (
+            <>
+              <Tabs.Panel value="run">
+                <RunSection transform={transform} />
+              </Tabs.Panel>
+              <Tabs.Panel value="target">
+                <TargetSection transform={transform} />
+              </Tabs.Panel>
+              <Tabs.Panel value="dependencies">
+                <DependenciesSection transform={transform} />
+              </Tabs.Panel>
+            </>
+          )}
+        </Box>
+      </Tabs>
+    </Card>
   );
 }
 

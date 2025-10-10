@@ -30,7 +30,7 @@ class CollectionRow extends Component {
         )}
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
-        <Icon name="folder" size={ICON_SIZE} style={{ opacity: 0.25 }} />
+        <Icon name="folder" size={ICON_SIZE} />
         <span className={cx(CS.flexFull, CS.ml1, CS.textBold)}>
           {collection.name}
         </span>

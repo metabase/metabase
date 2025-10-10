@@ -8,24 +8,37 @@ import { TablePicker } from "./TablePicker";
 import type { ChangeOptions, TreePath } from "./types";
 import { getUrl } from "./utils";
 
-export function RouterTablePicker(props: TreePath) {
+export function RouterTablePicker({
+  databaseId,
+  schemaName,
+  tableId,
+  className,
+}: TreePath & { className?: string }) {
   const dispatch = useDispatch();
-  const [value, setValue] = useState(props);
+  const [value, setValue] = useState({
+    databaseId,
+    schemaName,
+    tableId,
+  });
   const location = useSelector(getLocation);
-  const isSegments = location.pathname?.startsWith("/admin/datamodel/segment");
 
   const onChange = useCallback(
     (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
 
+      const isSegments = location.pathname?.startsWith(
+        "/bench/metadata/segment",
+      );
+      const isModels = location.pathname?.startsWith("/bench/metadata/model");
+
       // Update URL only when either opening a table or no table has been opened yet.
       // We want to keep user looking at a table when navigating databases/schemas.
-      const canUpdateUrl = value.tableId != null || props.tableId == null;
+      const canUpdateUrl = value.tableId != null || tableId == null;
 
       if (canUpdateUrl) {
         if (options?.isAutomatic) {
           // prevent auto-navigation from table-picker when Segments tab is open
-          if (!isSegments) {
+          if (!isSegments && !isModels) {
             dispatch(replace(getUrl(value)));
           }
         } else {
@@ -33,14 +46,18 @@ export function RouterTablePicker(props: TreePath) {
         }
       }
     },
-    [dispatch, isSegments, props],
+    [dispatch, location.pathname, tableId],
   );
 
   useEffect(() => {
-    setValue(props);
-  }, [props]);
+    setValue({
+      databaseId,
+      schemaName,
+      tableId,
+    });
+  }, [databaseId, schemaName, tableId]);
 
-  return <TablePicker path={value} onChange={onChange} />;
+  return <TablePicker path={value} className={className} onChange={onChange} />;
 }
 
 export function UncontrolledTablePicker({

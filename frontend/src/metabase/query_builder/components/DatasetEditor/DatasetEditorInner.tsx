@@ -120,6 +120,8 @@ export type DatasetEditorInnerProps = {
   toggleDataReference: () => void;
   toggleSnippetSidebar: () => void;
   forwardedRef?: React.Ref<HTMLDivElement>;
+  Header?: typeof EditBar;
+  preventCancel?: boolean;
 };
 
 const INITIAL_NOTEBOOK_EDITOR_HEIGHT = 500;
@@ -278,6 +280,8 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     onOpenModal,
     isShowingListViewConfiguration,
     rawSeries,
+    Header = EditBar,
+    preventCancel,
   } = props;
 
   const dispatch = useDispatch();
@@ -489,7 +493,9 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   } = PLUGIN_DEPENDENCIES.useCheckCardDependencies({
     onSave: async (question) => {
       await onSave(question, { rerunQuery: true });
-      await setQueryBuilderMode("view");
+      if (!preventCancel) {
+        await setQueryBuilderMode("view");
+      }
       runQuestionQuery();
     },
     onError: (error) => {
@@ -667,8 +673,8 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
   );
 
   return (
-    <>
-      <EditBar
+    <Flex h="100vh" direction="column">
+      <Header
         className={DatasetEditorS.DatasetEditBar}
         data-testid="dataset-edit-bar"
         title={question.displayName() as string}
@@ -681,11 +687,13 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           />
         }
         buttons={[
-          <Button
-            key="cancel"
-            small
-            onClick={handleCancelClick}
-          >{t`Cancel`}</Button>,
+          !preventCancel && (
+            <Button
+              key="cancel"
+              small
+              onClick={handleCancelClick}
+            >{t`Cancel`}</Button>
+          ),
           <Tooltip
             key="save"
             refProp="innerRef"
@@ -697,7 +705,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
               key="save"
               disabled={!canSaveChanges}
               actionFn={handleSave}
-              normalText={question.isSaved() ? t`Save changes` : t`Save`}
+              normalText={t`Save`}
               activeText={t`Saving…`}
               failedText={t`Save failed`}
               successText={t`Saved`}
@@ -777,7 +785,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
           onClose={handleCloseConfirmation}
         />
       )}
-    </>
+    </Flex>
   );
 };
 

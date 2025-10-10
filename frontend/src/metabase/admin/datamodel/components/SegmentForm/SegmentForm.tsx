@@ -1,137 +1,141 @@
 import type { FieldInputProps } from "formik";
-import { useFormik } from "formik";
-import { useEffect } from "react";
-import { Link } from "react-router";
+import { useCallback, useState } from "react";
+import { Link, type Route } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
   getSegmentQuery,
   getSegmentQueryDefinition,
 } from "metabase/admin/datamodel/utils/segments";
-import Button from "metabase/common/components/Button/Button";
-import { FieldSet } from "metabase/common/components/FieldSet";
-import { useSelector } from "metabase/lib/redux";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { useToast } from "metabase/common/hooks";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Segment, StructuredQuery, TableId } from "metabase-types/api";
+import type {
+  CreateSegmentRequest,
+  Segment,
+  StructuredQuery,
+  TableId,
+  UpdateSegmentRequest,
+} from "metabase-types/api";
 
-import FormInput from "../FormInput";
-import FormLabel from "../FormLabel";
-import FormTextArea from "../FormTextArea";
-
-import {
-  FormBody,
-  FormBodyContent,
-  FormFooter,
-  FormFooterContent,
-  FormRoot,
-  FormSection,
-  FormSubmitButton,
-} from "./SegmentForm.styled";
-
+type SegmentFormValues = Partial<CreateSegmentRequest & UpdateSegmentRequest>;
 export interface SegmentFormProps {
   segment?: Segment;
-  previewSummary?: string;
-  updatePreviewSummary: (previewSummary: string) => void;
-  onIsDirtyChange: (isDirty: boolean) => void;
-  onSubmit: (values: Partial<Segment>) => void;
+  onSubmit: (values: SegmentFormValues) => Promise<Segment>;
+  route: Route;
 }
 
-const SegmentForm = ({
+export const SegmentForm = ({
   segment,
-  onIsDirtyChange,
   onSubmit,
+  route,
 }: SegmentFormProps): JSX.Element => {
   const isNew = segment == null;
   const metadata = useSelector(getMetadata);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
-  const { isValid, getFieldProps, getFieldMeta, handleSubmit, dirty } =
-    useFormik({
-      initialValues: segment ?? {},
-      isInitialValid: false,
-      validate: (values) => getFormErrors(values, metadata),
-      onSubmit,
-    });
-
-  useEffect(() => {
-    onIsDirtyChange(dirty);
-  }, [dirty, onIsDirtyChange]);
+  const handleSubmit = useCallback(
+    (values: Partial<UpdateSegmentRequest>) => {
+      setIsSubmitting(true);
+      return onSubmit(values)
+        .then(() => {
+          sendToast({ message: t`Segment saved` });
+          dispatch(push("/bench/segment"));
+        })
+        .catch(() => {
+          setIsSubmitting(false);
+        });
+    },
+    [onSubmit, dispatch, sendToast],
+  );
 
   return (
-    <FormRoot onSubmit={handleSubmit}>
-      <FormBody>
-        <FormLabel
-          title={isNew ? t`Create Your Segment` : t`Edit Your Segment`}
-          description={
-            isNew
-              ? t`Select and add filters to create your new segment.`
-              : t`Make changes to your segment and leave an explanatory note.`
-          }
-        >
-          <SegmentEditor
-            {...getSegmentEditorProps(
-              getFieldProps("definition"),
-              getFieldProps("table_id"),
-              metadata,
-            )}
-            isNew={isNew}
-          />
-        </FormLabel>
-        <FormBodyContent>
-          <FormLabel
-            htmlFor="name"
-            title={t`Name Your Segment`}
-            description={t`Give your segment a name to help others find it.`}
-          >
-            <FormInput
-              {...getFieldProps("name")}
-              {...getFieldMeta("name")}
-              id="name"
-              placeholder={t`Something descriptive but not too long`}
-            />
-          </FormLabel>
-          <FormLabel
-            htmlFor="description"
-            title={t`Describe Your Segment`}
-            description={t`Give your segment a description to help others understand what it's about.`}
-          >
-            <FormTextArea
-              {...getFieldProps("description")}
-              {...getFieldMeta("description")}
-              id="description"
-              placeholder={t`This is a good place to be more specific about less obvious segment rules`}
-            />
-          </FormLabel>
-          {!isNew && (
-            <FieldSet legend={t`Reason For Changes`} noPadding={false}>
-              <FormLabel
-                htmlFor="revision_message"
-                description={t`Leave a note to explain what changes you made and why they were required.`}
-              >
-                <FormTextArea
-                  {...getFieldProps("revision_message")}
-                  {...getFieldMeta("revision_message")}
+    <FormProvider<SegmentFormValues>
+      initialValues={segment ?? {}}
+      enableReinitialize
+      onSubmit={handleSubmit}
+      validate={(values) => getFormErrors(values, metadata)}
+    >
+      {({ isValid, dirty, getFieldProps, errors }) => {
+        return (
+          <Form>
+            <Stack gap="lg" p="md">
+              <Box>
+                <Text fw="bold">
+                  {isNew ? t`Create your Ssegment` : t`Edit your segment`}
+                </Text>
+                <Text fz="sm" mb="sm">
+                  {isNew
+                    ? t`Select and add filters to create your new segment.`
+                    : t`Make changes to your segment and leave an explanatory note.`}
+                </Text>
+                <SegmentEditor
+                  {...getSegmentEditorProps(
+                    getFieldProps("definition"),
+                    getFieldProps("table_id"),
+                    metadata,
+                  )}
+                  isNew={isNew}
+                />
+                {errors?.definition && (
+                  <Text c="error" fz="sm" mt="xs">
+                    {errors.definition ?? t`At least one filter is required`}
+                  </Text>
+                )}
+              </Box>
+              <FormTextInput
+                name="name"
+                label={t`Name your segment`}
+                description="Give your segment a name to help others find it."
+                required
+                placeholder={t`Something descriptive but not too long`}
+              />
+              <FormTextarea
+                name="description"
+                label={t`Describe your segment`}
+                description="Give your segment a description to help others understand what it's about."
+                placeholder={t`This is a good place to be more specific about less obvious segment rules`}
+                required
+              />
+              {!isNew && (
+                <FormTextarea
+                  label={t`Reason for changes`}
+                  name="revision_message"
+                  required
+                  description={t`Leave a note to explain what changes you made and why they were required.`}
                   id="revision_message"
                   placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                 />
-              </FormLabel>
-              <FormFooterContent>
-                <SegmentFormActions isValid={isValid} />
-              </FormFooterContent>
-            </FieldSet>
-          )}
-        </FormBodyContent>
-      </FormBody>
-      {isNew && (
-        <FormFooter>
-          <FormSection>
-            <SegmentFormActions isValid={isValid} />
-          </FormSection>
-        </FormFooter>
-      )}
-    </FormRoot>
+              )}
+              <Box>
+                <FormErrorMessage />
+              </Box>
+              <SegmentFormActions isValid={isValid && dirty} />
+            </Stack>
+            <LeaveRouteConfirmModal
+              isEnabled={dirty && !isSubmitting}
+              route={route}
+            />
+          </Form>
+        );
+      }}
+    </FormProvider>
   );
 };
 
@@ -143,18 +147,23 @@ const SegmentFormActions = ({
   isValid,
 }: SegmentFormActionsProps): JSX.Element => {
   return (
-    <div>
-      <FormSubmitButton type="submit" primary={isValid} disabled={!isValid}>
-        {t`Save changes`}
-      </FormSubmitButton>
-      <Button as={Link} to="/admin/datamodel/segments">
+    <Flex justify="flex-end" gap="sm">
+      <Button component={Link} to="/admin/datamodel/segments">
         {t`Cancel`}
       </Button>
-    </div>
+      <FormSubmitButton
+        variant="filled"
+        disabled={!isValid}
+        label={t`Save changes`}
+      />
+    </Flex>
   );
 };
 
-const getFormErrors = (values: Partial<Segment>, metadata: Metadata) => {
+const getFormErrors = (
+  values: SegmentFormValues,
+  metadata: Metadata,
+): Record<string, string> => {
   const errors: Record<string, string> = {};
 
   if (!values.name) {
@@ -201,6 +210,3 @@ function getSegmentEditorProps(
     },
   };
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SegmentForm;

@@ -1,34 +1,30 @@
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { ItemsListSection } from "metabase/bench/components/ItemsListSection/ItemsListSection";
+import Link from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
-import { Card, Flex } from "metabase/ui";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
+import { Box,  NavLink, Text } from "metabase/ui";
 import {
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import { TimezoneIndicator } from "metabase-enterprise/transforms/components/TimezoneIndicator";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformTag } from "metabase-types/api";
 
 import { ListEmptyState } from "../../../components/ListEmptyState";
-import { RunStatusInfo } from "../../../components/RunStatusInfo";
 import { TagList } from "../../../components/TagList";
 import type { TransformListParams } from "../../../types";
 import { getTransformUrl } from "../../../urls";
-import { parseTimestampWithTimezone } from "../../../utils";
+import { CreateTransformMenu } from "../CreateTransformMenu";
 import { hasFilterParams } from "../utils";
-
-import S from "./TransformList.module.css";
 
 type TransformListProps = {
   params: TransformListParams;
+  onCollapse: () => void;
 };
 
-export function TransformList({ params }: TransformListProps) {
-  const systemTimezone = useSetting("system-timezone");
+export function TransformList({ params, onCollapse }: TransformListProps) {
   const {
     data: transforms = [],
     isLoading: isLoadingTransforms,
@@ -45,11 +41,6 @@ export function TransformList({ params }: TransformListProps) {
   } = useListTransformTagsQuery();
   const isLoading = isLoadingTransforms || isLoadingTags;
   const error = transformsError ?? tagsError;
-  const dispatch = useDispatch();
-
-  const handleRowClick = (transform: Transform) => {
-    dispatch(push(getTransformUrl(transform.id)));
-  };
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -65,59 +56,43 @@ export function TransformList({ params }: TransformListProps) {
   }
 
   return (
-    <Card p={0} shadow="none" withBorder>
-      <AdminContentTable
-        columnTitles={[
-          t`Transform`,
-          t`Target`,
-          <Flex key="last-run-at" component="span" align="center" gap="xs">
-            <span className={S.nowrap}>{t`Last run at`}</span>{" "}
-            <TimezoneIndicator />
-          </Flex>,
-          <span key="last-run-status" className={S.nowrap}>
-            {t`Last run status`}
-          </span>,
-          t`Tags`,
-        ]}
-      >
-        {transforms.map((transform) => (
-          <tr
-            key={transform.id}
-            className={S.row}
-            onClick={() => handleRowClick(transform)}
-          >
-            <td className={S.wrap}>{transform.name}</td>
-            <td className={S.wrap}>{transform.target.name}</td>
-            <td className={S.nowrap}>
-              {transform.last_run?.end_time
-                ? parseTimestampWithTimezone(
-                    transform.last_run.end_time,
-                    systemTimezone,
-                  ).format("lll")
-                : null}
-            </td>
-            <td className={S.nowrap}>
-              {transform.last_run != null ? (
-                <RunStatusInfo
-                  status={transform.last_run.status}
-                  message={transform.last_run.message}
-                  endTime={
-                    transform.last_run.end_time != null
-                      ? parseTimestampWithTimezone(
-                          transform.last_run.end_time,
-                          systemTimezone,
-                        ).toDate()
-                      : null
-                  }
-                />
-              ) : null}
-            </td>
-            <td className={S.wrap}>
-              <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
-            </td>
-          </tr>
-        ))}
-      </AdminContentTable>
-    </Card>
+    <ItemsListSection
+      sectionTitle={t`Transforms`}
+      titleMenuItems={<div />}
+      onCollapse={onCollapse}
+      onChangeSorting={() => null}
+      AddButton={CreateTransformMenu}
+      listItems={
+        <Box>
+          {transforms.map((transform) => (
+            <TransformListItem key={transform.id} transform={transform} tags={tags} />
+          ))}
+        </Box>
+      }
+    />
   );
+}
+
+function TransformListItem({ transform, tags }: { transform: Transform, tags: TransformTag[] }) {
+  const location = useSelector(getLocation);
+  // get id off the end
+  const id = location?.pathname?.split("/")?.pop();
+  const isActive = id === String(transform.id);
+  return (
+    <NavLink
+      component={Link}
+      to={getTransformUrl(transform.id)}
+      active={isActive}
+      w="100%"
+      label={
+        <Box>
+          <Text fw="bold">{transform.name}</Text>
+          <Box c="text-light" fz="sm" mb="xs" ff="monospace">
+            {transform.target.name}
+          </Box>
+          <TagList tags={tags} tagIds={transform.tag_ids ?? []} />
+        </Box>
+      }
+    />
+  )
 }

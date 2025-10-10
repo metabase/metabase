@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ResizableBox } from "react-resizable";
 
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
-import { Box, Flex } from "metabase/ui";
+import { Box, Flex, type MantineStyleProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import S from "./MetricEditorBody.module.css";
@@ -19,6 +19,11 @@ type MetricEditorBodyProps = {
   isRunnable: boolean;
   onChange: (question: Question) => Promise<void>;
   onRunQuery: () => Promise<void>;
+
+  // TODO: Designs still in flux. Verify still needed.
+  excludeSidebar?: boolean;
+  padding?: MantineStyleProps["p"];
+  height?: number;
 };
 
 export function MetricEditorBody({
@@ -29,6 +34,9 @@ export function MetricEditorBody({
   isRunnable,
   onChange,
   onRunQuery,
+  excludeSidebar,
+  padding,
+  height,
 }: MetricEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
 
@@ -36,7 +44,7 @@ export function MetricEditorBody({
     <ResizableBox
       className={S.root}
       axis="y"
-      height={NOTEBOOK_HEIGHT}
+      height={height || NOTEBOOK_HEIGHT}
       handle={<ResizableBoxHandle />}
       resizeHandles={["s"]}
       onResizeStart={() => setIsResizing(true)}
@@ -53,9 +61,10 @@ export function MetricEditorBody({
             updateQuestion={onChange}
             runQuestionQuery={onRunQuery}
             hasVisualizeButton={false}
+            padding={padding}
           />
         </Box>
-        <MetricEditorSidebar />
+        {!excludeSidebar && <MetricEditorSidebar />}
       </Flex>
     </ResizableBox>
   );

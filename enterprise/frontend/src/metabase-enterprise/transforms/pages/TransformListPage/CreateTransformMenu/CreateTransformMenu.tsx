@@ -43,13 +43,12 @@ export function CreateTransformMenu() {
 
   return (
     <>
-      <Menu>
+      <Menu position="bottom-start">
         <Menu.Target>
           <Button
-            variant="filled"
             leftSection={<Icon name="add" aria-hidden />}
+            size="sm"
           >
-            {t`Create a transform`}
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
