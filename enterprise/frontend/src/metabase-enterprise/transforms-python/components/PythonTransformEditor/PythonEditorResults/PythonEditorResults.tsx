@@ -175,7 +175,14 @@ function ExecutionOutputLogs({
   executionResult: PythonExecutionResult;
 }) {
   return (
-    <Box fz="sm" p="md" bg="bg-light" h="100%" className={S.logs}>
+    <Box
+      fz="sm"
+      p="md"
+      bg="bg-light"
+      h="100%"
+      className={S.logs}
+      data-testid="python-logs"
+    >
       {executionResult.logs ? (
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
@@ -198,9 +205,10 @@ function RunnerToggle({
 }) {
   return (
     <Group align="center" pr="md" c="text-light">
-      <Text c="text-light" fz="sm">{t`Emulate runner in-browser`}</Text>
       <Switch
         size="xs"
+        label={t`Emulate runner in-browser`}
+        labelPosition="left"
         checked={testRunner === "pyodide"}
         onChange={({ target }) => {
           onTestRunnerChange(target.checked ? "pyodide" : "api");
