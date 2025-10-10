@@ -176,7 +176,7 @@ describe("GsheetsSyncStatus", () => {
     screen.getByText("Files sync every 15 minutes");
   });
 
-  it("should refetch tables when sync completes", async () => {
+  it("should refetch tables when sync completes (UXW-311)", async () => {
     setup({
       initialFolderPayload: { status: "syncing" },
     });
