@@ -7,7 +7,7 @@ import EmptyState from "metabase/common/components/EmptyState";
 import { DetailsGroup, Header } from "metabase/detail-view/components";
 import { getEntityIcon, getHeaderColumns } from "metabase/detail-view/utils";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Box, Repeat, Skeleton, Stack, rem } from "metabase/ui";
 import { extractRemappedColumns } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
@@ -128,7 +128,7 @@ function getDataSampleQuery(
 }
 
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
-  const metadata = useSelector(getMetadata);
+  const metadata = useSelector(getMetadataUnfiltered);
   const query = useMemo(
     () => getDataSampleQuery(metadata, databaseId, tableId, fieldId),
     [metadata, databaseId, tableId, fieldId],

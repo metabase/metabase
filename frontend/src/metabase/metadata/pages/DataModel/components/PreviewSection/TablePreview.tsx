@@ -6,7 +6,7 @@ import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import EmptyState from "metabase/common/components/EmptyState";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import { Repeat, Skeleton, Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -84,7 +84,7 @@ function useDataSample({
   pkFields,
   tableId,
 }: Props) {
-  const metadata = useSelector(getMetadata);
+  const metadata = useSelector(getMetadataUnfiltered);
   const query = useMemo(
     () => getPreviewQuery(metadata, databaseId, tableId, fieldId, pkFields),
     [metadata, databaseId, tableId, fieldId, pkFields],
