@@ -7,7 +7,9 @@
    [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -128,21 +130,6 @@
    {:description "Currency code for financial columns (e.g., USD, EUR)"}
    ::lib.schema.common/non-blank-string])
 
-(mr/def ::column
-  [:map
-   {:description "Column metadata definition"}
-   [:name ::column-name]
-   [:display_name {:optional true} ::display-name]
-   [:description {:optional true} ::column-description]
-   [:base_type {:optional true} ::base-type]
-   [:effective_type {:optional true} ::effective-type]
-   [:semantic_type {:optional true} ::semantic-type]
-   [:visibility {:optional true} ::visibility]
-   [:visibility_type {:optional true} [:maybe :string]]
-   [:fk_target_field_id {:optional true} [:maybe :int]]
-   [:currency {:optional true} ::currency]
-   [:settings {:optional true} [:maybe ::column-settings]]])
-
 (mr/def ::column-settings
   [:map
    {:description "User-editable column settings for formatting and display"}
@@ -161,6 +148,21 @@
    [:date_abbreviate {:optional true} [:maybe :boolean]]
    [:time_enabled {:optional true} [:maybe [:enum "minutes" "seconds" "milliseconds"]]]
    [:time_style {:optional true} [:maybe :string]]])
+
+(mr/def ::column
+  [:map
+   {:description "Column metadata definition"}
+   [:name ::column-name]
+   [:display_name {:optional true} ::display-name]
+   [:description {:optional true} ::column-description]
+   [:base_type {:optional true} ::base-type]
+   [:effective_type {:optional true} ::effective-type]
+   [:semantic_type {:optional true} ::semantic-type]
+   [:visibility {:optional true} ::visibility]
+   [:visibility_type {:optional true} [:maybe :string]]
+   [:fk_target_field_id {:optional true} [:maybe :int]]
+   [:currency {:optional true} ::currency]
+   [:settings {:optional true} [:maybe ::column-settings]]])
 
 (mr/def ::columns
   [:sequential
@@ -235,29 +237,18 @@
     (fn [{:keys [query mbql_query]}]
       (= 1 (count (filter some? [query mbql_query]))))]])
 
-;; TODO: we'll still want something like this (QUE-2654)
-(defn- merge-column
-  "Merge user-edited fields from a column representation into base column metadata.
-   User edits take precedence for display_name, description, semantic_type, visibility_type, and fk_target_field_id.
-   Settings are merged with user settings taking precedence."
-  [base-col user-col]
-  (-> base-col
-      (merge (select-keys user-col [:display_name :description :semantic_type
-                                    :visibility_type :fk_target_field_id]))
-      (update :settings #(merge % (:settings user-col)))))
+(def ^:private user-editable-settings
+  [:column_title :text_align :text_wrapping :view_as :link_text :link_url
+   :show_mini_bar :number_style :currency :currency_style
+   :date_style :date_separator :date_abbreviate :time_enabled :time_style])
 
-(defn- merge-column-metadata
-  "Merge user-edited column metadata from model.yml into base metadata from mbql.yml.
-   User edits take precedence. Returns the base metadata with user edits applied."
-  [base-metadata user-columns]
-  (if (empty? user-columns)
-    base-metadata
-    (let [user-by-name (into {} (map (juxt :name identity)) user-columns)]
-      (mapv (fn [base-col]
-              (if-let [user-col (get user-by-name (:name base-col))]
-                (merge-column base-col user-col)
-                base-col))
-            base-metadata))))
+(defn- columns->result-metadata
+  "Merge required inferred-metadata into the yml column metadata for user-defined fields."
+  [user-metadata inferred-metadata]
+  (mapv (fn [user-column inferred]
+          (assoc user-column :base_type (:base_type inferred)))
+        user-metadata
+        inferred-metadata))
 
 (defmethod import/yaml->toucan [:v0 :model]
   [{model-name :name
@@ -265,7 +256,14 @@
    ref-index]
   (let [database-id (v0-common/resolve-database-id database ref-index)
         dataset-query (-> (assoc representation :database database-id)
-                          (v0-mbql/import-dataset-query ref-index))]
+                          (v0-mbql/import-dataset-query ref-index))
+        ;; An alternative:
+        ;; 1. Get the database-id, construct a metadata-provider.
+        ;; 2. Call `card.metadata/normalize-dataset-query` on the query with that metadata-provider
+        ;; 3. Call `lib/query` on the normalized query with the metadata-provider
+        ;; 4. Pass the result of that into `lib/returned-columns`
+        ;; No idea which is better.
+        inferred-metadata (card.metadata/infer-metadata dataset-query)]
     (merge
      {:name                   model-name
       :entity_id              (or entity-id
@@ -278,7 +276,7 @@
       :query_type             (if (= (:type dataset-query) "native") :native :query)
       :type                   :model}
      (when columns
-       {:result_metadata columns})
+       {:result_metadata (columns->result-metadata columns inferred-metadata)})
      (when-let [coll-id (v0-common/find-collection-id collection)]
        {:collection_id coll-id}))))
 
@@ -303,27 +301,23 @@
 
 ;;; -- Export --
 
-;; TODO: Are these right? (QUE-2654)
 (defn- extract-user-editable-settings
   "Extract user-editable settings from a column's settings map.
    Returns only the fields that users should be able to edit in YAML."
   [settings]
   (when settings
     (not-empty
-     (select-keys settings
-                  [:column_title :text_align :text_wrapping :view_as :link_text :link_url
-                   :show_mini_bar :number_style :currency :currency_style
-                   :date_style :date_separator :date_abbreviate :time_enabled :time_style]))))
+     (select-keys settings user-editable-settings))))
 
 (defn- extract-user-editable-column-metadata
   "Extract user-editable metadata from a result_metadata column entry.
    Returns a map with :name and user-editable fields only."
-  [column]
-  (let [base {:name (:name column)}
+  [result-column-metadata]
+  (let [base {:name (:name result-column-metadata)}
         editable (not-empty
-                  (select-keys column [:display_name :description :semantic_type
-                                       :visibility_type :fk_target_field_id]))
-        settings (extract-user-editable-settings (:settings column))]
+                  (select-keys result-column-metadata [:display_name :description :semantic_type
+                                                       :visibility_type :fk_target_field_id]))
+        settings (extract-user-editable-settings (:settings result-column-metadata))]
     (cond-> base
       editable (merge editable)
       settings (assoc :settings settings))))
@@ -346,8 +340,7 @@
 
       (= :query (:type query))
       (assoc :mbql_query (:query query)
-             :database (:database query)
-             :columns (:result_metadata card))
+             :database (:database query))
 
       columns
       (assoc :columns columns)
