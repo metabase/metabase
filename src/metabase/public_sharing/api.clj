@@ -147,9 +147,7 @@
   [card-id :- ::lib.schema.id/card
    export-format
    parameters
-   & {:keys [qp]
-      :or   {qp qp.card/process-query-for-card-default-qp}
-      :as   options}]
+   & options]
   ;; run this query with full superuser perms
   ;;
   ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
@@ -159,7 +157,6 @@
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    (export-format->context export-format)
-              :qp         qp
               :make-run   process-query-for-card-with-id-run-fn
               options)))
 
