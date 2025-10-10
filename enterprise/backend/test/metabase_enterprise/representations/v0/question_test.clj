@@ -5,7 +5,10 @@
    #_[metabase-enterprise.representations.import :as import]
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
+   [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.mbql :as mbql]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -45,6 +48,22 @@
         ref-index {(v0-common/unref (:database rep))
                    (t2/select-one :model/Database (mt/id))}]
     (is (rep/persist! rep ref-index))))
+
+(deftest database-import-test
+  (mt/with-temp [:model/Card question {:type :question
+                                       :dataset_query (mt/mbql-query users)}]
+    (let [edn (rep/export question)
+          export-set (export/export-set [edn])
+          export-set (export/reduce-tables export-set)
+          db-ref (v0-common/unref (:database edn))
+          idx (into {} (map (juxt :ref identity)) export-set)
+          database (get idx db-ref)]
+      (is (= 2 (count export-set)))
+      (is (= :database (:type database)))
+      (let [database-tables (set (for [schema (:schemas database)
+                                       table (:tables schema)]
+                                   [(:name schema) (:name table)]))]
+        (is (= #{["PUBLIC" "USERS"]} database-tables))))))
 
 #_(deftest import-export-singleton-test
     (testing "Testing import then export roundtrip with IDs"
