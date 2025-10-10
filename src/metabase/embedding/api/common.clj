@@ -303,8 +303,7 @@
   "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
-  [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
-      :or   {qp qp.card/process-query-for-card-default-qp}}]
+  [& {:keys [export-format card-id embedding-params token-params query-params constraints options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
@@ -312,7 +311,6 @@
               card-id export-format parameters
               :context     :embedded-question
               :constraints constraints
-              :qp          qp
               options)))
 
 (defn unsigned-token->card-id

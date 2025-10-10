@@ -23,6 +23,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.parameters :as qp.params]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -284,6 +285,24 @@
                             (m/index-by :id))]
     (mapv #(merge (-> % :id id->card-param) %) parameters)))
 
+(mu/defn- verified-subset-query :- ::lib.schema/query
+  [card-query   :- ::qp.schema/any-query
+   subset-query :- ::qp.schema/any-query]
+  (let [mp (qp.store/metadata-provider)
+        normalized-card-query   (lib/query mp card-query)
+        normalized-subset-query (lib/query mp subset-query)
+        comparable-query (fn [query]
+                           (-> query
+                               qp.params/substitute-parameters
+                               lib/drop-empty-stages
+                               ;; TODO removing order-by and limit could give access to hidden data
+                               (lib/update-query-stage -1 update dissoc :aggregation :breakout :order-by :limit)
+                               qp.util/select-keys-for-hashing))]
+    ;; TODO does the filter-stage require special handling here?
+    (when (= (comparable-query normalized-subset-query)
+             (comparable-query normalized-card-query))
+      normalized-subset-query)))
+
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.server.streaming_response.StreamingResponse` (see [[metabase.server.streaming-response]]) that should be
@@ -304,7 +323,8 @@
   all valid options."
   [card-id :- ::lib.schema.id/card
    export-format
-   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
+   & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache
+             subset-query]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
@@ -323,9 +343,11 @@
         card-viz   (:visualization_settings card)
         merged-viz (m/deep-merge card-viz dash-viz)
         ;; We need to check this here because dashcards don't get selected until this point
-        qp         (if (= :pivot (:display card))
-                     qp.pivot/run-pivot-query
-                     (or qp process-query-for-card-default-qp))
+        qp         (cond
+                     (= :pivot (:display card)) qp.pivot/run-pivot-query
+                     qp                         qp
+                     subset-query               qp/process-query
+                     :else                      process-query-for-card-default-qp)
         runner     (make-run qp export-format)
         query      (-> (query-for-card card parameters constraints middleware {:dashboard-id dashboard-id})
                        (assoc :viz-settings merged-viz)
@@ -347,5 +369,16 @@
                 (u/pprint-to-str query))
     (binding [qp.perms/*card-id* card-id]
       (qp.store/with-metadata-provider (:database_id card)
-        (qp.results-metadata/store-previous-result-metadata! card)
-        (runner query info)))))
+        (when-not subset-query
+          (qp.results-metadata/store-previous-result-metadata! card))
+        (if subset-query
+          (if-let [subset-query (verified-subset-query query subset-query)]
+            ;; TODO should :visualization-settings in info be removed?
+            (runner subset-query info)
+            (throw (ex-info (tru "Invalid subset query: Card {0} does not allow running {1}."
+                                 card-id
+                                 (pr-str subset-query))
+                            {:type    qp.error-type/invalid-query
+                             :card-id card-id
+                             :query   subset-query})))
+          (runner query info))))))
