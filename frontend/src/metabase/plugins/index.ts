@@ -582,6 +582,14 @@ export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP = {
   SdkIframeEmbedSetup: (): ReactNode => null,
 };
 
+const defaultModelFilters = {
+  verified: false,
+};
+
+const defaultMetricFilters = {
+  verified: false,
+};
+
 export const PLUGIN_CONTENT_VERIFICATION = {
   contentVerificationEnabled: false,
   VerifiedFilter: {} as SearchFilterComponent<"verified">,
@@ -591,13 +599,11 @@ export const PLUGIN_CONTENT_VERIFICATION = {
   ) => 0,
 
   ModelFilterControls: (_props: ModelFilterControlsProps) => null,
-  getDefaultModelFilters: (_state: State): ModelFilterSettings => ({
-    verified: false,
-  }),
+  getDefaultModelFilters: (_state: State): ModelFilterSettings =>
+    defaultModelFilters,
 
-  getDefaultMetricFilters: (_state: State): MetricFilterSettings => ({
-    verified: false,
-  }),
+  getDefaultMetricFilters: (_state: State): MetricFilterSettings =>
+    defaultMetricFilters,
   MetricFilterControls: (_props: MetricFilterControlsProps) => null,
 };
 
