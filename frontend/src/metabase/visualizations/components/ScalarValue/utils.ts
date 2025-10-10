@@ -78,6 +78,7 @@ export const getMaxFontSize = (
   // Determine max font size based on width
   // Exact progression as specified, then 0.25rem increments beyond 7 units, capped at 7rem
   const widthBasedSizes: Record<number, number> = {
+    1: 1.0, // Very narrow cards need smaller font
     2: 1.25,
     3: 1.5,
     4: 2.25,
