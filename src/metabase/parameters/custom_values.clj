@@ -96,9 +96,10 @@
    {:keys [query-string] :as _opts}]
   (when (seq query)
     (let [{:keys [query value-column]}
-          (query-and-value-column card value-field-ref)
+          (query-and-value-column card legacy-field-ref)
                 ;; Append stage to avoid interfeting with previous stage breakout and filters. Adjust value column
                 ;; accordingly.
+          ;; TODO: when nil
           query (lib/append-stage query)
           value-column (cond-> value-column
                          (:lib/source-uuid value-column)
