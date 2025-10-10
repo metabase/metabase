@@ -1,8 +1,6 @@
 (ns metabase.query-processor.streaming
   (:require
    [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
-   [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -172,7 +170,6 @@
          {:data initial-metadata})
 
         ([result]
-         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))
