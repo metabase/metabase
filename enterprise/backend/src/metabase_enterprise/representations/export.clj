@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.representations.v0.common :as v0-common]
+   [metabase-enterprise.representations.v0.mbql :as v0-mbql]
    [metabase-enterprise.representations.yaml :as rep-yaml]
    [metabase.collections.api :as coll.api]
    [metabase.util.log :as log]
@@ -56,6 +57,63 @@
             reps (map read-from-ref refs)]
         (recur (into acc reps) acc))
       acc)))
+
+(defn- schema->table-index [schema]
+  (let [tables (:tables schema)
+        index (into {} (map (juxt :name identity)) tables)]
+    (assoc schema :tables index)))
+
+(defn- table-index->schema [schema]
+  (update schema :tables (comp vec #(sort-by :name %) vals)))
+
+(defn- db->schema-index [db]
+  (let [schemas (:schemas db)
+        schemas (map schema->table-index schemas)
+        index (into {} (map (juxt :name identity)) schemas)]
+    (assoc db :schemas index)))
+
+(defn- schema-index->db [db]
+  (update db :schemas (comp vec #(sort-by :name %) #(map table-index->schema %) vals)))
+
+(defn- limit-db-to-schemas [db schemas]
+  (update db :schemas select-keys schemas))
+
+(defn- limit-schema-to-tables [schema tables]
+  (update schema :tables select-keys tables))
+
+(defn reduce-tables
+  "Include only schemas and tables in databases referenced by queries in the export set."
+  [export-set]
+  (let [tables (into #{} (mapcat v0-mbql/table-refs) export-set)
+        referred-to-databases (into #{} (comp (map :database)
+                                              (map v0-common/unref))
+                                    tables)
+        db-split (group-by #(= :database (:type %)) export-set)
+        databases (get db-split true)
+        ;; turn them into a convenient form
+        databases (map db->schema-index databases)
+        non-databases (get db-split false)
+        ;; remove databases that are not referred to
+        databases (filter #(contains? referred-to-databases (:ref %)) databases)
+        tables-by-db (group-by (comp v0-common/unref :database) tables)
+        databases (map (fn [db]
+                         (let [tables (get tables-by-db (:ref db))
+                               by-schema (group-by :schema tables)
+                               schemas (keys by-schema)
+                               ;; remove schemas that are not referred to
+                               database (limit-db-to-schemas db schemas)
+                               ;; remove tables taht are not referred to
+                               database (reduce (fn [database [schema tables]]
+                                                  (let [tables (into #{} (map :table) tables)]
+                                                    (update-in database [:schemas schema] limit-schema-to-tables tables)))
+                                                database by-schema)]
+                           database))
+                       databases)
+        ;; turn them back into regular form
+        databases (map schema-index->db databases)]
+    (-> []
+        (into databases)
+        (into non-databases))))
 
 (defn- child->database-ids
   "Extract database IDs from a child entity"
@@ -125,10 +183,6 @@
                          (-> (t2/select-one :model/Database :id db-id)
                              export-entity))
                        (mapcat :databases child-reps)))))
-
-(comment
-
-  (export-entire-collection 5))
 
 ;;;;;;;;;;;;;;;;
 ;; Transforms ;;
