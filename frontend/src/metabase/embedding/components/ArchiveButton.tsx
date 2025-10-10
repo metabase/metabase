@@ -27,15 +27,18 @@ export function ArchiveButton({ item }: ArchiveButtonProps) {
     return null;
   }
 
+  const buttonLabel = t`Move to trash`;
+
   return (
     <Menu opened={dropdownOpened} onClose={() => dropdownActions.close()}>
       <Tooltip
-        label={t`Move to trash`}
+        label={buttonLabel}
         opened={dropdownOpened ? false : undefined}
         withArrow
       >
         <Menu.Target>
           <Button
+            aria-label={buttonLabel}
             leftSection={<Icon name="trash" className={S.archiveIcon} />}
             variant="inverse"
             py="sm"
