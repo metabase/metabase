@@ -80,10 +80,11 @@
                                        [:query {:optional true} ::queries.schema/query]]]]
    [:target {:optional true}  [:maybe ms/Map]]])
 
-(defn check-transform-dependencies
-  "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.
-  Takes a map with :id (required), :source (optional), and :target (optional) keys."
-  [{:keys [id source target]}]
+(api.macros/defendpoint :post "/check_transform"
+  "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
+  [_route-params
+   _query-params
+   {:keys [id source target]} :- ::transform-body]
   (if (= (keyword (:type source)) :query)
     (let [database-id   (-> source :query :database)
           base-provider (lib-be/application-database-metadata-provider database-id)
@@ -96,13 +97,6 @@
       (broken-cards-response breakages))
     ;; if this isn't a sql query, just claim it works
     {:success true}))
-
-(api.macros/defendpoint :post "/check_transform"
-  "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break."
-  [_route-params
-   _query-params
-   body :- ::transform-body]
-  (check-transform-dependencies body))
 
 (api.macros/defendpoint :post "/check_snippet"
   "Check a proposed edit to a native snippet, and return the cards, etc. which will be broken."
