@@ -13,6 +13,7 @@ export function RouterTablePicker(props: TreePath) {
   const [value, setValue] = useState(props);
   const location = useSelector(getLocation);
   const isSegments = location.pathname?.startsWith("/bench/datamodel/segment");
+  const isModels = location.pathname?.startsWith("/bench/datamodel/model");
 
   const onChange = useCallback(
     (value: TreePath, options?: ChangeOptions) => {
@@ -25,7 +26,7 @@ export function RouterTablePicker(props: TreePath) {
       if (canUpdateUrl) {
         if (options?.isAutomatic) {
           // prevent auto-navigation from table-picker when Segments tab is open
-          if (!isSegments) {
+          if (!isSegments && !isModels) {
             dispatch(replace(getUrl(value)));
           }
         } else {
@@ -33,7 +34,7 @@ export function RouterTablePicker(props: TreePath) {
         }
       }
     },
-    [dispatch, isSegments, props],
+    [dispatch, isModels, isSegments, props.tableId],
   );
 
   useEffect(() => {

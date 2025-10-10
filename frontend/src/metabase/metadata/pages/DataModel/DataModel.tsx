@@ -15,11 +15,10 @@ import { ModelListItem } from "metabase/bench/components/models/ModelListItem";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import * as Urls from "metabase/lib/urls";
 import { ModelColumnsSection } from "metabase/metadata/pages/DataModel/components/models/ModelColumnsList";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { Box, Flex, Stack, rem } from "metabase/ui";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { Box, Flex, Stack, Title, rem } from "metabase/ui";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions"; // eslint-disable-line no-restricted-imports
 import type { UpdateFieldRequest } from "metabase-types/api";
 
 import S from "./DataModel.module.css";
@@ -149,6 +148,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         maw={COLUMN_CONFIG.nav.max}
         miw={COLUMN_CONFIG.nav.min}
       >
+        <Title p="xl" pb={0} order={3}>{t`Tables`}</Title>
         <RouterTablePicker
           databaseId={databaseId}
           schemaName={schemaName}
@@ -156,6 +156,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         />
 
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          <Title p="xl" order={3} pt="sm">{t`Models`}</Title>
           {modelsData?.data?.map((model) => (
             <ModelListItem
               key={model.id}
@@ -195,7 +196,7 @@ export const DataModel = ({ children, location, params }: Props) => {
               miw={COLUMN_CONFIG.table.min}
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                {table && (
+                {table && !isModelMode && (
                   <TableSection
                     /**
                      * Make sure internal component state is reset when changing tables.
