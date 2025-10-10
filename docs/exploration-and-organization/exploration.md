@@ -104,11 +104,11 @@ When you add questions to a dashboard, you can have even more control over what 
 
 ## View details of a record
 
-When viewing unaggregated tables, you can click on a record and select "View details" to see the details of an individual record.
+To see the details of an individual record when viewing unaggregated tables, click on a record and select "View details."
 
-You can expand the details sidebar to a full page by clicking on "Open in full page". Every record has a dedicated details page which you can link to.
+To expand the details sidebar to a full page, click "Open in full page". Every record has a dedicated details page which you can link to.
 
-Admins and people with [table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can choose to display certain fields only in this details view, see [Table metadata](../data-modeling/metadata-editing.md).
+Admins and people with [table metadata permissions](../permissions/data.md#manage-table-metadata-permissions) can set specific fields to display only in this details view. See [Table metadata](../data-modeling/metadata-editing.md).
 
 If your record has a field containing [an image link](../data-modeling/formatting.md), Metabase will show the image as the record's icon in the detail view. If the record has a field with the "Entity name" name semantic type, or a field called `Title` or `Name` , Metabase will show this field as the name of the record.
 
