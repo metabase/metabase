@@ -30,7 +30,7 @@ export function FilterOptionsPicker({
       <Popover.Target>
         <Tooltip label={t`Filter`}>
           <ActionIcon onClick={toggle}>
-            <Icon name="filter" />
+            <Icon c="text-primary" name="filter" />
           </ActionIcon>
         </Tooltip>
       </Popover.Target>

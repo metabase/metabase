@@ -35,7 +35,7 @@ export function SortOptionsPicker({
       <Popover.Target>
         <Tooltip label={t`Sort`}>
           <ActionIcon onClick={toggle}>
-            <Icon name="sort" />
+            <Icon c="text-primary" name="sort" />
           </ActionIcon>
         </Tooltip>
       </Popover.Target>
