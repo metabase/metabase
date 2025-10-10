@@ -35,7 +35,7 @@ export const GraphNode = memo(function ItemNode({
 
   return (
     <>
-      <Stack p="md" gap="sm">
+      <Stack p="md" gap="sm" miw="10rem">
         <Group gap="sm">
           <FixedSizeIcon name={getNodeIcon(node)} c="brand" />
           {getNodeLabel(node)}
