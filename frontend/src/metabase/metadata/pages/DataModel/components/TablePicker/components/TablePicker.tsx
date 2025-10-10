@@ -10,15 +10,16 @@ import { Tree } from "./Tree";
 
 interface Props {
   path: TreePath;
+  className?: string;
   onChange: (path: TreePath, options?: ChangeOptions) => void;
 }
 
-export function TablePicker({ path, onChange }: Props) {
+export function TablePicker({ path, className, onChange }: Props) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
 
   return (
-    <Stack data-testid="table-picker" mih={rem(200)}>
+    <Stack data-testid="table-picker" mih={rem(200)} className={className}>
       <Box p="xl" pb={0}>
         <Input
           leftSection={<Icon name="search" />}
