@@ -59,6 +59,7 @@ export const GitSyncSettings = (): JSX.Element => {
   const [updateGitSyncSettings] = useUpdateGitSyncSettingsMutation();
   const { data: dirtyData } = useGetChangedEntitiesQuery(undefined, {
     refetchOnFocus: true,
+    refetchOnMountOrArgChange: true,
   });
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
   const [importFromBranch, { isLoading: isImporting }] =
