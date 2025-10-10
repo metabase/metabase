@@ -37,6 +37,7 @@ const Questions = createEntity({
   name: "questions",
   nameOne: "question",
   path: "/api/card",
+  useRtkQueryActions: true,
 
   rtk: {
     getUseGetQuery: () => ({

@@ -1,5 +1,3 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
-import { GroupSchema } from "metabase/schema";
 import type {
   BaseGroupInfo,
   CreateMembershipRequest,
@@ -18,7 +16,6 @@ import {
   providePermissionsGroupListTags,
   providePermissionsGroupTags,
 } from "./tags";
-import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const permissionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,10 +25,6 @@ export const permissionApi = Api.injectEndpoints({
         url: "/api/permissions/group",
       }),
       providesTags: (groups = []) => providePermissionsGroupListTags(groups),
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, [GroupSchema])),
-        ),
     }),
     getPermissionsGroup: builder.query<Group, GroupId>({
       query: (id) => ({
@@ -40,10 +33,6 @@ export const permissionApi = Api.injectEndpoints({
       }),
       providesTags: (group) =>
         group ? providePermissionsGroupTags(group) : [],
-      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
-        handleQueryFulfilled(queryFulfilled, (data) =>
-          dispatch(updateMetadata(data, GroupSchema)),
-        ),
     }),
     createPermissionsGroup: builder.mutation<BaseGroupInfo, { name: string }>({
       query: (body) => ({

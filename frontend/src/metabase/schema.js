@@ -16,7 +16,6 @@ export const DocumentSchema = new schema.Entity("documents");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
-export const GroupSchema = new schema.Entity("groups");
 
 export const DatabaseSchema = new schema.Entity("databases");
 export const SchemaSchema = new schema.Entity("schemas");

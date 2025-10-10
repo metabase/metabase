@@ -17,6 +17,7 @@ const Segments = createEntity({
   nameOne: "segment",
   path: "/api/segment",
   schema: SegmentSchema,
+  useRtkQueryActions: true,
 
   rtk: {
     getUseGetQuery: () => ({

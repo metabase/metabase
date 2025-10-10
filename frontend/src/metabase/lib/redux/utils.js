@@ -12,8 +12,6 @@ import {
   setRequestUnloaded,
 } from "metabase/redux/requests";
 
-import { UPDATE_METADATA_ACTION } from "./metadata";
-
 // convenience
 export { combineReducers, compose } from "@reduxjs/toolkit";
 export { handleActions, createAction } from "redux-actions";
@@ -129,6 +127,7 @@ export function mergeEntities(entities, newEntities) {
 // helper for working with normalizr
 // reducer that merges payload.entities
 export function handleEntities(
+  actionPattern,
   entityType,
   reducer = (state = {}, action) => state,
 ) {
@@ -137,7 +136,7 @@ export function handleEntities(
       state = {};
     }
     const entities = getIn(action, ["payload", "entities", entityType]);
-    if (action.type === UPDATE_METADATA_ACTION && entities) {
+    if (actionPattern.test(action.type) && entities) {
       state = mergeEntities(state, entities);
     }
     return reducer(state, action);
