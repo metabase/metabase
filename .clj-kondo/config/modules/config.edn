@@ -1880,6 +1880,7 @@
            util
            warehouse-schema
            warehouses
+           enterprise/dependencies
            enterprise/documents
            enterprise/transforms
            enterprise/transforms-python}}
