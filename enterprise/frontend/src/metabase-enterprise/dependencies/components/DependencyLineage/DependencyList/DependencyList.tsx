@@ -1,9 +1,10 @@
 import { useDebouncedValue } from "@mantine/hooks";
 import { useLayoutEffect, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { Card } from "metabase/ui";
+import { Box, Card } from "metabase/ui";
 import { useListNodeDependentsQuery } from "metabase-enterprise/api";
 
 import type { GraphSelection } from "../types";
@@ -71,6 +72,10 @@ export function DependencyList({
       />
       {isFetching || error != null ? (
         <LoadingAndErrorWrapper loading={isFetching} error={error} />
+      ) : visibleNodes.length === 0 ? (
+        <Box p="lg" c="text-secondary" ta="center">
+          {t`Didn't find any results`}
+        </Box>
       ) : (
         <ListBody nodes={visibleNodes} />
       )}

@@ -83,7 +83,7 @@ function SortOptionsPopover({
         label={t`Sort by`}
         onChange={handleColumnChange}
       >
-        <Stack mt="sm" gap="sm">
+        <Stack mt="sm" gap="0.75rem">
           {columnItems.map((option) => (
             <Radio
               key={option.value}

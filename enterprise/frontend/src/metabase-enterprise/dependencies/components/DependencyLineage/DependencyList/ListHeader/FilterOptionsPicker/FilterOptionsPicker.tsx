@@ -75,7 +75,7 @@ function FilterOptionsPopover({
         value={filterOptions}
         onChange={handleFilterOptionsChange}
       >
-        <Stack mt="sm" gap="sm">
+        <Stack gap="0.75rem">
           {filterItems.map((item) => (
             <Checkbox key={item.value} value={item.value} label={item.label} />
           ))}
