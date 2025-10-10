@@ -1,5 +1,5 @@
 import type { Location } from "history";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
@@ -30,17 +30,20 @@ import type { RecentCollectionItem } from "metabase-types/api";
 import { BenchLayout } from "../BenchLayout";
 import { BenchPaneHeader } from "../BenchPaneHeader";
 import { ItemsListSection } from "../ItemsListSection/ItemsListSection";
+import { ItemsListSettings } from "../ItemsListSection/ItemsListSettings";
 import { ItemsListTreeNode } from "../ItemsListSection/ItemsListTreeNode";
-import type { BenchItemsListSorting } from "../ItemsListSection/types";
+import { useItemsListQuery } from "../ItemsListSection/useItemsListQuery";
 
 import { CreateModelMenu } from "./CreateModelMenu";
 
 function ModelsList({
   activeId,
   onCollapse,
+  location,
 }: {
   activeId: number;
   onCollapse: () => void;
+  location: Location;
 }) {
   const dispatch = useDispatch();
   const { isLoading: isLoadingModels, data: modelsData } = useFetchModels({
@@ -52,6 +55,26 @@ function ModelsList({
   const models = modelsData?.data;
   const isLoading = isLoadingModels || isLoadingCollections;
 
+  const listSettingsProps = useItemsListQuery({
+    settings: [
+      {
+        name: "display",
+        options: [
+          {
+            label: t`By collection`,
+            value: "collection",
+          },
+          {
+            label: t`Alphabetical`,
+            value: "alphabetical",
+          },
+        ],
+      },
+    ],
+    defaults: { display: "collection" },
+    location,
+  });
+
   const treeData = useMemo(() => {
     return models && collections ? getTreeItems(collections, models) : [];
   }, [collections, models]);
@@ -62,15 +85,11 @@ function ModelsList({
     }
   };
 
-  const [sorting, setSorting] = useState<BenchItemsListSorting>("collection");
-
   return (
     <ItemsListSection
       sectionTitle={t`Models`}
-      titleMenuItems={null}
-      sorting={sorting}
-      onChangeSorting={setSorting}
       AddButton={CreateModelMenu}
+      settings={<ItemsListSettings {...listSettingsProps} />}
       onCollapse={onCollapse}
       onAddNewItem={() => {}}
       listItems={
@@ -78,7 +97,7 @@ function ModelsList({
           <Center>
             <Loader />
           </Center>
-        ) : sorting === "collection" ? (
+        ) : listSettingsProps.values.display === "collection" ? (
           <Box mx="-md">
             <Tree
               data={treeData}
@@ -138,12 +157,17 @@ function ModelListItem({
 export const ModelsLayout = ({
   children,
   params,
+  location,
 }: {
   children: React.ReactNode;
   params: { slug: string };
+  location: Location;
 }) => {
   return (
-    <BenchLayout nav={<ModelsList activeId={+params.slug} />} name="model">
+    <BenchLayout
+      nav={<ModelsList activeId={+params.slug} location={location} />}
+      name="model"
+    >
       {children}
     </BenchLayout>
   );
