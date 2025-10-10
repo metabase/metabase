@@ -1,15 +1,15 @@
 (ns metabase-enterprise.representations.v0.model-test
   (:require
    #_[metabase-enterprise.representations.import :as import]
-   #_[metabase-enterprise.representations.v0.common :as v0-common]
    #_[metabase.api.common :as api]
-   #_[toucan2.core :as t2]
    [clojure.test :refer :all]
    [metabase-enterprise.representations.core :as rep]
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase-enterprise.representations.yaml :as yaml]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -45,6 +45,7 @@
       (let [rep (yaml/from-file filename)]
         (is (rep/persist! (rep/normalize-representation rep)))))))
 
+;; Dependent on MBQL work (QUE-2667)
 #_(deftest export-import-roundtrip-test
     (testing "Testing export then import roundtrip for models"
       (doseq [query [(mt/native-query {:query "select 1"})
@@ -55,21 +56,9 @@
                 card-yaml (yaml/generate-string card-edn)
                 card-rep (yaml/parse-string card-yaml)
                 card-rep (rep/normalize-representation card-rep)
-
-              ;; For MBQL queries, also export MBQL data
-                mbql-edn (when (= :query (:type query))
-                           (export/export-mbql-data model))
-
-              ;; For MBQL queries, serialize to YAML and parse back
-                mbql-rep (when mbql-edn
-                           (let [mbql-yaml (-> mbql-edn export/export-entity yaml/generate-string)
-                                 parsed (yaml/parse-string mbql-yaml)]
-                             (rep/normalize-representation parsed)))
-
               ;; Build ref-index with database and MBQL data (if present)
-                ref-index (cond-> {(v0-common/unref (:database card-edn)) (t2/select-one :model/Database (mt/id))}
-                            mbql-rep (assoc (:ref mbql-rep) (import/persist! mbql-rep nil)))
-
+                ref-index {(v0-common/unref (:database card-edn)) (t2/select-one :model/Database (mt/id))}
+                _ (clojure.pprint/pprint card-rep)
                 model (rep/persist! card-rep ref-index)
                 model (t2/select-one :model/Card :id (:id model))
                 edn (rep/export model)
@@ -78,11 +67,7 @@
                 rep2 (rep/normalize-representation rep2)]
           ;; For models with MBQL, the mbql_query ref will differ due to new IDs
           ;; So we compare structure excluding :ref and :mbql_query
-            (is (=? (dissoc card-rep :ref :mbql_query) (dissoc rep2 :ref :mbql_query)))
-          ;; Verify the mbql_query field exists and is a ref string for MBQL models
-            (when mbql-rep
-              (is (string? (:mbql_query rep2)))
-              (is (re-matches #"ref:mbql-model-\d+" (:mbql_query rep2)))))))))
+            (is (=? (dissoc card-rep :ref :mbql_query) (dissoc rep2 :ref :mbql_query))))))))
 
 (deftest export-mbql-model-includes-columns-test
   (testing "MBQL models export user-editable column metadata"

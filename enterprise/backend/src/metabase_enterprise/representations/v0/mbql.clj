@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [medley.core :as m]
    [metabase-enterprise.representations.export :as export]
    [metabase-enterprise.representations.v0.common :as v0-common]
    [metabase.util :as u]
@@ -19,26 +20,29 @@
   "Resolves refs in the raw MBQL map, replacing them with IDs for import."
   [mbql-query ref-index]
   (let [table-ref (:source-table mbql-query)
-        table-id (cond
-                   ;; ref to another card/question:
-                   (v0-common/ref? table-ref)
-                   (->> (v0-common/ref->id table-ref ref-index)
-                        (str "card__"))
-                   ;; map with database ref - resolve database and lookup table
-                   (and (map? table-ref) (v0-common/ref? (:database table-ref)))
-                   (let [db-id (v0-common/ref->id (:database table-ref) ref-index)
-                         table-id (t2/select-one-fn :id :model/Table
-                                                    :db_id db-id
-                                                    :schema (:schema table-ref)
-                                                    :name (:table table-ref))]
-                     (when (nil? table-id)
-                       (throw (ex-info "Could not find matching table."
-                                       {:table-ref table-ref})))
-                     table-id)
-                   ;; Not a ref -- leave it be
-                   :else
-                   table-ref)]
-    (assoc mbql-query :source-table table-id)))
+        [db-id table-id] (cond
+                           ;; ref to another card/question:
+                           (v0-common/ref? table-ref)
+                           [nil
+                            (->> (v0-common/ref->id table-ref ref-index)
+                                 (str "card__"))]
+                           ;; map with database ref - resolve database and lookup table
+                           (and (map? table-ref) (v0-common/ref? (:database table-ref)))
+                           (let [db-id (v0-common/ref->id (:database table-ref) ref-index)
+                                 table-id (t2/select-one-fn :id :model/Table
+                                                            :db_id db-id
+                                                            :schema (:schema table-ref)
+                                                            :name (:table table-ref))]
+                             (when (nil? table-id)
+                               (throw (ex-info "Could not find matching table."
+                                               {:table-ref table-ref})))
+                             [db-id table-id])
+                           ;; Not a ref -- leave it be
+                           :else
+                           table-ref)]
+    (-> mbql-query
+        (assoc :source-table table-id)
+        (m/assoc-some :database db-id))))
 
 (defn resolve-fields
   "Resolves field refs in MBQL, converting maps to [:field id] vectors for import."
