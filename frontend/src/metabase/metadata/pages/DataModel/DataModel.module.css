@@ -16,6 +16,10 @@
   box-shadow: 0 10px 30px 0 hsla(0, 0%, 0%, 0.1);
 }
 
+.tablePicker {
+  min-height: auto !important;
+}
+
 .modelsTree {
   padding: 0 2rem;
 }
