@@ -17,7 +17,7 @@ You can set your first and last names, change your email address, and set your l
 
 You can choose to display Metabase in light or dark mode.
 
-The theme only applies to your account and only affects standalone Metabase, not embedded instances. The theme will not affect chart colors.
+The theme only applies to your account. The theme doesn't apply to chart colors or embedded Metabases.
 
 ## Account password
 
