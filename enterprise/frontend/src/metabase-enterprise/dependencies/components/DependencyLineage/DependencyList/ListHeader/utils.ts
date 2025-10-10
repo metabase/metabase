@@ -7,7 +7,7 @@ import { getNodeLabel } from "../../utils";
 export function getHeaderLabel(selection: GraphSelection) {
   const nodeLabel = getNodeLabel(selection.node);
 
-  return match(selection.type)
+  return match(selection.groupType)
     .with("question", () => t`Questions that use ${nodeLabel}`)
     .with("model", () => t`Models that use ${nodeLabel}`)
     .with("metric", () => t`Metrics that use ${nodeLabel}`)
