@@ -75,28 +75,6 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
     }
   }, [newCollectionName, createCollection, updateCollection, sendToast]);
 
-  const handleClearCollection = useCallback(async () => {
-    if (!syncedCollection) {
-      return;
-    }
-
-    try {
-      await updateCollection({
-        id: Number(syncedCollection.id),
-        type: null,
-      }).unwrap();
-    } catch (error: any) {
-      let message = t`Failed to remove sync`;
-      if (typeof error.data?.cause === "string") {
-        message += `: ${error.data?.cause}`;
-      }
-      sendToast({
-        message,
-        icon: "warning",
-      });
-    }
-  }, [syncedCollection, updateCollection, sendToast]);
-
   if (isSyncedLoading) {
     return (
       <Flex align="center" justify="center" h={100}>
@@ -194,18 +172,6 @@ export const CollectionSyncManager = ({ mode }: CollectionSyncManagerProps) => {
           {syncedCollection.name}
         </Text>
       </Button>
-
-      {mode === "development" && (
-        <Button
-          style={{ flexShrink: 0 }}
-          variant="subtle"
-          onClick={handleClearCollection}
-          disabled={isProcessing}
-          c="text-secondary"
-        >
-          {t`Unsync collection`}
-        </Button>
-      )}
     </Flex>
   );
 };
