@@ -168,6 +168,8 @@ export function createEntity(def) {
   };
 
   // normalize helpers
+  // they get called with cached data, so we need to memoize them to avoid
+  // creating new objects
   entity.normalize = weakMapMemoize((object) => ({
     // include raw `object` (and alias under nameOne) for convenience
     object,
