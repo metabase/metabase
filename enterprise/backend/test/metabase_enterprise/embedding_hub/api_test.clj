@@ -29,13 +29,14 @@
                                                   :dataset_query {:database (mt/id)
                                                                   :type :query
                                                                   :query {:source-table (mt/id :venues)}}}]
-        (testing "returns true when user-created models exist"
+        (testing "returns true when there is a model not in any sample collection"
           (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
             (is (true? (:create-models response))
-                "Should detect models created by users")))
+                "Should detect the user model with nil collection_id")))
 
-        (testing "returns false when only sample models exist"
+        (testing "returns false when all models are in sample collections"
+          ;; Temporarily archive the user model so only sample collection models remain active
           (mt/with-temp-vals-in-db :model/Card (:id user-model) {:archived true}
             (let [response (mt/user-http-request :crowberto :get 200 "/ee/embedding-hub/checklist")]
               (is (false? (:create-models response))
-                  "Should not detect models in sample collections"))))))))
+                  "Should exclude models in both sample collections"))))))))
