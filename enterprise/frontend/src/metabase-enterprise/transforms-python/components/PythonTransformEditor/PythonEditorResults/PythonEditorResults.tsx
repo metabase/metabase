@@ -198,10 +198,9 @@ function RunnerToggle({
 }) {
   return (
     <Group align="center" pr="md" c="text-light">
-      {testRunner === "pyodide"
-        ? t`Emulating runner in-browser`
-        : t`Running test script on Python runner`}
+      <Text c="text-light" fz="sm">{t`Emulate runner in-browser`}</Text>
       <Switch
+        size="xs"
         checked={testRunner === "pyodide"}
         onChange={({ target }) => {
           onTestRunnerChange(target.checked ? "pyodide" : "api");
