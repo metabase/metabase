@@ -7,28 +7,34 @@
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
+(def ^:private ^:dynamic *max-reported-broken-transforms* 10)
+
 (defn- format-broken-transforms
   "Format the breakages into a response suitable for Metabot."
-  [{:keys [transform]}]
-  (let [broken-transform-ids (keys transform)
+  [edited-transform-id {transform-errors :transform}]
+  (let [broken-transform-ids (set (keys transform-errors))
+        ;; Limit the number of broken transforms we report back to avoid overwhelming context
+        transforms-to-report (if (contains? transform-errors edited-transform-id)
+                               (concat [edited-transform-id]
+                                       (take (dec *max-reported-broken-transforms*)
+                                             (disj broken-transform-ids edited-transform-id)))
+                               (take *max-reported-broken-transforms* broken-transform-ids))
         broken-transforms    (when (seq broken-transform-ids)
-                               (t2/select [:model/Transform :id :name] :id [:in broken-transform-ids]))
+                               (t2/select [:model/Transform :id :name] :id [:in transforms-to-report]))
         transforms-by-id     (u/index-by :id broken-transforms)]
-    {:success        (empty? broken-transform-ids)
-     :bad_transforms (reduce
-                      (fn [acc [transform-id errors]]
-                        (let [transform (get transforms-by-id transform-id)]
-                          (conj acc {:transform transform :errors errors})))
-                      []
-                      transform)}))
+    {:success             (empty? broken-transform-ids)
+     :bad_transform_count (count broken-transform-ids)
+     :bad_transforms      (mapv
+                           (fn [[transform-id transform]]
+                             {:transform transform :errors (get transform-errors transform-id)})
+                           transforms-by-id)}))
 
 (defn check-transform-dependencies
-  "Check a proposed edit to a SQL transform, and return transforms that will break.
-  Takes a map with :id (required), :source (optional), and :target (optional) keys."
-  [{:keys [id source]}]
+  "Check a proposed edit to a SQL transform, and return transforms that will break in a format
+  suitable for Metabot. Takes a map with :id and :source keys."
+  [base-provider {:keys [id source]}]
   (try
-    (let [result (if (= (keyword (:type source))
-                        :query)
+    (let [result (if (= (keyword (:type source)) :query)
                    (let [database-id   (-> source :query :database)
                          base-provider (lib-be.metadata.jvm/application-database-metadata-provider database-id)
                          original      (lib.metadata/transform base-provider id)
@@ -36,7 +42,7 @@
                                          source (assoc :source source))
                          edits         {:transform [transform]}
                          breakages     (dependencies/errors-from-proposed-edits base-provider edits)]
-                     (format-broken-transforms breakages))
+                     (format-broken-transforms id breakages))
                    ;; If this is a non-SQL query, we don't do any checks yet, so just return success
                    {:success true :bad_transforms []})]
       {:structured_output result})

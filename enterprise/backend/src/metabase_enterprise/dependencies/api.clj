@@ -84,8 +84,7 @@
   "Check a proposed edit to a transform, and return the card, transform, etc. IDs for things that will break.
   Takes a map with :id (required), :source (optional), and :target (optional) keys."
   [{:keys [id source target]}]
-  (if (= (keyword (:type source))
-         :query)
+  (if (= (keyword (:type source)) :query)
     (let [database-id   (-> source :query :database)
           base-provider (lib-be/application-database-metadata-provider database-id)
           original      (lib.metadata/transform base-provider id)
