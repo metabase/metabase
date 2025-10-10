@@ -775,12 +775,11 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        // Updated expected width due to new sizing logic (4x3 card now uses ~2.5rem max font)
-        const expectedWidth = 170;
+        const expectedWidth = 130;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.15, // Increased tolerance slightly for new sizing
+            expectedWidth * 0.1,
           );
         });
       });

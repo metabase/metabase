@@ -93,6 +93,9 @@ export const getMaxFontSize = (
     maxSizeRem = Math.min(3 + (cardColWidth - 7) * 0.25, 7);
   }
 
+  // Store the original width-based limit to ensure we don't exceed it
+  const widthBasedLimit = maxSizeRem;
+
   // Apply height-based constraints on top of width-based limits
   if (cardRowHeight != null && cardRowHeight <= 2) {
     // 2-unit tall cards can't exceed 2.8rem regardless of width
@@ -102,10 +105,14 @@ export const getMaxFontSize = (
     maxSizeRem = Math.min(maxSizeRem, 5);
   }
 
-  // Apply height bonus for cards taller than 3 units (after height constraints)
+  // Apply height bonus for cards taller than 2 units
   if (cardRowHeight != null && cardRowHeight > 2) {
     const heightBonus = (cardRowHeight - 2) * 0.25;
     maxSizeRem += heightBonus;
+
+    // Important: Cap at the width-based limit to prevent horizontal overflow
+    // Height bonus shouldn't push us beyond what the width can accommodate
+    maxSizeRem = Math.min(maxSizeRem, widthBasedLimit);
   }
 
   // Final cap at 7rem maximum
