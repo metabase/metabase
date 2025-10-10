@@ -10,4 +10,5 @@ export type FormattingOptions = {
   quote?: boolean;
   inline_code?: boolean;
   code_block?: boolean;
+  link?: boolean;
 };

@@ -5,11 +5,11 @@ import type { Editor as TiptapEditor } from "@tiptap/react";
 // @ts-expect-error - BubbleMenu is a Tiptap extension that is registered through @tiptap/extension-bubble-menu
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { Flex } from "metabase/ui";
+import { Box, Button, Flex, TextInput } from "metabase/ui";
 
 import { FormatButton } from "../FormatButton/FormatButton";
 
@@ -28,6 +28,7 @@ const DEFAULT_ALLOWED_FORMATTING: FormattingOptions = {
   quote: true,
   inline_code: true,
   code_block: true,
+  link: true,
 };
 
 interface EditorBubbleMenuProps {
@@ -38,6 +39,61 @@ interface EditorBubbleMenuProps {
   className?: string;
 }
 
+const LinkPopup: React.FC<{
+  isOpen: boolean;
+  initialUrl: string;
+  onSubmit: (url: string) => void;
+  onCancel: () => void;
+}> = ({ isOpen, initialUrl, onSubmit, onCancel }) => {
+  const [url, setUrl] = useState(initialUrl);
+
+  useEffect(() => {
+    setUrl(initialUrl);
+  }, [initialUrl]);
+
+  const handleSubmit = () => {
+    onSubmit(url);
+    setUrl("");
+  };
+
+  const handleCancel = () => {
+    onCancel();
+    setUrl("");
+  };
+
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <Box className={S.linkPopup}>
+      <Flex align="center" gap={8}>
+        <TextInput
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder={t`Enter URL...`}
+          size="sm"
+          className={S.linkInput}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleSubmit();
+            } else if (e.key === "Escape") {
+              handleCancel();
+            }
+          }}
+          autoFocus
+        />
+        <Button size="sm" onClick={handleSubmit}>
+          {t`OK`}
+        </Button>
+        <Button size="sm" variant="subtle" onClick={handleCancel}>
+          {t`Cancel`}
+        </Button>
+      </Flex>
+    </Box>
+  );
+};
+
 export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   editor,
   disallowedNodes,
@@ -46,6 +102,27 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
   className,
 }) => {
   const forceUpdate = useForceUpdate();
+  const [showLinkPopup, setShowLinkPopup] = useState(false);
+  const [initialLinkUrl, setInitialLinkUrl] = useState("");
+
+  const handleLinkClick = () => {
+    const existingLink = editor.getAttributes("link");
+    setInitialLinkUrl(existingLink.href || "");
+    setShowLinkPopup(true);
+  };
+
+  const handleLinkSubmit = (url: string) => {
+    if (url.trim()) {
+      editor.chain().focus().setLink({ href: url.trim() }).run();
+    } else {
+      editor.chain().focus().unsetLink().run();
+    }
+    setShowLinkPopup(false);
+  };
+
+  const handleLinkCancel = () => {
+    setShowLinkPopup(false);
+  };
 
   useEffect(() => {
     editor.on("selectionUpdate", forceUpdate);
@@ -138,6 +215,14 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
             icon="format_code"
           />
         )}
+        {allowedFormatting.link && (
+          <FormatButton
+            isActive={editor.isActive("link")}
+            onClick={handleLinkClick}
+            tooltip={t`Link`}
+            icon="link"
+          />
+        )}
         {allowedFormatting.h1 && (
           <FormatButton
             isActive={editor.isActive("heading", { level: 1 })}
@@ -201,6 +286,12 @@ export const EditorBubbleMenu: React.FC<EditorBubbleMenuProps> = ({
           />
         )}
       </Flex>
+      <LinkPopup
+        isOpen={showLinkPopup}
+        initialUrl={initialLinkUrl}
+        onSubmit={handleLinkSubmit}
+        onCancel={handleLinkCancel}
+      />
     </BubbleMenu>
   );
 };
