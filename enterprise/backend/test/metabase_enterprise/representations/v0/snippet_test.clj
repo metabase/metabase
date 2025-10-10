@@ -2,38 +2,57 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.representations.export :as export]
+   [metabase-enterprise.representations.import :as import]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest snippet-export-entity-test
+(defn- run-snippet-export-import-test! [name description content exp-tags]
+  (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id :as snippet} {:name name
+                                                                         :description description
+                                                                         :content content}]
+    (try
+      (let [representation (export/export-entity snippet)
+            toucan-model (import/yaml->toucan representation nil)
+            _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
+            persisted-snippet (import/persist! representation nil)]
+        (is (= {:ref (str "snippet-" snippet-id),
+                :type :snippet,
+                :version :v0,
+                :name name,
+                :description description,
+                :sql content,
+                :template_tags {}}
+               representation))
+        (is (=? {:name name,
+                 :description description,
+                 :content content,
+                 :creator_id 13371338,
+                 :collection_id nil,
+                 :template_tags exp-tags}
+                toucan-model))
+        (is (=? {:description description,
+                 :archived false,
+                 :dependency_analysis_version 0,
+                 :content content,
+                 :collection_id nil,
+                 :name name,
+                 :creator_id 13371338,
+                 :id (inc snippet-id),
+                 :template_tags exp-tags}
+                persisted-snippet)))
+      (finally
+        (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))
+
+(deftest snippet-export-import-entity-test
   (testing "snippet with template tag is exported correctly"
-    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "snippet one"
-                                                                           :description "the first snippet"
-                                                                           :content "foo = 1"}]
-      (is (= {:ref (str "snippet-" snippet-id),
-              :type :snippet,
-              :version :v0,
-              :name "snippet one",
-              :description "the first snippet",
-              :sql "foo = 1",
-              :template_tags {}}
-             (export/export-entity snippet)))))
+    (run-snippet-export-import-test! "snippet one" "the first snippet" "foo = 1" {}))
   (testing "snippet with variable template tag is exported correctly"
-    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "foo snippet"
-                                                                           :description "a test snippet"
-                                                                           :content "foo = {{ val }}"}]
-      (is (= {:ref (str "snippet-" snippet-id),
-              :type :snippet,
-              :version :v0,
-              :name "foo snippet",
-              :description "a test snippet",
-              :sql "foo = {{ val }}",
-              :template_tags {}}
-             (export/export-entity snippet)))))
+    (run-snippet-export-import-test! "foo snippet" "a test snippet" "foo = {{ val }}" {"val" {:type :text :name "val" :display-name "Val"}}))
   (testing "snippet with card template tag is exported correctly"
     (let [mp (mt/metadata-provider)
           venues (lib.metadata/table mp (mt/id :venues))]
@@ -43,28 +62,92 @@
                      :model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "foo snippet"
                                                                              :description "a test snippet"
                                                                              :content (str "select * from {{ #" card-id "-card-one }} where id = 1")}]
-        (is (= {:ref (str "snippet-" snippet-id),
-                :type :snippet,
-                :version :v0,
-                :name "foo snippet",
-                :description "a test snippet",
-                :sql (format "select * from {{ #%s-card-one }} where id = 1" card-id),
-                :template_tags {(str "#" card-id "-card-one") (str "ref:card-" card-id)}}
-               (export/export-entity snippet))))))
+        (try
+          (let [representation (export/export-entity snippet)
+                toucan-model (import/yaml->toucan representation nil)
+                _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
+                persisted-snippet (import/persist! representation nil)]
+            (is (= {:ref (str "snippet-" snippet-id),
+                    :type :snippet,
+                    :version :v0,
+                    :name "foo snippet",
+                    :description "a test snippet",
+                    :sql (str "select * from {{ #" card-id "-card-one }} where id = 1"),
+                    :template_tags {(str "#" card-id "-card-one") (str "ref:card-" card-id)}}
+                   representation))
+            (is (=? {:name "foo snippet",
+                     :description "a test snippet",
+                     :content (str "select * from {{ #" card-id "-card-one }} where id = 1"),
+                     :creator_id 13371338,
+                     :collection_id nil,
+                     :template_tags {(str "#" card-id "-card-one")
+                                     {:type :card,
+                                      :name (str "#" card-id "-card-one"),
+                                      :card-id card-id,
+                                      :display-name (str "#" card-id " Card One")}}}
+                    toucan-model))
+            (is (=? {:description "a test snippet",
+                     :archived false,
+                     :dependency_analysis_version 0,
+                     :content (str "select * from {{ #" card-id "-card-one }} where id = 1"),
+                     :collection_id nil,
+                     :name "foo snippet",
+                     :creator_id 13371338,
+                     :id (inc snippet-id),
+                     :template_tags {(str "#" card-id "-card-one")
+                                     {:type :card,
+                                      :name (str "#" card-id "-card-one"),
+                                      :card-id card-id,
+                                      :display-name (str "#" card-id " Card One")}}}
+                    persisted-snippet)))
+          (finally
+            (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id)))))))
   (testing "snippet with snippet template tag is exported correctly"
     (mt/with-temp [:model/NativeQuerySnippet {bar-snippet-id :id} {:name "bar snippet"
                                                                    :content "bar = 2"}
                    :model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "foo snippet"
                                                                            :description "a test snippet"
                                                                            :content "foo = 1 and {{ snippet: bar snippet}}"}]
-      (is (= {:ref (str "snippet-" snippet-id),
-              :type :snippet,
-              :version :v0,
-              :name "foo snippet",
-              :description "a test snippet",
-              :sql "foo = 1 and {{ snippet: bar snippet}}",
-              :template_tags {"snippet: bar snippet" (str "ref:snippet-" bar-snippet-id)}}
-             (export/export-entity snippet)))))
+      (try (let [representation (export/export-entity snippet)
+                 toucan-model (import/yaml->toucan representation nil)
+                 _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
+                 persisted-snippet (import/persist! representation nil)]
+             (is (= {:ref (str "snippet-" snippet-id),
+                     :type :snippet,
+                     :version :v0,
+                     :name "foo snippet",
+                     :description "a test snippet",
+                     :sql "foo = 1 and {{ snippet: bar snippet}}",
+                     :template_tags {"snippet: bar snippet" (str "ref:snippet-" bar-snippet-id)}}
+                    (export/export-entity snippet)))
+             (is (=? {:name "foo snippet",
+                      :description "a test snippet",
+                      :content "foo = 1 and {{ snippet: bar snippet}}",
+                      :creator_id 13371338,
+                      :collection_id nil,
+                      :template_tags {"snippet: bar snippet"
+                                      {:type :snippet,
+                                       :name "snippet: bar snippet",
+                                       :snippet-name "bar snippet",
+                                       :display-name "Snippet: Bar Snippet"}}}
+                     toucan-model))
+             (is (=? {:description "a test snippet",
+                      :archived false,
+                      :dependency_analysis_version 0,
+                      :content "foo = 1 and {{ snippet: bar snippet}}",
+                      :collection_id nil,
+                      :name "foo snippet",
+                      :creator_id 13371338,
+                      :id (inc snippet-id),
+                      :template_tags {"snippet: bar snippet"
+                                      {:type :snippet,
+                                       :name "snippet: bar snippet",
+                                       :snippet-name "bar snippet",
+                                       :snippet-id bar-snippet-id
+                                       :display-name "Snippet: Bar Snippet"}}}
+                     persisted-snippet)))
+           (finally
+             (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))
   (testing "snippet with multiple template tags is exported correctly"
     (let [mp (mt/metadata-provider)
           venues (lib.metadata/table mp (mt/id :venues))]
@@ -73,16 +156,59 @@
                                                 :dataset_query (lib/query mp venues)}
                      :model/NativeQuerySnippet {bar-snippet-id :id} {:name "bar snippet"
                                                                      :content "bar = 2"}
-                     :model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "snippet one"
-                                                                             :description "the first snippet"
+                     :model/NativeQuerySnippet {snippet-id :id :as snippet} {:name "foo snippet"
+                                                                             :description "a test snippet"
                                                                              :content (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)")}]
-        (is (= {:ref (str "snippet-" snippet-id),
-                :type :snippet,
-                :version :v0,
-                :name "snippet one",
-                :description "the first snippet",
-                :sql (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)"),
-                :template_tags {(str "#" card-id "-card-one") (str "ref:card-" card-id)
-                                "snippet: bar snippet" (str "ref:snippet-" bar-snippet-id)}}
-               (export/export-entity snippet)))))))
-
+        (try (let [representation (export/export-entity snippet)
+                   toucan-model (import/yaml->toucan representation nil)
+                   _ (t2/delete! :model/NativeQuerySnippet :id snippet-id)
+                   persisted-snippet (import/persist! representation nil)]
+               (is (= {:ref (str "snippet-" snippet-id),
+                       :type :snippet,
+                       :version :v0,
+                       :name "foo snippet",
+                       :description "a test snippet",
+                       :sql (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)"),
+                       :template_tags {(str "#" card-id "-card-one") (str "ref:card-" card-id)
+                                       "snippet: bar snippet" (str "ref:snippet-" bar-snippet-id)}}
+                      (export/export-entity snippet)))
+               (is (=? {:name "foo snippet",
+                        :description "a test snippet",
+                        :content (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)"),
+                        :creator_id 13371338,
+                        :collection_id nil,
+                        :template_tags {"snippet: bar snippet"
+                                        {:type :snippet,
+                                         :name "snippet: bar snippet",
+                                         :snippet-name "bar snippet",
+                                         :display-name "Snippet: Bar Snippet"}
+                                        (str "#" card-id "-card-one")
+                                        {:type :card,
+                                         :name (str "#" card-id "-card-one"),
+                                         :card-id card-id,
+                                         :display-name (str "#" card-id " Card One")}
+                                        "val" {:type :text :name "val" :display-name "Val"}}}
+                       toucan-model))
+               (is (=? {:description "a test snippet",
+                        :archived false,
+                        :dependency_analysis_version 0,
+                        :content (str "foo = {{ val }} and {{ snippet: bar snippet}} and (select id from {{ #" card-id "-card-one }} where id = 1)"),
+                        :collection_id nil,
+                        :name "foo snippet",
+                        :creator_id 13371338,
+                        :id (inc snippet-id),
+                        :template_tags {"snippet: bar snippet"
+                                        {:type :snippet,
+                                         :name "snippet: bar snippet",
+                                         :snippet-name "bar snippet",
+                                         :snippet-id bar-snippet-id
+                                         :display-name "Snippet: Bar Snippet"}
+                                        (str "#" card-id "-card-one")
+                                        {:type :card,
+                                         :name (str "#" card-id "-card-one"),
+                                         :card-id card-id,
+                                         :display-name (str "#" card-id " Card One")}
+                                        "val" {:type :text :name "val" :display-name "Val"}}}
+                       persisted-snippet)))
+             (finally
+               (t2/delete! :model/NativeQuerySnippet :id (inc snippet-id))))))))

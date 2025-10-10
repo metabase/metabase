@@ -40,7 +40,7 @@
    "model"     :model/Card
    "database"  :model/Database
    "transform" :model/Transform
-   "snippet"  :model/NativeQuerySnippet})
+   "snippet"   :model/NativeQuerySnippet})
 
 (defn- read-from-ref [ref]
   (let [[type id] (str/split ref #"-" 2)]
