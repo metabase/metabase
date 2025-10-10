@@ -8,13 +8,14 @@ import { QuestionPickerModal } from "metabase/common/components/Pickers/Question
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
+import { STEPS_WITHOUT_RESOURCE_SELECTION } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupRecentItemType,
 } from "../types";
-import { getResourceIdFromSettings } from "../utils/default-embed-setting";
+import { getResourceIdFromSettings } from "../utils/get-default-sdk-iframe-embed-setting";
 
 import { SelectEmbedResourceMissingRecents } from "./SelectEmbedResourceMissingRecents";
 import { SelectEmbedResourceRecentItemCard } from "./SelectEmbedResourceRecentItemCard";
@@ -33,8 +34,8 @@ export const SelectEmbedResourceStep = () => {
   const [isPickerOpen, { open: openPicker, close: closePicker }] =
     useDisclosure(false);
 
-  // Exploration does not allow selecting resources.
-  if (experience === "exploration") {
+  // If a step does not allow resource selection, hide it.
+  if (!hasResourceSelectionStep(experience)) {
     return null;
   }
 
@@ -74,6 +75,7 @@ export const SelectEmbedResourceStep = () => {
 
         // Clear parameters
         initialSqlParameters: {},
+        hiddenParameters: [],
       });
     } else if (experience === "browser") {
       updateSettings({
@@ -251,3 +253,13 @@ const COLLECTION_MODAL_OPTIONS = {
   showRootCollection: true,
   hasConfirmButtons: true,
 } as const;
+
+const hasResourceSelectionStep = (
+  experience: SdkIframeEmbedSetupExperience,
+): experience is Exclude<
+  SdkIframeEmbedSetupExperience,
+  (typeof STEPS_WITHOUT_RESOURCE_SELECTION)[number]
+> =>
+  !(
+    STEPS_WITHOUT_RESOURCE_SELECTION as SdkIframeEmbedSetupExperience[]
+  ).includes(experience);

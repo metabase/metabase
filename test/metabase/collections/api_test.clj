@@ -761,8 +761,11 @@
                                                 {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
                             (assoc-in [1 :fully_parameterized] true))
                         (mt/boolean-ids-and-timestamps
-                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
+                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items")))))))))))
 
+(deftest collection-items-children-test-2
+  (testing "GET /api/collection/:id/items"
+    (testing "check that you get to see the children as appropriate"
       (testing "...and that you can also filter so that you only see the children you want to see"
         (mt/with-temp [:model/Collection collection {:name "Art Collection"}]
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection)

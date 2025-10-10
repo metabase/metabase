@@ -6,7 +6,6 @@ import React, {
   type ReactNode,
   type SetStateAction,
   useCallback,
-  useMemo,
 } from "react";
 import { t } from "ttag";
 
@@ -36,10 +35,9 @@ import type { LinkProps } from "metabase/common/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import type { ColorName } from "metabase/lib/colors/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
-import { SearchButton } from "metabase/nav/components/search/SearchButton";
-import type { PaletteAction } from "metabase/palette/types";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -395,7 +393,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export type RevisionOrModerationEvent = {
   title: string;
   timestamp: string;
-  icon: IconName | { name: IconName; color: string } | Record<string, never>;
+  icon: IconName | { name: IconName; color: ColorName } | Record<string, never>;
   description?: string;
   revision?: Revision;
 };
@@ -704,28 +702,41 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   chartAnalysisRenderFormats: {},
 };
 
-export const PLUGIN_METABOT = {
+type PLUGIN_METABOT_TYPE = {
+  isEnabled: () => boolean;
+  Metabot: (props: { hide?: boolean }) => React.ReactElement | null;
+  defaultMetabotContextValue: MetabotContext;
+  MetabotContext: React.Context<MetabotContext>;
+  getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
+  getAdminPaths: () => AdminPath[];
+  getAdminRoutes: () => React.ReactElement;
+  getMetabotRoutes: () => React.ReactElement | null;
+  MetabotAdminPage: ComponentType;
+  getMetabotVisible: (state: State) => boolean;
+  MetabotToggleButton: ComponentType<{ className?: string }>;
+  MetabotAppBarButton: ComponentType;
+};
+
+export const PLUGIN_METABOT: PLUGIN_METABOT_TYPE = {
   isEnabled: () => false,
-  Metabot: (_props: { hide?: boolean }) => null as React.ReactElement | null,
+  Metabot: () => null,
   defaultMetabotContextValue,
   MetabotContext: React.createContext(defaultMetabotContextValue),
   getMetabotProvider: () => {
-    return ({ children }: { children: React.ReactNode }) =>
+    return ({ children }) =>
       React.createElement(
         PLUGIN_METABOT.MetabotContext.Provider,
         { value: PLUGIN_METABOT.defaultMetabotContextValue },
         children,
       );
   },
-  useMetabotPalletteActions: (_searchText: string) =>
-    useMemo(() => [] as PaletteAction[], []),
-  getAdminPaths: () => [] as AdminPath[],
+  getAdminPaths: () => [],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
-  getMetabotRoutes: () => null as React.ReactElement | null,
+  getMetabotRoutes: () => null,
   MetabotAdminPage: () => `placeholder`,
-  getMetabotVisible: (_state: State) => false,
-  SearchButton: SearchButton,
+  getMetabotVisible: () => false,
   MetabotToggleButton: PluginPlaceholder,
+  MetabotAppBarButton: PluginPlaceholder,
 };
 
 type DashCardMenuItemGetter = (

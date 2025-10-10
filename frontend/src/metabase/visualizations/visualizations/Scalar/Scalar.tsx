@@ -1,10 +1,8 @@
-import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import {
   ScalarValue,
   ScalarWrapper,
@@ -203,11 +201,7 @@ export class Scalar extends Component<
     return (
       <ScalarWrapper>
         <ScalarContainer
-          className={cx(
-            DashboardS.fullscreenNormalText,
-            DashboardS.fullscreenNightText,
-            EmbedFrameS.fullscreenNightText,
-          )}
+          className={DashboardS.fullscreenNormalText}
           data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}

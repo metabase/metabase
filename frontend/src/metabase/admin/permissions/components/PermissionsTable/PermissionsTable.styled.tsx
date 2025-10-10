@@ -6,8 +6,9 @@ import { forwardRef } from "react";
 
 import Link from "metabase/common/components/Link";
 import Label from "metabase/common/components/type/Label";
-import { alpha, color } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 const getTableBorder = (theme: Theme) =>
   `1px solid ${alpha(theme.fn.themeColor("border"), 0.5)}`;
@@ -39,7 +40,7 @@ export const PermissionsTableCell = styled.td`
 
   &:first-of-type {
     max-width: 300px;
-    background: white;
+    background: var(--mb-color-white);
     left: 0;
     top: 0;
     position: sticky;
