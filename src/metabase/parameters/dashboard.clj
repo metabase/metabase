@@ -4,7 +4,7 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib-be.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -94,7 +94,7 @@
   (for [mapping (get-in dashboard [:resolved-params param-key :mappings])
         :let [database-id (get-in mapping [:dashcard :card :database_id])
               card-id (get-in mapping [:dashcard :card :id])
-              mp (lib.metadata.jvm/application-database-metadata-provider database-id)
+              mp (lib-be.metadata.jvm/application-database-metadata-provider database-id)
               card (lib.metadata/card mp card-id)
               query (lib/card->underlying-query mp card)]
         :when (when (not-empty query)
